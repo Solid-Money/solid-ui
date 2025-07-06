@@ -1,19 +1,25 @@
-import { View } from "react-native";
-import { useRouter } from "expo-router";
-import { CreditCard, Plus, RefreshCw, SendHorizontal } from "lucide-react-native";
+import {useRouter} from "expo-router";
+import {CreditCard, Plus, RefreshCw, SendHorizontal} from "lucide-react-native";
+import {View} from "react-native";
 
-import { Text } from "../ui/text";
+import {path} from "@/constants/path";
 import SavingCountUp from "../SavingCountUp";
-import { path } from "@/constants/path";
-import { Button } from "../ui/button";
+import {Button} from "../ui/button";
+import {Text} from "../ui/text";
 
 interface DashboardHeaderMobileProps {
   balance: number;
   totalAPY: number;
   lastTimestamp: number;
+  principal?: number;
 }
 
-const DashboardHeaderMobile = ({ balance, totalAPY, lastTimestamp }: DashboardHeaderMobileProps) => {
+const DashboardHeaderMobile = ({
+  balance,
+  totalAPY,
+  lastTimestamp,
+  principal,
+}: DashboardHeaderMobileProps) => {
   const router = useRouter();
 
   return (
@@ -23,7 +29,9 @@ const DashboardHeaderMobile = ({ balance, totalAPY, lastTimestamp }: DashboardHe
         <SavingCountUp
           balance={balance ?? 0}
           apy={totalAPY ?? 0}
-          lastTimestamp={lastTimestamp ? lastTimestamp / 1000 : 0}
+          lastTimestamp={lastTimestamp ?? 0}
+          principal={principal}
+          mode="total"
         />
       </View>
 
@@ -74,7 +82,7 @@ const DashboardHeaderMobile = ({ balance, totalAPY, lastTimestamp }: DashboardHe
         </View>
       </View>
     </View>
-  )
-}
+  );
+};
 
 export default DashboardHeaderMobile;
