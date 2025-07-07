@@ -33,7 +33,6 @@ import {
   withRefreshToken,
 } from "@/lib/utils";
 import { publicClient } from "@/lib/wagmi";
-import { getValidatedInvite } from '@/store/useInviteStore';
 import { useUserStore } from "@/store/useUserStore";
 import { Chain, http } from "viem";
 import { entryPoint07Address } from "viem/account-abstraction";
@@ -41,7 +40,7 @@ import { fetchIsDeposited } from "./useAnalytics";
 
 interface UseUserReturn {
   user: User | undefined;
-  handleSignup: (username: string) => Promise<void>;
+  handleSignup: (username: string, inviteCode: string) => Promise<void>;
   handleLogin: () => Promise<void>;
   handleDummyLogin: () => Promise<void>;
   handleSelectUser: (username: string) => void;
@@ -146,11 +145,11 @@ const useUser = (): UseUserReturn => {
     router.replace(path.HOME);
   }, [queryClient, router, updateUser]);
 
-  const handleSignup = useCallback(async (username: string) => {
+  const handleSignup = useCallback(async (username: string, inviteCode: string) => {
     try {
       setSignupInfo({ status: Status.PENDING });
 
-      const optionsJSON = await generateRegistrationOptions(username);
+      const optionsJSON = await generateRegistrationOptions(username, inviteCode);
 
       const authenticatorResponse = await passkeys.create(optionsJSON);
       if (!authenticatorResponse) {
@@ -193,7 +192,6 @@ const useUser = (): UseUserReturn => {
             },
             sessionId,
             smartAccountClient.account.address,
-            getValidatedInvite()
           ),
         { onError: handleLogin }
       );
@@ -207,14 +205,14 @@ const useUser = (): UseUserReturn => {
         throw new Error("Error while verifying passkey registration");
       }
     } catch (error: any) {
+      let message = "";
       if (error?.status === 409) {
-        setSignupInfo({
-          status: Status.ERROR,
-          message: "Username already exists",
-        });
-      } else {
-        setSignupInfo({ status: Status.ERROR });
+        message = "Username already exists";
+      } else if ((await error?.text?.())?.toLowerCase()?.includes("invite")) {
+        message = "Invalid invite code";
       }
+
+      setSignupInfo({ status: Status.ERROR, message });
       console.error(error);
     }
   }, [checkBalance, safeAA, setSignupInfo, storeUser]);
