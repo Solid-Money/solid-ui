@@ -141,6 +141,7 @@ export default function Dashboard() {
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
                         mode="total"
+                        decimalPlaces={4}
                         classNames={{
                           wrapper: "text-foreground",
                           decimalSeparator:
@@ -167,7 +168,7 @@ export default function Dashboard() {
                       Interest earned
                     </Text>
                     <View className="flex-row items-center gap-2">
-                      <Text className="text-2xl md:text-4.5xl font-medium">
+                      <Text className="text-2xl md:text-4.5xl text-brand font-medium">
                         $
                       </Text>
                       <SavingCountUp
@@ -176,19 +177,19 @@ export default function Dashboard() {
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
                         mode="interest-only"
-                        decimalPlaces={8}
+                        decimalPlaces={4}
                         classNames={{
                           decimalSeparator: "md:text-xl font-medium",
                         }}
                         styles={{
                           wholeText: {
                             fontSize: isDesktop ? 40 : 24,
-                            fontWeight: "bold",
-                            color: "#ffffff",
+                            fontWeight: "semibold",
+                            color: "#94F27F",
                           },
                           decimalText: {
                             fontSize: isDesktop ? 20 : 16,
-                            color: "#ffffff",
+                            color: "#94F27F",
                           },
                         }}
                       />

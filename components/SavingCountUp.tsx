@@ -120,6 +120,7 @@ const SavingCountUp = ({
         value={wholeNumber}
         textStyle={styles?.wholeText}
         spinningAnimationConfig={{duration: DURATION}}
+        useGrouping
       />
       <Text className={classNames?.decimalSeparator}>.</Text>
       <AnimatedRollingNumber
