@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Linking, Pressable, TextInput, View } from "react-native";
+import { Linking, Platform, Pressable, TextInput, View } from "react-native";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Text } from "@/components/ui/text";
 import { path } from "@/constants/path";
 import { createKycLink } from "@/lib/api";
 import { KycStatus } from "@/lib/types";
+import { useRouter } from "expo-router";
 
 // Zod schema for validation
 const userInfoSchema = z.object({
@@ -184,6 +185,7 @@ function UserInfoFooter({
 // Main Component
 export default function UserInfoMobile() {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const {
     control,
@@ -217,13 +219,22 @@ export default function UserInfoMobile() {
         redirectUrl
       );
 
-      WebBrowser.openBrowserAsync(kycLink.link, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-        controlsColor: "#94F27F",
-        toolbarColor: "#94F27F",
-        showTitle: true,
-        enableBarCollapsing: true,
-      });
+      if (Platform.OS === "ios" || Platform.OS === "android") {
+        WebBrowser.openBrowserAsync(kycLink.link, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+          controlsColor: "#94F27F",
+          toolbarColor: "#94F27F",
+          showTitle: true,
+          enableBarCollapsing: true,
+        });
+      } else {
+        router.push({
+          pathname: path.CARD_KYC,
+          params: {
+            url: kycLink.link,
+          },
+        });
+      }
     } catch (error) {
       console.error("KYC link creation failed:", error);
     } finally {
