@@ -16,6 +16,7 @@ import {
 	BlockscoutTransaction,
 	BridgeCustomerResponse,
 	CardResponse,
+	CardStatus,
 	CardStatusResponse,
 	KycLink,
 	LayerZeroTransaction,
@@ -317,22 +318,57 @@ export const getCardStatus = async (): Promise<CardStatusResponse> => {
 };
 
 export const getCardDetails = async (): Promise<CardResponse> => {
-	const jwt = getJWTToken();
-
-	const response = await fetch(
-		`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/details`,
-		{
-			credentials: "include",
-			headers: {
-				...getPlatformHeaders(),
-				...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+	return {
+		id: "123",
+		client_reference_id: "123",
+		customer_id: "123",
+		card_image_url: "https://www.google.com",
+		status: CardStatus.ACTIVE,
+		status_reason: "123",
+		balances: {
+			available: {
+				amount: "123.12",
+				currency: "USD",
+			},
+			hold: {
+				amount: "100",
+				currency: "USD",
 			},
 		},
-	);
+		card_details: {
+			last_4: "1234",
+			expiry: "12/2025",
+			bin: "123456",
+		},
+		freezes: [],
+		crypto_account: {
+			address: "0x1234567890",
+			type: "ERC-20",
+		},
+		funding_instructions: {
+			currency: "USD",
+			chain: "ETH",
+			address: "0x1234567890",
+			memo: "123",
+		},
+	};
 
-	if (!response.ok) throw response;
+	// const jwt = getJWTToken();
 
-	return response.json();
+	// const response = await fetch(
+	// 	`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/details`,
+	// 	{
+	// 		credentials: "include",
+	// 		headers: {
+	// 			...getPlatformHeaders(),
+	// 			...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+	// 		},
+	// 	},
+	// );
+
+	// if (!response.ok) throw response;
+
+	// return response.json();
 };
 
 export const fetchInternalTransactions = async (
