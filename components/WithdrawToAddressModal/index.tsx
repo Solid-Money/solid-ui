@@ -202,7 +202,7 @@ const WithdrawTrigger = (props: any) => {
     >
       {/* <WithdrawIcon className="size-6" /> */}
       <ArrowUpRight color="white" />
-      <Text className="font-bold hidden md:block">Send</Text>
+      <Text className="font-bold">Send</Text>
     </Button>
   );
 };

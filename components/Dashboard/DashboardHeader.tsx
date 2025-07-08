@@ -18,7 +18,7 @@ const DashboardHeader = () => {
           <Link href="https://solid-3.gitbook.io/solid.xyz-docs" target="_blank" className='text-primary font-medium underline hover:opacity-70'>How it works</Link>
         </Text>
       </View>
-      <View className="flex-row items-center gap-5 h-20">
+      <View className="flex-row items-center gap-5">
         <DepositOptionModal />
         <WithdrawModal />
       </View>

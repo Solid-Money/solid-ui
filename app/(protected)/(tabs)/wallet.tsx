@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { ScrollView, View } from "react-native";
+import { Platform, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Address } from "viem";
 import { fuse, mainnet } from "viem/chains";
@@ -27,7 +27,7 @@ export default function Wallet() {
     fuseTokens,
     refresh,
   } = useBalances();
-  const { isDesktop } = useDimension();
+  const { isScreenMedium } = useDimension();
   const {
     data: blockNumber
   } = useBlockNumber({ watch: true, chainId: mainnet.id })
@@ -76,15 +76,15 @@ export default function Wallet() {
 
   return (
     <React.Fragment>
-      {!isDesktop && <NavbarMobile />}
+      {Platform.OS !== 'web' && <NavbarMobile />}
       <SafeAreaView
         className="bg-background text-foreground flex-1"
         edges={['right', 'left', 'bottom']}
       >
         <ScrollView className="flex-1">
-          {isDesktop && <Navbar />}
-          <View className="gap-16 px-4 py-8 md:py-16 w-full max-w-7xl mx-auto">
-            <View className="flex-col md:flex-row items-center justify-between gap-y-4">
+          {Platform.OS === 'web' && <Navbar />}
+          <View className="gap-12 md:gap-16 px-4 py-8 md:py-16 w-full max-w-7xl mx-auto">
+            <View className="flex-row items-center justify-between gap-y-4">
               <View className="flex-row items-center">
                 <Text className="text-5xl md:text-8xl text-foreground font-semibold">$</Text>
                 <SavingCountUp
@@ -101,14 +101,14 @@ export default function Wallet() {
                   }}
                   styles={{
                     wholeText: {
-                      fontSize: isDesktop ? 96 : 48,
-                      fontWeight: isDesktop ? "medium" : "semibold",
+                      fontSize: isScreenMedium ? 96 : 48,
+                      fontWeight: isScreenMedium ? "medium" : "semibold",
                       color: "#ffffff",
                       marginRight: -5,
                     },
                     decimalText: {
-                      fontSize: isDesktop ? 40 : 24,
-                      fontWeight: isDesktop ? "medium" : "semibold",
+                      fontSize: isScreenMedium ? 40 : 24,
+                      fontWeight: isScreenMedium ? "medium" : "semibold",
                       color: "#ffffff",
                     },
                   }}
