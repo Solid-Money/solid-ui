@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { readContract } from 'viem/actions';
 import { mainnet } from 'viem/chains';
 import useUser from './useUser';
+import { isSoUSDToken } from '@/lib/utils';
 
 interface TokenBalance {
   contractTickerSymbol: string;
@@ -130,12 +131,6 @@ export const useBalances = (): BalanceData => {
       let ethereumTokens: TokenBalance[] = [];
       let fuseTokens: TokenBalance[] = [];
       let rate = 0;
-
-      // Helper function to check if token is soUSD (vault token)
-      const isSoUSDToken = (contractAddress: string): boolean => {
-        return contractAddress.toLowerCase() === ADDRESSES.ethereum.vault.toLowerCase() ||
-          contractAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase();
-      };
 
       // Process soUSD rate
       if (soUSDRate.status === 'fulfilled') {
