@@ -12,7 +12,7 @@ const AccountCenter = () => {
   const { user } = useUser()
 
   return (
-    <View className="flex-col gap-2 md:min-h-64">
+    <View className="flex-col gap-2 min-h-64">
       <Text className="text-sm text-muted-foreground">Safe Address</Text>
       <View className="flex-row justify-between items-center px-4 py-2 bg-primary/10 rounded-2xl text-primary font-medium">
         <Text>{user?.safeAddress ? eclipseAddress(user?.safeAddress) : ''}</Text>
@@ -36,7 +36,7 @@ const AccountCenterTrigger = (props: any) => {
         {...props}
       >
         <UserAvatar />
-        <Text className="text-white font-medium text-sm">{eclipseUsername(user.username)}</Text>
+        <Text className="hidden md:block text-white font-medium text-sm">{eclipseUsername(user.username)}</Text>
         <ChevronDown size={14} color="white" />
       </Button>
     )

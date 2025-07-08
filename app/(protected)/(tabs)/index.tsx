@@ -24,7 +24,7 @@ import {ADDRESSES} from "@/lib/config";
 import {useQuery} from "@tanstack/react-query";
 import {LinearGradient} from "expo-linear-gradient";
 import React, {useEffect} from "react";
-import {ImageBackground, ScrollView, View} from "react-native";
+import {ImageBackground, Platform, ScrollView, View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {Address} from "viem";
 import {mainnet} from "viem/chains";
@@ -32,7 +32,7 @@ import {useBlockNumber} from "wagmi";
 
 export default function Dashboard() {
   const {user} = useUser();
-  const {isScreenMedium, isDesktop} = useDimension();
+  const {isScreenMedium} = useDimension();
   const {
     data: balance,
     isLoading: isBalanceLoading,
@@ -90,15 +90,15 @@ export default function Dashboard() {
 
   return (
     <>
-      {!isDesktop && <NavbarMobile />}
+      {Platform.OS !== 'web' && <NavbarMobile />}
       <SafeAreaView
         className="bg-background text-foreground flex-1"
         edges={["right", "left", "bottom"]}
       >
         <ScrollView className="flex-1">
-          {isDesktop && <Navbar />}
-          <View className="gap-16 px-4 py-8 w-full max-w-7xl mx-auto">
-            {isScreenMedium ? (
+          {Platform.OS === 'web' && <Navbar />}
+          <View className="gap-12 md:gap-16 px-4 py-8 w-full max-w-7xl mx-auto">
+            {Platform.OS === 'web' ? (
               <DashboardHeader />
             ) : (
               <DashboardHeaderMobile
@@ -112,7 +112,7 @@ export default function Dashboard() {
               colors={["rgba(126, 126, 126, 0.3)", "rgba(126, 126, 126, 0.2)"]}
               start={{x: 0, y: 0}}
               end={{x: 1, y: 1}}
-              className="web:md:flex web:md:flex-row rounded-xl md:rounded-twice overflow-hidden"
+              className="web:md:flex web:md:flex-row rounded-twice overflow-hidden"
             >
               <ImageBackground
                 source={require("@/assets/images/solid-black-large.png")}
@@ -121,14 +121,14 @@ export default function Dashboard() {
                 imageStyle={{
                   width: 461,
                   height: 625,
-                  marginTop: -100,
-                  marginRight: 50,
+                  marginTop: isScreenMedium ? -100 : -50,
+                  marginRight: isScreenMedium ? 50 : -250,
                   marginLeft: "auto",
                 }}
               >
-                <View className="flex-1 bg-transparent p-6 md:px-10 md:py-8 justify-between gap-4 border-b border-border md:border-b-0 md:border-r">
+                <View className="flex-1 bg-transparent p-6 pb-16 md:px-10 md:py-8 justify-between gap-12 md:gap-4 border-b border-border md:border-b-0 md:border-r">
                   <View>
-                    <Text className="text-lg text-primary/50 font-medium">
+                    <Text className="md:text-lg text-primary/50 font-medium">
                       Total value
                     </Text>
                     <View className="flex-row items-center">
@@ -149,14 +149,14 @@ export default function Dashboard() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isDesktop ? 96 : 48,
-                            fontWeight: isDesktop ? "medium" : "semibold",
+                            fontSize: isScreenMedium ? 96 : 48,
+                            fontWeight: isScreenMedium ? "medium" : "semibold",
                             color: "#ffffff",
                             marginRight: -5,
                           },
                           decimalText: {
-                            fontSize: isDesktop ? 40 : 24,
-                            fontWeight: isDesktop ? "medium" : "semibold",
+                            fontSize: isScreenMedium ? 40 : 24,
+                            fontWeight: isScreenMedium ? "medium" : "semibold",
                             color: "#ffffff",
                           },
                         }}
@@ -164,11 +164,11 @@ export default function Dashboard() {
                     </View>
                   </View>
                   <View className="gap-1">
-                    <Text className="text-lg text-primary/50 font-medium">
+                    <Text className="md:text-lg text-primary/50 font-medium">
                       Interest earned
                     </Text>
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-2xl md:text-4.5xl text-brand font-medium">
+                    <View className="flex-row items-center">
+                      <Text className="text-4xl md:text-4.5xl text-brand font-medium">
                         $
                       </Text>
                       <SavingCountUp
@@ -183,12 +183,12 @@ export default function Dashboard() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isDesktop ? 40 : 24,
+                            fontSize: isScreenMedium ? 40 : 36,
                             fontWeight: "semibold",
                             color: "#94F27F",
                           },
                           decimalText: {
-                            fontSize: isDesktop ? 20 : 16,
+                            fontSize: isScreenMedium ? 20 : 18,
                             color: "#94F27F",
                           },
                         }}
@@ -198,9 +198,9 @@ export default function Dashboard() {
                 </View>
               </ImageBackground>
 
-              <View className="web:md:w-80 bg-transparent p-6 md:p-6 justify-center gap-8">
-                <View>
-                  <Text className="text-lg text-primary/50 font-medium">
+              <View className="flex-row md:flex-col web:md:w-80 bg-transparent justify-between md:justify-center">
+                <View className="p-6 md:p-7">
+                  <Text className="md:text-lg text-primary/50 font-medium">
                     Current Yield
                   </Text>
                   <View className="flex-row items-center gap-2">
@@ -217,10 +217,10 @@ export default function Dashboard() {
                   </View>
                 </View>
 
-                <View className="border-t border-border/50 -mx-6 md:-mx-6" />
+                <View className="border-r md:border-t border-border/50" />
 
-                <View>
-                  <Text className="text-lg text-primary/50 font-medium">
+                <View className="p-6 md:p-7">
+                  <Text className="md:text-lg text-primary/50 font-medium">
                     Total deposited
                   </Text>
                   <Text className="text-2xl font-semibold">
@@ -232,10 +232,10 @@ export default function Dashboard() {
                   </Text>
                 </View>
 
-                <View className="border-t border-border/50 -mx-6 md:-mx-6" />
+                <View className="border-t border-border/50 hidden md:block" />
 
-                <View>
-                  <Text className="text-lg text-primary/50 font-medium">
+                <View className="p-6 md:p-7 hidden md:block">
+                  <Text className="md:text-lg text-primary/50 font-medium">
                     Total earned
                   </Text>
                   <View className="flex-row items-center">
@@ -285,8 +285,8 @@ export default function Dashboard() {
               </View>
             </View>
 
-            <View className="flex-col items-center gap-12 w-full max-w-screen-md mx-auto md:mt-20">
-              <Text className="text-3xl font-semibold">
+            <View className="flex-col items-center gap-6 md:gap-12 w-full max-w-screen-md mx-auto md:mt-20">
+              <Text className="text-3xl font-semibold text-center">
                 Frequently asked questions
               </Text>
               <FAQ faqs={faqs} />

@@ -70,7 +70,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'max-w-lg gap-4 web:cursor-default bg-card p-6 shadow-lg web:duration-200 rounded-xl md:rounded-twice w-screen mx-auto max-w-[95%]',
+        'max-w-lg gap-4 web:cursor-default bg-card p-6 shadow-lg web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
         open
           ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
           : 'web:animate-out web:fade-out-0 web:zoom-out-95',

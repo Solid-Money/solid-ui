@@ -81,8 +81,9 @@ const WalletTokenTab = () => {
     const totalMinWidth = MIN_COLUMN_WIDTHS.reduce((sum, width) => sum + width, 0);
     const remainingWidth = Math.max(0, width - totalMinWidth);
     const extraPerColumn = remainingWidth / MIN_COLUMN_WIDTHS.length;
+    const evenWidth = width / MIN_COLUMN_WIDTHS.length;
 
-    return MIN_COLUMN_WIDTHS.map((minWidth) => minWidth + extraPerColumn);
+    return MIN_COLUMN_WIDTHS.map((minWidth) => isScreenMedium ? minWidth + extraPerColumn : evenWidth);
   }, [width]);
 
   const getTokenIcon = (token: any): { type: 'image' | 'component'; source?: any; component?: React.ReactNode } => {
@@ -186,8 +187,8 @@ const WalletTokenTab = () => {
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[1] }}>
                       {isSoUSDToken(token.contractAddress) ? (
-                        <View className='bg-primary/5 rounded-full px-4 py-2 self-start'>
-                          <Text className='font-semibold'>
+                        <View className='bg-primary/5 rounded-full px-2 py-1 md:px-4 md:py-2 self-start'>
+                          <Text className='font-semibold text-sm md:text-base'>
                             {token.chainId === mainnet.id ? 'Unstaked' : 'Staked'}
                           </Text>
                         </View>

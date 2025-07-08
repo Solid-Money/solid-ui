@@ -13,7 +13,7 @@ import { useTotalAPY } from "@/hooks/useAnalytics"
 import useDepositFromEOA from "@/hooks/useDepositFromEOA"
 import { useEstimateDepositGas } from "@/hooks/useEstimateDepositGas"
 import { DepositModal, Status } from "@/lib/types"
-import { cn, compactNumberFormat, formatNumber } from "@/lib/utils"
+import { compactNumberFormat, formatNumber } from "@/lib/utils"
 import { useDepositStore } from "@/store/useDepositStore"
 import { CheckConnectionWrapper } from "../CheckConnectionWrapper"
 import ConnectedWalletDropdown from "../ConnectedWalletDropdown"
@@ -135,7 +135,7 @@ function DepositToVaultForm() {
         </Text>
       </View>
       <TokenDetails>
-        <View className={cn("p-6 md:p-5", "md:flex-row md:items-center gap-4 md:gap-10")}>
+        <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
           <Text className="text-lg opacity-40 md:w-40">
             You will receive
           </Text>
@@ -158,7 +158,7 @@ function DepositToVaultForm() {
                     </Text> */}
           </View>
         </View>
-        <View className={cn("p-6 md:p-5", "md:flex-row md:items-center gap-4 md:gap-10")}>
+        <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
           <Text className="text-lg opacity-40 md:w-40">APY</Text>
           <View className="flex-row items-baseline gap-2">
             <Text className="text-2xl font-semibold text-[#94F27F]">

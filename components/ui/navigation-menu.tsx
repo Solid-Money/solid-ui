@@ -57,7 +57,7 @@ const NavigationMenuItem = React.forwardRef<View, NavigationMenuItemProps>(
 NavigationMenuItem.displayName = 'NavigationMenuItem';
 
 const navigationMenuLinkClassNames = {
-  pressable: 'group inline-flex h-8 w-max items-center justify-center rounded-full px-5 py-5 transition-colors hover:bg-button-secondary focus:bg-button-secondary focus:outline-none disabled:pointer-events-none disabled:opacity-50',
+  pressable: 'group inline-flex h-8 w-max items-center justify-center rounded-full px-3 py-2 md:p-5 transition-colors hover:bg-button-secondary focus:bg-button-secondary focus:outline-none disabled:pointer-events-none disabled:opacity-50',
   text: "text-lg font-semibold",
 }
 

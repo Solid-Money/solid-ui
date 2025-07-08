@@ -20,18 +20,10 @@ const wallet: MenuItem = {
 }
 
 const defaultMenuItems: MenuItem[] = [
-  // {
-  //   label: "Deposit",
-  //   href: path.DEPOSIT,
-  // },
-  // {
-  //   label: "Card",
-  //   href: path.CARD,
-  // },
-  // {
-  //   label: "Buy Crypto",
-  //   href: path.BUY_CRYPTO,
-  // }
+  {
+    label: "Card",
+    href: path.CARD,
+  },
 ]
 
 const useNav = () => {
