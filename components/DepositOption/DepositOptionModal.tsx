@@ -83,7 +83,7 @@ const DepositOptionModal = () => {
         >
           <View className="flex-row items-center gap-4">
             <Plus color="black" />
-            <Text className="text-primary-foreground font-bold hidden md:block">
+            <Text className="text-primary-foreground font-bold">
               Deposit
             </Text>
           </View>
@@ -91,14 +91,14 @@ const DepositOptionModal = () => {
       </DialogTrigger>
       <DialogContent
         className={cn(
-          "p-8",
+          "p-6 md:p-8",
           isBuyCrypto ? "w-[470px] h-[80vh]  md:h-[85vh]" : "md:max-w-md"
         )}
       >
         <Animated.View style={dialogAnimatedStyle} className="overflow-hidden">
           <View
             className={cn(
-              "md:gap-8",
+              "gap-8",
               !isForm && !isBuyCrypto && "min-h-[40rem]"
             )}
             onLayout={(event) => {

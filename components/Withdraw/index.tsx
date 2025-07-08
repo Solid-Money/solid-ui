@@ -283,7 +283,7 @@ const WithdrawTrigger = (props: any) => {
     >
       <View className="flex-row items-center gap-4">
         <ArrowUpRight color="white" />
-        <Text className="font-bold hidden md:block">Withdraw</Text>
+        <Text className="font-bold">Withdraw</Text>
       </View>
     </Button>
   );

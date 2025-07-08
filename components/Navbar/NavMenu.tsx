@@ -30,7 +30,7 @@ export function NavMenu() {
   }, [navigation]);
 
   return (
-    <NavigationMenu value={value} onValueChange={setValue} className="hidden md:block">
+    <NavigationMenu value={value} onValueChange={setValue}>
       <NavigationMenuList>
         {menuItems.map((item) => (
           <NavigationMenuItem key={item.label} value={item.label}>
