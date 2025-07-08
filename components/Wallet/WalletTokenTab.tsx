@@ -15,9 +15,10 @@ import {
 import { Text } from '@/components/ui/text';
 import { useBalances } from '@/hooks/useBalances';
 import { useDimension } from '@/hooks/useDimension';
-import { cn, compactNumberFormat, formatNumber } from '@/lib/utils';
+import { cn, compactNumberFormat, formatNumber, isSoUSDToken } from '@/lib/utils';
+import { mainnet } from 'viem/chains';
 
-const MIN_COLUMN_WIDTHS = new Array(4).fill(50);
+const MIN_COLUMN_WIDTHS = [50, 50, 200, 200];
 
 // Custom Default Token Icon Component
 const DefaultTokenIcon = ({ size = 24, symbol = '?' }: { size?: number; symbol?: string }) => {
@@ -53,7 +54,7 @@ const WalletTokenTab = () => {
   const [width, setWidth] = useState(0);
   const { isScreenMedium } = useDimension();
 
-  const { ethereumTokens, fuseTokens, isLoading, totalUSD } = useBalances();
+  const { ethereumTokens, fuseTokens, isLoading } = useBalances();
 
   // Combine and sort tokens by USD value (descending)
   const allTokens = useMemo(() => {
@@ -77,22 +78,12 @@ const WalletTokenTab = () => {
   };
 
   const columnWidths = useMemo(() => {
-    return MIN_COLUMN_WIDTHS.map((minWidth) => {
-      const evenWidth = width / MIN_COLUMN_WIDTHS.length;
-      return evenWidth > minWidth ? evenWidth : minWidth;
-    });
-  }, [width]);
+    const totalMinWidth = MIN_COLUMN_WIDTHS.reduce((sum, width) => sum + width, 0);
+    const remainingWidth = Math.max(0, width - totalMinWidth);
+    const extraPerColumn = remainingWidth / MIN_COLUMN_WIDTHS.length;
 
-  const getNetworkIcon = (chainId: number) => {
-    switch (chainId) {
-      case 1: // Ethereum
-        return require('@/assets/images/ethereum-square-4x.png');
-      case 122: // Fuse
-        return { uri: 'https://static.debank.com/image/chain/logo_url/fuse/7a21b958761d52d04ff0ce829d1703f4.png' };
-      default:
-        return require('@/assets/images/ethereum-square-4x.png');
-    }
-  };
+    return MIN_COLUMN_WIDTHS.map((minWidth) => minWidth + extraPerColumn);
+  }, [width]);
 
   const getTokenIcon = (token: any): { type: 'image' | 'component'; source?: any; component?: React.ReactNode } => {
     if (token.logoUrl) {
@@ -106,6 +97,8 @@ const WalletTokenTab = () => {
       case 'WETH':
       case 'ETH':
         return { type: 'image', source: require('@/assets/images/ethereum-square-4x.png') };
+      case 'SOUSD':
+        return { type: 'image', source: require('@/assets/images/sousd-4x.png') };
       default:
         return {
           type: 'component',
@@ -137,14 +130,12 @@ const WalletTokenTab = () => {
               <TableHead className='px-3 md:px-6' style={{ width: columnWidths[0] }}>
                 <Text className="text-sm">Asset</Text>
               </TableHead>
-              <TableHead className='px-3 md:px-6' style={{ width: columnWidths[1] }}>
-                <Text className="text-sm">Balance (total ${formatNumber(totalUSD ?? 0)})</Text>
-              </TableHead>
+              <TableHead className='px-3 md:px-6' style={{ width: columnWidths[1] }}></TableHead>
               <TableHead className='px-3 md:px-6' style={{ width: columnWidths[2] }}>
-                <Text className="text-sm">Price</Text>
+                <Text className="text-sm">Balance</Text>
               </TableHead>
               <TableHead className='px-3 md:px-6' style={{ width: columnWidths[3] }}>
-                <Text className="text-sm">Network</Text>
+                <Text className="text-sm">Price</Text>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -194,12 +185,13 @@ const WalletTokenTab = () => {
                       </View>
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[1] }}>
-                      <View className='items-start'>
-                        <Text className='font-bold'>${format(balanceUSD)}</Text>
-                        <Text className='text-sm text-muted-foreground'>
-                          {token.contractName || token.contractTickerSymbol}
-                        </Text>
-                      </View>
+                      {isSoUSDToken(token.contractAddress) ? (
+                        <View className='bg-primary/5 rounded-full px-4 py-2 self-start'>
+                          <Text className='font-semibold'>
+                            {token.chainId === mainnet.id ? 'Unstaked' : 'Staked'}
+                          </Text>
+                        </View>
+                      ) : null}
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
                       <View className='items-start'>
@@ -210,10 +202,12 @@ const WalletTokenTab = () => {
                       </View>
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[3] }}>
-                      <Image
-                        source={getNetworkIcon(token.chainId)}
-                        style={{ width: 21, height: 21 }}
-                      />
+                      <View className='items-start'>
+                        <Text className='font-bold'>${format(balanceUSD)}</Text>
+                        <Text className='text-sm text-muted-foreground'>
+                          {token.contractName || token.contractTickerSymbol}
+                        </Text>
+                      </View>
                     </TableCell>
                   </TableRow>
                 );

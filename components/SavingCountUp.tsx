@@ -43,6 +43,11 @@ const SavingCountUp = ({
 
   const calculateLiveYield = useCallback(
     (currentTime: number) => {
+      //If actual balance is 0, don't calculate compound interest
+      if (balance === 0) {
+        return 0;
+      }
+
       if (
         !currentTime ||
         currentTime <= 0 ||
@@ -69,10 +74,12 @@ const SavingCountUp = ({
           return mode === "interest-only" ? 0 : balance;
         }
 
+        // This prevents showing phantom yield when actual balance is lower
         if (mode === "interest-only") {
-          return Math.max(0, compoundedValue - principal);
+          const interest = Math.max(0, compoundedValue - principal);
+          return Math.min(interest, balance); // Can't show more interest than actual balance
         } else {
-          return compoundedValue;
+          return Math.min(compoundedValue, balance); // Can't show more total than actual balance
         }
       }
 
@@ -113,6 +120,7 @@ const SavingCountUp = ({
         value={wholeNumber}
         textStyle={styles?.wholeText}
         spinningAnimationConfig={{duration: DURATION}}
+        useGrouping
       />
       <Text className={classNames?.decimalSeparator}>.</Text>
       <AnimatedRollingNumber

@@ -10,12 +10,12 @@ import {
 	EXPO_PUBLIC_ALCHEMY_API_KEY,
 	EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
 	EXPO_PUBLIC_FLASH_API_BASE_URL,
-	EXPO_PUBLIC_WAITLIST_API_BASE_URL
 } from "./config";
 import {
 	BlockscoutTransaction,
 	BridgeCustomerResponse,
 	CardResponse,
+	CardStatus,
 	CardStatusResponse,
 	KycLink,
 	LayerZeroTransaction,
@@ -99,7 +99,7 @@ export const refreshToken = () => {
 
 // use fetch because some browser doesn't support fetch wrappers such as axios
 // see: https://simplewebauthn.dev/docs/advanced/browser-quirks#safari
-export const generateRegistrationOptions = async (username: string) => {
+export const generateRegistrationOptions = async (username: string, inviteCode: string) => {
 	const response = await fetch(
 		`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/passkeys/registration/generate-options`,
 		{
@@ -109,7 +109,7 @@ export const generateRegistrationOptions = async (username: string) => {
 				...getPlatformHeaders(),
 			},
 			credentials: "include",
-			body: JSON.stringify({ username }),
+			body: JSON.stringify({ username, inviteCode }),
 		},
 	);
 	if (!response.ok) throw response;
@@ -120,7 +120,6 @@ export const verifyRegistration = async (
 	registrationResponse: RegistrationResponseJSON,
 	sessionId: string,
 	address: string,
-	inviteCode?: string
 ): Promise<User> => {
 	const response = await fetch(
 		`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/passkeys/registration/verify`,
@@ -135,7 +134,6 @@ export const verifyRegistration = async (
 				...registrationResponse,
 				sessionId,
 				address,
-				inviteCode
 			}),
 		},
 	);
@@ -317,22 +315,57 @@ export const getCardStatus = async (): Promise<CardStatusResponse> => {
 };
 
 export const getCardDetails = async (): Promise<CardResponse> => {
-	const jwt = getJWTToken();
-
-	const response = await fetch(
-		`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/details`,
-		{
-			credentials: "include",
-			headers: {
-				...getPlatformHeaders(),
-				...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+	return {
+		id: "123",
+		client_reference_id: "123",
+		customer_id: "123",
+		card_image_url: "https://www.google.com",
+		status: CardStatus.ACTIVE,
+		status_reason: "123",
+		balances: {
+			available: {
+				amount: "123.12",
+				currency: "USD",
+			},
+			hold: {
+				amount: "100",
+				currency: "USD",
 			},
 		},
-	);
+		card_details: {
+			last_4: "1234",
+			expiry: "12/2025",
+			bin: "123456",
+		},
+		freezes: [],
+		crypto_account: {
+			address: "0x1234567890",
+			type: "ERC-20",
+		},
+		funding_instructions: {
+			currency: "USD",
+			chain: "ETH",
+			address: "0x1234567890",
+			memo: "123",
+		},
+	};
 
-	if (!response.ok) throw response;
+	// const jwt = getJWTToken();
 
-	return response.json();
+	// const response = await fetch(
+	// 	`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/details`,
+	// 	{
+	// 		credentials: "include",
+	// 		headers: {
+	// 			...getPlatformHeaders(),
+	// 			...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+	// 		},
+	// 	},
+	// );
+
+	// if (!response.ok) throw response;
+
+	// return response.json();
 };
 
 export const fetchInternalTransactions = async (
@@ -367,21 +400,3 @@ export const getClientIp = async () => {
 		console.error("Error fetching IP from ipify:", error);
 	}
 }
-
-// Waitlist API functions
-export const validateInviteCode = async (inviteCode: string) => {
-	const response = await fetch(
-		`${EXPO_PUBLIC_WAITLIST_API_BASE_URL}/waitlist/v1/waitlist/validate-invite`,
-		{
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				...getPlatformHeaders(),
-			},
-			body: JSON.stringify({ inviteCode }),
-		}
-	);
-
-	if (!response.ok) throw response;
-	return response.json();
-};

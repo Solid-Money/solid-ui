@@ -40,11 +40,11 @@ export function useCardSteps() {
     try {
       setIsLoading(true);
       console.log("Activating card...");
-      const card = await withRefreshToken(() => createCard());
+      // const card = await withRefreshToken(() => createCard());
 
-      if (!card) throw new Error("Failed to create card");
+      // if (!card) throw new Error("Failed to create card");
 
-      console.log("Card created:", card);
+      // console.log("Card created:", card);
       setCardActivated(true);
 
       // Navigate to card details
@@ -115,7 +115,8 @@ export function useCardSteps() {
 
   // Check if a step's button should be enabled
   const isStepButtonEnabled = (stepIndex: number) => {
-    return steps.slice(0, stepIndex).every((step) => step.completed);
+    return true;
+    // return steps.slice(0, stepIndex).every((step) => step.completed);
   };
 
   const toggleStep = (stepId: number) => {

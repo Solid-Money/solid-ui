@@ -1,11 +1,13 @@
 import { Image } from "expo-image";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { Platform, SafeAreaView, View } from "react-native";
 
 import { path } from "@/constants/path";
 import AccountCenterModal from "../AccountCenter/AccountCenterModal";
 import { NavMenu } from "./NavMenu";
 import useUser from "@/hooks/useUser";
+import { Button } from "../ui/button";
+import { Text } from "../ui/text";
 
 const Navbar = () => {
   const { user } = useUser();
@@ -32,6 +34,13 @@ const Navbar = () => {
         {hasDeposited && (
           <NavMenu />
         )}
+        <Button onPress={() => {
+          router.push(path.CARD);
+        }}>
+          <Text>
+            Card
+          </Text>
+        </Button>
         {Platform.OS === 'web' && (
           <View className="w-32">
             <AccountCenterModal />

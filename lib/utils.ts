@@ -7,6 +7,7 @@ import { useUserStore } from "@/store/useUserStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { refreshToken } from "./api";
 import { AuthTokens, PasskeyCoordinates, User } from "./types";
+import { ADDRESSES } from "./config";
 
 // Import optional dependencies statically
 let p256: any;
@@ -325,4 +326,9 @@ export const getNonce = async ({
   const nonce = parseInt(accountNonce || "0");
   const encodedNonce = keccak256(toHex(appId + nonce.toString()));
   return BigInt(encodedNonce);
+};
+
+export const isSoUSDToken = (contractAddress: string): boolean => {
+  return contractAddress.toLowerCase() === ADDRESSES.ethereum.vault.toLowerCase() ||
+    contractAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase();
 };
