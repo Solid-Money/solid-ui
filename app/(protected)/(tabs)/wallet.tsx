@@ -17,6 +17,8 @@ import Navbar from "@/components/Navbar";
 import SavingCountUp from "@/components/SavingCountUp";
 import { useLatestTokenTransfer, useTotalAPY } from "@/hooks/useAnalytics";
 import { useFuseVaultBalance } from "@/hooks/useVault";
+import { useDashboardCalculations } from "@/hooks/useDashboardCalculations";
+import { useGetUserTransactionsQuery } from "@/graphql/generated/user-info";
 
 export default function Wallet() {
   const { user } = useUser();
@@ -40,6 +42,16 @@ export default function Wallet() {
     user?.safeAddress ?? "",
     ADDRESSES.fuse.vault
   );
+  const {
+    data: userDepositTransactions,
+    refetch: refetchTransactions,
+  } = useGetUserTransactionsQuery({
+    variables: {
+      address: user?.safeAddress?.toLowerCase() ?? "",
+    },
+  });
+  const { originalDepositAmount, firstDepositTimestamp } =
+    useDashboardCalculations(userDepositTransactions, balance, lastTimestamp);
   const { data: usdcBalance } = useBalance({
     address: user?.safeAddress as Address,
     token: ADDRESSES.ethereum.usdc,
@@ -57,6 +69,7 @@ export default function Wallet() {
 
   useEffect(() => {
     refetchBalance()
+    refetchTransactions()
   }, [blockNumber])
 
   const hasFunds = ethereumTokens.length > 0 || fuseTokens.length > 0;
@@ -77,14 +90,27 @@ export default function Wallet() {
                 <SavingCountUp
                   balance={balance ?? 0}
                   apy={totalAPY ?? 0}
-                  lastTimestamp={lastTimestamp ? lastTimestamp / 1000 : 0}
+                  lastTimestamp={firstDepositTimestamp ?? 0}
+                  principal={originalDepositAmount}
+                  mode="total"
+                  decimalPlaces={4}
                   classNames={{
                     wrapper: "text-foreground",
-                    decimalSeparator: "text-2xl md:text-4.5xl font-medium"
+                    decimalSeparator:
+                      "text-2xl md:text-4.5xl font-medium",
                   }}
                   styles={{
-                    wholeText: { fontSize: isDesktop ? 96 : 48, fontWeight: isDesktop ? "medium" : "semibold", color: "#ffffff", marginRight: -5 },
-                    decimalText: { fontSize: isDesktop ? 40 : 24, fontWeight: isDesktop ? "medium" : "semibold", color: "#ffffff" }
+                    wholeText: {
+                      fontSize: isDesktop ? 96 : 48,
+                      fontWeight: isDesktop ? "medium" : "semibold",
+                      color: "#ffffff",
+                      marginRight: -5,
+                    },
+                    decimalText: {
+                      fontSize: isDesktop ? 40 : 24,
+                      fontWeight: isDesktop ? "medium" : "semibold",
+                      color: "#ffffff",
+                    },
                   }}
                 />
               </View>
