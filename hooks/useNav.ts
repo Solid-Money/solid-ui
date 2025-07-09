@@ -19,12 +19,7 @@ const wallet: MenuItem = {
   href: path.WALLET,
 }
 
-const defaultMenuItems: MenuItem[] = [
-  {
-    label: "Card",
-    href: path.CARD,
-  },
-]
+const defaultMenuItems: MenuItem[] = []
 
 const useNav = () => {
   const { user } = useUser();

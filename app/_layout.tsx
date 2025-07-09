@@ -11,7 +11,7 @@ import Toast from "react-native-toast-message";
 import { WagmiProvider } from "wagmi";
 
 import { infoClient } from "@/graphql/clients";
-import { toastProps } from "@/lib/toast";
+import { toastProps } from "@/components/Toast";
 import { wagmi } from "@/lib/wagmi";
 
 // see: https://solana.stackexchange.com/a/6244

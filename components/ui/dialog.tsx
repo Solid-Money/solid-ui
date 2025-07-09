@@ -5,7 +5,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 
 import { X } from '@/lib/icons/X';
-import { toastProps } from '@/lib/toast';
+import { toastProps } from '@/components/Toast';
 import { cn } from '@/lib/utils';
 import { BlurView } from 'expo-blur';
 
@@ -20,6 +20,16 @@ const DialogClose = DialogPrimitive.Close;
 const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrimitive.OverlayProps>(
   ({ className, ...props }, ref) => {
     const { open } = DialogPrimitive.useRootContext();
+
+    const handlePointerDown = (event: any) => {
+      // Check if the clicked element is a toast
+      const target = event.target as HTMLElement;
+      if (target.closest('[role="alert"]')) {
+        event.stopPropagation();
+        return;
+      }
+    };
+
     return (
       <DialogPrimitive.Overlay
         className={cn(
@@ -27,6 +37,7 @@ const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrim
           open ? 'web:animate-in web:fade-in-0' : 'web:animate-out web:fade-out-0',
           className
         )}
+        onPointerDown={handlePointerDown}
         {...props}
         ref={ref}
       />
@@ -40,10 +51,20 @@ const DialogOverlayNative = React.forwardRef<
   DialogPrimitive.OverlayRef,
   DialogPrimitive.OverlayProps
 >(({ className, children, ...props }, ref) => {
+  const handlePress = (event: any) => {
+    // Check if the pressed element is a toast
+    const target = event.target;
+    if (target?.getAttribute?.('role') === 'alert') {
+      event.stopPropagation();
+      return;
+    }
+  };
+
   return (
     <DialogPrimitive.Overlay
       style={StyleSheet.absoluteFill}
       className={cn('flex bg-black/80 justify-center items-center p-2', className)}
+      onPress={handlePress}
       {...props}
       ref={ref}
     >
@@ -67,30 +88,32 @@ const DialogContent = React.forwardRef<
   const { open } = DialogPrimitive.useRootContext();
 
   const content = (
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        'max-w-lg gap-4 web:cursor-default bg-card p-6 shadow-lg web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
-        open
-          ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
-          : 'web:animate-out web:fade-out-0 web:zoom-out-95',
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close
-        className={
-          'absolute top-4 md:top-0 right-4 md:-right-12 h-6 w-6 md:h-10 md:w-10 flex items-center justify-center bg-card md:border border-border rounded-full web:group web:ring-offset-background web:transition-opacity web:hover:opacity-70 web:focus:outline-none web:focus:ring-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none'
-        }
+    <>
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          'max-w-lg gap-4 web:cursor-default bg-card p-6 shadow-lg web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
+          open
+            ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
+            : 'web:animate-out web:fade-out-0 web:zoom-out-95',
+          className
+        )}
+        {...props}
       >
-        <X
-          size={Platform.OS === 'web' ? 16 : 18}
-          className={cn('text-muted-foreground', open && 'text-accent-foreground')}
-        />
-      </DialogPrimitive.Close>
+        {children}
+        <DialogPrimitive.Close
+          className={
+            'absolute top-4 md:top-0 right-4 md:-right-12 h-6 w-6 md:h-10 md:w-10 flex items-center justify-center bg-card md:border border-border rounded-full web:group web:ring-offset-background web:transition-opacity web:hover:opacity-70 web:focus:outline-none web:focus:ring-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none'
+          }
+        >
+          <X
+            size={Platform.OS === 'web' ? 16 : 18}
+            className={cn('text-muted-foreground', open && 'text-accent-foreground')}
+          />
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
       <Toast {...toastProps} />
-    </DialogPrimitive.Content>
+    </>
   );
 
   return (
