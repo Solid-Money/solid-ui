@@ -179,7 +179,7 @@ export default function Dashboard() {
                         mode="interest-only"
                         decimalPlaces={4}
                         classNames={{
-                          decimalSeparator: "md:text-xl font-medium",
+                          decimalSeparator: "md:text-xl text-brand font-medium",
                         }}
                         styles={{
                           wholeText: {
