@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, Image, Linking, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, TextInput, View } from "react-native";
 import Toast from 'react-native-toast-message';
 import { z } from "zod";
 
@@ -14,7 +14,7 @@ import { Skeleton } from "../ui/skeleton";
 
 import useWithdrawToAddress from "@/hooks/useWithdrawToAddress";
 import { ADDRESSES } from "@/lib/config";
-import { cn, formatNumber } from "@/lib/utils";
+import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import { useRouter } from "expo-router";
 import { ArrowUpRight, Wallet } from "lucide-react-native";
 import { useMemo } from "react";
@@ -92,16 +92,18 @@ const WithdrawToAddress = () => {
       reset(); // Reset form after successful transaction
       Toast.show({
         type: 'success',
-        text1: 'Withdrawal transaction completed',
-        text2: 'Click to view on block explorer',
-        onPress: () => {
-          Linking.openURL(`https://etherscan.io/tx/${transaction.transactionHash}`);
+        text1: 'Send transaction completed',
+        text2: `${data.amount} USDC`,
+        props: {
+          link: `https://etherscan.io/tx/${transaction.transactionHash}`,
+          linkText: eclipseAddress(transaction.transactionHash),
+          image: require("@/assets/images/usdc.png"),
         },
       });
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Error while withdrawing',
+        text1: 'Error while sending',
       });
     }
   };

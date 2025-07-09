@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, Image, Linking, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, TextInput, View } from "react-native";
 import Toast from 'react-native-toast-message';
 import { z } from "zod";
 
@@ -15,7 +15,7 @@ import { Status } from "@/lib/types";
 import { Address } from "abitype";
 import { Skeleton } from "../ui/skeleton";
 
-import { formatNumber } from "@/lib/utils";
+import { eclipseAddress, formatNumber } from "@/lib/utils";
 import { ArrowUpRight } from "lucide-react-native";
 
 const Withdraw = () => {
@@ -120,9 +120,11 @@ const Withdraw = () => {
       Toast.show({
         type: 'success',
         text1: 'Bridge transaction submitted',
-        text2: 'Click to view on LayerZero Scan',
-        onPress: () => {
-          Linking.openURL(`https://layerzeroscan.com/tx/${transaction.transactionHash}`);
+        text2: `${data.amount} soUSD`,
+        props: {
+          link: `https://layerzeroscan.com/tx/${transaction.transactionHash}`,
+          linkText: eclipseAddress(transaction.transactionHash),
+          image: require("@/assets/images/usdc.png"),
         },
       });
     } catch (error) {
@@ -135,11 +137,17 @@ const Withdraw = () => {
 
   const onWithdrawSubmit = async (data: WithdrawFormData) => {
     try {
-      await withdraw(data.amount.toString());
+      const transaction = await withdraw(data.amount.toString());
       resetWithdraw(); // Reset form after successful transaction
       Toast.show({
         type: 'success',
         text1: 'Withdrawal transaction completed',
+        text2: `${data.amount} soUSD`,
+        props: {
+          link: `https://etherscan.io/tx/${transaction.transactionHash}`,
+          linkText: eclipseAddress(transaction.transactionHash),
+          image: require("@/assets/images/usdc.png"),
+        },
       });
     } catch (error) {
       Toast.show({
