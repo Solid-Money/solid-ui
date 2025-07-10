@@ -9,8 +9,8 @@ type DepositOptionProps = {
   text: string;
   icon: React.ReactNode;
   onPress: () => void;
-  isLoading: boolean;
-  isComingSoon: boolean;
+  isLoading?: boolean;
+  isComingSoon?: boolean;
 }
 
 const DepositOption = ({ text, icon, onPress, isLoading, isComingSoon }: DepositOptionProps) => {

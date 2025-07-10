@@ -11,8 +11,8 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { useTotalAPY } from "@/hooks/useAnalytics"
 import useDepositFromEOA from "@/hooks/useDepositFromEOA"
-import { useEstimateDepositGas } from "@/hooks/useEstimateDepositGas"
-import { DepositModal, Status } from "@/lib/types"
+import { useEstimateGas } from "@/hooks/useEstimateGas"
+import { Status } from "@/lib/types"
 import { compactNumberFormat, formatNumber } from "@/lib/utils"
 import { useDepositStore } from "@/store/useDepositStore"
 import { CheckConnectionWrapper } from "../CheckConnectionWrapper"
@@ -20,15 +20,16 @@ import ConnectedWalletDropdown from "../ConnectedWalletDropdown"
 import TokenDetails from "../TokenCard/TokenDetails"
 import { Skeleton } from "../ui/skeleton"
 import { Text } from "../ui/text"
+import { DEPOSIT_MODAL } from "@/constants/modals"
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash } = useDepositFromEOA();
   const { isLoading: isPending, isSuccess } = useWaitForTransactionReceipt({ hash });
-  const { setDepositModal } = useDepositStore();
+  const { setDepositModal, setTransaction } = useDepositStore();
 
   const isLoading = depositStatus === Status.PENDING || isPending;
   const { data: totalAPY } = useTotalAPY();
-  const { costInUsd, loading } = useEstimateDepositGas();
+  const { costInUsd, loading } = useEstimateGas();
 
   const formattedBalance = balance ? formatUnits(balance, 6) : "0";
 
@@ -76,7 +77,11 @@ function DepositToVaultForm() {
 
   const onSubmit = async (data: DepositFormData) => {
     try {
-      await deposit(data.amount.toString());
+      await deposit(data.amount);
+      setTransaction({
+        amount: Number(data.amount),
+        hash,
+      });
     } catch (error) {
       // handled by hook
     }
@@ -85,7 +90,7 @@ function DepositToVaultForm() {
   useEffect(() => {
     if (isSuccess) {
       reset(); // Reset form after successful transaction
-      setTimeout(() => setDepositModal(DepositModal.CLOSE), 2000);
+      setDepositModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
     }
   }, [isSuccess, reset, setDepositModal]);
 
