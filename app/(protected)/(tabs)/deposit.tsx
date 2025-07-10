@@ -20,7 +20,7 @@ import { Text } from "@/components/ui/text";
 import { useTotalAPY } from "@/hooks/useAnalytics";
 import useDeposit from "@/hooks/useDeposit";
 import { useDimension } from "@/hooks/useDimension";
-import { useEstimateDepositGas } from "@/hooks/useEstimateDepositGas";
+import { useEstimateGas } from "@/hooks/useEstimateGas";
 import { Status } from "@/lib/types";
 import { compactNumberFormat, formatNumber } from "@/lib/utils";
 import { useRouter } from "expo-router";
@@ -31,7 +31,7 @@ export default function Deposit() {
   const isLoading = depositStatus === Status.PENDING;
   const { data: totalAPY } = useTotalAPY();
   const { isDesktop } = useDimension();
-  const { costInUsd, loading } = useEstimateDepositGas();
+  const { costInUsd, loading } = useEstimateGas();
 
   const formattedBalance = balance ? formatUnits(balance, 6) : "0";
 

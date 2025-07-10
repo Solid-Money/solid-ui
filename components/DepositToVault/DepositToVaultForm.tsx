@@ -11,7 +11,7 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { useTotalAPY } from "@/hooks/useAnalytics"
 import useDepositFromEOA from "@/hooks/useDepositFromEOA"
-import { useEstimateDepositGas } from "@/hooks/useEstimateDepositGas"
+import { useEstimateGas } from "@/hooks/useEstimateGas"
 import { Status } from "@/lib/types"
 import { compactNumberFormat, formatNumber } from "@/lib/utils"
 import { useDepositStore } from "@/store/useDepositStore"
@@ -29,7 +29,7 @@ function DepositToVaultForm() {
 
   const isLoading = depositStatus === Status.PENDING || isPending;
   const { data: totalAPY } = useTotalAPY();
-  const { costInUsd, loading } = useEstimateDepositGas();
+  const { costInUsd, loading } = useEstimateGas();
 
   const formattedBalance = balance ? formatUnits(balance, 6) : "0";
 
