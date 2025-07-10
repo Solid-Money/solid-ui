@@ -4,7 +4,7 @@ import { View } from "react-native"
 import { useAccount } from "wagmi"
 
 import { useAppKit } from "@/lib/reown"
-import { DepositModal } from "@/lib/types"
+import { DEPOSIT_MODAL } from "@/constants/modals"
 import { useDepositStore } from "@/store/useDepositStore"
 import DepositOption from "./DepositOption"
 
@@ -26,7 +26,7 @@ const DepositOptions = () => {
       console.error(error);
     } finally {
       setIsWalletOpen(false);
-      setDepositModal(DepositModal.OPEN_FORM);
+      setDepositModal(DEPOSIT_MODAL.OPEN_FORM);
     }
   }, [isWalletOpen, open]);
 
@@ -41,15 +41,13 @@ const DepositOptions = () => {
       text: "Debit/Credit Card",
       icon: <CreditCard color="white" size={26} />,
       onPress: () => {
-        setDepositModal(DepositModal.OPEN_BUY_CRYPTO);
+        setDepositModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
       },
-      isLoading: false
     },
     {
       text: "Bank Deposit",
       icon: <Landmark color="white" size={26} />,
       onPress: () => { },
-      isLoading: false,
       isComingSoon: true
     }
   ]

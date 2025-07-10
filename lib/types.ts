@@ -1,3 +1,4 @@
+import { DEPOSIT_MODAL } from "@/constants/modals";
 import { Address } from "viem";
 
 export enum Status {
@@ -242,9 +243,9 @@ export type StatusInfo = {
   message?: string;
 }
 
-export enum DepositModal {
-  OPEN_OPTIONS = "open_options",
-  OPEN_BUY_CRYPTO = "open_buy_crypto",
-  OPEN_FORM = "open_form",
-  CLOSE = "close",
+export type DepositModal = typeof DEPOSIT_MODAL[keyof typeof DEPOSIT_MODAL];
+
+export type DepositTransaction = {
+  amount?: number;
+  hash?: Address;
 }
