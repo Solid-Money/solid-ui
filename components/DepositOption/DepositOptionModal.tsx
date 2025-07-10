@@ -21,23 +21,30 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Text } from "@/components/ui/text";
-import { DepositModal } from "@/lib/types";
+import { DEPOSIT_MODAL } from "@/constants/modals";
 import { cn } from "@/lib/utils";
 import { useDepositStore } from "@/store/useDepositStore";
 import BuyCrypto from "../BuyCrypto";
 import { DepositToVaultForm } from "../DepositToVault";
+import TransactionStatus from "../TransactionStatus";
 import { Button, buttonVariants } from "../ui/button";
 import DepositOptions from "./DepositOptions";
 
 const ANIMATION_DURATION = 150;
 
 const DepositOptionModal = () => {
-  const { depositModal, previousDepositModal, setDepositModal } =
+  const { depositModal, previousDepositModal, transaction, setDepositModal } =
     useDepositStore();
   const { address, status } = useAccount();
-  const isForm = address && depositModal === DepositModal.OPEN_FORM;
-  const isBuyCrypto = depositModal === DepositModal.OPEN_BUY_CRYPTO;
-  const shouldAnimate = previousDepositModal !== DepositModal.CLOSE;
+
+  const isForm = depositModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
+  const isFormAndAddress = isForm && address;
+  const isBuyCrypto = depositModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
+  const isTransactionStatus = depositModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isClose = depositModal.name === DEPOSIT_MODAL.CLOSE.name;
+  const shouldAnimate = previousDepositModal.name !== DEPOSIT_MODAL.CLOSE.name;
+
+  const isForward = depositModal.number > previousDepositModal.number;
 
   const dialogHeight = useSharedValue(0);
 
@@ -56,22 +63,22 @@ const DepositOptionModal = () => {
   });
 
   useEffect(() => {
-    if (status === "disconnected" && depositModal !== DepositModal.CLOSE) {
-      setDepositModal(DepositModal.OPEN_OPTIONS);
+    if (status === "disconnected" && !isClose) {
+      setDepositModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
   }, [status, setDepositModal]);
 
   const handleOpenChange = (value: boolean) => {
     // Prevent closing when Reown modal is open
-    if (!address && depositModal === DepositModal.OPEN_FORM) {
+    if (!address && isForm) {
       return;
     }
-    setDepositModal(value ? DepositModal.OPEN_OPTIONS : DepositModal.CLOSE);
+    setDepositModal(value ? DEPOSIT_MODAL.OPEN_OPTIONS : DEPOSIT_MODAL.CLOSE);
   };
 
   return (
     <Dialog
-      open={depositModal !== DepositModal.CLOSE}
+      open={!isClose}
       onOpenChange={handleOpenChange}
     >
       <DialogTrigger asChild>
@@ -99,33 +106,47 @@ const DepositOptionModal = () => {
           <View
             className={cn(
               "gap-8",
-              !isForm && !isBuyCrypto && "min-h-[40rem]"
+              !isFormAndAddress && !isBuyCrypto && !isTransactionStatus && "min-h-[40rem]"
             )}
             onLayout={(event) => {
               dialogHeight.value = event.nativeEvent.layout.height;
             }}
           >
             <DialogHeader className="flex-row justify-between items-center gap-2">
-              {(isForm || isBuyCrypto) && (
+              {(isFormAndAddress || isBuyCrypto) && (
                 <Button
                   variant="ghost"
                   className="rounded-full p-0 web:hover:bg-transparent web:hover:opacity-70"
-                  onPress={() => setDepositModal(DepositModal.OPEN_OPTIONS)}
+                  onPress={() => setDepositModal(DEPOSIT_MODAL.OPEN_OPTIONS)}
                 >
                   <ArrowLeft color="white" size={20} />
                 </Button>
               )}
-              <Animated.View
-                layout={LinearTransition.duration(ANIMATION_DURATION)}
-              >
-                <DialogTitle className="text-2xl">Deposit</DialogTitle>
-              </Animated.View>
-              {(isForm || isBuyCrypto) && <View className="w-10" />}
+              {!isTransactionStatus && (
+                <Animated.View
+                  layout={LinearTransition.duration(ANIMATION_DURATION)}
+                >
+                  <DialogTitle className="text-2xl">Deposit</DialogTitle>
+                </Animated.View>
+              )}
+              {(isFormAndAddress || isBuyCrypto) && <View className="w-10" />}
             </DialogHeader>
-            {isForm ? (
+            {isTransactionStatus ? (
               <Animated.View
-                entering={FadeInRight.duration(ANIMATION_DURATION)}
-                exiting={FadeOutRight.duration(ANIMATION_DURATION)}
+                entering={isForward ? FadeInRight.duration(ANIMATION_DURATION) : FadeInLeft.duration(ANIMATION_DURATION)}
+                exiting={isForward ? FadeOutLeft.duration(ANIMATION_DURATION) : FadeOutRight.duration(ANIMATION_DURATION)}
+                key="transaction-status"
+              >
+                <TransactionStatus
+                  amount={transaction.amount ?? 0}
+                  hash={transaction.hash ?? "0x"}
+                  onPress={() => setDepositModal(DEPOSIT_MODAL.CLOSE)}
+                />
+              </Animated.View>
+            ) : isFormAndAddress ? (
+              <Animated.View
+                entering={isForward ? FadeInRight.duration(ANIMATION_DURATION) : FadeInLeft.duration(ANIMATION_DURATION)}
+                exiting={isForward ? FadeOutLeft.duration(ANIMATION_DURATION) : FadeOutRight.duration(ANIMATION_DURATION)}
                 key="deposit-form"
               >
                 <DepositToVaultForm />
@@ -134,10 +155,10 @@ const DepositOptionModal = () => {
               <Animated.View
                 entering={
                   shouldAnimate
-                    ? FadeInLeft.duration(ANIMATION_DURATION)
+                    ? (isForward ? FadeInRight.duration(ANIMATION_DURATION) : FadeInLeft.duration(ANIMATION_DURATION))
                     : undefined
                 }
-                exiting={FadeOutLeft.duration(ANIMATION_DURATION)}
+                exiting={isForward ? FadeOutLeft.duration(ANIMATION_DURATION) : FadeOutRight.duration(ANIMATION_DURATION)}
                 key="buy-crypto"
               >
                 <BuyCrypto />
@@ -146,10 +167,10 @@ const DepositOptionModal = () => {
               <Animated.View
                 entering={
                   shouldAnimate
-                    ? FadeInLeft.duration(ANIMATION_DURATION)
+                    ? (isForward ? FadeInRight.duration(ANIMATION_DURATION) : FadeInLeft.duration(ANIMATION_DURATION))
                     : undefined
                 }
-                exiting={FadeOutLeft.duration(ANIMATION_DURATION)}
+                exiting={isForward ? FadeOutLeft.duration(ANIMATION_DURATION) : FadeOutRight.duration(ANIMATION_DURATION)}
                 key="deposit-options"
               >
                 <DepositOptions />
