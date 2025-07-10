@@ -12,11 +12,12 @@ import { Status } from "@/lib/types";
 import { Address } from "abitype";
 import { Skeleton } from "../ui/skeleton";
 
+import { useEstimateGas } from "@/hooks/useEstimateGas";
 import useWithdrawToAddress from "@/hooks/useWithdrawToAddress";
 import { ADDRESSES } from "@/lib/config";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import { useRouter } from "expo-router";
-import { ArrowUpRight, Wallet } from "lucide-react-native";
+import { ArrowUpRight, Fuel, Wallet } from "lucide-react-native";
 import { useMemo } from "react";
 import { formatUnits, isAddress } from "viem";
 import { mainnet } from "viem/chains";
@@ -25,6 +26,7 @@ import { useReadContract } from "wagmi";
 const WithdrawToAddress = () => {
   const router = useRouter();
   const { user } = useUser();
+  const { costInUsd, loading } = useEstimateGas(1200000n);
 
   const { data: balance, isPending } = useReadContract({
     abi: ERC20_ABI,
@@ -180,6 +182,17 @@ const WithdrawToAddress = () => {
         {/* {errors.address && (
           <Text className="text-red-400 text-sm mt-2">{errors.address.message}</Text>
         )} */}
+      </View>
+
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-1">
+          <Fuel color="gray" size={18} />
+          <Text className="text-base text-muted-foreground">Fee</Text>
+        </View>
+        <Text className="text-base text-muted-foreground">
+          {`~ $${loading ? "..." : formatNumber(costInUsd, 2)
+            } USDC in fee`}
+        </Text>
       </View>
 
       <Button
