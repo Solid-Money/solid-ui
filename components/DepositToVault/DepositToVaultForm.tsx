@@ -77,7 +77,7 @@ function DepositToVaultForm() {
 
   const onSubmit = async (data: DepositFormData) => {
     try {
-      await deposit(data.amount);
+      await deposit(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
         hash,
