@@ -210,11 +210,11 @@ const SendTrigger = (props: any) => {
   return (
     <Button
       variant="outline"
-      className={buttonVariants({ variant: "secondary", className: "h-12 rounded-xl gap-4 pr-6" })}
+      className={buttonVariants({ variant: "secondary", className: "h-12 rounded-xl gap-4 md:pr-6" })}
       {...props}
     >
       <ArrowUpRight color="white" />
-      <Text className="font-bold">Send</Text>
+      <Text className="hidden md:block font-bold">Send</Text>
     </Button>
   );
 };

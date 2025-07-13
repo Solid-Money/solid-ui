@@ -3,7 +3,6 @@ import React, { useMemo, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Address, formatUnits } from 'viem';
-import { mainnet } from 'viem/chains';
 
 import {
   Table,
@@ -16,14 +15,13 @@ import {
 import { Text } from '@/components/ui/text';
 import { useBalances } from '@/hooks/useBalances';
 import { useDimension } from '@/hooks/useDimension';
-import { cn, compactNumberFormat, formatNumber, isSoUSDEthereum, isSoUSDFuse, isSoUSDToken } from '@/lib/utils';
+import { cn, compactNumberFormat, formatNumber, isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
 import SendModal from '../SendModal/SendModal';
 import UnstakeModal from '../Unstake/UnstakeModal';
 import WithdrawModal from '../Withdraw/WithdrawModal';
 import getTokenIcon from '@/lib/getTokenIcon';
 import RenderTokenIcon from '../RenderTokenIcon';
-
-const COLUMN_WIDTHS = [0.15, 0.15, 0.3, 0.2, 0.2];
+import Ping from '../Ping';
 
 const WalletTokenTab = () => {
   const insets = useSafeAreaInsets();
@@ -54,8 +52,12 @@ const WalletTokenTab = () => {
   };
 
   const columnWidths = useMemo(() => {
+    const COLUMN_WIDTHS = isScreenMedium ?
+      [0.15, 0.15, 0.3, 0.2, 0.2] :
+      [0.3, 0, 0.3, 0.2, 0.2];
+
     return COLUMN_WIDTHS.map((ratio) => width * ratio);
-  }, [width]);
+  }, [width, isScreenMedium]);
 
   if (isLoading) {
     return (
@@ -75,7 +77,7 @@ const WalletTokenTab = () => {
               <TableHead className='px-3 md:px-6' style={{ width: columnWidths[0] }}>
                 <Text className="text-sm">Asset</Text>
               </TableHead>
-              <TableHead className='px-3 md:px-6' style={{ width: columnWidths[1] }}></TableHead>
+              <TableHead className='hidden md:block px-3 md:px-6' style={{ width: columnWidths[1] }}></TableHead>
               <TableHead className='px-3 md:px-6' style={{ width: columnWidths[2] }}>
                 <Text className="text-sm">Balance</Text>
               </TableHead>
@@ -127,11 +129,12 @@ const WalletTokenTab = () => {
                         </View>
                       </View>
                     </TableCell>
-                    <TableCell className="p-3 md:p-6" style={{ width: columnWidths[1] }}>
-                      {isSoUSDToken(token.contractAddress) ? (
-                        <View className='bg-primary/5 rounded-full px-2 py-1 md:px-4 md:py-2 self-start'>
-                          <Text className='font-semibold text-sm md:text-base'>
-                            {token.chainId === mainnet.id ? 'Unstaked' : 'Staked'}
+                    <TableCell className="hidden md:block p-3 md:p-6" style={{ width: columnWidths[1] }}>
+                      {isSoUSDFuse(token.contractAddress) ? (
+                        <View className='bg-brand/20 rounded-full px-2 py-1 md:px-4 md:py-2 flex-row items-center gap-2 w-fit'>
+                          <Ping />
+                          <Text className='text-brand font-semibold'>
+                            Staking
                           </Text>
                         </View>
                       ) : null}
@@ -139,7 +142,7 @@ const WalletTokenTab = () => {
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
                       <View className='items-start'>
                         <Text className='font-bold'>${format(token.quoteRate || 0)}</Text>
-                        <Text className='text-sm text-muted-foreground'>
+                        <Text className='hidden md:block text-sm text-muted-foreground'>
                           per {token.contractTickerSymbol}
                         </Text>
                       </View>
@@ -147,7 +150,7 @@ const WalletTokenTab = () => {
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[3] }}>
                       <View className='items-start'>
                         <Text className='font-bold'>${format(balanceUSD)}</Text>
-                        <Text className='text-sm text-muted-foreground'>
+                        <Text className='hidden md:block text-sm text-muted-foreground'>
                           {token.contractName || token.contractTickerSymbol}
                         </Text>
                       </View>

@@ -162,12 +162,12 @@ const WithdrawTrigger = (props: any) => {
   return (
     <Button
       variant="outline"
-      className={buttonVariants({ variant: "secondary", className: "h-12 pr-6 rounded-xl" })}
+      className={buttonVariants({ variant: "secondary", className: "h-12 md:pr-6 rounded-xl" })}
       {...props}
     >
       <View className="flex-row items-center gap-4">
         <Minus color="white" />
-        <Text className="font-bold">Withdraw</Text>
+        <Text className="hidden md:block font-bold">Withdraw</Text>
       </View>
     </Button>
   );
