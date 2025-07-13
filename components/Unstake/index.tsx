@@ -59,11 +59,11 @@ const Unstake = () => {
 
   const getBridgeText = () => {
     if (bridgeErrors.amount) return bridgeErrors.amount.message;
-    if (bridgeStatus === Status.PENDING) return "Bridging";
-    if (bridgeStatus === Status.ERROR) return "Error while bridging";
-    if (bridgeStatus === Status.SUCCESS) return "Successfully Bridged";
+    if (bridgeStatus === Status.PENDING) return "Unstaking";
+    if (bridgeStatus === Status.ERROR) return "Error while unstaking";
+    if (bridgeStatus === Status.SUCCESS) return "Successfully Unstaked";
     if (!isBridgeValid || !watchedBridgeAmount) return "Enter an amount";
-    return "Bridge to Ethereum";
+    return "Unstake";
   };
 
   const onBridgeSubmit = async (data: BridgeFormData) => {
@@ -72,7 +72,7 @@ const Unstake = () => {
       resetBridge(); // Reset form after successful transaction
       Toast.show({
         type: 'success',
-        text1: 'Bridge transaction submitted',
+        text1: 'Unstake transaction submitted',
         text2: `${data.amount} soUSD`,
         props: {
           link: `https://layerzeroscan.com/tx/${transaction.transactionHash}`,
@@ -83,7 +83,7 @@ const Unstake = () => {
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Error while bridging',
+        text1: 'Error while unstaking',
       });
     }
   };
