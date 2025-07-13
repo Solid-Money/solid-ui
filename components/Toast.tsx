@@ -1,12 +1,13 @@
-import { Image } from "expo-image";
 import { Href, Link } from 'expo-router';
 import { View } from 'react-native';
 import { ExternalLink, X } from 'lucide-react-native';
 import Toast, { BaseToastProps, ToastProps } from 'react-native-toast-message';
-import { cn } from "@/lib/utils";
 
+import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import RenderTokenIcon from "./RenderTokenIcon";
+import { TokenIcon } from '@/lib/types';
 
 interface IBaseToast extends BaseToastProps {
   classNames?: {
@@ -16,7 +17,7 @@ interface IBaseToast extends BaseToastProps {
   props?: {
     link?: Href;
     linkText?: string;
-    image?: string;
+    image?: TokenIcon;
   };
 }
 
@@ -26,18 +27,16 @@ const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
       <View className='flex-row justify-between items-center p-4 flex-1'>
         <View className='gap-2'>
           <Text className="font-medium">{text1}</Text>
-          <View className='flex-row items-center gap-1'>
-            {props?.image && (
-              <Image
-                source={props.image}
-                style={{ width: 20, height: 20 }}
-                contentFit="contain"
-              />
-            )}
-            {text2 && (
-              <Text className="opacity-50">{text2}</Text>
-            )}
-          </View>
+          {(text2 || props?.image) && (
+            <View className='flex-row items-center gap-1'>
+              {props?.image && (
+                <RenderTokenIcon tokenIcon={props.image} size={20} />
+              )}
+              {text2 && (
+                <Text className="opacity-50">{text2}</Text>
+              )}
+            </View>
+          )}
         </View>
         <View className='items-end gap-2'>
           <View className={cn('border rounded-md px-1 py-0.5', classNames?.badge)}>

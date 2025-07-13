@@ -249,3 +249,9 @@ export type DepositTransaction = {
   amount?: number;
   hash?: Address;
 }
+
+export type TokenIcon = {
+  type: 'image' | 'component';
+  source?: any;
+  component?: React.ReactNode;
+}

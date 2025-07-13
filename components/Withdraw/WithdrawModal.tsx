@@ -17,9 +17,9 @@ const WithdrawModal = () => {
       <DialogTrigger asChild>
         <WithdrawTrigger />
       </DialogTrigger>
-      <DialogContent className="md:gap-8 md:max-w-sm">
+      <DialogContent className="md:p-8 md:gap-8 md:max-w-md">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-center">
             <WithdrawTitle />
           </DialogTitle>
         </DialogHeader>

@@ -6,27 +6,27 @@ import {
   DialogTrigger
 } from "@/components/ui/dialog"
 import {
-  WithdrawTitle,
-  WithdrawToAddress,
-  WithdrawTrigger
+  Unstake,
+  UnstakeTitle,
+  UnstakeTrigger
 } from "."
 
-const WithdrawToAddressModal = () => {
+const UnstakeModal = () => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <WithdrawTrigger />
+        <UnstakeTrigger />
       </DialogTrigger>
       <DialogContent className="md:p-8 md:gap-8 md:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center">
-            <WithdrawTitle />
+            <UnstakeTitle />
           </DialogTitle>
         </DialogHeader>
-        <WithdrawToAddress />
+        <Unstake />
       </DialogContent>
     </Dialog>
   )
 }
 
-export default WithdrawToAddressModal
+export default UnstakeModal

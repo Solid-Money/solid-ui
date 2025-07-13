@@ -328,7 +328,14 @@ export const getNonce = async ({
   return BigInt(encodedNonce);
 };
 
+export const isSoUSDEthereum = (contractAddress: string): boolean => {
+  return contractAddress.toLowerCase() === ADDRESSES.ethereum.vault.toLowerCase();
+};
+
+export const isSoUSDFuse = (contractAddress: string): boolean => {
+  return contractAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase();
+};
+
 export const isSoUSDToken = (contractAddress: string): boolean => {
-  return contractAddress.toLowerCase() === ADDRESSES.ethereum.vault.toLowerCase() ||
-    contractAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase();
+  return isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress);
 };
