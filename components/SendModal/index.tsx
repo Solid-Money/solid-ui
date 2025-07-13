@@ -1,53 +1,65 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, Image, TextInput, View } from "react-native";
+import { ActivityIndicator, TextInput, View } from "react-native";
 import Toast from 'react-native-toast-message';
 import { z } from "zod";
+import { Address } from "abitype";
+import { ArrowUpRight, Fuel, Wallet } from "lucide-react-native";
+import { useMemo } from "react";
+import { formatUnits, isAddress } from "viem";
+import { useReadContract } from "wagmi";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import useUser from "@/hooks/useUser";
 import ERC20_ABI from "@/lib/abis/ERC20";
-import { Status } from "@/lib/types";
-import { Address } from "abitype";
+import { Status, TokenIcon } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
-
 import { useEstimateGas } from "@/hooks/useEstimateGas";
-import useWithdrawToAddress from "@/hooks/useWithdrawToAddress";
-import { ADDRESSES } from "@/lib/config";
+import useSend from "@/hooks/useSend";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
-import { useRouter } from "expo-router";
-import { ArrowUpRight, Fuel, Wallet } from "lucide-react-native";
-import { useMemo } from "react";
-import { formatUnits, isAddress } from "viem";
-import { mainnet } from "viem/chains";
-import { useReadContract } from "wagmi";
+import { getChain } from "@/lib/wagmi";
+import RenderTokenIcon from "../RenderTokenIcon";
 
-const WithdrawToAddress = () => {
-  const router = useRouter();
+type SendProps = {
+  tokenAddress: Address;
+  tokenDecimals: number;
+  tokenIcon: TokenIcon;
+  tokenSymbol: string;
+  chainId: number;
+}
+
+const Send = ({
+  tokenAddress,
+  tokenDecimals,
+  tokenIcon,
+  tokenSymbol,
+  chainId,
+}: SendProps) => {
   const { user } = useUser();
   const { costInUsd, loading } = useEstimateGas(1200000n);
+  const chain = getChain(chainId);
 
   const { data: balance, isPending } = useReadContract({
     abi: ERC20_ABI,
-    address: ADDRESSES.ethereum.usdc,
+    address: tokenAddress,
     functionName: "balanceOf",
     args: [user?.safeAddress as Address],
-    chainId: mainnet.id,
+    chainId: chainId,
     query: {
       enabled: !!user?.safeAddress,
     },
   });
 
   // Create dynamic schema based on balance
-  const withdrawSchema = useMemo(() => {
-    const balanceAmount = balance ? Number(formatUnits(balance, 6)) : 0;
+  const sendSchema = useMemo(() => {
+    const balanceAmount = balance ? Number(formatUnits(balance, tokenDecimals)) : 0;
     return z.object({
       amount: z
         .string()
         .refine((val) => val !== "" && !isNaN(Number(val)), "Please enter a valid amount")
         .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount, 4)} USDC`)
+        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount, 4)} ${tokenSymbol}`)
         .transform((val) => Number(val)),
       address: z
         .string()
@@ -56,16 +68,15 @@ const WithdrawToAddress = () => {
     });
   }, [balance]);
 
-  type WithdrawFormData = { amount: string; address: string };
+  type SendFormData = { amount: string; address: string };
 
   const {
     control,
     handleSubmit,
     formState: { errors, isValid },
-    watch,
     reset,
-  } = useForm<WithdrawFormData>({
-    resolver: zodResolver(withdrawSchema) as any,
+  } = useForm<SendFormData>({
+    resolver: zodResolver(sendSchema) as any,
     mode: "onChange",
     defaultValues: {
       amount: "",
@@ -73,33 +84,31 @@ const WithdrawToAddress = () => {
     },
   });
 
-  const watchedAmount = watch("amount");
+  const { send, sendStatus } = useSend({ tokenAddress, tokenDecimals, chainId });
+  const isSendLoading = sendStatus === Status.PENDING;
 
-  const { withdrawToAddress, withdrawStatus } = useWithdrawToAddress();
-  const isWithdrawLoading = withdrawStatus === Status.PENDING;
-
-  const getWithdrawText = () => {
+  const getSendText = () => {
     if (errors.amount) return errors.amount.message;
     if (errors.address) return errors.address.message;
-    if (withdrawStatus === Status.PENDING) return "Withdrawing";
-    if (withdrawStatus === Status.ERROR) return "Error while Withdrawing";
-    if (withdrawStatus === Status.SUCCESS) return "Withdrawal Successful";
+    if (sendStatus === Status.PENDING) return "Sending";
+    if (sendStatus === Status.ERROR) return "Error while Sending";
+    if (sendStatus === Status.SUCCESS) return "Sending Successful";
     if (!isValid) return "Please complete the form";
-    return "Withdraw";
+    return "Send";
   };
 
-  const onSubmit = async (data: WithdrawFormData) => {
+  const onSubmit = async (data: SendFormData) => {
     try {
-      const transaction = await withdrawToAddress(data.amount.toString(), data.address as Address);
+      const transaction = await send(data.amount.toString(), data.address as Address);
       reset(); // Reset form after successful transaction
       Toast.show({
         type: 'success',
         text1: 'Send transaction completed',
-        text2: `${data.amount} USDC`,
+        text2: `${data.amount} ${tokenSymbol}`,
         props: {
-          link: `https://etherscan.io/tx/${transaction.transactionHash}`,
+          link: `${chain?.blockExplorers?.default.url}/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
-          image: require("@/assets/images/usdc.png"),
+          image: tokenIcon,
         },
       });
     } catch (error) {
@@ -112,7 +121,7 @@ const WithdrawToAddress = () => {
 
   const isFormDisabled = () => {
     return (
-      isWithdrawLoading ||
+      isSendLoading ||
       !isValid
     );
   };
@@ -120,7 +129,7 @@ const WithdrawToAddress = () => {
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60">Withdraw amount</Text>
+        <Text className="opacity-60">Send amount</Text>
 
         <View className={cn('flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3', errors.amount && 'border border-red-500')}>
           <Controller
@@ -139,12 +148,8 @@ const WithdrawToAddress = () => {
             )}
           />
           <View className="flex-row items-center gap-2">
-            <Image
-              source={require("@/assets/images/usdc.png")}
-              alt="USDC"
-              style={{ width: 34, height: 34 }}
-            />
-            <Text className="font-semibold text-white text-lg">USDC</Text>
+            <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
+            <Text className="font-semibold text-white text-lg">{tokenSymbol}</Text>
           </View>
         </View>
 
@@ -152,16 +157,12 @@ const WithdrawToAddress = () => {
           <Wallet size={16} /> {isPending ? (
             <Skeleton className="w-16 h-4 rounded-md" />
           ) : balance ? (
-            `${formatUnits(balance, 6)} USDC`
+            `${formatUnits(balance, tokenDecimals)} ${tokenSymbol}`
           ) : (
-            "0 USDC"
+            `0 ${tokenSymbol}`
           )}
         </Text>
       </View>
-
-      {/* {errors.amount && (
-        <Text className="text-red-400 text-sm mt-1">{errors.amount.message}</Text>
-      )} */}
 
       <View className="gap-3">
         <Text className="opacity-60">To wallet</Text>
@@ -179,9 +180,6 @@ const WithdrawToAddress = () => {
             />
           )}
         />
-        {/* {errors.address && (
-          <Text className="text-red-400 text-sm mt-2">{errors.address.message}</Text>
-        )} */}
       </View>
 
       <View className="flex-row items-center justify-between">
@@ -191,7 +189,7 @@ const WithdrawToAddress = () => {
         </View>
         <Text className="text-base text-muted-foreground">
           {`~ $${loading ? "..." : formatNumber(costInUsd, 2)
-            } USDC in fee`}
+            } USD in fee`}
         </Text>
       </View>
 
@@ -201,30 +199,28 @@ const WithdrawToAddress = () => {
         onPress={handleSubmit(onSubmit)}
         disabled={isFormDisabled()}
       >
-        <Text className="font-semibold text-black text-lg">{getWithdrawText()}</Text>
-        {isWithdrawLoading && <ActivityIndicator color="black" />}
+        <Text className="font-semibold text-black text-lg">{getSendText()}</Text>
+        {isSendLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>
   );
 };
 
-const WithdrawTrigger = (props: any) => {
+const SendTrigger = (props: any) => {
   return (
     <Button
       variant="outline"
       className={buttonVariants({ variant: "secondary", className: "h-12 rounded-xl gap-4 pr-6" })}
       {...props}
     >
-      {/* <WithdrawIcon className="size-6" /> */}
       <ArrowUpRight color="white" />
       <Text className="font-bold">Send</Text>
     </Button>
   );
 };
 
-const WithdrawTitle = () => {
+const SendTitle = () => {
   return <Text className="text-2xl font-semibold">Send</Text>;
 };
 
-export { WithdrawTitle, WithdrawToAddress, WithdrawTrigger };
-
+export { Send, SendTitle, SendTrigger };

@@ -8,7 +8,6 @@ import { useBalance, useBlockNumber } from "wagmi";
 import NavbarMobile from "@/components/Navbar/NavbarMobile";
 import { Text } from "@/components/ui/text";
 import { WalletTabs } from "@/components/Wallet";
-import WithdrawToAddressModal from "@/components/WithdrawToAddressModal/WithdrawToAddressModal";
 import { useBalances } from "@/hooks/useBalances";
 import { useDimension } from "@/hooks/useDimension";
 import useUser from "@/hooks/useUser";
@@ -113,10 +112,6 @@ export default function Wallet() {
                     },
                   }}
                 />
-              </View>
-
-              <View className="flex-row items-center gap-2">
-                <WithdrawToAddressModal />
               </View>
             </View>
 

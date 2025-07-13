@@ -2,7 +2,6 @@ import { Link } from "expo-router";
 import { View } from "react-native";
 import { DepositOptionModal } from "../DepositOption";
 import { Text } from "../ui/text";
-import WithdrawModal from "../Withdraw/WithdrawModal";
 
 const DashboardHeader = () => {
   return (
@@ -20,7 +19,6 @@ const DashboardHeader = () => {
       </View>
       <View className="flex-row items-center gap-5">
         <DepositOptionModal />
-        <WithdrawModal />
       </View>
     </View>
   )
