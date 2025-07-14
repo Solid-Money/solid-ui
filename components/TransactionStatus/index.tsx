@@ -1,10 +1,11 @@
 import { View } from "react-native";
-import { Image } from "expo-image";
 import { Address } from "viem";
 
 import { Text } from "../ui/text";
 import { eclipseAddress, formatNumber } from "@/lib/utils";
 import { Button } from "../ui/button";
+import RenderTokenIcon from "../RenderTokenIcon";
+import { TokenIcon } from "@/lib/types";
 
 import Checkmark from "@/assets/images/checkmark";
 
@@ -15,7 +16,7 @@ type TransactionStatusProps = {
   title?: string;
   description?: string;
   status?: string;
-  icon?: string;
+  icon: TokenIcon;
   token?: string;
   buttonText?: string;
 }
@@ -27,7 +28,7 @@ const TransactionStatus = ({
   title = "Transaction initiated",
   description = "This may take some time. We'll keep processing this in the background. You can safely leave this page.",
   status = "Initiated",
-  icon = require("@/assets/images/usdc.png"),
+  icon,
   token = "USDC",
   buttonText = "Back to wallet",
 }: TransactionStatusProps) => {
@@ -45,11 +46,7 @@ const TransactionStatus = ({
       <View className="gap-4">
         <View className="flex-row justify-between gap-2 bg-accent rounded-2xl p-4">
           <View className="flex-row items-center gap-2">
-            <Image
-              source={icon}
-              style={{ width: 40, height: 40 }}
-              contentFit="contain"
-            />
+            <RenderTokenIcon tokenIcon={icon} size={40} />
             <View>
               <View className="flex-row gap-1">
                 <Text className="font-medium">{formatNumber(amount, 2)}</Text>

@@ -11,7 +11,7 @@ import DepositOption from "./DepositOption"
 const DepositOptions = () => {
   const { address } = useAccount();
   const { open } = useAppKit()
-  const { setDepositModal } = useDepositStore();
+  const { setModal } = useDepositStore();
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
 
@@ -26,7 +26,7 @@ const DepositOptions = () => {
       console.error(error);
     } finally {
       setIsWalletOpen(false);
-      setDepositModal(DEPOSIT_MODAL.OPEN_FORM);
+      setModal(DEPOSIT_MODAL.OPEN_FORM);
     }
   }, [isWalletOpen, open]);
 
@@ -41,7 +41,7 @@ const DepositOptions = () => {
       text: "Debit/Credit Card",
       icon: <CreditCard color="white" size={26} />,
       onPress: () => {
-        setDepositModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
+        setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
       },
     },
     {
