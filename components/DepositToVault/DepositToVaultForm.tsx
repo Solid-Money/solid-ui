@@ -25,7 +25,7 @@ import { DEPOSIT_MODAL } from "@/constants/modals"
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash } = useDepositFromEOA();
   const { isLoading: isPending, isSuccess } = useWaitForTransactionReceipt({ hash });
-  const { setDepositModal, setTransaction } = useDepositStore();
+  const { setModal, setTransaction } = useDepositStore();
 
   const isLoading = depositStatus === Status.PENDING || isPending;
   const { data: totalAPY } = useTotalAPY();
@@ -90,9 +90,9 @@ function DepositToVaultForm() {
   useEffect(() => {
     if (isSuccess) {
       reset(); // Reset form after successful transaction
-      setDepositModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+      setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
     }
-  }, [isSuccess, reset, setDepositModal]);
+  }, [isSuccess, reset, setModal]);
 
   const isFormDisabled = () => {
     return (

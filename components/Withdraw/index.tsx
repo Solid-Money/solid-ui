@@ -16,9 +16,12 @@ import { Status } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import getTokenIcon from "@/lib/getTokenIcon";
+import { useWithdrawStore } from "@/store/useWithdrawStore";
+import { WITHDRAW_MODAL } from "@/constants/modals";
 
 const Withdraw = () => {
   const { user } = useUser();
+  const { setModal, setTransaction } = useWithdrawStore();
 
   const { data: ethereumBalance, isLoading: isEthereumBalanceLoading } =
     useEthereumVaultBalance(user?.safeAddress as Address);
@@ -69,7 +72,12 @@ const Withdraw = () => {
   const onWithdrawSubmit = async (data: WithdrawFormData) => {
     try {
       const transaction = await withdraw(data.amount.toString());
+      setTransaction({
+        amount: Number(data.amount),
+        hash: transaction.transactionHash,
+      });
       resetWithdraw(); // Reset form after successful transaction
+      setModal(WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
         type: 'success',
         text1: 'Withdrawal transaction completed',

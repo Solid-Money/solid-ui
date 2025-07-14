@@ -1,18 +1,12 @@
+import React from "react";
 import { Address } from "viem";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from "@/components/ui/dialog"
-import {
-  Send,
-  SendTitle,
-  SendTrigger
-} from "."
+import { SEND_MODAL } from "@/constants/modals";
 import { TokenIcon } from "@/lib/types";
+import { useSendStore } from "@/store/useSendStore";
+import { Send, SendTrigger } from ".";
+import AnimatedModal from "../AnimatedModal";
+import TransactionStatus from "../TransactionStatus";
 
 type SendModalProps = {
   tokenAddress: Address;
@@ -29,27 +23,65 @@ const SendModal = ({
   tokenSymbol,
   chainId,
 }: SendModalProps) => {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <SendTrigger />
-      </DialogTrigger>
-      <DialogContent className="md:p-8 md:gap-8 md:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-center">
-            <SendTitle />
-          </DialogTitle>
-        </DialogHeader>
-        <Send
-          tokenAddress={tokenAddress}
-          tokenDecimals={tokenDecimals}
-          chainId={chainId}
-          tokenIcon={tokenIcon}
-          tokenSymbol={tokenSymbol}
-        />
-      </DialogContent>
-    </Dialog>
-  )
-}
+  const { currentModal, previousModal, setModal, setCurrentTokenAddress, transaction, currentTokenAddress } = useSendStore();
 
-export default SendModal
+  const isTransactionStatus = currentModal.name === SEND_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isClose = currentModal.name === SEND_MODAL.CLOSE.name;
+  const isCurrentTokenAddress = currentTokenAddress === tokenAddress;
+
+  const getTitle = () => {
+    if (isTransactionStatus) return undefined;
+    return "Send";
+  };
+
+  const getContentKey = () => {
+    if (isTransactionStatus) return 'transaction-status';
+    return 'send-form';
+  }
+
+  const getContent = () => {
+    if (isTransactionStatus) {
+      return <TransactionStatus
+        amount={transaction.amount ?? 0}
+        hash={transaction.hash ?? '' as Address}
+        onPress={() => setModal(SEND_MODAL.CLOSE)}
+        token={tokenSymbol}
+        icon={tokenIcon}
+      />;
+    }
+
+    return <Send
+      tokenAddress={tokenAddress}
+      tokenDecimals={tokenDecimals}
+      chainId={chainId}
+      tokenIcon={tokenIcon}
+      tokenSymbol={tokenSymbol}
+    />
+  }
+
+  const handleOpenChange = (value: boolean) => {
+    if (value) {
+      setCurrentTokenAddress(tokenAddress);
+      setModal(SEND_MODAL.OPEN_FORM);
+    } else {
+      setModal(SEND_MODAL.CLOSE);
+    }
+  }
+
+  return (
+    <AnimatedModal
+      currentModal={currentModal}
+      previousModal={previousModal}
+      isOpen={!isClose && isCurrentTokenAddress}
+      onOpenChange={handleOpenChange}
+      trigger={<SendTrigger />}
+      title={getTitle()}
+      titleClassName="justify-center"
+      contentKey={getContentKey()}
+    >
+      {getContent()}
+    </AnimatedModal>
+  );
+};
+
+export default SendModal;

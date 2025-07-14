@@ -16,9 +16,12 @@ import { Status } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import getTokenIcon from "@/lib/getTokenIcon";
+import { useUnstakeStore } from "@/store/useUnstakeStore";
+import { UNSTAKE_MODAL } from "@/constants/modals";
 
 const Unstake = () => {
   const { user } = useUser();
+  const { setModal, setTransaction } = useUnstakeStore();
 
   const { data: fuseBalance, isLoading: isFuseBalanceLoading } =
     useFuseVaultBalance(user?.safeAddress as Address);
@@ -69,7 +72,12 @@ const Unstake = () => {
   const onBridgeSubmit = async (data: BridgeFormData) => {
     try {
       const transaction = await bridge(data.amount.toString());
+      setTransaction({
+        amount: Number(data.amount),
+        hash: transaction.transactionHash,
+      });
       resetBridge(); // Reset form after successful transaction
+      setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
         type: 'success',
         text1: 'Unstake transaction submitted',

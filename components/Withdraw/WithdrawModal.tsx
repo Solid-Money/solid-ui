@@ -1,32 +1,65 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from "@/components/ui/dialog"
-import {
-  Withdraw,
-  WithdrawTitle,
-  WithdrawTrigger
-} from "."
+import React from "react";
+import { Address } from "viem";
+
+import { WITHDRAW_MODAL } from "@/constants/modals";
+import getTokenIcon from "@/lib/getTokenIcon";
+import { useWithdrawStore } from "@/store/useWithdrawStore";
+import { Withdraw, WithdrawTrigger } from ".";
+import AnimatedModal from "../AnimatedModal";
+import TransactionStatus from "../TransactionStatus";
 
 const WithdrawModal = () => {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <WithdrawTrigger />
-      </DialogTrigger>
-      <DialogContent className="md:p-8 md:gap-8 md:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-center">
-            <WithdrawTitle />
-          </DialogTitle>
-        </DialogHeader>
-        <Withdraw />
-      </DialogContent>
-    </Dialog>
-  )
-}
+  const { currentModal, previousModal, setModal, transaction } = useWithdrawStore();
 
-export default WithdrawModal
+  const isTransactionStatus = currentModal.name === WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isClose = currentModal.name === WITHDRAW_MODAL.CLOSE.name;
+
+  const getTitle = () => {
+    if (isTransactionStatus) return undefined;
+    return "Withdraw";
+  };
+
+  const getContentKey = () => {
+    if (isTransactionStatus) return 'transaction-status';
+    return 'withdraw-form';
+  }
+
+  const getContent = () => {
+    if (isTransactionStatus) {
+      return <TransactionStatus
+        amount={transaction.amount ?? 0}
+        hash={transaction.hash ?? '' as Address}
+        onPress={() => setModal(WITHDRAW_MODAL.CLOSE)}
+        token={"SoUSD"}
+        icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
+      />;
+    }
+
+    return <Withdraw />
+  }
+
+  const handleOpenChange = (value: boolean) => {
+    if (value) {
+      setModal(WITHDRAW_MODAL.OPEN_FORM);
+    } else {
+      setModal(WITHDRAW_MODAL.CLOSE);
+    }
+  }
+
+  return (
+    <AnimatedModal
+      currentModal={currentModal}
+      previousModal={previousModal}
+      isOpen={!isClose}
+      onOpenChange={handleOpenChange}
+      trigger={<WithdrawTrigger />}
+      title={getTitle()}
+      titleClassName="justify-center"
+      contentKey={getContentKey()}
+    >
+      {getContent()}
+    </AnimatedModal>
+  );
+};
+
+export default WithdrawModal;
