@@ -59,4 +59,7 @@ export const USER = {
   passkeyStorageKey: 'flash_passkey_list',
   pimlicoUrl: (chainId: number = mainnet.id) => `https://api.pimlico.io/v2/${chainId}/rpc?apikey=${EXPO_PUBLIC_PIMLICO_API_KEY}`,
   depositStorageKey: 'flash_deposit',
+  sendStorageKey: 'flash_send',
+  withdrawStorageKey: 'flash_withdraw',
+  unstakeStorageKey: 'flash_unstake',
 }

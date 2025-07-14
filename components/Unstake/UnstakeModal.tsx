@@ -1,32 +1,65 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from "@/components/ui/dialog"
-import {
-  Unstake,
-  UnstakeTitle,
-  UnstakeTrigger
-} from "."
+import React from "react";
+import { Address } from "viem";
+
+import { UNSTAKE_MODAL } from "@/constants/modals";
+import getTokenIcon from "@/lib/getTokenIcon";
+import { useUnstakeStore } from "@/store/useUnstakeStore";
+import { Unstake, UnstakeTrigger } from ".";
+import AnimatedModal from "../AnimatedModal";
+import TransactionStatus from "../TransactionStatus";
 
 const UnstakeModal = () => {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <UnstakeTrigger />
-      </DialogTrigger>
-      <DialogContent className="md:p-8 md:gap-8 md:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-center">
-            <UnstakeTitle />
-          </DialogTitle>
-        </DialogHeader>
-        <Unstake />
-      </DialogContent>
-    </Dialog>
-  )
-}
+  const { currentModal, previousModal, setModal, transaction } = useUnstakeStore();
 
-export default UnstakeModal
+  const isTransactionStatus = currentModal.name === UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isClose = currentModal.name === UNSTAKE_MODAL.CLOSE.name;
+
+  const getTitle = () => {
+    if (isTransactionStatus) return undefined;
+    return "Unstake";
+  };
+
+  const getContentKey = () => {
+    if (isTransactionStatus) return 'transaction-status';
+    return 'unstake-form';
+  }
+
+  const getContent = () => {
+    if (isTransactionStatus) {
+      return <TransactionStatus
+        amount={transaction.amount ?? 0}
+        hash={transaction.hash ?? '' as Address}
+        onPress={() => setModal(UNSTAKE_MODAL.CLOSE)}
+        token={"SoUSD"}
+        icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
+      />;
+    }
+
+    return <Unstake />
+  }
+
+  const handleOpenChange = (value: boolean) => {
+    if (value) {
+      setModal(UNSTAKE_MODAL.OPEN_FORM);
+    } else {
+      setModal(UNSTAKE_MODAL.CLOSE);
+    }
+  }
+
+  return (
+    <AnimatedModal
+      currentModal={currentModal}
+      previousModal={previousModal}
+      isOpen={!isClose}
+      onOpenChange={handleOpenChange}
+      trigger={<UnstakeTrigger />}
+      title={getTitle()}
+      titleClassName="justify-center"
+      contentKey={getContentKey()}
+    >
+      {getContent()}
+    </AnimatedModal>
+  );
+};
+
+export default UnstakeModal;

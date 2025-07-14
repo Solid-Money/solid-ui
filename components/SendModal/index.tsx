@@ -20,6 +20,8 @@ import useSend from "@/hooks/useSend";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import { getChain } from "@/lib/wagmi";
 import RenderTokenIcon from "../RenderTokenIcon";
+import { SEND_MODAL } from "@/constants/modals";
+import { useSendStore } from "@/store/useSendStore";
 
 type SendProps = {
   tokenAddress: Address;
@@ -39,6 +41,7 @@ const Send = ({
   const { user } = useUser();
   const { costInUsd, loading } = useEstimateGas(1200000n);
   const chain = getChain(chainId);
+  const { setModal, setTransaction } = useSendStore();
 
   const { data: balance, isPending } = useReadContract({
     abi: ERC20_ABI,
@@ -100,7 +103,12 @@ const Send = ({
   const onSubmit = async (data: SendFormData) => {
     try {
       const transaction = await send(data.amount.toString(), data.address as Address);
+      setTransaction({
+        amount: Number(data.amount),
+        hash: transaction.transactionHash,
+      });
       reset(); // Reset form after successful transaction
+      setModal(SEND_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
         type: 'success',
         text1: 'Send transaction completed',
