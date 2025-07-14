@@ -5,27 +5,27 @@ import { ActivityIndicator, Image, TextInput, View } from "react-native";
 import Toast from 'react-native-toast-message';
 import { z } from "zod";
 import { Address } from "abitype";
-import { Info, Minus, Wallet } from "lucide-react-native";
+import { ArrowDownLeft, Info, Wallet } from "lucide-react-native";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import useBridgeToMainnet from "@/hooks/useBridgeToMainnet";
 import useUser from "@/hooks/useUser";
-import { useEthereumVaultBalance } from "@/hooks/useVault";
-import useWithdraw from "@/hooks/useWithdraw";
+import { useFuseVaultBalance } from "@/hooks/useVault";
 import { Status } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import getTokenIcon from "@/lib/getTokenIcon";
 
-const Withdraw = () => {
+const Unstake = () => {
   const { user } = useUser();
 
-  const { data: ethereumBalance, isLoading: isEthereumBalanceLoading } =
-    useEthereumVaultBalance(user?.safeAddress as Address);
+  const { data: fuseBalance, isLoading: isFuseBalanceLoading } =
+    useFuseVaultBalance(user?.safeAddress as Address);
 
-  // Create dynamic schema for withdraw form based on ethereum balance
-  const withdrawSchema = useMemo(() => {
-    const balanceAmount = ethereumBalance || 0;
+  // Create dynamic schema for bridge form based on fuse balance
+  const bridgeSchema = useMemo(() => {
+    const balanceAmount = fuseBalance || 0;
     return z.object({
       amount: z
         .string()
@@ -34,48 +34,48 @@ const Withdraw = () => {
         .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount, 4)} soUSD`)
         .transform((val) => Number(val)),
     });
-  }, [ethereumBalance]);
+  }, [fuseBalance]);
 
-  type WithdrawFormData = { amount: string; };
+  type BridgeFormData = { amount: string; };
 
   const {
-    control: withdrawControl,
-    handleSubmit: handleWithdrawSubmit,
-    formState: { errors: withdrawErrors, isValid: isWithdrawValid },
-    watch: watchWithdraw,
-    reset: resetWithdraw,
-  } = useForm<WithdrawFormData>({
-    resolver: zodResolver(withdrawSchema) as any,
+    control: bridgeControl,
+    handleSubmit: handleBridgeSubmit,
+    formState: { errors: bridgeErrors, isValid: isBridgeValid },
+    watch: watchBridge,
+    reset: resetBridge,
+  } = useForm<BridgeFormData>({
+    resolver: zodResolver(bridgeSchema) as any,
     mode: "onChange",
     defaultValues: {
       amount: '',
     },
   });
 
-  const watchedWithdrawAmount = watchWithdraw("amount");
+  const watchedBridgeAmount = watchBridge("amount");
 
-  const { withdraw, withdrawStatus } = useWithdraw();
-  const isWithdrawLoading = withdrawStatus === Status.PENDING;
+  const { bridge, bridgeStatus } = useBridgeToMainnet();
+  const isBridgeLoading = bridgeStatus === Status.PENDING;
 
-  const getWithdrawText = () => {
-    if (withdrawErrors.amount) return withdrawErrors.amount.message;
-    if (withdrawStatus === Status.PENDING) return "Withdrawing";
-    if (withdrawStatus === Status.ERROR) return "Error while Withdrawing";
-    if (withdrawStatus === Status.SUCCESS) return "Withdrawal Successful";
-    if (!isWithdrawValid || !watchedWithdrawAmount) return "Enter an amount";
-    return "Withdraw";
+  const getBridgeText = () => {
+    if (bridgeErrors.amount) return bridgeErrors.amount.message;
+    if (bridgeStatus === Status.PENDING) return "Unstaking";
+    if (bridgeStatus === Status.ERROR) return "Error while unstaking";
+    if (bridgeStatus === Status.SUCCESS) return "Successfully Unstaked";
+    if (!isBridgeValid || !watchedBridgeAmount) return "Enter an amount";
+    return "Unstake";
   };
 
-  const onWithdrawSubmit = async (data: WithdrawFormData) => {
+  const onBridgeSubmit = async (data: BridgeFormData) => {
     try {
-      const transaction = await withdraw(data.amount.toString());
-      resetWithdraw(); // Reset form after successful transaction
+      const transaction = await bridge(data.amount.toString());
+      resetBridge(); // Reset form after successful transaction
       Toast.show({
         type: 'success',
-        text1: 'Withdrawal transaction completed',
+        text1: 'Unstake transaction submitted',
         text2: `${data.amount} soUSD`,
         props: {
-          link: `https://etherscan.io/tx/${transaction.transactionHash}`,
+          link: `https://layerzeroscan.com/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
           image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
         },
@@ -83,27 +83,27 @@ const Withdraw = () => {
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Error while withdrawing',
+        text1: 'Error while unstaking',
       });
     }
   };
 
-  const isWithdrawFormDisabled = () => {
+  const isBridgeFormDisabled = () => {
     return (
-      isWithdrawLoading ||
-      !isWithdrawValid ||
-      !watchedWithdrawAmount
+      isBridgeLoading ||
+      !isBridgeValid ||
+      !watchedBridgeAmount
     );
   };
 
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60">Withdraw amount</Text>
+        <Text className="opacity-60">Unstake amount</Text>
 
-        <View className={cn('flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3', withdrawErrors.amount && 'border border-red-500')}>
+        <View className={cn('flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3', bridgeErrors.amount && 'border border-red-500')}>
           <Controller
-            control={withdrawControl}
+            control={bridgeControl}
             name="amount"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
@@ -128,10 +128,10 @@ const Withdraw = () => {
         </View>
 
         <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-          <Wallet size={16} /> {isEthereumBalanceLoading ? (
+          <Wallet size={16} /> {isFuseBalanceLoading ? (
             <Skeleton className="w-16 h-4 rounded-md" />
-          ) : ethereumBalance ? (
-            `${formatNumber(ethereumBalance, 4)} SoUSD`
+          ) : fuseBalance ? (
+            `${formatNumber(fuseBalance, 4)} SoUSD`
           ) : (
             "0 SoUSD"
           )}
@@ -141,24 +141,24 @@ const Withdraw = () => {
       <View className="flex-row gap-2">
         <Info size={30} color="gray" />
         <Text className="text-sm text-muted-foreground">
-          This action will withdraw your funds and allow you to send them to another wallet
+          This action will unstake your funds, and allow you to withdraw and send them to another wallet
         </Text>
       </View>
 
       <Button
         variant="brand"
         className="rounded-2xl h-12 mt-32"
-        onPress={handleWithdrawSubmit(onWithdrawSubmit)}
-        disabled={isWithdrawFormDisabled()}
+        onPress={handleBridgeSubmit(onBridgeSubmit)}
+        disabled={isBridgeFormDisabled()}
       >
-        <Text className="font-semibold text-black text-lg">{getWithdrawText()}</Text>
-        {isWithdrawLoading && <ActivityIndicator color="black" />}
+        <Text className="font-semibold text-black text-lg">{getBridgeText()}</Text>
+        {isBridgeLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>
   );
 };
 
-const WithdrawTrigger = (props: any) => {
+const UnstakeTrigger = (props: any) => {
   return (
     <Button
       variant="outline"
@@ -166,15 +166,15 @@ const WithdrawTrigger = (props: any) => {
       {...props}
     >
       <View className="flex-row items-center gap-4">
-        <Minus color="white" />
-        <Text className="hidden md:block font-bold">Withdraw</Text>
+        <ArrowDownLeft color="white" />
+        <Text className="hidden md:block font-bold">Unstake</Text>
       </View>
     </Button>
   );
 };
 
-const WithdrawTitle = () => {
-  return <Text className="text-2xl font-semibold">Withdraw from savings</Text>;
+const UnstakeTitle = () => {
+  return <Text className="text-2xl font-semibold">Unstake from savings</Text>;
 };
 
-export { Withdraw, WithdrawTitle, WithdrawTrigger };
+export { Unstake, UnstakeTitle, UnstakeTrigger };

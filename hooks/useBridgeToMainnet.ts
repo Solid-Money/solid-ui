@@ -102,7 +102,7 @@ const useBridgeToMainnet = (): BridgeResult => {
         smartAccountClient,
         user.passkey,
         transactions,
-        "Deposit failed",
+        "Unstake failed",
         fuse
       );
 
