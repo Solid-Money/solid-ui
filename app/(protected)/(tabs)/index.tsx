@@ -270,12 +270,18 @@ export default function Dashboard() {
 
             <View className="gap-4">
               <Text className="text-2xl font-medium">Recent transactions</Text>
-              <View className="gap-2">
+              <View>
                 {isTransactionsLoading || isFormattingTransactions ? (
                   <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
                 ) : transactions?.length ? (
-                  transactions.map((transaction) => (
-                    <Transaction key={transaction.timestamp} {...transaction} />
+                  transactions.map((transaction, index) => (
+                    <Transaction
+                      key={transaction.timestamp}
+                      {...transaction}
+                      classNames={{
+                        container: index === 0 ? "rounded-t-twice" : index === transactions.length - 1 ? "rounded-b-twice border-0" : "",
+                      }}
+                    />
                   ))
                 ) : (
                   <Text className="text-muted-foreground">
