@@ -14,6 +14,7 @@ import {useGetUserTransactionsQuery} from "@/graphql/generated/user-info";
 import {
   formatTransactions,
   useLatestTokenTransfer,
+  useSendTransactions,
   useTotalAPY,
 } from "@/hooks/useAnalytics";
 import {useDashboardCalculations} from "@/hooks/useDashboardCalculations";
@@ -62,12 +63,18 @@ export default function Dashboard() {
   });
 
   const {
+    data: sendTransactions,
+    isLoading: isSendTransactionsLoading,
+    refetch: refetchSendTransactions,
+  } = useSendTransactions(user?.safeAddress ?? "");
+
+  const {
     data: transactions,
     isLoading: isFormattingTransactions,
     refetch: refetchFormattedTransactions,
   } = useQuery({
     queryKey: ["formatted-transactions", userDepositTransactions],
-    queryFn: () => formatTransactions(userDepositTransactions),
+    queryFn: () => formatTransactions(userDepositTransactions, sendTransactions),
     enabled: !!userDepositTransactions,
   });
 
@@ -78,6 +85,7 @@ export default function Dashboard() {
     refetchBalance();
     refetchTransactions();
     refetchFormattedTransactions();
+    refetchSendTransactions();
   }, [blockNumber]);
 
   if (isBalanceLoading || isTransactionsLoading) {
@@ -271,7 +279,7 @@ export default function Dashboard() {
             <View className="gap-4">
               <Text className="text-2xl font-medium">Recent transactions</Text>
               <View>
-                {isTransactionsLoading || isFormattingTransactions ? (
+                {isTransactionsLoading || isFormattingTransactions || isSendTransactionsLoading ? (
                   <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
                 ) : transactions?.length ? (
                   transactions.map((transaction, index) => (
