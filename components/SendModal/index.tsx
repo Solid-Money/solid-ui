@@ -22,6 +22,7 @@ import { getChain } from "@/lib/wagmi";
 import RenderTokenIcon from "../RenderTokenIcon";
 import { SEND_MODAL } from "@/constants/modals";
 import { useSendStore } from "@/store/useSendStore";
+import { NATIVE_TOKENS } from "@/constants/tokens";
 
 type SendProps = {
   tokenAddress: Address;
@@ -39,7 +40,7 @@ const Send = ({
   chainId,
 }: SendProps) => {
   const { user } = useUser();
-  const { costInUsd, loading } = useEstimateGas(1200000n);
+  const { costInUsd, loading } = useEstimateGas(1200000n, chainId, NATIVE_TOKENS[chainId]);
   const chain = getChain(chainId);
   const { setModal, setTransaction } = useSendStore();
 
@@ -196,7 +197,10 @@ const Send = ({
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading ? "..." : formatNumber(costInUsd, 2)
+          {`~ $${loading ? "..." :
+            !costInUsd ? "0" :
+              costInUsd < 0.01 ? "<0.01" :
+                formatNumber(costInUsd, 2)
             } USD in fee`}
         </Text>
       </View>

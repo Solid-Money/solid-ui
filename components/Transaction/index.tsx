@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import { View } from "react-native";
 
 import { LayerZeroTransactionStatus, TransactionType } from "@/lib/types";
@@ -6,6 +5,8 @@ import { cn, formatNumber } from "@/lib/utils";
 import { Text } from "../ui/text";
 import TransactionDropdown from "./TransactionDropdown";
 import { useDimension } from "@/hooks/useDimension";
+import getTokenIcon from "@/lib/getTokenIcon";
+import RenderTokenIcon from "../RenderTokenIcon";
 
 type TransactionClassNames = {
   container?: string;
@@ -19,6 +20,9 @@ interface TransactionProps {
   hash?: string;
   type: TransactionType;
   classNames?: TransactionClassNames;
+  symbol?: string;
+  url?: string;
+  logoUrl?: string;
 }
 
 const Transaction = ({
@@ -26,9 +30,10 @@ const Transaction = ({
   timestamp,
   amount,
   status,
-  hash,
-  type,
   classNames,
+  symbol,
+  url,
+  logoUrl,
 }: TransactionProps) => {
   const { isScreenMedium } = useDimension();
   const isSuccess = status === LayerZeroTransactionStatus.DELIVERED;
@@ -48,6 +53,12 @@ const Transaction = ({
       : "text-red-400";
   const statusText = isSuccess ? "Success" : isPending ? "Pending" : "Failed";
 
+  const tokenIcon = getTokenIcon({
+    logoUrl,
+    tokenSymbol: symbol,
+    size: 34,
+  });
+
   return (
     <View
       className={cn(
@@ -56,10 +67,7 @@ const Transaction = ({
       )}
     >
       <View className="flex-row items-center gap-2 md:gap-4">
-        <Image
-          source={require("@/assets/images/usdc.png")}
-          style={{ width: 34, height: 34 }}
-        />
+        <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
         <View>
           <Text className="text-lg font-medium">{title}</Text>
           <Text className="text-sm text-muted-foreground">
@@ -88,7 +96,7 @@ const Transaction = ({
             </Text>
           </View>
         )}
-        <TransactionDropdown hash={hash} type={type} />
+        <TransactionDropdown url={url} />
       </View>
     </View>
   );

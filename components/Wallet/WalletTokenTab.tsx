@@ -141,7 +141,7 @@ const WalletTokenTab = () => {
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
                       <View className='items-start'>
-                        <Text className='font-bold'>${format(token.quoteRate || 0)}</Text>
+                        <Text className='font-bold'>${format(balanceUSD)}</Text>
                         <Text className='hidden md:block text-sm text-muted-foreground'>
                           per {token.contractTickerSymbol}
                         </Text>
@@ -149,7 +149,7 @@ const WalletTokenTab = () => {
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[3] }}>
                       <View className='items-start'>
-                        <Text className='font-bold'>${format(balanceUSD)}</Text>
+                        <Text className='font-bold'>${format(token.quoteRate || 0)}</Text>
                         <Text className='hidden md:block text-sm text-muted-foreground'>
                           {token.contractName || token.contractTickerSymbol}
                         </Text>

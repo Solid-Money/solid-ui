@@ -46,21 +46,27 @@ export interface User {
   tokens?: AuthTokens;
 }
 
-export interface BlockscoutTransaction {
-  items: {
-    to: {
-      hash: Address;
-    },
-    token: {
-      address: Address;
-    },
-    total: {
-      decimals: string;
-      value: string;
-    },
-    transaction_hash: string,
-    timestamp: string
-  }[]
+export type BlockscoutTransaction = {
+  to: {
+    hash: Address;
+    name: string;
+  },
+  token: {
+    address: Address;
+    symbol: string;
+    icon_url: string;
+  },
+  total: {
+    decimals: string;
+    value: string;
+  },
+  transaction_hash: string,
+  timestamp: string
+  type: string;
+}
+
+export interface BlockscoutTransactions {
+  items: BlockscoutTransaction[]
 }
 
 export type Token = {
@@ -220,8 +226,9 @@ export type LayerZeroTransaction = {
 
 export enum TransactionType {
   DEPOSIT = "deposit",
-  BRIDGE = "bridge",
+  UNSTAKE = "unstake",
   WITHDRAW = "withdraw",
+  SEND = "send",
 }
 
 export type Transaction = {
@@ -257,4 +264,10 @@ export type TokenIcon = {
   type: 'image' | 'component';
   source?: any;
   component?: React.ReactNode;
+}
+
+export type Explorers = {
+  blockscout?: string;
+  etherscan?: string;
+  layerzeroscan?: string;
 }
