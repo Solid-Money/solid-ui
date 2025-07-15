@@ -2,11 +2,12 @@ import { clsx, type ClassValue } from "clsx";
 import { Platform } from "react-native";
 import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from "viem";
+import { fuse, mainnet } from "viem/chains";
 
 import { useUserStore } from "@/store/useUserStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { refreshToken } from "./api";
-import { AuthTokens, PasskeyCoordinates, User } from "./types";
+import { AuthTokens, Explorers, PasskeyCoordinates, User } from "./types";
 import { ADDRESSES } from "./config";
 
 // Import optional dependencies statically
@@ -339,3 +340,26 @@ export const isSoUSDFuse = (contractAddress: string): boolean => {
 export const isSoUSDToken = (contractAddress: string): boolean => {
   return isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress);
 };
+
+export const layerzero = {
+  id: 0,
+  blockExplorers: {
+    default: {
+      name: "LayerZeroScan",
+      url: "https://layerzeroscan.com",
+    },
+  },
+}
+
+export const explorerUrls: Record<number, Explorers> = {
+  [layerzero.id]: {
+    layerzeroscan: layerzero.blockExplorers?.default.url,
+  },
+  [mainnet.id]: {
+    blockscout: "https://eth.blockscout.com",
+    etherscan: mainnet.blockExplorers?.default.url,
+  },
+  [fuse.id]: {
+    blockscout: fuse.blockExplorers?.default.url
+  },
+}
