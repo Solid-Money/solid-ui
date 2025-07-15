@@ -37,11 +37,9 @@ export interface User {
   username: string
   safeAddress: Address
   selected: boolean
-  passkey: {
-    rawId: string
-    coordinates: PasskeyCoordinates,
-    credentialId: string,
-  }
+  signWith:string;
+  suborgId: string;
+  userId: string;
   isDeposited?: boolean;
   tokens?: AuthTokens;
 }

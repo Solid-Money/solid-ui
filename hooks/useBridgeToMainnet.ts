@@ -28,17 +28,6 @@ const useBridgeToMainnet = (): BridgeResult => {
   const [bridgeStatus, setBridgeStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: balance } = useReadContract({
-    abi: ERC20_ABI,
-    address: ADDRESSES.fuse.vault,
-    functionName: "balanceOf",
-    args: [user?.safeAddress as Address],
-    chainId: fuse.id,
-    query: {
-      enabled: !!user?.safeAddress,
-    },
-  });
-
   const { data: fee } = useReadContract({
     abi: ETHEREUM_TELLER_ABI,
     address: ADDRESSES.fuse.teller,
@@ -54,8 +43,8 @@ const useBridgeToMainnet = (): BridgeResult => {
 
   const bridge = async (amount: string) => {
     try {
-      if (!user?.passkey) {
-        throw new Error("Passkey not found");
+      if (!user) {
+        throw new Error("User is not selected");
       }
 
       setBridgeStatus(Status.PENDING);
@@ -96,11 +85,10 @@ const useBridgeToMainnet = (): BridgeResult => {
         },
       ];
 
-      const smartAccountClient = await safeAA(user.passkey, fuse);
+      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
       const transaction = await executeTransactions(
         smartAccountClient,
-        user.passkey,
         transactions,
         "Unstake failed",
         fuse

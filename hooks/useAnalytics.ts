@@ -98,7 +98,7 @@ export const formatTransactions = async (
           LayerZeroTransactionStatus.INFLIGHT;
 
         return {
-          title: "Bridge soUSD",
+          title: "Unstake soUSD",
           timestamp: internalTransaction.blockTimestamp,
           amount: Number(
             formatUnits(BigInt(internalTransaction.shareAmount), 6)
@@ -110,7 +110,7 @@ export const formatTransactions = async (
       } catch (error: any) {
         console.error("Failed to fetch LZ transaction:", error);
         return {
-          title: "Bridge soUSD",
+          title: "Unstake soUSD",
           timestamp: internalTransaction.blockTimestamp,
           amount: Number(
             formatUnits(BigInt(internalTransaction.shareAmount), 6)
