@@ -9,7 +9,6 @@ export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? ""
 export const EXPO_PUBLIC_REOWN_PROJECT_ID = process.env.EXPO_PUBLIC_REOWN_PROJECT_ID ?? ""
 export const EXPO_PUBLIC_TURNKEY_API_BASE_URL = process.env.EXPO_PUBLIC_TURNKEY_API_BASE_URL ?? ""
 export const EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID = process.env.EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID ?? ""
-export const EXPO_PUBLIC_TURNKEY_RP_ID = process.env.EXPO_PUBLIC_TURNKEY_RP_ID ?? ""
 
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === "production"
 
