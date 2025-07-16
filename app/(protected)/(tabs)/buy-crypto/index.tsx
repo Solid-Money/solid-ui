@@ -3,7 +3,7 @@ import useUser from "@/hooks/useUser";
 import { getClientIp } from "@/lib/api";
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 interface MercuryoIframeWidgetProps {
@@ -79,14 +79,13 @@ export default function MercuryoIframeWidget({
   const [finalUrl, setFinalUrl] = useState<string>("");
 
   const { user } = useUser();
-
-  const handleClose = (success = false) => {
+  const handleClose = useCallback((success = false) => {
     if (onClose) {
       onClose();
     } else {
       router.back();
     }
-  };
+  }, [onClose, router]);
 
   // Handle iframe load events
   const handleIframeLoad = () => {
@@ -125,14 +124,14 @@ export default function MercuryoIframeWidget({
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [handleClose]);
 
   // Build the Mercuryo widget URL
   useEffect(() => {
     const buildUrl = async () => {
       // Reset error when user data changes
       setError(null);
-      
+
       const address = user?.safeAddress;
 
       console.log("address", address);

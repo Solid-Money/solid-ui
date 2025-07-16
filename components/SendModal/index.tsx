@@ -1,28 +1,28 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, TextInput, View } from "react-native";
-import Toast from 'react-native-toast-message';
-import { z } from "zod";
 import { Address } from "abitype";
 import { ArrowUpRight, Fuel, Wallet } from "lucide-react-native";
 import { useMemo } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { ActivityIndicator, TextInput, View } from "react-native";
+import Toast from 'react-native-toast-message';
 import { formatUnits, isAddress } from "viem";
 import { useReadContract } from "wagmi";
+import { z } from "zod";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { SEND_MODAL } from "@/constants/modals";
+import { NATIVE_TOKENS } from "@/constants/tokens";
+import { useEstimateGas } from "@/hooks/useEstimateGas";
+import useSend from "@/hooks/useSend";
 import useUser from "@/hooks/useUser";
 import ERC20_ABI from "@/lib/abis/ERC20";
 import { Status, TokenIcon } from "@/lib/types";
-import { Skeleton } from "../ui/skeleton";
-import { useEstimateGas } from "@/hooks/useEstimateGas";
-import useSend from "@/hooks/useSend";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import { getChain } from "@/lib/wagmi";
-import RenderTokenIcon from "../RenderTokenIcon";
-import { SEND_MODAL } from "@/constants/modals";
 import { useSendStore } from "@/store/useSendStore";
-import { NATIVE_TOKENS } from "@/constants/tokens";
+import RenderTokenIcon from "../RenderTokenIcon";
+import { Skeleton } from "../ui/skeleton";
 
 type SendProps = {
   tokenAddress: Address;
@@ -70,7 +70,7 @@ const Send = ({
         .refine(isAddress, "Please enter a valid Ethereum address")
         .transform(value => value.toLowerCase()),
     });
-  }, [balance]);
+  }, [balance, tokenDecimals, tokenSymbol]);
 
   type SendFormData = { amount: string; address: string };
 

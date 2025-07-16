@@ -1,11 +1,11 @@
+import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 import React, { useEffect } from "react";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming
 } from 'react-native-reanimated';
-import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
 
 interface Step {
   id: number;
@@ -34,7 +34,7 @@ export function AnimatedStepContent({ step, isActive, isButtonEnabled }: Animate
       height.value = withTiming(0, { duration: 300 });
       opacity.value = withTiming(0, { duration: 200 });
     }
-  }, [isActive]);
+  }, [isActive, height, opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     height: height.value === 0 ? 0 : 'auto',
