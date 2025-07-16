@@ -9,7 +9,7 @@ import { PortalHost } from "@rn-primitives/portal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import Head from "expo-router/head";
-import * as SplashScreen from 'expo-splash-screen';
+import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -20,7 +20,7 @@ import { WagmiProvider } from "wagmi";
 global.Buffer = require("buffer").Buffer;
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary
+  ErrorBoundary,
 } from "expo-router";
 
 // Keep the splash screen visible while we fetch resources
@@ -43,15 +43,14 @@ export default function RootLayout() {
       try {
         // Pre-load fonts, make any API calls you need to do here
         // await Font.loadAsync(Entypo.font);
-        
+
         // Simulate loading time - replace with actual async operations
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
         // Add any additional initialization here
         // await initializeApp();
-        
       } catch (e) {
-        console.warn('Error during app initialization:', e);
+        console.warn("Error during app initialization:", e);
       } finally {
         // Tell the application to render
         setAppIsReady(true);
@@ -72,7 +71,7 @@ export default function RootLayout() {
         await SplashScreen.hideAsync();
         setSplashScreenHidden(true);
       } catch (error) {
-        console.warn('Error hiding splash screen:', error);
+        console.warn("Error hiding splash screen:", error);
       }
     }
   }, [appIsReady, splashScreenHidden]);
@@ -82,8 +81,8 @@ export default function RootLayout() {
   }
 
   return (
-    <TurnkeyProvider>
-      <SafeAreaProvider>
+    <SafeAreaProvider onLayout={onLayoutRootView}>
+      <TurnkeyProvider>
         <WagmiProvider config={wagmi.config}>
           <QueryClientProvider client={queryClient}>
             <ApolloProvider client={infoClient}>
@@ -119,7 +118,7 @@ export default function RootLayout() {
         </WagmiProvider>
         <PortalHost />
         <Toast {...toastProps} />
-      </SafeAreaProvider>
-    </TurnkeyProvider>
+      </TurnkeyProvider>
+    </SafeAreaProvider>
   );
 }
