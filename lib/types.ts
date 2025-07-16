@@ -271,3 +271,8 @@ export type Explorers = {
   etherscan?: string;
   layerzeroscan?: string;
 }
+
+export enum SavingMode {
+  TOTAL = "total",
+  INTEREST_ONLY = "interest-only",
+}

@@ -17,7 +17,8 @@ import {
   useSendTransactions,
   useTotalAPY,
 } from "@/hooks/useAnalytics";
-import { useDashboardCalculations } from "@/hooks/useDashboardCalculations";
+import { useDepositCalculations } from "@/hooks/useDepositCalculations";
+import { SavingMode } from "@/lib/types";
 import { useDimension } from "@/hooks/useDimension";
 import useUser from "@/hooks/useUser";
 import { useFuseVaultBalance } from "@/hooks/useVault";
@@ -78,8 +79,8 @@ export default function Dashboard() {
     enabled: !!userDepositTransactions,
   });
 
-  const { originalDepositAmount, firstDepositTimestamp } =
-    useDashboardCalculations(userDepositTransactions, balance, lastTimestamp);
+  const {originalDepositAmount, firstDepositTimestamp} =
+    useDepositCalculations(userDepositTransactions, balance, lastTimestamp);
 
   useEffect(() => {
     refetchBalance();
@@ -148,8 +149,7 @@ export default function Dashboard() {
                         apy={totalAPY ?? 0}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
-                        mode="total"
-                        decimalPlaces={4}
+                        decimalPlaces={10}
                         classNames={{
                           wrapper: "text-foreground",
                           decimalSeparator:
@@ -184,7 +184,7 @@ export default function Dashboard() {
                         apy={totalAPY ?? 0}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
-                        mode="interest-only"
+                        mode={SavingMode.INTEREST_ONLY}
                         decimalPlaces={4}
                         classNames={{
                           decimalSeparator: "md:text-xl text-brand font-medium",
@@ -257,7 +257,6 @@ export default function Dashboard() {
                         apy={totalAPY ?? 0}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
-                        mode="total"
                         styles={{
                           wholeText: {
                             fontSize: 24,

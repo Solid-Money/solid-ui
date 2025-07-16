@@ -1,9 +1,11 @@
-import {useCallback, useEffect, useState} from "react";
-import {TextStyle, View} from "react-native";
-import {AnimatedRollingNumber} from "react-native-animated-rolling-numbers";
+import { useCallback, useEffect, useState } from "react";
+import { TextStyle, View } from "react-native";
+import { AnimatedRollingNumber } from "react-native-animated-rolling-numbers";
 
-import {Text} from "@/components/ui/text";
-import {cn} from "@/lib/utils";
+import { Text } from "@/components/ui/text";
+import { cn } from "@/lib/utils";
+import { calculateYield } from "@/lib/financial";
+import { SavingMode } from "@/lib/types";
 
 type ClassNames = {
   wrapper?: string;
@@ -20,13 +22,12 @@ interface SavingCountUpProps {
   apy: number;
   lastTimestamp: number;
   principal?: number;
-  mode?: "total" | "interest-only";
+  mode?: SavingMode;
   decimalPlaces?: number;
   classNames?: ClassNames;
   styles?: Styles;
 }
 
-const SECONDS_PER_YEAR = 31_557_600;
 const DURATION = 500;
 
 const SavingCountUp = ({
@@ -34,80 +35,31 @@ const SavingCountUp = ({
   apy,
   lastTimestamp,
   principal,
-  mode = "total",
+  mode = SavingMode.TOTAL,
   decimalPlaces = 2,
   classNames,
   styles,
 }: SavingCountUpProps) => {
   const [liveYield, setLiveYield] = useState<number>(0);
 
-  const calculateLiveYield = useCallback(
-    (currentTime: number) => {
-      //If actual balance is 0, don't calculate compound interest
-      if (balance === 0) {
-        return 0;
-      }
-
-      if (
-        !currentTime ||
-        currentTime <= 0 ||
-        !lastTimestamp ||
-        lastTimestamp <= 0
-      ) {
-        return mode === "interest-only" ? 0 : balance;
-      }
-
-      const deltaTime = Math.max(0, currentTime - lastTimestamp);
-
-      if (deltaTime === 0) {
-        return mode === "interest-only" ? 0 : balance;
-      }
-
-      const validAPY = isNaN(apy) || !isFinite(apy) ? 0 : Math.max(0, apy);
-
-      if (principal !== undefined && principal > 0) {
-        const timeInYears = deltaTime / SECONDS_PER_YEAR;
-        const compoundedValue =
-          principal * Math.pow(1 + validAPY / 100, timeInYears);
-
-        if (!isFinite(compoundedValue) || compoundedValue < 0) {
-          return mode === "interest-only" ? 0 : balance;
-        }
-
-        // This prevents showing phantom yield when actual balance is lower
-        if (mode === "interest-only") {
-          const interest = Math.max(0, compoundedValue - principal);
-          return Math.min(interest, balance); // Can't show more interest than actual balance
-        } else {
-          return Math.min(compoundedValue, balance); // Can't show more total than actual balance
-        }
-      }
-
-      if (mode === "interest-only") {
-        const timeInYears = deltaTime / SECONDS_PER_YEAR;
-        const estimatedInterest = balance * (validAPY / 100) * timeInYears;
-        return Math.max(0, estimatedInterest);
-      }
-
-      const yieldEarned = balance * (validAPY / SECONDS_PER_YEAR) * deltaTime;
-      const result = balance + yieldEarned;
-
-      return isFinite(result) && result >= 0 ? result : balance;
-    },
-    [balance, apy, lastTimestamp, principal, mode]
-  );
+  const updateYield = useCallback(() => {
+    const now = Math.floor(Date.now() / 1000);
+    const calculatedYield = calculateYield(
+      balance,
+      apy,
+      lastTimestamp,
+      now,
+      principal,
+      mode
+    );
+    setLiveYield(calculatedYield);
+  }, [balance, apy, lastTimestamp, principal, mode]);
 
   useEffect(() => {
-    const updateYield = () => {
-      const now = Math.floor(Date.now() / 1000);
-      setLiveYield(calculateLiveYield(now));
-    };
-
     updateYield();
-
     const interval = setInterval(updateYield, 1000);
     return () => clearInterval(interval);
-  }, [balance, apy, lastTimestamp, principal, mode, calculateLiveYield]);
+  }, [updateYield]);
 
   const safeYield = isFinite(liveYield) && liveYield >= 0 ? liveYield : 0;
   const wholeNumber = Math.floor(safeYield);

@@ -13,7 +13,7 @@ import { WalletTabs } from "@/components/Wallet";
 import { useGetUserTransactionsQuery } from "@/graphql/generated/user-info";
 import { useLatestTokenTransfer, useTotalAPY } from "@/hooks/useAnalytics";
 import { useBalances } from "@/hooks/useBalances";
-import { useDashboardCalculations } from "@/hooks/useDashboardCalculations";
+import { useDepositCalculations } from "@/hooks/useDepositCalculations";
 import { useDimension } from "@/hooks/useDimension";
 import useUser from "@/hooks/useUser";
 import { useFuseVaultBalance } from "@/hooks/useVault";
@@ -50,7 +50,7 @@ export default function Wallet() {
     },
   });
   const { originalDepositAmount, firstDepositTimestamp } =
-    useDashboardCalculations(userDepositTransactions, balance, lastTimestamp);
+    useDepositCalculations(userDepositTransactions, balance, lastTimestamp);
   const { data: usdcBalance } = useBalance({
     address: user?.safeAddress as Address,
     token: ADDRESSES.ethereum.usdc,
@@ -91,7 +91,6 @@ export default function Wallet() {
                   apy={totalAPY ?? 0}
                   lastTimestamp={firstDepositTimestamp ?? 0}
                   principal={originalDepositAmount}
-                  mode="total"
                   decimalPlaces={4}
                   classNames={{
                     wrapper: "text-foreground",
