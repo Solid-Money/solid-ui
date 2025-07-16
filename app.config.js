@@ -1,11 +1,11 @@
 export default {
   expo: {
-    name: "flash-frontend",
+    name: "Solid",
     slug: "flash-frontend",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
-    scheme: "flashfrontend",
+    scheme: "solid",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     owner: "fuseio",
@@ -18,11 +18,14 @@ export default {
       associatedDomains: [
         "webcredentials:solid.xyz",
         "applinks:solid.xyz",
-        `webcredentials:${
-          process.env.EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST
-        }?mode=developer`,
+        ...(process.env.EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST ? [`webcredentials:${process.env.EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST}?mode=developer`] : []),
       ],
       appleTeamId: "QC9255BHMY",
+      splash: {
+        image: "./assets/splash/splash-icon.png",
+        resizeMode: "contain",
+        backgroundColor: "#94F27F"
+      }
     },
     android: {
       adaptiveIcon: {
@@ -31,6 +34,11 @@ export default {
       },
       edgeToEdgeEnabled: true,
       package: "xyz.solid.android",
+      splash: {
+        image: "./assets/splash/splash-icon.png",
+        resizeMode: "contain",
+        backgroundColor: "#94F27F"
+      },
       intentFilters: [
         {
           action: "VIEW",
@@ -41,11 +49,11 @@ export default {
               host: "solid.xyz",
               pathPrefix: "/",
             },
-            {
+            ...(process.env.EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST ? [{
               scheme: "https",
               host: process.env.EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST,
               pathPrefix: "/",
-            },
+            }] : []),
           ],
           category: ["BROWSABLE", "DEFAULT"],
         },
@@ -66,10 +74,10 @@ export default {
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/splash-icon.png",
+          image: "./assets/splash/splash-icon.png",
           imageWidth: 200,
           resizeMode: "contain",
-          backgroundColor: "#262626",
+          backgroundColor: "#94F27F",
         },
       ],
       [

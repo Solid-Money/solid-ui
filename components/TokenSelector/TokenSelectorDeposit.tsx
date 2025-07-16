@@ -1,10 +1,10 @@
 import { View } from "react-native";
 import QRCode from 'react-native-qrcode-svg';
 
-import { Text } from "../ui/text";
+import useUser from "@/hooks/useUser";
 import { eclipseAddress } from "@/lib/utils";
 import CopyToClipboard from "../CopyToClipboard";
-import useUser from "@/hooks/useUser";
+import { Text } from "../ui/text";
 
 const TokenSelectorDeposit = () => {
   const { user } = useUser();

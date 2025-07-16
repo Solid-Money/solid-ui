@@ -31,7 +31,6 @@ const DashboardHeaderMobile = ({
           apy={totalAPY ?? 0}
           lastTimestamp={lastTimestamp ?? 0}
           principal={principal}
-          mode="total"
         />
       </View>
 

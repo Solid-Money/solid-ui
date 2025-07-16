@@ -38,8 +38,8 @@ export default function CardDetails() {
       <View className="items-center mb-8">
         <Image
           source={require("@/assets/images/card.png")}
-          alt="Flash Card"
-          style={{ width: "30%", aspectRatio: 4/3 }}
+          alt="Solid Card"
+          style={{ width: "30%", aspectRatio: 4 / 3 }}
           contentFit="contain"
         />
       </View>

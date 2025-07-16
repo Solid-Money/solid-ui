@@ -3,8 +3,8 @@ import { useCallback, useState } from "react"
 import { View } from "react-native"
 import { useAccount } from "wagmi"
 
-import { useAppKit } from "@/lib/reown"
 import { DEPOSIT_MODAL } from "@/constants/modals"
+import { useAppKit } from "@/lib/reown"
 import { useDepositStore } from "@/store/useDepositStore"
 import DepositOption from "./DepositOption"
 
@@ -28,7 +28,7 @@ const DepositOptions = () => {
       setIsWalletOpen(false);
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     }
-  }, [isWalletOpen, open]);
+  }, [isWalletOpen, open, address, setModal]);
 
   const DEPOSIT_OPTIONS = [
     {
