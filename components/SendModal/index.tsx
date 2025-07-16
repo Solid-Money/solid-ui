@@ -1,27 +1,28 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, TextInput, View } from "react-native";
-import Toast from 'react-native-toast-message';
-import { z } from "zod";
 import { Address } from "abitype";
 import { ArrowUpRight, Fuel, Wallet } from "lucide-react-native";
 import { useMemo } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { ActivityIndicator, TextInput, View } from "react-native";
+import Toast from 'react-native-toast-message';
 import { formatUnits, isAddress } from "viem";
 import { useReadContract } from "wagmi";
+import { z } from "zod";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { SEND_MODAL } from "@/constants/modals";
+import { NATIVE_TOKENS } from "@/constants/tokens";
+import { useEstimateGas } from "@/hooks/useEstimateGas";
+import useSend from "@/hooks/useSend";
 import useUser from "@/hooks/useUser";
 import ERC20_ABI from "@/lib/abis/ERC20";
 import { Status, TokenIcon } from "@/lib/types";
-import { Skeleton } from "../ui/skeleton";
-import { useEstimateGas } from "@/hooks/useEstimateGas";
-import useSend from "@/hooks/useSend";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import { getChain } from "@/lib/wagmi";
-import RenderTokenIcon from "../RenderTokenIcon";
-import { SEND_MODAL } from "@/constants/modals";
 import { useSendStore } from "@/store/useSendStore";
+import RenderTokenIcon from "../RenderTokenIcon";
+import { Skeleton } from "../ui/skeleton";
 
 type SendProps = {
   tokenAddress: Address;
@@ -39,7 +40,7 @@ const Send = ({
   chainId,
 }: SendProps) => {
   const { user } = useUser();
-  const { costInUsd, loading } = useEstimateGas(1200000n);
+  const { costInUsd, loading } = useEstimateGas(1200000n, chainId, NATIVE_TOKENS[chainId]);
   const chain = getChain(chainId);
   const { setModal, setTransaction } = useSendStore();
 
@@ -69,7 +70,7 @@ const Send = ({
         .refine(isAddress, "Please enter a valid Ethereum address")
         .transform(value => value.toLowerCase()),
     });
-  }, [balance]);
+  }, [balance, tokenDecimals, tokenSymbol]);
 
   type SendFormData = { amount: string; address: string };
 
@@ -196,7 +197,10 @@ const Send = ({
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading ? "..." : formatNumber(costInUsd, 2)
+          {`~ $${loading ? "..." :
+            !costInUsd ? "0" :
+              costInUsd < 0.01 ? "<0.01" :
+                formatNumber(costInUsd, 2)
             } USD in fee`}
         </Text>
       </View>

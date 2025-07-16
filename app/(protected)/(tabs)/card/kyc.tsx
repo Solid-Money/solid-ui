@@ -1,9 +1,9 @@
+import { Text } from "@/components/ui/text";
 import { path } from "@/constants/path";
 import { KycStatus } from "@/lib/types";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Text } from "@/components/ui/text";
 
 export default function Kyc() {
   const { url } = useLocalSearchParams<{ url: string }>();

@@ -11,14 +11,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Text } from '@/components/ui/text';
-import { TransactionType } from '@/lib/types';
 
 type TransactionDropdownProps = {
-  type: TransactionType;
-  hash?: string;
+  url?: string;
 }
 
-const TransactionDropdown = ({ type, hash }: TransactionDropdownProps) => {
+const TransactionDropdown = ({ url }: TransactionDropdownProps) => {
   const insets = useSafeAreaInsets();
   const contentInsets = {
     top: insets.top,
@@ -38,9 +36,7 @@ const TransactionDropdown = ({ type, hash }: TransactionDropdownProps) => {
         <DropdownMenuItem
           className='h-10 web:cursor-pointer rounded-lg'
           onPress={() => {
-            if (type === TransactionType.WITHDRAW)
-              Linking.openURL(`https://etherscan.io/tx/${hash}`);
-            else Linking.openURL(`https://layerzeroscan.com/tx/${hash}`);
+            if (url) Linking.openURL(url);
           }}
         >
           <ArrowUpRight color='white' />

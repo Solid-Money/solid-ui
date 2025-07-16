@@ -9,6 +9,7 @@ import { useWaitForTransactionReceipt } from "wagmi"
 import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
+import { DEPOSIT_MODAL } from "@/constants/modals"
 import { useTotalAPY } from "@/hooks/useAnalytics"
 import useDepositFromEOA from "@/hooks/useDepositFromEOA"
 import { useEstimateGas } from "@/hooks/useEstimateGas"
@@ -20,7 +21,6 @@ import ConnectedWalletDropdown from "../ConnectedWalletDropdown"
 import TokenDetails from "../TokenCard/TokenDetails"
 import { Skeleton } from "../ui/skeleton"
 import { Text } from "../ui/text"
-import { DEPOSIT_MODAL } from "@/constants/modals"
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash } = useDepositFromEOA();

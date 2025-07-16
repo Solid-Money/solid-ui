@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import {
   AuthenticationResponseJSON
 } from "react-native-passkeys/src/ReactNativePasskeys.types";
+import { fuse } from "viem/chains";
 
 import { useUserStore } from "@/store/useUserStore";
 import {
@@ -11,16 +12,18 @@ import {
   EXPO_PUBLIC_FLASH_API_BASE_URL,
 } from "./config";
 import {
-  BlockscoutTransaction,
-  BridgeCustomerResponse,
-  CardResponse,
-  CardStatus,
-  CardStatusResponse,
-  KycLink,
-  LayerZeroTransaction,
-  TokenPriceUsd,
-  User,
+	BlockscoutTransaction,
+	BlockscoutTransactions,
+	BridgeCustomerResponse,
+	CardResponse,
+	CardStatus,
+	CardStatusResponse,
+	KycLink,
+	LayerZeroTransaction,
+	TokenPriceUsd,
+	User,
 } from "./types";
+import { explorerUrls } from "./utils";
 
 // Helper function to get platform-specific headers
 const getPlatformHeaders = () => {
@@ -186,16 +189,30 @@ export const fetchTotalAPY = async () => {
   return response.data;
 };
 
-export const fetchTokenTransfer = async (
-  address: string,
-  token: string,
-  type = "ERC-20",
-  filter = "to"
-) => {
-  const response = await axios.get<BlockscoutTransaction>(
-    `https://explorer.fuse.io/api/v2/addresses/${address}/token-transfers?type=${type}&filter=${filter}&token=${token}`
-  );
-  return response.data;
+export const fetchTokenTransfer = async ({
+	address,
+	token,
+	type = "ERC-20",
+	filter = "to",
+	explorerUrl = explorerUrls[fuse.id].blockscout,
+}: {
+	address: string;
+	token?: string;
+	type?: string;
+	filter?: string;
+	explorerUrl?: string;
+}) => {
+	let url = `${explorerUrl}/api/v2/addresses/${address}/token-transfers`;
+	let params = [];
+
+	if (type) params.push(`type=${type}`);
+	if (filter) params.push(`filter=${filter}`);
+	if (token) params.push(`token=${token}`);
+
+	if (params.length) url += `?${params.join("&")}`;
+
+	const response = await axios.get<BlockscoutTransactions>(url);
+	return response.data;
 };
 
 export const fetchTokenPriceUsd = async (token: string) => {
@@ -370,22 +387,22 @@ export const getCardDetails = async (): Promise<CardResponse> => {
 };
 
 export const fetchInternalTransactions = async (
-  address: string
-): Promise<BlockscoutTransaction> => {
-  const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`
-  );
-  return response.data;
+	address: string,
+): Promise<BlockscoutTransactions> => {
+	const response = await axios.get(
+		`https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`,
+	);
+	return response.data;
 };
 
 export const fetchTransactionTokenTransfers = async (
-  transactionHash: string,
-  type = "ERC-20"
-): Promise<BlockscoutTransaction> => {
-  const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`
-  );
-  return response.data;
+	transactionHash: string,
+	type = "ERC-20",
+): Promise<BlockscoutTransactions> => {
+	const response = await axios.get(
+		`https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`,
+	);
+	return response.data;
 };
 
 export const fetchLayerZeroBridgeTransactions = async (

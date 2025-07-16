@@ -1,5 +1,5 @@
 import { ImageSourcePropType } from "react-native";
-import { mainnet } from "viem/chains";
+import { fuse, mainnet } from "viem/chains";
 
 import { ADDRESSES } from "@/lib/config";
 import { TokenMap } from "@/lib/types";
@@ -14,6 +14,11 @@ export const TOKEN_MAP: TokenMap = {
       imageId: "usdc",
     }
   ],
+}
+
+export const NATIVE_TOKENS: Record<number, string> = {
+  [mainnet.id]: "ETH",
+  [fuse.id]: "fuse-network-token",
 }
 
 export const TOKEN_IMAGES: Record<string, ImageSourcePropType> = {

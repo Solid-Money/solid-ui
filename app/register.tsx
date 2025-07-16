@@ -74,10 +74,9 @@ export default function Register() {
 
   const getSignupErrorText = useMemo(() => {
     if (errors.username) return errors.username.message;
-    if (signupInfo.status === Status.ERROR)
-      return signupInfo.message || "Error creating account";
-    return "";
-  }, [errors.username, signupInfo.status]);
+    if (signupInfo.status === Status.ERROR) return signupInfo.message || 'Error creating account';
+    return '';
+  }, [errors.username, signupInfo.status, signupInfo.message]);
 
   const isSignupDisabled = () => {
     return signupInfo.status === Status.PENDING || !isValid || !watchedUsername;
@@ -98,15 +97,8 @@ export default function Register() {
           <View className="flex-col gap-2">
             <Text className="text-3xl font-semibold">Welcome!</Text>
             <Text className="text-muted-foreground">
-              Invite-only access.{" "}
-              <Link
-                href="https://www.solid.xyz"
-                target="_blank"
-                className="underline hover:opacity-70"
-              >
-                Join the waitlist
-              </Link>{" "}
-              if you haven't already.
+              Invite-only access.{' '}
+              <Link href="https://www.solid.xyz" target="_blank" className='underline hover:opacity-70'>Join the waitlist</Link> if you haven&apos;t already.
             </Text>
           </View>
 
