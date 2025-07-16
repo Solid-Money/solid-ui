@@ -1,12 +1,12 @@
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 
+import CardWithBottomShadow from "@/assets/images/card_with_bottom_shadow";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { path } from "@/constants/path";
 import { useCardStatus } from "@/hooks/useCardStatus";
-import CardWithBottomShadow from "@/assets/images/card_with_bottom_shadow";
 
 export default function Card() {
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function Card() {
           Introducing the{"\n"}Solid card
         </Text>
         <Text className="text-lg mt-2 font-medium text-center text-white/70 leading-[20px]">
-          The world&apos;s first self-custodial{"\n"}Mastercard by Flash
+          The world&apos;s first self-custodial{"\n"}Mastercard by Solid
         </Text>
       </View>
 

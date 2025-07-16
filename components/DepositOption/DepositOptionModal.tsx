@@ -110,7 +110,7 @@ const DepositOptionModal = () => {
     if (status === "disconnected" && !isClose) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
-  }, [status, setModal]);
+  }, [status, setModal, isClose]);
 
   return (
     <AnimatedModal

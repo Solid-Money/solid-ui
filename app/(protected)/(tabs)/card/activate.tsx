@@ -46,8 +46,8 @@ export default function ActivateCard() {
     customer?.kycStatus === KycStatus.APPROVED
       ? customer.kycStatus
       : isKycStatusFromParams
-      ? (params.kycStatus as KycStatus)
-      : customer?.kycStatus || KycStatus.NOT_STARTED;
+        ? (params.kycStatus as KycStatus)
+        : customer?.kycStatus || KycStatus.NOT_STARTED;
 
   // Use TanStack Query for KYC link data
   const { data: kycLink } = useKycLink(customer?.kycLinkId);
@@ -61,7 +61,7 @@ export default function ActivateCard() {
   const [isLoading, setIsLoading] = useState(false);
 
   const emailSchema = z.string().email();
-  
+
   const validateEmail = (email: string) => {
     return emailSchema.safeParse(email).success;
   };
@@ -69,7 +69,7 @@ export default function ActivateCard() {
   const steps: Step[] = [
     {
       title: "Terms of Service",
-      description: "Agree to Flash Card terms",
+      description: "Agree to Solid Card terms",
       completed:
         tosStatus === TermsOfServiceStatus.APPROVED ||
         kycStatus === KycStatus.UNDER_REVIEW ||
@@ -83,7 +83,7 @@ export default function ActivateCard() {
     },
     {
       title: "Activate Card",
-      description: "Activate your Flash card",
+      description: "Activate your Solid card",
       completed: cardActivated,
     },
   ];
@@ -245,7 +245,7 @@ export default function ActivateCard() {
     <View className="flex-1 justify-center items-center p-6 bg-background">
       <View className="w-1/2 mx-auto">
         <Text className="text-[28px] font-bold text-center mb-6">
-          Activate your Flash card
+          Activate your Solid card
         </Text>
 
         {/* Show name/email form above steps if TOS not completed */}
@@ -285,24 +285,22 @@ export default function ActivateCard() {
                   step.completed
                     ? "border-primary bg-primary/10"
                     : isAvailable
-                    ? "border-border"
-                    : "border-border/30 bg-gray-800/30"
+                      ? "border-border"
+                      : "border-border/30 bg-gray-800/30"
                 )}
               >
                 <View className="flex-1">
                   <Text
-                    className={`text-lg font-semibold ${
-                      !isAvailable && !step.completed ? "text-white/40" : ""
-                    }`}
+                    className={`text-lg font-semibold ${!isAvailable && !step.completed ? "text-white/40" : ""
+                      }`}
                   >
                     {step.title}
                   </Text>
                   <Text
-                    className={`text-sm ${
-                      !isAvailable && !step.completed
-                        ? "text-white/30"
-                        : "text-white/70"
-                    }`}
+                    className={`text-sm ${!isAvailable && !step.completed
+                      ? "text-white/30"
+                      : "text-white/70"
+                      }`}
                   >
                     {step.description}
                   </Text>

@@ -1,4 +1,4 @@
-import {DashboardHeader, DashboardHeaderMobile} from "@/components/Dashboard";
+import { DashboardHeader, DashboardHeaderMobile } from "@/components/Dashboard";
 import FAQ from "@/components/FAQ";
 import Loading from "@/components/Loading";
 import Navbar from "@/components/Navbar";
@@ -7,33 +7,33 @@ import Ping from "@/components/Ping";
 import SavingCountUp from "@/components/SavingCountUp";
 import SavingsEmptyState from "@/components/Savings/EmptyState";
 import Transaction from "@/components/Transaction";
-import {Skeleton} from "@/components/ui/skeleton";
-import {Text} from "@/components/ui/text";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Text } from "@/components/ui/text";
 import faqs from "@/constants/faqs";
-import {useGetUserTransactionsQuery} from "@/graphql/generated/user-info";
+import { useGetUserTransactionsQuery } from "@/graphql/generated/user-info";
 import {
   formatTransactions,
   useLatestTokenTransfer,
   useSendTransactions,
   useTotalAPY,
 } from "@/hooks/useAnalytics";
-import {useDashboardCalculations} from "@/hooks/useDashboardCalculations";
-import {useDimension} from "@/hooks/useDimension";
+import { useDashboardCalculations } from "@/hooks/useDashboardCalculations";
+import { useDimension } from "@/hooks/useDimension";
 import useUser from "@/hooks/useUser";
-import {useFuseVaultBalance} from "@/hooks/useVault";
-import {ADDRESSES} from "@/lib/config";
-import {useQuery} from "@tanstack/react-query";
-import {LinearGradient} from "expo-linear-gradient";
-import React, {useEffect} from "react";
-import {ImageBackground, Platform, ScrollView, View} from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
-import {Address} from "viem";
-import {mainnet} from "viem/chains";
-import {useBlockNumber} from "wagmi";
+import { useFuseVaultBalance } from "@/hooks/useVault";
+import { ADDRESSES } from "@/lib/config";
+import { useQuery } from "@tanstack/react-query";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useEffect } from "react";
+import { ImageBackground, Platform, ScrollView, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Address } from "viem";
+import { mainnet } from "viem/chains";
+import { useBlockNumber } from "wagmi";
 
 export default function Dashboard() {
-  const {user} = useUser();
-  const {isScreenMedium} = useDimension();
+  const { user } = useUser();
+  const { isScreenMedium } = useDimension();
   const {
     data: balance,
     isLoading: isBalanceLoading,
@@ -41,13 +41,13 @@ export default function Dashboard() {
     isRefetching: isBalanceRefetching,
   } = useFuseVaultBalance(user?.safeAddress as Address);
 
-  const {data: blockNumber} = useBlockNumber({
+  const { data: blockNumber } = useBlockNumber({
     watch: true,
     chainId: mainnet.id,
   });
 
-  const {data: totalAPY, isLoading: isTotalAPYLoading} = useTotalAPY();
-  const {data: lastTimestamp} = useLatestTokenTransfer(
+  const { data: totalAPY, isLoading: isTotalAPYLoading } = useTotalAPY();
+  const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? "",
     ADDRESSES.fuse.vault
   );
@@ -78,7 +78,7 @@ export default function Dashboard() {
     enabled: !!userDepositTransactions,
   });
 
-  const {originalDepositAmount, firstDepositTimestamp} =
+  const { originalDepositAmount, firstDepositTimestamp } =
     useDashboardCalculations(userDepositTransactions, balance, lastTimestamp);
 
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function Dashboard() {
     refetchTransactions();
     refetchFormattedTransactions();
     refetchSendTransactions();
-  }, [blockNumber]);
+  }, [blockNumber, refetchBalance, refetchTransactions, refetchFormattedTransactions, refetchSendTransactions]);
 
   if (isBalanceLoading || isTransactionsLoading) {
     return <Loading />;
@@ -118,8 +118,8 @@ export default function Dashboard() {
             )}
             <LinearGradient
               colors={["rgba(126, 126, 126, 0.3)", "rgba(126, 126, 126, 0.2)"]}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 1}}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
               className="web:md:flex web:md:flex-row rounded-twice overflow-hidden"
             >
               <ImageBackground
@@ -249,7 +249,7 @@ export default function Dashboard() {
                   <View className="flex-row items-center">
                     <Text className="text-2xl font-semibold">$</Text>
                     {(isTotalAPYLoading || isBalanceLoading) &&
-                    !isBalanceRefetching ? (
+                      !isBalanceRefetching ? (
                       <Skeleton className="w-20 h-8 bg-primary/10 rounded-twice" />
                     ) : (
                       <SavingCountUp

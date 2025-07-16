@@ -4,7 +4,7 @@ import { KycStatus } from "@/lib/types";
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from 'expo-web-browser';
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 export default function KycMobile() {
@@ -13,21 +13,40 @@ export default function KycMobile() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    if (!url) {
-      setError("No URL provided");
-      setLoading(false);
-      return;
+  const handleDeepLink = useCallback((event: { url: string }) => {
+    console.log('Deep link received:', event.url);
+
+    try {
+      const urlObj = new URL(event.url);
+
+      if (urlObj.pathname.includes('kyc-complete')) {
+        // Parse completion status from URL params if available
+        const status = urlObj.searchParams.get('status');
+        const inquiryId = urlObj.searchParams.get('inquiry-id');
+
+        console.log('KYC completion detected:', { status, inquiryId });
+
+        // Navigate to success regardless of specific status
+        // The backend will validate the actual status
+        router.replace({
+          pathname: path.CARD_ACTIVATE_MOBILE,
+          params: {
+            kycStatus: KycStatus.APPROVED,
+            inquiryId: inquiryId || '',
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Error parsing deep link:', err);
     }
+  }, [router]);
 
-    openKycWithCompletion();
-  }, [url]);
 
-  const openKycWithCompletion = async () => {
+  const openKycWithCompletion = useCallback(async () => {
     try {
       // Set up deep link listener BEFORE opening browser
       const subscription = Linking.addEventListener('url', handleDeepLink);
-      
+
       // Process the URL to add required parameters
       const urlObj = new URL(url);
 
@@ -40,8 +59,8 @@ export default function KycMobile() {
       }
 
       // Add completion redirect URL
-      urlObj.searchParams.set('redirect_uri', 'flashfrontend://kyc-complete');
-      urlObj.searchParams.set('redirect-uri', 'flashfrontend://kyc-complete');
+      urlObj.searchParams.set('redirect_uri', 'solid://kyc-complete');
+      urlObj.searchParams.set('redirect-uri', 'solid://kyc-complete');
       urlObj.searchParams.set("environment", "mobile");
 
       setLoading(false);
@@ -70,37 +89,20 @@ export default function KycMobile() {
       setError('Failed to open KYC verification');
       setLoading(false);
     }
-  };
+  }, [url, handleDeepLink, checkKycStatusFromAPI]);
 
-  const handleDeepLink = (event: { url: string }) => {
-    console.log('Deep link received:', event.url);
-    
-    try {
-      const urlObj = new URL(event.url);
-      
-      if (urlObj.pathname.includes('kyc-complete')) {
-        // Parse completion status from URL params if available
-        const status = urlObj.searchParams.get('status');
-        const inquiryId = urlObj.searchParams.get('inquiry-id');
-        
-        console.log('KYC completion detected:', { status, inquiryId });
-        
-        // Navigate to success regardless of specific status
-        // The backend will validate the actual status
-        router.replace({
-          pathname: path.CARD_ACTIVATE_MOBILE,
-          params: {
-            kycStatus: KycStatus.APPROVED,
-            inquiryId: inquiryId || '',
-          },
-        });
-      }
-    } catch (err) {
-      console.error('Error parsing deep link:', err);
+  useEffect(() => {
+    if (!url) {
+      setError("No URL provided");
+      setLoading(false);
+      return;
     }
-  };
 
-  const checkKycStatusFromAPI = async () => {
+    openKycWithCompletion();
+  }, [url, openKycWithCompletion]);
+
+
+  const checkKycStatusFromAPI = useCallback(async () => {
     try {
       // Add your API call here to check KYC status
       // const response = await api.getKycStatus();
@@ -116,7 +118,7 @@ export default function KycMobile() {
     } catch (error) {
       console.error('Error checking KYC status:', error);
     }
-  };
+  }, []);
 
   if (error) {
     return (
