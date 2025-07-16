@@ -1,7 +1,7 @@
 export default {
   expo: {
     name: "Solid",
-    slug: "Solid",
+    slug: "flash-frontend",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
