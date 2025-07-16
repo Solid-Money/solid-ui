@@ -35,8 +35,8 @@ const useWithdraw = (): WithdrawResult => {
 
   const withdraw = async (amount: string) => {
     try {
-      if (!user?.passkey) {
-        throw new Error("Passkey not found");
+      if (!user) {
+        throw new Error("User not found");
       }
 
       setWithdrawStatus(Status.PENDING);
@@ -69,11 +69,10 @@ const useWithdraw = (): WithdrawResult => {
         value: 0n,
       });
 
-      const smartAccountClient = await safeAA(user.passkey, mainnet);
+      const smartAccountClient = await safeAA(mainnet, user.suborgId, user.signWith);
 
       const transaction = await executeTransactions(
         smartAccountClient,
-        user.passkey,
         transactions,
         "Withdraw failed",
         mainnet

@@ -13,7 +13,7 @@ type SendProps = {
   tokenAddress: Address;
   tokenDecimals: number;
   chainId: number;
-}
+};
 
 type SendResult = {
   send: (amount: string, to: Address) => Promise<TransactionReceipt>;
@@ -21,7 +21,11 @@ type SendResult = {
   error: string | null;
 };
 
-const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResult => {
+const useSend = ({
+  tokenAddress,
+  tokenDecimals,
+  chainId,
+}: SendProps): SendResult => {
   const { user, safeAA } = useUser();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +33,8 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
 
   const send = async (amount: string, to: Address) => {
     try {
-      if (!user?.passkey) {
-        throw new Error("Passkey not found");
+      if (!user) {
+        throw new Error("User not found");
       }
 
       if (!chain) {
@@ -51,15 +55,17 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
             args: [to, amountWei],
           }),
           value: 0n,
-        }
+        },
       ];
 
-
-      const smartAccountClient = await safeAA(user.passkey, chain);
+      const smartAccountClient = await safeAA(
+        chain,
+        user.suborgId,
+        user.signWith
+      );
 
       const transaction = await executeTransactions(
         smartAccountClient,
-        user.passkey,
         transactions,
         "Send failed",
         chain
