@@ -1,4 +1,4 @@
-# Flash frontend
+# Solid
 
 Frontend of your crypto savings app.
 
