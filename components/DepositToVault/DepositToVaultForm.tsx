@@ -1,30 +1,33 @@
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Image } from "expo-image"
-import { Fuel, Wallet } from "lucide-react-native"
-import { useEffect, useMemo } from "react"
-import { Controller, useForm } from "react-hook-form"
-import { ActivityIndicator, TextInput, View } from "react-native"
-import { formatUnits } from "viem"
-import { useWaitForTransactionReceipt } from "wagmi"
-import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Image } from "expo-image";
+import { Fuel, Wallet } from "lucide-react-native";
+import { useEffect, useMemo } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { ActivityIndicator, TextInput, View } from "react-native";
+import { formatUnits } from "viem";
+import { useWaitForTransactionReceipt } from "wagmi";
+import { z } from "zod";
 
-import { Button } from "@/components/ui/button"
-import { DEPOSIT_MODAL } from "@/constants/modals"
-import { useTotalAPY } from "@/hooks/useAnalytics"
-import useDepositFromEOA from "@/hooks/useDepositFromEOA"
-import { useEstimateGas } from "@/hooks/useEstimateGas"
-import { Status } from "@/lib/types"
-import { compactNumberFormat, formatNumber } from "@/lib/utils"
-import { useDepositStore } from "@/store/useDepositStore"
-import { CheckConnectionWrapper } from "../CheckConnectionWrapper"
-import ConnectedWalletDropdown from "../ConnectedWalletDropdown"
-import TokenDetails from "../TokenCard/TokenDetails"
-import { Skeleton } from "../ui/skeleton"
-import { Text } from "../ui/text"
+import { Button } from "@/components/ui/button";
+import { DEPOSIT_MODAL } from "@/constants/modals";
+import { useTotalAPY } from "@/hooks/useAnalytics";
+import useDepositFromEOA from "@/hooks/useDepositFromEOA";
+import { useEstimateGas } from "@/hooks/useEstimateGas";
+import { usePreviewDeposit } from "@/hooks/usePreviewDeposit";
+import { Status } from "@/lib/types";
+import { formatNumber } from "@/lib/utils";
+import { useDepositStore } from "@/store/useDepositStore";
+import { CheckConnectionWrapper } from "../CheckConnectionWrapper";
+import ConnectedWalletDropdown from "../ConnectedWalletDropdown";
+import TokenDetails from "../TokenCard/TokenDetails";
+import { Skeleton } from "../ui/skeleton";
+import { Text } from "../ui/text";
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash } = useDepositFromEOA();
-  const { isLoading: isPending, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isPending, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
   const { setModal, setTransaction } = useDepositStore();
 
   const isLoading = depositStatus === Status.PENDING || isPending;
@@ -40,9 +43,15 @@ function DepositToVaultForm() {
     return z.object({
       amount: z
         .string()
-        .refine((val) => val !== "" && !isNaN(Number(val)), "Please enter a valid amount")
+        .refine(
+          (val) => val !== "" && !isNaN(Number(val)),
+          "Please enter a valid amount"
+        )
         .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount, 4)} USDC`)
+        .refine(
+          (val) => Number(val) <= balanceAmount,
+          `Available balance is ${formatNumber(balanceAmount, 4)} USDC`
+        )
         .transform((val) => Number(val)),
     });
   }, [balance]);
@@ -59,11 +68,13 @@ function DepositToVaultForm() {
     resolver: zodResolver(depositSchema) as any,
     mode: "onChange",
     defaultValues: {
-      amount: '',
+      amount: "",
     },
   });
 
   const watchedAmount = watch("amount");
+  const { amountOut, isLoading: isPreviewDepositLoading } =
+    usePreviewDeposit(watchedAmount);
 
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
@@ -95,11 +106,7 @@ function DepositToVaultForm() {
   }, [isSuccess, reset, setModal]);
 
   const isFormDisabled = () => {
-    return (
-      isLoading ||
-      !isValid ||
-      !watchedAmount
-    );
+    return isLoading || !isValid || !watchedAmount;
   };
 
   return (
@@ -141,9 +148,7 @@ function DepositToVaultForm() {
       </View>
       <TokenDetails>
         <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
-          <Text className="text-lg opacity-40 md:w-40">
-            You will receive
-          </Text>
+          <Text className="text-lg opacity-40 md:w-40">You will receive</Text>
           <View className="flex-row items-center gap-2">
             <Image
               source={require("@/assets/images/usdc.png")}
@@ -152,11 +157,13 @@ function DepositToVaultForm() {
             />
             <View className="flex-row items-baseline gap-2">
               <Text className="text-2xl font-semibold">
-                {compactNumberFormat(Number(watchedAmount))}
+                {isPreviewDepositLoading ? (
+                  <Skeleton className="w-20 h-8" />
+                ) : (
+                  parseFloat(amountOut.toFixed(3)) || 0
+                )}
               </Text>
-              <Text>
-                soUSD
-              </Text>
+              <Text>soUSD</Text>
             </View>
             {/* <Text className="text-lg opacity-40 text-right">
                       {`(${compactNumberFormat(costInUsd)} USDC in fee)`}
@@ -191,8 +198,7 @@ function DepositToVaultForm() {
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading ? "..." : formatNumber(costInUsd, 2)
-            } USDC in fee`}
+          {`~ $${loading ? "..." : formatNumber(costInUsd, 2)} USDC in fee`}
         </Text>
       </View>
       <CheckConnectionWrapper props={{ size: "xl" }}>
@@ -205,13 +211,11 @@ function DepositToVaultForm() {
           <Text className="text-lg font-semibold">
             {getButtonText()?.slice(0, 30)}
           </Text>
-          {isLoading && (
-            <ActivityIndicator color="gray" />
-          )}
+          {isLoading && <ActivityIndicator color="gray" />}
         </Button>
       </CheckConnectionWrapper>
     </View>
-  )
+  );
 }
 
 export default DepositToVaultForm;
