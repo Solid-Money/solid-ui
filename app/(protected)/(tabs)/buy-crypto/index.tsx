@@ -35,16 +35,18 @@ export async function createWidgetSignature({
 // Build Mercuryo widget URL
 export async function buildMercuryoWidgetUrl({
   address,
+  userId,
   widgetId,
   widgetSecret,
   userIp,
 }: {
   address: string;
+  userId: string;
   widgetId: string;
   widgetSecret: string;
   userIp: string;
 }): Promise<string> {
-  const merchantTransactionId = Date.now().toString();
+  const merchantTransactionId = `${userId}-${Date.now().toString()}`;
 
   try {
     const signature = await createWidgetSignature({
@@ -159,6 +161,7 @@ export default function MercuryoIframeWidget({
 
         const widgetUrl = await buildMercuryoWidgetUrl({
           address,
+          userId: user.userId,
           widgetId,
           widgetSecret,
           userIp,
