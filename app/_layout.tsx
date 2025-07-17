@@ -1,26 +1,26 @@
+import { toastProps } from "@/components/Toast";
+import { TurnkeyProvider } from "@/components/TurnkeyProvider";
 import "@/global.css";
+import { infoClient } from "@/graphql/clients";
+import { wagmi } from "@/lib/wagmi";
 import { ApolloProvider } from "@apollo/client";
 import { AppKit } from "@reown/appkit-wagmi-react-native";
 import { PortalHost } from "@rn-primitives/portal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import Head from "expo-router/head";
-import * as SplashScreen from 'expo-splash-screen';
+import * as SplashScreen from "expo-splash-screen";
+import React, { useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { WagmiProvider } from "wagmi";
 
-import { toastProps } from "@/components/Toast";
-import { infoClient } from "@/graphql/clients";
-import { wagmi } from "@/lib/wagmi";
-import { useCallback, useEffect, useState } from "react";
-
 // see: https://solana.stackexchange.com/a/6244
 global.Buffer = require("buffer").Buffer;
 export {
-    // Catch any errors thrown by the Layout component.
-    ErrorBoundary
+  // Catch any errors thrown by the Layout component.
+  ErrorBoundary,
 } from "expo-router";
 
 // Keep the splash screen visible while we fetch resources
@@ -43,15 +43,14 @@ export default function RootLayout() {
       try {
         // Pre-load fonts, make any API calls you need to do here
         // await Font.loadAsync(Entypo.font);
-        
+
         // Simulate loading time - replace with actual async operations
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
         // Add any additional initialization here
         // await initializeApp();
-        
       } catch (e) {
-        console.warn('Error during app initialization:', e);
+        console.warn("Error during app initialization:", e);
       } finally {
         // Tell the application to render
         setAppIsReady(true);
@@ -72,7 +71,7 @@ export default function RootLayout() {
         await SplashScreen.hideAsync();
         setSplashScreenHidden(true);
       } catch (error) {
-        console.warn('Error hiding splash screen:', error);
+        console.warn("Error hiding splash screen:", error);
       }
     }
   }, [appIsReady, splashScreenHidden]);
@@ -83,41 +82,43 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
-      <WagmiProvider config={wagmi.config}>
-        <QueryClientProvider client={queryClient}>
-          <ApolloProvider client={infoClient}>
-            <Head>
-              <title>Solid</title>
-            </Head>
-            <Stack>
-              <Stack.Screen
-                name="(protected)"
-                options={{
-                  headerShown: false,
-                  animation: "none",
-                }}
-              />
-              <Stack.Screen
-                name="register"
-                options={{
-                  headerShown: false,
-                  animation: "none",
-                }}
-              />
-              <Stack.Screen
-                name="welcome"
-                options={{
-                  headerShown: false,
-                  animation: "none",
-                }}
-              />
-            </Stack>
-            {Platform.OS !== 'web' && <AppKit />}
-          </ApolloProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-      <PortalHost />
-      <Toast {...toastProps} />
+      <TurnkeyProvider>
+        <WagmiProvider config={wagmi.config}>
+          <QueryClientProvider client={queryClient}>
+            <ApolloProvider client={infoClient}>
+              <Head>
+                <title>Solid</title>
+              </Head>
+              <Stack>
+                <Stack.Screen
+                  name="(protected)"
+                  options={{
+                    headerShown: false,
+                    animation: "none",
+                  }}
+                />
+                <Stack.Screen
+                  name="register"
+                  options={{
+                    headerShown: false,
+                    animation: "none",
+                  }}
+                />
+                <Stack.Screen
+                  name="welcome"
+                  options={{
+                    headerShown: false,
+                    animation: "none",
+                  }}
+                />
+              </Stack>
+              {Platform.OS !== "web" && <AppKit />}
+            </ApolloProvider>
+          </QueryClientProvider>
+        </WagmiProvider>
+        <PortalHost />
+        <Toast {...toastProps} />
+      </TurnkeyProvider>
     </SafeAreaProvider>
   );
 }

@@ -2,8 +2,8 @@ import React, { useEffect } from "react";
 import { Platform, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Address } from "viem";
-import { fuse, mainnet } from "viem/chains";
-import { useBalance, useBlockNumber } from "wagmi";
+import { mainnet } from "viem/chains";
+import { useBlockNumber } from "wagmi";
 
 import Navbar from "@/components/Navbar";
 import NavbarMobile from "@/components/Navbar/NavbarMobile";
@@ -12,7 +12,6 @@ import { Text } from "@/components/ui/text";
 import { WalletTabs } from "@/components/Wallet";
 import { useGetUserTransactionsQuery } from "@/graphql/generated/user-info";
 import { useLatestTokenTransfer, useTotalAPY } from "@/hooks/useAnalytics";
-import { useBalances } from "@/hooks/useBalances";
 import { useDepositCalculations } from "@/hooks/useDepositCalculations";
 import { useDimension } from "@/hooks/useDimension";
 import useUser from "@/hooks/useUser";
@@ -21,11 +20,6 @@ import { ADDRESSES } from "@/lib/config";
 
 export default function Wallet() {
   const { user } = useUser();
-  const {
-    ethereumTokens,
-    fuseTokens,
-    refresh,
-  } = useBalances();
   const { isScreenMedium } = useDimension();
   const {
     data: blockNumber
@@ -51,27 +45,11 @@ export default function Wallet() {
   });
   const { originalDepositAmount, firstDepositTimestamp } =
     useDepositCalculations(userDepositTransactions, balance, lastTimestamp);
-  const { data: usdcBalance } = useBalance({
-    address: user?.safeAddress as Address,
-    token: ADDRESSES.ethereum.usdc,
-    chainId: mainnet.id,
-  })
-  const { data: soUSDBalance } = useBalance({
-    address: user?.safeAddress as Address,
-    token: ADDRESSES.fuse.vault,
-    chainId: fuse.id,
-  })
-
-  useEffect(() => {
-    refresh()
-  }, [soUSDBalance, usdcBalance, refresh])
 
   useEffect(() => {
     refetchBalance()
     refetchTransactions()
   }, [blockNumber, refetchBalance, refetchTransactions])
-
-  const hasFunds = ethereumTokens.length > 0 || fuseTokens.length > 0;
 
   return (
     <React.Fragment>
@@ -114,11 +92,9 @@ export default function Wallet() {
               </View>
             </View>
 
-            {hasFunds && (
-              <View className="md:mt-6">
-                <WalletTabs />
-              </View>
-            )}
+            <View className="md:mt-6">
+              <WalletTabs />
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>

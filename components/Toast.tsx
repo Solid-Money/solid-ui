@@ -95,5 +95,5 @@ const toastConfig = {
 export const toastProps: ToastProps = {
   position: 'bottom',
   config: toastConfig,
-  visibilityTime: 10000,
+  visibilityTime: 30000,
 }
