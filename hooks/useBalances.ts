@@ -62,6 +62,7 @@ interface BalanceState {
   ethereumTokens: TokenBalance[];
   fuseTokens: TokenBalance[];
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
 }
 
@@ -95,16 +96,17 @@ export const useBalances = (): BalanceData => {
     ethereumTokens: [],
     fuseTokens: [],
     isLoading: false,
+    isRefreshing: false,
     error: null,
   });
 
-  const fetchBalances = useCallback(async () => {
+  const fetchBalances = useCallback(async (isLoading: string = 'isLoading') => {
     if (!user?.safeAddress) {
-      setBalanceData(prev => ({ ...prev, isLoading: false }));
+      setBalanceData(prev => ({ ...prev, [isLoading]: false }));
       return;
     }
 
-    setBalanceData(prev => ({ ...prev, isLoading: true, error: null }));
+    setBalanceData(prev => ({ ...prev, [isLoading]: true, error: null }));
 
     try {
       // Make parallel requests to both chains and get soUSD rate
@@ -222,7 +224,7 @@ export const useBalances = (): BalanceData => {
         totalUSDExcludingSoUSD: totalRegular,
         ethereumTokens,
         fuseTokens,
-        isLoading: false,
+        [isLoading]: false,
         error: null,
       }));
 
@@ -230,14 +232,14 @@ export const useBalances = (): BalanceData => {
       console.error('Error fetching balances:', error);
       setBalanceData(prev => ({
         ...prev,
-        isLoading: false,
+        [isLoading]: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       }));
     }
   }, [user?.safeAddress]);
 
   const refresh = useCallback(() => {
-    fetchBalances();
+    fetchBalances('isRefreshing');
   }, [fetchBalances]);
 
   useEffect(() => {
