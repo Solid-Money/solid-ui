@@ -12,16 +12,15 @@ import {
   EXPO_PUBLIC_FLASH_API_BASE_URL,
 } from "./config";
 import {
-	BlockscoutTransaction,
-	BlockscoutTransactions,
-	BridgeCustomerResponse,
-	CardResponse,
-	CardStatus,
-	CardStatusResponse,
-	KycLink,
-	LayerZeroTransaction,
-	TokenPriceUsd,
-	User,
+  BlockscoutTransactions,
+  BridgeCustomerResponse,
+  CardResponse,
+  CardStatus,
+  CardStatusResponse,
+  KycLink,
+  LayerZeroTransaction,
+  TokenPriceUsd,
+  User
 } from "./types";
 import { explorerUrls } from "./utils";
 
@@ -122,6 +121,25 @@ export const signUp = async (
   return response.json();
 };
 
+export const updateSafeAddress = async (
+  safeAddress: string,
+) => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/update-safe-address`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getPlatformHeaders(),
+      },
+      credentials: "include",
+      body: JSON.stringify({ safeAddress }),
+    }
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const verifyRegistration = async (
   sessionId: string,
   address: string
@@ -190,29 +208,29 @@ export const fetchTotalAPY = async () => {
 };
 
 export const fetchTokenTransfer = async ({
-	address,
-	token,
-	type = "ERC-20",
-	filter = "to",
-	explorerUrl = explorerUrls[fuse.id].blockscout,
+  address,
+  token,
+  type = "ERC-20",
+  filter = "to",
+  explorerUrl = explorerUrls[fuse.id].blockscout,
 }: {
-	address: string;
-	token?: string;
-	type?: string;
-	filter?: string;
-	explorerUrl?: string;
+  address: string;
+  token?: string;
+  type?: string;
+  filter?: string;
+  explorerUrl?: string;
 }) => {
-	let url = `${explorerUrl}/api/v2/addresses/${address}/token-transfers`;
-	let params = [];
+  let url = `${explorerUrl}/api/v2/addresses/${address}/token-transfers`;
+  let params = [];
 
-	if (type) params.push(`type=${type}`);
-	if (filter) params.push(`filter=${filter}`);
-	if (token) params.push(`token=${token}`);
+  if (type) params.push(`type=${type}`);
+  if (filter) params.push(`filter=${filter}`);
+  if (token) params.push(`token=${token}`);
 
-	if (params.length) url += `?${params.join("&")}`;
+  if (params.length) url += `?${params.join("&")}`;
 
-	const response = await axios.get<BlockscoutTransactions>(url);
-	return response.data;
+  const response = await axios.get<BlockscoutTransactions>(url);
+  return response.data;
 };
 
 export const fetchTokenPriceUsd = async (token: string) => {
@@ -387,22 +405,22 @@ export const getCardDetails = async (): Promise<CardResponse> => {
 };
 
 export const fetchInternalTransactions = async (
-	address: string,
+  address: string,
 ): Promise<BlockscoutTransactions> => {
-	const response = await axios.get(
-		`https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`,
-	);
-	return response.data;
+  const response = await axios.get(
+    `https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`,
+  );
+  return response.data;
 };
 
 export const fetchTransactionTokenTransfers = async (
-	transactionHash: string,
-	type = "ERC-20",
+  transactionHash: string,
+  type = "ERC-20",
 ): Promise<BlockscoutTransactions> => {
-	const response = await axios.get(
-		`https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`,
-	);
-	return response.data;
+  const response = await axios.get(
+    `https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`,
+  );
+  return response.data;
 };
 
 export const fetchLayerZeroBridgeTransactions = async (

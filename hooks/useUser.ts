@@ -10,14 +10,16 @@ import { path } from "@/constants/path";
 import {
   getSubOrgIdByUsername,
   login,
-  signUp
+  signUp,
+  updateSafeAddress
 } from "@/lib/api";
 import { EXPO_PUBLIC_TURNKEY_API_BASE_URL, EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from "@/lib/config";
 import { pimlicoClient } from "@/lib/pimlico";
 import { Status, User } from "@/lib/types";
 import {
   getNonce,
-  setGlobalLogoutHandler
+  setGlobalLogoutHandler,
+  withRefreshToken
 } from "@/lib/utils";
 import { publicClient, rpcUrls } from "@/lib/wagmi";
 import { useUserStore } from "@/store/useUserStore";
@@ -182,6 +184,10 @@ const useUser = (): UseUserReturn => {
         );
 
         if (smartAccountClient && user) {
+          const resp = await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address))
+          if (!resp) {
+            throw new Error("Error updating safe address");
+          }
           const selectedUser: User = {
             safeAddress: smartAccountClient.account.address,
             username,
