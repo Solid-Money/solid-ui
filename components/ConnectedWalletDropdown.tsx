@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from "react-native-reanimated";
-import { useAccount, useDisconnect } from "wagmi";
+import { useActiveAccount, useActiveWallet, useDisconnect } from "thirdweb/react";
 import { ChevronDown, Unlink, WalletMinimal } from "lucide-react-native";
 
 import { eclipseAddress } from "@/lib/utils";
 import { Text } from "./ui/text";
 
 const ConnectedWalletDropdown = () => {
-  const { address } = useAccount()
-  const { disconnect } = useDisconnect()
+  const wallet = useActiveWallet();
+  const activeAccount = useActiveAccount();
+  const { disconnect } = useDisconnect();
   const [isOpen, setIsOpen] = useState(false)
+  const address = activeAccount?.address;
 
   const rotation = useSharedValue(0)
   const contentHeight = useSharedValue(0)
@@ -63,7 +65,7 @@ const ConnectedWalletDropdown = () => {
       <Animated.View style={dropdownAnimatedStyle} className="overflow-hidden">
         <Pressable
           className="flex-row items-center gap-4 border-t border-card px-5 py-4 web:hover:opacity-70"
-          onPress={() => disconnect()}
+          onPress={() => wallet && disconnect(wallet)}
           onLayout={(event) => {
             contentHeight.value = event.nativeEvent.layout.height
           }}

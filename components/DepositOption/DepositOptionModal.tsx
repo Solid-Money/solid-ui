@@ -2,7 +2,7 @@ import { Plus } from "lucide-react-native";
 import React, { useEffect } from "react";
 import { View } from "react-native";
 import { Address } from "viem";
-import { useAccount } from "wagmi";
+import { useActiveAccount, useActiveWalletConnectionStatus } from "thirdweb/react";
 
 import { Text } from "@/components/ui/text";
 import { DEPOSIT_MODAL } from "@/constants/modals";
@@ -17,7 +17,9 @@ import DepositOptions from "./DepositOptions";
 
 const DepositOptionModal = () => {
   const { currentModal, previousModal, transaction, setModal } = useDepositStore();
-  const { address, status } = useAccount();
+  const activeAccount = useActiveAccount();
+  const status = useActiveWalletConnectionStatus();
+  const address = activeAccount?.address;
 
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(isForm && address);

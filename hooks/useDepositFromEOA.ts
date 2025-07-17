@@ -9,7 +9,9 @@ import {
   type Address
 } from "viem";
 import { mainnet } from "viem/chains";
-import { useAccount, useBlockNumber, useChainId, useReadContract, useSendTransaction, useSignTypedData, useSwitchChain } from "wagmi";
+import { mainnet as thirdwebMainnet } from "thirdweb/chains";
+import { useBlockNumber, useChainId, useReadContract } from "wagmi";
+import { useActiveAccount, useActiveWallet } from "thirdweb/react";
 
 import ERC20_ABI from "@/lib/abis/ERC20";
 import ETHEREUM_TELLER_ABI from "@/lib/abis/EthereumTeller";
@@ -28,15 +30,14 @@ type DepositResult = {
 
 const useDepositFromEOA = (): DepositResult => {
   const { user } = useUser();
-  const { address: eoaAddress } = useAccount();
-  const { signTypedDataAsync } = useSignTypedData();
-  const { sendTransactionAsync } = useSendTransaction();
-  const { switchChainAsync } = useSwitchChain();
+  const wallet = useActiveWallet();
+  const account = useActiveAccount();
   const chainId = useChainId();
   const [depositStatus, setDepositStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<Address | undefined>();
   const { data: blockNumber } = useBlockNumber({ watch: true });
+  const eoaAddress = account?.address;
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
     abi: ERC20_ABI,
@@ -96,7 +97,7 @@ const useDepositFromEOA = (): DepositResult => {
       if (!user?.safeAddress) throw new Error("User safe address not found");
 
       if (chainId !== mainnet.id) {
-        await switchChainAsync({ chainId: mainnet.id })
+        await wallet?.switchChain(thirdwebMainnet);
       }
 
       setDepositStatus(Status.PENDING);
@@ -130,7 +131,7 @@ const useDepositFromEOA = (): DepositResult => {
         deadline: deadline,
       };
 
-      const signature = await signTypedDataAsync({
+      const signature = await account?.signTypedData({
         domain,
         types,
         primaryType: 'Permit',
@@ -169,11 +170,13 @@ const useDepositFromEOA = (): DepositResult => {
       });
 
       console.log('callData: ', callData);
-      const txHash = await sendTransactionAsync({
+      const transaction = await account?.sendTransaction({
+        chainId: mainnet.id,
         to: ADDRESSES.ethereum.teller,
         data: callData,
         value: fee,
       });
+      const txHash = transaction.transactionHash;
       console.log('txHash: ', txHash);
 
       setHash(txHash);

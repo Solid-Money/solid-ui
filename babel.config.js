@@ -12,7 +12,7 @@ module.exports = function (api) {
       "nativewind/babel",
     ],
     plugins: [
-      "@babel/plugin-transform-class-static-block",
-    ],
+			"react-native-reanimated/plugin",
+		],
   };
 };
