@@ -1,8 +1,6 @@
 import axios, { AxiosRequestHeaders } from "axios";
 import { Platform } from "react-native";
-import {
-  AuthenticationResponseJSON
-} from "react-native-passkeys/src/ReactNativePasskeys.types";
+import { AuthenticationResponseJSON } from "react-native-passkeys/src/ReactNativePasskeys.types";
 import { fuse } from "viem/chains";
 
 import { useUserStore } from "@/store/useUserStore";
@@ -20,7 +18,7 @@ import {
   KycLink,
   LayerZeroTransaction,
   TokenPriceUsd,
-  User
+  User,
 } from "./types";
 import { explorerUrls } from "./utils";
 
@@ -121,9 +119,7 @@ export const signUp = async (
   return response.json();
 };
 
-export const updateSafeAddress = async (
-  safeAddress: string,
-) => {
+export const updateSafeAddress = async (safeAddress: string) => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/update-safe-address`,
     {
@@ -405,20 +401,20 @@ export const getCardDetails = async (): Promise<CardResponse> => {
 };
 
 export const fetchInternalTransactions = async (
-  address: string,
+  address: string
 ): Promise<BlockscoutTransactions> => {
   const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`,
+    `https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`
   );
   return response.data;
 };
 
 export const fetchTransactionTokenTransfers = async (
   transactionHash: string,
-  type = "ERC-20",
+  type = "ERC-20"
 ): Promise<BlockscoutTransactions> => {
   const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`,
+    `https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`
   );
   return response.data;
 };
@@ -461,10 +457,7 @@ export const getSubOrgIdByUsername = async (username: string) => {
   return response.json();
 };
 
-export const login = async (
-  username: string,
-  signedRequest: any,
-) => {
+export const login = async (username: string, signedRequest: any) => {
   // const body = JSON.parse(signedRequest.body);
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/log-in`,
@@ -483,4 +476,33 @@ export const login = async (
   );
   if (!response.ok) throw response;
   return response.json();
+};
+
+export const createMercuryoTransaction = async (
+  userIp: string,
+  transactionId: string
+): Promise<string> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/mercuryo/transactions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        userIp,
+        transactionId,
+      }),
+    }
+  );
+
+  if (!response.ok) throw response;
+
+  const data: { widgetUrl: string } = await response.json();
+  return data.widgetUrl;
 };
