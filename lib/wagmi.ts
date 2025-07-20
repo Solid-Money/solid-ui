@@ -1,6 +1,9 @@
+polyfill();
+
 import { Chain, createPublicClient } from 'viem';
 import { createConfig, http } from 'wagmi';
 import { fuse, mainnet } from 'wagmi/chains';
+import { Platform } from 'react-native';
 
 import { EXPO_PUBLIC_ALCHEMY_API_KEY } from './config';
 
@@ -32,3 +35,17 @@ export const config = createConfig({
   chains,
   transports
 })
+
+// see: https://github.com/MobileWalletProtocol/smart-wallet-expo-example/blob/ab34404a875fffafb7b1b3e179dd61b22a20490c/src/wagmiDemo.tsx#L122
+function polyfill() {
+  if (Platform.OS === "web") return;
+
+  const noop = (() => { }) as any;
+
+  window.addEventListener = noop;
+  window.dispatchEvent = noop;
+  window.removeEventListener = noop;
+  window.CustomEvent = function CustomEvent() {
+    return {};
+  } as any;
+}
