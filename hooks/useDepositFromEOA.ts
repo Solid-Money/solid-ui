@@ -17,6 +17,7 @@ import FiatTokenV2_2 from "@/lib/abis/FiatTokenV2_2";
 import { ADDRESSES } from "@/lib/config";
 import { Status } from "@/lib/types";
 import useUser from "./useUser";
+import { useUserStore } from "@/store/useUserStore";
 
 type DepositResult = {
   balance: bigint | undefined;
@@ -37,6 +38,7 @@ const useDepositFromEOA = (): DepositResult => {
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<Address | undefined>();
   const { data: blockNumber } = useBlockNumber({ watch: true });
+  const { updateUser } = useUserStore();
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
     abi: ERC20_ABI,
@@ -177,6 +179,10 @@ const useDepositFromEOA = (): DepositResult => {
       console.log('txHash: ', txHash);
 
       setHash(txHash);
+      updateUser({
+        ...user,
+        isDeposited: true,
+      });
       setDepositStatus(Status.SUCCESS);
     } catch (error) {
       console.error(error);
