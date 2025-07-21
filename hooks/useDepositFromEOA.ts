@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { mainnet as thirdwebMainnet } from "thirdweb/chains";
+import { useActiveAccount, useActiveWallet } from "thirdweb/react";
 import {
   encodeAbiParameters,
   encodeFunctionData,
@@ -9,15 +11,14 @@ import {
   type Address
 } from "viem";
 import { mainnet } from "viem/chains";
-import { mainnet as thirdwebMainnet } from "thirdweb/chains";
 import { useBlockNumber, useChainId, useReadContract } from "wagmi";
-import { useActiveAccount, useActiveWallet } from "thirdweb/react";
 
 import ERC20_ABI from "@/lib/abis/ERC20";
 import ETHEREUM_TELLER_ABI from "@/lib/abis/EthereumTeller";
 import FiatTokenV2_2 from "@/lib/abis/FiatTokenV2_2";
 import { ADDRESSES } from "@/lib/config";
 import { Status } from "@/lib/types";
+import { useUserStore } from "@/store/useUserStore";
 import useUser from "./useUser";
 
 type DepositResult = {
@@ -38,6 +39,7 @@ const useDepositFromEOA = (): DepositResult => {
   const [hash, setHash] = useState<Address | undefined>();
   const { data: blockNumber } = useBlockNumber({ watch: true });
   const eoaAddress = account?.address;
+  const { updateUser } = useUserStore();
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
     abi: ERC20_ABI,
@@ -180,6 +182,10 @@ const useDepositFromEOA = (): DepositResult => {
       console.log('txHash: ', txHash);
 
       setHash(txHash);
+      updateUser({
+        ...user,
+        isDeposited: true,
+      });
       setDepositStatus(Status.SUCCESS);
     } catch (error) {
       console.error(error);
