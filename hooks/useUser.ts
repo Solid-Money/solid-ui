@@ -4,6 +4,13 @@ import { SmartAccountClient, createSmartAccountClient } from "permissionless";
 import { toSafeSmartAccount } from "permissionless/accounts";
 import { useCallback, useEffect, useMemo } from "react";
 import { mainnet } from "viem/chains";
+import { TurnkeyClient } from "@turnkey/http";
+import { createAccount } from "@turnkey/viem";
+import { WebauthnStamper } from "@turnkey/webauthn-stamper";
+import { Chain, createWalletClient, http } from "viem";
+import { entryPoint07Address } from "viem/account-abstraction";
+import { createPasskey, PasskeyStamper } from "@turnkey/react-native-passkey-stamper";
+import { v4 as uuidv4 } from 'uuid';
 
 import { getRuntimeRpId } from "@/components/TurnkeyProvider";
 import { path } from "@/constants/path";
@@ -23,12 +30,6 @@ import {
 } from "@/lib/utils";
 import { publicClient, rpcUrls } from "@/lib/wagmi";
 import { useUserStore } from "@/store/useUserStore";
-import { TurnkeyClient } from "@turnkey/http";
-import { Turnkey } from "@turnkey/sdk-browser";
-import { createAccount } from "@turnkey/viem";
-import { WebauthnStamper } from "@turnkey/webauthn-stamper";
-import { Chain, createWalletClient, http } from "viem";
-import { entryPoint07Address } from "viem/account-abstraction";
 import { fetchIsDeposited } from "./useAnalytics";
 
 interface UseUserReturn {
@@ -63,18 +64,8 @@ const useUser = (): UseUserReturn => {
     [users]
   );
 
-  const turnkey = new Turnkey({
-    apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-    defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-    rpId: getRuntimeRpId(),
-  })
-
-  const passkeyClient = turnkey.passkeyClient();
-
   const safeAA = useCallback(
     async (chain: Chain, subOrganization: string, signWith: string) => {
-      const session = await turnkey.getSession()
-      console.log("Session:", session);
       const stamper = new WebauthnStamper({
         rpId: getRuntimeRpId(),
         timeout: 60000,
@@ -156,23 +147,27 @@ const useUser = (): UseUserReturn => {
         setSignupInfo({ status: Status.PENDING });
 
         const passkeyName = `${getRuntimeRpId()}-${username}`;
-        const { encodedChallenge, attestation } =
-          (await passkeyClient?.createUserPasskey({
-            publicKey: {
-              user: {
-                name: passkeyName,
-                displayName: passkeyName,
-              },
+        const { challenge, attestation } =
+          (await createPasskey({
+            authenticatorName: "End-User Passkey",
+            rp: {
+              id: getRuntimeRpId(),
+              name: "Solid",
+            },
+            user: {
+              id: uuidv4(),
+              name: passkeyName,
+              displayName: passkeyName,
             },
           })) || {};
 
-        if (!encodedChallenge || !attestation) {
+        if (!challenge || !attestation) {
           throw new Error("Error creating passkey");
         }
 
         const user = await signUp(
           username,
-          encodedChallenge,
+          challenge,
           attestation,
           inviteCode
         );
@@ -223,13 +218,13 @@ const useUser = (): UseUserReturn => {
       const subOrgId = await getSubOrgIdByUsername(username);
 
       if (subOrgId.organizationId) {
-        const signedWhoamiRequest = await passkeyClient.stampGetWhoami({
-          organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+        const stamper = new PasskeyStamper({
+          rpId: getRuntimeRpId(),
         });
 
         const user = await login(
           username,
-          signedWhoamiRequest
+          stamper
         )
 
         const smartAccountClient = await safeAA(
