@@ -1,6 +1,7 @@
 import { Text } from "@/components/ui/text";
 import useUser from "@/hooks/useUser";
 import { createMercuryoTransaction, getClientIp } from "@/lib/api";
+import { withRefreshToken } from "@/lib/utils";
 import * as Crypto from "expo-crypto";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -69,8 +70,15 @@ const BuyCrypto = ({ onClose }: MercuryoIframeWidgetProps = {}) => {
       try {
         const userIp = await getClientIp();
         const transactionId = Crypto.randomUUID();
-        
-        const widgetUrl = await createMercuryoTransaction(userIp, transactionId);
+
+        const widgetUrl = await withRefreshToken(() =>
+          createMercuryoTransaction(userIp, transactionId)
+        );
+
+        if (!widgetUrl) {
+          throw new Error("Failed to create Mercuryo transaction");
+        }
+
         setFinalUrl(widgetUrl);
       } catch (err) {
         console.error("Error creating Mercuryo transaction:", err);
