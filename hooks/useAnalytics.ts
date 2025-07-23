@@ -13,7 +13,7 @@ import {
   fetchTotalAPY,
 } from "@/lib/api";
 import { BlockscoutTransaction, BlockscoutTransactions, LayerZeroTransactionStatus, Transaction, TransactionType } from "@/lib/types";
-import { explorerUrls, layerzero } from "@/lib/utils";
+import { explorerUrls, layerzero } from "@/constants/explorers";
 
 const ANALYTICS = "analytics";
 

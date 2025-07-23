@@ -8,7 +8,7 @@ import { TurnkeyProvider as TurnkeyProviderNative } from "@turnkey/sdk-react-nat
 import { Platform } from "react-native";
 
 // Helper to get current hostname in runtime; falls back to configured value during SSR.
-export const getRuntimeRpId = () => __DEV__ ? "localhost" : 'solid.xyz'
+export const getRuntimeRpId = () => (Platform.OS === 'web' && __DEV__) ? "localhost" : 'solid.xyz'
 
 export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

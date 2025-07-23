@@ -1,17 +1,18 @@
-import { CreditCard, Landmark, Wallet } from "lucide-react-native"
-import { useCallback, useState } from "react"
-import { View } from "react-native"
-import { useAccount } from "wagmi"
-
-import { DEPOSIT_MODAL } from "@/constants/modals"
-import { useAppKit } from "@/lib/reown"
-import { useDepositStore } from "@/store/useDepositStore"
-import DepositOption from "./DepositOption"
+import { DEPOSIT_MODAL } from "@/constants/modals";
+import { client } from "@/lib/thirdweb";
+import { useDepositStore } from "@/store/useDepositStore";
+import { CreditCard, Landmark, Wallet } from "lucide-react-native";
+import { useCallback, useState } from "react";
+import { View } from "react-native";
+import { useActiveAccount, useConnectModal } from "thirdweb/react";
+import { createWallet } from "thirdweb/wallets";
+import DepositOption from "./DepositOption";
 
 const DepositOptions = () => {
-  const { address } = useAccount();
-  const { open } = useAppKit()
+  const activeAccount = useActiveAccount();
+  const { connect } = useConnectModal();
   const { setModal } = useDepositStore();
+  const address = activeAccount?.address;
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
 
@@ -21,14 +22,23 @@ const DepositOptions = () => {
       if (address) return;
 
       setIsWalletOpen(true);
-      await open();
+      await connect({
+        client,
+        showThirdwebBranding: false,
+        size: "compact",
+        wallets: [
+          createWallet("walletConnect"),
+          createWallet("io.rabby"),
+          createWallet("io.metamask"),
+        ]
+      });
     } catch (error) {
       console.error(error);
     } finally {
       setIsWalletOpen(false);
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     }
-  }, [isWalletOpen, open, address, setModal]);
+  }, [isWalletOpen, connect, address, setModal]);
 
   const DEPOSIT_OPTIONS = [
     {
