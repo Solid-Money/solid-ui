@@ -20,9 +20,11 @@ expo-env.d.ts
 
 # Android
 android/
+google-services.json
 
 # iOS
 ios/
+GoogleService-Info.plist
 
 # Metro
 .metro-health-check*
