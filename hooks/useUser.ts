@@ -33,22 +33,6 @@ import { useUserStore } from "@/store/useUserStore";
 import { Platform } from "react-native";
 import { fetchIsDeposited } from "./useAnalytics";
 
-let TurnkeyLibrary, createPasskey: (arg0: { publicKey?: { user: { name: string; displayName: string; }; }; authenticatorName?: string; rp?: { id: string; name: string; }; user?: { id: string; name: string; displayName: string; }; }) => PromiseLike<{ challenge: any; attestation: any; }> | { challenge: any; attestation: any; }
-
-if (Platform.OS === 'web') {
-  TurnkeyLibrary = require('@turnkey/sdk-browser').Turnkey;
-  const turnkey = new TurnkeyLibrary({
-    apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-    defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-    rpId: getRuntimeRpId(),
-  })
-  let passkeyClient = turnkey.passkeyClient();
-  createPasskey = passkeyClient.createUserPasskey;
-} else {
-  TurnkeyLibrary = require('@turnkey/react-native-passkey-stamper');
-  createPasskey = TurnkeyLibrary.createPasskey;
-}
-
 interface UseUserReturn {
   user: User | undefined;
   handleSignup: (username: string, inviteCode: string) => Promise<void>;
@@ -164,30 +148,47 @@ const useUser = (): UseUserReturn => {
         setSignupInfo({ status: Status.PENDING });
 
         const passkeyName = `${getRuntimeRpId()}-${username}`;
-        const { challenge, attestation } =
-          (Platform.OS === 'web' ? (
-            await createPasskey({
-              publicKey: {
-                user: {
-                  name: passkeyName,
-                  displayName: passkeyName,
-                },
+        let challenge: any;
+        let attestation: any;
+
+        if (Platform.OS === 'web') {
+          // Dynamically import browser SDK only when needed
+          const { Turnkey } = await import('@turnkey/sdk-browser');
+          const turnkey = new Turnkey({
+            apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+            defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+            rpId: getRuntimeRpId(),
+          });
+
+          const passkeyClient = turnkey.passkeyClient();
+          const passkey = await passkeyClient.createUserPasskey({
+            publicKey: {
+              user: {
+                name: passkeyName,
+                displayName: passkeyName,
               },
-            }))
-            :
-            (
-              await createPasskey({
-                authenticatorName: "End-User Passkey",
-                rp: {
-                  id: getRuntimeRpId(),
-                  name: "Solid",
-                },
-                user: {
-                  id: uuidv4(),
-                  name: passkeyName,
-                  displayName: passkeyName,
-                },
-              })));
+            },
+          });
+          challenge = passkey.challenge;
+          attestation = passkey.attestation;
+        } else {
+          // Use the already imported React Native passkey stamper
+          const { createPasskey } = await import('@turnkey/react-native-passkey-stamper');
+          const passkey = await createPasskey({
+            authenticatorName: "End-User Passkey",
+            rp: {
+              id: getRuntimeRpId(),
+              name: "Solid",
+            },
+            user: {
+              id: uuidv4(),
+              name: passkeyName,
+              displayName: passkeyName,
+            },
+          });
+          challenge = passkey.challenge;
+          attestation = passkey.attestation;
+        }
 
         if (!challenge || !attestation) {
           throw new Error("Error creating passkey");
@@ -246,13 +247,31 @@ const useUser = (): UseUserReturn => {
       const subOrgId = await getSubOrgIdByUsername(username);
 
       if (subOrgId.organizationId) {
-        const stamper = new PasskeyStamper({
-          rpId: getRuntimeRpId(),
-        });
+        let stamp: any;
+
+        if (Platform.OS === 'web') {
+          // Dynamically import browser SDK only when needed
+          const { Turnkey } = await import('@turnkey/sdk-browser');
+          const turnkey = new Turnkey({
+            apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+            defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+            rpId: getRuntimeRpId(),
+          });
+
+          const passkeyClient = turnkey.passkeyClient();
+          stamp = await passkeyClient.stampGetWhoami({
+            organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+          });
+        } else {
+          const stamper = new PasskeyStamper({
+            rpId: getRuntimeRpId(),
+          });
+          stamp = stamper;
+        }
 
         const user = await login(
           username,
-          stamper
+          stamp
         )
 
         const smartAccountClient = await safeAA(
