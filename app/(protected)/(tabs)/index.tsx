@@ -160,7 +160,7 @@ export default function Dashboard() {
                             fontSize: isScreenMedium ? 96 : 48,
                             fontWeight: isScreenMedium ? "medium" : "semibold",
                             color: "#ffffff",
-                            marginRight: -5,
+                            marginRight: -2,
                           },
                           decimalText: {
                             fontSize: isScreenMedium ? 40 : 24,
