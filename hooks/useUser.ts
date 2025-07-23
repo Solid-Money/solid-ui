@@ -213,7 +213,7 @@ const useUser = (): UseUserReturn => {
           username,
           challenge,
           attestation,
-          inviteCode
+          inviteCode,
         );
 
         const smartAccountClient = await safeAA(
@@ -223,10 +223,6 @@ const useUser = (): UseUserReturn => {
         );
 
         if (smartAccountClient && user) {
-          const resp = await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address))
-          if (!resp) {
-            throw new Error("Error updating safe address");
-          }
           const selectedUser: User = {
             safeAddress: smartAccountClient.account.address,
             username,
@@ -234,9 +230,14 @@ const useUser = (): UseUserReturn => {
             signWith: user.walletAddress,
             suborgId: user.subOrganizationId,
             selected: true,
+            tokens: user.tokens || null,
           };
           storeUser(selectedUser);
           await checkBalance(selectedUser);
+          const resp = await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address))
+          if (!resp) {
+            throw new Error("Error updating safe address");
+          }
           setSignupInfo({ status: Status.SUCCESS });
         } else {
           throw new Error("Error while verifying passkey registration");
@@ -308,6 +309,7 @@ const useUser = (): UseUserReturn => {
           signWith: user.walletAddress,
           suborgId: user.subOrganizationId,
           selected: true,
+          tokens: user.tokens || null,
         };
         storeUser(selectedUser);
         await checkBalance(selectedUser);
