@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import { AuthenticationResponseJSON } from "react-native-passkeys/src/ReactNativePasskeys.types";
 import { fuse } from "viem/chains";
 
+import { explorerUrls } from "@/constants/explorers";
 import { useUserStore } from "@/store/useUserStore";
 import {
   EXPO_PUBLIC_ALCHEMY_API_KEY,
@@ -20,7 +21,6 @@ import {
   TokenPriceUsd,
   User,
 } from "./types";
-import { explorerUrls } from "@/constants/explorers";
 
 // Helper function to get platform-specific headers
 const getPlatformHeaders = () => {
@@ -120,6 +120,7 @@ export const signUp = async (
 };
 
 export const updateSafeAddress = async (safeAddress: string) => {
+  const jwt = getJWTToken();
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/update-safe-address`,
     {
@@ -127,6 +128,7 @@ export const updateSafeAddress = async (safeAddress: string) => {
       headers: {
         "Content-Type": "application/json",
         ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: "include",
       body: JSON.stringify({ safeAddress }),
