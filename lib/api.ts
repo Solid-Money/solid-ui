@@ -20,7 +20,7 @@ import {
   TokenPriceUsd,
   User,
 } from "./types";
-import { explorerUrls } from "./utils";
+import { explorerUrls } from "@/constants/explorers";
 
 // Helper function to get platform-specific headers
 const getPlatformHeaders = () => {

@@ -7,6 +7,7 @@ import { ActivityIndicator, TextInput, View } from "react-native";
 import { formatUnits } from "viem";
 import { useWaitForTransactionReceipt } from "wagmi";
 import { z } from "zod";
+import { mainnet } from "viem/chains";
 
 import { Button } from "@/components/ui/button";
 import { DEPOSIT_MODAL } from "@/constants/modals";
@@ -26,7 +27,8 @@ import { Text } from "../ui/text";
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash } = useDepositFromEOA();
   const { isLoading: isPending, isSuccess } = useWaitForTransactionReceipt({
-    hash,
+    hash: hash as `0x${string}`,
+    chainId: mainnet.id,
   });
   const { setModal, setTransaction } = useDepositStore();
 
