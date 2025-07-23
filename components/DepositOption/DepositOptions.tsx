@@ -1,12 +1,12 @@
-import { CreditCard, Landmark, Wallet } from "lucide-react-native"
-import { useCallback, useState } from "react"
-import { View } from "react-native"
-import { useActiveAccount, useConnectModal } from "thirdweb/react"
-
-import { DEPOSIT_MODAL } from "@/constants/modals"
-import { client } from "@/lib/thirdweb"
-import { useDepositStore } from "@/store/useDepositStore"
-import DepositOption from "./DepositOption"
+import { DEPOSIT_MODAL } from "@/constants/modals";
+import { client } from "@/lib/thirdweb";
+import { useDepositStore } from "@/store/useDepositStore";
+import { CreditCard, Landmark, Wallet } from "lucide-react-native";
+import { useCallback, useState } from "react";
+import { View } from "react-native";
+import { useActiveAccount, useConnectModal } from "thirdweb/react";
+import { createWallet } from "thirdweb/wallets";
+import DepositOption from "./DepositOption";
 
 const DepositOptions = () => {
   const activeAccount = useActiveAccount();
@@ -25,7 +25,12 @@ const DepositOptions = () => {
       await connect({
         client,
         showThirdwebBranding: false,
-        size: "compact"
+        size: "compact",
+        wallets: [
+          createWallet("walletConnect"),
+          createWallet("io.rabby"),
+          createWallet("io.metamask"),
+        ]
       });
     } catch (error) {
       console.error(error);

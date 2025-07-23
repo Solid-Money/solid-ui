@@ -1,16 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { TurnkeyClient } from "@turnkey/http";
+import { PasskeyStamper } from "@turnkey/react-native-passkey-stamper";
+import { createAccount } from "@turnkey/viem";
+import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import { useRouter } from "expo-router";
 import { SmartAccountClient, createSmartAccountClient } from "permissionless";
 import { toSafeSmartAccount } from "permissionless/accounts";
 import { useCallback, useEffect, useMemo } from "react";
-import { mainnet } from "viem/chains";
-import { TurnkeyClient } from "@turnkey/http";
-import { createAccount } from "@turnkey/viem";
-import { WebauthnStamper } from "@turnkey/webauthn-stamper";
+import { v4 as uuidv4 } from 'uuid';
 import { Chain, createWalletClient, http } from "viem";
 import { entryPoint07Address } from "viem/account-abstraction";
-import { createPasskey, PasskeyStamper } from "@turnkey/react-native-passkey-stamper";
-import { v4 as uuidv4 } from 'uuid';
+import { mainnet } from "viem/chains";
 
 import { getRuntimeRpId } from "@/components/TurnkeyProvider";
 import { path } from "@/constants/path";
@@ -30,6 +30,7 @@ import {
 } from "@/lib/utils";
 import { publicClient, rpcUrls } from "@/lib/wagmi";
 import { useUserStore } from "@/store/useUserStore";
+import { Platform } from "react-native";
 import { fetchIsDeposited } from "./useAnalytics";
 
 interface UseUserReturn {
@@ -147,8 +148,33 @@ const useUser = (): UseUserReturn => {
         setSignupInfo({ status: Status.PENDING });
 
         const passkeyName = `${getRuntimeRpId()}-${username}`;
-        const { challenge, attestation } =
-          (await createPasskey({
+        let challenge: any;
+        let attestation: any;
+
+        if (Platform.OS === 'web') {
+          // Dynamically import browser SDK only when needed
+          const { Turnkey } = await import('@turnkey/sdk-browser');
+          const turnkey = new Turnkey({
+            apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+            defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+            rpId: getRuntimeRpId(),
+          });
+
+          const passkeyClient = turnkey.passkeyClient();
+          const passkey = await passkeyClient.createUserPasskey({
+            publicKey: {
+              user: {
+                name: passkeyName,
+                displayName: passkeyName,
+              },
+            },
+          });
+          challenge = passkey.encodedChallenge;
+          attestation = passkey.attestation;
+        } else {
+          // Use the already imported React Native passkey stamper
+          const { createPasskey } = await import('@turnkey/react-native-passkey-stamper');
+          const passkey = await createPasskey({
             authenticatorName: "End-User Passkey",
             rp: {
               id: getRuntimeRpId(),
@@ -159,7 +185,10 @@ const useUser = (): UseUserReturn => {
               name: passkeyName,
               displayName: passkeyName,
             },
-          })) || {};
+          });
+          challenge = passkey.challenge;
+          attestation = passkey.attestation;
+        }
 
         if (!challenge || !attestation) {
           throw new Error("Error creating passkey");
@@ -218,13 +247,31 @@ const useUser = (): UseUserReturn => {
       const subOrgId = await getSubOrgIdByUsername(username);
 
       if (subOrgId.organizationId) {
-        const stamper = new PasskeyStamper({
-          rpId: getRuntimeRpId(),
-        });
+        let stamp: any;
+
+        if (Platform.OS === 'web') {
+          // Dynamically import browser SDK only when needed
+          const { Turnkey } = await import('@turnkey/sdk-browser');
+          const turnkey = new Turnkey({
+            apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+            defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+            rpId: getRuntimeRpId(),
+          });
+
+          const passkeyClient = turnkey.passkeyClient();
+          stamp = await passkeyClient.stampGetWhoami({
+            organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+          });
+        } else {
+          const stamper = new PasskeyStamper({
+            rpId: getRuntimeRpId(),
+          });
+          stamp = stamper;
+        }
 
         const user = await login(
           username,
-          stamper
+          stamp
         )
 
         const smartAccountClient = await safeAA(
