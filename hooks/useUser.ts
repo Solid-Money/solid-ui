@@ -67,10 +67,18 @@ const useUser = (): UseUserReturn => {
 
   const safeAA = useCallback(
     async (chain: Chain, subOrganization: string, signWith: string) => {
-      const stamper = new WebauthnStamper({
-        rpId: getRuntimeRpId(),
-        timeout: 60000,
-      });
+      let stamper: WebauthnStamper | PasskeyStamper;
+
+      if (Platform.OS === 'web') {
+        stamper = new WebauthnStamper({
+          rpId: getRuntimeRpId(),
+          timeout: 60000,
+        });
+      } else {
+        stamper = new PasskeyStamper({
+          rpId: getRuntimeRpId(),
+        });
+      }
 
       const turnkeyClient = new TurnkeyClient(
         { baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL },
@@ -146,6 +154,11 @@ const useUser = (): UseUserReturn => {
 
       try {
         setSignupInfo({ status: Status.PENDING });
+        const subOrgId = await getSubOrgIdByUsername(username);
+
+        if (subOrgId.organizationId) {
+          throw new Error("Username already exists");
+        }
 
         const passkeyName = `${getRuntimeRpId()}-${username}`;
         let challenge: any;
@@ -153,6 +166,7 @@ const useUser = (): UseUserReturn => {
 
         if (Platform.OS === 'web') {
           // Dynamically import browser SDK only when needed
+          //@ts-ignore
           const { Turnkey } = await import('@turnkey/sdk-browser');
           const turnkey = new Turnkey({
             apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
@@ -173,6 +187,7 @@ const useUser = (): UseUserReturn => {
           attestation = passkey.attestation;
         } else {
           // Use the already imported React Native passkey stamper
+          //@ts-ignore
           const { createPasskey } = await import('@turnkey/react-native-passkey-stamper');
           const passkey = await createPasskey({
             authenticatorName: "End-User Passkey",
@@ -204,7 +219,7 @@ const useUser = (): UseUserReturn => {
         const smartAccountClient = await safeAA(
           mainnet,
           user.subOrganizationId,
-          user.walletAddress
+          user.walletAddress,
         );
 
         if (smartAccountClient && user) {
@@ -228,7 +243,7 @@ const useUser = (): UseUserReturn => {
         }
       } catch (error: any) {
         let message = "";
-        if (error?.status === 409) {
+        if (error?.status === 409 || error.message?.includes("Username already exists")) {
           message = "Username already exists";
         } else if ((await error?.text?.())?.toLowerCase()?.includes("invite")) {
           message = "Invalid invite code";
@@ -251,6 +266,7 @@ const useUser = (): UseUserReturn => {
 
         if (Platform.OS === 'web') {
           // Dynamically import browser SDK only when needed
+          //@ts-ignore
           const { Turnkey } = await import('@turnkey/sdk-browser');
           const turnkey = new Turnkey({
             apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
@@ -266,7 +282,13 @@ const useUser = (): UseUserReturn => {
           const stamper = new PasskeyStamper({
             rpId: getRuntimeRpId(),
           });
-          stamp = stamper;
+          const turnkeyClient = new TurnkeyClient(
+            { baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL },
+            stamper
+          );
+          stamp = await turnkeyClient.stampGetWhoami({
+            organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+          })
         }
 
         const user = await login(
@@ -277,7 +299,7 @@ const useUser = (): UseUserReturn => {
         const smartAccountClient = await safeAA(
           mainnet,
           user.subOrganizationId,
-          user.walletAddress
+          user.walletAddress,
         );
         const selectedUser: User = {
           safeAddress: smartAccountClient.account.address,
