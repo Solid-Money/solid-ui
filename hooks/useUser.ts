@@ -1,16 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { TurnkeyClient } from "@turnkey/http";
+import { PasskeyStamper } from "@turnkey/react-native-passkey-stamper";
+import { createAccount } from "@turnkey/viem";
+import { WebauthnStamper } from "@turnkey/webauthn-stamper";
 import { useRouter } from "expo-router";
 import { SmartAccountClient, createSmartAccountClient } from "permissionless";
 import { toSafeSmartAccount } from "permissionless/accounts";
 import { useCallback, useEffect, useMemo } from "react";
-import { mainnet } from "viem/chains";
-import { TurnkeyClient } from "@turnkey/http";
-import { createAccount } from "@turnkey/viem";
-import { WebauthnStamper } from "@turnkey/webauthn-stamper";
+import { v4 as uuidv4 } from 'uuid';
 import { Chain, createWalletClient, http } from "viem";
 import { entryPoint07Address } from "viem/account-abstraction";
-import { createPasskey, PasskeyStamper } from "@turnkey/react-native-passkey-stamper";
-import { v4 as uuidv4 } from 'uuid';
+import { mainnet } from "viem/chains";
 
 import { getRuntimeRpId } from "@/components/TurnkeyProvider";
 import { path } from "@/constants/path";
@@ -30,7 +30,24 @@ import {
 } from "@/lib/utils";
 import { publicClient, rpcUrls } from "@/lib/wagmi";
 import { useUserStore } from "@/store/useUserStore";
+import { Platform } from "react-native";
 import { fetchIsDeposited } from "./useAnalytics";
+
+let TurnkeyLibrary, createPasskey: (arg0: { publicKey?: { user: { name: string; displayName: string; }; }; authenticatorName?: string; rp?: { id: string; name: string; }; user?: { id: string; name: string; displayName: string; }; }) => PromiseLike<{ challenge: any; attestation: any; }> | { challenge: any; attestation: any; }
+
+if (Platform.OS === 'web') {
+  TurnkeyLibrary = require('@turnkey/sdk-browser').Turnkey;
+  const turnkey = new TurnkeyLibrary({
+    apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+    defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+    rpId: getRuntimeRpId(),
+  })
+  let passkeyClient = turnkey.passkeyClient();
+  createPasskey = passkeyClient.createUserPasskey;
+} else {
+  TurnkeyLibrary = require('@turnkey/react-native-passkey-stamper');
+  createPasskey = TurnkeyLibrary.createPasskey;
+}
 
 interface UseUserReturn {
   user: User | undefined;
@@ -148,18 +165,29 @@ const useUser = (): UseUserReturn => {
 
         const passkeyName = `${getRuntimeRpId()}-${username}`;
         const { challenge, attestation } =
-          (await createPasskey({
-            authenticatorName: "End-User Passkey",
-            rp: {
-              id: getRuntimeRpId(),
-              name: "Solid",
-            },
-            user: {
-              id: uuidv4(),
-              name: passkeyName,
-              displayName: passkeyName,
-            },
-          })) || {};
+          (Platform.OS === 'web' ? (
+            await createPasskey({
+              publicKey: {
+                user: {
+                  name: passkeyName,
+                  displayName: passkeyName,
+                },
+              },
+            }))
+            :
+            (
+              await createPasskey({
+                authenticatorName: "End-User Passkey",
+                rp: {
+                  id: getRuntimeRpId(),
+                  name: "Solid",
+                },
+                user: {
+                  id: uuidv4(),
+                  name: passkeyName,
+                  displayName: passkeyName,
+                },
+              })));
 
         if (!challenge || !attestation) {
           throw new Error("Error creating passkey");
