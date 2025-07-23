@@ -169,7 +169,7 @@ const useUser = (): UseUserReturn => {
               },
             },
           });
-          challenge = passkey.challenge;
+          challenge = passkey.encodedChallenge;
           attestation = passkey.attestation;
         } else {
           // Use the already imported React Native passkey stamper
