@@ -23,6 +23,7 @@ import ConnectedWalletDropdown from "../ConnectedWalletDropdown";
 import TokenDetails from "../TokenCard/TokenDetails";
 import { Skeleton } from "../ui/skeleton";
 import { Text } from "../ui/text";
+import Max from "../Max";
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash } = useDepositFromEOA();
@@ -66,6 +67,7 @@ function DepositToVaultForm() {
     formState: { errors, isValid },
     watch,
     reset,
+    setValue,
   } = useForm<DepositFormData>({
     resolver: zodResolver(depositSchema) as any,
     mode: "onChange",
@@ -146,6 +148,7 @@ function DepositToVaultForm() {
         </View>
         <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
           <Wallet size={16} /> {formatNumber(Number(formattedBalance), 6)} USDC
+          <Max onPress={() => setValue("amount", formattedBalance)} />
         </Text>
       </View>
       <TokenDetails>

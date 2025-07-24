@@ -18,6 +18,7 @@ import { Status } from "@/lib/types";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import { useUnstakeStore } from "@/store/useUnstakeStore";
 import { Skeleton } from "../ui/skeleton";
+import Max from "../Max";
 
 const Unstake = () => {
   const { user } = useUser();
@@ -47,6 +48,7 @@ const Unstake = () => {
     formState: { errors: bridgeErrors, isValid: isBridgeValid },
     watch: watchBridge,
     reset: resetBridge,
+    setValue,
   } = useForm<BridgeFormData>({
     resolver: zodResolver(bridgeSchema) as any,
     mode: "onChange",
@@ -143,6 +145,7 @@ const Unstake = () => {
           ) : (
             "0 SoUSD"
           )}
+          <Max onPress={() => setValue("amount", fuseBalance?.toString() ?? "0")} />
         </Text>
       </View>
 

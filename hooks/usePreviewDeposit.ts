@@ -1,6 +1,6 @@
 import Accountant from "@/lib/abis/Accountant";
 import { ADDRESSES } from "@/lib/config";
-import { wagmi } from "@/lib/wagmi";
+import { config } from "@/lib/wagmi";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { readContractQueryOptions } from "wagmi/query";
 
@@ -21,7 +21,7 @@ export const fetchExchangeRate = async (
     queryClient: QueryClient,
 ) => {
     const exchangeRate = await queryClient.fetchQuery(
-        readContractQueryOptions(wagmi.config, {
+        readContractQueryOptions(config, {
             abi: Accountant,
             address: ADDRESSES.ethereum.accountant,
             functionName: "getRate",
