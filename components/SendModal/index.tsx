@@ -23,6 +23,7 @@ import { getChain } from "@/lib/wagmi";
 import { useSendStore } from "@/store/useSendStore";
 import RenderTokenIcon from "../RenderTokenIcon";
 import { Skeleton } from "../ui/skeleton";
+import Max from "../Max";
 
 type SendProps = {
   tokenAddress: Address;
@@ -79,6 +80,7 @@ const Send = ({
     handleSubmit,
     formState: { errors, isValid },
     reset,
+    setValue,
   } = useForm<SendFormData>({
     resolver: zodResolver(sendSchema) as any,
     mode: "onChange",
@@ -170,6 +172,7 @@ const Send = ({
           ) : (
             `0 ${tokenSymbol}`
           )}
+          <Max onPress={() => setValue("amount", formatUnits(balance ?? 0n, tokenDecimals))} />
         </Text>
       </View>
 
