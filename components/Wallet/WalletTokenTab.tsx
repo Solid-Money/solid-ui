@@ -1,10 +1,8 @@
 import { FlashList } from '@shopify/flash-list';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Address, formatUnits } from 'viem';
-import { fuse, mainnet } from 'viem/chains';
-import { useBalance } from 'wagmi';
 
 import {
   Table,
@@ -24,29 +22,13 @@ import WithdrawModal from '../Withdraw/WithdrawModal';
 import getTokenIcon from '@/lib/getTokenIcon';
 import RenderTokenIcon from '../RenderTokenIcon';
 import Ping from '../Ping';
-import { ADDRESSES } from '@/lib/config';
-import useUser from '@/hooks/useUser';
-import { Skeleton } from '../ui/skeleton';
 
 const WalletTokenTab = () => {
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
   const { isScreenMedium } = useDimension();
-  const { user } = useUser();
 
-  const { ethereumTokens, fuseTokens, isLoading, refresh } = useBalances();
-  const { data: usdcBalance } = useBalance({
-    address: user?.safeAddress as Address,
-    token: ADDRESSES.ethereum.usdc,
-    chainId: mainnet.id,
-  })
-  const { data: soUSDBalance } = useBalance({
-    address: user?.safeAddress as Address,
-    token: ADDRESSES.fuse.vault,
-    chainId: fuse.id,
-  })
-
-  const hasFunds = ethereumTokens.length > 0 || fuseTokens.length > 0;
+  const { ethereumTokens, fuseTokens } = useBalances();
 
   // Combine and sort tokens by USD value (descending)
   const allTokens = useMemo(() => {
@@ -77,10 +59,6 @@ const WalletTokenTab = () => {
     return COLUMN_WIDTHS.map((ratio) => width * ratio);
   }, [width, isScreenMedium]);
 
-  useEffect(() => {
-    refresh()
-  }, [soUSDBalance, usdcBalance, refresh])
-
   return (
     <>
       <View className='w-full' onLayout={handleLayout} />
@@ -102,104 +80,94 @@ const WalletTokenTab = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <Skeleton className="w-full h-20 rounded-twice" />
-            ) : hasFunds ? (
-              <FlashList
-                data={allTokens}
-                estimatedItemSize={45}
-                contentContainerStyle={{
-                  paddingBottom: insets.bottom,
-                }}
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item: token, index }) => {
-                  const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
-                  const balanceUSD = balance * (token.quoteRate || 0);
-                  const displayBalance = isScreenMedium ?
-                    formatNumber(balance, 4) :
-                    balance < 0.001 ?
-                      "<0.001" :
-                      formatNumber(balance, 3);
+            <FlashList
+              data={allTokens}
+              estimatedItemSize={45}
+              contentContainerStyle={{
+                paddingBottom: insets.bottom,
+              }}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item: token, index }) => {
+                const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
+                const balanceUSD = balance * (token.quoteRate || 0);
+                const displayBalance = isScreenMedium ?
+                  formatNumber(balance, 4) :
+                  balance < 0.001 ?
+                    "<0.001" :
+                    formatNumber(balance, 3);
 
-                  const tokenIcon = getTokenIcon({
-                    logoUrl: token.logoUrl,
-                    tokenSymbol: token.contractTickerSymbol,
-                    size: isScreenMedium ? 34 : 24,
-                  });
+                const tokenIcon = getTokenIcon({
+                  logoUrl: token.logoUrl,
+                  tokenSymbol: token.contractTickerSymbol,
+                  size: isScreenMedium ? 34 : 24,
+                });
 
-                  return (
-                    <TableRow
-                      key={`${token.contractAddress}-${token.balance}`}
-                      className={cn('bg-card active:bg-secondary items-center border-border/40',
-                        index === 0 && 'rounded-t-twice',
-                        index === allTokens.length - 1 && 'rounded-b-twice border-0',
-                      )}
-                    >
-                      <TableCell className="p-3 md:p-6" style={{ width: columnWidths[0] }}>
-                        <View className='flex-row items-center gap-2'>
-                          <RenderTokenIcon tokenIcon={tokenIcon} size={isScreenMedium ? 34 : 24} />
-                          <View className='items-start'>
-                            <Text className='font-bold'>{token.contractTickerSymbol || 'Unknown'}</Text>
-                            <Text className='text-sm text-muted-foreground'>
-                              {displayBalance} {isScreenMedium ? token.contractTickerSymbol : ''}
-                            </Text>
-                          </View>
+                return (
+                  <TableRow
+                    key={`${token.contractAddress}-${token.balance}`}
+                    className={cn('bg-card active:bg-secondary items-center border-border/40',
+                      index === 0 && 'rounded-t-twice',
+                      index === allTokens.length - 1 && 'rounded-b-twice border-0',
+                    )}
+                  >
+                    <TableCell className="p-3 md:p-6" style={{ width: columnWidths[0] }}>
+                      <View className='flex-row items-center gap-2'>
+                        <RenderTokenIcon tokenIcon={tokenIcon} size={isScreenMedium ? 34 : 24} />
+                        <View className='items-start'>
+                          <Text className='font-bold'>{token.contractTickerSymbol || 'Unknown'}</Text>
+                          <Text className='text-sm text-muted-foreground'>
+                            {displayBalance} {isScreenMedium ? token.contractTickerSymbol : ''}
+                          </Text>
                         </View>
-                      </TableCell>
-                      <TableCell className="hidden md:block p-3 md:p-6" style={{ width: columnWidths[1] }}>
+                      </View>
+                    </TableCell>
+                    <TableCell className="hidden md:block p-3 md:p-6" style={{ width: columnWidths[1] }}>
+                      {isSoUSDFuse(token.contractAddress) ? (
+                        <View className='bg-brand/20 rounded-full px-2 py-1 md:px-4 md:py-2 flex-row items-center gap-2 w-fit'>
+                          <Ping />
+                          <Text className='text-brand font-semibold'>
+                            Staking
+                          </Text>
+                        </View>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
+                      <View className='items-start'>
+                        <Text className='font-bold'>${format(balanceUSD)}</Text>
+                        <Text className='hidden md:block text-sm text-muted-foreground'>
+                          per {token.contractTickerSymbol}
+                        </Text>
+                      </View>
+                    </TableCell>
+                    <TableCell className="p-3 md:p-6" style={{ width: columnWidths[3] }}>
+                      <View className='items-start'>
+                        <Text className='font-bold'>${format(token.quoteRate || 0)}</Text>
+                        <Text className='hidden md:block text-sm text-muted-foreground'>
+                          {token.contractName || token.contractTickerSymbol}
+                        </Text>
+                      </View>
+                    </TableCell>
+                    <TableCell className="p-3 md:p-6" style={{ width: columnWidths[4] }}>
+                      <View className='flex-row items-center justify-end'>
                         {isSoUSDFuse(token.contractAddress) ? (
-                          <View className='bg-brand/20 rounded-full px-2 py-1 md:px-4 md:py-2 flex-row items-center gap-2 w-fit'>
-                            <Ping />
-                            <Text className='text-brand font-semibold'>
-                              Staking
-                            </Text>
-                          </View>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
-                        <View className='items-start'>
-                          <Text className='font-bold'>${format(balanceUSD)}</Text>
-                          <Text className='hidden md:block text-sm text-muted-foreground'>
-                            per {token.contractTickerSymbol}
-                          </Text>
-                        </View>
-                      </TableCell>
-                      <TableCell className="p-3 md:p-6" style={{ width: columnWidths[3] }}>
-                        <View className='items-start'>
-                          <Text className='font-bold'>${format(token.quoteRate || 0)}</Text>
-                          <Text className='hidden md:block text-sm text-muted-foreground'>
-                            {token.contractName || token.contractTickerSymbol}
-                          </Text>
-                        </View>
-                      </TableCell>
-                      <TableCell className="p-3 md:p-6" style={{ width: columnWidths[4] }}>
-                        <View className='flex-row items-center justify-end'>
-                          {isSoUSDFuse(token.contractAddress) ? (
-                            <UnstakeModal />
-                          ) : isSoUSDEthereum(token.contractAddress) ? (
-                            <WithdrawModal />
-                          ) : (
-                            <SendModal
-                              tokenAddress={token.contractAddress as Address}
-                              tokenDecimals={token.contractDecimals}
-                              tokenIcon={tokenIcon}
-                              tokenSymbol={token.contractTickerSymbol || 'Unknown'}
-                              chainId={token.chainId}
-                            />
-                          )}
-                        </View>
-                      </TableCell>
-                    </TableRow>
-                  );
-                }}
-              />
-            ) : (
-              <TableRow className='bg-card border-0 rounded-twice web:hover:bg-card'>
-                <TableCell className="p-3 md:p-6">
-                  <Text className="text-2xl font-medium">No tokens found</Text>
-                </TableCell>
-              </TableRow>
-            )}
+                          <UnstakeModal />
+                        ) : isSoUSDEthereum(token.contractAddress) ? (
+                          <WithdrawModal />
+                        ) : (
+                          <SendModal
+                            tokenAddress={token.contractAddress as Address}
+                            tokenDecimals={token.contractDecimals}
+                            tokenIcon={tokenIcon}
+                            tokenSymbol={token.contractTickerSymbol || 'Unknown'}
+                            chainId={token.chainId}
+                          />
+                        )}
+                      </View>
+                    </TableCell>
+                  </TableRow>
+                );
+              }}
+            />
           </TableBody>
         </Table>
       </ScrollView>
