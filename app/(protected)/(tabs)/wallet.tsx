@@ -17,6 +17,15 @@ import { useDimension } from "@/hooks/useDimension";
 import useUser from "@/hooks/useUser";
 import { useFuseVaultBalance } from "@/hooks/useVault";
 import { ADDRESSES } from "@/lib/config";
+import { useWalletTokens } from "@/hooks/useWalletTokens";
+
+const renderInfo = (text: string) => {
+  return (
+    <View className="flex-1 justify-center items-center p-8">
+      <Text className="text-lg">{text}</Text>
+    </View>
+  );
+}
 
 export default function Wallet() {
   const { user } = useUser();
@@ -24,6 +33,7 @@ export default function Wallet() {
   const {
     data: blockNumber
   } = useBlockNumber({ watch: true, chainId: mainnet.id })
+  const { isLoading, hasTokens } = useWalletTokens();
   const {
     data: balance,
     refetch: refetchBalance,
@@ -93,7 +103,13 @@ export default function Wallet() {
             </View>
 
             <View className="md:mt-6">
-              <WalletTabs />
+              {isLoading ? (
+                renderInfo("Loading tokens...")
+              ) : hasTokens ? (
+                <WalletTabs />
+              ) : (
+                renderInfo("No tokens found")
+              )}
             </View>
           </View>
         </ScrollView>

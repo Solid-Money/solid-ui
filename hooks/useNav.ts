@@ -2,7 +2,7 @@ import { Href } from "expo-router";
 import { useMemo } from "react";
 
 import { path } from "@/constants/path";
-import useUser from "@/hooks/useUser";
+import { useWalletTokens } from "./useWalletTokens";
 
 type MenuItem = {
   label: string;
@@ -19,23 +19,19 @@ const wallet: MenuItem = {
   href: path.WALLET,
 }
 
-const defaultMenuItems: MenuItem[] = []
 
 const useNav = () => {
-  const { user } = useUser();
-  const hasDeposited = user?.isDeposited;
+  const { hasTokens } = useWalletTokens();
 
   const menuItems = useMemo<MenuItem[]>(() => {
-    const coreMenuItems = [home];
-    if (hasDeposited) {
-      coreMenuItems.push(wallet);
+    if (hasTokens) {
+      return [home, wallet];
     }
-    return [...coreMenuItems, ...defaultMenuItems];
-  }, [hasDeposited]);
+    return [];
+  }, [hasTokens]);
 
   return {
     menuItems,
-    hasDeposited,
   };
 }
 

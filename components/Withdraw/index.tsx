@@ -18,6 +18,7 @@ import { Status } from "@/lib/types";
 import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
 import { useWithdrawStore } from "@/store/useWithdrawStore";
 import { Skeleton } from "../ui/skeleton";
+import Max from "../Max";
 
 const Withdraw = () => {
   const { user } = useUser();
@@ -47,6 +48,7 @@ const Withdraw = () => {
     formState: { errors: withdrawErrors, isValid: isWithdrawValid },
     watch: watchWithdraw,
     reset: resetWithdraw,
+    setValue,
   } = useForm<WithdrawFormData>({
     resolver: zodResolver(withdrawSchema) as any,
     mode: "onChange",
@@ -143,6 +145,7 @@ const Withdraw = () => {
           ) : (
             "0 SoUSD"
           )}
+          <Max onPress={() => setValue("amount", ethereumBalance?.toString() ?? "0")} />
         </Text>
       </View>
 
