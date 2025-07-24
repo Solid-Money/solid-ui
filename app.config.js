@@ -10,6 +10,7 @@ export default {
     newArchEnabled: true,
     owner: "fuseio",
     ios: {
+      googleServicesFile: "./GoogleService-Info.plist",
       supportsTablet: true,
       bundleIdentifier: "xyz.solid.ios",
       infoPlist: {
@@ -28,6 +29,7 @@ export default {
       }
     },
     android: {
+      googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#262626",
@@ -93,12 +95,15 @@ export default {
         {
           ios: {
             deploymentTarget: "15.1",
+            useFrameworks: "static",
           },
           android: {
             compileSdkVersion: 35,
           },
         },
       ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
     ],
     experiments: {
       typedRoutes: true,

@@ -1,16 +1,11 @@
-import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import {
-  createAppKit as createAppKitNative,
-  defaultWagmiConfig
-} from "@reown/appkit-wagmi-react-native";
-import { createAppKit } from '@reown/appkit/react';
-import { Platform } from 'react-native';
-import { Chain, createPublicClient } from 'viem';
-import { http } from 'wagmi';
-import { fuse, mainnet } from 'wagmi/chains';
+polyfill();
 
-import { EXPO_PUBLIC_ALCHEMY_API_KEY, EXPO_PUBLIC_REOWN_PROJECT_ID } from './config';
-import { IS_SERVER } from './utils';
+import { Chain, createPublicClient } from 'viem';
+import { createConfig, http } from 'wagmi';
+import { fuse, mainnet } from 'wagmi/chains';
+import { Platform } from 'react-native';
+
+import { EXPO_PUBLIC_ALCHEMY_API_KEY } from './config';
 
 const chains: [Chain, ...Chain[]] = [
   fuse,
@@ -26,50 +21,31 @@ export const rpcUrls: Record<number, string> = {
   [mainnet.id]: `https://eth-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
 }
 
+const transports: Record<number, ReturnType<typeof http>> = {
+  [fuse.id]: http(rpcUrls[fuse.id]),
+  [mainnet.id]: http(rpcUrls[mainnet.id]),
+}
+
 export const publicClient = (chainId: number) => createPublicClient({
   chain: chains.find(chain => chain.id === chainId),
   transport: http(rpcUrls[chainId])
 })
 
-const metadata = {
-  name: "Solid",
-  description: "Your crypto savings app",
-  url: Platform.OS === 'web' && !IS_SERVER ? window.location.origin : "https://solid.xyz",
-  icons: ["https://avatars.githubusercontent.com/u/179229932"],
-  redirect: {
-    native: "solid://",
-    universal: "solid.xyz",
-  },
-};
+export const config = createConfig({
+  chains,
+  transports
+})
 
-const createWagmi = () => {
-  if (Platform.OS === 'web') {
-    const wagmiAdapter = new WagmiAdapter({
-      networks: chains,
-      projectId: EXPO_PUBLIC_REOWN_PROJECT_ID,
-    })
+// see: https://github.com/MobileWalletProtocol/smart-wallet-expo-example/blob/ab34404a875fffafb7b1b3e179dd61b22a20490c/src/wagmiDemo.tsx#L122
+function polyfill() {
+  if (Platform.OS === "web") return;
 
-    return {
-      config: wagmiAdapter.wagmiConfig,
-      appKit: createAppKit({
-        adapters: [wagmiAdapter],
-        networks: chains,
-        projectId: EXPO_PUBLIC_REOWN_PROJECT_ID,
-        metadata,
-      })
-    }
-  } else {
-    const wagmiConfig = defaultWagmiConfig({ chains, projectId: EXPO_PUBLIC_REOWN_PROJECT_ID, metadata });
+  const noop = (() => { }) as any;
 
-    return {
-      config: wagmiConfig,
-      appKit: createAppKitNative({
-        projectId: EXPO_PUBLIC_REOWN_PROJECT_ID,
-        wagmiConfig,
-        defaultChain: mainnet
-      })
-    }
-  }
+  window.addEventListener = noop;
+  window.dispatchEvent = noop;
+  window.removeEventListener = noop;
+  window.CustomEvent = function CustomEvent() {
+    return {};
+  } as any;
 }
-
-export const wagmi = createWagmi();

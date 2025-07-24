@@ -25,7 +25,7 @@ import { useFuseVaultBalance } from "@/hooks/useVault";
 import { ADDRESSES } from "@/lib/config";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { ImageBackground, Platform, ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Address } from "viem";
@@ -39,8 +39,9 @@ export default function Dashboard() {
     data: balance,
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
-    isRefetching: isBalanceRefetching,
   } = useFuseVaultBalance(user?.safeAddress as Address);
+  const [balanceLoadingCount, setBalanceLoadingCount] = useState(0);
+  const balanceLoadOnce = balanceLoadingCount < 1;
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -79,7 +80,7 @@ export default function Dashboard() {
     enabled: !!userDepositTransactions,
   });
 
-  const {originalDepositAmount, firstDepositTimestamp} =
+  const { originalDepositAmount, firstDepositTimestamp } =
     useDepositCalculations(userDepositTransactions, balance, lastTimestamp);
 
   useEffect(() => {
@@ -89,7 +90,13 @@ export default function Dashboard() {
     refetchSendTransactions();
   }, [blockNumber, refetchBalance, refetchTransactions, refetchFormattedTransactions, refetchSendTransactions]);
 
-  if (isBalanceLoading || isTransactionsLoading) {
+  useEffect(() => {
+    if (isBalanceLoading) {
+      setBalanceLoadingCount((prev) => prev + 1);
+    }
+  }, [isBalanceLoading]);
+
+  if (balanceLoadOnce || isTransactionsLoading) {
     return <Loading />;
   }
 
@@ -160,7 +167,7 @@ export default function Dashboard() {
                             fontSize: isScreenMedium ? 96 : 48,
                             fontWeight: isScreenMedium ? "medium" : "semibold",
                             color: "#ffffff",
-                            marginRight: -5,
+                            marginRight: -2,
                           },
                           decimalText: {
                             fontSize: isScreenMedium ? 40 : 24,
@@ -232,7 +239,7 @@ export default function Dashboard() {
                     Total deposited
                   </Text>
                   <Text className="text-2xl font-semibold">
-                    {isBalanceLoading && !isBalanceRefetching ? (
+                    {balanceLoadOnce ? (
                       <Skeleton className="w-24 h-8 bg-primary/10 rounded-twice" />
                     ) : (
                       `$${originalDepositAmount.toLocaleString()}`
@@ -248,8 +255,7 @@ export default function Dashboard() {
                   </Text>
                   <View className="flex-row items-center">
                     <Text className="text-2xl font-semibold">$</Text>
-                    {(isTotalAPYLoading || isBalanceLoading) &&
-                      !isBalanceRefetching ? (
+                    {isTotalAPYLoading || balanceLoadOnce ? (
                       <Skeleton className="w-20 h-8 bg-primary/10 rounded-twice" />
                     ) : (
                       <SavingCountUp
