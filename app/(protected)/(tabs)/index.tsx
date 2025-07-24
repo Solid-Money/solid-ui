@@ -31,6 +31,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Address } from "viem";
 import { mainnet } from "viem/chains";
 import { useBlockNumber } from "wagmi";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -82,6 +83,13 @@ export default function Dashboard() {
 
   const { originalDepositAmount, firstDepositTimestamp } =
     useDepositCalculations(userDepositTransactions, balance, lastTimestamp);
+
+  const getTransactionClassName = (totalTransactions: number, index: number) => {
+    const classNames = [];
+    if (index === 0) classNames.push("rounded-t-twice");
+    if (index === totalTransactions - 1) classNames.push("rounded-b-twice border-0");
+    return cn(...classNames);
+  };
 
   useEffect(() => {
     refetchBalance();
@@ -292,7 +300,7 @@ export default function Dashboard() {
                       key={transaction.timestamp}
                       {...transaction}
                       classNames={{
-                        container: index === 0 ? "rounded-t-twice" : index === transactions.length - 1 ? "rounded-b-twice border-0" : "",
+                        container: getTransactionClassName(transactions.length, index),
                       }}
                     />
                   ))
