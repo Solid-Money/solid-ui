@@ -10,7 +10,7 @@ export default {
     newArchEnabled: true,
     owner: "fuseio",
     ios: {
-      googleServicesFile: "./GoogleService-Info.plist",
+      googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? "./GoogleService-Info.plist",
       supportsTablet: true,
       bundleIdentifier: "xyz.solid.ios",
       infoPlist: {
@@ -19,7 +19,6 @@ export default {
       associatedDomains: [
         "webcredentials:solid.xyz",
         "applinks:solid.xyz",
-        ...(process.env.EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST ? [`webcredentials:${process.env.EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST}?mode=developer`] : []),
       ],
       appleTeamId: "QC9255BHMY",
       splash: {
@@ -29,7 +28,7 @@ export default {
       }
     },
     android: {
-      googleServicesFile: "./google-services.json",
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#262626",
@@ -49,13 +48,7 @@ export default {
             {
               scheme: "https",
               host: "solid.xyz",
-              pathPrefix: "/",
             },
-            ...(process.env.EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST ? [{
-              scheme: "https",
-              host: process.env.EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST,
-              pathPrefix: "/",
-            }] : []),
           ],
           category: ["BROWSABLE", "DEFAULT"],
         },
