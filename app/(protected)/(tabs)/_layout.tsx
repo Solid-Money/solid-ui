@@ -72,13 +72,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="buy-crypto/index"
-        options={{
-          title: 'Buy Crypto',
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="wallet"
         options={{
           title: 'Wallet',

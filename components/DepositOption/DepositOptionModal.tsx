@@ -9,7 +9,6 @@ import { DEPOSIT_MODAL } from "@/constants/modals";
 import getTokenIcon from "@/lib/getTokenIcon";
 import { useDepositStore } from "@/store/useDepositStore";
 import AnimatedModal from "../AnimatedModal";
-import BuyCrypto from "../BuyCrypto";
 import { DepositToVaultForm } from "../DepositToVault";
 import TransactionStatus from "../TransactionStatus";
 import { buttonVariants } from "../ui/button";
@@ -23,7 +22,6 @@ const DepositOptionModal = () => {
 
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(isForm && address);
-  const isBuyCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
   const isTransactionStatus = currentModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
@@ -63,17 +61,12 @@ const DepositOptionModal = () => {
       return <DepositToVaultForm />;
     }
 
-    if (isBuyCrypto) {
-      return <BuyCrypto />;
-    }
-
     return <DepositOptions />;
   };
 
   const getContentKey = () => {
     if (isTransactionStatus) return 'transaction-status';
     if (isFormAndAddress) return 'deposit-form';
-    if (isBuyCrypto) return 'buy-crypto';
     return 'deposit-options';
   };
 
@@ -83,14 +76,11 @@ const DepositOptionModal = () => {
   };
 
   const getContentClassName = () => {
-    if (isBuyCrypto) {
-      return "w-[470px] h-[80vh] md:h-[85vh]";
-    }
     return "";
   };
 
   const getContainerClassName = () => {
-    if (!isFormAndAddress && !isBuyCrypto && !isTransactionStatus) {
+    if (!isFormAndAddress && !isTransactionStatus) {
       return "min-h-[40rem]";
     }
     return "";
@@ -124,7 +114,7 @@ const DepositOptionModal = () => {
       title={getTitle()}
       contentClassName={getContentClassName()}
       containerClassName={getContainerClassName()}
-      showBackButton={isFormAndAddress || isBuyCrypto}
+      showBackButton={isFormAndAddress}
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}
       isForward={isForward}

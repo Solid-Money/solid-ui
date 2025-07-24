@@ -48,13 +48,6 @@ const DepositOptions = () => {
       isLoading: isWalletOpen
     },
     {
-      text: "Debit/Credit Card",
-      icon: <CreditCard color="white" size={26} />,
-      onPress: () => {
-        setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
-      },
-    },
-    {
       text: "Bank Deposit",
       icon: <Landmark color="white" size={26} />,
       onPress: () => { },
