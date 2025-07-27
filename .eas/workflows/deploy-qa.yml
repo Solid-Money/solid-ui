@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Install EAS CLI
-        run: pnpm add -g eas-cli
+        run: npm install -g eas-cli
       - name: Build
         run: npx expo export --platform web
       - name: Publish
