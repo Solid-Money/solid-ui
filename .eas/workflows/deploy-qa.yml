@@ -11,6 +11,8 @@ jobs:
     steps:
       - uses: eas/checkout
       - uses: eas/use_npm_token
+      - name: Setup pnpm
+        run: npm install -g pnpm
       - name: Install dependencies
         run: pnpm install
       - name: Install EAS CLI
