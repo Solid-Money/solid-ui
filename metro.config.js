@@ -7,12 +7,6 @@ const config = getDefaultConfig(__dirname)
 // Custom resolver to handle platform-specific modules
 config.resolver = {
   ...config.resolver,
-  unstable_enablePackageExports: true,
-  unstable_conditionNames: [
-    "react-native",
-    "browser",
-    "require",
-  ],
   resolveRequest: (context, moduleName, platform) => {
     // Block browser-specific modules when building for native platforms
     if (platform !== 'web' && (
