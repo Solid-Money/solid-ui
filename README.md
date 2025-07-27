@@ -7,7 +7,7 @@ Frontend of your crypto savings app.
 1. Install dependencies
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 2. Start the app
@@ -15,6 +15,29 @@ Frontend of your crypto savings app.
    ```bash
    npx expo start
    ```
+
+3. Prebuild the ios and android directories
+
+> [!IMPORTANT]  
+> The thirdweb SDK uses native modules, which means it cannot run on expo GO. You must build the ios and android apps to link the native modules.
+
+```bash
+npx expo prebuild
+```
+
+This will create the `ios` and `android` directories.
+
+4. Start the app
+
+```bash
+yarn ios
+```
+
+or
+
+```bash
+yarn android
+```
 
 In the output, you'll find options to open the app in a
 

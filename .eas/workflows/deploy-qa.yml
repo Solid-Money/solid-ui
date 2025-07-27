@@ -12,9 +12,9 @@ jobs:
       - uses: eas/checkout
       - uses: eas/use_npm_token
       - name: Install dependencies
-        run: npm install --force
+        run: pnpm install
       - name: Install EAS CLI
-        run: npm install -g eas-cli
+        run: pnpm add -g eas-cli
       - name: Build
         run: npx expo export --platform web
       - name: Publish

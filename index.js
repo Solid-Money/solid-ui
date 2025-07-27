@@ -6,4 +6,3 @@ if (Platform.OS !== "web") {
 
 import "react-native-reanimated";
 import "expo-router/entry";
-
