@@ -110,11 +110,11 @@ export default function RootLayout() {
                     }}
                   />
                 </Stack>
+                <PortalHost />
               </ApolloProvider>
             </QueryClientProvider>
           </WagmiProvider>
         </ThirdwebProvider>
-        <PortalHost />
         <Toast {...toastProps} />
       </TurnkeyProvider>
     </SafeAreaProvider>
