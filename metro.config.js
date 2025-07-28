@@ -26,8 +26,13 @@ config.resolver = {
     }
 
     // Handle Node.js built-ins for React Native
-    if (platform !== 'web' && moduleName === 'stream') {
-      return context.resolveRequest(context, 'stream-browserify', platform);
+    if (platform !== 'web') {
+      if (moduleName === 'stream') {
+        return context.resolveRequest(context, 'stream-browserify', platform);
+      }
+      if (moduleName === 'crypto') {
+        return context.resolveRequest(context, 'react-native-quick-crypto', platform);
+      }
     }
 
     // Default resolver for all other modules
