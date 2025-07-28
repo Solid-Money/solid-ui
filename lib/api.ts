@@ -479,3 +479,32 @@ export const login = async (username: string, signedRequest: any) => {
   if (!response.ok) throw response;
   return response.json();
 };
+
+export const createMercuryoTransaction = async (
+  userIp: string,
+  transactionId: string
+): Promise<string> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/mercuryo/transactions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        userIp,
+        transactionId,
+      }),
+    }
+  );
+
+  if (!response.ok) throw response;
+
+  const data: { widgetUrl: string } = await response.json();
+  return data.widgetUrl;
+};
