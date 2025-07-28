@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 
 import { LayerZeroTransactionStatus, TransactionType } from "@/lib/types";
 import { cn, formatNumber } from "@/lib/utils";
@@ -7,6 +7,7 @@ import TransactionDropdown from "./TransactionDropdown";
 import { useDimension } from "@/hooks/useDimension";
 import getTokenIcon from "@/lib/getTokenIcon";
 import RenderTokenIcon from "../RenderTokenIcon";
+import TransactionDrawer from "./TransactionDrawer";
 
 type TransactionClassNames = {
   container?: string;
@@ -96,7 +97,10 @@ const Transaction = ({
             </Text>
           </View>
         )}
-        <TransactionDropdown url={url} />
+        {Platform.OS === 'web' ?
+          <TransactionDropdown url={url} /> :
+          <TransactionDrawer url={url} />
+        }
       </View>
     </View>
   );

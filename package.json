@@ -15,6 +15,7 @@
     "@coinbase/wallet-mobile-sdk": "^1.1.2",
     "@expo-google-fonts/mona-sans": "^0.3.0",
     "@expo/vector-icons": "^14.1.0",
+    "@gorhom/bottom-sheet": "^5.1.8",
     "@hookform/resolvers": "^5.1.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-dialog": "^1.1.13",
@@ -47,6 +48,7 @@
     "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "events": "^3.3.0",
     "expo": "^53.0.20",
     "expo-application": "~6.1.4",
     "expo-blur": "~14.1.5",
@@ -68,6 +70,7 @@
     "expo-updates": "^0.28.17",
     "expo-web-browser": "~14.2.0",
     "graphql": "^16.11.0",
+    "https-browserify": "^1.0.0",
     "immer": "^10.1.1",
     "lucide-react-native": "^0.510.0",
     "nativewind": "^4.1.23",
@@ -83,7 +86,6 @@
     "react-native-mmkv": "^3.3.0",
     "react-native-modal": "^14.0.0-rc.1",
     "react-native-passkey": "^3.1.0",
-    "react-native-passkeys": "^0.3.3",
     "react-native-qrcode-svg": "^6.3.15",
     "react-native-quick-crypto": "^0.7.15",
     "react-native-reanimated": "~3.17.4",
@@ -93,6 +95,8 @@
     "react-native-toast-message": "^2.3.3",
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
@@ -119,7 +123,10 @@
     "lucide-react-native": {
       "react": "^19"
     },
-    "ox": "0.6.12"
+    "ox": "0.6.12",
+    "@thirdweb-dev/react-native-adapter": {
+      "expo-linking": "~7.1.7"
+    }
   },
   "private": true
 }
