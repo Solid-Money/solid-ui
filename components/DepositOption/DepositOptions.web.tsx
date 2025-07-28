@@ -1,7 +1,7 @@
 import { DEPOSIT_MODAL } from "@/constants/modals";
 import { client } from "@/lib/thirdweb";
 import { useDepositStore } from "@/store/useDepositStore";
-import { Landmark, Wallet } from "lucide-react-native";
+import { CreditCard, Landmark, Wallet } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { View } from "react-native";
 import { useActiveAccount, useConnectModal } from "thirdweb/react";
@@ -46,6 +46,13 @@ const DepositOptions = () => {
       icon: <Wallet color="white" size={26} />,
       onPress: openWallet,
       isLoading: isWalletOpen
+    },
+    {
+      text: "Debit/Credit Card",
+      icon: <CreditCard color="white" size={26} />,
+      onPress: () => {
+        setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
+      },
     },
     {
       text: "Bank Deposit",

@@ -13,11 +13,11 @@ export const DEPOSIT_MODAL = {
   },
   OPEN_FORM: {
     name: 'open_form',
-    number: 2,
+    number: 3,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
-    number: 3,
+    number: 4,
   },
 }
 
