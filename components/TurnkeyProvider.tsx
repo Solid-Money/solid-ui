@@ -14,7 +14,7 @@ export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) =>
   Platform.OS === "web" ? (
-     children 
+    children
   ) : (
     <TurnkeyProviderNative
       config={{

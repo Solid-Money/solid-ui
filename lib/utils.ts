@@ -30,7 +30,7 @@ export function compactNumberFormat(number: number) {
   }).format(number);
 }
 
-export function formatNumber(number: number, maximumFractionDigits = 2) {
+export function formatNumber(number: number, maximumFractionDigits = 6) {
   return new Intl.NumberFormat('en-us', {
     maximumFractionDigits,
   }).format(number);
@@ -128,4 +128,11 @@ export const isSoUSDFuse = (contractAddress: string): boolean => {
 
 export const isSoUSDToken = (contractAddress: string): boolean => {
   return isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress);
+};
+
+// see: https://www.nativewind.dev/docs/core-concepts/differences#rem-sizing
+export const remToPx = Platform.OS === 'web' ? 16 : 14;
+
+export const fontSize = (rem: number) => {
+  return rem * remToPx;
 };

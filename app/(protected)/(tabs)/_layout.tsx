@@ -1,13 +1,16 @@
 import { Tabs } from 'expo-router';
-import { CreditCard, LayoutDashboard, Leaf, Plus } from 'lucide-react-native';
+import { CreditCard, LayoutDashboard, Leaf, Plus, Wallet } from 'lucide-react-native';
 import React from 'react';
 import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
+import { useWalletTokens } from '@/hooks/useWalletTokens';
 
 export default function TabLayout() {
+  const { hasTokens } = useWalletTokens();
+
   return (
     <Tabs
       screenOptions={{
@@ -15,17 +18,19 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {
-            backgroundColor: "#262626",
-            borderColor: "#686163",
-            display: Platform.OS === 'web' ? 'none' : 'flex',
-          },
-        }),
+        tabBarStyle: {
+          display: Platform.OS === 'web' || !hasTokens ? 'none' : 'flex',
+          ...Platform.select({
+            ios: {
+              // Use a transparent background on iOS to show the blur effect
+              position: 'absolute',
+            },
+            default: {
+              backgroundColor: "#262626",
+              borderColor: "#686163",
+            },
+          })
+        },
       }}
       backBehavior="order"
     >
@@ -54,6 +59,7 @@ export default function TabLayout() {
           title: 'Deposit',
           headerShown: false,
           tabBarIcon: ({ color }) => <Plus size={28} color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -61,6 +67,7 @@ export default function TabLayout() {
         options={{
           title: 'Card',
           tabBarIcon: ({ color }) => <CreditCard size={28} color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -68,14 +75,22 @@ export default function TabLayout() {
         options={{
           title: 'Earn',
           tabBarIcon: ({ color }) => <Leaf size={28} color={color} />,
-          href: Platform.OS === 'web' ? null : path.EARN,
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="buy-crypto/index"
+        options={{
+          title: 'Buy Crypto',
+          href: null,
         }}
       />
       <Tabs.Screen
         name="wallet"
         options={{
           title: 'Wallet',
-          href: null,
+          tabBarIcon: ({ color }) => <Wallet size={28} color={color} />,
+          href: hasTokens ? path.WALLET : null,
         }}
       />
     </Tabs>

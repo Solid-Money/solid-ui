@@ -48,7 +48,7 @@ const SavingCard = ({ balance, apy, lastTimestamp, className }: SavingCardProps)
       </View>
 
       <View className="flex-row justify-between items-center">
-        <Text className="text-3xl text-brand font-semibold">${formatNumber(liveYield, 10)}</Text>
+        <Text className="text-3xl text-brand font-semibold">${formatNumber(liveYield)}</Text>
         {/* <Image source={require('@/assets/images/bitcoin-usdc-4x.png')} style={{ width: 53, height: 28 }} /> */}
       </View>
     </LinearGradient>

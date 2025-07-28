@@ -4,20 +4,23 @@ import "@/global.css";
 import { infoClient } from "@/graphql/clients";
 import { config } from "@/lib/wagmi";
 import { ApolloProvider } from "@apollo/client";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
-import { ThirdwebProvider } from "thirdweb/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import Head from "expo-router/head";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Platform } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { ThirdwebProvider } from "thirdweb/react";
 import { WagmiProvider } from "wagmi";
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from "expo-router";
 
 // Keep the splash screen visible while we fetch resources
@@ -77,6 +80,32 @@ export default function RootLayout() {
     return null;
   }
 
+  const AppContent = () => (
+    <Stack>
+      <Stack.Screen
+        name="(protected)"
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
+      />
+      <Stack.Screen
+        name="register"
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
+      />
+      <Stack.Screen
+        name="welcome"
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
+      />
+    </Stack>
+  );
+
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <TurnkeyProvider>
@@ -84,37 +113,25 @@ export default function RootLayout() {
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={infoClient}>
-                <Head>
-                  <title>Solid</title>
-                </Head>
-                <Stack>
-                  <Stack.Screen
-                    name="(protected)"
-                    options={{
-                      headerShown: false,
-                      animation: "none",
-                    }}
-                  />
-                  <Stack.Screen
-                    name="register"
-                    options={{
-                      headerShown: false,
-                      animation: "none",
-                    }}
-                  />
-                  <Stack.Screen
-                    name="welcome"
-                    options={{
-                      headerShown: false,
-                      animation: "none",
-                    }}
-                  />
-                </Stack>
+                {Platform.OS === "web" ? (
+                  <>
+                    <Head>
+                      <title>Solid</title>
+                    </Head>
+                    <AppContent />
+                    <PortalHost />
+                  </>
+                ) : (
+                  <GestureHandlerRootView>
+                    <BottomSheetModalProvider>
+                      <AppContent />
+                    </BottomSheetModalProvider>
+                  </GestureHandlerRootView>
+                )}
               </ApolloProvider>
             </QueryClientProvider>
           </WagmiProvider>
         </ThirdwebProvider>
-        <PortalHost />
         <Toast {...toastProps} />
       </TurnkeyProvider>
     </SafeAreaProvider>

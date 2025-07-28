@@ -1,4 +1,4 @@
-import { DashboardHeader, DashboardHeaderMobile } from "@/components/Dashboard";
+import { DashboardHeader } from "@/components/Dashboard";
 import FAQ from "@/components/FAQ";
 import Loading from "@/components/Loading";
 import Navbar from "@/components/Navbar";
@@ -31,7 +31,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Address } from "viem";
 import { mainnet } from "viem/chains";
 import { useBlockNumber } from "wagmi";
-import { cn } from "@/lib/utils";
+import { cn, fontSize } from "@/lib/utils";
+import { calculateYield } from "@/lib/financial";
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -122,21 +123,13 @@ export default function Dashboard() {
         <ScrollView className="flex-1">
           {Platform.OS === 'web' && <Navbar />}
           <View className="gap-12 md:gap-16 px-4 py-8 w-full max-w-7xl mx-auto">
-            {Platform.OS === 'web' ? (
-              <DashboardHeader />
-            ) : (
-              <DashboardHeaderMobile
-                balance={balance ?? 0}
-                totalAPY={totalAPY ?? 0}
-                lastTimestamp={firstDepositTimestamp ?? 0}
-                principal={originalDepositAmount}
-              />
-            )}
+            <DashboardHeader />
             <LinearGradient
               colors={["rgba(126, 126, 126, 0.3)", "rgba(126, 126, 126, 0.2)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               className="web:md:flex web:md:flex-row rounded-twice overflow-hidden"
+              style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
             >
               <ImageBackground
                 source={require("@/assets/images/solid-black-large.png")}
@@ -156,7 +149,7 @@ export default function Dashboard() {
                       Total value
                     </Text>
                     <View className="flex-row items-center">
-                      <Text className="text-5xl md:text-8xl text-foreground font-semibold">
+                      <Text className="text-5xl md:text-8xl native:leading-[1.2] text-foreground font-semibold">
                         $
                       </Text>
                       <SavingCountUp
@@ -164,7 +157,6 @@ export default function Dashboard() {
                         apy={totalAPY ?? 0}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
-                        decimalPlaces={10}
                         classNames={{
                           wrapper: "text-foreground",
                           decimalSeparator:
@@ -172,13 +164,13 @@ export default function Dashboard() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? 96 : 48,
+                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
                             fontWeight: isScreenMedium ? "medium" : "semibold",
                             color: "#ffffff",
                             marginRight: -2,
                           },
                           decimalText: {
-                            fontSize: isScreenMedium ? 40 : 24,
+                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
                             fontWeight: isScreenMedium ? "medium" : "semibold",
                             color: "#ffffff",
                           },
@@ -191,7 +183,7 @@ export default function Dashboard() {
                       Interest earned
                     </Text>
                     <View className="flex-row items-center">
-                      <Text className="text-4xl md:text-4.5xl text-brand font-medium">
+                      <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-brand font-medium">
                         $
                       </Text>
                       <SavingCountUp
@@ -200,18 +192,17 @@ export default function Dashboard() {
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
                         mode={SavingMode.INTEREST_ONLY}
-                        decimalPlaces={4}
                         classNames={{
                           decimalSeparator: "md:text-xl text-brand font-medium",
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? 40 : 36,
+                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
                             fontWeight: "semibold",
                             color: "#94F27F",
                           },
                           decimalText: {
-                            fontSize: isScreenMedium ? 20 : 18,
+                            fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
                             color: "#94F27F",
                           },
                         }}
@@ -244,47 +235,37 @@ export default function Dashboard() {
 
                 <View className="p-6 md:p-7">
                   <Text className="md:text-lg text-primary/50 font-medium">
-                    Total deposited
+                    P&L
                   </Text>
                   <Text className="text-2xl font-semibold">
                     {balanceLoadOnce ? (
                       <Skeleton className="w-24 h-8 bg-primary/10 rounded-twice" />
                     ) : (
-                      `$${originalDepositAmount.toLocaleString()}`
+                      `$${calculateYield(
+                        originalDepositAmount,
+                        totalAPY ?? 0,
+                        firstDepositTimestamp ?? 0,
+                        Math.floor(Date.now() / 1000),
+                        originalDepositAmount,
+                        SavingMode.INTEREST_ONLY
+                      ).toFixed(6)}`
                     )}
                   </Text>
                 </View>
 
                 <View className="border-t border-border/50 hidden md:block" />
 
-                <View className="p-6 md:p-7 hidden md:block">
+                <View className="p-6 md:p-7">
                   <Text className="md:text-lg text-primary/50 font-medium">
-                    Total earned
+                    Projected 1Y Earnings
                   </Text>
-                  <View className="flex-row items-center">
-                    <Text className="text-2xl font-semibold">$</Text>
-                    {isTotalAPYLoading || balanceLoadOnce ? (
-                      <Skeleton className="w-20 h-8 bg-primary/10 rounded-twice" />
+                  <Text className="text-2xl font-semibold">
+                    {balanceLoadOnce ? (
+                      <Skeleton className="w-24 h-8 bg-primary/10 rounded-twice" />
                     ) : (
-                      <SavingCountUp
-                        balance={balance ?? 0}
-                        apy={totalAPY ?? 0}
-                        lastTimestamp={firstDepositTimestamp ?? 0}
-                        principal={originalDepositAmount}
-                        styles={{
-                          wholeText: {
-                            fontSize: 24,
-                            fontWeight: "semibold",
-                            color: "#ffffff",
-                          },
-                          decimalText: {
-                            fontSize: 16,
-                            color: "#ffffff",
-                          },
-                        }}
-                      />
+                      `$${balance && totalAPY ? (balance * totalAPY).toFixed(6) : 0}`
                     )}
-                  </View>
+                  </Text>
                 </View>
               </View>
             </LinearGradient>
