@@ -35,7 +35,7 @@ function DepositToVaultForm() {
 
   const isLoading = depositStatus === Status.PENDING || isPending;
   const { data: totalAPY } = useTotalAPY();
-  const { costInUsd, loading } = useEstimateGas();
+  const { costInUsd, loading } = useEstimateGas(3800000n);
 
   const formattedBalance = balance ? formatUnits(balance, 6) : "0";
 
@@ -53,7 +53,7 @@ function DepositToVaultForm() {
         .refine((val) => Number(val) > 0, "Amount must be greater than 0")
         .refine(
           (val) => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount, 4)} USDC`
+          `Available balance is ${formatNumber(balanceAmount)} USDC`
         )
         .transform((val) => Number(val)),
     });
@@ -68,6 +68,7 @@ function DepositToVaultForm() {
     watch,
     reset,
     setValue,
+    trigger,
   } = useForm<DepositFormData>({
     resolver: zodResolver(depositSchema) as any,
     mode: "onChange",
@@ -77,8 +78,8 @@ function DepositToVaultForm() {
   });
 
   const watchedAmount = watch("amount");
-  const { amountOut, isLoading: isPreviewDepositLoading } =
-    usePreviewDeposit(watchedAmount);
+  const { amountOut, isLoading: isPreviewDepositLoading, exchangeRate } =
+    usePreviewDeposit(watchedAmount || "0");
 
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
@@ -147,8 +148,13 @@ function DepositToVaultForm() {
           </View>
         </View>
         <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-          <Wallet size={16} /> {formatNumber(Number(formattedBalance), 6)} USDC
-          <Max onPress={() => setValue("amount", formattedBalance)} />
+          <Wallet size={16} /> {formatNumber(Number(formattedBalance))} USDC
+          <Max
+            onPress={() => {
+              setValue("amount", formattedBalance);
+              trigger("amount");
+            }}
+          />
         </Text>
       </View>
       <TokenDetails>
@@ -156,7 +162,7 @@ function DepositToVaultForm() {
           <Text className="text-lg opacity-40 md:w-40">You will receive</Text>
           <View className="flex-row items-center gap-2">
             <Image
-              source={require("@/assets/images/usdc.png")}
+              source={require("@/assets/images/sousd-4x.png")}
               style={{ width: 34, height: 34 }}
               contentFit="contain"
             />
@@ -173,6 +179,18 @@ function DepositToVaultForm() {
             {/* <Text className="text-lg opacity-40 text-right">
                       {`(${compactNumberFormat(costInUsd)} USDC in fee)`}
                     </Text> */}
+          </View>
+        </View>
+        <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
+          <Text className="text-lg opacity-40 md:w-40">Exchange rate</Text>
+          <View className="flex-row items-baseline gap-2">
+            <Text className="text-2xl font-semibold">
+              {exchangeRate ? (
+                formatUnits(exchangeRate, 6)
+              ) : (
+                <Skeleton className="w-20 h-8" />
+              )}
+            </Text>
           </View>
         </View>
         <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">

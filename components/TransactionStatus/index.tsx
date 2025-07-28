@@ -49,7 +49,7 @@ const TransactionStatus = ({
             <RenderTokenIcon tokenIcon={icon} size={40} />
             <View>
               <View className="flex-row gap-1">
-                <Text className="font-medium">{formatNumber(amount, 2)}</Text>
+                <Text className="font-medium">{formatNumber(amount)}</Text>
                 <Text className="text-muted-foreground">{token}</Text>
               </View>
               <View className="flex-row gap-1">

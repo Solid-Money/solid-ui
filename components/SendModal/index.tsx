@@ -64,7 +64,7 @@ const Send = ({
         .string()
         .refine((val) => val !== "" && !isNaN(Number(val)), "Please enter a valid amount")
         .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount, 4)} ${tokenSymbol}`)
+        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`)
         .transform((val) => Number(val)),
       address: z
         .string()
@@ -81,6 +81,7 @@ const Send = ({
     formState: { errors, isValid },
     reset,
     setValue,
+    trigger,
   } = useForm<SendFormData>({
     resolver: zodResolver(sendSchema) as any,
     mode: "onChange",
@@ -172,7 +173,12 @@ const Send = ({
           ) : (
             `0 ${tokenSymbol}`
           )}
-          <Max onPress={() => setValue("amount", formatUnits(balance ?? 0n, tokenDecimals))} />
+          <Max
+            onPress={() => {
+              setValue("amount", formatUnits(balance ?? 0n, tokenDecimals));
+              trigger("amount");
+            }}
+          />
         </Text>
       </View>
 

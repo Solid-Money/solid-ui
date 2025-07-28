@@ -79,7 +79,6 @@ export default function Wallet() {
                   apy={totalAPY ?? 0}
                   lastTimestamp={firstDepositTimestamp ?? 0}
                   principal={originalDepositAmount}
-                  decimalPlaces={4}
                   classNames={{
                     wrapper: "text-foreground",
                     decimalSeparator:
