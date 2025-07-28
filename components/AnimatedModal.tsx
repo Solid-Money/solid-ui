@@ -1,6 +1,8 @@
+import { ArrowLeft } from "lucide-react-native";
 import React, { ReactNode } from "react";
-import { Easing, View } from "react-native";
+import { View } from "react-native";
 import Animated, {
+  Easing,
   FadeInLeft,
   FadeInRight,
   FadeOutLeft,
@@ -10,8 +12,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { ArrowLeft } from "lucide-react-native";
 
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +21,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const ANIMATION_DURATION = 150;
@@ -82,7 +83,7 @@ const AnimatedModal = ({
     return {
       height: withTiming(dialogHeight.value, {
         duration: ANIMATION_DURATION,
-        easing: Easing.inOut(Easing.quad),
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       }),
     };
   });

@@ -1,8 +1,8 @@
 import { Plus } from "lucide-react-native";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { View } from "react-native";
-import { Address } from "viem";
 import { useActiveAccount, useActiveWalletConnectionStatus } from "thirdweb/react";
+import { Address } from "viem";
 
 import { Text } from "@/components/ui/text";
 import { DEPOSIT_MODAL } from "@/constants/modals";

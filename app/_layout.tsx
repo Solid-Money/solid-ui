@@ -11,6 +11,7 @@ import { Stack } from "expo-router";
 import Head from "expo-router/head";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useState } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
@@ -79,6 +80,32 @@ export default function RootLayout() {
     return null;
   }
 
+  const AppContent = () => (
+    <Stack>
+      <Stack.Screen
+        name="(protected)"
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
+      />
+      <Stack.Screen
+        name="register"
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
+      />
+      <Stack.Screen
+        name="welcome"
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
+      />
+    </Stack>
+  );
+
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <TurnkeyProvider>
@@ -86,41 +113,25 @@ export default function RootLayout() {
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={infoClient}>
-                <GestureHandlerRootView>
-                  <BottomSheetModalProvider>
+                {Platform.OS === "web" ? (
+                  <>
                     <Head>
                       <title>Solid</title>
                     </Head>
-                    <Stack>
-                      <Stack.Screen
-                        name="(protected)"
-                        options={{
-                          headerShown: false,
-                          animation: "none",
-                        }}
-                      />
-                      <Stack.Screen
-                        name="register"
-                        options={{
-                          headerShown: false,
-                          animation: "none",
-                        }}
-                      />
-                      <Stack.Screen
-                        name="welcome"
-                        options={{
-                          headerShown: false,
-                          animation: "none",
-                        }}
-                      />
-                    </Stack>
-                  </BottomSheetModalProvider>
-                </GestureHandlerRootView>
+                    <AppContent />
+                    <PortalHost />
+                  </>
+                ) : (
+                  <GestureHandlerRootView>
+                    <BottomSheetModalProvider>
+                      <AppContent />
+                    </BottomSheetModalProvider>
+                  </GestureHandlerRootView>
+                )}
               </ApolloProvider>
             </QueryClientProvider>
           </WagmiProvider>
         </ThirdwebProvider>
-        <PortalHost />
         <Toast {...toastProps} />
       </TurnkeyProvider>
     </SafeAreaProvider>
