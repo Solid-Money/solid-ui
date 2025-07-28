@@ -36,7 +36,7 @@ const SavingCountUp = ({
   lastTimestamp,
   principal,
   mode = SavingMode.TOTAL,
-  decimalPlaces = 2,
+  decimalPlaces = 6,
   classNames,
   styles,
 }: SavingCountUpProps) => {

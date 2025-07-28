@@ -156,7 +156,6 @@ export default function Dashboard() {
                         apy={totalAPY ?? 0}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
-                        decimalPlaces={8}
                         classNames={{
                           wrapper: "text-foreground",
                           decimalSeparator:
@@ -192,7 +191,6 @@ export default function Dashboard() {
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
                         mode={SavingMode.INTEREST_ONLY}
-                        decimalPlaces={8}
                         classNames={{
                           decimalSeparator: "md:text-xl text-brand font-medium",
                         }}
