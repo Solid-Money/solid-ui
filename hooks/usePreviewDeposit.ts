@@ -12,6 +12,7 @@ export const usePreviewDeposit = (amount: string) => {
         queryFn: () =>
             fetchExchangeRate(queryClient),
         refetchOnWindowFocus: false,
+        enabled: !!amount,
     });
     const amountOut = (Number(amount) * 10 ** 6) / Number(exchangeRate);
     return { amountOut, isLoading, exchangeRate };

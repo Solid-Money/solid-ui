@@ -77,8 +77,8 @@ function DepositToVaultForm() {
   });
 
   const watchedAmount = watch("amount");
-  const { amountOut, isLoading: isPreviewDepositLoading } =
-    usePreviewDeposit(watchedAmount);
+  const { amountOut, isLoading: isPreviewDepositLoading, exchangeRate } =
+    usePreviewDeposit(watchedAmount || "0");
 
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
@@ -173,6 +173,18 @@ function DepositToVaultForm() {
             {/* <Text className="text-lg opacity-40 text-right">
                       {`(${compactNumberFormat(costInUsd)} USDC in fee)`}
                     </Text> */}
+          </View>
+        </View>
+        <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
+          <Text className="text-lg opacity-40 md:w-40">Exchange rate</Text>
+          <View className="flex-row items-baseline gap-2">
+            <Text className="text-2xl font-semibold">
+              {exchangeRate ? (
+                formatUnits(exchangeRate, 6)
+              ) : (
+                <Skeleton className="w-20 h-8" />
+              )}
+            </Text>
           </View>
         </View>
         <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
