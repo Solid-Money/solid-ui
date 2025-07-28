@@ -22,7 +22,7 @@ const DepositOptions = () => {
       if (address) return;
 
       setIsWalletOpen(true);
-      await connect({
+      const wallet = await connect({
         client,
         showThirdwebBranding: false,
         size: "compact",
@@ -32,11 +32,16 @@ const DepositOptions = () => {
           createWallet("io.metamask"),
         ]
       });
+      
+      // Only proceed to form if wallet connection was successful
+      if (wallet) {
+        setModal(DEPOSIT_MODAL.OPEN_FORM);
+      }
     } catch (error) {
       console.error(error);
+      // Don't change modal state on error - user can try again
     } finally {
       setIsWalletOpen(false);
-      setModal(DEPOSIT_MODAL.OPEN_FORM);
     }
   }, [isWalletOpen, connect, address, setModal]);
 
