@@ -81,34 +81,29 @@ export default function RootLayout() {
   }
 
   const AppContent = () => (
-    <>
-      <Head>
-        <title>Solid</title>
-      </Head>
-      <Stack>
-        <Stack.Screen
-          name="(protected)"
-          options={{
-            headerShown: false,
-            animation: "none",
-          }}
-        />
-        <Stack.Screen
-          name="register"
-          options={{
-            headerShown: false,
-            animation: "none",
-          }}
-        />
-        <Stack.Screen
-          name="welcome"
-          options={{
-            headerShown: false,
-            animation: "none",
-          }}
-        />
-      </Stack>
-    </>
+    <Stack>
+      <Stack.Screen
+        name="(protected)"
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
+      />
+      <Stack.Screen
+        name="register"
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
+      />
+      <Stack.Screen
+        name="welcome"
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
+      />
+    </Stack>
   );
 
   return (
@@ -120,6 +115,9 @@ export default function RootLayout() {
               <ApolloProvider client={infoClient}>
                 {Platform.OS === "web" ? (
                   <>
+                    <Head>
+                      <title>Solid</title>
+                    </Head>
                     <AppContent />
                     <PortalHost />
                   </>
