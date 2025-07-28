@@ -177,7 +177,7 @@ export default function Deposit() {
                   <Text className="text-base text-white">Fee</Text>
                 </View>
                 <Text className="text-base text-muted-foreground">
-                  {`~ $${loading ? "..." : formatNumber(costInUsd)
+                  {`~ $${loading ? "..." : formatNumber(costInUsd, 2)
                     } USDC in fee`}
                 </Text>
               </View>
