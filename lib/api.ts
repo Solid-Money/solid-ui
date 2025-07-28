@@ -1,6 +1,6 @@
 import axios, { AxiosRequestHeaders } from "axios";
 import { Platform } from "react-native";
-import { AuthenticationResponseJSON } from "react-native-passkeys/src/ReactNativePasskeys.types";
+// import { AuthenticationResponseJSON } from "react-native-passkeys/src/ReactNativePasskeys.types";
 import { fuse } from "viem/chains";
 
 import { explorerUrls } from "@/constants/explorers";
@@ -175,28 +175,28 @@ export const generateAuthenticationOptions = async () => {
   return response.json();
 };
 
-export const verifyAuthentication = async (
-  authenticationResponse: AuthenticationResponseJSON,
-  sessionId: string
-): Promise<User> => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/passkeys/authentication/verify`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getPlatformHeaders(),
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        ...authenticationResponse,
-        sessionId,
-      }),
-    }
-  );
-  if (!response.ok) throw response;
-  return response.json();
-};
+// export const verifyAuthentication = async (
+//   authenticationResponse: AuthenticationResponseJSON,
+//   sessionId: string
+// ): Promise<User> => {
+//   const response = await fetch(
+//     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/passkeys/authentication/verify`,
+//     {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//         ...getPlatformHeaders(),
+//       },
+//       credentials: "include",
+//       body: JSON.stringify({
+//         ...authenticationResponse,
+//         sessionId,
+//       }),
+//     }
+//   );
+//   if (!response.ok) throw response;
+//   return response.json();
+// };
 
 export const fetchTotalAPY = async () => {
   const response = await axios.get<number>(

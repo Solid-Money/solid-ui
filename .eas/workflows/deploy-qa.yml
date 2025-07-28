@@ -6,16 +6,8 @@ on:
 
 jobs:
   deploy:
+    type: deploy
     name: Deploy QA
     environment: preview
-    steps:
-      - uses: eas/checkout
-      - uses: eas/use_npm_token
-      - name: Install dependencies
-        run: npm install --force
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-      - name: Build
-        run: npx expo export --platform web
-      - name: Publish
-        run: eas deploy --alias qa
+    params:
+      alias: qa
