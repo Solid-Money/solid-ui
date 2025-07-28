@@ -49,6 +49,7 @@ const Withdraw = () => {
     watch: watchWithdraw,
     reset: resetWithdraw,
     setValue,
+    trigger,
   } = useForm<WithdrawFormData>({
     resolver: zodResolver(withdrawSchema) as any,
     mode: "onChange",
@@ -145,7 +146,12 @@ const Withdraw = () => {
           ) : (
             "0 SoUSD"
           )}
-          <Max onPress={() => setValue("amount", ethereumBalance?.toString() ?? "0")} />
+          <Max
+            onPress={() => {
+              setValue("amount", ethereumBalance?.toString() ?? "0");
+              trigger("amount");
+            }}
+          />
         </Text>
       </View>
 

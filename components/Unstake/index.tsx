@@ -49,6 +49,7 @@ const Unstake = () => {
     watch: watchBridge,
     reset: resetBridge,
     setValue,
+    trigger,
   } = useForm<BridgeFormData>({
     resolver: zodResolver(bridgeSchema) as any,
     mode: "onChange",
@@ -145,7 +146,12 @@ const Unstake = () => {
           ) : (
             "0 SoUSD"
           )}
-          <Max onPress={() => setValue("amount", fuseBalance?.toString() ?? "0")} />
+          <Max
+            onPress={() => {
+              setValue("amount", fuseBalance?.toString() ?? "0");
+              trigger("amount");
+            }}
+          />
         </Text>
       </View>
 

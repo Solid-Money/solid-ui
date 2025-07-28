@@ -68,6 +68,7 @@ function DepositToVaultForm() {
     watch,
     reset,
     setValue,
+    trigger,
   } = useForm<DepositFormData>({
     resolver: zodResolver(depositSchema) as any,
     mode: "onChange",
@@ -148,7 +149,12 @@ function DepositToVaultForm() {
         </View>
         <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
           <Wallet size={16} /> {formatNumber(Number(formattedBalance), 6)} USDC
-          <Max onPress={() => setValue("amount", formattedBalance)} />
+          <Max
+            onPress={() => {
+              setValue("amount", formattedBalance);
+              trigger("amount");
+            }}
+          />
         </Text>
       </View>
       <TokenDetails>

@@ -81,6 +81,7 @@ const Send = ({
     formState: { errors, isValid },
     reset,
     setValue,
+    trigger,
   } = useForm<SendFormData>({
     resolver: zodResolver(sendSchema) as any,
     mode: "onChange",
@@ -172,7 +173,12 @@ const Send = ({
           ) : (
             `0 ${tokenSymbol}`
           )}
-          <Max onPress={() => setValue("amount", formatUnits(balance ?? 0n, tokenDecimals))} />
+          <Max
+            onPress={() => {
+              setValue("amount", formatUnits(balance ?? 0n, tokenDecimals));
+              trigger("amount");
+            }}
+          />
         </Text>
       </View>
 
