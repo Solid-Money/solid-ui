@@ -7,6 +7,11 @@ const config = getDefaultConfig(__dirname)
 // Custom resolver to handle platform-specific modules
 config.resolver = {
   ...config.resolver,
+  alias: {
+    ...config.resolver?.alias,
+    stream: 'stream-browserify',
+    crypto: 'react-native-quick-crypto',
+  },
   resolveRequest: (context, moduleName, platform) => {
     // Block browser-specific modules when building for native platforms
     if (platform !== 'web' && (
@@ -20,9 +25,15 @@ config.resolver = {
       };
     }
 
+    // Handle Node.js built-ins for React Native
+    if (platform !== 'web' && moduleName === 'stream') {
+      return context.resolveRequest(context, 'stream-browserify', platform);
+    }
+
     // Default resolver for all other modules
     return context.resolveRequest(context, moduleName, platform);
   },
+  unstable_enablePackageExports: true,
 };
 
 module.exports = withNativeWind(config, { input: './global.css' })
