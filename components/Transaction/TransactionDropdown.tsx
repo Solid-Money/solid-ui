@@ -1,16 +1,17 @@
 import * as React from 'react';
-import { Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowUpRight, EllipsisVertical } from 'lucide-react-native';
 
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Text } from '@/components/ui/text';
+import {
+  pressTransactionCredenzaContent,
+  TransactionCredenzaContent,
+  TransactionCredenzaTrigger
+} from './TransactionCredenza';
 
 type TransactionDropdownProps = {
   url?: string;
@@ -27,20 +28,15 @@ const TransactionDropdown = ({ url }: TransactionDropdownProps) => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant='ghost' size='icon' className='w-6 opacity-60'>
-          <EllipsisVertical />
-        </Button>
+      <DropdownMenuTrigger>
+        <TransactionCredenzaTrigger />
       </DropdownMenuTrigger>
       <DropdownMenuContent insets={contentInsets} className='w-38 bg-card border-none rounded-xl'>
         <DropdownMenuItem
           className='h-10 web:cursor-pointer rounded-lg'
-          onPress={() => {
-            if (url) Linking.openURL(url);
-          }}
+          onPress={() => pressTransactionCredenzaContent(url)}
         >
-          <ArrowUpRight color='white' />
-          <Text>View transaction</Text>
+          <TransactionCredenzaContent />
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -4,12 +4,14 @@ import "@/global.css";
 import { infoClient } from "@/graphql/clients";
 import { config } from "@/lib/wagmi";
 import { ApolloProvider } from "@apollo/client";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { PortalHost } from "@rn-primitives/portal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import Head from "expo-router/head";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { ThirdwebProvider } from "thirdweb/react";
@@ -84,32 +86,36 @@ export default function RootLayout() {
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={infoClient}>
-                <Head>
-                  <title>Solid</title>
-                </Head>
-                <Stack>
-                  <Stack.Screen
-                    name="(protected)"
-                    options={{
-                      headerShown: false,
-                      animation: "none",
-                    }}
-                  />
-                  <Stack.Screen
-                    name="register"
-                    options={{
-                      headerShown: false,
-                      animation: "none",
-                    }}
-                  />
-                  <Stack.Screen
-                    name="welcome"
-                    options={{
-                      headerShown: false,
-                      animation: "none",
-                    }}
-                  />
-                </Stack>
+                <GestureHandlerRootView>
+                  <BottomSheetModalProvider>
+                    <Head>
+                      <title>Solid</title>
+                    </Head>
+                    <Stack>
+                      <Stack.Screen
+                        name="(protected)"
+                        options={{
+                          headerShown: false,
+                          animation: "none",
+                        }}
+                      />
+                      <Stack.Screen
+                        name="register"
+                        options={{
+                          headerShown: false,
+                          animation: "none",
+                        }}
+                      />
+                      <Stack.Screen
+                        name="welcome"
+                        options={{
+                          headerShown: false,
+                          animation: "none",
+                        }}
+                      />
+                    </Stack>
+                  </BottomSheetModalProvider>
+                </GestureHandlerRootView>
               </ApolloProvider>
             </QueryClientProvider>
           </WagmiProvider>
