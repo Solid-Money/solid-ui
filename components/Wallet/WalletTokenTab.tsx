@@ -90,11 +90,6 @@ const WalletTokenTab = () => {
               renderItem={({ item: token, index }) => {
                 const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
                 const balanceUSD = balance * (token.quoteRate || 0);
-                const displayBalance = isScreenMedium ?
-                  formatNumber(balance, 4) :
-                  balance < 0.001 ?
-                    "<0.001" :
-                    formatNumber(balance, 3);
 
                 const tokenIcon = getTokenIcon({
                   logoUrl: token.logoUrl,
@@ -116,7 +111,7 @@ const WalletTokenTab = () => {
                         <View className='items-start'>
                           <Text className='font-bold'>{token.contractTickerSymbol || 'Unknown'}</Text>
                           <Text className='text-sm text-muted-foreground'>
-                            {displayBalance} {isScreenMedium ? token.contractTickerSymbol : ''}
+                            {format(balance, 6)} {isScreenMedium ? token.contractTickerSymbol : ''}
                           </Text>
                         </View>
                       </View>
@@ -133,7 +128,7 @@ const WalletTokenTab = () => {
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
                       <View className='items-start'>
-                        <Text className='font-bold'>${format(balanceUSD)}</Text>
+                        <Text className='font-bold'>${format(balanceUSD, 6)}</Text>
                         <Text className='hidden md:block text-sm text-muted-foreground'>
                           {token.contractName || token.contractTickerSymbol}
                         </Text>
@@ -141,7 +136,7 @@ const WalletTokenTab = () => {
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[3] }}>
                       <View className='items-start'>
-                        <Text className='font-bold'>${format(token.quoteRate || 0)}</Text>
+                        <Text className='font-bold'>${format(token.quoteRate || 0, 6)}</Text>
                         <Text className='hidden md:block text-sm text-muted-foreground'>
                           per {token.contractTickerSymbol}
                         </Text>

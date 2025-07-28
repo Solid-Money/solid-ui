@@ -44,7 +44,7 @@ export default function Deposit() {
         .string()
         .refine((val) => val !== "" && !isNaN(Number(val)), "Please enter a valid amount")
         .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount, 4)} USDC`)
+        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount)} USDC`)
         .transform((val) => Number(val)),
     });
   }, [balance]);
@@ -177,7 +177,7 @@ export default function Deposit() {
                   <Text className="text-base text-white">Fee</Text>
                 </View>
                 <Text className="text-base text-muted-foreground">
-                  {`~ $${loading ? "..." : formatNumber(costInUsd, 2)
+                  {`~ $${loading ? "..." : formatNumber(costInUsd)
                     } USDC in fee`}
                 </Text>
               </View>

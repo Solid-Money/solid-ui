@@ -35,7 +35,7 @@ const Unstake = () => {
         .string()
         .refine((val) => val !== "" && !isNaN(Number(val)), "Please enter a valid amount")
         .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount, 4)} soUSD`)
+        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount)} soUSD`)
         .transform((val) => Number(val)),
     });
   }, [fuseBalance]);
@@ -142,7 +142,7 @@ const Unstake = () => {
           <Wallet size={16} /> {isFuseBalanceLoading ? (
             <Skeleton className="w-16 h-4 rounded-md" />
           ) : fuseBalance ? (
-            `${formatNumber(fuseBalance, 4)} SoUSD`
+            `${formatNumber(fuseBalance)} SoUSD`
           ) : (
             "0 SoUSD"
           )}

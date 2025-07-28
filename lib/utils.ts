@@ -30,7 +30,7 @@ export function compactNumberFormat(number: number) {
   }).format(number);
 }
 
-export function formatNumber(number: number, maximumFractionDigits = 2) {
+export function formatNumber(number: number, maximumFractionDigits = 6) {
   return new Intl.NumberFormat('en-us', {
     maximumFractionDigits,
   }).format(number);

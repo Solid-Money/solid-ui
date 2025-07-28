@@ -53,7 +53,7 @@ function DepositToVaultForm() {
         .refine((val) => Number(val) > 0, "Amount must be greater than 0")
         .refine(
           (val) => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount, 4)} USDC`
+          `Available balance is ${formatNumber(balanceAmount)} USDC`
         )
         .transform((val) => Number(val)),
     });
@@ -148,7 +148,7 @@ function DepositToVaultForm() {
           </View>
         </View>
         <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-          <Wallet size={16} /> {formatNumber(Number(formattedBalance), 6)} USDC
+          <Wallet size={16} /> {formatNumber(Number(formattedBalance))} USDC
           <Max
             onPress={() => {
               setValue("amount", formattedBalance);

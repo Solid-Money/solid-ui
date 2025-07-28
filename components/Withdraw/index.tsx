@@ -35,7 +35,7 @@ const Withdraw = () => {
         .string()
         .refine((val) => val !== "" && !isNaN(Number(val)), "Please enter a valid amount")
         .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount, 4)} soUSD`)
+        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount)} soUSD`)
         .transform((val) => Number(val)),
     });
   }, [ethereumBalance]);
@@ -142,7 +142,7 @@ const Withdraw = () => {
           <Wallet size={16} /> {isEthereumBalanceLoading ? (
             <Skeleton className="w-16 h-4 rounded-md" />
           ) : ethereumBalance ? (
-            `${formatNumber(ethereumBalance, 4)} SoUSD`
+            `${formatNumber(ethereumBalance)} SoUSD`
           ) : (
             "0 SoUSD"
           )}
