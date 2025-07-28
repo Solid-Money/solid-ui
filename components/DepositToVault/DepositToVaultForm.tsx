@@ -35,7 +35,7 @@ function DepositToVaultForm() {
 
   const isLoading = depositStatus === Status.PENDING || isPending;
   const { data: totalAPY } = useTotalAPY();
-  const { costInUsd, loading } = useEstimateGas();
+  const { costInUsd, loading } = useEstimateGas(3800000n);
 
   const formattedBalance = balance ? formatUnits(balance, 6) : "0";
 
