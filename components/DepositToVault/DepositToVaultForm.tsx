@@ -156,7 +156,7 @@ function DepositToVaultForm() {
           <Text className="text-lg opacity-40 md:w-40">You will receive</Text>
           <View className="flex-row items-center gap-2">
             <Image
-              source={require("@/assets/images/usdc.png")}
+              source={require("@/assets/images/sousd-4x.png")}
               style={{ width: 34, height: 34 }}
               contentFit="contain"
             />
