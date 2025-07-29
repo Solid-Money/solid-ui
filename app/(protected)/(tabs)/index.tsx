@@ -31,7 +31,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Address } from "viem";
 import { mainnet } from "viem/chains";
 import { useBlockNumber } from "wagmi";
-import { cn, fontSize } from "@/lib/utils";
+import { cn, fontSize, formatNumber } from "@/lib/utils";
 import { calculateYield } from "@/lib/financial";
 
 export default function Dashboard() {
@@ -263,7 +263,7 @@ export default function Dashboard() {
                     {balanceLoadOnce ? (
                       <Skeleton className="w-24 h-8 bg-primary/10 rounded-twice" />
                     ) : (
-                      `$${balance && totalAPY ? (balance * totalAPY).toFixed(6) : 0}`
+                      `$${balance && totalAPY ? formatNumber(balance * totalAPY, 0) : 0}`
                     )}
                   </Text>
                 </View>
