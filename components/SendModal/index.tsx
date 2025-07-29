@@ -1,29 +1,29 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Address } from "abitype";
-import { ArrowUpRight, Fuel, Wallet } from "lucide-react-native";
-import { useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, TextInput, View } from "react-native";
-import Toast from 'react-native-toast-message';
-import { formatUnits, isAddress } from "viem";
-import { useReadContract } from "wagmi";
-import { z } from "zod";
+import {zodResolver} from "@hookform/resolvers/zod";
+import {Address} from "abitype";
+import {ArrowUpRight, Fuel, Wallet} from "lucide-react-native";
+import {useMemo} from "react";
+import {Controller, useForm} from "react-hook-form";
+import {ActivityIndicator, TextInput, View} from "react-native";
+import Toast from "react-native-toast-message";
+import {formatUnits, isAddress} from "viem";
+import {useReadContract} from "wagmi";
+import {z} from "zod";
 
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { SEND_MODAL } from "@/constants/modals";
-import { NATIVE_TOKENS } from "@/constants/tokens";
-import { useEstimateGas } from "@/hooks/useEstimateGas";
+import {Button, buttonVariants} from "@/components/ui/button";
+import {Text} from "@/components/ui/text";
+import {SEND_MODAL} from "@/constants/modals";
+import {NATIVE_TOKENS} from "@/constants/tokens";
+import {useEstimateGas} from "@/hooks/useEstimateGas";
 import useSend from "@/hooks/useSend";
 import useUser from "@/hooks/useUser";
 import ERC20_ABI from "@/lib/abis/ERC20";
-import { Status, TokenIcon } from "@/lib/types";
-import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
-import { getChain } from "@/lib/wagmi";
-import { useSendStore } from "@/store/useSendStore";
-import RenderTokenIcon from "../RenderTokenIcon";
-import { Skeleton } from "../ui/skeleton";
+import {Status, TokenIcon} from "@/lib/types";
+import {cn, eclipseAddress, formatNumber} from "@/lib/utils";
+import {getChain} from "@/lib/wagmi";
+import {useSendStore} from "@/store/useSendStore";
 import Max from "../Max";
+import RenderTokenIcon from "../RenderTokenIcon";
+import {Skeleton} from "../ui/skeleton";
 
 type SendProps = {
   tokenAddress: Address;
@@ -31,7 +31,7 @@ type SendProps = {
   tokenIcon: TokenIcon;
   tokenSymbol: string;
   chainId: number;
-}
+};
 
 const Send = ({
   tokenAddress,
@@ -40,12 +40,17 @@ const Send = ({
   tokenSymbol,
   chainId,
 }: SendProps) => {
-  const { user } = useUser();
-  const { costInUsd, loading } = useEstimateGas(1200000n, chainId, NATIVE_TOKENS[chainId]);
+  const {user} = useUser();
+  const {costInUsd, loading} = useEstimateGas(
+    1200000n,
+    0n,
+    chainId,
+    NATIVE_TOKENS[chainId]
+  );
   const chain = getChain(chainId);
-  const { setModal, setTransaction } = useSendStore();
+  const {setModal, setTransaction} = useSendStore();
 
-  const { data: balance, isPending } = useReadContract({
+  const {data: balance, isPending} = useReadContract({
     abi: ERC20_ABI,
     address: tokenAddress,
     functionName: "balanceOf",
@@ -58,27 +63,35 @@ const Send = ({
 
   // Create dynamic schema based on balance
   const sendSchema = useMemo(() => {
-    const balanceAmount = balance ? Number(formatUnits(balance, tokenDecimals)) : 0;
+    const balanceAmount = balance
+      ? Number(formatUnits(balance, tokenDecimals))
+      : 0;
     return z.object({
       amount: z
         .string()
-        .refine((val) => val !== "" && !isNaN(Number(val)), "Please enter a valid amount")
+        .refine(
+          (val) => val !== "" && !isNaN(Number(val)),
+          "Please enter a valid amount"
+        )
         .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`)
+        .refine(
+          (val) => Number(val) <= balanceAmount,
+          `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`
+        )
         .transform((val) => Number(val)),
       address: z
         .string()
         .refine(isAddress, "Please enter a valid Ethereum address")
-        .transform(value => value.toLowerCase()),
+        .transform((value) => value.toLowerCase()),
     });
   }, [balance, tokenDecimals, tokenSymbol]);
 
-  type SendFormData = { amount: string; address: string };
+  type SendFormData = {amount: string; address: string};
 
   const {
     control,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: {errors, isValid},
     reset,
     setValue,
     trigger,
@@ -91,7 +104,7 @@ const Send = ({
     },
   });
 
-  const { send, sendStatus } = useSend({ tokenAddress, tokenDecimals, chainId });
+  const {send, sendStatus} = useSend({tokenAddress, tokenDecimals, chainId});
   const isSendLoading = sendStatus === Status.PENDING;
 
   const getSendText = () => {
@@ -106,7 +119,10 @@ const Send = ({
 
   const onSubmit = async (data: SendFormData) => {
     try {
-      const transaction = await send(data.amount.toString(), data.address as Address);
+      const transaction = await send(
+        data.amount.toString(),
+        data.address as Address
+      );
       setTransaction({
         amount: Number(data.amount),
         hash: transaction.transactionHash,
@@ -114,8 +130,8 @@ const Send = ({
       reset(); // Reset form after successful transaction
       setModal(SEND_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
-        type: 'success',
-        text1: 'Send transaction completed',
+        type: "success",
+        text1: "Send transaction completed",
         text2: `${data.amount} ${tokenSymbol}`,
         props: {
           link: `${chain?.blockExplorers?.default.url}/tx/${transaction.transactionHash}`,
@@ -125,17 +141,14 @@ const Send = ({
       });
     } catch (error) {
       Toast.show({
-        type: 'error',
-        text1: 'Error while sending',
+        type: "error",
+        text1: "Error while sending",
       });
     }
   };
 
   const isFormDisabled = () => {
-    return (
-      isSendLoading ||
-      !isValid
-    );
+    return isSendLoading || !isValid;
   };
 
   return (
@@ -143,11 +156,16 @@ const Send = ({
       <View className="gap-3">
         <Text className="opacity-60">Send amount</Text>
 
-        <View className={cn('flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3', errors.amount && 'border border-red-500')}>
+        <View
+          className={cn(
+            "flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3",
+            errors.amount && "border border-red-500"
+          )}
+        >
           <Controller
             control={control}
             name="amount"
-            render={({ field: { onChange, onBlur, value } }) => (
+            render={({field: {onChange, onBlur, value}}) => (
               <TextInput
                 keyboardType="decimal-pad"
                 className="w-full text-2xl text-white font-semibold web:focus:outline-none"
@@ -161,12 +179,15 @@ const Send = ({
           />
           <View className="flex-row items-center gap-2">
             <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
-            <Text className="font-semibold text-white text-lg">{tokenSymbol}</Text>
+            <Text className="font-semibold text-white text-lg">
+              {tokenSymbol}
+            </Text>
           </View>
         </View>
 
         <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-          <Wallet size={16} /> {isPending ? (
+          <Wallet size={16} />{" "}
+          {isPending ? (
             <Skeleton className="w-16 h-4 rounded-md" />
           ) : balance ? (
             `${formatUnits(balance, tokenDecimals)} ${tokenSymbol}`
@@ -187,9 +208,11 @@ const Send = ({
         <Controller
           control={control}
           name="address"
-          render={({ field: { onChange, onBlur, value } }) => (
+          render={({field: {onChange, onBlur, value}}) => (
             <TextInput
-              className={`bg-accent rounded-2xl px-5 py-3 text-2xl text-white font-semibold web:focus:outline-none ${errors.address ? 'border border-red-500' : ''}`}
+              className={`bg-accent rounded-2xl px-5 py-3 text-2xl text-white font-semibold web:focus:outline-none ${
+                errors.address ? "border border-red-500" : ""
+              }`}
               value={value}
               placeholder="0x..."
               placeholderTextColor="#666"
@@ -206,11 +229,15 @@ const Send = ({
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading ? "..." :
-            !costInUsd ? "0" :
-              costInUsd < 0.01 ? "<0.01" :
-                formatNumber(costInUsd, 2)
-            } USD in fee`}
+          {`~ $${
+            loading
+              ? "..."
+              : !costInUsd
+              ? "0"
+              : costInUsd < 0.01
+              ? "<0.01"
+              : formatNumber(costInUsd, 2)
+          } USD in fee`}
         </Text>
       </View>
 
@@ -220,7 +247,9 @@ const Send = ({
         onPress={handleSubmit(onSubmit)}
         disabled={isFormDisabled()}
       >
-        <Text className="font-semibold text-black text-lg">{getSendText()}</Text>
+        <Text className="font-semibold text-black text-lg">
+          {getSendText()}
+        </Text>
         {isSendLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>
@@ -231,7 +260,10 @@ const SendTrigger = (props: any) => {
   return (
     <Button
       variant="outline"
-      className={buttonVariants({ variant: "secondary", className: "h-12 rounded-xl gap-4 md:pr-6" })}
+      className={buttonVariants({
+        variant: "secondary",
+        className: "h-12 rounded-xl gap-4 md:pr-6",
+      })}
       {...props}
     >
       <ArrowUpRight color="white" />
@@ -244,4 +276,4 @@ const SendTitle = () => {
   return <Text className="text-2xl font-semibold">Send</Text>;
 };
 
-export { Send, SendTitle, SendTrigger };
+export {Send, SendTitle, SendTrigger};

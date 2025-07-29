@@ -5,6 +5,7 @@ import { mainnet } from "viem/chains";
 
 export const useEstimateGas = (
   gasEstimate: bigint = 700000n,
+  bridgeFee: bigint = 0n,
   chainId: number = mainnet.id,
   token: string = "ETH"
 ) => {
@@ -14,10 +15,23 @@ export const useEstimateGas = (
   useEffect(() => {
     const estimateGas = async () => {
       setLoading(true);
-      const gasPrice = await publicClient(chainId).getGasPrice();
+
+
+      const feeData = await publicClient(chainId).estimateFeesPerGas();
+      const baseGasPrice = feeData.maxFeePerGas || feeData.gasPrice || await publicClient(chainId).getGasPrice();
+
+      // Apply fast gas price multiplier (like Rabby wallet)
+      const fastGasPrice = (baseGasPrice * 170n) / 100n; // 70% above base for fast transactions
+
       const tokenPriceUsd = await fetchTokenPriceUsd(token);
-      const costInUsd = gasEstimate * gasPrice;
-      setCostInUsd((Number(costInUsd) * Number(tokenPriceUsd)) / 10 ** 18);
+
+      const gasCostInWei = gasEstimate * fastGasPrice;
+
+      const totalCostInWei = gasCostInWei + bridgeFee;
+      const totalCostInEth = Number(totalCostInWei) / 10 ** 18;
+      const finalCostInUsd = totalCostInEth * Number(tokenPriceUsd);
+
+      setCostInUsd(finalCostInUsd);
       setLoading(false);
     };
     estimateGas();
