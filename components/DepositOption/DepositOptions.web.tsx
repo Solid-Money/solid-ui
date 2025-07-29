@@ -19,7 +19,12 @@ const DepositOptions = () => {
   const openWallet = useCallback(async () => {
     try {
       if (isWalletOpen) return;
-      if (address) return;
+      
+      // If wallet is already connected, go directly to form
+      if (address) {
+        setModal(DEPOSIT_MODAL.OPEN_FORM);
+        return;
+      }
 
       setIsWalletOpen(true);
       const wallet = await connect({
