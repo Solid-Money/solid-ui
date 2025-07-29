@@ -240,7 +240,7 @@ export type Transaction = {
 
 export type Faq = {
   question: string;
-  answer: React.ReactNode;
+  answer: string;
 }
 
 export type StatusInfo = {
