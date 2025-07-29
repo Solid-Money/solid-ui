@@ -84,7 +84,7 @@ const Transaction = ({
         </View>
       </View>
       <View className="flex-row items-center gap-2 md:gap-4">
-        <Text className="text-lg font-medium">${formatNumber(amount, 5)}</Text>
+        <Text className="text-lg font-medium">${formatNumber(amount)}</Text>
         {isScreenMedium && (
           <View
             className={cn(

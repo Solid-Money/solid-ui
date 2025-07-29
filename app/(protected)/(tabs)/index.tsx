@@ -32,6 +32,7 @@ import { Address } from "viem";
 import { mainnet } from "viem/chains";
 import { useBlockNumber } from "wagmi";
 import { cn, fontSize } from "@/lib/utils";
+import { calculateYield } from "@/lib/financial";
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -156,7 +157,6 @@ export default function Dashboard() {
                         apy={totalAPY ?? 0}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
-                        decimalPlaces={8}
                         classNames={{
                           wrapper: "text-foreground",
                           decimalSeparator:
@@ -192,7 +192,6 @@ export default function Dashboard() {
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         principal={originalDepositAmount}
                         mode={SavingMode.INTEREST_ONLY}
-                        decimalPlaces={8}
                         classNames={{
                           decimalSeparator: "md:text-xl text-brand font-medium",
                         }}
@@ -236,47 +235,37 @@ export default function Dashboard() {
 
                 <View className="p-6 md:p-7">
                   <Text className="md:text-lg text-primary/50 font-medium">
-                    Total deposited
+                    P&L
                   </Text>
                   <Text className="text-2xl font-semibold">
                     {balanceLoadOnce ? (
                       <Skeleton className="w-24 h-8 bg-primary/10 rounded-twice" />
                     ) : (
-                      `$${originalDepositAmount.toLocaleString()}`
+                      `$${calculateYield(
+                        originalDepositAmount,
+                        totalAPY ?? 0,
+                        firstDepositTimestamp ?? 0,
+                        Math.floor(Date.now() / 1000),
+                        originalDepositAmount,
+                        SavingMode.INTEREST_ONLY
+                      ).toFixed(6)}`
                     )}
                   </Text>
                 </View>
 
                 <View className="border-t border-border/50 hidden md:block" />
 
-                <View className="p-6 md:p-7 hidden md:block">
+                <View className="p-6 md:p-7">
                   <Text className="md:text-lg text-primary/50 font-medium">
-                    Total earned
+                    Projected 1Y Earnings
                   </Text>
-                  <View className="flex-row items-center">
-                    <Text className="text-2xl font-semibold">$</Text>
-                    {isTotalAPYLoading || balanceLoadOnce ? (
-                      <Skeleton className="w-20 h-8 bg-primary/10 rounded-twice" />
+                  <Text className="text-2xl font-semibold">
+                    {balanceLoadOnce ? (
+                      <Skeleton className="w-24 h-8 bg-primary/10 rounded-twice" />
                     ) : (
-                      <SavingCountUp
-                        balance={balance ?? 0}
-                        apy={totalAPY ?? 0}
-                        lastTimestamp={firstDepositTimestamp ?? 0}
-                        principal={originalDepositAmount}
-                        styles={{
-                          wholeText: {
-                            fontSize: 24,
-                            fontWeight: "semibold",
-                            color: "#ffffff",
-                          },
-                          decimalText: {
-                            fontSize: 16,
-                            color: "#ffffff",
-                          },
-                        }}
-                      />
+                      `$${balance && totalAPY ? (balance * totalAPY).toFixed(6) : 0}`
                     )}
-                  </View>
+                  </Text>
                 </View>
               </View>
             </LinearGradient>
