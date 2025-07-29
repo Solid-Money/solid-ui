@@ -9,7 +9,7 @@ import Navbar from "@/components/Navbar";
 import NavbarMobile from "@/components/Navbar/NavbarMobile";
 import SavingCountUp from "@/components/SavingCountUp";
 import { Text } from "@/components/ui/text";
-import { WalletTabs } from "@/components/Wallet";
+import { SavingCard, WalletCard, WalletTabs } from "@/components/Wallet";
 import { useGetUserTransactionsQuery } from "@/graphql/generated/user-info";
 import { useLatestTokenTransfer, useTotalAPY } from "@/hooks/useAnalytics";
 import { useDepositCalculations } from "@/hooks/useDepositCalculations";
@@ -18,6 +18,8 @@ import useUser from "@/hooks/useUser";
 import { useFuseVaultBalance } from "@/hooks/useVault";
 import { ADDRESSES } from "@/lib/config";
 import { useWalletTokens } from "@/hooks/useWalletTokens";
+import { SavingMode } from "@/lib/types";
+import { calculateYield } from "@/lib/financial";
 
 const renderInfo = (text: string) => {
   return (
@@ -33,7 +35,7 @@ export default function Wallet() {
   const {
     data: blockNumber
   } = useBlockNumber({ watch: true, chainId: mainnet.id })
-  const { isLoading, hasTokens } = useWalletTokens();
+  const { totalUSD, isLoading, hasTokens } = useWalletTokens();
   const {
     data: balance,
     refetch: refetchBalance,
@@ -55,6 +57,15 @@ export default function Wallet() {
   });
   const { originalDepositAmount, firstDepositTimestamp } =
     useDepositCalculations(userDepositTransactions, balance, lastTimestamp);
+
+  const savings = calculateYield(
+    balance ?? 0,
+    totalAPY ?? 0,
+    firstDepositTimestamp ?? 0,
+    Math.floor(Date.now() / 1000),
+    originalDepositAmount,
+    SavingMode.INTEREST_ONLY
+  );
 
   useEffect(() => {
     refetchBalance()
@@ -99,6 +110,11 @@ export default function Wallet() {
                   }}
                 />
               </View>
+            </View>
+
+            <View className="md:flex-row justify-between items-center gap-6 md:min-h-40">
+              <WalletCard balance={totalUSD} className="gap-4 md:w-[50%] h-fit md:h-full" />
+              <SavingCard savings={savings} className="gap-4 md:w-[50%] h-fit md:h-full" />
             </View>
 
             <View className="md:mt-6">

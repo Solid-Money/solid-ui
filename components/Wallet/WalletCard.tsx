@@ -18,7 +18,7 @@ const WalletCard = ({ balance, className }: WalletCardProps) => {
       </View>
 
       <View className="flex-row justify-between items-center">
-        <Text className="text-3xl font-semibold">${formatNumber(balance)}</Text>
+        <Text className="text-2xl md:text-3xl font-semibold">${formatNumber(balance)}</Text>
         {/* <Image source={require('@/assets/images/eth-bitcoin-usdc-4x.png')} style={{ width: 78, height: 28 }} /> */}
       </View>
     </View>
