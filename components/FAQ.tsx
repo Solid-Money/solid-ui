@@ -1,3 +1,5 @@
+import Markdown from 'react-native-marked';
+
 import {
   Accordion,
   AccordionContent,
@@ -21,7 +23,17 @@ const FAQ = ({ faqs }: { faqs: Faq[] }) => {
             <Text className="text-lg font-medium">{faq.question}</Text>
           </AccordionTrigger>
           <AccordionContent>
-            <Text className="text-muted-foreground">{faq.answer}</Text>
+            <Markdown
+              value={faq.answer}
+              flatListProps={{
+                initialNumToRender: 8,
+              }}
+              styles={{
+                text: {
+                  color: '#A1A1A1',
+                },
+              }}
+            />
           </AccordionContent>
         </AccordionItem>
       ))}

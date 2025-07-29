@@ -6,11 +6,12 @@ import { Platform } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
-import { useWalletTokens } from '@/hooks/useWalletTokens';
+import useUser from '@/hooks/useUser';
 
 export default function TabLayout() {
-  const { hasTokens } = useWalletTokens();
-
+  const { user } = useUser();
+  const hasDeposited = user?.isDeposited;
+  
   return (
     <Tabs
       screenOptions={{
@@ -19,7 +20,7 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
         tabBarStyle: {
-          display: Platform.OS === 'web' || !hasTokens ? 'none' : 'flex',
+          display: Platform.OS === 'web' || !hasDeposited ? 'none' : 'flex',
           ...Platform.select({
             ios: {
               // Use a transparent background on iOS to show the blur effect
@@ -90,7 +91,7 @@ export default function TabLayout() {
         options={{
           title: 'Wallet',
           tabBarIcon: ({ color }) => <Wallet size={28} color={color} />,
-          href: hasTokens ? path.WALLET : null,
+          href: hasDeposited ? path.WALLET : null,
         }}
       />
     </Tabs>

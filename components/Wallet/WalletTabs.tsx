@@ -71,18 +71,6 @@ const WalletTabs = () => {
       onValueChange={(value) => handleTabChange(value as Tab)}
       className='gap-8'
     >
-      <TabsList className='flex-row justify-start max-w-sm relative'>
-        <Animated.View style={underlineStyle} />
-        <TabsTrigger value={Tab.TOKENS} className='px-6 pl-0' onLayout={(e) => handleLayout(e, TabElement.TRIGGER, Tab.TOKENS)}>
-          <Text onLayout={(e) => handleLayout(e, TabElement.TEXT, Tab.TOKENS)}>Tokens</Text>
-        </TabsTrigger>
-        {/* <TabsTrigger value={Tab.COLLECTIBLES} className='px-6' onLayout={(e) => handleLayout(e, TabElement.TRIGGER, Tab.COLLECTIBLES)}>
-          <Text onLayout={(e) => handleLayout(e, TabElement.TEXT, Tab.COLLECTIBLES)}>Collectibles</Text>
-        </TabsTrigger> */}
-        {/* <TabsTrigger value={Tab.ACTIVITY} className='px-6' onLayout={(e) => handleLayout(e, TabElement.TRIGGER, Tab.ACTIVITY)}>
-          <Text onLayout={(e) => handleLayout(e, TabElement.TEXT, Tab.ACTIVITY)}>Activity</Text>
-        </TabsTrigger> */}
-      </TabsList>
       <TabsContent value={Tab.TOKENS}>
         <WalletTokenTab />
       </TabsContent>

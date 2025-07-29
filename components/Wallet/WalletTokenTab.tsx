@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Text } from '@/components/ui/text';
-import { useBalances } from '@/hooks/useBalances';
+import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useDimension } from '@/hooks/useDimension';
 import { cn, compactNumberFormat, formatNumber, isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
 import SendModal from '../SendModal/SendModal';
@@ -28,7 +28,7 @@ const WalletTokenTab = () => {
   const [width, setWidth] = useState(0);
   const { isScreenMedium } = useDimension();
 
-  const { ethereumTokens, fuseTokens } = useBalances();
+  const { ethereumTokens, fuseTokens } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
   const allTokens = useMemo(() => {
@@ -129,17 +129,11 @@ const WalletTokenTab = () => {
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
                       <View className='items-start'>
                         <Text className='font-bold'>${format(balanceUSD)}</Text>
-                        <Text className='hidden md:block text-sm text-muted-foreground'>
-                          {token.contractName || token.contractTickerSymbol}
-                        </Text>
                       </View>
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[3] }}>
                       <View className='items-start'>
                         <Text className='font-bold'>${format(token.quoteRate || 0)}</Text>
-                        <Text className='hidden md:block text-sm text-muted-foreground'>
-                          per {token.contractTickerSymbol}
-                        </Text>
                       </View>
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[4] }}>

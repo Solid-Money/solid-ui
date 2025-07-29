@@ -83,6 +83,7 @@
     "react-native-css-interop": "^0.1.18",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-get-random-values": "~1.11.0",
+    "react-native-marked": "^7.0.2",
     "react-native-mmkv": "^3.3.0",
     "react-native-modal": "^14.0.0-rc.1",
     "react-native-passkey": "^3.1.0",
