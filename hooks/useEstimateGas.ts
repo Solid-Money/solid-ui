@@ -20,7 +20,7 @@ export const useEstimateGas = (
       const feeData = await publicClient(chainId).estimateFeesPerGas();
       const baseGasPrice = feeData.maxFeePerGas || feeData.gasPrice || await publicClient(chainId).getGasPrice();
 
-      // Apply fast gas price multiplier (like Rabby wallet)
+      // Apply fast gas price multiplier
       const fastGasPrice = (baseGasPrice * 170n) / 100n; // 70% above base for fast transactions
 
       const tokenPriceUsd = await fetchTokenPriceUsd(token);
