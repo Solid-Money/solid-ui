@@ -33,6 +33,8 @@ export const useWalletTokens = () => {
   const hasTokens = ethereumTokens.length > 0 || fuseTokens.length > 0;
 
   return {
+    ethereumTokens,
+    fuseTokens,
     isLoading,
     hasTokens,
   }
