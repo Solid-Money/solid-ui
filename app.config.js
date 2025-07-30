@@ -100,7 +100,7 @@ export default {
         {
           icon: "./assets/images/icon.png",
           color: "#ffffff",
-          defaultChannel: "default",
+          defaultChannel: "solid_default_notification_channel",
         },
       ],
       "@react-native-firebase/app",
