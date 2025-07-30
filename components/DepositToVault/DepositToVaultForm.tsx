@@ -96,7 +96,6 @@ function DepositToVaultForm() {
       await deposit(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
-        hash,
       });
     } catch (error) {
       // handled by hook
