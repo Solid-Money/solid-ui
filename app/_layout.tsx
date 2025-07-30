@@ -5,9 +5,11 @@ import { infoClient } from "@/graphql/clients";
 import { config } from "@/lib/wagmi";
 import { ApolloProvider } from "@apollo/client";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { ChevronLeft } from "lucide-react-native";
 import { PortalHost } from "@rn-primitives/portal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import * as Notifications from "expo-notifications";
+import { router, Stack } from "expo-router";
 import Head from "expo-router/head";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useState } from "react";
@@ -17,11 +19,23 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { ThirdwebProvider } from "thirdweb/react";
 import { WagmiProvider } from "wagmi";
+import { Button } from "@/components/ui/button";
 
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary
 } from "expo-router";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -102,6 +116,33 @@ export default function RootLayout() {
           headerShown: false,
           animation: "none",
         }}
+      />
+      <Stack.Screen
+        name="notifications"
+        options={{
+          animation: "none",
+          title: "Turn on notifications",
+          headerStyle: {
+            backgroundColor: '#000',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+          },
+          headerLeft: () => (
+            <Button
+              variant="ghost"
+              size="icon"
+              onPress={() => router.back()}
+              className="mr-4"
+            >
+              <ChevronLeft size={28} color="white" />
+            </Button>
+          ),
+          headerTitleAlign: 'center',
+        }}
+        
       />
     </Stack>
   );
