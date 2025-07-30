@@ -114,7 +114,7 @@ const Send = ({
       const transaction = await send(data.amount.toString(), data.address as Address);
       setTransaction({
         amount: Number(data.amount),
-        hash: transaction.transactionHash,
+        address: data.address,
       });
       reset(); // Reset form after successful transaction
       setModal(SEND_MODAL.OPEN_TRANSACTION_STATUS);

@@ -28,7 +28,6 @@ const UnstakeModal = () => {
     if (isTransactionStatus) {
       return <TransactionStatus
         amount={transaction.amount ?? 0}
-        hash={transaction.hash ?? '' as Address}
         onPress={() => setModal(UNSTAKE_MODAL.CLOSE)}
         token={"SoUSD"}
         icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}

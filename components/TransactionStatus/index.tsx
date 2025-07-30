@@ -11,7 +11,7 @@ import Checkmark from "@/assets/images/checkmark";
 
 type TransactionStatusProps = {
   amount: number;
-  hash: Address;
+  address?: Address;
   onPress: () => void;
   title?: string;
   description?: string;
@@ -23,7 +23,7 @@ type TransactionStatusProps = {
 
 const TransactionStatus = ({
   amount,
-  hash,
+  address,
   onPress,
   title = "Transaction initiated",
   description = "This may take some time. We'll keep processing this in the background. You can safely leave this page.",
@@ -52,10 +52,12 @@ const TransactionStatus = ({
                 <Text className="font-medium">{formatNumber(amount)}</Text>
                 <Text className="text-muted-foreground">{token}</Text>
               </View>
-              <View className="flex-row gap-1">
-                <Text className="text-muted-foreground">to</Text>
-                <Text className="font-medium">{eclipseAddress(hash)}</Text>
-              </View>
+              {address && (
+                <View className="flex-row gap-1">
+                  <Text className="text-muted-foreground">to</Text>
+                  <Text className="font-medium">{eclipseAddress(address)}</Text>
+                </View>
+              )}
             </View>
           </View>
           <Text className="text-muted-foreground font-medium">{status}</Text>
