@@ -43,7 +43,7 @@ const SendModal = ({
     if (isTransactionStatus) {
       return <TransactionStatus
         amount={transaction.amount ?? 0}
-        hash={transaction.hash ?? '' as Address}
+        address={transaction.address}
         onPress={() => setModal(SEND_MODAL.CLOSE)}
         token={tokenSymbol}
         icon={tokenIcon}

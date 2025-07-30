@@ -77,7 +77,6 @@ const Unstake = () => {
       const transaction = await bridge(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
-        hash: transaction.transactionHash,
       });
       resetBridge(); // Reset form after successful transaction
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);

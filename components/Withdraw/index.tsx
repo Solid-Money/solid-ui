@@ -77,7 +77,6 @@ const Withdraw = () => {
       const transaction = await withdraw(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
-        hash: transaction.transactionHash,
       });
       resetWithdraw(); // Reset form after successful transaction
       setModal(WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS);

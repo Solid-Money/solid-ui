@@ -28,7 +28,6 @@ const WithdrawModal = () => {
     if (isTransactionStatus) {
       return <TransactionStatus
         amount={transaction.amount ?? 0}
-        hash={transaction.hash ?? '' as Address}
         onPress={() => setModal(WITHDRAW_MODAL.CLOSE)}
         token={"SoUSD"}
         icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}

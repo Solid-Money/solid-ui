@@ -26,7 +26,7 @@ import { Text } from "../ui/text";
 import Max from "../Max";
 
 function DepositToVaultForm() {
-  const { balance, deposit, depositStatus, hash } = useDepositFromEOA();
+  const { balance, deposit, depositStatus, hash, fee } = useDepositFromEOA();
   const { isLoading: isPending, isSuccess } = useWaitForTransactionReceipt({
     hash: hash as `0x${string}`,
     chainId: mainnet.id,
@@ -35,7 +35,7 @@ function DepositToVaultForm() {
 
   const isLoading = depositStatus === Status.PENDING || isPending;
   const { data: totalAPY } = useTotalAPY();
-  const { costInUsd, loading } = useEstimateGas(3800000n);
+  const {costInUsd, loading} = useEstimateGas(380000n, fee || 0n);
 
   const formattedBalance = balance ? formatUnits(balance, 6) : "0";
 
@@ -96,7 +96,7 @@ function DepositToVaultForm() {
       await deposit(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
-        hash,
+        hash
       });
     } catch (error) {
       // handled by hook
@@ -221,7 +221,7 @@ function DepositToVaultForm() {
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading ? "..." : formatNumber(costInUsd, 2)} USDC in fee`}
+          {`~ $${loading ? "..." : formatNumber(costInUsd, 2)} USD in fee`}
         </Text>
       </View>
       <CheckConnectionWrapper props={{ size: "xl" }}>

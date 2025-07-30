@@ -41,7 +41,12 @@ const Send = ({
   chainId,
 }: SendProps) => {
   const { user } = useUser();
-  const { costInUsd, loading } = useEstimateGas(1200000n, chainId, NATIVE_TOKENS[chainId]);
+  const {costInUsd, loading} = useEstimateGas(
+    1200000n,
+    0n,
+    chainId,
+    NATIVE_TOKENS[chainId]
+  );
   const chain = getChain(chainId);
   const { setModal, setTransaction } = useSendStore();
 
@@ -109,7 +114,7 @@ const Send = ({
       const transaction = await send(data.amount.toString(), data.address as Address);
       setTransaction({
         amount: Number(data.amount),
-        hash: transaction.transactionHash,
+        address: data.address,
       });
       reset(); // Reset form after successful transaction
       setModal(SEND_MODAL.OPEN_TRANSACTION_STATUS);

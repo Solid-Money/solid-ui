@@ -240,7 +240,7 @@ export type Transaction = {
 
 export type Faq = {
   question: string;
-  answer: React.ReactNode;
+  answer: string;
 }
 
 export type StatusInfo = {
@@ -255,7 +255,7 @@ export type UnstakeModal = typeof UNSTAKE_MODAL[keyof typeof UNSTAKE_MODAL];
 
 export type TransactionStatusModal = {
   amount?: number;
-  hash?: Address;
+  address?: Address;
 }
 
 export type TokenIcon = {

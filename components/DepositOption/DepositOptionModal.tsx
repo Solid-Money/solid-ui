@@ -52,7 +52,6 @@ const DepositOptionModal = () => {
       return (
         <TransactionStatus
           amount={transaction.amount ?? 0}
-          hash={transaction.hash ?? "" as Address}
           onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
           icon={getTokenIcon({ tokenSymbol: 'USDC' })}
         />

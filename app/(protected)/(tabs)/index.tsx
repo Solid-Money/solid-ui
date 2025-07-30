@@ -31,7 +31,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Address } from "viem";
 import { mainnet } from "viem/chains";
 import { useBlockNumber } from "wagmi";
-import { cn, fontSize } from "@/lib/utils";
+import { cn, fontSize, formatNumber } from "@/lib/utils";
 import { calculateYield } from "@/lib/financial";
 
 export default function Dashboard() {
@@ -222,7 +222,7 @@ export default function Dashboard() {
                       {isTotalAPYLoading ? (
                         <Skeleton className="w-20 h-8 rounded-md" />
                       ) : totalAPY ? (
-                        `${totalAPY.toFixed(1)}%`
+                        `${totalAPY.toFixed(2)}%`
                       ) : (
                         "0%"
                       )}
@@ -255,7 +255,7 @@ export default function Dashboard() {
 
                 <View className="border-t border-border/50 hidden md:block" />
 
-                <View className="p-6 md:p-7">
+                <View className="p-6 md:p-7 hidden md:flex">
                   <Text className="md:text-lg text-primary/50 font-medium">
                     Projected 1Y Earnings
                   </Text>
@@ -263,7 +263,7 @@ export default function Dashboard() {
                     {balanceLoadOnce ? (
                       <Skeleton className="w-24 h-8 bg-primary/10 rounded-twice" />
                     ) : (
-                      `$${balance && totalAPY ? (balance * totalAPY).toFixed(6) : 0}`
+                      `$${balance && totalAPY ? formatNumber(balance * (totalAPY / 100), 0) : 0}`
                     )}
                   </Text>
                 </View>
