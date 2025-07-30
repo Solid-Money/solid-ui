@@ -42,7 +42,7 @@ interface UseUserReturn {
   handleLogout: () => void;
   handleRemoveUsers: () => void;
   safeAA: (chain: Chain, subOrganization: string, signWith: string) => Promise<SmartAccountClient>;
-  checkBalance: (user: User) => Promise<void>;
+  checkBalance: (user: User, isNewSignup?: boolean) => Promise<void>;
 }
 
 const useUser = (): UseUserReturn => {
@@ -114,7 +114,7 @@ const useUser = (): UseUserReturn => {
 
       return createSmartAccountClient({
         account: safeAccount,
-        chain: chain,
+      chain: chain,
         paymaster: pimlicoClient(chain.id),
         userOperation: {
           estimateFeesPerGas: async () =>
@@ -127,7 +127,7 @@ const useUser = (): UseUserReturn => {
   );
 
   const checkBalance = useCallback(
-    async (user: User) => {
+    async (user: User, isNewSignup = false) => {
       try {
         const isDeposited = await fetchIsDeposited(
           queryClient,
@@ -138,13 +138,15 @@ const useUser = (): UseUserReturn => {
             ...user,
             isDeposited: true,
           });
-          router.replace(path.HOME);
+          // Navigate to notifications for new signups, otherwise go to HOME
+          router.replace(isNewSignup ? path.NOTIFICATIONS : path.HOME);
           return;
         }
       } catch (error) {
         console.error("Error fetching tokens:", error);
       }
-      router.replace(path.HOME);
+      // Navigate to notifications for new signups, otherwise go to HOME
+      router.replace(isNewSignup ? path.NOTIFICATIONS : path.HOME);
     },
     [queryClient, router, updateUser]
   );
@@ -233,7 +235,7 @@ const useUser = (): UseUserReturn => {
             tokens: user.tokens || null,
           };
           storeUser(selectedUser);
-          await checkBalance(selectedUser);
+          await checkBalance(selectedUser, true); // Pass true for new signup
           const resp = await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address))
           if (!resp) {
             throw new Error("Error updating safe address");
@@ -312,7 +314,7 @@ const useUser = (): UseUserReturn => {
           tokens: user.tokens || null,
         };
         storeUser(selectedUser);
-        await checkBalance(selectedUser);
+        await checkBalance(selectedUser, false); // Pass false for existing login
         setLoginInfo({ status: Status.SUCCESS });
       }
       else {
