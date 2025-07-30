@@ -26,18 +26,18 @@ export async function registerForPushNotificationsAsync() {
   }
 
   if (finalStatus !== "granted") {
-    throw new Error(
+    console.log(
       "Permission not granted to get push token for push notification!"
     );
+
+    return null;
   }
 
   const projectId =
     Constants?.expoConfig?.extra?.eas?.projectId ??
     Constants?.easConfig?.projectId;
 
-  if (!projectId) {
-    throw new Error("Project ID not found");
-  }
+  if (!projectId) throw new Error("Project ID not found");
 
   try {
     const pushTokenString = (
