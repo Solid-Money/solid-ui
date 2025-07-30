@@ -1,12 +1,13 @@
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Alert, View } from 'react-native'
+import { View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { Button } from '@/components/ui/button'
 import { Text } from '@/components/ui/text'
 import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications'
+import { path } from '@/constants/path'
 
 
 export default function Notifications() {
@@ -18,25 +19,11 @@ export default function Notifications() {
     
     try {
       await registerForPushNotificationsAsync()
-      Alert.alert(
-        'Success!', 
-        'Push notifications have been enabled successfully.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      )
     } catch (error) {
       console.error('Notification registration failed:', error)
-      Alert.alert(
-        'Error',
-        'Failed to enable push notifications. Please try again.',
-        [{ text: 'OK' }]
-      )
     } finally {
       setIsLoading(false)
+      router.replace(path.HOME);
     }
   }
 
