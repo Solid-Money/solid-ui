@@ -56,7 +56,7 @@ export default function Notifications() {
             disabled={isLoading}
           >
             <Text className="text-lg font-bold">
-              {isLoading ? 'Setting up...' : 'Continue'}
+              {isLoading ? 'Loading...' : 'Continue'}
             </Text>
           </Button>
         </View>
