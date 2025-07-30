@@ -1,8 +1,8 @@
-import { SafeAreaView, View } from "react-native";
-import { Link } from "expo-router";
-import { QrCode, Settings } from "lucide-react-native";
+import { SafeAreaView, View } from 'react-native';
+import { Link } from 'expo-router';
+import { QrCode, Settings } from 'lucide-react-native';
 
-import { path } from "@/constants/path";
+import { path } from '@/constants/path';
 
 const NavbarMobile = () => {
   return (

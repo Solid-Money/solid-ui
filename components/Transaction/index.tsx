@@ -1,13 +1,13 @@
-import { Platform, View } from "react-native";
+import { Platform, View } from 'react-native';
 
-import { LayerZeroTransactionStatus, TransactionType } from "@/lib/types";
-import { cn, formatNumber } from "@/lib/utils";
-import { Text } from "../ui/text";
-import TransactionDropdown from "./TransactionDropdown";
-import { useDimension } from "@/hooks/useDimension";
-import getTokenIcon from "@/lib/getTokenIcon";
-import RenderTokenIcon from "../RenderTokenIcon";
-import TransactionDrawer from "./TransactionDrawer";
+import { LayerZeroTransactionStatus, TransactionType } from '@/lib/types';
+import { cn, formatNumber } from '@/lib/utils';
+import { Text } from '../ui/text';
+import TransactionDropdown from './TransactionDropdown';
+import { useDimension } from '@/hooks/useDimension';
+import getTokenIcon from '@/lib/getTokenIcon';
+import RenderTokenIcon from '../RenderTokenIcon';
+import TransactionDrawer from './TransactionDrawer';
 
 type TransactionClassNames = {
   container?: string;
@@ -43,16 +43,12 @@ const Transaction = ({
     status === LayerZeroTransactionStatus.CONFIRMING;
 
   const statusBgColor = isSuccess
-    ? "bg-brand/10"
+    ? 'bg-brand/10'
     : isPending
-      ? "bg-yellow-400/10"
-      : "bg-red-400/10";
-  const statusTextColor = isSuccess
-    ? "text-brand"
-    : isPending
-      ? "text-yellow-400"
-      : "text-red-400";
-  const statusText = isSuccess ? "Success" : isPending ? "Pending" : "Failed";
+      ? 'bg-yellow-400/10'
+      : 'bg-red-400/10';
+  const statusTextColor = isSuccess ? 'text-brand' : isPending ? 'text-yellow-400' : 'text-red-400';
+  const statusText = isSuccess ? 'Success' : isPending ? 'Pending' : 'Failed';
 
   const tokenIcon = getTokenIcon({
     logoUrl,
@@ -63,8 +59,8 @@ const Transaction = ({
   return (
     <View
       className={cn(
-        "flex-row items-center justify-between bg-card border-b border-border/40 p-4 md:px-6",
-        classNames?.container
+        'flex-row items-center justify-between bg-card border-b border-border/40 p-4 md:px-6',
+        classNames?.container,
       )}
     >
       <View className="flex-row items-center gap-2 md:gap-4">
@@ -72,12 +68,12 @@ const Transaction = ({
         <View>
           <Text className="text-lg font-medium">{title}</Text>
           <Text className="text-sm text-muted-foreground">
-            {new Date(Number(timestamp) * 1000).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              hour: "numeric",
-              minute: "numeric",
+            {new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: 'numeric',
               hour12: true,
             })}
           </Text>
@@ -86,21 +82,15 @@ const Transaction = ({
       <View className="flex-row items-center gap-2 md:gap-4">
         <Text className="text-lg font-medium">${formatNumber(amount)}</Text>
         {isScreenMedium && (
-          <View
-            className={cn(
-              "w-20 h-8 rounded-twice items-center justify-center",
-              statusBgColor
-            )}
-          >
-            <Text className={cn("text-sm font-bold", statusTextColor)}>
-              {statusText}
-            </Text>
+          <View className={cn('w-20 h-8 rounded-twice items-center justify-center', statusBgColor)}>
+            <Text className={cn('text-sm font-bold', statusTextColor)}>{statusText}</Text>
           </View>
         )}
-        {Platform.OS === 'web' ?
-          <TransactionDropdown url={url} /> :
+        {Platform.OS === 'web' ? (
+          <TransactionDropdown url={url} />
+        ) : (
           <TransactionDrawer url={url} />
-        }
+        )}
       </View>
     </View>
   );

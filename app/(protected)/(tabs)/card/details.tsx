@@ -1,21 +1,21 @@
-import { Image } from "expo-image";
-import { Plus } from "lucide-react-native";
-import React from "react";
-import { View } from "react-native";
+import { Image } from 'expo-image';
+import { Plus } from 'lucide-react-native';
+import React from 'react';
+import { View } from 'react-native';
 
-import Loading from "@/components/Loading";
-import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { useCardDetails } from "@/hooks/useCardDetails";
+import Loading from '@/components/Loading';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { useCardDetails } from '@/hooks/useCardDetails';
 
 export default function CardDetails() {
   const { data: cardDetails, isLoading } = useCardDetails();
 
   const availableBalance = cardDetails?.balances.available;
-  const currency = availableBalance?.currency || "?";
-  const availableAmount = availableBalance?.amount || "0";
+  const currency = availableBalance?.currency || '?';
+  const availableAmount = availableBalance?.amount || '0';
 
-  if (isLoading) return <Loading />
+  if (isLoading) return <Loading />;
 
   return (
     <View className="flex-1 bg-background p-6">
@@ -37,9 +37,9 @@ export default function CardDetails() {
 
       <View className="items-center mb-8">
         <Image
-          source={require("@/assets/images/card.png")}
+          source={require('@/assets/images/card.png')}
           alt="Solid Card"
-          style={{ width: "30%", aspectRatio: 4 / 3 }}
+          style={{ width: '30%', aspectRatio: 4 / 3 }}
           contentFit="contain"
         />
       </View>
@@ -49,7 +49,7 @@ export default function CardDetails() {
         <View className="items-center">
           <Button className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200">
             <Image
-              source={require("@/assets/images/settings.png")}
+              source={require('@/assets/images/settings.png')}
               style={{ width: 34, height: 34 }}
             />
           </Button>
@@ -59,7 +59,7 @@ export default function CardDetails() {
         <View className="items-center">
           <Button className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200">
             <Image
-              source={require("@/assets/images/limit.png")}
+              source={require('@/assets/images/limit.png')}
               style={{ width: 34, height: 34 }}
             />
           </Button>
@@ -69,7 +69,7 @@ export default function CardDetails() {
         <View className="items-center">
           <Button className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200">
             <Image
-              source={require("@/assets/images/freeze.png")}
+              source={require('@/assets/images/freeze.png')}
               style={{ width: 28, height: 28 }}
             />
           </Button>

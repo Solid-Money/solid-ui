@@ -1,10 +1,10 @@
-import { Text } from "@/components/ui/text";
-import useUser from "@/hooks/useUser";
-import { createMercuryoTransaction, getClientIp } from "@/lib/api";
-import { withRefreshToken } from "@/lib/utils";
-import * as Crypto from "expo-crypto";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { Text } from '@/components/ui/text';
+import useUser from '@/hooks/useUser';
+import { createMercuryoTransaction, getClientIp } from '@/lib/api';
+import { withRefreshToken } from '@/lib/utils';
+import * as Crypto from 'expo-crypto';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 interface MercuryoIframeWidgetProps {
   onClose?: () => void;
@@ -13,7 +13,7 @@ interface MercuryoIframeWidgetProps {
 const BuyCrypto = ({ onClose }: MercuryoIframeWidgetProps = {}) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [finalUrl, setFinalUrl] = useState<string>("");
+  const [finalUrl, setFinalUrl] = useState<string>('');
 
   const { user } = useUser();
 
@@ -23,37 +23,34 @@ const BuyCrypto = ({ onClose }: MercuryoIframeWidgetProps = {}) => {
   };
 
   const handleIframeError = () => {
-    setError("Failed to load Mercuryo widget. Please try again later.");
+    setError('Failed to load Mercuryo widget. Please try again later.');
     setLoading(false);
   };
 
   // Setup message listener for transaction completion
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      console.log("Mercuryo message received:", event.data);
+      console.log('Mercuryo message received:', event.data);
 
       try {
         // Check for completion events from Mercuryo
-        if (typeof event.data === "object") {
-          if (
-            event.data.status === "success" ||
-            event.data.event === "transaction.success"
-          ) {
+        if (typeof event.data === 'object') {
+          if (event.data.status === 'success' || event.data.event === 'transaction.success') {
             onClose?.();
           } else if (
-            event.data.status === "failure" ||
-            event.data.event === "transaction.failure"
+            event.data.status === 'failure' ||
+            event.data.event === 'transaction.failure'
           ) {
             onClose?.();
           }
         }
       } catch (err) {
-        console.error("Error handling Mercuryo message:", err);
+        console.error('Error handling Mercuryo message:', err);
       }
     };
 
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [onClose]);
 
   // Create Mercuryo transaction and get widget URL
@@ -72,17 +69,17 @@ const BuyCrypto = ({ onClose }: MercuryoIframeWidgetProps = {}) => {
         const transactionId = Crypto.randomUUID();
 
         const widgetUrl = await withRefreshToken(() =>
-          createMercuryoTransaction(userIp, transactionId)
+          createMercuryoTransaction(userIp, transactionId),
         );
 
         if (!widgetUrl) {
-          throw new Error("Failed to create Mercuryo transaction");
+          throw new Error('Failed to create Mercuryo transaction');
         }
 
         setFinalUrl(widgetUrl);
       } catch (err) {
-        console.error("Error creating Mercuryo transaction:", err);
-        setError("Failed to initialize widget");
+        console.error('Error creating Mercuryo transaction:', err);
+        setError('Failed to initialize widget');
         setLoading(false);
       }
     };
@@ -100,9 +97,7 @@ const BuyCrypto = ({ onClose }: MercuryoIframeWidgetProps = {}) => {
 
       {error ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-center mt-5 text-red-500 text-base">
-            {error}
-          </Text>
+          <Text className="text-center mt-5 text-red-500 text-base">{error}</Text>
         </View>
       ) : finalUrl ? (
         <iframe

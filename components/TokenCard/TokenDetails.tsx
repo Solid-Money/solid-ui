@@ -13,9 +13,7 @@ const TokenDetails = ({ children }: TokenDetailsProps) => {
       {childrenArray.map((child, index) => (
         <View key={index}>
           {child}
-          {index < childrenArray.length - 1 && (
-            <View className="border-b border-border" />
-          )}
+          {index < childrenArray.length - 1 && <View className="border-b border-border" />}
         </View>
       ))}
     </View>

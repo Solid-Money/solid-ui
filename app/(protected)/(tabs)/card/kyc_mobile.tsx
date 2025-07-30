@@ -1,11 +1,11 @@
-import { Text } from "@/components/ui/text";
-import { path } from "@/constants/path";
-import { KycStatus } from "@/lib/types";
+import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { KycStatus } from '@/lib/types';
 import * as Linking from 'expo-linking';
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import React, { useCallback, useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 export default function KycMobile() {
   const { url } = useLocalSearchParams<{ url: string }>();
@@ -13,34 +13,36 @@ export default function KycMobile() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleDeepLink = useCallback((event: { url: string }) => {
-    console.log('Deep link received:', event.url);
+  const handleDeepLink = useCallback(
+    (event: { url: string }) => {
+      console.log('Deep link received:', event.url);
 
-    try {
-      const urlObj = new URL(event.url);
+      try {
+        const urlObj = new URL(event.url);
 
-      if (urlObj.pathname.includes('kyc-complete')) {
-        // Parse completion status from URL params if available
-        const status = urlObj.searchParams.get('status');
-        const inquiryId = urlObj.searchParams.get('inquiry-id');
+        if (urlObj.pathname.includes('kyc-complete')) {
+          // Parse completion status from URL params if available
+          const status = urlObj.searchParams.get('status');
+          const inquiryId = urlObj.searchParams.get('inquiry-id');
 
-        console.log('KYC completion detected:', { status, inquiryId });
+          console.log('KYC completion detected:', { status, inquiryId });
 
-        // Navigate to success regardless of specific status
-        // The backend will validate the actual status
-        router.replace({
-          pathname: path.CARD_ACTIVATE_MOBILE,
-          params: {
-            kycStatus: KycStatus.APPROVED,
-            inquiryId: inquiryId || '',
-          },
-        });
+          // Navigate to success regardless of specific status
+          // The backend will validate the actual status
+          router.replace({
+            pathname: path.CARD_ACTIVATE_MOBILE,
+            params: {
+              kycStatus: KycStatus.APPROVED,
+              inquiryId: inquiryId || '',
+            },
+          });
+        }
+      } catch (err) {
+        console.error('Error parsing deep link:', err);
       }
-    } catch (err) {
-      console.error('Error parsing deep link:', err);
-    }
-  }, [router]);
-
+    },
+    [router],
+  );
 
   const openKycWithCompletion = useCallback(async () => {
     try {
@@ -51,17 +53,14 @@ export default function KycMobile() {
       const urlObj = new URL(url);
 
       // If URL is from Persona and contains /verify, replace with /widget
-      if (
-        urlObj.hostname.includes("withpersona.com") &&
-        urlObj.pathname.includes("/verify")
-      ) {
-        urlObj.pathname = urlObj.pathname.replace("/verify", "/widget");
+      if (urlObj.hostname.includes('withpersona.com') && urlObj.pathname.includes('/verify')) {
+        urlObj.pathname = urlObj.pathname.replace('/verify', '/widget');
       }
 
       // Add completion redirect URL
       urlObj.searchParams.set('redirect_uri', 'solid://kyc-complete');
       urlObj.searchParams.set('redirect-uri', 'solid://kyc-complete');
-      urlObj.searchParams.set("environment", "mobile");
+      urlObj.searchParams.set('environment', 'mobile');
 
       setLoading(false);
 
@@ -93,14 +92,13 @@ export default function KycMobile() {
 
   useEffect(() => {
     if (!url) {
-      setError("No URL provided");
+      setError('No URL provided');
       setLoading(false);
       return;
     }
 
     openKycWithCompletion();
   }, [url, openKycWithCompletion]);
-
 
   const checkKycStatusFromAPI = useCallback(async () => {
     try {
@@ -153,36 +151,36 @@ export default function KycMobile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
     padding: 20,
   },
   loadingText: {
-    textAlign: "center",
+    textAlign: 'center',
     fontSize: 16,
-    color: "#666",
+    color: '#666',
     marginBottom: 10,
   },
   subText: {
-    textAlign: "center",
+    textAlign: 'center',
     fontSize: 14,
-    color: "#999",
+    color: '#999',
   },
   errorContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
     padding: 20,
   },
   errorText: {
-    textAlign: "center",
-    color: "red",
+    textAlign: 'center',
+    color: 'red',
     fontSize: 16,
     lineHeight: 24,
   },

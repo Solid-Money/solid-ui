@@ -1,9 +1,9 @@
-import { ScrollView, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SettingsCard } from "@/components/Settings";
-import { accounts, supports } from "@/constants/settings";
-import useUser from "@/hooks/useUser";
+import { SettingsCard } from '@/components/Settings';
+import { accounts, supports } from '@/constants/settings';
+import useUser from '@/hooks/useUser';
 
 export default function Settings() {
   const { handleLogout } = useUser();
@@ -28,20 +28,12 @@ export default function Settings() {
 
           <View className="bg-card rounded-xl">
             {supports.map((support, index) => (
-              <SettingsCard
-                key={`support-${index}`}
-                title={support.title}
-                link={support.link}
-              />
+              <SettingsCard key={`support-${index}`} title={support.title} link={support.link} />
             ))}
           </View>
 
           <View className="bg-card rounded-xl">
-            <SettingsCard
-              key="logout"
-              title="Logout"
-              onPress={handleLogout}
-            />
+            <SettingsCard key="logout" title="Logout" onPress={handleLogout} />
           </View>
         </View>
       </ScrollView>
