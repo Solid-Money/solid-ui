@@ -222,7 +222,7 @@ export default function Dashboard() {
                       {isTotalAPYLoading ? (
                         <Skeleton className="w-20 h-8 rounded-md" />
                       ) : totalAPY ? (
-                        `${totalAPY.toFixed(1)}%`
+                        `${totalAPY.toFixed(2)}%`
                       ) : (
                         "0%"
                       )}
