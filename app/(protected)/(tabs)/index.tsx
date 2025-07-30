@@ -18,11 +18,13 @@ import {
   useTotalAPY,
 } from "@/hooks/useAnalytics";
 import { useDepositCalculations } from "@/hooks/useDepositCalculations";
-import { SavingMode } from "@/lib/types";
 import { useDimension } from "@/hooks/useDimension";
 import useUser from "@/hooks/useUser";
 import { useFuseVaultBalance } from "@/hooks/useVault";
 import { ADDRESSES } from "@/lib/config";
+import { calculateYield } from "@/lib/financial";
+import { SavingMode } from "@/lib/types";
+import { cn, fontSize, formatNumber } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
@@ -31,8 +33,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Address } from "viem";
 import { mainnet } from "viem/chains";
 import { useBlockNumber } from "wagmi";
-import { cn, fontSize, formatNumber } from "@/lib/utils";
-import { calculateYield } from "@/lib/financial";
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -105,7 +105,7 @@ export default function Dashboard() {
     }
   }, [isBalanceLoading]);
 
-  if (balanceLoadOnce || isTransactionsLoading) {
+  if (isBalanceLoading || isTransactionsLoading) {
     return <Loading />;
   }
 
@@ -238,7 +238,7 @@ export default function Dashboard() {
                     P&L
                   </Text>
                   <Text className="text-2xl font-semibold">
-                    {balanceLoadOnce ? (
+                    {isBalanceLoading ? (
                       <Skeleton className="w-24 h-8 bg-primary/10 rounded-twice" />
                     ) : (
                       `$${calculateYield(
@@ -260,7 +260,7 @@ export default function Dashboard() {
                     Projected 1Y Earnings
                   </Text>
                   <Text className="text-2xl font-semibold">
-                    {balanceLoadOnce ? (
+                    {isBalanceLoading ? (
                       <Skeleton className="w-24 h-8 bg-primary/10 rounded-twice" />
                     ) : (
                       `$${balance && totalAPY ? formatNumber(balance * (totalAPY / 100), 0) : 0}`
