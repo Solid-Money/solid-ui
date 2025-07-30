@@ -42,7 +42,7 @@ interface UseUserReturn {
   handleLogout: () => void;
   handleRemoveUsers: () => void;
   safeAA: (chain: Chain, subOrganization: string, signWith: string) => Promise<SmartAccountClient>;
-  checkBalance: (user: User, isNewSignup?: boolean) => Promise<void>;
+  checkBalance: (user: User) => Promise<boolean>;
 }
 
 const useUser = (): UseUserReturn => {
@@ -127,7 +127,7 @@ const useUser = (): UseUserReturn => {
   );
 
   const checkBalance = useCallback(
-    async (user: User, isNewSignup = false) => {
+    async (user: User): Promise<boolean> => {
       try {
         const isDeposited = await fetchIsDeposited(
           queryClient,
@@ -138,17 +138,14 @@ const useUser = (): UseUserReturn => {
             ...user,
             isDeposited: true,
           });
-          // Navigate to notifications for new signups, otherwise go to HOME
-          router.replace(isNewSignup ? path.NOTIFICATIONS : path.HOME);
-          return;
         }
+        return isDeposited;
       } catch (error) {
         console.error("Error fetching tokens:", error);
+        return false;
       }
-      // Navigate to notifications for new signups, otherwise go to HOME
-      router.replace(isNewSignup ? path.NOTIFICATIONS : path.HOME);
     },
-    [queryClient, router, updateUser]
+    [queryClient, updateUser]
   );
 
   const handleSignup = useCallback(
@@ -235,12 +232,14 @@ const useUser = (): UseUserReturn => {
             tokens: user.tokens || null,
           };
           storeUser(selectedUser);
-          await checkBalance(selectedUser, true); // Pass true for new signup
+          await checkBalance(selectedUser);
           const resp = await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address))
           if (!resp) {
             throw new Error("Error updating safe address");
           }
           setSignupInfo({ status: Status.SUCCESS });
+          // Navigate to notifications for new signups
+          router.replace(path.NOTIFICATIONS);
         } else {
           throw new Error("Error while verifying passkey registration");
         }
@@ -256,7 +255,7 @@ const useUser = (): UseUserReturn => {
         console.error(error);
       }
     },
-    [checkBalance, safeAA, setSignupInfo, storeUser]
+    [checkBalance, safeAA, setSignupInfo, storeUser, router]
   );
 
   const handleLogin = useCallback(async (username: string) => {
@@ -314,8 +313,10 @@ const useUser = (): UseUserReturn => {
           tokens: user.tokens || null,
         };
         storeUser(selectedUser);
-        await checkBalance(selectedUser, false); // Pass false for existing login
+        await checkBalance(selectedUser);
         setLoginInfo({ status: Status.SUCCESS });
+        // Navigate to home for existing users
+        router.replace(path.HOME);
       }
       else {
         throw new Error("Error while verifying passkey authentication");
@@ -324,7 +325,7 @@ const useUser = (): UseUserReturn => {
       console.error(error);
       setLoginInfo({ status: Status.ERROR });
     }
-  }, [checkBalance, setLoginInfo, storeUser]);
+  }, [checkBalance, setLoginInfo, storeUser, router, safeAA]);
 
   const handleDummyLogin = useCallback(async () => {
     try {
