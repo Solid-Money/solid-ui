@@ -21,7 +21,7 @@ export const useEstimateGas = (
       const baseGasPrice = feeData.maxFeePerGas || feeData.gasPrice || await publicClient(chainId).getGasPrice();
 
       // Apply fast gas price multiplier
-      const fastGasPrice = (baseGasPrice * 170n) / 100n; // 70% above base for fast transactions
+      const fastGasPrice = (baseGasPrice * 195n) / 100n; // 85% above base for fast transactions
 
       const tokenPriceUsd = await fetchTokenPriceUsd(token);
 
