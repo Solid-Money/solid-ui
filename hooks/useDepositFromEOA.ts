@@ -27,6 +27,7 @@ type DepositResult = {
   depositStatus: Status;
   error: string | null;
   hash: Address | undefined;
+  fee: bigint | undefined;
 };
 
 const useDepositFromEOA = (): DepositResult => {
@@ -205,6 +206,7 @@ const useDepositFromEOA = (): DepositResult => {
     depositStatus,
     error,
     hash,
+    fee,
   };
 };
 

@@ -31,7 +31,7 @@ export default function Deposit() {
   const isLoading = depositStatus === Status.PENDING;
   const { data: totalAPY } = useTotalAPY();
   const { isDesktop } = useDimension();
-  const { costInUsd, loading } = useEstimateGas();
+  const { costInUsd, loading } = useEstimateGas(200000n, 0n);
 
   const formattedBalance = balance ? formatUnits(balance, 6) : "0";
 

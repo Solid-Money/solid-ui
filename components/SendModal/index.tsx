@@ -41,7 +41,12 @@ const Send = ({
   chainId,
 }: SendProps) => {
   const { user } = useUser();
-  const { costInUsd, loading } = useEstimateGas(1200000n, chainId, NATIVE_TOKENS[chainId]);
+  const {costInUsd, loading} = useEstimateGas(
+    1200000n,
+    0n,
+    chainId,
+    NATIVE_TOKENS[chainId]
+  );
   const chain = getChain(chainId);
   const { setModal, setTransaction } = useSendStore();
 
