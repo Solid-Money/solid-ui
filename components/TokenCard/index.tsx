@@ -1,9 +1,9 @@
 import { TextInput, View } from 'react-native';
 
-import { Skeleton } from "@/components/ui/skeleton";
-import { Text } from "@/components/ui/text";
-import { compactNumberFormat } from "@/lib/utils";
-import TokenSelectorModal from "../TokenSelector/TokenSelectorModal";
+import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { compactNumberFormat } from '@/lib/utils';
+import TokenSelectorModal from '../TokenSelector/TokenSelectorModal';
 
 interface TokenCardProps {
   amount: string;
@@ -15,9 +15,7 @@ interface TokenCardProps {
 const TokenCard = ({ amount, onAmountChange, balance, price }: TokenCardProps) => {
   return (
     <View className="flex flex-col gap-2 bg-card rounded-xl md:rounded-twice p-6 md:p-10">
-      <Text className="text-lg font-medium opacity-40">
-        Amount to deposit
-      </Text>
+      <Text className="text-lg font-medium opacity-40">Amount to deposit</Text>
       <View className="flex-row justify-between items-center gap-4">
         <TokenSelectorModal />
         <View className="flex flex-col flex-1 items-end">
@@ -49,7 +47,7 @@ const TokenCard = ({ amount, onAmountChange, balance, price }: TokenCardProps) =
         )}
       </View>
     </View>
-  )
-}
+  );
+};
 
 export default TokenCard;

@@ -2,18 +2,17 @@ import { Plus } from "lucide-react-native";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { useActiveAccount, useActiveWalletConnectionStatus } from "thirdweb/react";
-import { Address } from "viem";
 
-import { Text } from "@/components/ui/text";
-import { DEPOSIT_MODAL } from "@/constants/modals";
-import getTokenIcon from "@/lib/getTokenIcon";
-import { useDepositStore } from "@/store/useDepositStore";
-import AnimatedModal from "../AnimatedModal";
-import BuyCrypto from "../BuyCrypto";
-import { DepositToVaultForm } from "../DepositToVault";
-import TransactionStatus from "../TransactionStatus";
-import { buttonVariants } from "../ui/button";
-import DepositOptions from "./DepositOptions";
+import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
+import getTokenIcon from '@/lib/getTokenIcon';
+import { useDepositStore } from '@/store/useDepositStore';
+import AnimatedModal from '../AnimatedModal';
+import BuyCrypto from '../BuyCrypto';
+import { DepositToVaultForm } from '../DepositToVault';
+import TransactionStatus from '../TransactionStatus';
+import { buttonVariants } from '../ui/button';
+import DepositOptions from './DepositOptions';
 
 const DepositOptionModal = () => {
   const { currentModal, previousModal, transaction, setModal } = useDepositStore();
@@ -33,19 +32,17 @@ const DepositOptionModal = () => {
     return (
       <View
         className={buttonVariants({
-          variant: "brand",
-          className: "h-12 pr-6 rounded-xl",
+          variant: 'brand',
+          className: 'h-12 pr-6 rounded-xl',
         })}
       >
         <View className="flex-row items-center gap-4">
           <Plus color="black" />
-          <Text className="text-primary-foreground font-bold">
-            Deposit
-          </Text>
+          <Text className="text-primary-foreground font-bold">Deposit</Text>
         </View>
       </View>
-    )
-  }
+    );
+  };
 
   const getContent = () => {
     if (isTransactionStatus) {
@@ -78,21 +75,21 @@ const DepositOptionModal = () => {
 
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
-    return "Deposit";
+    return 'Deposit';
   };
 
   const getContentClassName = () => {
     if (isBuyCrypto) {
-      return "w-[470px] h-[80vh] md:h-[85vh]";
+      return 'w-[470px] h-[80vh] md:h-[85vh]';
     }
-    return "";
+    return '';
   };
 
   const getContainerClassName = () => {
     if (!isFormAndAddress && !isBuyCrypto && !isTransactionStatus) {
-      return "min-h-[40rem]";
+      return 'min-h-[40rem]';
     }
-    return "";
+    return '';
   };
 
   const handleOpenChange = (value: boolean) => {
@@ -108,7 +105,7 @@ const DepositOptionModal = () => {
   };
 
   useEffect(() => {
-    if (status === "disconnected" && !isClose) {
+    if (status === 'disconnected' && !isClose) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
   }, [status, setModal, isClose]);

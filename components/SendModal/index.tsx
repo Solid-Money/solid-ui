@@ -1,29 +1,29 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Address } from "abitype";
-import { ArrowUpRight, Fuel, Wallet } from "lucide-react-native";
-import { useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, TextInput, View } from "react-native";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Address } from 'abitype';
+import { ArrowUpRight, Fuel, Wallet } from 'lucide-react-native';
+import { useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { formatUnits, isAddress } from "viem";
-import { useReadContract } from "wagmi";
-import { z } from "zod";
+import { formatUnits, isAddress } from 'viem';
+import { useReadContract } from 'wagmi';
+import { z } from 'zod';
 
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { SEND_MODAL } from "@/constants/modals";
-import { NATIVE_TOKENS } from "@/constants/tokens";
-import { useEstimateGas } from "@/hooks/useEstimateGas";
-import useSend from "@/hooks/useSend";
-import useUser from "@/hooks/useUser";
-import ERC20_ABI from "@/lib/abis/ERC20";
-import { Status, TokenIcon } from "@/lib/types";
-import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
-import { getChain } from "@/lib/wagmi";
-import { useSendStore } from "@/store/useSendStore";
-import RenderTokenIcon from "../RenderTokenIcon";
-import { Skeleton } from "../ui/skeleton";
-import Max from "../Max";
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { SEND_MODAL } from '@/constants/modals';
+import { NATIVE_TOKENS } from '@/constants/tokens';
+import { useEstimateGas } from '@/hooks/useEstimateGas';
+import useSend from '@/hooks/useSend';
+import useUser from '@/hooks/useUser';
+import ERC20_ABI from '@/lib/abis/ERC20';
+import { Status, TokenIcon } from '@/lib/types';
+import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { getChain } from '@/lib/wagmi';
+import { useSendStore } from '@/store/useSendStore';
+import RenderTokenIcon from '../RenderTokenIcon';
+import { Skeleton } from '../ui/skeleton';
+import Max from '../Max';
 
 type SendProps = {
   tokenAddress: Address;
@@ -31,29 +31,18 @@ type SendProps = {
   tokenIcon: TokenIcon;
   tokenSymbol: string;
   chainId: number;
-}
+};
 
-const Send = ({
-  tokenAddress,
-  tokenDecimals,
-  tokenIcon,
-  tokenSymbol,
-  chainId,
-}: SendProps) => {
+const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: SendProps) => {
   const { user } = useUser();
-  const {costInUsd, loading} = useEstimateGas(
-    1200000n,
-    0n,
-    chainId,
-    NATIVE_TOKENS[chainId]
-  );
+  const { costInUsd, loading } = useEstimateGas(1200000n, 0n, chainId, NATIVE_TOKENS[chainId]);
   const chain = getChain(chainId);
   const { setModal, setTransaction } = useSendStore();
 
   const { data: balance, isPending } = useReadContract({
     abi: ERC20_ABI,
     address: tokenAddress,
-    functionName: "balanceOf",
+    functionName: 'balanceOf',
     args: [user?.safeAddress as Address],
     chainId: chainId,
     query: {
@@ -67,13 +56,16 @@ const Send = ({
     return z.object({
       amount: z
         .string()
-        .refine((val) => val !== "" && !isNaN(Number(val)), "Please enter a valid amount")
-        .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`)
-        .transform((val) => Number(val)),
+        .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
+        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
+        .refine(
+          val => Number(val) <= balanceAmount,
+          `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
+        )
+        .transform(val => Number(val)),
       address: z
         .string()
-        .refine(isAddress, "Please enter a valid Ethereum address")
+        .refine(isAddress, 'Please enter a valid Ethereum address')
         .transform(value => value.toLowerCase()),
     });
   }, [balance, tokenDecimals, tokenSymbol]);
@@ -89,10 +81,10 @@ const Send = ({
     trigger,
   } = useForm<SendFormData>({
     resolver: zodResolver(sendSchema) as any,
-    mode: "onChange",
+    mode: 'onChange',
     defaultValues: {
-      amount: "",
-      address: "",
+      amount: '',
+      address: '',
     },
   });
 
@@ -102,11 +94,11 @@ const Send = ({
   const getSendText = () => {
     if (errors.amount) return errors.amount.message;
     if (errors.address) return errors.address.message;
-    if (sendStatus === Status.PENDING) return "Sending";
-    if (sendStatus === Status.ERROR) return "Error while Sending";
-    if (sendStatus === Status.SUCCESS) return "Sending Successful";
-    if (!isValid) return "Please complete the form";
-    return "Send";
+    if (sendStatus === Status.PENDING) return 'Sending';
+    if (sendStatus === Status.ERROR) return 'Error while Sending';
+    if (sendStatus === Status.SUCCESS) return 'Sending Successful';
+    if (!isValid) return 'Please complete the form';
+    return 'Send';
   };
 
   const onSubmit = async (data: SendFormData) => {
@@ -137,10 +129,7 @@ const Send = ({
   };
 
   const isFormDisabled = () => {
-    return (
-      isSendLoading ||
-      !isValid
-    );
+    return isSendLoading || !isValid;
   };
 
   return (
@@ -148,7 +137,12 @@ const Send = ({
       <View className="gap-3">
         <Text className="opacity-60">Send amount</Text>
 
-        <View className={cn('flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3', errors.amount && 'border border-red-500')}>
+        <View
+          className={cn(
+            'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
+            errors.amount && 'border border-red-500',
+          )}
+        >
           <Controller
             control={control}
             name="amount"
@@ -171,7 +165,8 @@ const Send = ({
         </View>
 
         <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-          <Wallet size={16} /> {isPending ? (
+          <Wallet size={16} />{' '}
+          {isPending ? (
             <Skeleton className="w-16 h-4 rounded-md" />
           ) : balance ? (
             `${formatUnits(balance, tokenDecimals)} ${tokenSymbol}`
@@ -180,8 +175,8 @@ const Send = ({
           )}
           <Max
             onPress={() => {
-              setValue("amount", formatUnits(balance ?? 0n, tokenDecimals));
-              trigger("amount");
+              setValue('amount', formatUnits(balance ?? 0n, tokenDecimals));
+              trigger('amount');
             }}
           />
         </Text>
@@ -211,11 +206,15 @@ const Send = ({
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading ? "..." :
-            !costInUsd ? "0" :
-              costInUsd < 0.01 ? "<0.01" :
-                formatNumber(costInUsd, 2)
-            } USD in fee`}
+          {`~ $${
+            loading
+              ? '...'
+              : !costInUsd
+                ? '0'
+                : costInUsd < 0.01
+                  ? '<0.01'
+                  : formatNumber(costInUsd, 2)
+          } USD in fee`}
         </Text>
       </View>
 
@@ -236,7 +235,10 @@ const SendTrigger = (props: any) => {
   return (
     <Button
       variant="outline"
-      className={buttonVariants({ variant: "secondary", className: "h-12 rounded-xl gap-4 md:pr-6" })}
+      className={buttonVariants({
+        variant: 'secondary',
+        className: 'h-12 rounded-xl gap-4 md:pr-6',
+      })}
       {...props}
     >
       <ArrowUpRight color="white" />

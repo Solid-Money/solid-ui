@@ -1,6 +1,6 @@
-import { ArrowLeft } from "lucide-react-native";
-import React, { ReactNode } from "react";
-import { View } from "react-native";
+import { ArrowLeft } from 'lucide-react-native';
+import React, { ReactNode } from 'react';
+import { View } from 'react-native';
 import Animated, {
   Easing,
   FadeInLeft,
@@ -11,17 +11,17 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-} from "react-native-reanimated";
+} from 'react-native-reanimated';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 const ANIMATION_DURATION = 150;
 
@@ -68,7 +68,7 @@ const AnimatedModal = ({
   titleClassName,
   showBackButton = false,
   onBackPress,
-  shouldAnimate = previousModal.name !== "close",
+  shouldAnimate = previousModal.name !== 'close',
   isForward = currentModal.number > previousModal.number,
   contentKey,
 }: AnimatedModalProps) => {
@@ -90,23 +90,21 @@ const AnimatedModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
-      <DialogContent className={cn("p-6 md:p-8 md:max-w-md", contentClassName)}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className={cn('p-6 md:p-8 md:max-w-md', contentClassName)}>
         <Animated.View style={dialogAnimatedStyle} className="overflow-hidden">
           <View
-            className={cn("gap-8", containerClassName)}
-            onLayout={(event) => {
+            className={cn('gap-8', containerClassName)}
+            onLayout={event => {
               dialogHeight.value = event.nativeEvent.layout.height;
             }}
           >
             {title && (
-              <DialogHeader className={cn("flex-row justify-between items-center gap-2", titleClassName)}>
+              <DialogHeader
+                className={cn('flex-row justify-between items-center gap-2', titleClassName)}
+              >
                 {showBackButton && onBackPress && (
-                  <Animated.View
-                    layout={LinearTransition.duration(ANIMATION_DURATION)}
-                  >
+                  <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
                     <Button
                       variant="ghost"
                       className="rounded-full p-0 web:hover:bg-transparent web:hover:opacity-70"
@@ -116,9 +114,7 @@ const AnimatedModal = ({
                     </Button>
                   </Animated.View>
                 )}
-                <Animated.View
-                  layout={LinearTransition.duration(ANIMATION_DURATION)}
-                >
+                <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
                   <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
                 </Animated.View>
                 {showBackButton && <View className="w-10" />}
@@ -127,9 +123,9 @@ const AnimatedModal = ({
             <Animated.View
               entering={
                 shouldAnimate
-                  ? (isForward
+                  ? isForward
                     ? FadeInRight.duration(ANIMATION_DURATION)
-                    : FadeInLeft.duration(ANIMATION_DURATION))
+                    : FadeInLeft.duration(ANIMATION_DURATION)
                   : undefined
               }
               exiting={

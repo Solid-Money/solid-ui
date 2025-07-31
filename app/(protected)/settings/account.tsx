@@ -1,10 +1,10 @@
-import { ScrollView, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { SettingsCard } from "@/components/Settings";
-import useUser from "@/hooks/useUser";
-import { eclipseAddress } from "@/lib/utils";
-import { Address } from "viem";
+import { SettingsCard } from '@/components/Settings';
+import useUser from '@/hooks/useUser';
+import { eclipseAddress } from '@/lib/utils';
+import { Address } from 'viem';
 
 interface Detail {
   title: string;
@@ -17,15 +17,15 @@ export default function Account() {
 
   const details: Detail[] = [
     {
-      title: "User Name",
+      title: 'User Name',
       description: user?.username,
     },
     {
-      title: "Wallet Address",
+      title: 'Wallet Address',
       description: user?.safeAddress,
       isAddress: true,
     },
-  ]
+  ];
 
   return (
     <SafeAreaView
@@ -40,9 +40,9 @@ export default function Account() {
                 key={`detail-${index}`}
                 title={detail.title}
                 description={
-                  detail.isAddress ?
-                    eclipseAddress(detail.description as Address) :
-                    detail.description
+                  detail.isAddress
+                    ? eclipseAddress(detail.description as Address)
+                    : detail.description
                 }
               />
             ))}

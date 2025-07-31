@@ -1,12 +1,12 @@
-import React from "react";
-import { Address } from "viem";
+import React from 'react';
+import { Address } from 'viem';
 
-import { UNSTAKE_MODAL } from "@/constants/modals";
-import getTokenIcon from "@/lib/getTokenIcon";
-import { useUnstakeStore } from "@/store/useUnstakeStore";
-import { Unstake, UnstakeTrigger } from ".";
-import AnimatedModal from "../AnimatedModal";
-import TransactionStatus from "../TransactionStatus";
+import { UNSTAKE_MODAL } from '@/constants/modals';
+import getTokenIcon from '@/lib/getTokenIcon';
+import { useUnstakeStore } from '@/store/useUnstakeStore';
+import { Unstake, UnstakeTrigger } from '.';
+import AnimatedModal from '../AnimatedModal';
+import TransactionStatus from '../TransactionStatus';
 
 const UnstakeModal = () => {
   const { currentModal, previousModal, setModal, transaction } = useUnstakeStore();
@@ -16,26 +16,28 @@ const UnstakeModal = () => {
 
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
-    return "Unstake";
+    return 'Unstake';
   };
 
   const getContentKey = () => {
     if (isTransactionStatus) return 'transaction-status';
     return 'unstake-form';
-  }
+  };
 
   const getContent = () => {
     if (isTransactionStatus) {
-      return <TransactionStatus
-        amount={transaction.amount ?? 0}
-        onPress={() => setModal(UNSTAKE_MODAL.CLOSE)}
-        token={"SoUSD"}
-        icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
-      />;
+      return (
+        <TransactionStatus
+          amount={transaction.amount ?? 0}
+          onPress={() => setModal(UNSTAKE_MODAL.CLOSE)}
+          token={'SoUSD'}
+          icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
+        />
+      );
     }
 
-    return <Unstake />
-  }
+    return <Unstake />;
+  };
 
   const handleOpenChange = (value: boolean) => {
     if (value) {
@@ -43,7 +45,7 @@ const UnstakeModal = () => {
     } else {
       setModal(UNSTAKE_MODAL.CLOSE);
     }
-  }
+  };
 
   return (
     <AnimatedModal

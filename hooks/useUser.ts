@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { SmartAccountClient, createSmartAccountClient } from "permissionless";
 import { toSafeSmartAccount } from "permissionless/accounts";
 import { useCallback, useEffect, useMemo } from "react";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 import { Chain, createWalletClient, http } from "viem";
 import { entryPoint07Address } from "viem/account-abstraction";
 import { mainnet } from "viem/chains";
@@ -18,15 +18,19 @@ import {
   getSubOrgIdByUsername,
   login,
   signUp,
-  updateSafeAddress
+  updateSafeAddress,
 } from "@/lib/api";
-import { EXPO_PUBLIC_TURNKEY_API_BASE_URL, EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from "@/lib/config";
+import {
+  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+  USER,
+} from "@/lib/config";
 import { pimlicoClient } from "@/lib/pimlico";
 import { Status, User } from "@/lib/types";
 import {
   getNonce,
   setGlobalLogoutHandler,
-  withRefreshToken
+  withRefreshToken,
 } from "@/lib/utils";
 import { publicClient, rpcUrls } from "@/lib/wagmi";
 import { useUserStore } from "@/store/useUserStore";
@@ -36,13 +40,17 @@ import { fetchIsDeposited } from "./useAnalytics";
 interface UseUserReturn {
   user: User | undefined;
   handleSignup: (username: string, inviteCode: string) => Promise<void>;
-  handleLogin: (username: string) => Promise<void>;
+  handleLogin: () => Promise<void>;
   handleDummyLogin: () => Promise<void>;
   handleSelectUser: (username: string) => void;
   handleLogout: () => void;
   handleRemoveUsers: () => void;
-  safeAA: (chain: Chain, subOrganization: string, signWith: string) => Promise<SmartAccountClient>;
-  checkBalance: (user: User) => Promise<void>;
+  safeAA: (
+    chain: Chain,
+    subOrganization: string,
+    signWith: string
+  ) => Promise<SmartAccountClient>;
+  checkBalance: (user: User) => Promise<boolean>;
 }
 
 const useUser = (): UseUserReturn => {
@@ -69,7 +77,7 @@ const useUser = (): UseUserReturn => {
     async (chain: Chain, subOrganization: string, signWith: string) => {
       let stamper: WebauthnStamper | PasskeyStamper;
 
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         stamper = new WebauthnStamper({
           rpId: getRuntimeRpId(),
           timeout: 60000,
@@ -111,7 +119,6 @@ const useUser = (): UseUserReturn => {
         },
       });
 
-
       return createSmartAccountClient({
         account: safeAccount,
         chain: chain,
@@ -121,13 +128,13 @@ const useUser = (): UseUserReturn => {
             (await pimlicoClient(chain.id).getUserOperationGasPrice()).fast,
         },
         bundlerTransport: http(USER.pimlicoUrl(chain.id)),
-      })
+      });
     },
     []
   );
 
   const checkBalance = useCallback(
-    async (user: User) => {
+    async (user: User): Promise<boolean> => {
       try {
         const isDeposited = await fetchIsDeposited(
           queryClient,
@@ -138,20 +145,18 @@ const useUser = (): UseUserReturn => {
             ...user,
             isDeposited: true,
           });
-          router.replace(path.HOME);
-          return;
         }
+        return isDeposited;
       } catch (error) {
         console.error("Error fetching tokens:", error);
+        return false;
       }
-      router.replace(path.HOME);
     },
-    [queryClient, router, updateUser]
+    [queryClient, updateUser]
   );
 
   const handleSignup = useCallback(
     async (username: string, inviteCode: string) => {
-
       try {
         setSignupInfo({ status: Status.PENDING });
         const subOrgId = await getSubOrgIdByUsername(username);
@@ -160,14 +165,14 @@ const useUser = (): UseUserReturn => {
           throw new Error("Username already exists");
         }
 
-        const passkeyName = `${getRuntimeRpId()}-${username}`;
+        const passkeyName = username
         let challenge: any;
         let attestation: any;
 
-        if (Platform.OS === 'web') {
+        if (Platform.OS === "web") {
           // Dynamically import browser SDK only when needed
           //@ts-ignore
-          const { Turnkey } = await import('@turnkey/sdk-browser');
+          const { Turnkey } = await import("@turnkey/sdk-browser");
           const turnkey = new Turnkey({
             apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
             defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -188,7 +193,9 @@ const useUser = (): UseUserReturn => {
         } else {
           // Use the already imported React Native passkey stamper
           //@ts-ignore
-          const { createPasskey } = await import('@turnkey/react-native-passkey-stamper');
+          const { createPasskey } = await import(
+            "@turnkey/react-native-passkey-stamper"
+          );
           const passkey = await createPasskey({
             authenticatorName: "End-User Passkey",
             rp: {
@@ -209,17 +216,12 @@ const useUser = (): UseUserReturn => {
           throw new Error("Error creating passkey");
         }
 
-        const user = await signUp(
-          username,
-          challenge,
-          attestation,
-          inviteCode,
-        );
+        const user = await signUp(username, challenge, attestation, inviteCode);
 
         const smartAccountClient = await safeAA(
           mainnet,
           user.subOrganizationId,
-          user.walletAddress,
+          user.walletAddress
         );
 
         if (smartAccountClient && user) {
@@ -234,17 +236,29 @@ const useUser = (): UseUserReturn => {
           };
           storeUser(selectedUser);
           await checkBalance(selectedUser);
-          const resp = await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address))
+          const resp = await withRefreshToken(() =>
+            updateSafeAddress(smartAccountClient.account.address)
+          );
           if (!resp) {
             throw new Error("Error updating safe address");
           }
           setSignupInfo({ status: Status.SUCCESS });
+
+          // On mobile, navigate to notifications for new signups
+          if (Platform.OS === "web") {
+            router.replace(path.HOME);
+          } else {
+            router.replace(path.NOTIFICATIONS);
+          }
         } else {
           throw new Error("Error while verifying passkey registration");
         }
       } catch (error: any) {
         let message = "";
-        if (error?.status === 409 || error.message?.includes("Username already exists")) {
+        if (
+          error?.status === 409 ||
+          error.message?.includes("Username already exists")
+        ) {
           message = "Username already exists";
         } else if ((await error?.text?.())?.toLowerCase()?.includes("invite")) {
           message = "Invalid invite code";
@@ -254,21 +268,19 @@ const useUser = (): UseUserReturn => {
         console.error(error);
       }
     },
-    [checkBalance, safeAA, setSignupInfo, storeUser]
+    [checkBalance, safeAA, setSignupInfo, storeUser, router]
   );
 
-  const handleLogin = useCallback(async (username: string) => {
-    try {
-      setLoginInfo({ status: Status.PENDING });
-      const subOrgId = await getSubOrgIdByUsername(username);
-
-      if (subOrgId.organizationId) {
+  const handleLogin = useCallback(
+    async () => {
+      try {
+        setLoginInfo({ status: Status.PENDING }); 
         let stamp: any;
 
-        if (Platform.OS === 'web') {
+        if (Platform.OS === "web") {
           // Dynamically import browser SDK only when needed
           //@ts-ignore
-          const { Turnkey } = await import('@turnkey/sdk-browser');
+          const { Turnkey } = await import("@turnkey/sdk-browser");
           const turnkey = new Turnkey({
             apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
             defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -289,22 +301,19 @@ const useUser = (): UseUserReturn => {
           );
           stamp = await turnkeyClient.stampGetWhoami({
             organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-          })
+          });
         }
 
-        const user = await login(
-          username,
-          stamp
-        )
+        const user = await login(stamp);
 
         const smartAccountClient = await safeAA(
           mainnet,
           user.subOrganizationId,
-          user.walletAddress,
+          user.walletAddress
         );
         const selectedUser: User = {
           safeAddress: smartAccountClient.account.address,
-          username,
+          username: user.username,
           userId: user.turnkeyUserId,
           signWith: user.walletAddress,
           suborgId: user.subOrganizationId,
@@ -314,15 +323,15 @@ const useUser = (): UseUserReturn => {
         storeUser(selectedUser);
         await checkBalance(selectedUser);
         setLoginInfo({ status: Status.SUCCESS });
+
+        router.replace(path.HOME);
+      } catch (error: any) {
+        console.error(error);
+        setLoginInfo({ status: Status.ERROR });
       }
-      else {
-        throw new Error("Error while verifying passkey authentication");
-      }
-    } catch (error: any) {
-      console.error(error);
-      setLoginInfo({ status: Status.ERROR });
-    }
-  }, [checkBalance, setLoginInfo, storeUser]);
+    },
+    [checkBalance, setLoginInfo, storeUser, router, safeAA]
+  );
 
   const handleDummyLogin = useCallback(async () => {
     try {
@@ -335,7 +344,7 @@ const useUser = (): UseUserReturn => {
         selected: true,
       });
       router.replace(path.HOME);
-    } catch (error) { }
+    } catch (error) {}
   }, [router, storeUser]);
 
   const handleLogout = useCallback(() => {

@@ -30,14 +30,14 @@ const Ping = () => {
 
   return (
     <View className="relative h-3.5 w-3.5">
-      <Animated.View 
+      <Animated.View
         style={{
           width: 10,
           height: 10,
-          position: "absolute",
-          top: "15%",
-          left: "15%",
-          backgroundColor: "#94F27F",
+          position: 'absolute',
+          top: '15%',
+          left: '15%',
+          backgroundColor: '#94F27F',
           borderRadius: 100,
           zIndex: -1,
           transform: [{ scale: scaleAnim }],

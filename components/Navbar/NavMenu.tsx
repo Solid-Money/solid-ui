@@ -1,17 +1,17 @@
-import { useNavigation, usePathname, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useNavigation, usePathname, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-} from "@/components/ui/navigation-menu";
-import { Text } from "@/components/ui/text";
-import useNav from "@/hooks/useNav";
+} from '@/components/ui/navigation-menu';
+import { Text } from '@/components/ui/text';
+import useNav from '@/hooks/useNav';
 
 export function NavMenu() {
-  const pathname = usePathname()
+  const pathname = usePathname();
   const [value, setValue] = useState<string>();
   const navigation = useNavigation();
   const router = useRouter();
@@ -32,7 +32,7 @@ export function NavMenu() {
   return (
     <NavigationMenu value={value} onValueChange={setValue}>
       <NavigationMenuList>
-        {menuItems.map((item) => (
+        {menuItems.map(item => (
           <NavigationMenuItem key={item.label} value={item.label}>
             <NavigationMenuLink
               onPress={() => router.push(item.href)}
@@ -44,5 +44,5 @@ export function NavMenu() {
         ))}
       </NavigationMenuList>
     </NavigationMenu>
-  )
+  );
 }

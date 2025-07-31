@@ -11,12 +11,7 @@ import { Faq } from '@/lib/types';
 
 const FAQ = ({ faqs }: { faqs: Faq[] }) => {
   return (
-    <Accordion
-      type='multiple'
-      collapsible
-      defaultValue={['item-1']}
-      className='w-full'
-    >
+    <Accordion type="multiple" collapsible defaultValue={['item-1']} className="w-full">
       {faqs.map((faq, index) => (
         <AccordionItem key={index} value={`item-${index + 1}`}>
           <AccordionTrigger>
@@ -39,6 +34,6 @@ const FAQ = ({ faqs }: { faqs: Faq[] }) => {
       ))}
     </Accordion>
   );
-}
+};
 
 export default FAQ;

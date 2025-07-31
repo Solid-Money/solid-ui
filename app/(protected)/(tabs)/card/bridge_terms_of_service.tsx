@@ -1,9 +1,9 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { path } from "@/constants/path";
-import { TermsOfServiceStatus } from "@/lib/types";
-import { Text } from "@/components/ui/text";
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { path } from '@/constants/path';
+import { TermsOfServiceStatus } from '@/lib/types';
+import { Text } from '@/components/ui/text';
 
 export default function BridgeTermsOfServiceIframe() {
   const { url } = useLocalSearchParams<{ url: string }>();
@@ -17,7 +17,7 @@ export default function BridgeTermsOfServiceIframe() {
   };
 
   const handleIframeError = () => {
-    setError("Failed to load content. Please try again later.");
+    setError('Failed to load content. Please try again later.');
     setLoading(false);
   };
 
@@ -32,7 +32,7 @@ export default function BridgeTermsOfServiceIframe() {
 
       try {
         if (
-          typeof event.data === "object" &&
+          typeof event.data === 'object' &&
           event.data.signedAgreementId &&
           event.data.signedAgreementId.length > 0
         ) {
@@ -44,18 +44,18 @@ export default function BridgeTermsOfServiceIframe() {
           });
         }
       } catch (err) {
-        console.error("Error handling message:", err);
+        console.error('Error handling message:', err);
       }
     };
 
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [url, router]);
 
   // Safety check for URL
   useEffect(() => {
     if (!url) {
-      setError("No URL provided");
+      setError('No URL provided');
       setLoading(false);
     }
   }, [url]);
@@ -83,21 +83,21 @@ export default function BridgeTermsOfServiceIframe() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
   loadingText: {
-    textAlign: "center",
+    textAlign: 'center',
     marginTop: 20,
     fontSize: 16,
   },
   errorText: {
-    textAlign: "center",
+    textAlign: 'center',
     marginTop: 20,
-    color: "red",
+    color: 'red',
     fontSize: 16,
   },
   iframe: {
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: '100%',
   },
 });

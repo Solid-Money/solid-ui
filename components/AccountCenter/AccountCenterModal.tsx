@@ -1,17 +1,12 @@
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import {
-  AccountCenter,
-  AccountCenterFooter,
-  AccountCenterTitle,
-  AccountCenterTrigger
-} from "."
+} from '@/components/ui/dialog';
+import { AccountCenter, AccountCenterFooter, AccountCenterTitle, AccountCenterTrigger } from '.';
 
 const AccountCenterModal = () => {
   return (
@@ -31,7 +26,7 @@ const AccountCenterModal = () => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
+  );
+};
 
-export default AccountCenterModal
+export default AccountCenterModal;

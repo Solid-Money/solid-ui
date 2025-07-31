@@ -1,9 +1,9 @@
-import { ActivityIndicator, View } from "react-native";
-import { ChevronRight } from "lucide-react-native";
+import { ActivityIndicator, View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 
-import { Button } from "../ui/button";
-import { Text } from "../ui/text";
-import DepositComingSoon from "./DepositComingSoon";
+import { Button } from '../ui/button';
+import { Text } from '../ui/text';
+import DepositComingSoon from './DepositComingSoon';
 
 type DepositOptionProps = {
   text: string;
@@ -11,7 +11,7 @@ type DepositOptionProps = {
   onPress: () => void;
   isLoading?: boolean;
   isComingSoon?: boolean;
-}
+};
 
 const DepositOption = ({ text, icon, onPress, isLoading, isComingSoon }: DepositOptionProps) => {
   const isDisabled = isComingSoon || isLoading;
@@ -26,14 +26,15 @@ const DepositOption = ({ text, icon, onPress, isLoading, isComingSoon }: Deposit
         {icon}
         <Text className="text-primary text-lg font-semibold">{text}</Text>
       </View>
-      {isComingSoon ?
-        <DepositComingSoon /> :
-        isLoading ?
-          <ActivityIndicator color="white" size={20} /> :
-          <ChevronRight color="white" size={20} />
-      }
+      {isComingSoon ? (
+        <DepositComingSoon />
+      ) : isLoading ? (
+        <ActivityIndicator color="white" size={20} />
+      ) : (
+        <ChevronRight color="white" size={20} />
+      )}
     </Button>
-  )
-}
+  );
+};
 
 export default DepositOption;

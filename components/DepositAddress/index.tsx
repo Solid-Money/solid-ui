@@ -1,19 +1,19 @@
-import { Image } from "expo-image";
-import { View } from "react-native";
+import { Image } from 'expo-image';
+import { View } from 'react-native';
 
-import { useTokenSelector } from "@/hooks/useToken";
-import useUser from "@/hooks/useUser";
-import { Token } from "@/lib/types";
-import { Button } from "../ui/button";
-import { Skeleton } from "../ui/skeleton";
-import { Text } from "../ui/text";
-import { TOKEN_IMAGES } from "@/constants/tokens";
+import { useTokenSelector } from '@/hooks/useToken';
+import useUser from '@/hooks/useUser';
+import { Token } from '@/lib/types';
+import { Button } from '../ui/button';
+import { Skeleton } from '../ui/skeleton';
+import { Text } from '../ui/text';
+import { TOKEN_IMAGES } from '@/constants/tokens';
 
 type TokenSelectorProps = {
   tokens: Token[];
   setSelectedToken: (token: Token) => void;
   setOpen?: (open: boolean) => void;
-}
+};
 
 const TokenSelector = ({ tokens, setSelectedToken, setOpen }: TokenSelectorProps) => {
   const { user } = useUser();
@@ -22,7 +22,7 @@ const TokenSelector = ({ tokens, setSelectedToken, setOpen }: TokenSelectorProps
   const handleTokenClick = (token: Token) => {
     setSelectedToken(token);
     setOpen?.(false);
-  }
+  };
 
   return (
     <View className="flex flex-col gap-2.5">
@@ -32,9 +32,8 @@ const TokenSelector = ({ tokens, setSelectedToken, setOpen }: TokenSelectorProps
             key={index}
             className="bg-primary/10 border-primary/0 rounded-2xl justify-between h-16 px-4"
           />
-        ))
-      }
-      {tokensWithBalance.map((token) => (
+        ))}
+      {tokensWithBalance.map(token => (
         <Button
           key={token.address}
           variant="secondary"
@@ -53,14 +52,23 @@ const TokenSelector = ({ tokens, setSelectedToken, setOpen }: TokenSelectorProps
             <Text>Coming soon</Text>
           ) : (
             <View className="flex-col items-end gap-0.5">
-              <Text className="text-lg font-bold">${!token.balanceUSD ? "0" : token.balanceUSD < 0.001 ? "<0.001" : token.balanceUSD.toFixed(3)}</Text>
-              <Text className="text-sm opacity-40">{!token.balance ? "0" : token.balance < 0.001 ? "<0.001" : token.balance.toFixed(3)}</Text>
+              <Text className="text-lg font-bold">
+                $
+                {!token.balanceUSD
+                  ? '0'
+                  : token.balanceUSD < 0.001
+                    ? '<0.001'
+                    : token.balanceUSD.toFixed(3)}
+              </Text>
+              <Text className="text-sm opacity-40">
+                {!token.balance ? '0' : token.balance < 0.001 ? '<0.001' : token.balance.toFixed(3)}
+              </Text>
             </View>
           )}
         </Button>
       ))}
     </View>
-  )
-}
+  );
+};
 
 export default TokenSelector;

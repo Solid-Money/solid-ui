@@ -95,6 +95,12 @@ export default {
           },
         },
       ],
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/images/icon.png",
+        },
+      ],
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
     ],

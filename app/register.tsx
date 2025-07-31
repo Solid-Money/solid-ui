@@ -1,31 +1,28 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Image } from "expo-image";
-import { Link, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, Platform, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { z } from "zod";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Image } from 'expo-image';
+import { Link, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, Platform, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { z } from 'zod';
 
-import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import useUser from "@/hooks/useUser";
-import { Status } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { useUserStore } from "@/store/useUserStore";
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import useUser from '@/hooks/useUser';
+import { Status } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { useUserStore } from '@/store/useUserStore';
 
-import InfoError from "@/assets/images/info-error";
+import InfoError from '@/assets/images/info-error';
 
 const registerSchema = z.object({
   username: z
     .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be less than 20 characters")
-    .regex(
-      /^[a-zA-Z0-9_]+$/,
-      "Only use letters, numbers, underscores_, or hyphens-."
-    )
-    .refine((value) => !value.includes(" "), "Username cannot contain spaces"),
+    .min(3, 'Username must be at least 3 characters')
+    .max(20, 'Username must be less than 20 characters')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Only use letters, numbers, underscores_, or hyphens-.')
+    .refine(value => !value.includes(' '), 'Username cannot contain spaces'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -43,13 +40,13 @@ export default function Register() {
     reset,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    mode: "onChange",
+    mode: 'onChange',
     defaultValues: {
-      username: "",
+      username: '',
     },
   });
 
-  const watchedUsername = watch("username");
+  const watchedUsername = watch('username');
 
   // Reset form after successful signup
   useEffect(() => {
@@ -62,14 +59,10 @@ export default function Register() {
     handleSignup(data.username, code);
   };
 
-  const handleLoginForm = (data: RegisterFormData) => {
-    handleLogin(data.username);
-  };
-
   const getSignupButtonText = () => {
-    if (signupInfo.status === Status.PENDING) return "Creating";
-    if (!isValid || !watchedUsername) return "Enter a username";
-    return "Create Account";
+    if (signupInfo.status === Status.PENDING) return 'Creating';
+    if (!isValid || !watchedUsername) return 'Enter a username';
+    return 'Create Account';
   };
 
   const getSignupErrorText = useMemo(() => {
@@ -87,7 +80,7 @@ export default function Register() {
       <View className="flex-1 justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
         <View className="flex-row items-center gap-5">
           <Image
-            source={require("@/assets/images/solid-logo-4x.png")}
+            source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
             style={{ width: 37, height: 40 }}
             contentFit="contain"
@@ -98,14 +91,19 @@ export default function Register() {
             <Text className="text-3xl font-semibold">Welcome!</Text>
             <Text className="text-muted-foreground">
               Invite-only access.{' '}
-              <Link href="https://www.solid.xyz" target="_blank" className='underline hover:opacity-70'>Join the waitlist</Link> if you haven&apos;t already.
+              <Link
+                href="https://www.solid.xyz"
+                target="_blank"
+                className="underline hover:opacity-70"
+              >
+                Join the waitlist
+              </Link>{' '}
+              if you haven&apos;t already.
             </Text>
           </View>
 
           <View className="w-full flex-col gap-8">
-            <View
-              className={cn("flex-col gap-5", getSignupErrorText && "gap-2")}
-            >
+            <View className={cn('flex-col gap-5', getSignupErrorText && 'gap-2')}>
               <Controller
                 control={control}
                 name="username"
@@ -117,8 +115,8 @@ export default function Register() {
                     onBlur={onBlur}
                     placeholder="Choose a username"
                     className={cn(
-                      "h-14 px-6 rounded-xl border text-lg font-semibold placeholder:text-muted-foreground",
-                      errors.username ? "border-red-500" : "border-border"
+                      'h-14 px-6 rounded-xl border text-lg font-semibold placeholder:text-muted-foreground',
+                      errors.username ? 'border-red-500' : 'border-border',
                     )}
                   />
                 )}
@@ -126,9 +124,7 @@ export default function Register() {
               {getSignupErrorText ? (
                 <View className="flex-row items-center gap-2">
                   <InfoError />
-                  <Text className="text-sm text-red-400">
-                    {getSignupErrorText}
-                  </Text>
+                  <Text className="text-sm text-red-400">{getSignupErrorText}</Text>
                 </View>
               ) : null}
               <Button
@@ -137,12 +133,8 @@ export default function Register() {
                 disabled={isSignupDisabled()}
                 className="rounded-xl h-14"
               >
-                <Text className="text-lg font-semibold">
-                  {getSignupButtonText()}
-                </Text>
-                {signupInfo.status === Status.PENDING && (
-                  <ActivityIndicator color="gray" />
-                )}
+                <Text className="text-lg font-semibold">{getSignupButtonText()}</Text>
+                {signupInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}
               </Button>
             </View>
 
@@ -153,37 +145,30 @@ export default function Register() {
             </View>
 
             <Button
-              onPress={handleSubmit(handleLoginForm)}
+              onPress={handleLogin}
               disabled={loginInfo.status === Status.PENDING}
               variant="secondary"
               className="rounded-xl h-14"
             >
               <Text className="text-lg font-semibold">
                 {loginInfo.status === Status.ERROR
-                  ? loginInfo.message || "Error logging in"
+                  ? loginInfo.message || 'Error logging in'
                   : loginInfo.status === Status.PENDING
-                  ? "Logging in"
-                  : "Login"}
+                    ? 'Logging in'
+                    : 'Login'}
               </Text>
-              {loginInfo.status === Status.PENDING && (
-                <ActivityIndicator color="gray" />
-              )}
+              {loginInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}
             </Button>
 
             {/* TODO: Remove when passkey works */}
-            {Platform.OS !== "web" && (
-              <Button
-                onPress={handleDummyLogin}
-                variant="outline"
-                className="rounded-xl h-14"
-              >
+            {Platform.OS !== 'web' && (
+              <Button onPress={handleDummyLogin} variant="outline" className="rounded-xl h-14">
                 <Text className="text-lg font-semibold">Dummy Login</Text>
               </Button>
             )}
           </View>
           <Text className="text-sm text-muted-foreground">
-            Your Solid Account is secured with a passkey - a safer replacement
-            for passwords.{" "}
+            Your Solid Account is secured with a passkey - a safer replacement for passwords.{' '}
             <Link
               href="https://solid-3.gitbook.io/solid.xyz-docs"
               target="_blank"
