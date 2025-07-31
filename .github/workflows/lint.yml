@@ -23,11 +23,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint with Expo
+      - name: Run ESLint with Expo (includes Prettier)
         run: npm run lint
-
-      - name: Check Prettier formatting
-        run: npx prettier --check "**/*.{ts,tsx,js,jsx,json}" --ignore-path .eslintignore
 
       - name: TypeScript compilation check
         run: npx tsc --noEmit
