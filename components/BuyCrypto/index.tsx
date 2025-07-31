@@ -6,11 +6,7 @@ import * as Crypto from "expo-crypto";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
-interface MercuryoIframeWidgetProps {
-  onClose?: () => void;
-}
-
-const BuyCrypto = ({ onClose }: MercuryoIframeWidgetProps = {}) => {
+const BuyCrypto = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finalUrl, setFinalUrl] = useState<string>("");
@@ -26,35 +22,6 @@ const BuyCrypto = ({ onClose }: MercuryoIframeWidgetProps = {}) => {
     setError("Failed to load Mercuryo widget. Please try again later.");
     setLoading(false);
   };
-
-  // Setup message listener for transaction completion
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      console.log("Mercuryo message received:", event.data);
-
-      try {
-        // Check for completion events from Mercuryo
-        if (typeof event.data === "object") {
-          if (
-            event.data.status === "success" ||
-            event.data.event === "transaction.success"
-          ) {
-            onClose?.();
-          } else if (
-            event.data.status === "failure" ||
-            event.data.event === "transaction.failure"
-          ) {
-            onClose?.();
-          }
-        }
-      } catch (err) {
-        console.error("Error handling Mercuryo message:", err);
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [onClose]);
 
   // Create Mercuryo transaction and get widget URL
   useEffect(() => {
