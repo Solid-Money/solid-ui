@@ -99,8 +99,6 @@ export default {
         "expo-notifications",
         {
           icon: "./assets/images/icon.png",
-          color: "#ffffff",
-          defaultChannel: "solid_default_notification_channel",
         },
       ],
       "@react-native-firebase/app",
