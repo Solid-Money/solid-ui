@@ -23,19 +23,20 @@ import { Button } from "@/components/ui/button";
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary
+  ErrorBoundary,
 } from "expo-router";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -123,12 +124,12 @@ export default function RootLayout() {
           animation: "none",
           title: "Turn on notifications",
           headerStyle: {
-            backgroundColor: '#000',
+            backgroundColor: "#000",
           },
-          headerTintColor: '#fff',
+          headerTintColor: "#fff",
           headerTitleStyle: {
             fontSize: 20,
-            fontWeight: 'bold',
+            fontWeight: "bold",
           },
           headerLeft: () => (
             <Button
@@ -140,9 +141,8 @@ export default function RootLayout() {
               <ChevronLeft size={28} color="white" />
             </Button>
           ),
-          headerTitleAlign: 'center',
+          headerTitleAlign: "center",
         }}
-        
       />
     </Stack>
   );
