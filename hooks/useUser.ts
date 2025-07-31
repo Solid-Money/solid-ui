@@ -40,7 +40,7 @@ import { fetchIsDeposited } from "./useAnalytics";
 interface UseUserReturn {
   user: User | undefined;
   handleSignup: (username: string, inviteCode: string) => Promise<void>;
-  handleLogin: (username: string) => Promise<void>;
+  handleLogin: () => Promise<void>;
   handleDummyLogin: () => Promise<void>;
   handleSelectUser: (username: string) => void;
   handleLogout: () => void;
@@ -272,65 +272,59 @@ const useUser = (): UseUserReturn => {
   );
 
   const handleLogin = useCallback(
-    async (username: string) => {
+    async () => {
       try {
-        setLoginInfo({ status: Status.PENDING });
-        const subOrgId = await getSubOrgIdByUsername(username);
+        setLoginInfo({ status: Status.PENDING }); 
+        let stamp: any;
 
-        if (subOrgId.organizationId) {
-          let stamp: any;
+        if (Platform.OS === "web") {
+          // Dynamically import browser SDK only when needed
+          //@ts-ignore
+          const { Turnkey } = await import("@turnkey/sdk-browser");
+          const turnkey = new Turnkey({
+            apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+            defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+            rpId: getRuntimeRpId(),
+          });
 
-          if (Platform.OS === "web") {
-            // Dynamically import browser SDK only when needed
-            //@ts-ignore
-            const { Turnkey } = await import("@turnkey/sdk-browser");
-            const turnkey = new Turnkey({
-              apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-              defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-              rpId: getRuntimeRpId(),
-            });
-
-            const passkeyClient = turnkey.passkeyClient();
-            stamp = await passkeyClient.stampGetWhoami({
-              organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-            });
-          } else {
-            const stamper = new PasskeyStamper({
-              rpId: getRuntimeRpId(),
-            });
-            const turnkeyClient = new TurnkeyClient(
-              { baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL },
-              stamper
-            );
-            stamp = await turnkeyClient.stampGetWhoami({
-              organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-            });
-          }
-
-          const user = await login(username, stamp);
-
-          const smartAccountClient = await safeAA(
-            mainnet,
-            user.subOrganizationId,
-            user.walletAddress
-          );
-          const selectedUser: User = {
-            safeAddress: smartAccountClient.account.address,
-            username,
-            userId: user.turnkeyUserId,
-            signWith: user.walletAddress,
-            suborgId: user.subOrganizationId,
-            selected: true,
-            tokens: user.tokens || null,
-          };
-          storeUser(selectedUser);
-          await checkBalance(selectedUser);
-          setLoginInfo({ status: Status.SUCCESS });
-
-          router.replace(path.HOME);
+          const passkeyClient = turnkey.passkeyClient();
+          stamp = await passkeyClient.stampGetWhoami({
+            organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+          });
         } else {
-          throw new Error("Error while verifying passkey authentication");
+          const stamper = new PasskeyStamper({
+            rpId: getRuntimeRpId(),
+          });
+          const turnkeyClient = new TurnkeyClient(
+            { baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL },
+            stamper
+          );
+          stamp = await turnkeyClient.stampGetWhoami({
+            organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+          });
         }
+
+        const user = await login(stamp);
+
+        const smartAccountClient = await safeAA(
+          mainnet,
+          user.subOrganizationId,
+          user.walletAddress
+        );
+        const selectedUser: User = {
+          safeAddress: smartAccountClient.account.address,
+          username: user.username,
+          userId: user.turnkeyUserId,
+          signWith: user.walletAddress,
+          suborgId: user.subOrganizationId,
+          selected: true,
+          tokens: user.tokens || null,
+        };
+        storeUser(selectedUser);
+        await checkBalance(selectedUser);
+        setLoginInfo({ status: Status.SUCCESS });
+
+        router.replace(path.HOME);
       } catch (error: any) {
         console.error(error);
         setLoginInfo({ status: Status.ERROR });

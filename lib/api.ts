@@ -459,7 +459,7 @@ export const getSubOrgIdByUsername = async (username: string) => {
   return response.json();
 };
 
-export const login = async (username: string, signedRequest: any) => {
+export const login = async (signedRequest: any) => {
   // const body = JSON.parse(signedRequest.body);
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/log-in`,
@@ -471,7 +471,6 @@ export const login = async (username: string, signedRequest: any) => {
       },
       credentials: "include",
       body: JSON.stringify({
-        username,
         ...signedRequest,
       }),
     }

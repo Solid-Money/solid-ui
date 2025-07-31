@@ -59,10 +59,6 @@ export default function Register() {
     handleSignup(data.username, code);
   };
 
-  const handleLoginForm = (data: RegisterFormData) => {
-    handleLogin(data.username);
-  };
-
   const getSignupButtonText = () => {
     if (signupInfo.status === Status.PENDING) return 'Creating';
     if (!isValid || !watchedUsername) return 'Enter a username';
@@ -149,7 +145,7 @@ export default function Register() {
             </View>
 
             <Button
-              onPress={handleSubmit(handleLoginForm)}
+              onPress={handleLogin}
               disabled={loginInfo.status === Status.PENDING}
               variant="secondary"
               className="rounded-xl h-14"
