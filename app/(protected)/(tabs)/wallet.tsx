@@ -1,25 +1,25 @@
-import React, { useEffect } from "react";
-import { Platform, ScrollView, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Address } from "viem";
-import { mainnet } from "viem/chains";
-import { useBlockNumber } from "wagmi";
+import React, { useEffect } from 'react';
+import { Platform, ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Address } from 'viem';
+import { mainnet } from 'viem/chains';
+import { useBlockNumber } from 'wagmi';
 
-import Navbar from "@/components/Navbar";
-import NavbarMobile from "@/components/Navbar/NavbarMobile";
-import SavingCountUp from "@/components/SavingCountUp";
-import { Text } from "@/components/ui/text";
-import { SavingCard, WalletCard, WalletTabs } from "@/components/Wallet";
-import { useGetUserTransactionsQuery } from "@/graphql/generated/user-info";
-import { useLatestTokenTransfer, useTotalAPY } from "@/hooks/useAnalytics";
-import { useDepositCalculations } from "@/hooks/useDepositCalculations";
-import { useDimension } from "@/hooks/useDimension";
-import useUser from "@/hooks/useUser";
-import { useFuseVaultBalance } from "@/hooks/useVault";
-import { ADDRESSES } from "@/lib/config";
-import { useWalletTokens } from "@/hooks/useWalletTokens";
-import { SavingMode } from "@/lib/types";
-import { calculateYield } from "@/lib/financial";
+import Navbar from '@/components/Navbar';
+import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import SavingCountUp from '@/components/SavingCountUp';
+import { Text } from '@/components/ui/text';
+import { SavingCard, WalletCard, WalletTabs } from '@/components/Wallet';
+import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
+import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useDepositCalculations } from '@/hooks/useDepositCalculations';
+import { useDimension } from '@/hooks/useDimension';
+import useUser from '@/hooks/useUser';
+import { useFuseVaultBalance } from '@/hooks/useVault';
+import { ADDRESSES } from '@/lib/config';
+import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { SavingMode } from '@/lib/types';
+import { calculateYield } from '@/lib/financial';
 
 const renderInfo = (text: string) => {
   return (
@@ -27,36 +27,32 @@ const renderInfo = (text: string) => {
       <Text className="text-lg">{text}</Text>
     </View>
   );
-}
+};
 
 export default function Wallet() {
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
-  const {
-    data: blockNumber
-  } = useBlockNumber({ watch: true, chainId: mainnet.id })
+  const { data: blockNumber } = useBlockNumber({ watch: true, chainId: mainnet.id });
   const { totalUSD, isLoading, hasTokens } = useWalletTokens();
-  const {
-    data: balance,
-    refetch: refetchBalance,
-  } = useFuseVaultBalance(
-    user?.safeAddress as Address
+  const { data: balance, refetch: refetchBalance } = useFuseVaultBalance(
+    user?.safeAddress as Address,
   );
   const { data: totalAPY } = useTotalAPY();
   const { data: lastTimestamp } = useLatestTokenTransfer(
-    user?.safeAddress ?? "",
-    ADDRESSES.fuse.vault
+    user?.safeAddress ?? '',
+    ADDRESSES.fuse.vault,
   );
-  const {
-    data: userDepositTransactions,
-    refetch: refetchTransactions,
-  } = useGetUserTransactionsQuery({
-    variables: {
-      address: user?.safeAddress?.toLowerCase() ?? "",
-    },
-  });
-  const { originalDepositAmount, firstDepositTimestamp } =
-    useDepositCalculations(userDepositTransactions, balance, lastTimestamp);
+  const { data: userDepositTransactions, refetch: refetchTransactions } =
+    useGetUserTransactionsQuery({
+      variables: {
+        address: user?.safeAddress?.toLowerCase() ?? '',
+      },
+    });
+  const { originalDepositAmount, firstDepositTimestamp } = useDepositCalculations(
+    userDepositTransactions,
+    balance,
+    lastTimestamp,
+  );
 
   const savings = calculateYield(
     balance ?? 0,
@@ -64,13 +60,13 @@ export default function Wallet() {
     firstDepositTimestamp ?? 0,
     Math.floor(Date.now() / 1000),
     originalDepositAmount,
-    SavingMode.INTEREST_ONLY
+    SavingMode.INTEREST_ONLY,
   );
 
   useEffect(() => {
-    refetchBalance()
-    refetchTransactions()
-  }, [blockNumber, refetchBalance, refetchTransactions])
+    refetchBalance();
+    refetchTransactions();
+  }, [blockNumber, refetchBalance, refetchTransactions]);
 
   return (
     <React.Fragment>
@@ -91,21 +87,20 @@ export default function Wallet() {
                   lastTimestamp={firstDepositTimestamp ?? 0}
                   principal={originalDepositAmount}
                   classNames={{
-                    wrapper: "text-foreground",
-                    decimalSeparator:
-                      "text-2xl md:text-4.5xl font-medium",
+                    wrapper: 'text-foreground',
+                    decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
                   }}
                   styles={{
                     wholeText: {
                       fontSize: isScreenMedium ? 96 : 48,
-                      fontWeight: isScreenMedium ? "medium" : "semibold",
-                      color: "#ffffff",
+                      fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                      color: '#ffffff',
                       marginRight: -2,
                     },
                     decimalText: {
                       fontSize: isScreenMedium ? 40 : 24,
-                      fontWeight: isScreenMedium ? "medium" : "semibold",
-                      color: "#ffffff",
+                      fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                      color: '#ffffff',
                     },
                   }}
                 />
@@ -119,11 +114,11 @@ export default function Wallet() {
 
             <View className="md:mt-6">
               {isLoading ? (
-                renderInfo("Loading tokens...")
+                renderInfo('Loading tokens...')
               ) : hasTokens ? (
                 <WalletTabs />
               ) : (
-                renderInfo("No tokens found")
+                renderInfo('No tokens found')
               )}
             </View>
           </View>

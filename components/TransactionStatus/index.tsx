@@ -1,13 +1,13 @@
-import { View } from "react-native";
-import { Address } from "viem";
+import { View } from 'react-native';
+import { Address } from 'viem';
 
-import { Text } from "../ui/text";
-import { eclipseAddress, formatNumber } from "@/lib/utils";
-import { Button } from "../ui/button";
-import RenderTokenIcon from "../RenderTokenIcon";
-import { TokenIcon } from "@/lib/types";
+import { Text } from '../ui/text';
+import { eclipseAddress, formatNumber } from '@/lib/utils';
+import { Button } from '../ui/button';
+import RenderTokenIcon from '../RenderTokenIcon';
+import { TokenIcon } from '@/lib/types';
 
-import Checkmark from "@/assets/images/checkmark";
+import Checkmark from '@/assets/images/checkmark';
 
 type TransactionStatusProps = {
   amount: number;
@@ -19,18 +19,18 @@ type TransactionStatusProps = {
   icon: TokenIcon;
   token?: string;
   buttonText?: string;
-}
+};
 
 const TransactionStatus = ({
   amount,
   address,
   onPress,
-  title = "Transaction initiated",
+  title = 'Transaction initiated',
   description = "This may take some time. We'll keep processing this in the background. You can safely leave this page.",
-  status = "Initiated",
+  status = 'Initiated',
   icon,
-  token = "USDC",
-  buttonText = "Back to wallet",
+  token = 'USDC',
+  buttonText = 'Back to wallet',
 }: TransactionStatusProps) => {
   return (
     <View className="gap-8">
@@ -62,18 +62,12 @@ const TransactionStatus = ({
           </View>
           <Text className="text-muted-foreground font-medium">{status}</Text>
         </View>
-        <Button
-          variant="brand"
-          className="rounded-2xl h-12"
-          onPress={onPress}
-        >
-          <Text className="text-lg font-semibold">
-            {buttonText}
-          </Text>
+        <Button variant="brand" className="rounded-2xl h-12" onPress={onPress}>
+          <Text className="text-lg font-semibold">{buttonText}</Text>
         </Button>
       </View>
     </View>
-  )
-}
+  );
+};
 
 export default TransactionStatus;

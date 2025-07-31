@@ -11,11 +11,11 @@ import useUser from '@/hooks/useUser';
 export default function TabLayout() {
   const { user } = useUser();
   const hasDeposited = user?.isDeposited;
-  
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "white",
+        tabBarActiveTintColor: 'white',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
@@ -27,10 +27,10 @@ export default function TabLayout() {
               position: 'absolute',
             },
             default: {
-              backgroundColor: "#262626",
-              borderColor: "#686163",
+              backgroundColor: '#262626',
+              borderColor: '#686163',
             },
-          })
+          }),
         },
       }}
       backBehavior="order"

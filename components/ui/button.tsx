@@ -10,7 +10,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary web:hover:opacity-90 active:opacity-90',
-        destructive: 'bg-destructive/60 border border-destructive shadow-md web:hover:opacity-90 active:opacity-90',
+        destructive:
+          'bg-destructive/60 border border-destructive shadow-md web:hover:opacity-90 active:opacity-90',
         outline:
           'border border-border bg-foreground/10 web:hover:bg-foreground/5 active:bg-foreground/5',
         secondary: 'bg-secondary border border-border web:hover:opacity-80 active:opacity-80',
@@ -29,7 +30,7 @@ const buttonVariants = cva(
       variant: 'default',
       size: 'default',
     },
-  }
+  },
 );
 
 const buttonTextVariants = cva(
@@ -56,7 +57,7 @@ const buttonTextVariants = cva(
       variant: 'default',
       size: 'default',
     },
-  }
+  },
 );
 
 type ButtonProps = React.ComponentPropsWithoutRef<typeof Pressable> &
@@ -71,15 +72,15 @@ const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>
         <Pressable
           className={cn(
             props.disabled && 'opacity-50 web:pointer-events-none',
-            buttonVariants({ variant, size, className })
+            buttonVariants({ variant, size, className }),
           )}
           ref={ref}
-          role='button'
+          role="button"
           {...props}
         />
       </TextClassContext.Provider>
     );
-  }
+  },
 );
 Button.displayName = 'Button';
 

@@ -3,7 +3,7 @@ import { cssInterop } from 'nativewind';
 
 cssInterop(Image, {
   className: {
-    target: 'style'
+    target: 'style',
   },
 });
 
