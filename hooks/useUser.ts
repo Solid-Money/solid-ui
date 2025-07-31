@@ -165,7 +165,7 @@ const useUser = (): UseUserReturn => {
           throw new Error("Username already exists");
         }
 
-        const passkeyName = `${getRuntimeRpId()}-${username}`;
+        const passkeyName = username
         let challenge: any;
         let attestation: any;
 
