@@ -1,6 +1,6 @@
-import { Text } from "@/components/ui/text";
-import { Check } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { Text } from '@/components/ui/text';
+import { Check } from 'lucide-react-native';
+import { Pressable, View } from 'react-native';
 
 interface StepIndicatorProps {
   stepId: number;
@@ -17,9 +17,7 @@ export function StepIndicator({ stepId, completed, onPress }: StepIndicatorProps
         </View>
       ) : (
         <View className="w-8 h-8 rounded-full bg-gray-600 items-center justify-center">
-          <Text className="text-white font-semibold text-sm">
-            {stepId}
-          </Text>
+          <Text className="text-white font-semibold text-sm">{stepId}</Text>
         </View>
       )}
     </Pressable>

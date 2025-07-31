@@ -1,15 +1,15 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
-import { TextInput, View } from "react-native";
-import { z } from "zod";
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { TextInput, View } from 'react-native';
+import { z } from 'zod';
 
-import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { path } from "@/constants/path";
-import { useCreateKycLink, useCustomer, useKycLink } from "@/hooks/useCustomer";
-import { createCard } from "@/lib/api";
-import { KycLink, KycStatus, TermsOfServiceStatus } from "@/lib/types";
-import { cn, withRefreshToken } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { useCreateKycLink, useCustomer, useKycLink } from '@/hooks/useCustomer';
+import { createCard } from '@/lib/api';
+import { KycLink, KycStatus, TermsOfServiceStatus } from '@/lib/types';
+import { cn, withRefreshToken } from '@/lib/utils';
 
 type Step = {
   title: string;
@@ -31,11 +31,7 @@ export default function ActivateCard() {
   const isKycStatusFromParams = !!params.kycStatus;
 
   // Use TanStack Query for customer data
-  const {
-    data: customer,
-    refetch: refetchCustomer,
-    isRefetching,
-  } = useCustomer();
+  const { data: customer, refetch: refetchCustomer, isRefetching } = useCustomer();
 
   // Determine the actual status values to use
   const tosStatus = isTosStatusFromParams
@@ -56,8 +52,8 @@ export default function ActivateCard() {
   const createKycLinkMutation = useCreateKycLink();
 
   const [cardActivated, setCardActivated] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const emailSchema = z.string().email();
@@ -68,8 +64,8 @@ export default function ActivateCard() {
 
   const steps: Step[] = [
     {
-      title: "Terms of Service",
-      description: "Agree to Solid Card terms",
+      title: 'Terms of Service',
+      description: 'Agree to Solid Card terms',
       completed:
         tosStatus === TermsOfServiceStatus.APPROVED ||
         kycStatus === KycStatus.UNDER_REVIEW ||
@@ -77,13 +73,13 @@ export default function ActivateCard() {
         cardActivated,
     },
     {
-      title: "Know Your Customer",
-      description: "Complete identity verification",
+      title: 'Know Your Customer',
+      description: 'Complete identity verification',
       completed: kycStatus === KycStatus.APPROVED || cardActivated,
     },
     {
-      title: "Activate Card",
-      description: "Activate your Solid card",
+      title: 'Activate Card',
+      description: 'Activate your Solid card',
       completed: cardActivated,
     },
   ];
@@ -91,17 +87,17 @@ export default function ActivateCard() {
   const handleProceedToTos = async () => {
     // Enforce email validation before proceeding
     if (!fullName.trim()) {
-      alert("Please enter your full name");
+      alert('Please enter your full name');
       return;
     }
 
     if (!email.trim()) {
-      alert("Please enter your email address");
+      alert('Please enter your email address');
       return;
     }
 
     if (!validateEmail(email)) {
-      alert("Please enter a valid email address");
+      alert('Please enter a valid email address');
       return;
     }
 
@@ -127,7 +123,7 @@ export default function ActivateCard() {
         },
       });
     } catch (error) {
-      console.error("Error proceeding to ToS:", error);
+      console.error('Error proceeding to ToS:', error);
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +152,7 @@ export default function ActivateCard() {
         },
       });
     } catch (error) {
-      console.error("Error proceeding to KYC:", error);
+      console.error('Error proceeding to KYC:', error);
     } finally {
       setIsLoading(false);
     }
@@ -170,12 +166,12 @@ export default function ActivateCard() {
   const handleActivateCard = async () => {
     try {
       setIsLoading(true);
-      console.log("Activating card...");
+      console.log('Activating card...');
       const card = await withRefreshToken(() => createCard());
 
-      if (!card) throw new Error("Failed to create card");
+      if (!card) throw new Error('Failed to create card');
 
-      console.log("Card created:", card);
+      console.log('Card created:', card);
 
       setCardActivated(true);
       setIsLoading(false);
@@ -183,7 +179,7 @@ export default function ActivateCard() {
       // Navigate to successful activation or card details screen
       router.replace(path.CARD_DETAILS);
     } catch (error) {
-      console.error("Error activating card:", error);
+      console.error('Error activating card:', error);
       setIsLoading(false);
     }
   };
@@ -244,9 +240,7 @@ export default function ActivateCard() {
   return (
     <View className="flex-1 justify-center items-center p-6 bg-background">
       <View className="w-1/2 mx-auto">
-        <Text className="text-[28px] font-bold text-center mb-6">
-          Activate your Solid card
-        </Text>
+        <Text className="text-[28px] font-bold text-center mb-6">Activate your Solid card</Text>
 
         {/* Show name/email form above steps if TOS not completed */}
         {!steps[0].completed && (
@@ -281,40 +275,36 @@ export default function ActivateCard() {
               <View
                 key={index}
                 className={cn(
-                  "flex-row items-center justify-between p-4 border rounded-xl",
+                  'flex-row items-center justify-between p-4 border rounded-xl',
                   step.completed
-                    ? "border-primary bg-primary/10"
+                    ? 'border-primary bg-primary/10'
                     : isAvailable
-                      ? "border-border"
-                      : "border-border/30 bg-gray-800/30"
+                      ? 'border-border'
+                      : 'border-border/30 bg-gray-800/30',
                 )}
               >
                 <View className="flex-1">
                   <Text
-                    className={`text-lg font-semibold ${!isAvailable && !step.completed ? "text-white/40" : ""
-                      }`}
+                    className={`text-lg font-semibold ${
+                      !isAvailable && !step.completed ? 'text-white/40' : ''
+                    }`}
                   >
                     {step.title}
                   </Text>
                   <Text
-                    className={`text-sm ${!isAvailable && !step.completed
-                      ? "text-white/30"
-                      : "text-white/70"
-                      }`}
+                    className={`text-sm ${
+                      !isAvailable && !step.completed ? 'text-white/30' : 'text-white/70'
+                    }`}
                   >
                     {step.description}
                   </Text>
                 </View>
 
                 {step.completed ? (
-                  <Text className="text-sm font-medium text-primary">
-                    Completed
-                  </Text>
+                  <Text className="text-sm font-medium text-primary">Completed</Text>
                 ) : index === 1 && kycStatus === KycStatus.UNDER_REVIEW ? (
                   <View className="flex-row items-center space-x-2">
-                    <Text className="text-sm font-medium text-yellow-500">
-                      Under Review
-                    </Text>
+                    <Text className="text-sm font-medium text-yellow-500">Under Review</Text>
                     <Button
                       size="sm"
                       variant="outline"
@@ -343,27 +333,19 @@ export default function ActivateCard() {
                           }
                         >
                           {isLoading ? (
-                            <Text className="text-xs font-medium">
-                              Loading...
-                            </Text>
+                            <Text className="text-xs font-medium">Loading...</Text>
                           ) : (
                             <Text className="text-xs font-medium">Start</Text>
                           )}
                         </Button>
                       );
-                    } else if (
-                      index === 1 &&
-                      !step.completed &&
-                      steps[0].completed
-                    ) {
+                    } else if (index === 1 && !step.completed && steps[0].completed) {
                       return (
                         <Button
                           size="sm"
                           className="h-8 px-3"
                           onPress={handleProceedToKyc}
-                          disabled={
-                            isLoading || createKycLinkMutation.isPending
-                          }
+                          disabled={isLoading || createKycLinkMutation.isPending}
                         >
                           <Text className="text-xs font-medium">Start</Text>
                         </Button>
@@ -385,9 +367,7 @@ export default function ActivateCard() {
                         </Button>
                       );
                     } else if (!isAvailable) {
-                      return (
-                        <Text className="text-xs text-white/40">Locked</Text>
-                      );
+                      return <Text className="text-xs text-white/40">Locked</Text>;
                     }
                     return null;
                   })()

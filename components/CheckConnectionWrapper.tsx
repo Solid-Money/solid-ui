@@ -6,16 +6,18 @@ import { cn } from '@/lib/utils';
 type CheckConnectionWrapperProps = {
   children: React.ReactNode;
   className?: string;
-  props?: React.ComponentProps<"button"> | any;
-}
+  props?: React.ComponentProps<'button'> | any;
+};
 
-export const CheckConnectionWrapper = ({ children, className, props }: CheckConnectionWrapperProps) => {
+export const CheckConnectionWrapper = ({
+  children,
+  className,
+  props,
+}: CheckConnectionWrapperProps) => {
   const { userStatus } = useUserStore();
 
   if (userStatus === Status.PENDING) {
-    return (
-      <Button className={cn("animate-pulse", className)} disabled {...props} />
-    );
+    return <Button className={cn('animate-pulse', className)} disabled {...props} />;
   }
 
   return children;

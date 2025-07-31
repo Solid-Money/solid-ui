@@ -7,22 +7,22 @@ import { Text } from '@/components/ui/text';
 import WalletTokenTab from './WalletTokenTab';
 
 enum Tab {
-  TOKENS = "tokens",
-  COLLECTIBLES = "collectibles",
-  ACTIVITY = "activity",
+  TOKENS = 'tokens',
+  COLLECTIBLES = 'collectibles',
+  ACTIVITY = 'activity',
 }
 
 enum TabElement {
-  TRIGGER = "trigger",
-  TEXT = "text",
+  TRIGGER = 'trigger',
+  TEXT = 'text',
 }
 
 type TabLayout = {
   [key in TabElement]: {
     x: number;
     width: number;
-  }
-}
+  };
+};
 
 type TabLayouts = Record<string, TabLayout>;
 
@@ -39,22 +39,27 @@ const WalletTabs = () => {
       position: 'absolute',
       bottom: 0,
       height: 2,
-      backgroundColor: 'white'
+      backgroundColor: 'white',
     };
   });
 
   const handleLayout = (e: LayoutChangeEvent, element: string, tabValue: Tab) => {
     const { x, width: w } = e.nativeEvent.layout;
-    setLayouts(prev => ({ ...prev, [tabValue]: { ...prev[tabValue], [element]: { x, width: w } } }));
+    setLayouts(prev => ({
+      ...prev,
+      [tabValue]: { ...prev[tabValue], [element]: { x, width: w } },
+    }));
   };
 
-  const animateUnderline = useCallback((tab: Tab) => {
-    translateX.value = withTiming(
-      layouts[tab][TabElement.TRIGGER].x +
-      layouts[tab][TabElement.TEXT].x
-    );
-    width.value = layouts[tab][TabElement.TEXT].width;
-  }, [layouts, translateX, width]);
+  const animateUnderline = useCallback(
+    (tab: Tab) => {
+      translateX.value = withTiming(
+        layouts[tab][TabElement.TRIGGER].x + layouts[tab][TabElement.TEXT].x,
+      );
+      width.value = layouts[tab][TabElement.TEXT].width;
+    },
+    [layouts, translateX, width],
+  );
 
   const handleTabChange = (newTab: Tab) => {
     setTab(newTab);
@@ -66,16 +71,12 @@ const WalletTabs = () => {
   }, [animateUnderline, layouts, tab]);
 
   return (
-    <Tabs
-      value={tab}
-      onValueChange={(value) => handleTabChange(value as Tab)}
-      className='gap-8'
-    >
+    <Tabs value={tab} onValueChange={value => handleTabChange(value as Tab)} className="gap-8">
       <TabsContent value={Tab.TOKENS}>
         <WalletTokenTab />
       </TabsContent>
     </Tabs>
   );
-}
+};
 
 export default WalletTabs;

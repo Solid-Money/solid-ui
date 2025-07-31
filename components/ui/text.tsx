@@ -17,7 +17,7 @@ const Text = React.forwardRef<TextRef, SlottableTextProps>(
         {...props}
       />
     );
-  }
+  },
 );
 Text.displayName = 'Text';
 

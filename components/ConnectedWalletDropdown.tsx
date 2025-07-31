@@ -1,50 +1,55 @@
-import { useState } from "react";
-import { Pressable, View } from "react-native";
-import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from "react-native-reanimated";
-import { useActiveAccount, useActiveWallet, useDisconnect } from "thirdweb/react";
-import { ChevronDown, Unlink, WalletMinimal } from "lucide-react-native";
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { useActiveAccount, useActiveWallet, useDisconnect } from 'thirdweb/react';
+import { ChevronDown, Unlink, WalletMinimal } from 'lucide-react-native';
 
-import { eclipseAddress } from "@/lib/utils";
-import { Text } from "./ui/text";
+import { eclipseAddress } from '@/lib/utils';
+import { Text } from './ui/text';
 
 const ConnectedWalletDropdown = () => {
   const wallet = useActiveWallet();
   const activeAccount = useActiveAccount();
   const { disconnect } = useDisconnect();
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
   const address = activeAccount?.address;
 
-  const rotation = useSharedValue(0)
-  const contentHeight = useSharedValue(0)
-  const dropdownOpacity = useSharedValue(0)
+  const rotation = useSharedValue(0);
+  const contentHeight = useSharedValue(0);
+  const dropdownOpacity = useSharedValue(0);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ rotate: `${rotation.value}deg` }],
-    }
-  })
+    };
+  });
 
   const dropdownHeight = useDerivedValue(() => {
-    return isOpen ? contentHeight.value : 0
-  })
+    return isOpen ? contentHeight.value : 0;
+  });
 
   const dropdownAnimatedStyle = useAnimatedStyle(() => {
     return {
       height: withTiming(dropdownHeight.value, { duration: 200 }),
       opacity: dropdownOpacity.value,
-    }
-  })
+    };
+  });
 
   const toggleDropdown = () => {
-    setIsOpen(!isOpen)
-    rotation.value = withTiming(isOpen ? 0 : 180, { duration: 200 })
+    setIsOpen(!isOpen);
+    rotation.value = withTiming(isOpen ? 0 : 180, { duration: 200 });
 
     if (isOpen) {
-      dropdownOpacity.value = withTiming(0, { duration: 150 })
+      dropdownOpacity.value = withTiming(0, { duration: 150 });
     } else {
-      dropdownOpacity.value = withTiming(1, { duration: 200 })
+      dropdownOpacity.value = withTiming(1, { duration: 200 });
     }
-  }
+  };
 
   return (
     <View className="bg-accent rounded-2xl">
@@ -56,7 +61,7 @@ const ConnectedWalletDropdown = () => {
           <View>
             <WalletMinimal size={22} color="white" />
           </View>
-          <Text>{address ? eclipseAddress(address) : "0x"}</Text>
+          <Text>{address ? eclipseAddress(address) : '0x'}</Text>
         </View>
         <Animated.View style={animatedStyle}>
           <ChevronDown color="white" size={20} />
@@ -66,8 +71,8 @@ const ConnectedWalletDropdown = () => {
         <Pressable
           className="flex-row items-center gap-4 border-t border-card px-5 py-4 web:hover:opacity-70"
           onPress={() => wallet && disconnect(wallet)}
-          onLayout={(event) => {
-            contentHeight.value = event.nativeEvent.layout.height
+          onLayout={event => {
+            contentHeight.value = event.nativeEvent.layout.height;
           }}
         >
           <Unlink color="white" size={20} />
@@ -75,7 +80,7 @@ const ConnectedWalletDropdown = () => {
         </Pressable>
       </Animated.View>
     </View>
-  )
-}
+  );
+};
 
 export default ConnectedWalletDropdown;

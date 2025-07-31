@@ -1,11 +1,11 @@
-import {useRouter} from "expo-router";
-import {CreditCard, Plus, RefreshCw, SendHorizontal} from "lucide-react-native";
-import {View} from "react-native";
+import { useRouter } from 'expo-router';
+import { CreditCard, Plus, RefreshCw, SendHorizontal } from 'lucide-react-native';
+import { View } from 'react-native';
 
-import {path} from "@/constants/path";
-import SavingCountUp from "../SavingCountUp";
-import {Button} from "../ui/button";
-import {Text} from "../ui/text";
+import { path } from '@/constants/path';
+import SavingCountUp from '../SavingCountUp';
+import { Button } from '../ui/button';
+import { Text } from '../ui/text';
 
 interface DashboardHeaderMobileProps {
   balance: number;

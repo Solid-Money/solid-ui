@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 
 export default function CardLayout() {
@@ -16,30 +16,26 @@ export default function CardLayout() {
           fontSize: 20,
           fontWeight: 'bold',
         },
-        headerLeft: ({ canGoBack, tintColor }) => 
+        headerLeft: ({ canGoBack, tintColor }) =>
           canGoBack ? (
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons 
-                name="chevron-back" 
-                size={24} 
-                color={tintColor} 
-              />
+              <Ionicons name="chevron-back" size={24} color={tintColor} />
             </TouchableOpacity>
           ) : null,
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen 
-        name="activate_mobile" 
-        options={{ 
-          title: "Solid card",
-        }} 
+      <Stack.Screen
+        name="activate_mobile"
+        options={{
+          title: 'Solid card',
+        }}
       />
-      <Stack.Screen 
-        name="user_info_mobile" 
-        options={{ 
-          title: "Personal Information",
-        }} 
+      <Stack.Screen
+        name="user_info_mobile"
+        options={{
+          title: 'Personal Information',
+        }}
       />
     </Stack>
   );

@@ -1,7 +1,4 @@
-import {
-  BottomSheetModal,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   pressTransactionCredenzaContent,
   TransactionCredenzaContent,
-  TransactionCredenzaTrigger
+  TransactionCredenzaTrigger,
 } from './TransactionCredenza';
 
 interface TransactionDrawerProps {
@@ -37,13 +34,13 @@ const TransactionDrawer = ({ url }: TransactionDrawerProps) => {
         }}
       >
         <BottomSheetView
-          className='px-4'
+          className="px-4"
           style={{
             paddingBottom: insets.bottom,
           }}
         >
           <Pressable
-            className='w-full flex-row items-center gap-2 bg-card p-4 rounded-xl'
+            className="w-full flex-row items-center gap-2 bg-card p-4 rounded-xl"
             onPress={() => pressTransactionCredenzaContent(url)}
           >
             <TransactionCredenzaContent />

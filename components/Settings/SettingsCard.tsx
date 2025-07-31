@@ -1,8 +1,8 @@
-import { Href, Link } from "expo-router";
-import { ChevronRight } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { Href, Link } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
+import { Pressable, View } from 'react-native';
 
-import { Text } from "../ui/text";
+import { Text } from '../ui/text';
 
 interface SettingsCardProps {
   title: string;
@@ -15,7 +15,7 @@ interface CardContainerProps {
   link?: Href;
   onPress?: () => void;
   children: React.ReactNode;
-};
+}
 
 const CardContainer = ({ link, onPress, children }: CardContainerProps) => {
   return link ? (
@@ -37,9 +37,9 @@ const SettingsCard = ({ title, description, link, onPress }: SettingsCardProps) 
           <View className="w-10 h-10 bg-primary/10 rounded-full"></View>
           <View>
             <Text className="font-bold">{title}</Text>
-            {description &&
+            {description && (
               <Text className="text-sm text-muted-foreground font-medium">{description}</Text>
-            }
+            )}
           </View>
         </View>
         {hasLink && <ChevronRight color="white" />}

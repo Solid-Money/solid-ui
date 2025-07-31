@@ -1,29 +1,29 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Image } from "expo-image";
-import { Fuel, Wallet } from "lucide-react-native";
-import { useEffect, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, TextInput, View } from "react-native";
-import { formatUnits } from "viem";
-import { useWaitForTransactionReceipt } from "wagmi";
-import { z } from "zod";
-import { mainnet } from "viem/chains";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Image } from 'expo-image';
+import { Fuel, Wallet } from 'lucide-react-native';
+import { useEffect, useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, TextInput, View } from 'react-native';
+import { formatUnits } from 'viem';
+import { useWaitForTransactionReceipt } from 'wagmi';
+import { z } from 'zod';
+import { mainnet } from 'viem/chains';
 
-import { Button } from "@/components/ui/button";
-import { DEPOSIT_MODAL } from "@/constants/modals";
-import { useTotalAPY } from "@/hooks/useAnalytics";
-import useDepositFromEOA from "@/hooks/useDepositFromEOA";
-import { useEstimateGas } from "@/hooks/useEstimateGas";
-import { usePreviewDeposit } from "@/hooks/usePreviewDeposit";
-import { Status } from "@/lib/types";
-import { formatNumber } from "@/lib/utils";
-import { useDepositStore } from "@/store/useDepositStore";
-import { CheckConnectionWrapper } from "../CheckConnectionWrapper";
-import ConnectedWalletDropdown from "../ConnectedWalletDropdown";
-import TokenDetails from "../TokenCard/TokenDetails";
-import { Skeleton } from "../ui/skeleton";
-import { Text } from "../ui/text";
-import Max from "../Max";
+import { Button } from '@/components/ui/button';
+import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useTotalAPY } from '@/hooks/useAnalytics';
+import useDepositFromEOA from '@/hooks/useDepositFromEOA';
+import { useEstimateGas } from '@/hooks/useEstimateGas';
+import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
+import { Status } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
+import { CheckConnectionWrapper } from '../CheckConnectionWrapper';
+import ConnectedWalletDropdown from '../ConnectedWalletDropdown';
+import TokenDetails from '../TokenCard/TokenDetails';
+import { Skeleton } from '../ui/skeleton';
+import { Text } from '../ui/text';
+import Max from '../Max';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, fee } = useDepositFromEOA();
@@ -35,9 +35,9 @@ function DepositToVaultForm() {
 
   const isLoading = depositStatus === Status.PENDING || isPending;
   const { data: totalAPY } = useTotalAPY();
-  const {costInUsd, loading} = useEstimateGas(380000n, fee || 0n);
+  const { costInUsd, loading } = useEstimateGas(380000n, fee || 0n);
 
-  const formattedBalance = balance ? formatUnits(balance, 6) : "0";
+  const formattedBalance = balance ? formatUnits(balance, 6) : '0';
 
   // Create dynamic schema based on balance
   const depositSchema = useMemo(() => {
@@ -46,16 +46,13 @@ function DepositToVaultForm() {
     return z.object({
       amount: z
         .string()
+        .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
+        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
         .refine(
-          (val) => val !== "" && !isNaN(Number(val)),
-          "Please enter a valid amount"
+          val => Number(val) <= balanceAmount,
+          `Available balance is ${formatNumber(balanceAmount)} USDC`,
         )
-        .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine(
-          (val) => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} USDC`
-        )
-        .transform((val) => Number(val)),
+        .transform(val => Number(val)),
     });
   }, [balance]);
 
@@ -71,24 +68,27 @@ function DepositToVaultForm() {
     trigger,
   } = useForm<DepositFormData>({
     resolver: zodResolver(depositSchema) as any,
-    mode: "onChange",
+    mode: 'onChange',
     defaultValues: {
-      amount: "",
+      amount: '',
     },
   });
 
-  const watchedAmount = watch("amount");
-  const { amountOut, isLoading: isPreviewDepositLoading, exchangeRate } =
-    usePreviewDeposit(watchedAmount || "0");
+  const watchedAmount = watch('amount');
+  const {
+    amountOut,
+    isLoading: isPreviewDepositLoading,
+    exchangeRate,
+  } = usePreviewDeposit(watchedAmount || '0');
 
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
-    if (!isValid || !watchedAmount) return "Enter an amount";
-    if (depositStatus === Status.PENDING) return "Check Wallet";
-    if (isPending) return "Depositing...";
-    if (isSuccess) return "Successfully deposited!";
-    if (depositStatus === Status.ERROR) return "Error while depositing";
-    return "Deposit";
+    if (!isValid || !watchedAmount) return 'Enter an amount';
+    if (depositStatus === Status.PENDING) return 'Check Wallet';
+    if (isPending) return 'Depositing...';
+    if (isSuccess) return 'Successfully deposited!';
+    if (depositStatus === Status.ERROR) return 'Error while depositing';
+    return 'Deposit';
   };
 
   const onSubmit = async (data: DepositFormData) => {
@@ -96,7 +96,7 @@ function DepositToVaultForm() {
       await deposit(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
-        hash
+        hash,
       });
     } catch (error) {
       // handled by hook
@@ -140,7 +140,7 @@ function DepositToVaultForm() {
           />
           <View className="flex-row items-center gap-2">
             <Image
-              source={require("@/assets/images/usdc.png")}
+              source={require('@/assets/images/usdc.png')}
               alt="USDC"
               style={{ width: 32, height: 32 }}
             />
@@ -151,8 +151,8 @@ function DepositToVaultForm() {
           <Wallet size={16} /> {formatNumber(Number(formattedBalance))} USDC
           <Max
             onPress={() => {
-              setValue("amount", formattedBalance);
-              trigger("amount");
+              setValue('amount', formattedBalance);
+              trigger('amount');
             }}
           />
         </Text>
@@ -162,7 +162,7 @@ function DepositToVaultForm() {
           <Text className="text-lg opacity-40 md:w-40">You will receive</Text>
           <View className="flex-row items-center gap-2">
             <Image
-              source={require("@/assets/images/sousd-4x.png")}
+              source={require('@/assets/images/sousd-4x.png')}
               style={{ width: 34, height: 34 }}
               contentFit="contain"
             />
@@ -185,11 +185,7 @@ function DepositToVaultForm() {
           <Text className="text-lg opacity-40 md:w-40">Exchange rate</Text>
           <View className="flex-row items-baseline gap-2">
             <Text className="text-2xl font-semibold">
-              {exchangeRate ? (
-                formatUnits(exchangeRate, 6)
-              ) : (
-                <Skeleton className="w-20 h-8" />
-              )}
+              {exchangeRate ? formatUnits(exchangeRate, 6) : <Skeleton className="w-20 h-8" />}
             </Text>
           </View>
         </View>
@@ -197,11 +193,7 @@ function DepositToVaultForm() {
           <Text className="text-lg opacity-40 md:w-40">APY</Text>
           <View className="flex-row items-baseline gap-2">
             <Text className="text-2xl font-semibold text-[#94F27F]">
-              {totalAPY ? (
-                `${totalAPY.toFixed(2)}%`
-              ) : (
-                <Skeleton className="w-20 h-8" />
-              )}
+              {totalAPY ? `${totalAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
             </Text>
             {/* <Text className="text-base opacity-40">
                   {totalAPY ? (
@@ -221,19 +213,17 @@ function DepositToVaultForm() {
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading ? "..." : formatNumber(costInUsd, 2)} USD in fee`}
+          {`~ $${loading ? '...' : formatNumber(costInUsd, 2)} USD in fee`}
         </Text>
       </View>
-      <CheckConnectionWrapper props={{ size: "xl" }}>
+      <CheckConnectionWrapper props={{ size: 'xl' }}>
         <Button
           variant="brand"
           className="rounded-2xl h-12"
           onPress={handleSubmit(onSubmit)}
           disabled={isFormDisabled()}
         >
-          <Text className="text-lg font-semibold">
-            {getButtonText()?.slice(0, 30)}
-          </Text>
+          <Text className="text-lg font-semibold">{getButtonText()?.slice(0, 30)}</Text>
           {isLoading && <ActivityIndicator color="gray" />}
         </Button>
       </CheckConnectionWrapper>

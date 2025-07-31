@@ -1,0 +1,10 @@
+dist/*
+node_modules/*
+.expo/*
+web-build/*
+*.d.ts
+.expo-shared/*
+**/*.min.js
+package-lock.json
+yarn.lock
+.git/* 

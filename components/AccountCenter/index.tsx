@@ -1,15 +1,15 @@
-import { ChevronDown } from "lucide-react-native"
-import { View } from "react-native"
+import { ChevronDown } from 'lucide-react-native';
+import { View } from 'react-native';
 
-import UserAvatar from "@/assets/images/user"
-import CopyToClipboard from "@/components/CopyToClipboard"
-import { Button } from "@/components/ui/button"
-import { Text } from "@/components/ui/text"
-import useUser from "@/hooks/useUser"
-import { eclipseAddress, eclipseUsername } from "@/lib/utils"
+import UserAvatar from '@/assets/images/user';
+import CopyToClipboard from '@/components/CopyToClipboard';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import useUser from '@/hooks/useUser';
+import { eclipseAddress, eclipseUsername } from '@/lib/utils';
 
 const AccountCenter = () => {
-  const { user } = useUser()
+  const { user } = useUser();
 
   return (
     <View className="flex-col gap-2 min-h-64">
@@ -19,11 +19,11 @@ const AccountCenter = () => {
         <CopyToClipboard text={user?.safeAddress || ''} />
       </View>
     </View>
-  )
-}
+  );
+};
 
 const AccountCenterTrigger = (props: any) => {
-  const { user } = useUser()
+  const { user } = useUser();
 
   let triggerButton = (
     <Button size="sm" className="w-full rounded-full animate-pulse" disabled {...props} />
@@ -36,38 +36,35 @@ const AccountCenterTrigger = (props: any) => {
         {...props}
       >
         <UserAvatar />
-        <Text className="hidden md:block text-white font-medium text-sm">{eclipseUsername(user.username)}</Text>
+        <Text className="hidden md:block text-white font-medium text-sm">
+          {eclipseUsername(user.username)}
+        </Text>
         <ChevronDown size={14} color="white" />
       </Button>
-    )
+    );
   }
 
-  return triggerButton
-}
+  return triggerButton;
+};
 
 const AccountCenterTitle = () => {
-  const { user } = useUser()
+  const { user } = useUser();
 
   return (
-    <Text className="text-lg font-semibold">Hello{user?.username ? `, ${user?.username}` : ''}</Text>
-  )
-}
+    <Text className="text-lg font-semibold">
+      Hello{user?.username ? `, ${user?.username}` : ''}
+    </Text>
+  );
+};
 
 const AccountCenterFooter = () => {
-  const { handleLogout } = useUser()
+  const { handleLogout } = useUser();
 
   return (
-    <Button
-      variant="destructive"
-      className="w-full"
-      onPress={handleLogout}
-    >
+    <Button variant="destructive" className="w-full" onPress={handleLogout}>
       <Text>Logout</Text>
     </Button>
-  )
-}
+  );
+};
 
-export {
-  AccountCenter, AccountCenterFooter, AccountCenterTitle, AccountCenterTrigger
-}
-
+export { AccountCenter, AccountCenterFooter, AccountCenterTitle, AccountCenterTrigger };

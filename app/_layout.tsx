@@ -1,25 +1,25 @@
-import { toastProps } from "@/components/Toast";
-import { TurnkeyProvider } from "@/components/TurnkeyProvider";
-import "@/global.css";
-import { infoClient } from "@/graphql/clients";
-import { config } from "@/lib/wagmi";
-import { ApolloProvider } from "@apollo/client";
-import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { ChevronLeft } from "lucide-react-native";
-import { PortalHost } from "@rn-primitives/portal";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as Notifications from "expo-notifications";
-import { router, Stack } from "expo-router";
-import Head from "expo-router/head";
-import * as SplashScreen from "expo-splash-screen";
-import { useCallback, useEffect, useState } from "react";
-import { Platform } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import Toast from "react-native-toast-message";
-import { ThirdwebProvider } from "thirdweb/react";
-import { WagmiProvider } from "wagmi";
-import { Button } from "@/components/ui/button";
+import { toastProps } from '@/components/Toast';
+import { TurnkeyProvider } from '@/components/TurnkeyProvider';
+import '@/global.css';
+import { infoClient } from '@/graphql/clients';
+import { config } from '@/lib/wagmi';
+import { ApolloProvider } from '@apollo/client';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { ChevronLeft } from 'lucide-react-native';
+import { PortalHost } from '@rn-primitives/portal';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import * as Notifications from 'expo-notifications';
+import { router, Stack } from 'expo-router';
+import Head from 'expo-router/head';
+import * as SplashScreen from 'expo-splash-screen';
+import { useCallback, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+import { ThirdwebProvider } from 'thirdweb/react';
+import { WagmiProvider } from 'wagmi';
+import { Button } from '@/components/ui/button';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -60,12 +60,12 @@ export default function RootLayout() {
         // await Font.loadAsync(Entypo.font);
 
         // Simulate loading time - replace with actual async operations
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Add any additional initialization here
         // await initializeApp();
       } catch (e) {
-        console.warn("Error during app initialization:", e);
+        console.warn('Error during app initialization:', e);
       } finally {
         // Tell the application to render
         setAppIsReady(true);
@@ -86,7 +86,7 @@ export default function RootLayout() {
         await SplashScreen.hideAsync();
         setSplashScreenHidden(true);
       } catch (error) {
-        console.warn("Error hiding splash screen:", error);
+        console.warn('Error hiding splash screen:', error);
       }
     }
   }, [appIsReady, splashScreenHidden]);
@@ -101,28 +101,28 @@ export default function RootLayout() {
         name="(protected)"
         options={{
           headerShown: false,
-          animation: "none",
+          animation: 'none',
         }}
       />
       <Stack.Screen
         name="register"
         options={{
           headerShown: false,
-          animation: "none",
+          animation: 'none',
         }}
       />
       <Stack.Screen
         name="welcome"
         options={{
           headerShown: false,
-          animation: "none",
+          animation: 'none',
         }}
       />
       <Stack.Screen
         name="notifications"
         options={{
-          animation: "none",
-          title: "Turn on notifications",
+          animation: 'none',
+          title: 'Turn on notifications',
           headerStyle: {
             backgroundColor: "#000",
           },
@@ -132,12 +132,7 @@ export default function RootLayout() {
             fontWeight: "bold",
           },
           headerLeft: () => (
-            <Button
-              variant="ghost"
-              size="icon"
-              onPress={() => router.back()}
-              className="mr-4"
-            >
+            <Button variant="ghost" size="icon" onPress={() => router.back()} className="mr-4">
               <ChevronLeft size={28} color="white" />
             </Button>
           ),
@@ -154,7 +149,7 @@ export default function RootLayout() {
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={infoClient}>
-                {Platform.OS === "web" ? (
+                {Platform.OS === 'web' ? (
                   <>
                     <Head>
                       <title>Solid</title>

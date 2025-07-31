@@ -1,8 +1,8 @@
-import { Redirect, Stack } from "expo-router";
+import { Redirect, Stack } from 'expo-router';
 
-import { path } from "@/constants/path";
-import useUser from "@/hooks/useUser";
-import { useUserStore } from "@/store/useUserStore";
+import { path } from '@/constants/path';
+import useUser from '@/hooks/useUser';
+import { useUserStore } from '@/store/useUserStore';
 
 export default function ProtectedLayout() {
   const { user } = useUser();
@@ -26,7 +26,7 @@ export default function ProtectedLayout() {
         headerTitleStyle: {
           fontSize: 20,
           fontWeight: 'bold',
-        }
+        },
       }}
     >
       <Stack.Screen

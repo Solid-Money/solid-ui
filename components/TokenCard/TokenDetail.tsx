@@ -9,11 +9,7 @@ interface TokenDetailProps {
 }
 
 const TokenDetail = ({ children, className = '' }: TokenDetailProps) => {
-  return (
-    <View className={cn("p-6 md:p-5", className)}>
-      {children}
-    </View>
-  );
+  return <View className={cn('p-6 md:p-5', className)}>{children}</View>;
 };
 
-export default TokenDetail; 
+export default TokenDetail;

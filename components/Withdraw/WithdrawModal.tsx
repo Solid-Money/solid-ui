@@ -1,12 +1,12 @@
-import React from "react";
-import { Address } from "viem";
+import React from 'react';
+import { Address } from 'viem';
 
-import { WITHDRAW_MODAL } from "@/constants/modals";
-import getTokenIcon from "@/lib/getTokenIcon";
-import { useWithdrawStore } from "@/store/useWithdrawStore";
-import { Withdraw, WithdrawTrigger } from ".";
-import AnimatedModal from "../AnimatedModal";
-import TransactionStatus from "../TransactionStatus";
+import { WITHDRAW_MODAL } from '@/constants/modals';
+import getTokenIcon from '@/lib/getTokenIcon';
+import { useWithdrawStore } from '@/store/useWithdrawStore';
+import { Withdraw, WithdrawTrigger } from '.';
+import AnimatedModal from '../AnimatedModal';
+import TransactionStatus from '../TransactionStatus';
 
 const WithdrawModal = () => {
   const { currentModal, previousModal, setModal, transaction } = useWithdrawStore();
@@ -16,26 +16,28 @@ const WithdrawModal = () => {
 
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
-    return "Withdraw";
+    return 'Withdraw';
   };
 
   const getContentKey = () => {
     if (isTransactionStatus) return 'transaction-status';
     return 'withdraw-form';
-  }
+  };
 
   const getContent = () => {
     if (isTransactionStatus) {
-      return <TransactionStatus
-        amount={transaction.amount ?? 0}
-        onPress={() => setModal(WITHDRAW_MODAL.CLOSE)}
-        token={"SoUSD"}
-        icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
-      />;
+      return (
+        <TransactionStatus
+          amount={transaction.amount ?? 0}
+          onPress={() => setModal(WITHDRAW_MODAL.CLOSE)}
+          token={'SoUSD'}
+          icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
+        />
+      );
     }
 
-    return <Withdraw />
-  }
+    return <Withdraw />;
+  };
 
   const handleOpenChange = (value: boolean) => {
     if (value) {
@@ -43,7 +45,7 @@ const WithdrawModal = () => {
     } else {
       setModal(WITHDRAW_MODAL.CLOSE);
     }
-  }
+  };
 
   return (
     <AnimatedModal

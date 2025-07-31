@@ -35,14 +35,14 @@ const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrim
         className={cn(
           'web:backdrop-blur-[11px] flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
           open ? 'web:animate-in web:fade-in-0' : 'web:animate-out web:fade-out-0',
-          className
+          className,
         )}
         onPointerDown={handlePointerDown}
         {...props}
         ref={ref}
       />
     );
-  }
+  },
 );
 
 DialogOverlayWeb.displayName = 'DialogOverlayWeb';
@@ -96,7 +96,7 @@ const DialogContent = React.forwardRef<
           open
             ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
             : 'web:animate-out web:fade-out-0 web:zoom-out-95',
-          className
+          className,
         )}
         {...props}
       >
@@ -156,11 +156,11 @@ const DialogTitle = React.forwardRef<DialogPrimitive.TitleRef, DialogPrimitive.T
       ref={ref}
       className={cn(
         'text-lg native:text-xl text-foreground font-semibold leading-none tracking-tight',
-        className
+        className,
       )}
       {...props}
     />
-  )
+  ),
 );
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
@@ -186,6 +186,5 @@ export {
   DialogOverlay,
   DialogPortal,
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
 };
-

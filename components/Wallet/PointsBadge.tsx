@@ -5,7 +5,7 @@ import { Text } from '../ui/text';
 
 type PointsBadgeProps = {
   points: number;
-}
+};
 
 const PointsBadge = ({ points }: PointsBadgeProps) => {
   return (
@@ -27,6 +27,6 @@ const PointsBadge = ({ points }: PointsBadgeProps) => {
       <Text className="text-points font-semibold">{points} Points</Text>
     </LinearGradient>
   );
-}
+};
 
 export default PointsBadge;

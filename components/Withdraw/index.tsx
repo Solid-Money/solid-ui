@@ -1,31 +1,32 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Address } from "abitype";
-import { Info, Minus, Wallet } from "lucide-react-native";
-import { useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { ActivityIndicator, Image, TextInput, View } from "react-native";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Address } from 'abitype';
+import { Info, Minus, Wallet } from 'lucide-react-native';
+import { useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, Image, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { z } from "zod";
+import { z } from 'zod';
 
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { WITHDRAW_MODAL } from "@/constants/modals";
-import useUser from "@/hooks/useUser";
-import { useEthereumVaultBalance } from "@/hooks/useVault";
-import useWithdraw from "@/hooks/useWithdraw";
-import getTokenIcon from "@/lib/getTokenIcon";
-import { Status } from "@/lib/types";
-import { cn, eclipseAddress, formatNumber } from "@/lib/utils";
-import { useWithdrawStore } from "@/store/useWithdrawStore";
-import { Skeleton } from "../ui/skeleton";
-import Max from "../Max";
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { WITHDRAW_MODAL } from '@/constants/modals';
+import useUser from '@/hooks/useUser';
+import { useEthereumVaultBalance } from '@/hooks/useVault';
+import useWithdraw from '@/hooks/useWithdraw';
+import getTokenIcon from '@/lib/getTokenIcon';
+import { Status } from '@/lib/types';
+import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { useWithdrawStore } from '@/store/useWithdrawStore';
+import { Skeleton } from '../ui/skeleton';
+import Max from '../Max';
 
 const Withdraw = () => {
   const { user } = useUser();
   const { setModal, setTransaction } = useWithdrawStore();
 
-  const { data: ethereumBalance, isLoading: isEthereumBalanceLoading } =
-    useEthereumVaultBalance(user?.safeAddress as Address);
+  const { data: ethereumBalance, isLoading: isEthereumBalanceLoading } = useEthereumVaultBalance(
+    user?.safeAddress as Address,
+  );
 
   // Create dynamic schema for withdraw form based on ethereum balance
   const withdrawSchema = useMemo(() => {
@@ -33,14 +34,17 @@ const Withdraw = () => {
     return z.object({
       amount: z
         .string()
-        .refine((val) => val !== "" && !isNaN(Number(val)), "Please enter a valid amount")
-        .refine((val) => Number(val) > 0, "Amount must be greater than 0")
-        .refine((val) => Number(val) <= balanceAmount, `Available balance is ${formatNumber(balanceAmount)} soUSD`)
-        .transform((val) => Number(val)),
+        .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
+        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
+        .refine(
+          val => Number(val) <= balanceAmount,
+          `Available balance is ${formatNumber(balanceAmount)} soUSD`,
+        )
+        .transform(val => Number(val)),
     });
   }, [ethereumBalance]);
 
-  type WithdrawFormData = { amount: string; };
+  type WithdrawFormData = { amount: string };
 
   const {
     control: withdrawControl,
@@ -52,24 +56,24 @@ const Withdraw = () => {
     trigger,
   } = useForm<WithdrawFormData>({
     resolver: zodResolver(withdrawSchema) as any,
-    mode: "onChange",
+    mode: 'onChange',
     defaultValues: {
       amount: '',
     },
   });
 
-  const watchedWithdrawAmount = watchWithdraw("amount");
+  const watchedWithdrawAmount = watchWithdraw('amount');
 
   const { withdraw, withdrawStatus } = useWithdraw();
   const isWithdrawLoading = withdrawStatus === Status.PENDING;
 
   const getWithdrawText = () => {
     if (withdrawErrors.amount) return withdrawErrors.amount.message;
-    if (withdrawStatus === Status.PENDING) return "Withdrawing";
-    if (withdrawStatus === Status.ERROR) return "Error while Withdrawing";
-    if (withdrawStatus === Status.SUCCESS) return "Withdrawal Successful";
-    if (!isWithdrawValid || !watchedWithdrawAmount) return "Enter an amount";
-    return "Withdraw";
+    if (withdrawStatus === Status.PENDING) return 'Withdrawing';
+    if (withdrawStatus === Status.ERROR) return 'Error while Withdrawing';
+    if (withdrawStatus === Status.SUCCESS) return 'Withdrawal Successful';
+    if (!isWithdrawValid || !watchedWithdrawAmount) return 'Enter an amount';
+    return 'Withdraw';
   };
 
   const onWithdrawSubmit = async (data: WithdrawFormData) => {
@@ -99,11 +103,7 @@ const Withdraw = () => {
   };
 
   const isWithdrawFormDisabled = () => {
-    return (
-      isWithdrawLoading ||
-      !isWithdrawValid ||
-      !watchedWithdrawAmount
-    );
+    return isWithdrawLoading || !isWithdrawValid || !watchedWithdrawAmount;
   };
 
   return (
@@ -111,7 +111,12 @@ const Withdraw = () => {
       <View className="gap-3">
         <Text className="opacity-60">Withdraw amount</Text>
 
-        <View className={cn('flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3', withdrawErrors.amount && 'border border-red-500')}>
+        <View
+          className={cn(
+            'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
+            withdrawErrors.amount && 'border border-red-500',
+          )}
+        >
           <Controller
             control={withdrawControl}
             name="amount"
@@ -129,7 +134,7 @@ const Withdraw = () => {
           />
           <View className="flex-row items-center gap-2">
             <Image
-              source={require("@/assets/images/sousd-4x.png")}
+              source={require('@/assets/images/sousd-4x.png')}
               alt="SoUSD"
               style={{ width: 34, height: 34 }}
             />
@@ -138,17 +143,18 @@ const Withdraw = () => {
         </View>
 
         <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-          <Wallet size={16} /> {isEthereumBalanceLoading ? (
+          <Wallet size={16} />{' '}
+          {isEthereumBalanceLoading ? (
             <Skeleton className="w-16 h-4 rounded-md" />
           ) : ethereumBalance ? (
             `${formatNumber(ethereumBalance)} SoUSD`
           ) : (
-            "0 SoUSD"
+            '0 SoUSD'
           )}
           <Max
             onPress={() => {
-              setValue("amount", ethereumBalance?.toString() ?? "0");
-              trigger("amount");
+              setValue('amount', ethereumBalance?.toString() ?? '0');
+              trigger('amount');
             }}
           />
         </Text>
@@ -178,7 +184,7 @@ const WithdrawTrigger = (props: any) => {
   return (
     <Button
       variant="outline"
-      className={buttonVariants({ variant: "secondary", className: "h-12 md:pr-6 rounded-xl" })}
+      className={buttonVariants({ variant: 'secondary', className: 'h-12 md:pr-6 rounded-xl' })}
       {...props}
     >
       <View className="flex-row items-center gap-4">

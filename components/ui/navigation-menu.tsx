@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Pressable, View, type PressableProps } from 'react-native';
+import { Pressable, type PressableProps, View } from 'react-native';
 
 import { TextClassContext } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ const NavigationMenu = React.forwardRef<View, NavigationMenuProps>(
         {children}
       </View>
     );
-  }
+  },
 );
 NavigationMenu.displayName = 'NavigationMenu';
 
@@ -41,7 +41,7 @@ const NavigationMenuList = React.forwardRef<View, { children: React.ReactNode }>
         {children}
       </View>
     );
-  }
+  },
 );
 NavigationMenuList.displayName = 'NavigationMenuList';
 
@@ -52,51 +52,42 @@ const NavigationMenuItem = React.forwardRef<View, NavigationMenuItemProps>(
         {children}
       </View>
     );
-  }
+  },
 );
 NavigationMenuItem.displayName = 'NavigationMenuItem';
 
 const navigationMenuLinkClassNames = {
-  pressable: 'group inline-flex h-8 w-max items-center justify-center rounded-full px-3 py-2 md:p-5 transition-colors hover:bg-button-secondary focus:bg-button-secondary focus:outline-none disabled:pointer-events-none disabled:opacity-50',
-  text: "text-lg font-semibold",
-}
+  pressable:
+    'group inline-flex h-8 w-max items-center justify-center rounded-full px-3 py-2 md:p-5 transition-colors hover:bg-button-secondary focus:bg-button-secondary focus:outline-none disabled:pointer-events-none disabled:opacity-50',
+  text: 'text-lg font-semibold',
+};
 
-const NavigationMenuLink = React.forwardRef<React.ElementRef<typeof Pressable>, NavigationMenuLinkProps>(
-  ({ onPress, className, active, children }, ref) => {
-    const pressableClass = cn(
-      navigationMenuLinkClassNames.pressable,
-      active && "bg-button-secondary"
-    )
+const NavigationMenuLink = React.forwardRef<
+  React.ElementRef<typeof Pressable>,
+  NavigationMenuLinkProps
+>(({ onPress, className, active, children }, ref) => {
+  const pressableClass = cn(
+    navigationMenuLinkClassNames.pressable,
+    active && 'bg-button-secondary',
+  );
 
-    const textClass = cn(
-      navigationMenuLinkClassNames.text,
-      // active && "text-primary-foreground"
-    )
+  const textClass = cn(
+    navigationMenuLinkClassNames.text,
+    // active && "text-primary-foreground"
+  );
 
-    return (
-      <TextClassContext.Provider value={textClass}>
-        <Pressable
-          ref={ref}
-          onPress={onPress}
-          className={cn(
-            pressableClass,
-            textClass,
-            className
-          )}
-        >
-          {children}
-        </Pressable>
-      </TextClassContext.Provider>
-    );
-  }
-);
+  return (
+    <TextClassContext.Provider value={textClass}>
+      <Pressable ref={ref} onPress={onPress} className={cn(pressableClass, textClass, className)}>
+        {children}
+      </Pressable>
+    </TextClassContext.Provider>
+  );
+});
 NavigationMenuLink.displayName = 'NavigationMenuLink';
 
 const navigationMenuTriggerStyle = () => {
-  return cn(
-    navigationMenuLinkClassNames.pressable,
-    navigationMenuLinkClassNames.text
-  );
+  return cn(navigationMenuLinkClassNames.pressable, navigationMenuLinkClassNames.text);
 };
 
 export {
@@ -104,5 +95,5 @@ export {
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  navigationMenuTriggerStyle
+  navigationMenuTriggerStyle,
 };

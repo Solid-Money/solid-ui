@@ -10,12 +10,12 @@ import {
 import {
   pressTransactionCredenzaContent,
   TransactionCredenzaContent,
-  TransactionCredenzaTrigger
+  TransactionCredenzaTrigger,
 } from './TransactionCredenza';
 
 type TransactionDropdownProps = {
   url?: string;
-}
+};
 
 const TransactionDropdown = ({ url }: TransactionDropdownProps) => {
   const insets = useSafeAreaInsets();
@@ -31,9 +31,9 @@ const TransactionDropdown = ({ url }: TransactionDropdownProps) => {
       <DropdownMenuTrigger>
         <TransactionCredenzaTrigger />
       </DropdownMenuTrigger>
-      <DropdownMenuContent insets={contentInsets} className='w-38 bg-card border-none rounded-xl'>
+      <DropdownMenuContent insets={contentInsets} className="w-38 bg-card border-none rounded-xl">
         <DropdownMenuItem
-          className='h-10 web:cursor-pointer rounded-lg'
+          className="h-10 web:cursor-pointer rounded-lg"
           onPress={() => pressTransactionCredenzaContent(url)}
         >
           <TransactionCredenzaContent />
@@ -41,6 +41,6 @@ const TransactionDropdown = ({ url }: TransactionDropdownProps) => {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+};
 
 export default TransactionDropdown;
