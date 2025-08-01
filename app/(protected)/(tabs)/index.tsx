@@ -16,23 +16,23 @@ import {
   useLatestTokenTransfer,
   useSendTransactions,
   useTotalAPY,
-} from "@/hooks/useAnalytics";
-import { useDepositCalculations } from "@/hooks/useDepositCalculations";
-import { useDimension } from "@/hooks/useDimension";
-import useUser from "@/hooks/useUser";
-import { useFuseVaultBalance } from "@/hooks/useVault";
-import { ADDRESSES } from "@/lib/config";
-import { calculateYield } from "@/lib/financial";
-import { SavingMode } from "@/lib/types";
-import { cn, fontSize, formatNumber } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
-import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useState } from "react";
-import { ImageBackground, Platform, ScrollView, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Address } from "viem";
-import { mainnet } from "viem/chains";
-import { useBlockNumber } from "wagmi";
+} from '@/hooks/useAnalytics';
+import { useDepositCalculations } from '@/hooks/useDepositCalculations';
+import { useDimension } from '@/hooks/useDimension';
+import useUser from '@/hooks/useUser';
+import { useFuseVaultBalance } from '@/hooks/useVault';
+import { ADDRESSES } from '@/lib/config';
+import { calculateYield } from '@/lib/financial';
+import { SavingMode } from '@/lib/types';
+import { cn, fontSize, formatNumber } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
+import { ImageBackground, Platform, ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Address } from 'viem';
+import { mainnet } from 'viem/chains';
+import { useBlockNumber } from 'wagmi';
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -124,14 +124,14 @@ export default function Dashboard() {
 
   return (
     <>
-      {Platform.OS !== 'web' && <NavbarMobile />}
       <SafeAreaView
         className="bg-background text-foreground flex-1"
-        edges={['right', 'left', 'bottom']}
+        edges={['right', 'left', 'bottom', 'top']}
       >
         <ScrollView className="flex-1">
+          {Platform.OS !== 'web' && <NavbarMobile />}
           {Platform.OS === 'web' && <Navbar />}
-          <View className="gap-12 md:gap-16 px-4 py-8 w-full max-w-7xl mx-auto">
+          <View className="gap-12 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
             <DashboardHeader />
             <LinearGradient
               colors={['rgba(126, 126, 126, 0.3)', 'rgba(126, 126, 126, 0.2)']}
