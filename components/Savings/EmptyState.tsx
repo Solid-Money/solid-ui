@@ -21,14 +21,14 @@ export default function SavingsEmptyState() {
 
   return (
     <>
-      {Platform.OS !== 'web' && <NavbarMobile />}
       <SafeAreaView
         className="bg-background text-foreground flex-1"
-        edges={['right', 'left', 'bottom']}
+        edges={['right', 'left', 'bottom', 'top']}
       >
         <ScrollView className="flex-1">
+          {Platform.OS !== 'web' && <NavbarMobile />}
           {Platform.OS === 'web' && <Navbar />}
-          <View className="w-full max-w-7xl mx-auto gap-12 md:gap-16 px-4 py-8">
+          <View className="w-full max-w-7xl mx-auto gap-12 md:gap-16 px-4 pt-4 pb-8">
             <View className="md:flex-row justify-between md:items-center gap-y-4">
               <View className="gap-3">
                 <Text className="text-3xl font-semibold">Your saving account</Text>
