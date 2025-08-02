@@ -70,14 +70,14 @@ export default function Wallet() {
 
   return (
     <React.Fragment>
-      {Platform.OS !== 'web' && <NavbarMobile />}
       <SafeAreaView
         className="bg-background text-foreground flex-1"
-        edges={['right', 'left', 'bottom']}
+        edges={['right', 'left', 'bottom', 'top']}
       >
         <ScrollView className="flex-1">
+          {Platform.OS !== 'web' && <NavbarMobile />}
           {Platform.OS === 'web' && <Navbar />}
-          <View className="gap-12 md:gap-16 px-4 py-8 md:py-16 w-full max-w-7xl mx-auto">
+          <View className="gap-12 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
             <View className="flex-row items-center justify-between gap-y-4">
               <View className="flex-row items-center">
                 <Text className="text-5xl md:text-8xl text-foreground font-semibold">$</Text>
