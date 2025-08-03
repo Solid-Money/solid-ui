@@ -8,11 +8,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import faqs from '@/constants/faqs';
 import { useTotalAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { DepositOptionModal } from '../DepositOption';
 import FAQ from '../FAQ';
-import faqs from '@/constants/faqs';
 import Navbar from '../Navbar';
 
 export default function SavingsEmptyState() {
