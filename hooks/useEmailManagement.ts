@@ -9,12 +9,11 @@ import { z } from 'zod';
 
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import useUser from '@/hooks/useUser';
-import { initGenericOtp, updateEmail, verifyGenericOtp } from '@/lib/api';
+import { initGenericOtp, verifyGenericOtp } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
-import { withRefreshToken } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 
 const emailSchema = z.object({
@@ -199,10 +198,9 @@ export const useEmailManagement = (
   const handleVerifyOtp = async (data: OtpFormData) => {
     setIsLoading(true);
     try {
-      const verifyResponse = await verifyGenericOtp(otpId, data.otpCode);
+      const verifyResponse = await verifyGenericOtp(otpId, data.otpCode, emailValue);
 
       await updateUserEmail(emailValue, verifyResponse.verificationToken);
-      await withRefreshToken(() => updateEmail(emailValue));
 
       if (updateUser) {
         updateUser({

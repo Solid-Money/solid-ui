@@ -470,13 +470,11 @@ export const initGenericOtp = async (
     }
   );
   const data = await response.json();
-  if (data.statusCode === 400) {
-    throw new Error(data.message);
-  }
-  return data;
+  if (!response.ok) throw data.message;
+  return response.json();
 };
 
-export const verifyGenericOtp = async (otpId: string, otpCode: string) => {
+export const verifyGenericOtp = async (otpId: string, otpCode: string, email: string) => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-generic-otp`,
     {
@@ -493,30 +491,6 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string) => {
     }
   );
   const data = await response.json();
-  if (data.statusCode === 400) {
-    throw new Error(data.message);
-  }
-  return data;
-};
-
-export const updateEmail = async (email: string) => {
-  const jwt = getJWTToken();
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/update-email`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: "include",
-      body: JSON.stringify({ email }),
-    }
-  );
-  const data = await response.json();
-  if (data.statusCode === 400) {
-    throw new Error(data.message);
-  }
-  return data;
+  if (!response.ok) throw data.message;
+  return response.json();
 };
