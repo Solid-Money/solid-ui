@@ -14,6 +14,7 @@ import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
+import { withRefreshToken } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 
 const emailSchema = z.object({
@@ -168,7 +169,7 @@ export const useEmailManagement = (
     setIsLoading(true);
     setRateLimitError(null);
     try {
-      const response = await initGenericOtp(data.email, 6, false);
+      const response = await withRefreshToken(() => initGenericOtp(data.email, 6, false));
       setOtpId(response.otpId);
       setEmailValue(data.email);
       setStep('otp');
@@ -198,7 +199,7 @@ export const useEmailManagement = (
   const handleVerifyOtp = async (data: OtpFormData) => {
     setIsLoading(true);
     try {
-      const verifyResponse = await verifyGenericOtp(otpId, data.otpCode, emailValue);
+      const verifyResponse = await withRefreshToken(() => verifyGenericOtp(otpId, data.otpCode, emailValue));
 
       await updateUserEmail(emailValue, verifyResponse.verificationToken);
 
