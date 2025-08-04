@@ -4,8 +4,8 @@ import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 
-import { X } from '@/lib/icons/X';
 import { toastProps } from '@/components/Toast';
+import { X } from '@/lib/icons/X';
 import { cn } from '@/lib/utils';
 import { BlurView } from 'expo-blur';
 
@@ -186,5 +186,6 @@ export {
   DialogOverlay,
   DialogPortal,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 };
+

@@ -4,12 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SettingsCard } from '@/components/Settings';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress } from '@/lib/utils';
+import { Href } from 'expo-router';
 import { Address } from 'viem';
 
 interface Detail {
   title: string;
   description?: string | Address;
   isAddress?: boolean;
+  link?: Href;
 }
 
 export default function Account() {
@@ -25,6 +27,11 @@ export default function Account() {
       description: user?.safeAddress,
       isAddress: true,
     },
+    {
+      title: 'Email',
+      description: user?.email,
+      link: '/settings/email',
+    }
   ];
 
   return (
@@ -44,6 +51,7 @@ export default function Account() {
                     ? eclipseAddress(detail.description as Address)
                     : detail.description
                 }
+                link={detail.link}
               />
             ))}
           </View>

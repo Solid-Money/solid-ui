@@ -1,17 +1,18 @@
 import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
+import { Button } from '@/components/ui/button';
 import '@/global.css';
 import { infoClient } from '@/graphql/clients';
 import { config } from '@/lib/wagmi';
 import { ApolloProvider } from '@apollo/client';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { ChevronLeft } from 'lucide-react-native';
 import { PortalHost } from '@rn-primitives/portal';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
 import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
+import { ChevronLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -19,14 +20,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { ThirdwebProvider } from 'thirdweb/react';
 import { WagmiProvider } from 'wagmi';
-import { Button } from '@/components/ui/button';
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from "expo-router";
+  ErrorBoundary
+} from 'expo-router';
 
-if (Platform.OS !== "web") {
+if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -124,19 +124,19 @@ export default function RootLayout() {
           animation: 'none',
           title: 'Turn on notifications',
           headerStyle: {
-            backgroundColor: "#000",
+            backgroundColor: '#000',
           },
-          headerTintColor: "#fff",
+          headerTintColor: '#fff',
           headerTitleStyle: {
             fontSize: 20,
-            fontWeight: "bold",
+            fontWeight: 'bold',
           },
           headerLeft: () => (
             <Button variant="ghost" size="icon" onPress={() => router.back()} className="mr-4">
               <ChevronLeft size={28} color="white" />
             </Button>
           ),
-          headerTitleAlign: "center",
+          headerTitleAlign: 'center',
         }}
       />
     </Stack>

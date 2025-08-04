@@ -274,7 +274,7 @@ const useUser = (): UseUserReturn => {
   const handleLogin = useCallback(
     async () => {
       try {
-        setLoginInfo({ status: Status.PENDING }); 
+        setLoginInfo({ status: Status.PENDING });
         let stamp: any;
 
         if (Platform.OS === "web") {
@@ -319,6 +319,7 @@ const useUser = (): UseUserReturn => {
           suborgId: user.subOrganizationId,
           selected: true,
           tokens: user.tokens || null,
+          email: user.email,
         };
         storeUser(selectedUser);
         await checkBalance(selectedUser);
@@ -342,9 +343,10 @@ const useUser = (): UseUserReturn => {
         userId: "dummy",
         safeAddress: "0x0000000000000000000000000000000000000000",
         selected: true,
+        email: "dummy@dummy.com",
       });
       router.replace(path.HOME);
-    } catch (error) {}
+    } catch (error) { }
   }, [router, storeUser]);
 
   const handleLogout = useCallback(() => {

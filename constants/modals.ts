@@ -3,21 +3,25 @@ export const DEPOSIT_MODAL = {
     name: 'close',
     number: 0,
   },
+  OPEN_EMAIL_GATE: {
+    name: 'open_email_gate',
+    number: 1,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
-    number: 1
+    number: 2
   },
   OPEN_BUY_CRYPTO: {
     name: 'open_buy_crypto',
-    number: 2,
+    number: 3,
   },
   OPEN_FORM: {
     name: 'open_form',
-    number: 2,
+    number: 3,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
-    number: 3,
+    number: 4,
   },
 }
 

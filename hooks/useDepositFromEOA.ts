@@ -152,8 +152,6 @@ const useDepositFromEOA = (): DepositResult => {
         address: eoaAddress,
       });
 
-      console.log('verified', verified);
-
       const callData = encodeFunctionData({
         abi: ETHEREUM_TELLER_ABI,
         functionName: "depositAndBridgeWithPermit",
@@ -172,7 +170,6 @@ const useDepositFromEOA = (): DepositResult => {
         ],
       });
 
-      console.log('callData: ', callData);
       const transaction = await account?.sendTransaction({
         chainId: mainnet.id,
         to: ADDRESSES.ethereum.teller,

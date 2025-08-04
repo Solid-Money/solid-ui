@@ -5,9 +5,9 @@ import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, TextInput, View } from 'react-native';
 import { formatUnits } from 'viem';
+import { mainnet } from 'viem/chains';
 import { useWaitForTransactionReceipt } from 'wagmi';
 import { z } from 'zod';
-import { mainnet } from 'viem/chains';
 
 import { Button } from '@/components/ui/button';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -20,10 +20,10 @@ import { formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { CheckConnectionWrapper } from '../CheckConnectionWrapper';
 import ConnectedWalletDropdown from '../ConnectedWalletDropdown';
+import Max from '../Max';
 import TokenDetails from '../TokenCard/TokenDetails';
 import { Skeleton } from '../ui/skeleton';
 import { Text } from '../ui/text';
-import Max from '../Max';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, fee } = useDepositFromEOA();
