@@ -46,6 +46,7 @@ export interface EmailManagementActions {
   handleVerifyOtp: (data: OtpFormData) => Promise<void>;
   handleChangeEmail: () => void;
   handleBack: () => void;
+  handleResendOtp: () => Promise<void>;
   setStep: (step: EmailManagementState['step']) => void;
   getButtonText: () => string;
   isFormDisabled: () => boolean;
@@ -218,6 +219,11 @@ export const useEmailManagement = (
     }
   };
 
+  const handleResendOtp = async () => {
+    if (!emailValue) return;
+    await handleSendOtp({ email: emailValue });
+  };
+
   const handleChangeEmail = () => {
     setStep('email');
     emailForm.reset({ email: '' });
@@ -278,6 +284,7 @@ export const useEmailManagement = (
     handleVerifyOtp,
     handleChangeEmail,
     handleBack,
+    handleResendOtp,
     setStep,
     getButtonText,
     isFormDisabled,
