@@ -16,10 +16,10 @@ import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
-import { ADDRESSES } from '@/lib/config';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { SavingMode } from '@/lib/types';
+import { ADDRESSES } from '@/lib/config';
 import { calculateYield } from '@/lib/financial';
+import { SavingMode } from '@/lib/types';
 
 const renderInfo = (text: string) => {
   return (

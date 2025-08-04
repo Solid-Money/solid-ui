@@ -19,6 +19,7 @@ type SendResult = {
   send: (amount: string, to: Address) => Promise<TransactionReceipt>;
   sendStatus: Status;
   error: string | null;
+  resetSendStatus: () => void;
 };
 
 const useSend = ({
@@ -81,7 +82,12 @@ const useSend = ({
     }
   };
 
-  return { send, sendStatus, error };
+  const resetSendStatus = () => {
+    setSendStatus(Status.IDLE);
+    setError(null);
+  };
+
+  return { send, sendStatus, error, resetSendStatus };
 };
 
 export default useSend;
