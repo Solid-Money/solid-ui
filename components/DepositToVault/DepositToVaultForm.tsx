@@ -12,10 +12,9 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useTotalAPY } from '@/hooks/useAnalytics';
-import useDepositFromEOA from '@/hooks/useDepositFromEOA';
+import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
 import { useEstimateGas } from '@/hooks/useEstimateGas';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
-import { Status } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { CheckConnectionWrapper } from '../CheckConnectionWrapper';
@@ -36,7 +35,7 @@ function DepositToVaultForm() {
   });
   const { setModal, setTransaction } = useDepositStore();
 
-  const isLoading = depositStatus === Status.PENDING || isPending;
+  const isLoading = depositStatus === DepositStatus.PENDING || isPending || depositStatus === DepositStatus.BRIDGING;
   const { data: totalAPY } = useTotalAPY();
   const { costInUsd, loading } = useEstimateGas(380000n, fee || 0n);
 
@@ -87,10 +86,10 @@ function DepositToVaultForm() {
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
     if (!isValid || !watchedAmount) return 'Enter an amount';
-    if (depositStatus === Status.PENDING) return 'Check Wallet';
-    if (isPending) return 'Depositing...';
+    if (depositStatus === DepositStatus.PENDING) return 'Check Wallet';
+    if (isPending || depositStatus === DepositStatus.BRIDGING) return 'Depositing...';
     if (isSuccess) return 'Successfully deposited!';
-    if (depositStatus === Status.ERROR) return 'Error while depositing';
+    if (depositStatus === DepositStatus.ERROR) return 'Error while depositing';
     return 'Deposit';
   };
 

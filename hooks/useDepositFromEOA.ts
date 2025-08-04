@@ -16,7 +16,6 @@ import ERC20_ABI from "@/lib/abis/ERC20";
 import ETHEREUM_TELLER_ABI from "@/lib/abis/EthereumTeller";
 import FiatTokenV2_2 from "@/lib/abis/FiatTokenV2_2";
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from "@/lib/config";
-import { Status } from "@/lib/types";
 import { useUserStore } from "@/store/useUserStore";
 import useUser from "./useUser";
 import { BRIDGE_TOKENS } from "@/constants/bridge";
@@ -25,10 +24,18 @@ import { withRefreshToken } from "@/lib/utils";
 import { bridgeDeposit } from "@/lib/api";
 import { useDepositStore } from "@/store/useDepositStore";
 
+export enum DepositStatus {
+  IDLE = "idle",
+  PENDING = "pending",
+  BRIDGING = "bridging",
+  SUCCESS = "success",
+  ERROR = "error",
+}
+
 type DepositResult = {
   balance: bigint | undefined;
   deposit: (amount: string) => Promise<void>;
-  depositStatus: Status;
+  depositStatus: DepositStatus;
   error: string | null;
   hash: Address | undefined;
   fee: bigint | undefined;
@@ -40,7 +47,7 @@ const useDepositFromEOA = (): DepositResult => {
   const wallet = useActiveWallet();
   const account = useActiveAccount();
   const chainId = useChainId();
-  const [depositStatus, setDepositStatus] = useState<Status>(Status.IDLE);
+  const [depositStatus, setDepositStatus] = useState<DepositStatus>(DepositStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<Address | undefined>();
   const eoaAddress = account?.address;
@@ -120,7 +127,7 @@ const useDepositFromEOA = (): DepositResult => {
         await wallet?.switchChain(chain);
       }
 
-      setDepositStatus(Status.PENDING);
+      setDepositStatus(DepositStatus.PENDING);
       setError(null);
 
       const amountWei = parseUnits(amount, 6);
@@ -202,6 +209,7 @@ const useDepositFromEOA = (): DepositResult => {
           isDeposited: true,
         });
       } else {
+        setDepositStatus(DepositStatus.BRIDGING);
         txHash = await withRefreshToken(() => bridgeDeposit({
           eoaAddress,
           srcChainId,
@@ -217,10 +225,10 @@ const useDepositFromEOA = (): DepositResult => {
 
       console.log('txHash: ', txHash);
       setHash(txHash);
-      setDepositStatus(Status.SUCCESS);
+      setDepositStatus(DepositStatus.SUCCESS);
     } catch (error) {
       console.error(error);
-      setDepositStatus(Status.ERROR);
+      setDepositStatus(DepositStatus.ERROR);
       setError(error instanceof Error ? error.message : "Unknown error");
       throw error;
     }
