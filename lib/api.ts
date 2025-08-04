@@ -447,7 +447,7 @@ export const createMercuryoTransaction = async (
   return data.widgetUrl;
 };
 
-export const bridgeDeposit = async (bridge: BridgeDeposit): Promise<string> => {
+export const bridgeDeposit = async (bridge: BridgeDeposit): Promise<{ transactionHash: string }> => {
   const jwt = getJWTToken();
 
   const response = await fetch(

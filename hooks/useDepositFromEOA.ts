@@ -210,7 +210,7 @@ const useDepositFromEOA = (): DepositResult => {
         });
       } else {
         setDepositStatus(DepositStatus.BRIDGING);
-        txHash = await withRefreshToken(() => bridgeDeposit({
+        const transaction = await withRefreshToken(() => bridgeDeposit({
           eoaAddress,
           srcChainId,
           amount,
@@ -221,6 +221,7 @@ const useDepositFromEOA = (): DepositResult => {
             deadline: Number(deadline),
           },
         }));
+        txHash = transaction?.transactionHash;
       }
 
       console.log('txHash: ', txHash);

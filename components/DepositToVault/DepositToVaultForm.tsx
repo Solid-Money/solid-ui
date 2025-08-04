@@ -8,6 +8,7 @@ import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useWaitForTransactionReceipt } from 'wagmi';
 import { z } from 'zod';
+import Toast from 'react-native-toast-message';
 
 import { Button } from '@/components/ui/button';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -15,7 +16,7 @@ import { useTotalAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
 import { useEstimateGas } from '@/hooks/useEstimateGas';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
-import { formatNumber } from '@/lib/utils';
+import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { CheckConnectionWrapper } from '../CheckConnectionWrapper';
 import ConnectedWalletDropdown from '../ConnectedWalletDropdown';
@@ -87,7 +88,7 @@ function DepositToVaultForm() {
     if (errors.amount) return errors.amount.message;
     if (!isValid || !watchedAmount) return 'Enter an amount';
     if (depositStatus === DepositStatus.PENDING) return 'Check Wallet';
-    if (isPending || depositStatus === DepositStatus.BRIDGING) return 'Depositing...';
+    if (isPending || depositStatus === DepositStatus.BRIDGING) return 'Depositing';
     if (isSuccess) return 'Successfully deposited!';
     if (depositStatus === DepositStatus.ERROR) return 'Error while depositing';
     return 'Deposit';
@@ -105,11 +106,23 @@ function DepositToVaultForm() {
   };
 
   useEffect(() => {
-    if (isSuccess) {
+    if ((isEthereum && isSuccess) || (!isEthereum && depositStatus === DepositStatus.SUCCESS)) {
       reset(); // Reset form after successful transaction
       setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+      if(!hash || isEthereum) return;
+
+      Toast.show({
+        type: 'success',
+        text1: 'Deposit initiated',
+        text2: 'Bridging USDC to Ethereum',
+        props: {
+          link: `https://scan.li.fi/tx/${hash}`,
+          linkText: eclipseAddress(hash),
+          image: require('@/assets/images/usdc.png'),
+        },
+      });
     }
-  }, [isSuccess, reset, setModal]);
+  }, [isSuccess, reset, setModal, depositStatus, isEthereum, hash]);
 
   const isFormDisabled = () => {
     return isLoading || !isValid || !watchedAmount;
