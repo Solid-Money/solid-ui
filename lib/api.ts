@@ -487,6 +487,7 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
       body: JSON.stringify({
         otpId,
         otpCode,
+        email,
       }),
     }
   );
