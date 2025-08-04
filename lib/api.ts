@@ -452,6 +452,8 @@ export const initGenericOtp = async (
   alphanumeric?: boolean,
   userIdentifier?: string
 ) => {
+  const jwt = getJWTToken();
+
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-generic-otp`,
     {
@@ -459,6 +461,7 @@ export const initGenericOtp = async (
       headers: {
         "Content-Type": "application/json",
         ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: "include",
       body: JSON.stringify({
@@ -470,11 +473,13 @@ export const initGenericOtp = async (
     }
   );
   const data = await response.json();
-  if (!response.ok) throw data.message;
+  if (!response.ok) throw data;
   return data;
 };
 
 export const verifyGenericOtp = async (otpId: string, otpCode: string, email: string) => {
+  const jwt = getJWTToken();
+
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-generic-otp`,
     {
@@ -482,6 +487,7 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
       headers: {
         "Content-Type": "application/json",
         ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: "include",
       body: JSON.stringify({
@@ -492,6 +498,6 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
     }
   );
   const data = await response.json();
-  if (!response.ok) throw data.message;
+  if (!response.ok) throw data;
   return data;
 };
