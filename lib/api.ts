@@ -1,6 +1,5 @@
 import axios, { AxiosRequestHeaders } from "axios";
 import { Platform } from "react-native";
-// import { AuthenticationResponseJSON } from "react-native-passkeys/src/ReactNativePasskeys.types";
 import { fuse } from "viem/chains";
 
 import { explorerUrls } from "@/constants/explorers";
@@ -138,66 +137,6 @@ export const updateSafeAddress = async (safeAddress: string) => {
   if (!response.ok) throw response;
   return response.json();
 };
-
-export const verifyRegistration = async (
-  sessionId: string,
-  address: string
-): Promise<User> => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/passkeys/registration/verify`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getPlatformHeaders(),
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        sessionId,
-        address,
-      }),
-    }
-  );
-  if (!response.ok) throw response;
-  return response.json();
-};
-
-export const generateAuthenticationOptions = async () => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/passkeys/authentication/generate-options`,
-    {
-      credentials: "include",
-      headers: {
-        ...getPlatformHeaders(),
-      },
-    }
-  );
-  if (!response.ok) throw response;
-  return response.json();
-};
-
-// export const verifyAuthentication = async (
-//   authenticationResponse: AuthenticationResponseJSON,
-//   sessionId: string
-// ): Promise<User> => {
-//   const response = await fetch(
-//     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/passkeys/authentication/verify`,
-//     {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//         ...getPlatformHeaders(),
-//       },
-//       credentials: "include",
-//       body: JSON.stringify({
-//         ...authenticationResponse,
-//         sessionId,
-//       }),
-//     }
-//   );
-//   if (!response.ok) throw response;
-//   return response.json();
-// };
 
 export const fetchTotalAPY = async () => {
   const response = await axios.get<number>(
@@ -461,7 +400,6 @@ export const getSubOrgIdByUsername = async (username: string) => {
 };
 
 export const login = async (signedRequest: any) => {
-  // const body = JSON.parse(signedRequest.body);
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/log-in`,
     {
@@ -529,4 +467,54 @@ export const bridgeDeposit = async (bridge: BridgeDeposit): Promise<string> => {
   if (!response.ok) throw response;
 
   return response.json();
+};
+
+export const initGenericOtp = async (
+  email: string,
+  otpLength?: number,
+  alphanumeric?: boolean,
+  userIdentifier?: string
+) => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-generic-otp`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getPlatformHeaders(),
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        email,
+        ...(otpLength !== undefined && { otpLength }),
+        ...(alphanumeric !== undefined && { alphanumeric }),
+        ...(userIdentifier && { userIdentifier }),
+      }),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) throw data.message;
+  return data;
+};
+
+export const verifyGenericOtp = async (otpId: string, otpCode: string, email: string) => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-generic-otp`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getPlatformHeaders(),
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        otpId,
+        otpCode,
+        email,
+      }),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) throw data.message;
+  return data;
 };

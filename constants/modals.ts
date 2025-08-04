@@ -3,9 +3,13 @@ export const DEPOSIT_MODAL = {
     name: 'close',
     number: 0,
   },
+  OPEN_EMAIL_GATE: {
+    name: 'open_email_gate',
+    number: 1,
+  },
   OPEN_OPTIONS: {
     name: 'open_options',
-    number: 1
+    number: 2
   },
   OPEN_NETWORKS: {
     name: 'open_networks',
@@ -13,7 +17,7 @@ export const DEPOSIT_MODAL = {
   },
   OPEN_BUY_CRYPTO: {
     name: 'open_buy_crypto',
-    number: 2,
+    number: 3,
   },
   OPEN_FORM: {
     name: 'open_form',

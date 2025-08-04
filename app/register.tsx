@@ -31,6 +31,8 @@ export default function Register() {
   const { handleSignup, handleLogin, handleDummyLogin } = useUser();
   const { signupInfo, loginInfo } = useUserStore();
   const { code } = useLocalSearchParams<{ code: string }>();
+  // TODO: Add recovery flow
+  // const [showRecoveryFlow, setShowRecoveryFlow] = useState(false);
 
   const {
     control,
@@ -74,6 +76,24 @@ export default function Register() {
   const isSignupDisabled = () => {
     return signupInfo.status === Status.PENDING || !isValid || !watchedUsername;
   };
+
+  // TODO: Add recovery flow
+  // const handleRecoverySuccess = (organizationId: string, userId: string) => {
+  //   // Handle successful recovery - this would typically redirect to the main app
+  //   setShowRecoveryFlow(false);
+  //   // You might want to automatically log the user in here
+  // };
+
+  // if (showRecoveryFlow) {
+  //   return (
+  //     <SafeAreaView className="bg-background text-foreground flex-1">
+  //       <RecoveryFlow
+  //         onRecoverySuccess={handleRecoverySuccess}
+  //         onBack={() => setShowRecoveryFlow(false)}
+  //       />
+  //     </SafeAreaView>
+  //   );
+  // }
 
   return (
     <SafeAreaView className="bg-background text-foreground flex-1">
@@ -159,6 +179,16 @@ export default function Register() {
               </Text>
               {loginInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}
             </Button>
+            {/* TODO: Add recovery flow */}
+            {/* <Button
+              onPress={() => setShowRecoveryFlow(true)}
+              variant="ghost"
+              className="rounded-xl h-12"
+            >
+              <Text className="text-base font-medium text-muted-foreground">
+                Forgot Passkey? Recover Access
+              </Text>
+            </Button> */}
 
             {/* TODO: Remove when passkey works */}
             {Platform.OS !== 'web' && (

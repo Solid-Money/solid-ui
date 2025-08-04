@@ -22,11 +22,6 @@ export const accounts: Account[] = [
     description: "Secure your account",
     link: "/settings/account",
   },
-  {
-    title: "Wallet recovery",
-    description: "Secure your account",
-    link: "/settings/account",
-  },
 ];
 
 export const supports: Support[] = [

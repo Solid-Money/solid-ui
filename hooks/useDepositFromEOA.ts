@@ -160,7 +160,7 @@ const useDepositFromEOA = (): DepositResult => {
 
       const signatureData = parseSignature(signature);
 
-      const verified = await verifyTypedData({
+      await verifyTypedData({
         domain,
         types,
         primaryType: 'Permit',
@@ -168,8 +168,6 @@ const useDepositFromEOA = (): DepositResult => {
         signature,
         address: eoaAddress,
       });
-
-      console.log('verified', verified);
 
       let txHash: Address | undefined;
       if (isEthereum) {
@@ -191,7 +189,6 @@ const useDepositFromEOA = (): DepositResult => {
           ],
         });
 
-        console.log('callData: ', callData);
         const transaction = await account?.sendTransaction({
           chainId: mainnet.id,
           to: ADDRESSES.ethereum.teller,
