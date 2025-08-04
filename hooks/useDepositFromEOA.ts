@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { mainnet as thirdwebMainnet } from "thirdweb/chains";
 import { useActiveAccount, useActiveWallet } from "thirdweb/react";
 import {
   encodeAbiParameters,
@@ -16,10 +15,15 @@ import { useBlockNumber, useChainId, useReadContract } from "wagmi";
 import ERC20_ABI from "@/lib/abis/ERC20";
 import ETHEREUM_TELLER_ABI from "@/lib/abis/EthereumTeller";
 import FiatTokenV2_2 from "@/lib/abis/FiatTokenV2_2";
-import { ADDRESSES } from "@/lib/config";
+import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from "@/lib/config";
 import { Status } from "@/lib/types";
 import { useUserStore } from "@/store/useUserStore";
 import useUser from "./useUser";
+import { BRIDGE_TOKENS } from "@/constants/bridge";
+import { getChain } from "@/lib/thirdweb";
+import { withRefreshToken } from "@/lib/utils";
+import { bridgeDeposit } from "@/lib/api";
+import { useDepositStore } from "@/store/useDepositStore";
 
 type DepositResult = {
   balance: bigint | undefined;
@@ -28,6 +32,7 @@ type DepositResult = {
   error: string | null;
   hash: Address | undefined;
   fee: bigint | undefined;
+  isEthereum: boolean;
 };
 
 const useDepositFromEOA = (): DepositResult => {
@@ -38,18 +43,27 @@ const useDepositFromEOA = (): DepositResult => {
   const [depositStatus, setDepositStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<Address | undefined>();
-  const { data: blockNumber } = useBlockNumber({ watch: true });
   const eoaAddress = account?.address;
   const { updateUser } = useUserStore();
+  const { srcChainId } = useDepositStore();
+  const isEthereum = srcChainId === mainnet.id;
+
+  const { data: blockNumber } = useBlockNumber({
+    watch: true,
+    chainId: srcChainId,
+    query: {
+      enabled: !!srcChainId,
+    }
+  });
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
     abi: ERC20_ABI,
-    address: ADDRESSES.ethereum.usdc,
+    address: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
     functionName: "balanceOf",
     args: [eoaAddress as Address],
-    chainId: mainnet.id,
+    chainId: srcChainId,
     query: {
-      enabled: !!eoaAddress,
+      enabled: !!eoaAddress && !!srcChainId,
     },
   });
 
@@ -65,28 +79,28 @@ const useDepositFromEOA = (): DepositResult => {
     ],
     chainId: mainnet.id,
     query: {
-      enabled: !!user?.safeAddress,
+      enabled: !!user?.safeAddress && !!srcChainId,
     }
   });
 
   const { data: nonce } = useReadContract({
     abi: FiatTokenV2_2,
-    address: ADDRESSES.ethereum.usdc,
+    address: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
     functionName: 'nonces',
     args: [eoaAddress as Address],
-    chainId: mainnet.id,
+    chainId: srcChainId,
     query: {
-      enabled: !!eoaAddress,
+      enabled: !!eoaAddress && !!srcChainId,
     },
   });
 
   const { data: tokenName } = useReadContract({
     abi: ERC20_ABI,
-    address: ADDRESSES.ethereum.usdc,
+    address: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
     functionName: 'name',
-    chainId: mainnet.id,
+    chainId: srcChainId,
     query: {
-      enabled: !!eoaAddress,
+      enabled: !!eoaAddress && !!srcChainId,
     },
   });
 
@@ -96,11 +110,14 @@ const useDepositFromEOA = (): DepositResult => {
       if (!eoaAddress) throw new Error("EOA not connected");
       if (nonce === undefined) throw new Error("Could not get nonce");
       if (!tokenName) throw new Error("Could not get token name");
-      if (fee === undefined) throw new Error("Could not get fee");
+      if (isEthereum && fee === undefined) throw new Error("Could not get fee");
       if (!user?.safeAddress) throw new Error("User safe address not found");
 
-      if (chainId !== mainnet.id) {
-        await wallet?.switchChain(thirdwebMainnet);
+      if (chainId !== srcChainId) {
+        const chain = getChain(srcChainId);
+        if (!chain) throw new Error("Chain not found");
+
+        await wallet?.switchChain(chain);
       }
 
       setDepositStatus(Status.PENDING);
@@ -112,8 +129,8 @@ const useDepositFromEOA = (): DepositResult => {
       const domain = {
         name: tokenName,
         version: '2',
-        chainId: mainnet.id,
-        verifyingContract: ADDRESSES.ethereum.usdc,
+        chainId: srcChainId,
+        verifyingContract: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
       };
 
       const types = {
@@ -128,7 +145,7 @@ const useDepositFromEOA = (): DepositResult => {
 
       const message = {
         owner: eoaAddress,
-        spender: ADDRESSES.ethereum.vault,
+        spender: isEthereum ? ADDRESSES.ethereum.vault : EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
         value: amountWei,
         nonce: nonce,
         deadline: deadline,
@@ -154,39 +171,55 @@ const useDepositFromEOA = (): DepositResult => {
 
       console.log('verified', verified);
 
-      const callData = encodeFunctionData({
-        abi: ETHEREUM_TELLER_ABI,
-        functionName: "depositAndBridgeWithPermit",
-        args: [
-          ADDRESSES.ethereum.usdc,
-          amountWei,
-          0n,
-          deadline,
-          Number(signatureData.v),
-          signatureData.r,
-          signatureData.s,
-          user.safeAddress,
-          encodeAbiParameters(parseAbiParameters("uint32"), [30138]), // bridgeWildCard
-          ADDRESSES.ethereum.nativeFeeToken,
-          fee ? fee : 0n,
-        ],
-      });
+      let txHash: Address | undefined;
+      if (isEthereum) {
+        const callData = encodeFunctionData({
+          abi: ETHEREUM_TELLER_ABI,
+          functionName: "depositAndBridgeWithPermit",
+          args: [
+            ADDRESSES.ethereum.usdc,
+            amountWei,
+            0n,
+            deadline,
+            Number(signatureData.v),
+            signatureData.r,
+            signatureData.s,
+            user.safeAddress,
+            encodeAbiParameters(parseAbiParameters("uint32"), [30138]), // bridgeWildCard
+            ADDRESSES.ethereum.nativeFeeToken,
+            fee ? fee : 0n,
+          ],
+        });
 
-      console.log('callData: ', callData);
-      const transaction = await account?.sendTransaction({
-        chainId: mainnet.id,
-        to: ADDRESSES.ethereum.teller,
-        data: callData,
-        value: fee,
-      });
-      const txHash = transaction.transactionHash;
+        console.log('callData: ', callData);
+        const transaction = await account?.sendTransaction({
+          chainId: mainnet.id,
+          to: ADDRESSES.ethereum.teller,
+          data: callData,
+          value: fee,
+        });
+        txHash = transaction.transactionHash;
+
+        updateUser({
+          ...user,
+          isDeposited: true,
+        });
+      } else {
+        txHash = await withRefreshToken(() => bridgeDeposit({
+          eoaAddress,
+          srcChainId,
+          amount,
+          permitSignature: {
+            v: Number(signatureData.v),
+            r: signatureData.r,
+            s: signatureData.s,
+            deadline: Number(deadline),
+          },
+        }));
+      }
+
       console.log('txHash: ', txHash);
-
       setHash(txHash);
-      updateUser({
-        ...user,
-        isDeposited: true,
-      });
       setDepositStatus(Status.SUCCESS);
     } catch (error) {
       console.error(error);
@@ -207,6 +240,7 @@ const useDepositFromEOA = (): DepositResult => {
     error,
     hash,
     fee,
+    isEthereum,
   };
 };
 

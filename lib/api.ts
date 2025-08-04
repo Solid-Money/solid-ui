@@ -18,6 +18,7 @@ import {
   CardStatusResponse,
   KycLink,
   LayerZeroTransaction,
+  BridgeDeposit,
   TokenPriceUsd,
   User,
 } from "./types";
@@ -506,4 +507,26 @@ export const createMercuryoTransaction = async (
 
   const data: { widgetUrl: string } = await response.json();
   return data.widgetUrl;
+};
+
+export const bridgeDeposit = async (bridge: BridgeDeposit): Promise<string> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/deposit`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: "include",
+      body: JSON.stringify(bridge),
+    }
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };

@@ -274,3 +274,15 @@ export enum SavingMode {
   TOTAL = "total",
   INTEREST_ONLY = "interest-only",
 }
+
+export type BridgeDeposit = {
+  eoaAddress: Address;
+  srcChainId: number;
+  amount: string;
+  permitSignature: {
+    v: number;
+    r: string;
+    s: string;
+    deadline: number;
+  }
+}

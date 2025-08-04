@@ -13,6 +13,7 @@ import { DepositToVaultForm } from '../DepositToVault';
 import TransactionStatus from '../TransactionStatus';
 import { buttonVariants } from '../ui/button';
 import DepositOptions from './DepositOptions';
+import DepositNetworks from '../DepositNetwork/DepositNetworks';
 
 const DepositOptionModal = () => {
   const { currentModal, previousModal, transaction, setModal } = useDepositStore();
@@ -24,6 +25,7 @@ const DepositOptionModal = () => {
   const isFormAndAddress = Boolean(isForm && address);
   const isBuyCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
   const isTransactionStatus = currentModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isNetworks = currentModal.name === DEPOSIT_MODAL.OPEN_NETWORKS.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -63,6 +65,10 @@ const DepositOptionModal = () => {
       return <BuyCrypto />;
     }
 
+    if (isNetworks) {
+      return <DepositNetworks />;
+    }
+
     return <DepositOptions />;
   };
 
@@ -70,6 +76,7 @@ const DepositOptionModal = () => {
     if (isTransactionStatus) return 'transaction-status';
     if (isFormAndAddress) return 'deposit-form';
     if (isBuyCrypto) return 'buy-crypto';
+    if (isNetworks) return 'networks';
     return 'deposit-options';
   };
 
@@ -86,7 +93,7 @@ const DepositOptionModal = () => {
   };
 
   const getContainerClassName = () => {
-    if (!isFormAndAddress && !isBuyCrypto && !isTransactionStatus) {
+    if (!isFormAndAddress && !isBuyCrypto && !isTransactionStatus && !isNetworks) {
       return 'min-h-[40rem]';
     }
     return '';
@@ -120,7 +127,7 @@ const DepositOptionModal = () => {
       title={getTitle()}
       contentClassName={getContentClassName()}
       containerClassName={getContainerClassName()}
-      showBackButton={isFormAndAddress || isBuyCrypto}
+      showBackButton={isFormAndAddress || isBuyCrypto || isNetworks}
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}
       isForward={isForward}

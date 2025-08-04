@@ -26,10 +26,13 @@ import { Text } from '../ui/text';
 import Max from '../Max';
 
 function DepositToVaultForm() {
-  const { balance, deposit, depositStatus, hash, fee } = useDepositFromEOA();
+  const { balance, deposit, depositStatus, hash, fee, isEthereum } = useDepositFromEOA();
   const { isLoading: isPending, isSuccess } = useWaitForTransactionReceipt({
     hash: hash as `0x${string}`,
     chainId: mainnet.id,
+    query: {
+      enabled: isEthereum,
+    },
   });
   const { setModal, setTransaction } = useDepositStore();
 
@@ -96,7 +99,6 @@ function DepositToVaultForm() {
       await deposit(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
-        hash,
       });
     } catch (error) {
       // handled by hook
@@ -213,7 +215,7 @@ function DepositToVaultForm() {
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading ? '...' : formatNumber(costInUsd, 2)} USD in fee`}
+          {isEthereum ? `~ $${loading ? '...' : formatNumber(costInUsd, 2)} USD in fee` : 'Gasless'}
         </Text>
       </View>
       <CheckConnectionWrapper props={{ size: 'xl' }}>

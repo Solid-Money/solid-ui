@@ -7,17 +7,21 @@ export const DEPOSIT_MODAL = {
     name: 'open_options',
     number: 1
   },
+  OPEN_NETWORKS: {
+    name: 'open_networks',
+    number: 2,
+  },
   OPEN_BUY_CRYPTO: {
     name: 'open_buy_crypto',
     number: 2,
   },
   OPEN_FORM: {
     name: 'open_form',
-    number: 2,
+    number: 3,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
-    number: 3,
+    number: 4,
   },
 }
 
