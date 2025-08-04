@@ -471,7 +471,7 @@ export const initGenericOtp = async (
   );
   const data = await response.json();
   if (!response.ok) throw data.message;
-  return response.json();
+  return data;
 };
 
 export const verifyGenericOtp = async (otpId: string, otpCode: string, email: string) => {
@@ -492,5 +492,5 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
   );
   const data = await response.json();
   if (!response.ok) throw data.message;
-  return response.json();
+  return data;
 };
