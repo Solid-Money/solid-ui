@@ -19,6 +19,7 @@ const DepositEmailModal: React.FC = () => {
     handleSendOtp,
     handleVerifyOtp,
     handleBack: handleEmailBack,
+    handleResendOtp,
     getButtonText,
     isFormDisabled,
     rateLimitError,
@@ -160,8 +161,22 @@ const DepositEmailModal: React.FC = () => {
         <Text className="text-xs text-gray-500 text-center">
           {currentStep === 'email'
             ? '⚠️ Important: This email will be used for account recovery if you lose access to your passkey.'
-            : "Didn't receive the code? Check your spam folder or go back to try a different email."}
+            : "Didn't receive the code? Check your spam folder."}
         </Text>
+        {currentStep === 'otp' && !rateLimitError && (
+          <View className="mt-2 items-center">
+            <Button
+              onPress={handleResendOtp}
+              variant="ghost"
+              disabled={isLoading}
+              className="h-8"
+            >
+              <Text className="text-blue-600 text-sm underline">
+                Resend verification code
+              </Text>
+            </Button>
+          </View>
+        )}
       </View>
     </View>
   );

@@ -6,8 +6,8 @@ import { Address, keccak256, toHex } from "viem";
 import { useUserStore } from "@/store/useUserStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { refreshToken } from "./api";
-import { AuthTokens, User } from "./types";
 import { ADDRESSES } from "./config";
+import { AuthTokens, User } from "./types";
 
 export const IS_SERVER = typeof window === 'undefined';
 
@@ -53,7 +53,7 @@ export const withRefreshToken = async <T>(
   try {
     return await apiCall();
   } catch (error: any) {
-    if (error?.status !== 401) {
+    if (error?.status !== 401 || error?.statusCode !== 401) {
       console.error(error);
       throw error;
     }
