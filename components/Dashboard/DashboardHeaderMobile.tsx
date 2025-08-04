@@ -65,7 +65,7 @@ const DashboardHeaderMobile = ({
         <CircleButton
           icon={HomeSend}
           label="Send"
-          onPress={() => router.push(path.DEPOSIT)}
+          onPress={() => router.push(path.SEND)}
           scale={0.9}
           viewBox="0 0 25 24"
         />
