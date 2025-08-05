@@ -169,7 +169,7 @@ const SendPage = () => {
         {/* Form Fields */}
         <View className="max-w-md mx-auto w-full gap-4">
           {/* To Section */}
-          <View className="bg-[#1C1C1C] rounded-2xl px-4 py-5">
+          <View className="bg-card rounded-2xl px-4 py-5">
             <Text className="text-gray-400 text-sm mb-2">To</Text>
             <View className="flex-row items-center justify-between">
               <Controller
@@ -181,7 +181,7 @@ const SendPage = () => {
                       "flex-1 text-white text-base web:focus:outline-none",
                       // errors.address && "text-red-400"
                     )}
-                    placeholder="Enter or select and address..."
+                    placeholder="Enter or select an address..."
                     placeholderTextColor="#666"
                     value={value}
                     onChangeText={onChange}
@@ -196,7 +196,7 @@ const SendPage = () => {
           </View>
 
           {/* Send Section */}
-          <View className="bg-[#1C1C1C] rounded-2xl px-4 py-4">
+          <View className="bg-card rounded-2xl px-4 py-4">
             <Text className="text-gray-400 text-sm mb-2">Send</Text>
             <View className="flex-row items-center">
               <Pressable
