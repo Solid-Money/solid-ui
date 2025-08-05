@@ -19,6 +19,7 @@ type Path = {
   BUY_CRYPTO: Href;
   SETTINGS: Href;
   NOTIFICATIONS: Href;
+  PASSKEY_NOT_SUPPORTED: Href;
 }
 
 export const path: Path = {
@@ -40,4 +41,5 @@ export const path: Path = {
   BUY_CRYPTO: "/buy-crypto",
   SETTINGS: "/settings",
   NOTIFICATIONS: "/notifications",
+  PASSKEY_NOT_SUPPORTED: "/passkey-not-supported",
 }
