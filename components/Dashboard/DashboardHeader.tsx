@@ -1,3 +1,6 @@
+import HomeSend from '@/assets/images/home-send';
+import HomeSwap from '@/assets/images/home-swap';
+import WithdrawIcon from '@/assets/images/withdraw-icon';
 import SavingCountUp from '@/components/SavingCountUp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -13,6 +16,7 @@ interface DashboardHeaderProps {
   totalAPY: number;
   firstDepositTimestamp: number;
   originalDepositAmount: number;
+  hasTokens: boolean;
 }
 
 export function DashboardHeader({
@@ -20,6 +24,7 @@ export function DashboardHeader({
   totalAPY,
   firstDepositTimestamp,
   originalDepositAmount,
+  hasTokens,
 }: DashboardHeaderProps) {
   const { isScreenMedium } = useDimension();
 
@@ -55,16 +60,52 @@ export function DashboardHeader({
           />
         </View>
       </View>
-      <Button
-        variant="brand"
-        className="h-12 pr-6 rounded-xl"
-        onPress={() => setModal(DEPOSIT_MODAL.OPEN_OPTIONS)}
-      >
-        <View className="flex-row items-center gap-2">
-          <Plus color="black" />
-          <Text className="text-primary-foreground font-bold">Add funds</Text>
-        </View>
-      </Button>
+      <View className="flex-row gap-2">
+        <Button
+          variant="brand"
+          className="h-12 pr-6 rounded-xl"
+          onPress={() => setModal(DEPOSIT_MODAL.OPEN_OPTIONS)}
+        >
+          <View className="flex-row items-center gap-2">
+            <Plus color="black" />
+            <Text className="text-primary-foreground font-bold">Add funds</Text>
+          </View>
+        </Button>
+        {hasTokens && (
+          <>
+            <Button
+              variant="secondary"
+              className="h-12 px-6 rounded-xl bg-[#303030]"
+              onPress={() => {}}
+            >
+              <View className="flex-row items-center gap-3">
+                <WithdrawIcon />
+                <Text className="text-white font-bold">Withdraw</Text>
+              </View>
+            </Button>
+            <Button
+              variant="secondary"
+              className="h-12 px-6 rounded-xl bg-[#303030]"
+              onPress={() => {}}
+            >
+              <View className="flex-row items-center gap-2">
+                <HomeSwap />
+                <Text className="text-white font-bold">Swap</Text>
+              </View>
+            </Button>
+            <Button
+              variant="secondary"
+              className="h-12 px-6 rounded-xl bg-[#303030]"
+              onPress={() => {}}
+            >
+              <View className="flex-row items-center gap-2">
+                <HomeSend />
+                <Text className="text-white font-bold">Send</Text>
+              </View>
+            </Button>
+          </>
+        )}
+      </View>
     </View>
   );
 }

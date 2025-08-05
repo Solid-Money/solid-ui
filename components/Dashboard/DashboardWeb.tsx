@@ -73,6 +73,7 @@ export function DashboardWeb() {
             totalAPY={totalAPY ?? 0}
             firstDepositTimestamp={firstDepositTimestamp ?? 0}
             originalDepositAmount={originalDepositAmount}
+            hasTokens={hasTokens}
           />
 
           {hasTokens ? (
