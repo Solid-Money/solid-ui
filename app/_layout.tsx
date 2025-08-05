@@ -139,6 +139,13 @@ export default function RootLayout() {
           headerTitleAlign: 'center',
         }}
       />
+      <Stack.Screen
+        name="passkey-not-supported"
+        options={{
+          headerShown: false,
+          animation: 'none',
+        }}
+      />
     </Stack>
   );
 
