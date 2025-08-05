@@ -12,7 +12,6 @@ import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { ADDRESSES } from '@/lib/config';
-import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
@@ -35,7 +34,7 @@ export default function Dashboard() {
     chainId: mainnet.id,
   });
 
-  const { data: totalAPY, isLoading: isTotalAPYLoading } = useTotalAPY();
+  const { data: totalAPY } = useTotalAPY();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
@@ -51,17 +50,11 @@ export default function Dashboard() {
     },
   });
 
-  const {
-    data: sendTransactions,
-    isLoading: isSendTransactionsLoading,
-    refetch: refetchSendTransactions,
-  } = useSendTransactions(user?.safeAddress ?? '');
+  const { data: sendTransactions, refetch: refetchSendTransactions } = useSendTransactions(
+    user?.safeAddress ?? '',
+  );
 
-  const {
-    data: transactions,
-    isLoading: isFormattingTransactions,
-    refetch: refetchFormattedTransactions,
-  } = useQuery({
+  const { refetch: refetchFormattedTransactions } = useQuery({
     queryKey: ['formatted-transactions', userDepositTransactions],
     queryFn: () => formatTransactions(userDepositTransactions, sendTransactions),
     enabled: !!userDepositTransactions,
@@ -72,13 +65,6 @@ export default function Dashboard() {
     balance,
     lastTimestamp,
   );
-
-  const getTransactionClassName = (totalTransactions: number, index: number) => {
-    const classNames = [];
-    if (index === 0) classNames.push('rounded-t-twice');
-    if (index === totalTransactions - 1) classNames.push('rounded-b-twice border-0');
-    return cn(...classNames);
-  };
 
   useEffect(() => {
     refetchBalance();
@@ -110,24 +96,5 @@ export default function Dashboard() {
     originalDepositAmount,
   };
 
-  const transactionData = {
-    transactions: transactions ?? [],
-    getTransactionClassName,
-  };
-
-  const loadingStates = {
-    balance: isBalanceLoading,
-    totalAPY: isTotalAPYLoading,
-    transactions: isTransactionsLoading || isFormattingTransactions || isSendTransactionsLoading,
-  };
-
-  return Platform.OS === 'web' ? (
-    <DashboardWeb
-      balanceData={balanceData}
-      transactionData={transactionData}
-      isLoading={loadingStates}
-    />
-  ) : (
-    <DashboardMobile balanceData={balanceData} />
-  );
+  return Platform.OS === 'web' ? <DashboardWeb /> : <DashboardMobile balanceData={balanceData} />;
 }
