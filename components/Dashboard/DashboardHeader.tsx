@@ -5,8 +5,10 @@ import SavingCountUp from '@/components/SavingCountUp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import React from 'react';
 import { View } from 'react-native';
@@ -27,7 +29,7 @@ export function DashboardHeader({
   hasTokens,
 }: DashboardHeaderProps) {
   const { isScreenMedium } = useDimension();
-
+  const router = useRouter();
   const { setModal } = useDepositStore();
 
   return (
@@ -96,7 +98,9 @@ export function DashboardHeader({
             <Button
               variant="secondary"
               className="h-12 px-6 rounded-xl bg-[#303030]"
-              onPress={() => {}}
+              onPress={() => {
+                router.push(path.SEND);
+              }}
             >
               <View className="flex-row items-center gap-2">
                 <HomeSend />
