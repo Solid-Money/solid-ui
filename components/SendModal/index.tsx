@@ -21,9 +21,9 @@ import { Status, TokenIcon } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
+import Max from '../Max';
 import RenderTokenIcon from '../RenderTokenIcon';
 import { Skeleton } from '../ui/skeleton';
-import Max from '../Max';
 
 type SendProps = {
   tokenAddress: Address;
@@ -96,7 +96,7 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
     if (errors.address) return errors.address.message;
     if (sendStatus === Status.PENDING) return 'Sending';
     if (sendStatus === Status.ERROR) return 'Error while Sending';
-    if (sendStatus === Status.SUCCESS) return 'Sending Successful';
+    if (sendStatus === Status.SUCCESS) return 'Successfully sent!';
     if (!isValid) return 'Please complete the form';
     return 'Send';
   };
