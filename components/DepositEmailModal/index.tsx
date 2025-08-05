@@ -165,15 +165,8 @@ const DepositEmailModal: React.FC = () => {
         </Text>
         {currentStep === 'otp' && !rateLimitError && (
           <View className="mt-2 items-center">
-            <Button
-              onPress={handleResendOtp}
-              variant="ghost"
-              disabled={isLoading}
-              className="h-8"
-            >
-              <Text className="text-blue-600 text-sm underline">
-                Resend verification code
-              </Text>
+            <Button onPress={handleResendOtp} variant="ghost" disabled={isLoading} className="h-8">
+              <Text className="text-blue-600 text-sm underline">Resend verification code</Text>
             </Button>
           </View>
         )}

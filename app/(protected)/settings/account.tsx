@@ -31,7 +31,7 @@ export default function Account() {
       title: 'Email',
       description: user?.email,
       link: '/settings/email',
-    }
+    },
   ];
 
   return (
