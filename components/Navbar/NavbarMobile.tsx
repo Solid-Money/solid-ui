@@ -1,6 +1,7 @@
-import { SafeAreaView, View } from 'react-native';
+import HomeQr from '@/assets/images/home-qr';
 import { Link } from 'expo-router';
-import { QrCode, Settings } from 'lucide-react-native';
+import { Settings } from 'lucide-react-native';
+import { SafeAreaView, View } from 'react-native';
 
 import { path } from '@/constants/path';
 
@@ -12,7 +13,7 @@ const NavbarMobile = () => {
           <Settings color="#fff" />
         </Link>
         <Link href={path.SETTINGS}>
-          <QrCode color="#fff" />
+          <HomeQr />
         </Link>
       </View>
     </SafeAreaView>
