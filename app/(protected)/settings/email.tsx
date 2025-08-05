@@ -11,7 +11,7 @@ import useUser from '@/hooks/useUser';
 export default function Email() {
   const { user } = useUser();
   const router = useRouter();
-  
+
   const {
     step,
     isLoading,
@@ -40,7 +40,6 @@ export default function Email() {
     }
   };
 
-
   return (
     <SafeAreaView
       className="bg-background text-foreground flex-1"
@@ -58,9 +57,7 @@ export default function Email() {
             </Text>
 
             {step === 'otp' && (
-              <Text className="text-sm text-muted-foreground mb-6">
-                Sent to: {emailValue}
-              </Text>
+              <Text className="text-sm text-muted-foreground mb-6">Sent to: {emailValue}</Text>
             )}
 
             {rateLimitError && (
@@ -69,9 +66,7 @@ export default function Email() {
                   <Text className="text-red-600 text-lg mr-2">⏰</Text>
                   <Text className="font-semibold text-red-800">Rate Limit Reached</Text>
                 </View>
-                <Text className="text-red-700 text-sm leading-5">
-                  {rateLimitError}
-                </Text>
+                <Text className="text-red-700 text-sm leading-5">{rateLimitError}</Text>
                 <Text className="text-red-600 text-xs mt-2">
                   This is a security measure to prevent spam. You can try again in a few minutes.
                 </Text>
@@ -89,9 +84,7 @@ export default function Email() {
               <View className="gap-2">
                 <Text className="text-muted-foreground">Current Email</Text>
                 <View className="px-5 py-4 bg-accent rounded-2xl">
-                  <Text className="text-lg font-semibold text-white">
-                    {user?.email}
-                  </Text>
+                  <Text className="text-lg font-semibold text-white">{user?.email}</Text>
                 </View>
               </View>
             ) : (

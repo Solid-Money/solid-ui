@@ -54,17 +54,20 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
             <ScrollView className="max-h-80" showsVerticalScrollIndicator={false}>
               <View className="px-2 gap-3">
                 {tokens.map((token, index) => {
-                  const balance = Number(formatUnits(BigInt(token.balance) || 0n, token.contractDecimals));
+                  const balance = Number(
+                    formatUnits(BigInt(token.balance) || 0n, token.contractDecimals),
+                  );
                   const balanceUSD = balance * (token.quoteRate || 0);
-                  const isSelected = selectedToken?.contractAddress === token.contractAddress &&
+                  const isSelected =
+                    selectedToken?.contractAddress === token.contractAddress &&
                     selectedToken?.chainId === token.chainId;
 
                   return (
                     <Pressable
                       key={`${token.contractAddress}-${token.chainId}`}
                       className={cn(
-                        "bg-zinc-800 rounded-2xl px-4 py-4 flex-row items-center justify-between",
-                        isSelected && "border border-green-500"
+                        'bg-zinc-800 rounded-2xl px-4 py-4 flex-row items-center justify-between',
+                        isSelected && 'border border-green-500',
                       )}
                       onPress={() => handleTokenSelect(token)}
                     >
@@ -73,7 +76,7 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
                           tokenIcon={getTokenIcon({
                             logoUrl: token.logoUrl,
                             tokenSymbol: token.contractTickerSymbol,
-                            size: 40
+                            size: 40,
                           })}
                           size={40}
                         />
@@ -82,7 +85,8 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
                             {token.contractTickerSymbol}
                           </Text>
                           <Text className="text-gray-400 text-sm">
-                            {token.contractTickerSymbol} on {token.chainId === 1 ? 'Ethereum' : 'Fuse'}
+                            {token.contractTickerSymbol} on{' '}
+                            {token.chainId === 1 ? 'Ethereum' : 'Fuse'}
                           </Text>
                         </View>
                       </View>
@@ -91,9 +95,7 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
                         <Text className="text-white text-xl font-semibold">
                           ${formatNumber(balanceUSD, 2)}
                         </Text>
-                        <Text className="text-gray-400 text-sm">
-                          {formatNumber(balance, 2)}
-                        </Text>
+                        <Text className="text-gray-400 text-sm">{formatNumber(balance, 2)}</Text>
                       </View>
                     </Pressable>
                   );

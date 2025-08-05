@@ -59,7 +59,9 @@ const SendPage = () => {
 
   // Create form schema with validation (reusing patterns from SendModal)
   const sendSchema = useMemo(() => {
-    const balanceAmount = selectedToken ? Number(formatUnits(BigInt(selectedToken.balance || '0'), selectedToken.contractDecimals)) : 0;
+    const balanceAmount = selectedToken
+      ? Number(formatUnits(BigInt(selectedToken.balance || '0'), selectedToken.contractDecimals))
+      : 0;
     return z.object({
       amount: z
         .string()
@@ -143,7 +145,7 @@ const SendPage = () => {
           image: getTokenIcon({
             logoUrl: selectedToken?.logoUrl,
             tokenSymbol: selectedToken?.contractTickerSymbol,
-            size: 24
+            size: 24,
           }),
         },
       });
@@ -162,9 +164,7 @@ const SendPage = () => {
       {Platform.OS === 'web' && <Navbar />}
       <View className="flex-1 bg-black px-6 py-12">
         {/* Header */}
-        <Text className="text-white text-2xl font-semibold text-center mb-12">
-          Send
-        </Text>
+        <Text className="text-white text-2xl font-semibold text-center mb-12">Send</Text>
 
         {/* Form Fields */}
         <View className="max-w-md mx-auto w-full gap-4">
@@ -178,7 +178,7 @@ const SendPage = () => {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     className={cn(
-                      "flex-1 text-white text-base web:focus:outline-none",
+                      'flex-1 text-white text-base web:focus:outline-none',
                       // errors.address && "text-red-400"
                     )}
                     placeholder="Enter or select an address..."
@@ -209,7 +209,7 @@ const SendPage = () => {
                       tokenIcon={getTokenIcon({
                         logoUrl: selectedToken.logoUrl,
                         tokenSymbol: selectedToken.contractTickerSymbol,
-                        size: 24
+                        size: 24,
                       })}
                       size={24}
                     />
@@ -218,7 +218,15 @@ const SendPage = () => {
                         {selectedToken.contractTickerSymbol}
                       </Text>
                       <Text className="text-gray-400 text-xs">
-                        {formatNumber(Number(formatUnits(BigInt(selectedToken.balance || '0'), selectedToken.contractDecimals)))} {selectedToken.contractTickerSymbol}
+                        {formatNumber(
+                          Number(
+                            formatUnits(
+                              BigInt(selectedToken.balance || '0'),
+                              selectedToken.contractDecimals,
+                            ),
+                          ),
+                        )}{' '}
+                        {selectedToken.contractTickerSymbol}
                       </Text>
                     </View>
                     <ChevronDown size={16} color="#666" />
@@ -240,7 +248,7 @@ const SendPage = () => {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     className={cn(
-                      "w-full web:focus:outline-none text-white text-6xl font-light text-right",
+                      'w-full web:focus:outline-none text-white text-6xl font-light text-right',
                       // errors.amount && "text-red-400"
                     )}
                     placeholder="0"
