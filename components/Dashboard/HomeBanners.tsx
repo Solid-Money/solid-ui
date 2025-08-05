@@ -10,19 +10,19 @@ const BANNER_HEIGHT = 80;
 const bannerData = [
   {
     id: '1',
-    image: require('../../assets/images/deposit_banner.png'),
+    image: require('@/assets/images/deposit_banner.png'),
   },
   {
     id: '2',
-    image: require('../../assets/images/deposit_banner.png'),
+    image: require('@/assets/images/deposit_banner.png'),
   },
   {
     id: '3',
-    image: require('../../assets/images/deposit_banner.png'),
+    image: require('@/assets/images/deposit_banner.png'),
   },
   {
     id: '4',
-    image: require('../../assets/images/deposit_banner.png'),
+    image: require('@/assets/images/deposit_banner.png'),
   },
 ];
 
