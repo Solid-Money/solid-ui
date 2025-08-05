@@ -12,12 +12,12 @@ const PasskeyNotSupported = () => {
           <AlertTriangle size={48} color="orange" />
 
           <Text className="text-xl font-bold text-center">
-            This browser doesn't support account creation
+            {"This browser doesn't support account creation"}
           </Text>
 
           <View className="space-y-4">
             <Text className="text-base text-center leading-6 max-w-lg">
-              We've detected that you are using a browser which is incompatible with passkeys. This is common for any browser integrated into a wallet or social app.
+              {"We've detected that you are using a browser which is incompatible with passkeys. This is common for any browser integrated into a wallet or social app."}
             </Text>
 
             <Text className="text-base text-center leading-6">

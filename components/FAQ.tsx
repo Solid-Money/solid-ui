@@ -22,10 +22,22 @@ const FAQ = ({ faqs }: { faqs: Faq[] }) => {
               value={faq.answer}
               flatListProps={{
                 initialNumToRender: 8,
+                style: {
+                  backgroundColor: '#000000',
+                },
               }}
               styles={{
                 text: {
                   color: '#A1A1A1',
+                },
+                strong: {
+                  color: '#ffffff',
+                },
+                em: {
+                  color: '#ffffff',
+                },
+                code: {
+                  backgroundColor: '#161b22',
                 },
               }}
             />
