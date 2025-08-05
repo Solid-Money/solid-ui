@@ -14,7 +14,7 @@ import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { ChevronLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Appearance, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -60,6 +60,7 @@ export default function RootLayout() {
         // await Font.loadAsync(Entypo.font);
 
         // Simulate loading time - replace with actual async operations
+        Appearance.setColorScheme('dark');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Add any additional initialization here
@@ -137,6 +138,13 @@ export default function RootLayout() {
             </Button>
           ),
           headerTitleAlign: 'center',
+        }}
+      />
+      <Stack.Screen
+        name="passkey-not-supported"
+        options={{
+          headerShown: false,
+          animation: 'none',
         }}
       />
     </Stack>

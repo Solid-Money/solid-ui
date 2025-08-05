@@ -3,10 +3,15 @@ import { Redirect, Stack } from 'expo-router';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import { useUserStore } from '@/store/useUserStore';
+import { isPasskeySupported } from '@/lib/utils';
 
 export default function ProtectedLayout() {
   const { user } = useUser();
   const { users } = useUserStore();
+
+  if (!isPasskeySupported()) {
+    return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
+  }
 
   if (!users.length) {
     return <Redirect href={path.REGISTER} />;
