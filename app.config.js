@@ -4,7 +4,7 @@ export default {
     slug: "flash-frontend",
     version: "1.0.1",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/adaptive-icon.png",
     scheme: "solid",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
@@ -31,7 +31,7 @@ export default {
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
-        backgroundColor: "#262626",
+        backgroundColor: "#94F27F",
       },
       edgeToEdgeEnabled: true,
       package: "xyz.solid.android",
