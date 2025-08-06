@@ -8,15 +8,15 @@ import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useWaitForTransactionReceipt } from 'wagmi';
 import { z } from 'zod';
+import Toast from 'react-native-toast-message';
 
 import { Button } from '@/components/ui/button';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useTotalAPY } from '@/hooks/useAnalytics';
-import useDepositFromEOA from '@/hooks/useDepositFromEOA';
+import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
 import { useEstimateGas } from '@/hooks/useEstimateGas';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
-import { Status } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { CheckConnectionWrapper } from '../CheckConnectionWrapper';
 import ConnectedWalletDropdown from '../ConnectedWalletDropdown';
@@ -26,14 +26,17 @@ import { Skeleton } from '../ui/skeleton';
 import { Text } from '../ui/text';
 
 function DepositToVaultForm() {
-  const { balance, deposit, depositStatus, hash, fee } = useDepositFromEOA();
+  const { balance, deposit, depositStatus, hash, fee, isEthereum } = useDepositFromEOA();
   const { isLoading: isPending, isSuccess } = useWaitForTransactionReceipt({
     hash: hash as `0x${string}`,
     chainId: mainnet.id,
+    query: {
+      enabled: isEthereum,
+    },
   });
   const { setModal, setTransaction } = useDepositStore();
 
-  const isLoading = depositStatus === Status.PENDING || isPending;
+  const isLoading = depositStatus === DepositStatus.PENDING || isPending || depositStatus === DepositStatus.BRIDGING;
   const { data: totalAPY } = useTotalAPY();
   const { costInUsd, loading } = useEstimateGas(380000n, fee || 0n);
 
@@ -84,10 +87,10 @@ function DepositToVaultForm() {
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
     if (!isValid || !watchedAmount) return 'Enter an amount';
-    if (depositStatus === Status.PENDING) return 'Check Wallet';
-    if (isPending) return 'Depositing...';
+    if (depositStatus === DepositStatus.PENDING) return 'Check Wallet';
+    if (isPending || depositStatus === DepositStatus.BRIDGING) return 'Depositing';
     if (isSuccess) return 'Successfully deposited!';
-    if (depositStatus === Status.ERROR) return 'Error while depositing';
+    if (depositStatus === DepositStatus.ERROR) return 'Error while depositing';
     return 'Deposit';
   };
 
@@ -96,7 +99,6 @@ function DepositToVaultForm() {
       await deposit(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
-        hash,
       });
     } catch (error) {
       // handled by hook
@@ -104,11 +106,23 @@ function DepositToVaultForm() {
   };
 
   useEffect(() => {
-    if (isSuccess) {
+    if ((isEthereum && isSuccess) || (!isEthereum && depositStatus === DepositStatus.SUCCESS)) {
       reset(); // Reset form after successful transaction
       setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+      if(!hash || isEthereum) return;
+
+      Toast.show({
+        type: 'success',
+        text1: 'Deposit initiated',
+        text2: 'Bridging USDC to Ethereum',
+        props: {
+          link: `https://scan.li.fi/tx/${hash}`,
+          linkText: eclipseAddress(hash),
+          image: require('@/assets/images/usdc.png'),
+        },
+      });
     }
-  }, [isSuccess, reset, setModal]);
+  }, [isSuccess, reset, setModal, depositStatus, isEthereum, hash]);
 
   const isFormDisabled = () => {
     return isLoading || !isValid || !watchedAmount;
@@ -213,7 +227,7 @@ function DepositToVaultForm() {
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading ? '...' : formatNumber(costInUsd, 2)} USD in fee`}
+          {isEthereum ? `~ $${loading ? '...' : formatNumber(costInUsd, 2)} USD in fee` : 'Gasless'}
         </Text>
       </View>
       <CheckConnectionWrapper props={{ size: 'xl' }}>
