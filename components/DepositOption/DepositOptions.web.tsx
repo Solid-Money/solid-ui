@@ -22,7 +22,7 @@ const DepositOptions = () => {
 
       // If wallet is already connected, go directly to form
       if (address) {
-        setModal(DEPOSIT_MODAL.OPEN_FORM);
+        setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
         return;
       }
 
@@ -40,7 +40,7 @@ const DepositOptions = () => {
 
       // Only proceed to form if wallet connection was successful
       if (wallet) {
-        setModal(DEPOSIT_MODAL.OPEN_FORM);
+        setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
       }
     } catch (error) {
       console.error(error);

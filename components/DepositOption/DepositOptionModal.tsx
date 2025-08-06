@@ -15,8 +15,14 @@ import { DepositToVaultForm } from '../DepositToVault';
 import TransactionStatus from '../TransactionStatus';
 import { buttonVariants } from '../ui/button';
 import DepositOptions from './DepositOptions';
+import DepositNetworks from '../DepositNetwork/DepositNetworks';
 
-const DepositOptionModal = () => {
+interface DepositOptionModalProps {
+  buttonText?: string;
+  trigger?: React.ReactNode;
+}
+
+const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOptionModalProps) => {
   const { user } = useUser();
   const { currentModal, previousModal, transaction, setModal } = useDepositStore();
   const activeAccount = useActiveAccount();
@@ -27,6 +33,7 @@ const DepositOptionModal = () => {
   const isFormAndAddress = Boolean(isForm && address);
   const isBuyCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
   const isTransactionStatus = currentModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isNetworks = currentModal.name === DEPOSIT_MODAL.OPEN_NETWORKS.name;
   const isEmailGate = currentModal.name === DEPOSIT_MODAL.OPEN_EMAIL_GATE.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
@@ -42,7 +49,7 @@ const DepositOptionModal = () => {
       >
         <View className="flex-row items-center gap-4">
           <Plus color="black" />
-          <Text className="text-primary-foreground font-bold">Deposit</Text>
+          <Text className="text-primary-foreground font-bold">{buttonText}</Text>
         </View>
       </View>
     );
@@ -71,6 +78,10 @@ const DepositOptionModal = () => {
       return <BuyCrypto />;
     }
 
+    if (isNetworks) {
+      return <DepositNetworks />;
+    }
+
     return <DepositOptions />;
   };
 
@@ -79,6 +90,7 @@ const DepositOptionModal = () => {
     if (isEmailGate) return 'email-gate';
     if (isFormAndAddress) return 'deposit-form';
     if (isBuyCrypto) return 'buy-crypto';
+    if (isNetworks) return 'networks';
     return 'deposit-options';
   };
 
@@ -96,7 +108,7 @@ const DepositOptionModal = () => {
   };
 
   const getContainerClassName = () => {
-    if (!isFormAndAddress && !isBuyCrypto && !isTransactionStatus && !isEmailGate) {
+    if (!isFormAndAddress && !isBuyCrypto && !isTransactionStatus && !isEmailGate && !isNetworks) {
       return 'min-h-[40rem]';
     }
     return '';
@@ -140,11 +152,11 @@ const DepositOptionModal = () => {
       previousModal={previousModal}
       isOpen={!isClose}
       onOpenChange={handleOpenChange}
-      trigger={getTrigger()}
+      trigger={trigger ?? getTrigger()}
       title={getTitle()}
       contentClassName={getContentClassName()}
       containerClassName={getContainerClassName()}
-      showBackButton={isFormAndAddress || isBuyCrypto || isEmailGate}
+      showBackButton={isFormAndAddress || isBuyCrypto || isEmailGate || isNetworks}
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}
       isForward={isForward}
