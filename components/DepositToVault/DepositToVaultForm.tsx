@@ -36,7 +36,10 @@ function DepositToVaultForm() {
   });
   const { setModal, setTransaction } = useDepositStore();
 
-  const isLoading = depositStatus === DepositStatus.PENDING || isPending || depositStatus === DepositStatus.BRIDGING;
+  const isLoading =
+    depositStatus === DepositStatus.PENDING ||
+    isPending ||
+    depositStatus === DepositStatus.BRIDGING;
   const { data: totalAPY } = useTotalAPY();
   const { costInUsd, loading } = useEstimateGas(380000n, fee || 0n);
 
@@ -109,7 +112,7 @@ function DepositToVaultForm() {
     if ((isEthereum && isSuccess) || (!isEthereum && depositStatus === DepositStatus.SUCCESS)) {
       reset(); // Reset form after successful transaction
       setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
-      if(!hash || isEthereum) return;
+      if (!hash || isEthereum) return;
 
       Toast.show({
         type: 'success',

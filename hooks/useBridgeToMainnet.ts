@@ -79,7 +79,7 @@ const useBridgeToMainnet = (): BridgeResult => {
           data: encodeFunctionData({
             abi: BridgePayamster_ABI,
             functionName: "callWithValue",
-            args: [ADDRESSES.fuse.teller, callData, fee ? fee : 0n],
+            args: [ADDRESSES.fuse.teller, '0x05921740', callData, fee ? fee : 0n],
           }),
           value: 0n,
         },
