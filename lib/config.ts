@@ -53,7 +53,7 @@ export const ADDRESSES: Addresses = {
     vault: isProduction ? "0x75333830E7014e909535389a6E5b0C02aA62ca27" : "0x740636B7e6E6F6a4FD80A8781CfD3AA993821C1D",
     teller: isProduction ? "0x220d4667AA06E0Aa39f62c601690848f2e48BC15" : "0xcBA3D8DC1DdE5fbD4c04cBbD5624Dc79D300963d",
     nativeFeeToken: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-    bridgePaymasterAddress: "0x7Af15A003de1937bD6CA60c70598DBaca2401e1E",
+    bridgePaymasterAddress: "0xE046FC894Ec020501BA32fcA814a69B49c9Dac10",
   }
 };
 

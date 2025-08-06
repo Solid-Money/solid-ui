@@ -65,7 +65,9 @@ const ConnectedWalletDropdown = () => {
           <View>
             <WalletMinimal size={22} color="white" />
           </View>
-          <Text>{address ? eclipseAddress(address) : '0x'} ({networkName})</Text>
+          <Text>
+            {address ? eclipseAddress(address) : '0x'} ({networkName})
+          </Text>
         </View>
         <Animated.View style={animatedStyle}>
           <ChevronDown color="white" size={20} />

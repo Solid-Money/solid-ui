@@ -1,8 +1,8 @@
-import { AlertTriangle } from "lucide-react-native";
-import { View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { AlertTriangle } from 'lucide-react-native';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Text } from "@/components/ui/text";
+import { Text } from '@/components/ui/text';
 
 const PasskeyNotSupported = () => {
   return (
@@ -17,7 +17,9 @@ const PasskeyNotSupported = () => {
 
           <View className="space-y-4">
             <Text className="text-base text-center leading-6 max-w-lg">
-              {"We've detected that you are using a browser which is incompatible with passkeys. This is common for any browser integrated into a wallet or social app."}
+              {
+                "We've detected that you are using a browser which is incompatible with passkeys. This is common for any browser integrated into a wallet or social app."
+              }
             </Text>
 
             <Text className="text-base text-center leading-6">
