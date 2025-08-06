@@ -4,14 +4,12 @@ import WithdrawIcon from '@/assets/images/withdraw-icon';
 import SavingCountUp from '@/components/SavingCountUp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useRouter } from 'expo-router';
-import { Plus } from 'lucide-react-native';
 import React from 'react';
 import { View } from 'react-native';
+import { DepositOptionModal } from '../DepositOption';
 
 interface DashboardHeaderProps {
   balance: number;
@@ -30,7 +28,6 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const { isScreenMedium } = useDimension();
   const router = useRouter();
-  const { setModal } = useDepositStore();
 
   return (
     <View className="flex-row items-center justify-between">
@@ -63,16 +60,7 @@ export function DashboardHeader({
         </View>
       </View>
       <View className="flex-row gap-2">
-        <Button
-          variant="brand"
-          className="h-12 pr-6 rounded-xl"
-          onPress={() => setModal(DEPOSIT_MODAL.OPEN_OPTIONS)}
-        >
-          <View className="flex-row items-center gap-2">
-            <Plus color="black" />
-            <Text className="text-primary-foreground font-bold">Add funds</Text>
-          </View>
-        </Button>
+        <DepositOptionModal buttonText="Add funds" />
         {hasTokens && (
           <>
             <Button

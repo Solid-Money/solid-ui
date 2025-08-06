@@ -16,7 +16,12 @@ import TransactionStatus from '../TransactionStatus';
 import { buttonVariants } from '../ui/button';
 import DepositOptions from './DepositOptions';
 
-const DepositOptionModal = () => {
+interface DepositOptionModalProps {
+  buttonText?: string;
+  trigger?: React.ReactNode;
+}
+
+const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOptionModalProps) => {
   const { user } = useUser();
   const { currentModal, previousModal, transaction, setModal } = useDepositStore();
   const activeAccount = useActiveAccount();
@@ -42,7 +47,7 @@ const DepositOptionModal = () => {
       >
         <View className="flex-row items-center gap-4">
           <Plus color="black" />
-          <Text className="text-primary-foreground font-bold">Deposit</Text>
+          <Text className="text-primary-foreground font-bold">{buttonText}</Text>
         </View>
       </View>
     );
@@ -140,7 +145,7 @@ const DepositOptionModal = () => {
       previousModal={previousModal}
       isOpen={!isClose}
       onOpenChange={handleOpenChange}
-      trigger={getTrigger()}
+      trigger={trigger ?? getTrigger()}
       title={getTitle()}
       contentClassName={getContentClassName()}
       containerClassName={getContainerClassName()}

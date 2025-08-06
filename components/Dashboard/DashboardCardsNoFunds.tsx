@@ -1,5 +1,8 @@
 import React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { DepositOptionModal } from '../DepositOption';
+import { buttonVariants } from '../ui/button';
+import { Plus } from 'lucide-react-native';
 
 function FundWalletCard() {
   return (
@@ -31,9 +34,18 @@ function FundWalletCard() {
 
 function AddFundsButton() {
   return (
-    <TouchableOpacity className="bg-[#303030] border border-[#4E4E4E] rounded-lg py-2 px-6 self-start">
-      <Text className="text-white text-base font-bold">Add funds</Text>
-    </TouchableOpacity>
+    <DepositOptionModal
+      trigger={
+        <View
+          className={buttonVariants({
+            variant: 'secondary',
+            className: 'h-11 rounded-xl bg-[#303030] border border-[#4E4E4E] self-start',
+          })}
+        >
+          <Text className="text-white text-base font-bold">Add funds</Text>
+        </View>
+      }
+    />
   );
 }
 
