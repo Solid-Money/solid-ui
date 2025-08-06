@@ -27,7 +27,7 @@ import { SavingMode } from '@/lib/types';
 import { cn, fontSize, formatNumber } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { ImageBackground, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address } from 'viem';
