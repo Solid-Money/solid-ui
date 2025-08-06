@@ -2,14 +2,15 @@ import { Redirect, Stack } from 'expo-router';
 
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
-import { useUserStore } from '@/store/useUserStore';
 import { isPasskeySupported } from '@/lib/utils';
+import { useUserStore } from '@/store/useUserStore';
+import { Platform } from 'react-native';
 
 export default function ProtectedLayout() {
   const { user } = useUser();
   const { users } = useUserStore();
 
-  if (!isPasskeySupported()) {
+  if (Platform.OS === 'web' && !isPasskeySupported()) {
     return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
   }
 
