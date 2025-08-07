@@ -1,12 +1,5 @@
 import { Tabs } from 'expo-router';
-import {
-  ArrowUpDown,
-  CreditCard,
-  Leaf,
-  Plus,
-  Send,
-  Wallet,
-} from 'lucide-react-native';
+import { ArrowUpDown, CreditCard, Leaf, Plus, Send, Wallet } from 'lucide-react-native';
 import React from 'react';
 import { Platform } from 'react-native';
 
