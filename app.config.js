@@ -98,7 +98,7 @@ export default {
       [
         "expo-notifications",
         {
-          icon: "./assets/images/icon.png",
+          icon: "./assets/images/adaptive-icon.png",
         },
       ],
       "@react-native-firebase/app",
