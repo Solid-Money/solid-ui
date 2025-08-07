@@ -6,8 +6,6 @@ export function DashboardCardsNoFunds() {
 }
 
 function DepositStableCoinsCard() {
-  // Get the width of the screen
-
   return (
     <View className="w-full h-[420px] bg-gradient-to-tr from-[rgba(165,84,234,0.25)] to-[rgba(165,84,234,0.175)] rounded-2xl p-10 shadow-sm">
       <View className="flex-1">
