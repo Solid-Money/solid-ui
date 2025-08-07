@@ -29,10 +29,15 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function Register() {
   const { handleSignup, handleLogin, handleDummyLogin } = useUser();
-  const { signupInfo, loginInfo } = useUserStore();
+  const { signupInfo, loginInfo, setSignupInfo } = useUserStore();
   const { code } = useLocalSearchParams<{ code: string }>();
   // TODO: Add recovery flow
   // const [showRecoveryFlow, setShowRecoveryFlow] = useState(false);
+
+  // Reset signup info state when component mounts
+  useEffect(() => {
+    setSignupInfo({ status: Status.IDLE, message: '' });
+  }, [setSignupInfo]);
 
   const {
     control,
