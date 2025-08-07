@@ -19,6 +19,10 @@ const wallet: MenuItem = {
   href: path.WALLET,
 }
 
+const activity: MenuItem = {
+  label: "Activity",
+  href: path.ACTIVITY,
+}
 
 const useNav = () => {
   const { user } = useUser();
@@ -26,7 +30,7 @@ const useNav = () => {
 
   const menuItems = useMemo<MenuItem[]>(() => {
     if (hasDeposited) {
-      return [home, wallet];
+      return [home, wallet, activity];
     }
     return [];
   }, [hasDeposited]);

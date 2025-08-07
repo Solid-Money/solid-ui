@@ -20,6 +20,7 @@ import {
   BridgeDeposit,
   TokenPriceUsd,
   User,
+  BridgeTransaction,
 } from "./types";
 
 // Helper function to get platform-specific headers
@@ -461,6 +462,25 @@ export const bridgeDeposit = async (bridge: BridgeDeposit): Promise<{ transactio
       },
       credentials: "include",
       body: JSON.stringify(bridge),
+    }
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const bridgeDepositTransactions = async (): Promise<BridgeTransaction[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/transactions`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: "include",
     }
   );
 
