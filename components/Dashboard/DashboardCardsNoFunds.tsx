@@ -7,7 +7,7 @@ export function DashboardCardsNoFunds() {
 
 function DepositStableCoinsCard() {
   return (
-    <View className="w-full h-[420px] bg-gradient-to-tr from-[rgba(165,84,234,0.25)] to-[rgba(165,84,234,0.175)] rounded-2xl p-10 shadow-sm">
+    <View className="w-full bg-gradient-to-tr from-[rgba(165,84,234,0.25)] to-[rgba(165,84,234,0.175)] rounded-2xl p-10 px-12  shadow-sm">
       <View className="flex-1">
         <View className="flex-row justify-between items-start">
           <View className="flex-1 items-start gap-24">
@@ -20,7 +20,7 @@ function DepositStableCoinsCard() {
           <View className="ml-4">
             <Image
               source={require('@/assets/images/solid_logo_with_glare.png')}
-              style={{ width: 360, height: 360 }}
+              style={{ width: 320, height: 320 }}
             />
           </View>
         </View>
