@@ -9,17 +9,18 @@ import {
   useTotalAPY,
 } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
+import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { ADDRESSES } from '@/lib/config';
 import { useQuery } from '@tanstack/react-query';
 import React, { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
 
 export default function Dashboard() {
+  const { isDesktop } = useDimension();
   const { user } = useUser();
 
   const {
@@ -96,5 +97,5 @@ export default function Dashboard() {
     originalDepositAmount,
   };
 
-  return Platform.OS === 'web' ? <DashboardWeb /> : <DashboardMobile balanceData={balanceData} />;
+  return isDesktop ? <DashboardWeb /> : <DashboardMobile balanceData={balanceData} />;
 }

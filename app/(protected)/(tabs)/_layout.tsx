@@ -10,10 +10,13 @@ import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
+import { useDimension } from '@/hooks/useDimension';
 
 export default function TabLayout() {
   const { user } = useUser();
   const hasDeposited = user?.isDeposited;
+
+  const { isDesktop } = useDimension();
 
   return (
     <Tabs
@@ -26,7 +29,7 @@ export default function TabLayout() {
           fontSize: 12,
         },
         tabBarStyle: {
-          display: Platform.OS === 'web' ? 'none' : 'flex',
+          display: isDesktop ? 'none' : 'flex',
           height: 85,
           paddingTop: 8,
           ...Platform.select({

@@ -53,7 +53,7 @@ const DashboardHeaderMobile = ({
         />
       </View>
 
-      <View className="flex-row justify-around px-2 items-center w-full max-w-sm mx-auto">
+      <View className="flex-row justify-around px-2 items-center w-full  mx-auto">
         <CircleButton
           icon={Plus}
           label="Fund"
