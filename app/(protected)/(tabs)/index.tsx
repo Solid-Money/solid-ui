@@ -9,9 +9,9 @@ import {
   useTotalAPY,
 } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
-import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
+import { useDimension } from '@/hooks/useDimension';
 import { ADDRESSES } from '@/lib/config';
 import { useQuery } from '@tanstack/react-query';
 import React, { useEffect, useState } from 'react';

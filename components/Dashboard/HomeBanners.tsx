@@ -4,7 +4,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const BANNER_HEIGHT = SCREEN_HEIGHT * 0.12; // Make height responsive relative to screen height
+const BANNER_HEIGHT = SCREEN_HEIGHT * 0.12;
 
 const bannerData = [
   {
@@ -79,30 +79,28 @@ const styles = StyleSheet.create({
   carousel: {
     width: SCREEN_WIDTH,
     height: BANNER_HEIGHT + 32,
-    marginLeft: -16, // Add negative margin to compensate for any parent padding if needed
   },
   bannerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 0, // Remove the padding
   },
   bannerImage: {
-    width: SCREEN_WIDTH, // Use full screen width instead of BANNER_WIDTH
+    width: SCREEN_WIDTH,
     height: BANNER_HEIGHT,
     borderRadius: 12,
   },
   paginationContainer: {
-    gap: SCREEN_WIDTH * 0.012, // Make gap responsive
+    gap: SCREEN_WIDTH * 0.012,
   },
   dotStyle: {
     backgroundColor: '#C2C2C2',
-    width: SCREEN_WIDTH * 0.015, // Make dot size responsive
+    width: SCREEN_WIDTH * 0.015,
     height: SCREEN_WIDTH * 0.015,
     borderRadius: 50,
   },
   activeDot: {
     backgroundColor: '#C2C2C2',
-    width: SCREEN_WIDTH * 0.03, // Make active dot size responsive
+    width: SCREEN_WIDTH * 0.03,
   },
 });
