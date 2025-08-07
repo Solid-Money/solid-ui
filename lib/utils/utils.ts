@@ -3,11 +3,11 @@ import { Platform } from "react-native";
 import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from "viem";
 
+import { refreshToken } from "@/lib/api";
+import { ADDRESSES } from "@/lib/config";
+import { AuthTokens, User } from "@/lib/types";
 import { useUserStore } from "@/store/useUserStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { refreshToken } from "./api";
-import { ADDRESSES } from "./config";
-import { AuthTokens, User } from "./types";
 
 export const IS_SERVER = typeof window === 'undefined';
 

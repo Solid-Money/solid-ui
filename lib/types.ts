@@ -1,4 +1,4 @@
-import { DEPOSIT_MODAL, SEND_MODAL, UNSTAKE_MODAL, WITHDRAW_MODAL } from "@/constants/modals";
+import { DEPOSIT_MODAL, SEND_MODAL, SWAP_MODAL, UNSTAKE_MODAL, WITHDRAW_MODAL } from "@/constants/modals";
 import { Address } from "viem";
 
 export enum Status {
@@ -252,6 +252,7 @@ export type StatusInfo = {
 
 export type DepositModal = typeof DEPOSIT_MODAL[keyof typeof DEPOSIT_MODAL];
 export type SendModal = typeof SEND_MODAL[keyof typeof SEND_MODAL];
+export type SwapModal = typeof SWAP_MODAL[keyof typeof SWAP_MODAL];
 export type WithdrawModal = typeof WITHDRAW_MODAL[keyof typeof WITHDRAW_MODAL];
 export type UnstakeModal = typeof UNSTAKE_MODAL[keyof typeof UNSTAKE_MODAL];
 

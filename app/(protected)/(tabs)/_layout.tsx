@@ -1,5 +1,12 @@
 import { Tabs } from 'expo-router';
-import { CreditCard, Leaf, Send, Wallet, Plus } from 'lucide-react-native';
+import {
+  ArrowUpDown,
+  CreditCard,
+  Leaf,
+  Plus,
+  Send,
+  Wallet,
+} from 'lucide-react-native';
 import React from 'react';
 import { Platform } from 'react-native';
 
@@ -86,6 +93,15 @@ export default function TabLayout() {
         }}
       />
 
+      <Tabs.Screen
+        name="swap"
+        options={{
+          title: 'Swap',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <ArrowUpDown size={28} color={color} />,
+          href: hasDeposited ? path.SWAP : null,
+        }}
+      />
       <Tabs.Screen
         name="card"
         options={{
