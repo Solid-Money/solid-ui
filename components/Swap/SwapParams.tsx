@@ -90,10 +90,6 @@ const SwapParams = () => {
             address: plugin,
           });
 
-          // const pluginContract = getAlgebraBasePlugin({
-          //   address: plugin,
-          // });
-
           let beforeSwap: [string, number, number];
 
           try {
@@ -191,8 +187,8 @@ const SwapParams = () => {
             <Text className="text-sm">
               {isVoltageTrade && !isVoltageTradeLoading
                 ? computeSlippageAdjustedAmounts(voltageTrade?.trade, allowedSlippage)[
-                    trade.tradeType === TradeType.EXACT_INPUT ? 'outputAmount' : 'inputAmount'
-                  ]?.toSignificant(6)
+                  trade.tradeType === TradeType.EXACT_INPUT ? 'outputAmount' : 'inputAmount'
+                ]?.toSignificant(6)
                 : trade.tradeType === TradeType.EXACT_INPUT
                   ? `${trade.minimumAmountOut(allowedSlippage).toSignificant(6)} ${trade.outputAmount.currency.symbol}`
                   : `${trade.maximumAmountIn(allowedSlippage).toSignificant(6)} ${trade.inputAmount.currency.symbol}`}
