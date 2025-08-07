@@ -1,40 +1,14 @@
-import { ChevronRight } from '@/lib/icons/ChevronRight';
 import { FlashList } from '@shopify/flash-list';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatUnits } from 'viem';
 
-import FundYourWallet from '@/assets/images/fund-your-wallet';
 import { Text } from '@/components/ui/text';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { compactNumberFormat } from '@/lib/utils';
 import RenderTokenIcon from '../RenderTokenIcon';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-
-const EmptyState = () => (
-  <Pressable className="flex-1">
-    <LinearGradient
-      colors={['rgba(126, 126, 126, 0.25)', 'rgba(126, 126, 126, 0.25)']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      className="flex-row items-center justify-between p-4"
-      style={{ borderRadius: 20 }}
-    >
-      <View className="flex-row items-center gap-3">
-        <FundYourWallet />
-        <View>
-          <Text className="text-lg font-bold text-white">Fund your wallet</Text>
-          <Text className="text-sm text-muted-foreground">
-            Buy crypto via our on-ramp{'\n'}providers
-          </Text>
-        </View>
-      </View>
-      <ChevronRight className="text-white" />
-    </LinearGradient>
-  </Pressable>
-);
 
 const Title = () => (
   <View className="py-3">
@@ -59,15 +33,6 @@ const CoinsMobile = () => {
       return balanceUSD_B - balanceUSD_A; // Descending order
     });
   }, [ethereumTokens, fuseTokens]);
-
-  if (allTokens.length === 0) {
-    return (
-      <View className="flex-1">
-        <Title />
-        <EmptyState />
-      </View>
-    );
-  }
 
   return (
     <View className="flex-1">
