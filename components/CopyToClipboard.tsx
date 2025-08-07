@@ -21,8 +21,17 @@ const CopyToClipboard = ({ text, className }: { text: string; className?: string
   }, [copied]);
 
   return (
-    <Button variant="ghost" size="icon" onPress={handleCopy} className={className}>
-      {copied ? <Check size={16} /> : <Copy size={16} />}
+    <Button
+      variant="ghost"
+      size="icon"
+      onPress={handleCopy}
+      className={`transition-all duration-200 hover:bg-primary/10 active:scale-95 ${className}`}
+    >
+      {copied ? (
+        <Check size={14} className="text-green-500" />
+      ) : (
+        <Copy size={14} className="text-muted-foreground/60 hover:text-primary" />
+      )}
     </Button>
   );
 };

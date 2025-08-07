@@ -3,9 +3,8 @@ import { Dimensions, Image, StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BANNER_WIDTH = SCREEN_WIDTH - 32;
-const BANNER_HEIGHT = 80;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const BANNER_HEIGHT = SCREEN_HEIGHT * 0.12;
 
 const bannerData = [
   {
@@ -49,7 +48,7 @@ export const HomeBanners = () => {
     <View style={styles.container}>
       <Carousel
         ref={ref}
-        width={330}
+        width={SCREEN_WIDTH}
         height={BANNER_HEIGHT + 32}
         data={bannerData}
         scrollAnimationDuration={1000}
@@ -85,24 +84,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
   },
   bannerImage: {
-    width: BANNER_WIDTH,
+    width: SCREEN_WIDTH,
     height: BANNER_HEIGHT,
     borderRadius: 12,
   },
   paginationContainer: {
-    gap: 5,
+    gap: SCREEN_WIDTH * 0.012,
   },
   dotStyle: {
     backgroundColor: '#C2C2C2',
-    width: 6,
-    height: 6,
+    width: SCREEN_WIDTH * 0.015,
+    height: SCREEN_WIDTH * 0.015,
     borderRadius: 50,
   },
   activeDot: {
     backgroundColor: '#C2C2C2',
-    width: 12,
+    width: SCREEN_WIDTH * 0.03,
   },
 });

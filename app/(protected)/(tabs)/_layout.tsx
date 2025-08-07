@@ -1,16 +1,22 @@
 import { Tabs } from 'expo-router';
-import { CreditCard, LayoutDashboard, Leaf, Plus, Send, Wallet } from 'lucide-react-native';
+import { ArrowUpDown, CreditCard, Leaf, Plus, Send, Wallet } from 'lucide-react-native';
 import React from 'react';
 import { Platform } from 'react-native';
 
+import ActivityNavBarIcon from '@/assets/images/activity-nav-bar-icon';
+import AssetsNavBarIcon from '@/assets/images/assets-nav-bar-icon';
+import SavingsNavBarIcon from '@/assets/images/savings-nav-bar-icon';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
+import { useDimension } from '@/hooks/useDimension';
 
 export default function TabLayout() {
   const { user } = useUser();
   const hasDeposited = user?.isDeposited;
+
+  const { isDesktop } = useDimension();
 
   return (
     <Tabs
@@ -19,38 +25,54 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
+        tabBarLabelStyle: {
+          fontSize: 12,
+        },
         tabBarStyle: {
-          display: Platform.OS === 'web' || !hasDeposited ? 'none' : 'flex',
+          display: isDesktop ? 'none' : 'flex',
+          height: 85,
+          paddingTop: 8,
           ...Platform.select({
             ios: {
               // Use a transparent background on iOS to show the blur effect
               position: 'absolute',
             },
             default: {
-              backgroundColor: '#262626',
-              borderColor: '#686163',
+              backgroundColor: '#161616',
+              borderColor: '#3D3D3D',
             },
           }),
         },
       }}
       backBehavior="order"
     >
-      {/* <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Home',
-            headerShown: false,
-            tabBarIcon: ({ color }) => <House size={28} color={color} />,
-            href: path.HOME,
-          }}
-        /> */}
       <Tabs.Screen
         name="index"
         options={{
+          title: 'Assets',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <AssetsNavBarIcon color={color} />,
+          href: path.HOME,
+        }}
+      />
+
+      <Tabs.Screen
+        name="savings"
+        options={{
           title: 'Savings',
           headerShown: false,
-          tabBarIcon: ({ color }) => <LayoutDashboard size={28} color={color} />,
-          href: path.HOME,
+          tabBarIcon: ({ color }) => <SavingsNavBarIcon color={color} />,
+          href: path.SAVINGS,
+        }}
+      />
+
+      <Tabs.Screen
+        name="activity"
+        options={{
+          title: 'Activity',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <ActivityNavBarIcon color={color} />,
+          href: path.ACTIVITY,
         }}
       />
 
@@ -61,6 +83,16 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ color }) => <Plus size={28} color={color} />,
           href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="swap"
+        options={{
+          title: 'Swap',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <ArrowUpDown size={28} color={color} />,
+          href: hasDeposited ? path.SWAP : null,
         }}
       />
       <Tabs.Screen
