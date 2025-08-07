@@ -1,0 +1,172 @@
+import { Currency, WNATIVE, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+import { useCallback, useMemo, useState } from 'react';
+import { useBalance } from 'wagmi';
+
+import { WNATIVE_EXTENDED } from '@/constants/routing';
+import { useSimulateWrappedNativeDeposit, useSimulateWrappedNativeWithdraw } from '@/generated/wagmi';
+import { executeTransactions } from '@/lib/execute';
+import { Address, encodeFunctionData } from 'viem';
+import { fuse } from 'viem/chains';
+import { useTransactionAwait } from '../useTransactionAwait';
+import useUser from '../useUser';
+
+export enum WrapType {
+    NOT_APPLICABLE = 'NOT_APPLICABLE',
+    WRAP = 'WRAP',
+    UNWRAP = 'UNWRAP',
+}
+
+const NOT_APPLICABLE = { wrapType: WrapType.NOT_APPLICABLE, isSuccess: false };
+
+export default function useWrapCallback(
+    inputCurrency: Currency | undefined,
+    outputCurrency: Currency | undefined,
+    typedValue: string | undefined
+): {
+    wrapType: (typeof WrapType)[keyof typeof WrapType];
+    execute?: undefined | (() => void);
+    loading?: boolean;
+    inputError?: string;
+    isSuccess?: boolean;
+} {
+    const chainId = fuse.id; //useChainId();
+    const { user, safeAA } = useUser();
+    const account = user?.safeAddress;
+    const [wrapData, setWrapData] = useState<any>(null);
+    const [unwrapData, setUnwrapData] = useState<any>(null);
+    const [isSendingWrap, setIsSendingWrap] = useState(false);
+    const [isSendingUnwrap, setIsSendingUnwrap] = useState(false);
+
+    const inputAmount = useMemo(() => tryParseAmount(typedValue, inputCurrency), [inputCurrency, typedValue]);
+
+    const { data: wrapConfig } = useSimulateWrappedNativeDeposit({
+        address: WNATIVE[chainId].address as Address,
+        value: inputAmount ? BigInt(inputAmount.quotient.toString()) : undefined,
+    });
+
+    const { isLoading: isWrapLoading, isSuccess: isWrapSuccess } = useTransactionAwait(wrapData?.transactionHash);
+
+    const { data: unwrapConfig } = useSimulateWrappedNativeWithdraw({
+        address: WNATIVE[chainId].address as Address,
+        args: inputAmount ? [BigInt(inputAmount.quotient.toString())] : undefined,
+    });
+
+    const { isLoading: isUnwrapLoading, isSuccess: isUnwrapSuccess } = useTransactionAwait(unwrapData?.transactionHash);
+
+    const wrap = useCallback(async () => {
+        if (!wrapConfig || !user?.suborgId || !user?.signWith || !account) {
+            return;
+        }
+        try {
+            setIsSendingWrap(true);
+            const smartAccountClient = await safeAA(
+                fuse,
+                user?.suborgId,
+                user?.signWith
+            );
+            const transactions = [
+                {
+                    to: wrapConfig?.request.address,
+                    data: encodeFunctionData({
+                        abi: wrapConfig!.request.abi,
+                        functionName: wrapConfig!.request.functionName,
+                        args: wrapConfig?.request.args,
+                    }),
+                    value: wrapConfig?.request.value,
+                },
+            ];
+            const result = await executeTransactions(
+                smartAccountClient,
+                transactions,
+                "Wrap failed",
+                fuse
+            );
+            setWrapData(result);
+            return result;
+        } finally {
+            setIsSendingWrap(false);
+        }
+    }, [wrapConfig, user?.suborgId, user?.signWith, account, safeAA]);
+
+    const unwrap = useCallback(async () => {
+        if (!unwrapConfig || !user?.suborgId || !user?.signWith || !account) {
+            return;
+        }
+        try {
+            setIsSendingUnwrap(true);
+            const smartAccountClient = await safeAA(
+                fuse,
+                user?.suborgId,
+                user?.signWith
+            );
+
+            const transactions = [
+                {
+                    to: unwrapConfig?.request.address,
+                    data: encodeFunctionData({
+                        abi: unwrapConfig!.request.abi,
+                        functionName: unwrapConfig!.request.functionName,
+                        args: unwrapConfig?.request.args,
+                    }),
+                    value: unwrapConfig?.request.value,
+                },
+            ];
+            const result = await executeTransactions(
+                smartAccountClient,
+                transactions,
+                "Unwrap failed",
+                fuse
+            );
+            setUnwrapData(result);
+            return result;
+        } finally {
+            setIsSendingUnwrap(false);
+        }
+    }, [unwrapConfig, user?.suborgId, user?.signWith, account, safeAA]);
+
+    const { data: balance } = useBalance({
+        query: {
+            enabled: Boolean(inputCurrency),
+        },
+        address: account,
+        token: inputCurrency?.isNative ? undefined : (inputCurrency?.address as Address),
+    });
+
+    return useMemo(() => {
+        if (!chainId || !inputCurrency || !outputCurrency) return NOT_APPLICABLE;
+        const weth = WNATIVE_EXTENDED[chainId];
+        if (!weth) return NOT_APPLICABLE;
+
+        const hasInputAmount = Boolean(inputAmount?.greaterThan('0'));
+        const sufficientBalance =
+            inputAmount && balance && Number(balance.formatted) >= Number(inputAmount.toSignificant(18));
+
+        if (inputCurrency.isNative && weth.equals(outputCurrency)) {
+            return {
+                wrapType: WrapType.WRAP,
+                execute: sufficientBalance && inputAmount ? () => wrap?.() : undefined,
+                loading: isSendingWrap || isWrapLoading,
+                isSuccess: isWrapSuccess,
+                inputError: sufficientBalance
+                    ? undefined
+                    : hasInputAmount
+                        ? `Insufficient FUSE balance`
+                        : `Enter FUSE amount`,
+            };
+        } else if (weth.equals(inputCurrency) && outputCurrency.isNative) {
+            return {
+                wrapType: WrapType.UNWRAP,
+                execute: sufficientBalance && inputAmount ? () => unwrap?.() : undefined,
+                loading: isSendingUnwrap || isUnwrapLoading,
+                isSuccess: isUnwrapSuccess,
+                inputError: sufficientBalance
+                    ? undefined
+                    : hasInputAmount
+                        ? `Insufficient WFUSE balance`
+                        : `Enter WFUSE amount`,
+            };
+        } else {
+            return NOT_APPLICABLE;
+        }
+    }, [chainId, inputCurrency, outputCurrency, inputAmount, balance, wrap, unwrap, wrapConfig, unwrapConfig, isWrapLoading, isUnwrapLoading, isSendingWrap, isSendingUnwrap]);
+}
