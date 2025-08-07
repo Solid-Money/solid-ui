@@ -33,8 +33,12 @@ export function DashboardMobile({ balanceData }: DashboardMobileProps) {
             principal={originalDepositAmount}
           />
           <HomeBanners />
-          {balance === 0 && <View className="flex-1" />}
-          <CoinsMobile />
+          {balance !== 0 && (
+            <>
+              <View className="flex-1" />
+              <CoinsMobile />
+            </>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
