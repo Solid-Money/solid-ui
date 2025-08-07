@@ -1,5 +1,9 @@
 name: Deploy mobile QA
 
+on:
+  push:
+    branches: ['qa']
+
 jobs:
   android_build:
     name: Build Android
