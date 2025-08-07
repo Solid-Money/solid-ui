@@ -15,7 +15,18 @@ const config: CodegenConfig = {
         "typescript-react-apollo",
       ],
     },
+    'graphql/generated/algebra-info.tsx': {
+      schema: 'https://api.studio.thegraph.com/query/78455/algebra/version/latest',
+      documents: [
+        'graphql/queries/algebraInfo.ts',
+        'graphql/queries/pools.ts',
+        'graphql/queries/tokens.ts',
+        'graphql/queries/global.ts',
+      ],
+      plugins: ['typescript', 'typescript-operations', 'typescript-react-apollo'],
+    },
   },
+  ignoreNoDocuments: true,
 };
 
 export default config;

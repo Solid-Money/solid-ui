@@ -9,6 +9,7 @@ type Path = {
   WALLET: Href;
   DEPOSIT: Href;
   SEND: Href;
+  SWAP: Href;
   CARD: Href;
   CARD_ACTIVATE: Route;
   CARD_KYC: Route;
@@ -33,6 +34,7 @@ export const path: Path = {
   WALLET: "/wallet",
   DEPOSIT: "/deposit",
   SEND: "/send",
+  SWAP: "/swap",
   CARD: "/card",
   CARD_ACTIVATE: "/card/activate",
   CARD_KYC: "/card/kyc",
