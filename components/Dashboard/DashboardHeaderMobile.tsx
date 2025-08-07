@@ -81,7 +81,7 @@ const DashboardHeaderMobile = ({
         <CircleButton
           icon={HomeSwap}
           label="Swap"
-          onPress={() => router.push(path.DEPOSIT)}
+          onPress={() => router.push(path.SWAP)}
           scale={1}
           viewBox="0 0 29 28"
         />
