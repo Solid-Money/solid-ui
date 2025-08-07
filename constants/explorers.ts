@@ -2,6 +2,16 @@ import { fuse, mainnet } from "viem/chains"
 
 import { Explorers } from "@/lib/types"
 
+export const lifi = {
+  id: -1,
+  blockExplorers: {
+    default: {
+      name: "LIFI",
+      url: "https://scan.li.fi",
+    },
+  },
+}
+
 export const layerzero = {
   id: 0,
   blockExplorers: {
@@ -13,6 +23,9 @@ export const layerzero = {
 }
 
 export const explorerUrls: Record<number, Explorers> = {
+  [lifi.id]: {
+    lifi: lifi.blockExplorers?.default.url,
+  },
   [layerzero.id]: {
     layerzeroscan: layerzero.blockExplorers?.default.url,
   },
