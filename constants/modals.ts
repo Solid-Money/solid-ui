@@ -73,3 +73,14 @@ export const UNSTAKE_MODAL = {
     number: 2,
   },
 }
+
+export const SWAP_MODAL = {
+  CLOSE: {
+    name: 'close',
+    number: 0,
+  },
+  OPEN_TRANSACTION_STATUS: {
+    name: 'open_transaction_status',
+    number: 1,
+  },
+}

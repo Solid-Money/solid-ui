@@ -76,7 +76,9 @@ export function DashboardHeader({
             <Button
               variant="secondary"
               className="h-12 px-6 rounded-xl bg-[#303030]"
-              onPress={() => {}}
+              onPress={() => {
+                router.push(path.SWAP);
+              }}
             >
               <View className="flex-row items-center gap-2">
                 <HomeSwap />
