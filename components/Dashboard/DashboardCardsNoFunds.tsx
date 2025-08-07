@@ -1,91 +1,60 @@
 import React from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
-import { DepositOptionModal } from '../DepositOption';
-import { buttonVariants } from '../ui/button';
-import { Plus } from 'lucide-react-native';
+import { Image, Text, View } from 'react-native';
 
-function FundWalletCard() {
-  return (
-    <View className="w-full h-[280px] md:h-full bg-gradient-to-tr from-[rgba(126,126,126,0.25)] to-[rgba(126,126,126,0.175)] rounded-2xl p-6 pl-8 shadow-sm md:w-[50%]">
-      <View className="flex-1 flex-row justify-between items-start">
-        <View className="flex-1 h-full justify-between">
-          <View className="space-y-2">
-            <View>
-              <Text className="text-3xl font-semibold text-white">Fund your wallet</Text>
-            </View>
-            <View>
-              <Text className="text-base text-muted-foreground">
-                Fund your account with crypto{'\n'}you already own or with cash
-              </Text>
-            </View>
-          </View>
-          <AddFundsButton />
-        </View>
-        <View className="ml-4">
-          <Image
-            source={require('@/assets/images/fund_your_wallet_large.png')}
-            style={{ width: 216, height: 216 }}
-          />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function AddFundsButton() {
-  return (
-    <DepositOptionModal
-      trigger={
-        <View
-          className={buttonVariants({
-            variant: 'secondary',
-            className: 'h-11 rounded-xl bg-[#303030] border border-[#4E4E4E] self-start',
-          })}
-        >
-          <Text className="text-white text-base font-bold">Add funds</Text>
-        </View>
-      }
-    />
-  );
+export function DashboardCardsNoFunds() {
+  return <DepositStableCoinsCard />;
 }
 
 function DepositStableCoinsCard() {
+  // Get the width of the screen
+
   return (
-    <View className="w-full h-[280px] md:h-full bg-gradient-to-tr from-[rgba(165,84,234,0.25)] to-[rgba(165,84,234,0.175)] rounded-2xl p-6 shadow-sm md:w-[50%]">
-      <View className="flex-1 flex-row justify-between items-start">
-        <View className="flex-1 h-full justify-between">
-          <View>
-            <Text className="text-3xl font-semibold text-white">
+    <View className="w-full h-[420px] bg-gradient-to-tr from-[rgba(165,84,234,0.25)] to-[rgba(165,84,234,0.175)] rounded-2xl p-10 shadow-sm">
+      <View className="flex-1">
+        <View className="flex-row justify-between items-start">
+          <View className="flex-1 items-start gap-24">
+            <Text className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-white">
               Deposit your stablecoins{'\n'}and earn{' '}
               <Text className="text-[#94F27F] underline">4.5%</Text> per year
             </Text>
+            <IconsWithText />
           </View>
-          <StartEarningButton />
-        </View>
-        <View className="ml-4">
-          <Image
-            source={require('@/assets/images/solid_logo_with_glare.png')}
-            style={{ width: 200, height: 200 }}
-          />
+          <View className="ml-4">
+            <Image
+              source={require('@/assets/images/solid_logo_with_glare.png')}
+              style={{ width: 360, height: 360 }}
+            />
+          </View>
         </View>
       </View>
     </View>
   );
 }
 
-function StartEarningButton() {
+function IconsWithText() {
   return (
-    <TouchableOpacity className="bg-[#6F449A99] rounded-lg py-2 px-8 self-start">
-      <Text className="text-white text-base font-bold">Start earning</Text>
-    </TouchableOpacity>
+    <View className="flex-row w-[65%] justify-between">
+      <IconWithText
+        iconSource={require('@/assets/images/no_funds_deposit_icon.png')}
+        text={`Deposit as${'\n'}little as $1`}
+      />
+      <IconWithText
+        iconSource={require('@/assets/images/no_funds_withdraw_icon.png')}
+        text={`Withdraw${'\n'}anytime`}
+      />
+      <IconWithText
+        iconSource={require('@/assets/images/no_funds_earn_icon.png')}
+        text={`Earn every${'\n'}second`}
+      />
+    </View>
   );
 }
 
-export function DashboardCardsNoFunds() {
+function IconWithText({ iconSource, text }: { iconSource: any; text: string }) {
   return (
-    <View className="flex flex-col md:flex-row justify-between items-center gap-6 md:min-h-40">
-      <FundWalletCard />
-      <DepositStableCoinsCard />
+    <View>
+      <Image source={iconSource} style={{ width: 60, height: 60 }} />
+      <Text className="text-base sm:text-lg md:text-xl lg:text-2xl text-white mt-4">{text}</Text>
     </View>
   );
 }
