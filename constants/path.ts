@@ -4,6 +4,8 @@ type Path = {
   REGISTER: Href;
   WELCOME: Href;
   HOME: Href;
+  SAVINGS: Href;
+  ACTIVITY: Href;
   WALLET: Href;
   DEPOSIT: Href;
   SEND: Href;
@@ -26,6 +28,8 @@ export const path: Path = {
   REGISTER: "/register",
   WELCOME: "/welcome",
   HOME: "/",
+  SAVINGS: "/savings",
+  ACTIVITY: "/activity",
   WALLET: "/wallet",
   DEPOSIT: "/deposit",
   SEND: "/send",
