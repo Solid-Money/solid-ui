@@ -15,4 +15,8 @@ export const menuItems: MenuItem[] = [
     label: 'Savings',
     href: path.SAVINGS,
   },
+  {
+    label: 'Activity',
+    href: path.ACTIVITY,
+  },
 ];
