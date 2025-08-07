@@ -1,28 +1,23 @@
-import { Href } from "expo-router";
-import { useMemo } from "react";
+import { Href } from 'expo-router';
+import { useMemo } from 'react';
 
-import { path } from "@/constants/path";
-import useUser from "./useUser";
+import { path } from '@/constants/path';
+import useUser from './useUser';
 
 type MenuItem = {
   label: string;
   href: Href;
-}
+};
 
 const home: MenuItem = {
-  label: "Home",
+  label: 'Home',
   href: path.HOME,
-}
+};
 
-const wallet: MenuItem = {
-  label: "Wallet",
-  href: path.WALLET,
-}
-
-const activity: MenuItem = {
-  label: "Activity",
-  href: path.ACTIVITY,
-}
+const savings: MenuItem = {
+  label: 'Savings',
+  href: path.SAVINGS,
+};
 
 const useNav = () => {
   const { user } = useUser();
@@ -30,7 +25,7 @@ const useNav = () => {
 
   const menuItems = useMemo<MenuItem[]>(() => {
     if (hasDeposited) {
-      return [home, wallet, activity];
+      return [home, savings];
     }
     return [];
   }, [hasDeposited]);
@@ -38,6 +33,6 @@ const useNav = () => {
   return {
     menuItems,
   };
-}
+};
 
 export default useNav;
