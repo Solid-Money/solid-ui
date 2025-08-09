@@ -25,6 +25,7 @@ const bannerData = [
   },
 ];
 
+// Won't be used until we have more than one banner
 export const HomeBanners = () => {
   const ref = useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);

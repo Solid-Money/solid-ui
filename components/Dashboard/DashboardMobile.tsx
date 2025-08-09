@@ -1,10 +1,10 @@
 import { DashboardHeaderMobile } from '@/components/Dashboard';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import CoinsMobile from '@/components/Wallet/CoinsMobile';
+import { Image } from 'expo-image';
 import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { HomeBanners } from './HomeBanners';
 
 interface DashboardMobileProps {
   balanceData: {
@@ -32,7 +32,11 @@ export function DashboardMobile({ balanceData }: DashboardMobileProps) {
             lastTimestamp={firstDepositTimestamp}
             principal={originalDepositAmount}
           />
-          <HomeBanners />
+          <Image
+            source={require('@/assets/images/deposit_banner.png')}
+            style={{ width: '100%', aspectRatio: 688 / 171, marginTop: 28 }}
+            contentFit="contain"
+          />
           {balance !== 0 && (
             <>
               <View className="flex-1" />
