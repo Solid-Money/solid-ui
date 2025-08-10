@@ -141,6 +141,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const handleBackPress = () => {
     if (isEmailGate) {
       setModal(DEPOSIT_MODAL.CLOSE);
+    } else if (isFormAndAddress) {
+      setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
