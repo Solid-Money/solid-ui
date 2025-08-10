@@ -7,16 +7,15 @@ import { Address } from 'viem';
 
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
-import { fontSize } from '@/lib/utils';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
-import SavingCountUp from '@/components/SavingCountUp';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { ADDRESSES } from '@/lib/config';
-import { FundWallet, HomeButtons, HomeButtonsMobile, StartEarning } from '@/components/Home';
+import { FundWallet, StartEarning } from '@/components/Home';
+import { DashboardHeader, DashboardHeaderMobile } from '@/components/Dashboard';
 
 export default function Home() {
   const { user } = useUser();
@@ -72,32 +71,23 @@ export default function Home() {
         {Platform.OS !== 'web' && <NavbarMobile />}
         {Platform.OS === 'web' && <Navbar />}
         <View className="gap-12 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
-          <View className="md:flex-row items-center justify-between gap-y-4">
-            <SavingCountUp
-              balance={balance ?? 0}
-              apy={totalAPY ?? 0}
-              lastTimestamp={firstDepositTimestamp ?? 0}
-              principal={originalDepositAmount}
-              classNames={{
-                wrapper: 'text-foreground',
-                decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
-              }}
-              styles={{
-                wholeText: {
-                  fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
-                  fontWeight: isScreenMedium ? 'medium' : 'semibold',
-                  color: '#ffffff',
-                  marginRight: -2,
-                },
-                decimalText: {
-                  fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                  fontWeight: isScreenMedium ? 'medium' : 'semibold',
-                  color: '#ffffff',
-                },
-              }}
-            />
-            {isScreenMedium ? <HomeButtons /> : <HomeButtonsMobile />}
-          </View>
+          <>
+            {isScreenMedium ?
+              <DashboardHeader
+                balance={balance ?? 0}
+                totalAPY={totalAPY ?? 0}
+                firstDepositTimestamp={firstDepositTimestamp ?? 0}
+                originalDepositAmount={originalDepositAmount}
+                hasTokens={true}
+              /> :
+              <DashboardHeaderMobile
+                balance={balance ?? 0}
+                totalAPY={totalAPY ?? 0}
+                lastTimestamp={lastTimestamp ?? 0}
+                principal={originalDepositAmount}
+              />
+            }
+          </>
 
           <View className="md:flex-row justify-between gap-6">
             <FundWallet className="md:w-1/2 md:h-72" />
