@@ -1,34 +1,30 @@
-import { DashboardMobile } from '@/components/Dashboard/DashboardMobile';
-import { DashboardWeb } from '@/components/Dashboard/DashboardWeb';
-import Loading from '@/components/Loading';
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import {
-  formatTransactions,
-  useLatestTokenTransfer,
-  useSendTransactions,
-  useTotalAPY,
-} from '@/hooks/useAnalytics';
-import { useDepositCalculations } from '@/hooks/useDepositCalculations';
+import { useEffect } from 'react';
+import { Platform, ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBlockNumber } from 'wagmi';
+import { mainnet } from 'viem/chains';
+import { Address } from 'viem';
+
+import Navbar from '@/components/Navbar';
+import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
-import { useDimension } from '@/hooks/useDimension';
+import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useDepositCalculations } from '@/hooks/useDepositCalculations';
+import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { ADDRESSES } from '@/lib/config';
-import { useQuery } from '@tanstack/react-query';
-import React, { useEffect, useState } from 'react';
-import { Address } from 'viem';
-import { mainnet } from 'viem/chains';
-import { useBlockNumber } from 'wagmi';
+import { FundWallet, StartEarning } from '@/components/Home';
+import { DashboardHeader, DashboardHeaderMobile } from '@/components/Dashboard';
 
-export default function Dashboard() {
-  const { isDesktop } = useDimension();
+export default function Home() {
   const { user } = useUser();
+  const { isScreenMedium } = useDimension();
 
   const {
     data: balance,
-    isLoading: isBalanceLoading,
     refetch: refetchBalance,
   } = useFuseVaultBalance(user?.safeAddress as Address);
-  const [_balanceLoadingCount, setBalanceLoadingCount] = useState(0);
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -36,14 +32,9 @@ export default function Dashboard() {
   });
 
   const { data: totalAPY } = useTotalAPY();
-  const { data: lastTimestamp } = useLatestTokenTransfer(
-    user?.safeAddress ?? '',
-    ADDRESSES.fuse.vault,
-  );
 
   const {
     data: userDepositTransactions,
-    loading: isTransactionsLoading,
     refetch: refetchTransactions,
   } = useGetUserTransactionsQuery({
     variables: {
@@ -51,15 +42,10 @@ export default function Dashboard() {
     },
   });
 
-  const { data: sendTransactions, refetch: refetchSendTransactions } = useSendTransactions(
+  const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
+    ADDRESSES.fuse.vault,
   );
-
-  const { refetch: refetchFormattedTransactions } = useQuery({
-    queryKey: ['formatted-transactions', userDepositTransactions],
-    queryFn: () => formatTransactions(userDepositTransactions, sendTransactions),
-    enabled: !!userDepositTransactions,
-  });
 
   const { originalDepositAmount, firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
@@ -70,32 +56,45 @@ export default function Dashboard() {
   useEffect(() => {
     refetchBalance();
     refetchTransactions();
-    refetchFormattedTransactions();
-    refetchSendTransactions();
   }, [
     blockNumber,
     refetchBalance,
     refetchTransactions,
-    refetchFormattedTransactions,
-    refetchSendTransactions,
   ]);
 
-  useEffect(() => {
-    if (isBalanceLoading) {
-      setBalanceLoadingCount(prev => prev + 1);
-    }
-  }, [isBalanceLoading]);
+  return (
+    <SafeAreaView
+      className="bg-background text-foreground flex-1"
+      edges={['right', 'left', 'bottom', 'top']}
+    >
+      <ScrollView className="flex-1">
+        {Platform.OS !== 'web' && <NavbarMobile />}
+        {Platform.OS === 'web' && <Navbar />}
+        <View className="gap-12 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
+          <>
+            {isScreenMedium ?
+              <DashboardHeader
+                balance={balance ?? 0}
+                totalAPY={totalAPY ?? 0}
+                firstDepositTimestamp={firstDepositTimestamp ?? 0}
+                originalDepositAmount={originalDepositAmount}
+                hasTokens={true}
+              /> :
+              <DashboardHeaderMobile
+                balance={balance ?? 0}
+                totalAPY={totalAPY ?? 0}
+                lastTimestamp={lastTimestamp ?? 0}
+                principal={originalDepositAmount}
+              />
+            }
+          </>
 
-  if (isBalanceLoading || isTransactionsLoading) {
-    return <Loading />;
-  }
-
-  const balanceData = {
-    balance: balance ?? 0,
-    totalAPY: totalAPY ?? 0,
-    firstDepositTimestamp: firstDepositTimestamp ?? 0,
-    originalDepositAmount,
-  };
-
-  return isDesktop ? <DashboardWeb /> : <DashboardMobile balanceData={balanceData} />;
+          <View className="md:flex-row justify-between gap-6">
+            <FundWallet className="md:w-1/2 md:h-72" />
+            <StartEarning className="md:w-1/2 md:h-72" />
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }

@@ -13,6 +13,7 @@ import faqs from '@/constants/faqs';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import {
   formatTransactions,
+  useBridgeDepositTransactions,
   useLatestTokenTransfer,
   useSendTransactions,
   useTotalAPY,
@@ -21,6 +22,7 @@ import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
+import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
@@ -49,6 +51,7 @@ export default function Savings() {
   });
 
   const { data: totalAPY, isLoading: isTotalAPYLoading } = useTotalAPY();
+  const { hasTokens } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
@@ -71,12 +74,18 @@ export default function Savings() {
   } = useSendTransactions(user?.safeAddress ?? '');
 
   const {
+    data: bridgeDepositTransactions,
+    isLoading: isBridgeDepositTransactionsLoading,
+    refetch: refetchBridgeDepositTransactions,
+  } = useBridgeDepositTransactions();
+
+  const {
     data: transactions,
     isLoading: isFormattingTransactions,
     refetch: refetchFormattedTransactions,
   } = useQuery({
     queryKey: ['formatted-transactions', userDepositTransactions],
-    queryFn: () => formatTransactions(userDepositTransactions, sendTransactions),
+    queryFn: () => formatTransactions(userDepositTransactions, sendTransactions, bridgeDepositTransactions),
     enabled: !!userDepositTransactions,
   });
 
@@ -98,12 +107,14 @@ export default function Savings() {
     refetchTransactions();
     refetchFormattedTransactions();
     refetchSendTransactions();
+    refetchBridgeDepositTransactions();
   }, [
     blockNumber,
     refetchBalance,
     refetchTransactions,
     refetchFormattedTransactions,
     refetchSendTransactions,
+    refetchBridgeDepositTransactions,
   ]);
 
   if (isBalanceLoading || isTransactionsLoading) {
@@ -124,7 +135,13 @@ export default function Savings() {
           {Platform.OS !== 'web' && <NavbarMobile />}
           {Platform.OS === 'web' && <Navbar />}
           <View className="gap-12 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
-            <DashboardHeader />
+            <DashboardHeader
+              balance={balance ?? 0}
+              totalAPY={totalAPY ?? 0}
+              firstDepositTimestamp={firstDepositTimestamp ?? 0}
+              originalDepositAmount={originalDepositAmount}
+              hasTokens={hasTokens}
+            />
             <LinearGradient
               colors={['rgba(126, 126, 126, 0.3)', 'rgba(126, 126, 126, 0.2)']}
               start={{ x: 0, y: 0 }}
@@ -265,7 +282,7 @@ export default function Savings() {
             <View className="gap-4">
               <Text className="text-2xl font-medium">Recent transactions</Text>
               <View>
-                {isTransactionsLoading || isFormattingTransactions || isSendTransactionsLoading ? (
+                {isTransactionsLoading || isFormattingTransactions || isSendTransactionsLoading || isBridgeDepositTransactionsLoading ? (
                   <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
                 ) : transactions?.length ? (
                   transactions.map((transaction, index) => (

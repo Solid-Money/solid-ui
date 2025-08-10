@@ -19,7 +19,7 @@ interface DashboardHeaderProps {
   hasTokens: boolean;
 }
 
-export function DashboardHeader({
+export default function DashboardHeader({
   balance,
   totalAPY,
   firstDepositTimestamp,

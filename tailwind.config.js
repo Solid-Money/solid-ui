@@ -81,6 +81,9 @@ module.exports = {
           DEFAULT: 'hsl(var(--button-dark))',
           foreground: 'hsl(var(--button-dark-foreground))',
         },
+        purple: {
+          DEFAULT: 'hsl(var(--purple))',
+        },
       },
       borderWidth: {
         hairline: hairlineWidth(),
