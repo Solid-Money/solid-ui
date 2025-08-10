@@ -319,3 +319,8 @@ export interface BridgeTransaction {
   status: BridgeTransactionStatus;
   createdAt: Date;
 }
+
+export enum ActivityTab {
+  ALL = 'all',
+  PROGRESS = 'progress',
+}

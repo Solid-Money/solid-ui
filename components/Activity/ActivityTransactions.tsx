@@ -11,10 +11,10 @@ import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { formatTransactions, useBridgeDepositTransactions, useSendTransactions } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
-import { Tab } from './ActivityTabs';
+import { ActivityTab } from '@/lib/types';
 import { LayerZeroTransactionStatus } from '@/lib/types';
 
-export default function ActivityTransactions({ tab }: { tab: Tab }) {
+export default function ActivityTransactions({ tab }: { tab: ActivityTab }) {
   const { user } = useUser();
 
   const { data: blockNumber } = useBlockNumber({
@@ -76,8 +76,8 @@ export default function ActivityTransactions({ tab }: { tab: Tab }) {
   ]);
 
   const filteredTransactions = transactions?.filter((transaction) => {
-    if (tab === Tab.ALL) return true;
-    if (tab === Tab.PROGRESS) return transaction.status === LayerZeroTransactionStatus.INFLIGHT;
+    if (tab === ActivityTab.ALL) return true;
+    if (tab === ActivityTab.PROGRESS) return transaction.status === LayerZeroTransactionStatus.INFLIGHT;
     return false;
   });
 
