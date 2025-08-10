@@ -367,9 +367,16 @@ const useUser = (): UseUserReturn => {
     router.replace(path.REGISTER);
   }, [removeUsers, router]);
 
+  const handleSessionExpired = useCallback(() => {
+    router.replace({
+      pathname: path.REGISTER,
+      params: { session: 'expired' },
+    });
+  }, [router]);
+
   useEffect(() => {
-    setGlobalLogoutHandler(handleLogout);
-  }, [handleLogout]);
+    setGlobalLogoutHandler(handleSessionExpired);
+  }, [handleSessionExpired]);
 
   return {
     user,
