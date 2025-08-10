@@ -47,7 +47,13 @@ SplashScreen.setOptions({
   fade: true,
 });
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);

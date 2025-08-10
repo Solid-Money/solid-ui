@@ -23,7 +23,6 @@ export const useTotalAPY = () => {
   return useQuery({
     queryKey: [ANALYTICS, "totalAPY"],
     queryFn: fetchTotalAPY,
-    refetchOnWindowFocus: false,
   });
 };
 
@@ -39,7 +38,6 @@ export const useLatestTokenTransfer = (address: string, token: string) => {
       return new Date(latest.timestamp).getTime();
     },
     enabled: !!address,
-    refetchOnWindowFocus: false,
   });
 };
 
@@ -79,7 +77,6 @@ export const useSendTransactions = (address: string) => {
       }
     },
     enabled: !!address,
-    refetchOnWindowFocus: false,
   })
 }
 
@@ -312,7 +309,6 @@ export const isDepositedQueryOptions = (safeAddress: string) => {
       return data?.deposits?.length;
     },
     enabled: !!safeAddress,
-    refetchOnWindowFocus: false,
   };
 };
 
