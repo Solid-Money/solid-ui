@@ -1,5 +1,5 @@
 import { DashboardHeader } from '@/components/Dashboard';
-import FAQ from '@/components/FAQ';
+import { FAQs } from '@/components/FAQ';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
@@ -300,10 +300,7 @@ export default function Savings() {
               </View>
             </View>
 
-            <View className="flex-col items-center gap-6 md:gap-12 w-full max-w-screen-md mx-auto md:mt-20">
-              <Text className="text-3xl font-semibold text-center">Frequently asked questions</Text>
-              <FAQ faqs={faqs} />
-            </View>
+            <FAQs faqs={faqs} className="md:mt-20" />
           </View>
         </ScrollView>
       </SafeAreaView>
