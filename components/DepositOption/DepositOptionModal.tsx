@@ -24,7 +24,7 @@ interface DepositOptionModalProps {
 
 const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOptionModalProps) => {
   const { user } = useUser();
-  const { currentModal, previousModal, transaction, setModal } = useDepositStore();
+  const { currentModal, previousModal, transaction, setModal, srcChainId } = useDepositStore();
   const activeAccount = useActiveAccount();
   const status = useActiveWalletConnectionStatus();
   const address = activeAccount?.address;
@@ -124,6 +124,12 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       // Check if user has email when opening deposit modal
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
+      } else if (address) {
+        if (srcChainId) {
+          setModal(DEPOSIT_MODAL.OPEN_FORM);
+        } else {
+          setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
+        }
       } else {
         setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
       }
@@ -135,6 +141,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const handleBackPress = () => {
     if (isEmailGate) {
       setModal(DEPOSIT_MODAL.CLOSE);
+    } else if (isFormAndAddress) {
+      setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }

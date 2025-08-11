@@ -74,7 +74,7 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-export const refreshToken = () => {
+export const refreshToken = async () => {
   const refreshTokenValue = getRefreshToken();
 
   const headers: Record<string, string> = {
@@ -86,7 +86,7 @@ export const refreshToken = () => {
     headers["Authorization"] = `Bearer ${refreshTokenValue}`;
   }
 
-  return fetch(
+  const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/refresh-token`,
     {
       method: "POST",
@@ -94,6 +94,10 @@ export const refreshToken = () => {
       headers,
     }
   );
+
+  if (!response.ok) throw response;
+
+  return response;
 };
 
 // use fetch because some browser doesn't support fetch wrappers such as axios

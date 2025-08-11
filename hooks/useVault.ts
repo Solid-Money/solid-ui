@@ -42,7 +42,6 @@ export const useFuseVaultBalance = (safeAddress: Address) => {
         ADDRESSES.fuse.vault,
       ),
     enabled: !!safeAddress,
-    refetchOnWindowFocus: false,
   });
 };
 
@@ -59,6 +58,5 @@ export const useEthereumVaultBalance = (safeAddress: Address) => {
         ADDRESSES.ethereum.vault,
       ),
     enabled: !!safeAddress,
-    refetchOnWindowFocus: false,
   });
 };

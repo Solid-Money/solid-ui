@@ -1,7 +1,7 @@
 import { Href, Route } from "expo-router";
 
 type Path = {
-  REGISTER: Href;
+  REGISTER: Route;
   WELCOME: Href;
   HOME: Href;
   SAVINGS: Href;
