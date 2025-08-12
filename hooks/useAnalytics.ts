@@ -11,9 +11,11 @@ import {
   fetchLayerZeroBridgeTransactions,
   fetchTokenTransfer,
   fetchTotalAPY,
+  bridgeDepositTransactions,
 } from "@/lib/api";
-import { BlockscoutTransaction, BlockscoutTransactions, LayerZeroTransactionStatus, Transaction, TransactionType } from "@/lib/types";
-import { explorerUrls, layerzero } from "@/constants/explorers";
+import { BlockscoutTransaction, BlockscoutTransactions, BridgeTransaction, BridgeTransactionStatus, LayerZeroTransactionStatus, Transaction, TransactionType } from "@/lib/types";
+import { explorerUrls, layerzero, lifi } from "@/constants/explorers";
+import { withRefreshToken } from "@/lib/utils";
 
 const ANALYTICS = "analytics";
 
@@ -21,7 +23,6 @@ export const useTotalAPY = () => {
   return useQuery({
     queryKey: [ANALYTICS, "totalAPY"],
     queryFn: fetchTotalAPY,
-    refetchOnWindowFocus: false,
   });
 };
 
@@ -37,7 +38,6 @@ export const useLatestTokenTransfer = (address: string, token: string) => {
       return new Date(latest.timestamp).getTime();
     },
     enabled: !!address,
-    refetchOnWindowFocus: false,
   });
 };
 
@@ -77,7 +77,6 @@ export const useSendTransactions = (address: string) => {
       }
     },
     enabled: !!address,
-    refetchOnWindowFocus: false,
   })
 }
 
@@ -102,18 +101,46 @@ const constructSendTransaction = (
   }
 }
 
+export const useBridgeDepositTransactions = () => {
+  return useQuery({
+    queryKey: [ANALYTICS, "bridgeDepositTransactions"],
+    queryFn: async () => {
+      return await withRefreshToken(() => bridgeDepositTransactions())
+    },
+  });
+};
+
+const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
+  const isBridgeCompleted = transaction.status === BridgeTransactionStatus.BRIDGE_COMPLETED;
+  const isBridgeFailed = transaction.status === BridgeTransactionStatus.BRIDGE_FAILED;
+  const isDeposit = transaction.status.includes("deposit");
+  const status = isBridgeCompleted || isDeposit ?
+    LayerZeroTransactionStatus.DELIVERED :
+    isBridgeFailed ?
+      LayerZeroTransactionStatus.FAILED :
+      LayerZeroTransactionStatus.INFLIGHT;
+
+  return {
+    title: "Bridge USDC",
+    timestamp: (new Date(transaction.createdAt).getTime() / 1000).toString(),
+    amount: Number(formatUnits(BigInt(transaction.fromAmount), transaction.decimals)),
+    symbol: "USDC",
+    status,
+    hash: transaction.bridgeTxHash,
+    url: `${explorerUrls[lifi.id].lifi}/tx/${transaction.bridgeTxHash}`,
+    type: TransactionType.BRIDGE,
+  }
+}
+
 export const formatTransactions = async (
   transactions: GetUserTransactionsQuery | undefined,
   sendTransactions: {
     fuse: BlockscoutTransaction[],
     ethereum: BlockscoutTransaction[],
   } | undefined,
+  bridgeDepositTransactions: BridgeTransaction[] | undefined,
 ): Promise<Transaction[]> => {
-  if (!transactions?.deposits?.length) {
-    return [];
-  }
-
-  const depositTransactionPromises = transactions.deposits.map(
+  const depositTransactionPromises = transactions?.deposits?.map(
     async (internalTransaction) => {
       const hash = internalTransaction.transactionHash;
       try {
@@ -156,7 +183,7 @@ export const formatTransactions = async (
     }
   );
 
-  const bridgeTransactionPromises = transactions.bridges.map(
+  const bridgeTransactionPromises = transactions?.bridges?.map(
     async (internalTransaction) => {
       const hash = internalTransaction.transactionHash;
       try {
@@ -199,7 +226,7 @@ export const formatTransactions = async (
     }
   );
 
-  const withdrawTransactionPromises = transactions.withdraws.map(
+  const withdrawTransactionPromises = transactions?.withdraws?.map(
     async (internalTransaction) => {
       const hash = internalTransaction.requestStatus === "SOLVED"
         ? internalTransaction.solveTxHash
@@ -247,14 +274,21 @@ export const formatTransactions = async (
           return constructSendTransaction(transfer, LayerZeroTransactionStatus.FAILED, explorerUrl)
         }
       }
-    ) || [])
-  ]
+    ) || []),
+  ];
+
+  const bridgeDepositTransactionPromises = bridgeDepositTransactions?.map(
+    async (transaction) => {
+      return constructBridgeDepositTransaction(transaction)
+    }
+  );
 
   const formattedTransactions = await Promise.all([
-    ...depositTransactionPromises,
-    ...bridgeTransactionPromises,
-    ...withdrawTransactionPromises,
-    ...sendTransactionPromises,
+    ...(depositTransactionPromises || []),
+    ...(bridgeTransactionPromises || []),
+    ...(withdrawTransactionPromises || []),
+    ...(sendTransactionPromises || []),
+    ...(bridgeDepositTransactionPromises || []),
   ]);
 
   // Sort by timestamp (newest first)
@@ -275,7 +309,6 @@ export const isDepositedQueryOptions = (safeAddress: string) => {
       return data?.deposits?.length;
     },
     enabled: !!safeAddress,
-    refetchOnWindowFocus: false,
   };
 };
 

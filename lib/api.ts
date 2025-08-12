@@ -20,6 +20,7 @@ import {
   BridgeDeposit,
   TokenPriceUsd,
   User,
+  BridgeTransaction,
 } from "./types";
 
 // Helper function to get platform-specific headers
@@ -73,7 +74,7 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-export const refreshToken = () => {
+export const refreshToken = async () => {
   const refreshTokenValue = getRefreshToken();
 
   const headers: Record<string, string> = {
@@ -85,7 +86,7 @@ export const refreshToken = () => {
     headers["Authorization"] = `Bearer ${refreshTokenValue}`;
   }
 
-  return fetch(
+  const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/refresh-token`,
     {
       method: "POST",
@@ -93,6 +94,10 @@ export const refreshToken = () => {
       headers,
     }
   );
+
+  if (!response.ok) throw response;
+
+  return response;
 };
 
 // use fetch because some browser doesn't support fetch wrappers such as axios
@@ -461,6 +466,25 @@ export const bridgeDeposit = async (bridge: BridgeDeposit): Promise<{ transactio
       },
       credentials: "include",
       body: JSON.stringify(bridge),
+    }
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const bridgeDepositTransactions = async (): Promise<BridgeTransaction[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/transactions`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: "include",
     }
   );
 

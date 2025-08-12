@@ -6,6 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Platform, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { z } from 'zod';
+import Toast from 'react-native-toast-message';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -31,6 +32,7 @@ export default function Register() {
   const { handleSignup, handleLogin, handleDummyLogin } = useUser();
   const { signupInfo, loginInfo, setSignupInfo } = useUserStore();
   const { code } = useLocalSearchParams<{ code: string }>();
+  const { session } = useLocalSearchParams<{ session: string }>();
   // TODO: Add recovery flow
   // const [showRecoveryFlow, setShowRecoveryFlow] = useState(false);
 
@@ -81,6 +83,19 @@ export default function Register() {
   const isSignupDisabled = () => {
     return signupInfo.status === Status.PENDING || !isValid || !watchedUsername;
   };
+
+  useEffect(() => {
+    if (session === 'expired') {
+      Toast.show({
+        type: 'error',
+        text1: 'Session expired',
+        text2: 'Due to inactivity. Please login again.',
+        props: {
+          badgeText: '',
+        },
+      });
+    }
+  }, [session]);
 
   // TODO: Add recovery flow
   // const handleRecoverySuccess = (organizationId: string, userId: string) => {

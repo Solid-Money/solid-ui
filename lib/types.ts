@@ -228,6 +228,7 @@ export enum TransactionType {
   UNSTAKE = "unstake",
   WITHDRAW = "withdraw",
   SEND = "send",
+  BRIDGE = "bridge",
 }
 
 export type Transaction = {
@@ -270,6 +271,7 @@ export type Explorers = {
   blockscout?: string;
   etherscan?: string;
   layerzeroscan?: string;
+  lifi?: string;
 }
 
 export enum SavingMode {
@@ -287,4 +289,38 @@ export type BridgeDeposit = {
     s: string;
     deadline: number;
   }
+}
+
+export enum BridgeTransactionStatus {
+  PENDING = 'pending',
+  PERMIT_COMPLETED = 'permit_completed',
+  TRANSFER_COMPLETED = 'transfer_completed',
+  APPROVAL_COMPLETED = 'approval_completed',
+  BRIDGE_INITIATED = 'bridge_initiated',
+  BRIDGE_COMPLETED = 'bridge_completed',
+  BRIDGE_FAILED = 'bridge_failed',
+  DEPOSIT_INITIATED = 'deposit_initiated',
+  DEPOSIT_COMPLETED = 'deposit_completed',
+  DEPOSIT_FAILED = 'deposit_failed',
+}
+
+export interface BridgeTransaction {
+  eoaAddress: string;
+  srcChainId: number;
+  dstChainId: number;
+  fromAmount: string;
+  toAmount: string;
+  decimals: number;
+  permitTxHash?: string;
+  transferTxHash?: string;
+  approvalTxHash?: string;
+  bridgeTxHash?: string;
+  depositTxHash?: string;
+  status: BridgeTransactionStatus;
+  createdAt: Date;
+}
+
+export enum ActivityTab {
+  ALL = 'all',
+  PROGRESS = 'progress',
 }
