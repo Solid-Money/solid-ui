@@ -49,7 +49,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Assets',
+          title: 'Home',
           headerShown: false,
           tabBarIcon: ({ color }) => <AssetsNavBarIcon color={color} />,
           href: path.HOME,
@@ -62,7 +62,7 @@ export default function TabLayout() {
           title: 'Savings',
           headerShown: false,
           tabBarIcon: ({ color }) => <SavingsNavBarIcon color={color} />,
-          href: path.SAVINGS,
+          href: null,
         }}
       />
 
@@ -92,7 +92,7 @@ export default function TabLayout() {
           title: 'Swap',
           headerShown: false,
           tabBarIcon: ({ color }) => <ArrowUpDown size={28} color={color} />,
-          href: hasDeposited ? path.SWAP : null,
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -131,7 +131,7 @@ export default function TabLayout() {
         options={{
           title: 'Send',
           tabBarIcon: ({ color }) => <Send size={28} color={color} />,
-          href: hasDeposited ? path.SEND : null,
+          href: null,
         }}
       />
     </Tabs>

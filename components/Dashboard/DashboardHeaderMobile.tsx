@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
-import HomeCard from '@/assets/images/home-card';
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
 import { path } from '@/constants/path';
@@ -28,7 +27,7 @@ const DashboardHeaderMobile = ({
   return (
     <View className="gap-10 mt-10">
       <View className="flex-row justify-center items-center">
-        <Text className="text-7xl font-semibold mt-2.5">$</Text>
+        <Text className="text-6xl font-semibold">$</Text>
         <SavingCountUp
           balance={balance ?? 0}
           apy={totalAPY ?? 0}
@@ -68,14 +67,6 @@ const DashboardHeaderMobile = ({
           onPress={() => router.push(path.SEND)}
           scale={0.9}
           viewBox="0 0 25 24"
-        />
-
-        <CircleButton
-          icon={HomeCard}
-          label="Card"
-          onPress={() => router.push(path.CARD)}
-          scale={1}
-          viewBox="0 0 25 21"
         />
 
         <CircleButton
