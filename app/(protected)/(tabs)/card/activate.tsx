@@ -113,6 +113,7 @@ export default function ActivateCard() {
           fullName: fullName.trim(),
           email: email.trim().toLowerCase(),
           redirectUri: getRedirectUrl(),
+          endorsements: [],
         });
       }
 
@@ -135,6 +136,7 @@ export default function ActivateCard() {
           fullName,
           email,
           redirectUri: getRedirectUrl(),
+          endorsements: [],
         });
       }
 
