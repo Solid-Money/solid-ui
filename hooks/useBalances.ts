@@ -142,18 +142,21 @@ export const useBalances = (): BalanceData => {
       }
 
       // Convert Blockscout format to our standard format
-      const convertBlockscoutToTokenBalance = (item: BlockscoutTokenBalance, chainId: number): TokenBalance => ({
-        contractTickerSymbol: item.token.symbol,
-        contractName: item.token.name,
-        contractAddress: item.token.address,
-        balance: item.value,
-        quoteRate: item.token.exchange_rate ? parseFloat(item.token.exchange_rate) : isSoUSDToken(item.token.address) ? rate : 0,
-        logoUrl: item.token.icon_url,
-        contractDecimals: parseInt(item.token.decimals),
-        type: item.token.type,
-        verified: true, // Assume verified if it's on Blockscout
-        chainId: chainId,
-      });
+      const convertBlockscoutToTokenBalance = (item: BlockscoutTokenBalance, chainId: number): TokenBalance => {
+        const address = item.token.address || item.token.address_hash;
+        return {
+          contractTickerSymbol: item.token.symbol,
+          contractName: item.token.name,
+          contractAddress: address,
+          balance: item.value,
+          quoteRate: item.token.exchange_rate ? parseFloat(item.token.exchange_rate) : isSoUSDToken(address) ? rate : 0,
+          logoUrl: item.token.icon_url,
+          contractDecimals: parseInt(item.token.decimals),
+          type: item.token.type,
+          verified: true, // Assume verified if it's on Blockscout
+          chainId: chainId,
+        }
+      };
 
       // Process Ethereum response (Blockscout)
       if (ethereumResponse.status === 'fulfilled' && ethereumResponse.value.ok) {
