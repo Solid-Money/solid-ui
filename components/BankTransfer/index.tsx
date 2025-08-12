@@ -11,7 +11,7 @@ import FiatDropdown from './FiatDropdown';
 
 export default function BankTransferAmount() {
   const [fiatAmount, setFiatAmount] = useState('1500');
-  const [cryptoAmount, setCryptoAmount] = useState('0.156');
+  const [cryptoAmount, setCryptoAmount] = useState('1500');
   const [fiat, setFiat] = useState<BridgeTransferFiatCurrency>(BridgeTransferFiatCurrency.USD);
   const [crypto, setCrypto] = useState<BridgeTransferCryptoCurrency>(
     BridgeTransferCryptoCurrency.USDC,
@@ -30,6 +30,12 @@ export default function BankTransferAmount() {
       setCrypto(BridgeTransferCryptoCurrency.USDC);
     }
   }, [allowedCrypto, crypto]);
+
+  // TODO: Refactor this after getting response from Bridge
+  // TODO: about the exchange rates.
+  useEffect(() => {
+    setCryptoAmount(fiatAmount);
+  }, [cryptoAmount, fiatAmount]);
 
   return (
     <View className="gap-4">
