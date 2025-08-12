@@ -25,16 +25,17 @@ export const useDepositStore = create<DepositState>()(
       transaction: {},
       srcChainId: mainnet.id,
 
-      setModal: (modal) => set({
-        previousModal: get().currentModal,
-        currentModal: modal
-      }),
-      setTransaction: (transaction) => set({ transaction }),
-      setSrcChainId: (srcChainId) => set({ srcChainId }),
+      setModal: modal =>
+        set({
+          previousModal: get().currentModal,
+          currentModal: modal,
+        }),
+      setTransaction: transaction => set({ transaction }),
+      setSrcChainId: srcChainId => set({ srcChainId }),
     }),
     {
       name: USER.depositStorageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.depositStorageKey)),
-    }
-  )
+    },
+  ),
 );

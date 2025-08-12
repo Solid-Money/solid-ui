@@ -15,17 +15,13 @@ export default function KycMobile() {
 
   const handleDeepLink = useCallback(
     (event: { url: string }) => {
-      console.log('Deep link received:', event.url);
-
       try {
         const urlObj = new URL(event.url);
 
         if (urlObj.pathname.includes('kyc-complete')) {
           // Parse completion status from URL params if available
-          const status = urlObj.searchParams.get('status');
+          const _status = urlObj.searchParams.get('status');
           const inquiryId = urlObj.searchParams.get('inquiry-id');
-
-          console.log('KYC completion detected:', { status, inquiryId });
 
           // Navigate to success regardless of specific status
           // The backend will validate the actual status
@@ -43,6 +39,23 @@ export default function KycMobile() {
     },
     [router],
   );
+
+  const checkKycStatusFromAPI = useCallback(async () => {
+    try {
+      // Add your API call here to check KYC status
+      // const response = await api.getKycStatus();
+      // if (response.status === 'completed') {
+      //   router.replace({
+      //     pathname: path.CARD_ACTIVATE_MOBILE,
+      //     params: {
+      //       kycStatus: KycStatus.APPROVED,
+      //     },
+      //   });
+      // }
+    } catch (error) {
+      console.error('Error checking KYC status:', error);
+    }
+  }, []);
 
   const openKycWithCompletion = useCallback(async () => {
     try {
@@ -77,7 +90,6 @@ export default function KycMobile() {
 
       // Handle manual browser close (user cancelled)
       if (result.type === 'dismiss') {
-        console.log('User manually closed KYC browser');
         // Optionally check status one more time
         setTimeout(() => {
           checkKycStatusFromAPI();
@@ -99,24 +111,6 @@ export default function KycMobile() {
 
     openKycWithCompletion();
   }, [url, openKycWithCompletion]);
-
-  const checkKycStatusFromAPI = useCallback(async () => {
-    try {
-      // Add your API call here to check KYC status
-      // const response = await api.getKycStatus();
-      // if (response.status === 'completed') {
-      //   router.replace({
-      //     pathname: path.CARD_ACTIVATE_MOBILE,
-      //     params: {
-      //       kycStatus: KycStatus.APPROVED,
-      //     },
-      //   });
-      // }
-      console.log('Checking KYC status from API...');
-    } catch (error) {
-      console.error('Error checking KYC status:', error);
-    }
-  }, []);
 
   if (error) {
     return (

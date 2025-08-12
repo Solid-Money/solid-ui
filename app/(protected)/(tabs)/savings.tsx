@@ -85,7 +85,8 @@ export default function Savings() {
     refetch: refetchFormattedTransactions,
   } = useQuery({
     queryKey: ['formatted-transactions', userDepositTransactions],
-    queryFn: () => formatTransactions(userDepositTransactions, sendTransactions, bridgeDepositTransactions),
+    queryFn: () =>
+      formatTransactions(userDepositTransactions, sendTransactions, bridgeDepositTransactions),
     enabled: !!userDepositTransactions,
   });
 
@@ -282,7 +283,10 @@ export default function Savings() {
             <View className="gap-4">
               <Text className="text-2xl font-medium">Recent transactions</Text>
               <View>
-                {isTransactionsLoading || isFormattingTransactions || isSendTransactionsLoading || isBridgeDepositTransactionsLoading ? (
+                {isTransactionsLoading ||
+                isFormattingTransactions ||
+                isSendTransactionsLoading ||
+                isBridgeDepositTransactionsLoading ? (
                   <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
                 ) : transactions?.length ? (
                   transactions.map((transaction, index) => (

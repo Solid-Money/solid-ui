@@ -9,6 +9,6 @@ import { multicall } from 'viem/actions';
  * @returns
  */
 export async function multicall3(multicallParameters: MulticallParameters, chainId?: number) {
-    const client = publicClient(chainId || 122);
-    return multicall(client, multicallParameters);
+  const client = publicClient(chainId || 122);
+  return multicall(client, multicallParameters);
 }

@@ -1,6 +1,7 @@
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
 import WithdrawIcon from '@/assets/images/withdraw-icon';
+import { DepositOptionModal } from '@/components/DepositOption';
 import SavingCountUp from '@/components/SavingCountUp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -9,7 +10,6 @@ import { useDimension } from '@/hooks/useDimension';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
-import { DepositOptionModal } from '../DepositOption';
 
 interface DashboardHeaderProps {
   balance: number;

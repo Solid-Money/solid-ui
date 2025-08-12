@@ -4,10 +4,10 @@ import { View } from 'react-native';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
+import CircleButton from '@/components/CircleButton';
+import SavingCountUp from '@/components/SavingCountUp';
+import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import CircleButton from '../CircleButton';
-import SavingCountUp from '../SavingCountUp';
-import { Text } from '../ui/text';
 
 interface DashboardHeaderMobileProps {
   balance: number;

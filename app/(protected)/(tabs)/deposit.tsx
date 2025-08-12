@@ -84,7 +84,7 @@ export default function Deposit() {
       await deposit(data.amount.toString());
       reset(); // Reset form after successful transaction
       router.back();
-    } catch (error) {
+    } catch (_error) {
       Toast.show({
         type: 'error',
         text1: 'Error while depositing',

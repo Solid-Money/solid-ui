@@ -1,8 +1,8 @@
-import { Linking } from 'react-native';
 import { ArrowUpRight, EllipsisVertical } from 'lucide-react-native';
+import { Linking } from 'react-native';
 
-import { Text } from '../ui/text';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 
 interface TransactionCredenzaTriggerProps {
   onPress?: () => void;
@@ -29,4 +29,4 @@ const pressTransactionCredenzaContent = (url?: string) => {
   if (url) return Linking.openURL(url);
 };
 
-export { TransactionCredenzaTrigger, TransactionCredenzaContent, pressTransactionCredenzaContent };
+export { pressTransactionCredenzaContent, TransactionCredenzaContent, TransactionCredenzaTrigger };

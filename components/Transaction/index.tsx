@@ -1,13 +1,13 @@
 import { Platform, View } from 'react-native';
 
-import { LayerZeroTransactionStatus, TransactionType } from '@/lib/types';
-import { cn, formatNumber } from '@/lib/utils';
-import { Text } from '../ui/text';
-import TransactionDropdown from './TransactionDropdown';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
+import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
-import RenderTokenIcon from '../RenderTokenIcon';
+import { LayerZeroTransactionStatus, TransactionType } from '@/lib/types';
+import { cn, formatNumber } from '@/lib/utils';
 import TransactionDrawer from './TransactionDrawer';
+import TransactionDropdown from './TransactionDropdown';
 
 type TransactionClassNames = {
   container?: string;

@@ -2,8 +2,8 @@ import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Platform, SafeAreaView, View } from 'react-native';
 
+import AccountCenterModal from '@/components/AccountCenter/AccountCenterModal';
 import { path } from '@/constants/path';
-import AccountCenterModal from '../AccountCenter/AccountCenterModal';
 import { NavMenu } from './NavMenu';
 
 const Navbar = () => {

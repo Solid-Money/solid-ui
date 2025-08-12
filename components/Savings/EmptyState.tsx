@@ -4,14 +4,16 @@ import React from 'react';
 import { Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DepositOptionModal } from '@/components/DepositOption';
+import { FAQs } from '@/components/FAQ';
+import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useDimension } from '@/hooks/useDimension';
-import { DepositOptionModal } from '../DepositOption';
-import { FAQs } from '../FAQ';
-import Navbar from '../Navbar';
-import { SavingDepositBenefits, SavingDepositImage, SavingDepositTitle } from '.';
+import SavingDepositBenefits from './SavingDepositBenefits';
+import SavingDepositImage from './SavingDepositImage';
+import SavingDepositTitle from './SavingDepositTitle';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();

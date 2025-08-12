@@ -180,7 +180,6 @@ export default function UserInfoMobile() {
     setIsLoading(true);
 
     const redirectUrl = getRedirectUrl();
-    console.log('redirectUrl', redirectUrl);
 
     try {
       const kycLink = await createKycLink(data.fullName.trim(), data.email.trim(), redirectUrl);
@@ -194,12 +193,7 @@ export default function UserInfoMobile() {
           enableBarCollapsing: true,
         });
       } else {
-        router.push({
-          pathname: path.CARD_KYC,
-          params: {
-            url: kycLink.link,
-          },
-        });
+        router.push(`${path.CARD_KYC}?url=${encodeURIComponent(kycLink.link)}`);
       }
     } catch (error) {
       console.error('KYC link creation failed:', error);

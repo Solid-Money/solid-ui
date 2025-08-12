@@ -1,10 +1,10 @@
-import { path } from "@/constants/path";
-import { createCard } from "@/lib/api";
-import { KycStatus } from "@/lib/types";
-import { withRefreshToken } from "@/lib/utils";
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useCustomer } from "./useCustomer";
+import { path } from '@/constants/path';
+import { createCard } from '@/lib/api';
+import { KycStatus } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCustomer } from './useCustomer';
 
 interface Step {
   id: number;
@@ -13,7 +13,7 @@ interface Step {
   completed: boolean;
   buttonText?: string;
   onPress?: () => void;
-  status?: "pending" | "under_review" | "completed";
+  status?: 'pending' | 'under_review' | 'completed';
 }
 
 export function useCardSteps() {
@@ -24,11 +24,7 @@ export function useCardSteps() {
   const router = useRouter();
 
   // Use TanStack Query for customer data
-  const {
-    data: customer,
-    refetch: refetchCustomer,
-    isRefetching,
-  } = useCustomer();
+  const { data: customer, refetch: refetchCustomer, isRefetching } = useCustomer();
 
   const kycStatus = customer?.kycStatus || KycStatus.NOT_STARTED;
 
@@ -39,7 +35,7 @@ export function useCardSteps() {
   const handleActivateCard = useCallback(async () => {
     try {
       setIsLoading(true);
-      console.log("Activating card...");
+      console.log('Activating card...');
       // const card = await withRefreshToken(() => createCard());
 
       // if (!card) throw new Error("Failed to create card");
@@ -50,7 +46,7 @@ export function useCardSteps() {
       // Navigate to card details
       router.replace(path.CARD_DETAILS);
     } catch (error) {
-      console.error("Error activating card:", error);
+      console.error('Error activating card:', error);
     } finally {
       setIsLoading(false);
     }
@@ -60,51 +56,44 @@ export function useCardSteps() {
     () => [
       {
         id: 1,
-        title: "Complete KYC",
-        description: "Identity verification required for us to issue your card",
+        title: 'Complete KYC',
+        description: 'Identity verification required for us to issue your card',
         completed: kycStatus === KycStatus.APPROVED || cardActivated,
         status:
           kycStatus === KycStatus.UNDER_REVIEW
-            ? "under_review"
+            ? 'under_review'
             : kycStatus === KycStatus.APPROVED
-            ? "completed"
-            : "pending",
-        buttonText:
-          kycStatus === KycStatus.UNDER_REVIEW
-            ? "Under Review"
-            : "Complete KYC",
-        onPress:
-          kycStatus === KycStatus.UNDER_REVIEW ? undefined : handleProceedToKyc,
+              ? 'completed'
+              : 'pending',
+        buttonText: kycStatus === KycStatus.UNDER_REVIEW ? 'Under Review' : 'Complete KYC',
+        onPress: kycStatus === KycStatus.UNDER_REVIEW ? undefined : handleProceedToKyc,
       },
       {
         id: 2,
-        title: "Order your card",
-        description:
-          'All is set! now click on the "Create card" button to issue your new card',
+        title: 'Order your card',
+        description: 'All is set! now click on the "Create card" button to issue your new card',
         completed: cardActivated,
-        status: cardActivated ? "completed" : "pending",
-        buttonText: "Order card",
+        status: cardActivated ? 'completed' : 'pending',
+        buttonText: 'Order card',
         onPress: handleActivateCard,
       },
       {
         id: 3,
-        title: "Start spending :)",
-        description: "Congratulations! your card is ready",
-        buttonText: "To the card",
+        title: 'Start spending :)',
+        description: 'Congratulations! your card is ready',
+        buttonText: 'To the card',
         completed: cardActivated,
-        status: cardActivated ? "completed" : "pending",
+        status: cardActivated ? 'completed' : 'pending',
         onPress: () => router.push(path.CARD_DETAILS),
       },
     ],
-    [kycStatus, cardActivated, handleProceedToKyc, handleActivateCard, router]
+    [kycStatus, cardActivated, handleProceedToKyc, handleActivateCard, router],
   );
 
   // Set default active step on mount
   useEffect(() => {
     const firstIncompleteStep = steps.find((step, index) => {
-      const allPrecedingCompleted = steps
-        .slice(0, index)
-        .every((s) => s.completed);
+      const allPrecedingCompleted = steps.slice(0, index).every(s => s.completed);
       return !step.completed && allPrecedingCompleted;
     });
 

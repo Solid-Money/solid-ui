@@ -25,8 +25,6 @@ export default function Kyc() {
   // Setup message listener for KYC completion
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      console.log('Message received:', event.data);
-
       try {
         // Check for completion events
         if (
@@ -69,7 +67,7 @@ export default function Kyc() {
       urlObj.searchParams.set('iframe-origin', window.location.origin);
 
       setFinalUrl(urlObj.toString());
-    } catch (e) {
+    } catch (_e) {
       setError('Invalid URL format');
       setLoading(false);
     }

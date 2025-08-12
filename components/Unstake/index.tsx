@@ -7,7 +7,9 @@ import { ActivityIndicator, Image, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
+import Max from '@/components/Max';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
@@ -17,8 +19,6 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
-import { Skeleton } from '../ui/skeleton';
-import Max from '../Max';
 
 const Unstake = () => {
   const { user } = useUser();
@@ -94,7 +94,7 @@ const Unstake = () => {
           image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
         },
       });
-    } catch (error) {
+    } catch (_error) {
       Toast.show({
         type: 'error',
         text1: 'Error while unstaking',

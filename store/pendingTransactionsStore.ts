@@ -4,34 +4,34 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export enum TransactionType {
-    SWAP = 'SWAP',
-    FARM = 'FARM',
-    POOL = 'POOL',
-    STAKE = 'STAKE',
-    MINT = 'MINT',
-    REDEEM = 'REDEEM',
-    CLAIM = 'CLAIM',
-    BORROW = 'BORROW',
-    REPAY = 'REPAY',
-    SUPPLY = 'SUPPLY',
-    WITHDRAW = 'WITHDRAW',
-    SET_USER_COLLATERAL = 'SET_USER_COLLATERAL',
+  SWAP = 'SWAP',
+  FARM = 'FARM',
+  POOL = 'POOL',
+  STAKE = 'STAKE',
+  MINT = 'MINT',
+  REDEEM = 'REDEEM',
+  CLAIM = 'CLAIM',
+  BORROW = 'BORROW',
+  REPAY = 'REPAY',
+  SUPPLY = 'SUPPLY',
+  WITHDRAW = 'WITHDRAW',
+  SET_USER_COLLATERAL = 'SET_USER_COLLATERAL',
 }
 
 export interface TransactionInfo {
-    title: string;
-    description?: string;
-    tokenA?: Address;
-    tokenB?: Address;
-    tokenId?: string;
-    type: TransactionType;
+  title: string;
+  description?: string;
+  tokenA?: Address;
+  tokenB?: Address;
+  tokenId?: string;
+  type: TransactionType;
 }
 
 export interface Transaction {
-    data: TransactionInfo;
-    success: boolean | null;
-    loading: boolean;
-    error: Error | null;
+  data: TransactionInfo;
+  success: boolean | null;
+  loading: boolean;
+  error: Error | null;
 }
 
 type PendingTransactions = Record<Address, Transaction>;
@@ -41,69 +41,69 @@ type UserTransactions = Record<Address, PendingTransactions>;
 const MAX_TRANSACTIONS = 10;
 
 interface UserState {
-    pendingTransactions: UserTransactions;
-    actions: {
-        addPendingTransaction: (account: Address, hash: Address) => void;
-        updatePendingTransaction: (account: Address, hash: Address, transaction: Transaction) => void;
-        deletePendingTransaction: (account: Address, hash: Address) => void;
-    };
+  pendingTransactions: UserTransactions;
+  actions: {
+    addPendingTransaction: (account: Address, hash: Address) => void;
+    updatePendingTransaction: (account: Address, hash: Address, transaction: Transaction) => void;
+    deletePendingTransaction: (account: Address, hash: Address) => void;
+  };
 }
 
 export const usePendingTransactionsStore = create(
-    persist<UserState>(
-        (set, get) => ({
-            pendingTransactions: {},
-            actions: {
-                addPendingTransaction: (account, hash) => {
-                    const { pendingTransactions } = get();
-                    const transactionKeys = pendingTransactions[account]
-                        ? Object.keys(pendingTransactions[account])
-                        : [];
+  persist<UserState>(
+    (set, get) => ({
+      pendingTransactions: {},
+      actions: {
+        addPendingTransaction: (account, hash) => {
+          const { pendingTransactions } = get();
+          const transactionKeys = pendingTransactions[account]
+            ? Object.keys(pendingTransactions[account])
+            : [];
 
-                    if (transactionKeys.length >= MAX_TRANSACTIONS) {
-                        delete pendingTransactions[account][transactionKeys[0] as Address];
-                    }
+          if (transactionKeys.length >= MAX_TRANSACTIONS) {
+            delete pendingTransactions[account][transactionKeys[0] as Address];
+          }
 
-                    // set({
-                    //     pendingTransactions: {
-                    //         ...get().pendingTransactions,
-                    //         [account]: {
-                    //             ...get().pendingTransactions[account],
-                    //             [hash]: {
-                    //                 loading: true,
-                    //                 success: null,
-                    //                 error: null,
-                    //             },
-                    //         },
-                    //     },
-                    // });
-                },
-                updatePendingTransaction: (account, hash, transaction) =>
-                    set({
-                        pendingTransactions: {
-                            ...get().pendingTransactions,
-                            [account]: {
-                                ...get().pendingTransactions[account],
-                                [hash]: transaction,
-                            },
-                        },
-                    }),
-                deletePendingTransaction: (account, hash) => {
-                    const { pendingTransactions } = get();
-                    delete pendingTransactions[account][hash];
-                    set({
-                        pendingTransactions,
-                    });
-                },
+          // set({
+          //     pendingTransactions: {
+          //         ...get().pendingTransactions,
+          //         [account]: {
+          //             ...get().pendingTransactions[account],
+          //             [hash]: {
+          //                 loading: true,
+          //                 success: null,
+          //                 error: null,
+          //             },
+          //         },
+          //     },
+          // });
+        },
+        updatePendingTransaction: (account, hash, transaction) =>
+          set({
+            pendingTransactions: {
+              ...get().pendingTransactions,
+              [account]: {
+                ...get().pendingTransactions[account],
+                [hash]: transaction,
+              },
             },
-        }),
-        {
-            name: 'pending-transactions-storage',
-            merge(persistedState, currentState) {
-                return deepMerge(currentState, persistedState);
-            },
-        }
-    )
+          }),
+        deletePendingTransaction: (account, hash) => {
+          const { pendingTransactions } = get();
+          delete pendingTransactions[account][hash];
+          set({
+            pendingTransactions,
+          });
+        },
+      },
+    }),
+    {
+      name: 'pending-transactions-storage',
+      merge(persistedState, currentState) {
+        return deepMerge(currentState, persistedState);
+      },
+    },
+  ),
 );
 
 // export function usePendingTransactions() {

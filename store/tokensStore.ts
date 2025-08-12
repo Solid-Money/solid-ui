@@ -7,45 +7,51 @@ import mmkvStorage from '@/lib/mmvkStorage';
 import { TokenListItem } from '@/lib/types/tokens';
 
 interface ImportedTokens {
-    [chain: number]: TokenListItem[];
+  [chain: number]: TokenListItem[];
 }
 
 interface TokensState {
-    importedTokens: ImportedTokens;
-    actions: {
-        importToken: (address: Address, symbol: string, name: string, decimals: number, chainId: number) => void;
-    };
+  importedTokens: ImportedTokens;
+  actions: {
+    importToken: (
+      address: Address,
+      symbol: string,
+      name: string,
+      decimals: number,
+      chainId: number,
+    ) => void;
+  };
 }
 
 export const useTokensState = create(
-    persist<TokensState>(
-        (set, get) => ({
-            importedTokens: {},
-            actions: {
-                importToken: (address, symbol, name, decimals, chainId) => {
-                    const { importedTokens } = get();
+  persist<TokensState>(
+    (set, get) => ({
+      importedTokens: {},
+      actions: {
+        importToken: (address, symbol, name, decimals, chainId) => {
+          const { importedTokens } = get();
 
-                    set({
-                        importedTokens: {
-                            ...importedTokens,
-                            [chainId]: {
-                                ...importedTokens[chainId],
-                                [address]: {
-                                    address,
-                                    symbol,
-                                    name,
-                                    decimals,
-                                },
-                            },
-                        },
-                    });
+          set({
+            importedTokens: {
+              ...importedTokens,
+              [chainId]: {
+                ...importedTokens[chainId],
+                [address]: {
+                  address,
+                  symbol,
+                  name,
+                  decimals,
                 },
+              },
             },
-        }),
-        {
-            name: 'tokens-storage',
-            storage: createJSONStorage(() => mmkvStorage('tokens-storage')),
-            merge: (persistedState, currentState) => deepMerge(currentState, persistedState),
-        }
-    )
+          });
+        },
+      },
+    }),
+    {
+      name: 'tokens-storage',
+      storage: createJSONStorage(() => mmkvStorage('tokens-storage')),
+      merge: (persistedState, currentState) => deepMerge(currentState, persistedState),
+    },
+  ),
 );

@@ -24,16 +24,17 @@ export const useSendStore = create<SendState>()(
       transaction: {},
       currentTokenAddress: null,
 
-      setModal: (modal) => set({
-        previousModal: get().currentModal,
-        currentModal: modal
-      }),
-      setTransaction: (transaction) => set({ transaction }),
-      setCurrentTokenAddress: (address) => set({ currentTokenAddress: address }),
+      setModal: modal =>
+        set({
+          previousModal: get().currentModal,
+          currentModal: modal,
+        }),
+      setTransaction: transaction => set({ transaction }),
+      setCurrentTokenAddress: address => set({ currentTokenAddress: address }),
     }),
     {
       name: USER.sendStorageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.sendStorageKey)),
-    }
-  )
+    },
+  ),
 );

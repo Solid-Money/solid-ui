@@ -4,11 +4,11 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatUnits } from 'viem';
 
+import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
+import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { compactNumberFormat } from '@/lib/utils';
-import RenderTokenIcon from '../RenderTokenIcon';
-import { useWalletTokens } from '@/hooks/useWalletTokens';
 
 const Title = () => (
   <View className="py-3">

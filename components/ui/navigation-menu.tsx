@@ -24,7 +24,7 @@ interface NavigationMenuLinkProps extends PressableProps {
 }
 
 const NavigationMenu = React.forwardRef<View, NavigationMenuProps>(
-  ({ value, onValueChange, className, children }, ref) => {
+  ({ className, children }, ref) => {
     return (
       <View ref={ref} className={cn('relative', className)}>
         {children}
@@ -45,15 +45,13 @@ const NavigationMenuList = React.forwardRef<View, { children: React.ReactNode }>
 );
 NavigationMenuList.displayName = 'NavigationMenuList';
 
-const NavigationMenuItem = React.forwardRef<View, NavigationMenuItemProps>(
-  ({ value, children }, ref) => {
-    return (
-      <View ref={ref} className="relative">
-        {children}
-      </View>
-    );
-  },
-);
+const NavigationMenuItem = React.forwardRef<View, NavigationMenuItemProps>(({ children }, ref) => {
+  return (
+    <View ref={ref} className="relative">
+      {children}
+    </View>
+  );
+});
 NavigationMenuItem.displayName = 'NavigationMenuItem';
 
 const navigationMenuLinkClassNames = {

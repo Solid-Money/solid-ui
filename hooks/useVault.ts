@@ -1,13 +1,13 @@
-import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Address, formatUnits } from "viem";
-import { fuse, mainnet } from "viem/chains";
-import { readContractQueryOptions } from "wagmi/query";
+import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Address, formatUnits } from 'viem';
+import { fuse, mainnet } from 'viem/chains';
+import { readContractQueryOptions } from 'wagmi/query';
 
-import FuseVault from "@/lib/abis/FuseVault";
-import { ADDRESSES } from "@/lib/config";
-import { config } from "@/lib/wagmi";
+import FuseVault from '@/lib/abis/FuseVault';
+import { ADDRESSES } from '@/lib/config';
+import { config } from '@/lib/wagmi';
 
-const VAULT = "vault";
+const VAULT = 'vault';
 
 export const fetchVaultBalance = async (
   queryClient: QueryClient,
@@ -20,7 +20,7 @@ export const fetchVaultBalance = async (
     readContractQueryOptions(config, {
       abi: FuseVault,
       address: vaultAddress,
-      functionName: "balanceOf",
+      functionName: 'balanceOf',
       args: [safeAddress],
       chainId: chainId,
     }),
@@ -33,14 +33,8 @@ export const useFuseVaultBalance = (safeAddress: Address) => {
   const queryClient = useQueryClient();
 
   return useQuery({
-    queryKey: [VAULT, "balanceFuse", safeAddress],
-    queryFn: () =>
-      fetchVaultBalance(
-        queryClient,
-        safeAddress,
-        fuse.id,
-        ADDRESSES.fuse.vault,
-      ),
+    queryKey: [VAULT, 'balanceFuse', safeAddress],
+    queryFn: () => fetchVaultBalance(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.vault),
     enabled: !!safeAddress,
   });
 };
@@ -49,14 +43,9 @@ export const useEthereumVaultBalance = (safeAddress: Address) => {
   const queryClient = useQueryClient();
 
   return useQuery({
-    queryKey: [VAULT, "balanceEthereum", safeAddress],
+    queryKey: [VAULT, 'balanceEthereum', safeAddress],
     queryFn: () =>
-      fetchVaultBalance(
-        queryClient,
-        safeAddress,
-        mainnet.id,
-        ADDRESSES.ethereum.vault,
-      ),
+      fetchVaultBalance(queryClient, safeAddress, mainnet.id, ADDRESSES.ethereum.vault),
     enabled: !!safeAddress,
   });
 };

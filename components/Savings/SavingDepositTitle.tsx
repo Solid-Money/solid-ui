@@ -1,6 +1,6 @@
-import { Text } from "@/components/ui/text";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useTotalAPY } from "@/hooks/useAnalytics";
+import { Text } from '@/components/ui/text';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useTotalAPY } from '@/hooks/useAnalytics';
 
 const SavingDepositTitle = () => {
   const { data: totalAPY, isLoading: isTotalAPYLoading } = useTotalAPY();

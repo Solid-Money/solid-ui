@@ -2,13 +2,13 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useBalance } from 'wagmi';
 
+import SwapTokenSelectorModal from '@/components/TokenSelector/SwapTokenSelectorModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { formatNumber } from '@/lib/utils';
 import { Currency, Percent } from '@cryptoalgebra/fuse-sdk';
 import { formatUnits } from 'viem';
-import SwapTokenSelectorModal from '../TokenSelector/SwapTokenSelectorModal';
 
 interface TokenCardProps {
   handleTokenSelection: (token: Currency) => void;

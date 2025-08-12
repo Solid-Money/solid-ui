@@ -109,7 +109,7 @@ const SwapParams = () => {
                 { account: address },
               )
               .then(v => v.result as [string, number, number]);
-          } catch (error) {
+          } catch (_error) {
             beforeSwap = ['', 0, 0];
           }
           const [, overrideFee, pluginFee] = beforeSwap || ['', 0, 0];
@@ -187,8 +187,8 @@ const SwapParams = () => {
             <Text className="text-sm">
               {isVoltageTrade && !isVoltageTradeLoading
                 ? computeSlippageAdjustedAmounts(voltageTrade?.trade, allowedSlippage)[
-                  trade.tradeType === TradeType.EXACT_INPUT ? 'outputAmount' : 'inputAmount'
-                ]?.toSignificant(6)
+                    trade.tradeType === TradeType.EXACT_INPUT ? 'outputAmount' : 'inputAmount'
+                  ]?.toSignificant(6)
                 : trade.tradeType === TradeType.EXACT_INPUT
                   ? `${trade.minimumAmountOut(allowedSlippage).toSignificant(6)} ${trade.outputAmount.currency.symbol}`
                   : `${trade.maximumAmountIn(allowedSlippage).toSignificant(6)} ${trade.inputAmount.currency.symbol}`}
@@ -219,7 +219,7 @@ const SwapParams = () => {
 };
 
 const SwapRoute = ({ trade }: { trade: Trade<Currency, Currency, TradeType> }) => {
-  const path = trade.route.tokenPath;
+  const path = trade.swaps[0].route.tokenPath;
 
   return (
     <View className="flex flex-row items-center gap-1">

@@ -1,9 +1,9 @@
 import { TextInput, View } from 'react-native';
 
+import TokenSelectorModal from '@/components/TokenSelector/TokenSelectorModal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { compactNumberFormat } from '@/lib/utils';
-import TokenSelectorModal from '../TokenSelector/TokenSelectorModal';
 
 interface TokenCardProps {
   amount: string;

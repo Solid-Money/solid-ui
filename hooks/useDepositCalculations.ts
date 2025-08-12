@@ -1,14 +1,11 @@
-import { useMemo } from "react";
+import { useMemo } from 'react';
 
-import {
-  calculateOriginalDepositAmount,
-  getEarliestDepositTimestamp
-} from "@/lib/financial";
+import { calculateOriginalDepositAmount, getEarliestDepositTimestamp } from '@/lib/financial';
 
 export const useDepositCalculations = (
   userDepositTransactions: any,
   balance?: number,
-  lastTimestamp?: number
+  lastTimestamp?: number,
 ) => {
   const originalDepositAmount = useMemo(() => {
     if (!balance || balance <= 0) return 0;
