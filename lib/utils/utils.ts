@@ -129,14 +129,17 @@ export const getNonce = async ({
 };
 
 export const isSoUSDEthereum = (contractAddress: string): boolean => {
+  if (!contractAddress) return false;
   return contractAddress.toLowerCase() === ADDRESSES.ethereum.vault.toLowerCase();
 };
 
 export const isSoUSDFuse = (contractAddress: string): boolean => {
+  if (!contractAddress) return false;
   return contractAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase();
 };
 
 export const isSoUSDToken = (contractAddress: string): boolean => {
+  if (!contractAddress) return false;
   return isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress);
 };
 
