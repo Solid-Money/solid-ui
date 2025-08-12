@@ -52,7 +52,7 @@ export default function BankTransferPreviewScreen() {
           <Row label="Status" value={'Waiting for transfer'} />
         </View>
         <Button
-          className="rounded-2xl h-14 mt-auto"
+          className="rounded-2xl h-14 mt-auto sm:mt-8"
           style={{ backgroundColor: '#94F27F' }}
           onPress={() => router.replace(path.ACTIVITY)}
         >
