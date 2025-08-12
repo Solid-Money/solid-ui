@@ -21,10 +21,9 @@ export default function Home() {
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
 
-  const {
-    data: balance,
-    refetch: refetchBalance,
-  } = useFuseVaultBalance(user?.safeAddress as Address);
+  const { data: balance, refetch: refetchBalance } = useFuseVaultBalance(
+    user?.safeAddress as Address,
+  );
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -33,14 +32,12 @@ export default function Home() {
 
   const { data: totalAPY } = useTotalAPY();
 
-  const {
-    data: userDepositTransactions,
-    refetch: refetchTransactions,
-  } = useGetUserTransactionsQuery({
-    variables: {
-      address: user?.safeAddress?.toLowerCase() ?? '',
-    },
-  });
+  const { data: userDepositTransactions, refetch: refetchTransactions } =
+    useGetUserTransactionsQuery({
+      variables: {
+        address: user?.safeAddress?.toLowerCase() ?? '',
+      },
+    });
 
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
@@ -56,11 +53,7 @@ export default function Home() {
   useEffect(() => {
     refetchBalance();
     refetchTransactions();
-  }, [
-    blockNumber,
-    refetchBalance,
-    refetchTransactions,
-  ]);
+  }, [blockNumber, refetchBalance, refetchTransactions]);
 
   return (
     <SafeAreaView
@@ -72,21 +65,22 @@ export default function Home() {
         {Platform.OS === 'web' && <Navbar />}
         <View className="gap-12 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
           <>
-            {isScreenMedium ?
+            {isScreenMedium ? (
               <DashboardHeader
                 balance={balance ?? 0}
                 totalAPY={totalAPY ?? 0}
                 firstDepositTimestamp={firstDepositTimestamp ?? 0}
                 originalDepositAmount={originalDepositAmount}
                 hasTokens={true}
-              /> :
+              />
+            ) : (
               <DashboardHeaderMobile
                 balance={balance ?? 0}
                 totalAPY={totalAPY ?? 0}
                 lastTimestamp={lastTimestamp ?? 0}
                 principal={originalDepositAmount}
               />
-            }
+            )}
           </>
 
           <View className="md:flex-row justify-between gap-6">
