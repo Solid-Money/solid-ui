@@ -288,3 +288,20 @@ export type BridgeDeposit = {
     deadline: number;
   }
 }
+
+export interface SourceDepositInstructions {
+  payment_rail: string;
+  currency: string;
+  amount: string;
+  deposit_message: string;
+  bank_account_number: string;
+  bank_routing_number: string;
+  bank_beneficiary_name: string;
+  bank_beneficiary_address: string;
+  bank_name: string;
+  bank_address: string;
+}
+
+export interface BridgeTransferResponse {
+  source_deposit_instructions: SourceDepositInstructions;
+}
