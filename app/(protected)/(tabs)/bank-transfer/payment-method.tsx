@@ -4,7 +4,7 @@ import {
 } from '@/components/BankTransfer/enums';
 import { PaymentMethodList } from '@/components/BankTransfer/payment/PaymentMethodList';
 import { useLocalSearchParams } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { View } from 'react-native';
 
 export default function BankTransferPaymentMethodScreen() {
   const params = useLocalSearchParams<{
@@ -16,11 +16,7 @@ export default function BankTransferPaymentMethodScreen() {
 
   return (
     <View className="flex-1 bg-background p-6">
-      <View
-        style={
-          Platform.OS === 'web' ? { maxWidth: 720, alignSelf: 'center', width: '100%' } : undefined
-        }
-      >
+      <View className="w-full web:max-w-3xl web:mx-auto">
         <PaymentMethodList
           fiat={params.fiat as BridgeTransferFiatCurrency}
           crypto={params.crypto as BridgeTransferCryptoCurrency}
