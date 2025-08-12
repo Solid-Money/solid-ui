@@ -67,7 +67,7 @@ export function DashboardWeb() {
     >
       <ScrollView className="flex-1">
         <Navbar />
-        <View className="gap-12 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
+        <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
           <DashboardHeader
             balance={balance ?? 0}
             totalAPY={totalAPY ?? 0}

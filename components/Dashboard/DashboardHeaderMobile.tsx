@@ -27,7 +27,7 @@ const DashboardHeaderMobile = ({
   return (
     <View className="gap-10 mt-10">
       <View className="flex-row justify-center items-center">
-        <Text className="text-7xl font-semibold mt-2.5">$</Text>
+        <Text className="text-6xl font-semibold">$</Text>
         <SavingCountUp
           balance={balance ?? 0}
           apy={totalAPY ?? 0}
