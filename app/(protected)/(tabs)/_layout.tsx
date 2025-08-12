@@ -9,8 +9,8 @@ import SavingsNavBarIcon from '@/assets/images/savings-nav-bar-icon';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
-import useUser from '@/hooks/useUser';
 import { useDimension } from '@/hooks/useDimension';
+import useUser from '@/hooks/useUser';
 
 export default function TabLayout() {
   const { user } = useUser();
@@ -82,6 +82,28 @@ export default function TabLayout() {
           title: 'Deposit',
           headerShown: false,
           tabBarIcon: ({ color }) => <Plus size={28} color={color} />,
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="bank-transfer"
+        options={{
+          title: 'Bank Transfer',
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="user-kyc-info"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="kyc"
+        options={{
           href: null,
         }}
       />
