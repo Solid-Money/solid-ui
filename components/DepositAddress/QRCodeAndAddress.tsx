@@ -1,10 +1,10 @@
 import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
+import CopyToClipboard from '@/components/CopyToClipboard';
+import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress } from '@/lib/utils';
-import CopyToClipboard from '../CopyToClipboard';
-import { Text } from '../ui/text';
 
 const QRCodeAndAddress = () => {
   const { user } = useUser();

@@ -4,13 +4,19 @@ import { Fuel, Wallet } from 'lucide-react-native';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, TextInput, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useWaitForTransactionReceipt } from 'wagmi';
 import { z } from 'zod';
-import Toast from 'react-native-toast-message';
 
+import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
+import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
+import Max from '@/components/Max';
+import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useTotalAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
@@ -18,12 +24,6 @@ import { useEstimateGas } from '@/hooks/useEstimateGas';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
-import { CheckConnectionWrapper } from '../CheckConnectionWrapper';
-import ConnectedWalletDropdown from '../ConnectedWalletDropdown';
-import Max from '../Max';
-import TokenDetails from '../TokenCard/TokenDetails';
-import { Skeleton } from '../ui/skeleton';
-import { Text } from '../ui/text';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, fee, isEthereum } = useDepositFromEOA();
@@ -103,7 +103,7 @@ function DepositToVaultForm() {
       setTransaction({
         amount: Number(data.amount),
       });
-    } catch (error) {
+    } catch (_error) {
       // handled by hook
     }
   };

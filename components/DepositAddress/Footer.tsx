@@ -2,9 +2,9 @@ import { View } from 'react-native';
 
 import ExclamationMark from '@/assets/images/exclamation-mark';
 import Process from '@/assets/images/process';
+import { Text } from '@/components/ui/text';
 import { Token } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Text } from '../ui/text';
 
 const Footer = ({ selectedToken }: { selectedToken: Token }) => {
   const instructions = [

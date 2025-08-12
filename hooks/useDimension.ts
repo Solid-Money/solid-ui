@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Platform, useWindowDimensions } from "react-native";
+import { useMemo } from 'react';
+import { Platform, useWindowDimensions } from 'react-native';
 
 const SCREEN_MEDIUM_WIDTH = 768;
 

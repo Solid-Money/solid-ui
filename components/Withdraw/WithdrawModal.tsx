@@ -1,12 +1,11 @@
 import React from 'react';
-import { Address } from 'viem';
 
+import AnimatedModal from '@/components/AnimatedModal';
+import TransactionStatus from '@/components/TransactionStatus';
 import { WITHDRAW_MODAL } from '@/constants/modals';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useWithdrawStore } from '@/store/useWithdrawStore';
 import { Withdraw, WithdrawTrigger } from '.';
-import AnimatedModal from '../AnimatedModal';
-import TransactionStatus from '../TransactionStatus';
 
 const WithdrawModal = () => {
   const { currentModal, previousModal, setModal, transaction } = useWithdrawStore();

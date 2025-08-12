@@ -1,35 +1,35 @@
-import { useEffect, useState } from "react";
-import { useActiveAccount, useActiveWallet } from "thirdweb/react";
+import { useEffect, useState } from 'react';
+import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import {
+  type Address,
   encodeAbiParameters,
   encodeFunctionData,
   parseAbiParameters,
   parseSignature,
   parseUnits,
   verifyTypedData,
-  type Address
-} from "viem";
-import { mainnet } from "viem/chains";
-import { useBlockNumber, useChainId, useReadContract } from "wagmi";
+} from 'viem';
+import { mainnet } from 'viem/chains';
+import { useBlockNumber, useChainId, useReadContract } from 'wagmi';
 
-import ERC20_ABI from "@/lib/abis/ERC20";
-import ETHEREUM_TELLER_ABI from "@/lib/abis/EthereumTeller";
-import FiatTokenV2_2 from "@/lib/abis/FiatTokenV2_2";
-import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from "@/lib/config";
-import { useUserStore } from "@/store/useUserStore";
-import useUser from "./useUser";
-import { BRIDGE_TOKENS } from "@/constants/bridge";
-import { getChain } from "@/lib/thirdweb";
-import { withRefreshToken } from "@/lib/utils";
-import { bridgeDeposit } from "@/lib/api";
-import { useDepositStore } from "@/store/useDepositStore";
+import ERC20_ABI from '@/lib/abis/ERC20';
+import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
+import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
+import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
+import { useUserStore } from '@/store/useUserStore';
+import useUser from './useUser';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { getChain } from '@/lib/thirdweb';
+import { withRefreshToken } from '@/lib/utils';
+import { bridgeDeposit } from '@/lib/api';
+import { useDepositStore } from '@/store/useDepositStore';
 
 export enum DepositStatus {
-  IDLE = "idle",
-  PENDING = "pending",
-  BRIDGING = "bridging",
-  SUCCESS = "success",
-  ERROR = "error",
+  IDLE = 'idle',
+  PENDING = 'pending',
+  BRIDGING = 'bridging',
+  SUCCESS = 'success',
+  ERROR = 'error',
 }
 
 type DepositResult = {
@@ -60,13 +60,13 @@ const useDepositFromEOA = (): DepositResult => {
     chainId: srcChainId,
     query: {
       enabled: !!srcChainId,
-    }
+    },
   });
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
     abi: ERC20_ABI,
     address: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
-    functionName: "balanceOf",
+    functionName: 'balanceOf',
     args: [eoaAddress as Address],
     chainId: srcChainId,
     query: {
@@ -77,17 +77,17 @@ const useDepositFromEOA = (): DepositResult => {
   const { data: fee } = useReadContract({
     abi: ETHEREUM_TELLER_ABI,
     address: ADDRESSES.ethereum.teller,
-    functionName: "previewFee",
+    functionName: 'previewFee',
     args: [
       BigInt(0),
       user?.safeAddress as Address,
-      encodeAbiParameters(parseAbiParameters("uint32"), [30138]),
+      encodeAbiParameters(parseAbiParameters('uint32'), [30138]),
       ADDRESSES.ethereum.nativeFeeToken,
     ],
     chainId: mainnet.id,
     query: {
       enabled: !!user?.safeAddress && !!srcChainId,
-    }
+    },
   });
 
   const { data: nonce } = useReadContract({
@@ -111,18 +111,17 @@ const useDepositFromEOA = (): DepositResult => {
     },
   });
 
-
   const deposit = async (amount: string) => {
     try {
-      if (!eoaAddress) throw new Error("EOA not connected");
-      if (nonce === undefined) throw new Error("Could not get nonce");
-      if (!tokenName) throw new Error("Could not get token name");
-      if (isEthereum && fee === undefined) throw new Error("Could not get fee");
-      if (!user?.safeAddress) throw new Error("User safe address not found");
+      if (!eoaAddress) throw new Error('EOA not connected');
+      if (nonce === undefined) throw new Error('Could not get nonce');
+      if (!tokenName) throw new Error('Could not get token name');
+      if (isEthereum && fee === undefined) throw new Error('Could not get fee');
+      if (!user?.safeAddress) throw new Error('User safe address not found');
 
       if (chainId !== srcChainId) {
         const chain = getChain(srcChainId);
-        if (!chain) throw new Error("Chain not found");
+        if (!chain) throw new Error('Chain not found');
 
         await wallet?.switchChain(chain);
       }
@@ -180,7 +179,7 @@ const useDepositFromEOA = (): DepositResult => {
       if (isEthereum) {
         const callData = encodeFunctionData({
           abi: ETHEREUM_TELLER_ABI,
-          functionName: "depositAndBridgeWithPermit",
+          functionName: 'depositAndBridgeWithPermit',
           args: [
             ADDRESSES.ethereum.usdc,
             amountWei,
@@ -190,7 +189,7 @@ const useDepositFromEOA = (): DepositResult => {
             signatureData.r,
             signatureData.s,
             user.safeAddress,
-            encodeAbiParameters(parseAbiParameters("uint32"), [30138]), // bridgeWildCard
+            encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
             ADDRESSES.ethereum.nativeFeeToken,
             fee ? fee : 0n,
           ],
@@ -210,17 +209,19 @@ const useDepositFromEOA = (): DepositResult => {
         });
       } else {
         setDepositStatus(DepositStatus.BRIDGING);
-        const transaction = await withRefreshToken(() => bridgeDeposit({
-          eoaAddress,
-          srcChainId,
-          amount,
-          permitSignature: {
-            v: Number(signatureData.v),
-            r: signatureData.r,
-            s: signatureData.s,
-            deadline: Number(deadline),
-          },
-        }));
+        const transaction = await withRefreshToken(() =>
+          bridgeDeposit({
+            eoaAddress,
+            srcChainId,
+            amount,
+            permitSignature: {
+              v: Number(signatureData.v),
+              r: signatureData.r,
+              s: signatureData.s,
+              deadline: Number(deadline),
+            },
+          }),
+        );
         txHash = transaction?.transactionHash;
       }
 
@@ -230,7 +231,7 @@ const useDepositFromEOA = (): DepositResult => {
     } catch (error) {
       console.error(error);
       setDepositStatus(DepositStatus.ERROR);
-      setError(error instanceof Error ? error.message : "Unknown error");
+      setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   };

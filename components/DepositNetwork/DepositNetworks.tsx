@@ -1,11 +1,11 @@
 import { View } from 'react-native';
 import { mainnet } from 'viem/chains';
 
+import { Text } from '@/components/ui/text';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDepositStore } from '@/store/useDepositStore';
 import DepositNetwork from './DepositNetwork';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
-import { Text } from '../ui/text';
 
 const DepositNetworks = () => {
   const { setModal, setSrcChainId } = useDepositStore();

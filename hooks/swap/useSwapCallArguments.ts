@@ -4,44 +4,44 @@ import { useMemo } from 'react';
 import useUser from '../useUser';
 
 export function useSwapCallArguments(
-    trade: Trade<Currency, Currency, TradeType> | undefined,
-    allowedSlippage: Percent
+  trade: Trade<Currency, Currency, TradeType> | undefined,
+  allowedSlippage: Percent,
 ) {
-    const { user } = useUser();
-    const account = user?.safeAddress;
+  const { user } = useUser();
+  const account = user?.safeAddress;
 
-    const { txDeadline } = useUserState();
+  const { txDeadline } = useUserState();
 
-    return useMemo(() => {
-        if (!trade || !account) return [];
+  return useMemo(() => {
+    if (!trade || !account) return [];
 
-        const swapMethods: any[] = [];
+    const swapMethods: any[] = [];
 
-        swapMethods.push(
-            SwapRouter.swapCallParameters(trade, {
-                feeOnTransfer: false,
-                recipient: account,
-                slippageTolerance: allowedSlippage,
-                deadline: Date.now() + txDeadline * 1000,
-            })
-        );
+    swapMethods.push(
+      SwapRouter.swapCallParameters(trade, {
+        feeOnTransfer: false,
+        recipient: account,
+        slippageTolerance: allowedSlippage,
+        deadline: Date.now() + txDeadline * 1000,
+      }),
+    );
 
-        if (trade.tradeType === TradeType.EXACT_INPUT) {
-            swapMethods.push(
-                SwapRouter.swapCallParameters(trade, {
-                    feeOnTransfer: true,
-                    recipient: account,
-                    slippageTolerance: allowedSlippage,
-                    deadline: Date.now() + txDeadline * 1000,
-                })
-            );
-        }
+    if (trade.tradeType === TradeType.EXACT_INPUT) {
+      swapMethods.push(
+        SwapRouter.swapCallParameters(trade, {
+          feeOnTransfer: true,
+          recipient: account,
+          slippageTolerance: allowedSlippage,
+          deadline: Date.now() + txDeadline * 1000,
+        }),
+      );
+    }
 
-        return swapMethods.map(({ calldata, value }) => {
-            return {
-                calldata,
-                value,
-            };
-        });
-    }, [trade, account, txDeadline, allowedSlippage]);
+    return swapMethods.map(({ calldata, value }) => {
+      return {
+        calldata,
+        value,
+      };
+    });
+  }, [trade, account, txDeadline, allowedSlippage]);
 }

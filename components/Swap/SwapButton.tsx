@@ -21,6 +21,7 @@ import { useDerivedSwapInfo, useSwapState } from '@/store/swapStore';
 import { useUserState } from '@/store/userStore';
 import { tryParseAmount } from '@cryptoalgebra/fuse-sdk';
 import { encodeFunctionData } from 'viem';
+import { fuse } from 'viem/chains';
 
 const SwapButton: React.FC = () => {
   const { isExpertMode } = useUserState();
@@ -75,7 +76,7 @@ const SwapButton: React.FC = () => {
         setModal(SWAP_MODAL.OPEN_TRANSACTION_STATUS);
         resetForm();
       },
-    [setTransaction, setModal, resetForm],
+    [setTransaction, setModal, resetForm, currencies],
   );
 
   const parsedAmountA = independentField === SwapField.INPUT ? parsedAmount : trade?.inputAmount;
@@ -109,7 +110,7 @@ const SwapButton: React.FC = () => {
   // Get peg swap calldata for batch operations
   const inputAmount = useMemo(
     () => tryParseAmount(typedValue, currencies[SwapField.INPUT]),
-    [currencies[SwapField.INPUT], typedValue],
+    [currencies, typedValue],
   );
   const inputCurrencyAddress = currencies[SwapField.INPUT]?.isToken
     ? currencies[SwapField.INPUT]?.wrapped?.address
@@ -124,6 +125,7 @@ const SwapButton: React.FC = () => {
       inputAmount && inputCurrencyAddress && outputCurrencyAddress
         ? [BigInt(inputAmount.quotient.toString()), inputCurrencyAddress, outputCurrencyAddress]
         : undefined,
+    chainId: fuse.id,
   });
 
   const {
@@ -152,15 +154,15 @@ const SwapButton: React.FC = () => {
               trade.outputAmount.toSignificant(),
             ),
           };
-          console.log('Creating batch swap success info:', successInfo);
+          // console.log('Creating batch swap success info:', successInfo);
           return successInfo;
         })()
       : (() => {
-          console.log('No success info created - missing currencies or trade:', {
-            inputCurrency: !!currencies[SwapField.INPUT],
-            outputCurrency: !!currencies[SwapField.OUTPUT],
-            trade: !!trade,
-          });
+          // console.log('No success info created - missing currencies or trade:', {
+          //   inputCurrency: !!currencies[SwapField.INPUT],
+          //   outputCurrency: !!currencies[SwapField.OUTPUT],
+          //   trade: !!trade,
+          // });
           return undefined;
         })(),
   );
@@ -271,7 +273,7 @@ const SwapButton: React.FC = () => {
     } catch (error) {
       return new Error(`Swap Failed ${error}`);
     }
-  }, [batchSwapCallback, batchVoltageSwapCallback]);
+  }, [batchSwapCallback, batchVoltageSwapCallback, isVoltageTrade]);
 
   const handlePegSwap = useCallback(async () => {
     try {

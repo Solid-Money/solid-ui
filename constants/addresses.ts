@@ -3,6 +3,7 @@ import { Address } from 'viem';
 // ALGEBRA FINANCE
 export const POOL_INIT_CODE_HASH: Address = '0xb3fc09be5eb433d99b1ec89fd8435aaf5ffea75c1879e19028aa2414a14b3c85';
 export const ALGEBRA_ROUTER: Address = '0x6E055FfA786Dfe9DBB214b649a9b2A169e6B820b';
+export const ALGEBRA_QUOTER_V2: Address = '0x87294CA0cF9a7E0226b91d84B2dEc89130Cac7cd';
 
 // TOKENS
 export const WRAPPED_FUSE: Address = '0x0BE9e53fd7EDaC9F859882AfdDa116645287C629';

@@ -53,7 +53,7 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
             <Text className="text-gray-400 text-base mb-6">Tokens in your wallet</Text>
             <ScrollView className="max-h-80" showsVerticalScrollIndicator={false}>
               <View className="px-2 gap-3">
-                {tokens.map((token, index) => {
+                {tokens.map(token => {
                   const balance = Number(
                     formatUnits(BigInt(token.balance) || 0n, token.contractDecimals),
                   );

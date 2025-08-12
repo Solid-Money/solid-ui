@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Text } from '../ui/text';
+import { Text } from '@/components/ui/text';
 
 type PointsBadgeProps = {
   points: number;
