@@ -2,13 +2,18 @@ import { Text } from '@/components/ui/text';
 import { createBridgeTransfer } from '@/lib/api';
 import { router } from 'expo-router';
 import { View } from 'react-native';
-import { BridgeTransferFiatCurrency, BridgeTransferMethod, METHOD_LABEL } from '../enums';
+import {
+  BridgeTransferCryptoCurrency,
+  BridgeTransferFiatCurrency,
+  BridgeTransferMethod,
+  METHOD_LABEL,
+} from '../enums';
 import { PaymentMethodTile } from './PaymentMethodTile';
 import { SourceDepositInstructions } from '@/lib/types';
 
 type Props = {
-  fiat?: BridgeTransferFiatCurrency | string;
-  crypto?: string;
+  fiat?: BridgeTransferFiatCurrency;
+  crypto?: BridgeTransferCryptoCurrency;
   fiatAmount?: string;
   cryptoAmount?: string;
 };
