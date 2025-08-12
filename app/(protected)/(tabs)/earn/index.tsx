@@ -36,7 +36,7 @@ export default function Earn() {
       edges={isDesktop ? [] : ['top', 'right', 'left', 'bottom']}
     >
       <ScrollView className="flex-1">
-        <View className="w-full max-w-md mx-auto gap-12 md:gap-16 px-4 py-8">
+        <View className="w-full max-w-md mx-auto gap-8 md:gap-16 px-4 py-8">
           <View className="flex-1 items-center gap-5">
             <Badge variant="brand" className="px-4 py-2">
               {totalAPY ? (

@@ -8,13 +8,14 @@ import {
   NavigationMenuList,
 } from '@/components/ui/navigation-menu';
 import { Text } from '@/components/ui/text';
-import { MenuItem, menuItems } from '@/constants/menu-items';
+import useNav from '@/hooks/useNav';
 
 export function NavMenu() {
   const pathname = usePathname();
   const [value, setValue] = useState<string>();
   const navigation = useNavigation();
   const router = useRouter();
+  const { menuItems } = useNav();
 
   function closeAll() {
     setValue('');
@@ -31,7 +32,7 @@ export function NavMenu() {
   return (
     <NavigationMenu value={value} onValueChange={setValue}>
       <NavigationMenuList>
-        {menuItems.map((item: MenuItem) => (
+        {menuItems.map((item) => (
           <NavigationMenuItem key={item.label} value={item.label}>
             <NavigationMenuLink
               onPress={() => router.push(item.href)}
