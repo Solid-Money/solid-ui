@@ -255,7 +255,7 @@ export function useDerivedSwapInfo(): {
         setIsVoltageTrade(false);
       }
     }
-  }, [voltageTrade, isExactIn, bestTradeExactIn, bestTradeExactOut]);
+  }, [voltageTrade.isLoading, voltageTrade.isValid, voltageTrade.trade?.outputAmount, voltageTrade.trade?.inputAmount, isExactIn, bestTradeExactIn.state, bestTradeExactIn.trade?.outputAmount, bestTradeExactOut.state, bestTradeExactOut.trade?.inputAmount]);
 
   const [addressA, addressB] = [
     inputCurrency?.isNative ? undefined : inputCurrency?.address || '',

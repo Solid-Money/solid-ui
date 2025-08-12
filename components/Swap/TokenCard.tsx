@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, memo } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useBalance } from 'wagmi';
 

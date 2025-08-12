@@ -82,7 +82,15 @@ const SwapPair: React.FC = () => {
       : isVoltageTrade
         ? voltageTrade?.trade?.inputAmount
         : trade?.inputAmount;
-  }, [independentField, parsedAmount, isVoltageTrade, voltageTrade?.trade?.inputAmount, trade?.inputAmount, isVoltageTradeLoading, tradeState.state]);
+  }, [
+    independentField,
+    parsedAmount,
+    isVoltageTrade,
+    voltageTrade?.trade?.inputAmount,
+    trade?.inputAmount,
+    isVoltageTradeLoading,
+    tradeState.state,
+  ]);
 
   const parsedAmountB = useMemo(() => {
     if (isVoltageTradeLoading || tradeState.state === 'LOADING') return;
@@ -91,7 +99,15 @@ const SwapPair: React.FC = () => {
       : isVoltageTrade
         ? voltageTrade?.trade?.outputAmount
         : trade?.outputAmount;
-  }, [independentField, parsedAmount, isVoltageTrade, voltageTrade?.trade?.outputAmount, trade?.outputAmount, isVoltageTradeLoading, tradeState.state]);
+  }, [
+    independentField,
+    parsedAmount,
+    isVoltageTrade,
+    voltageTrade?.trade?.outputAmount,
+    trade?.outputAmount,
+    isVoltageTradeLoading,
+    tradeState.state,
+  ]);
 
   const parsedAmounts = useMemo(
     () =>
@@ -120,32 +136,33 @@ const SwapPair: React.FC = () => {
 
   const inputAmountForFiat = useMemo(() => {
     const amount = parsedAmounts[SwapField.INPUT];
-    return amount ? tryParseAmount(
-      amount.toSignificant((amount.currency.decimals || 6) / 2),
-      baseCurrency,
-    ) : undefined;
+    return amount
+      ? tryParseAmount(amount.toSignificant((amount.currency.decimals || 6) / 2), baseCurrency)
+      : undefined;
   }, [parsedAmounts, baseCurrency]);
 
   const outputAmountForFiat = useMemo(() => {
     const amount = parsedAmounts[SwapField.OUTPUT];
-    return amount ? tryParseAmount(
-      amount.toSignificant((amount.currency.decimals || 6) / 2),
-      quoteCurrency,
-    ) : undefined;
+    return amount
+      ? tryParseAmount(amount.toSignificant((amount.currency.decimals || 6) / 2), quoteCurrency)
+      : undefined;
   }, [parsedAmounts, quoteCurrency]);
 
   const { formatted: fiatValueInputFormatted } = useUSDCValue(inputAmountForFiat);
   const { formatted: fiatValueOutputFormatted } = useUSDCValue(outputAmountForFiat);
 
-  const formattedAmounts = useMemo(() => ({
-    [independentField]: typedValue,
-    [dependentField]:
-      showWrap || showPegSwap
-        ? (parsedAmounts[independentField]?.toExact() ?? '')
-        : (parsedAmounts[dependentField]?.toFixed(
-            (parsedAmounts[dependentField]?.currency.decimals || 6) / 2,
-          ) ?? ''),
-  }), [independentField, dependentField, typedValue, showWrap, showPegSwap, parsedAmounts]);
+  const formattedAmounts = useMemo(
+    () => ({
+      [independentField]: typedValue,
+      [dependentField]:
+        showWrap || showPegSwap
+          ? (parsedAmounts[independentField]?.toExact() ?? '')
+          : (parsedAmounts[dependentField]?.toFixed(
+              (parsedAmounts[dependentField]?.currency.decimals || 6) / 2,
+            ) ?? ''),
+    }),
+    [independentField, dependentField, typedValue, showWrap, showPegSwap, parsedAmounts],
+  );
 
   return (
     <View className="flex flex-col gap-1 relative p-6">
