@@ -20,6 +20,7 @@ const SwapPair: React.FC = () => {
     voltageTrade,
     isVoltageTrade,
     isVoltageTradeLoading,
+    tradeState,
   } = useDerivedSwapInfo();
 
   const baseCurrency = currencies[SwapField.INPUT];
@@ -75,22 +76,22 @@ const SwapPair: React.FC = () => {
   const showPegSwap: boolean = pegSwapType !== PegSwapType.NOT_APPLICABLE;
 
   const parsedAmountA = useMemo(() => {
-    if (isVoltageTradeLoading) return;
+    if (isVoltageTradeLoading || tradeState.state === 'LOADING') return;
     return independentField === SwapField.INPUT
       ? parsedAmount
       : isVoltageTrade
         ? voltageTrade?.trade?.inputAmount
         : trade?.inputAmount;
-  }, [independentField, parsedAmount, isVoltageTrade, voltageTrade, trade, isVoltageTradeLoading]);
+  }, [independentField, parsedAmount, isVoltageTrade, voltageTrade?.trade?.inputAmount, trade?.inputAmount, isVoltageTradeLoading, tradeState.state]);
 
   const parsedAmountB = useMemo(() => {
-    if (isVoltageTradeLoading) return;
+    if (isVoltageTradeLoading || tradeState.state === 'LOADING') return;
     return independentField === SwapField.OUTPUT
       ? parsedAmount
       : isVoltageTrade
         ? voltageTrade?.trade?.outputAmount
         : trade?.outputAmount;
-  }, [independentField, parsedAmount, isVoltageTrade, voltageTrade, trade, isVoltageTradeLoading]);
+  }, [independentField, parsedAmount, isVoltageTrade, voltageTrade?.trade?.outputAmount, trade?.outputAmount, isVoltageTradeLoading, tradeState.state]);
 
   const parsedAmounts = useMemo(
     () =>
@@ -117,24 +118,26 @@ const SwapPair: React.FC = () => {
     maxInputAmount && onUserInput(SwapField.INPUT, maxInputAmount.toExact());
   }, [maxInputAmount, onUserInput]);
 
-  const { formatted: fiatValueInputFormatted } = useUSDCValue(
-    tryParseAmount(
-      parsedAmounts[SwapField.INPUT]?.toSignificant(
-        (parsedAmounts[SwapField.INPUT]?.currency.decimals || 6) / 2,
-      ),
+  const inputAmountForFiat = useMemo(() => {
+    const amount = parsedAmounts[SwapField.INPUT];
+    return amount ? tryParseAmount(
+      amount.toSignificant((amount.currency.decimals || 6) / 2),
       baseCurrency,
-    ),
-  );
-  const { formatted: fiatValueOutputFormatted } = useUSDCValue(
-    tryParseAmount(
-      parsedAmounts[SwapField.OUTPUT]?.toSignificant(
-        (parsedAmounts[SwapField.OUTPUT]?.currency.decimals || 6) / 2,
-      ),
-      quoteCurrency,
-    ),
-  );
+    ) : undefined;
+  }, [parsedAmounts, baseCurrency]);
 
-  const formattedAmounts = {
+  const outputAmountForFiat = useMemo(() => {
+    const amount = parsedAmounts[SwapField.OUTPUT];
+    return amount ? tryParseAmount(
+      amount.toSignificant((amount.currency.decimals || 6) / 2),
+      quoteCurrency,
+    ) : undefined;
+  }, [parsedAmounts, quoteCurrency]);
+
+  const { formatted: fiatValueInputFormatted } = useUSDCValue(inputAmountForFiat);
+  const { formatted: fiatValueOutputFormatted } = useUSDCValue(outputAmountForFiat);
+
+  const formattedAmounts = useMemo(() => ({
     [independentField]: typedValue,
     [dependentField]:
       showWrap || showPegSwap
@@ -142,7 +145,7 @@ const SwapPair: React.FC = () => {
         : (parsedAmounts[dependentField]?.toFixed(
             (parsedAmounts[dependentField]?.currency.decimals || 6) / 2,
           ) ?? ''),
-  };
+  }), [independentField, dependentField, typedValue, showWrap, showPegSwap, parsedAmounts]);
 
   return (
     <View className="flex flex-col gap-1 relative p-6">
@@ -184,6 +187,7 @@ const SwapPair: React.FC = () => {
         fiatValue={fiatValueOutputFormatted ?? undefined}
         showBalance={true}
         title="Receive"
+        isLoading={isVoltageTradeLoading || tradeState.state === 'LOADING'}
       />
     </View>
   );

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, memo } from 'react';
 import { TextInput, View } from 'react-native';
 import { useBalance } from 'wagmi';
 
@@ -147,4 +147,4 @@ const TokenCard: React.FC<TokenCardProps> = ({
   );
 };
 
-export default TokenCard;
+export default memo(TokenCard);

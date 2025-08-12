@@ -1,24 +1,22 @@
 import * as React from "react";
 import Svg, {
-  SvgProps,
-  G,
-  Rect,
-  Mask,
-  Ellipse,
-  Path,
   Defs,
-  LinearGradient,
-  Stop,
-  RadialGradient,
-  Pattern,
-  Use,
+  Ellipse,
+  G,
   Image,
+  LinearGradient,
+  Mask,
+  Path,
+  Pattern,
+  RadialGradient,
+  Rect,
+  Stop,
+  SvgProps,
+  Use,
 } from "react-native-svg";
 /* SVGR has dropped some elements not supported by react-native-svg: filter */
 const SvgComponent = (props: SvgProps) => (
   <Svg
-    xmlns="http://www.w3.org/2000/svg"
-    xmlnsXlink="http://www.w3.org/1999/xlink"
     width={268}
     height={399}
     fill="none"
@@ -96,9 +94,6 @@ const SvgComponent = (props: SvgProps) => (
         y={-114}
         fill="url(#g)"
         rx={12}
-        style={{
-          mixBlendMode: "overlay",
-        }}
         transform="rotate(90 720.623 -114)"
       />
     </G>
