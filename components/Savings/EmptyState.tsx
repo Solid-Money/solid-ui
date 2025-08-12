@@ -1,5 +1,4 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link } from 'expo-router';
 import React from 'react';
 import { Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,9 +7,11 @@ import { DepositOptionModal } from '@/components/DepositOption';
 import { FAQs } from '@/components/FAQ';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import SavingCountUp from '@/components/SavingCountUp';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useDimension } from '@/hooks/useDimension';
+import { fontSize } from '@/lib/utils';
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
@@ -26,24 +27,34 @@ export default function SavingsEmptyState() {
       <ScrollView className="flex-1">
         {Platform.OS !== 'web' && <NavbarMobile />}
         {Platform.OS === 'web' && <Navbar />}
-        <View className="w-full max-w-7xl mx-auto gap-12 md:gap-16 px-4 pt-4 pb-8">
+        <View className="w-full max-w-7xl mx-auto gap-8 md:gap-16 px-4 pt-4 pb-8">
           {isScreenMedium ? (
             <View className="md:flex-row justify-between md:items-center gap-y-4">
-              <View className="gap-3">
-                <Text className="text-3xl font-semibold">Your saving account</Text>
-                <Text className="max-w-lg">
-                  <Text className="opacity-70">
-                    Our Solid vault will automatically manage your funds to maximize your yield
-                    without exposing you to unnecessary risk.
-                  </Text>{' '}
-                  <Link
-                    href="https://solid-3.gitbook.io/solid.xyz-docs"
-                    target="_blank"
-                    className="text-primary font-medium underline hover:opacity-70"
-                  >
-                    How it works
-                  </Link>
-                </Text>
+              <View className="flex-row items-center">
+                <Text className="text-5xl md:text-8xl text-foreground font-semibold">$</Text>
+                <SavingCountUp
+                  balance={0}
+                  apy={0}
+                  lastTimestamp={0}
+                  principal={0}
+                  classNames={{
+                    wrapper: 'text-foreground',
+                    decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
+                  }}
+                  styles={{
+                    wholeText: {
+                      fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                      fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                      color: '#ffffff',
+                      marginRight: -2,
+                    },
+                    decimalText: {
+                      fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                      fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                      color: '#ffffff',
+                    },
+                  }}
+                />
               </View>
 
               <View className="flex-row items-center gap-5">
@@ -51,7 +62,7 @@ export default function SavingsEmptyState() {
               </View>
             </View>
           ) : (
-            <Text className="text-xl font-semibold">Savings</Text>
+            <Text className="text-xl font-semibold">Home</Text>
           )}
 
           <LinearGradient
