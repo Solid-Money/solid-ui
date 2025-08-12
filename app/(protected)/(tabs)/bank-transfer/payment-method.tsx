@@ -1,11 +1,15 @@
+import {
+  BridgeTransferCryptoCurrency,
+  BridgeTransferFiatCurrency,
+} from '@/components/BankTransfer/enums';
 import { PaymentMethodList } from '@/components/BankTransfer/payment/PaymentMethodList';
 import { useLocalSearchParams } from 'expo-router';
 import { Platform, View } from 'react-native';
 
 export default function BankTransferPaymentMethodScreen() {
   const params = useLocalSearchParams<{
-    fiat?: string;
-    crypto?: string;
+    fiat?: BridgeTransferFiatCurrency;
+    crypto?: BridgeTransferCryptoCurrency;
     fiatAmount?: string;
     cryptoAmount?: string;
   }>();
@@ -18,8 +22,8 @@ export default function BankTransferPaymentMethodScreen() {
         }
       >
         <PaymentMethodList
-          fiat={params.fiat as any}
-          crypto={params.crypto as any}
+          fiat={params.fiat as BridgeTransferFiatCurrency}
+          crypto={params.crypto as BridgeTransferCryptoCurrency}
           fiatAmount={params.fiatAmount}
           cryptoAmount={params.cryptoAmount}
         />
