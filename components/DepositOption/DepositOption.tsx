@@ -1,8 +1,8 @@
-import { ActivityIndicator, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
+import { ActivityIndicator, View } from 'react-native';
 
-import { Button } from '../ui/button';
-import { Text } from '../ui/text';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import DepositComingSoon from './DepositComingSoon';
 
 type DepositOptionProps = {

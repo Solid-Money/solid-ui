@@ -10,13 +10,10 @@ import { useCardSteps } from '@/hooks/useCardSteps';
 import { KycStatus } from '@/lib/types';
 
 export default function ActivateMobile() {
-  const { kycLink, kycStatus } = useLocalSearchParams<{
+  const { kycLink: _kycLink, kycStatus: _kycStatus } = useLocalSearchParams<{
     kycLink?: string;
     kycStatus?: KycStatus;
   }>();
-
-  console.log('kycStatus', kycStatus);
-  console.log('kycLink', kycLink);
 
   const { steps, activeStepId, isStepButtonEnabled, toggleStep } = useCardSteps();
 

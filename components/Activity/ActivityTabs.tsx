@@ -66,14 +66,30 @@ const ActivityTabs = () => {
   }, [animateUnderline, layouts, tab]);
 
   return (
-    <Tabs value={tab} onValueChange={value => handleTabChange(value as ActivityTab)} className="gap-8">
-      <TabsList className='flex-row justify-start max-w-sm relative'>
+    <Tabs
+      value={tab}
+      onValueChange={value => handleTabChange(value as ActivityTab)}
+      className="gap-8"
+    >
+      <TabsList className="flex-row justify-start max-w-sm relative">
         <Animated.View style={underlineStyle} />
-        <TabsTrigger value={ActivityTab.ALL} className='px-6 pl-0' onLayout={(e) => handleLayout(e, TabElement.TRIGGER, ActivityTab.ALL)}>
-          <Text onLayout={(e) => handleLayout(e, TabElement.TEXT, ActivityTab.ALL)}>All activity</Text>
+        <TabsTrigger
+          value={ActivityTab.ALL}
+          className="px-6 pl-0"
+          onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.ALL)}
+        >
+          <Text onLayout={e => handleLayout(e, TabElement.TEXT, ActivityTab.ALL)}>
+            All activity
+          </Text>
         </TabsTrigger>
-        <TabsTrigger value={ActivityTab.PROGRESS} className='px-6 pl-0' onLayout={(e) => handleLayout(e, TabElement.TRIGGER, ActivityTab.PROGRESS)}>
-          <Text onLayout={(e) => handleLayout(e, TabElement.TEXT, ActivityTab.PROGRESS)}>In progress</Text>
+        <TabsTrigger
+          value={ActivityTab.PROGRESS}
+          className="px-6 pl-0"
+          onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.PROGRESS)}
+        >
+          <Text onLayout={e => handleLayout(e, TabElement.TEXT, ActivityTab.PROGRESS)}>
+            In progress
+          </Text>
         </TabsTrigger>
       </TabsList>
       <TabsContent value={ActivityTab.ALL}>

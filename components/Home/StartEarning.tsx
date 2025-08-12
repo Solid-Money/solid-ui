@@ -1,13 +1,13 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { View } from "react-native";
-import { Image } from "expo-image";
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { View } from 'react-native';
 
-import { useDimension } from "@/hooks/useDimension";
-import { Text } from "../ui/text";
-import { Skeleton } from "../ui/skeleton";
-import { useTotalAPY } from "@/hooks/useAnalytics";
-import { buttonVariants } from "../ui/button";
-import { DepositOptionModal } from "../DepositOption";
+import { DepositOptionModal } from '@/components/DepositOption';
+import { buttonVariants } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { useTotalAPY } from '@/hooks/useAnalytics';
+import { useDimension } from '@/hooks/useDimension';
 
 interface StartEarningProps {
   className?: string;
@@ -65,7 +65,7 @@ const StartEarning = ({ className }: StartEarningProps) => {
         </View>
       </View>
     </LinearGradient>
-  )
+  );
 };
 
 export default StartEarning;

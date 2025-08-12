@@ -1,17 +1,13 @@
-import DefaultTokenIcon from "@/components/DefaultTokenIcon";
-import { TokenIcon } from "./types";
+import DefaultTokenIcon from '@/components/DefaultTokenIcon';
+import { TokenIcon } from './types';
 
 type GetTokenIconProps = {
   logoUrl?: string;
   tokenSymbol?: string;
   size?: number;
-}
+};
 
-const getTokenIcon = ({
-  logoUrl,
-  tokenSymbol,
-  size = 24,
-}: GetTokenIconProps): TokenIcon => {
+const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): TokenIcon => {
   if (logoUrl) {
     return { type: 'image', source: { uri: logoUrl } };
   }
@@ -28,12 +24,7 @@ const getTokenIcon = ({
     default:
       return {
         type: 'component',
-        component: (
-          <DefaultTokenIcon
-            size={size}
-            symbol={tokenSymbol || 'T'}
-          />
-        )
+        component: <DefaultTokenIcon size={size} symbol={tokenSymbol || 'T'} />,
       };
   }
 };

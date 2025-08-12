@@ -66,7 +66,7 @@ export const useCachedTokensStore = create<CachedTokensState>()(
         }
 
         const now = Date.now();
-        const isValid = (now - cached.timestamp) < maxAgeMs;
+        const isValid = now - cached.timestamp < maxAgeMs;
 
         return isValid;
       },
@@ -88,20 +88,23 @@ export const useCachedTokensStore = create<CachedTokensState>()(
       storage: createJSONStorage(() => mmkvStorage('swap-tokens')),
       merge: (persistedState, currentState) => deepMerge(currentState, persistedState),
       // Only persist if we have valid data
-      partialize: (state) => {
-        const validCachedData = Object.entries(state.cachedData).reduce((acc, [chainId, data]) => {
-          // Only persist recent cache entries (within 24 hours)
-          const maxAge = 24 * 60 * 60 * 1000;
-          if (Date.now() - data.timestamp < maxAge) {
-            acc[Number(chainId)] = data;
-          }
-          return acc;
-        }, {} as Record<number, CachedTokenData>);
+      partialize: state => {
+        const validCachedData = Object.entries(state.cachedData).reduce(
+          (acc, [chainId, data]) => {
+            // Only persist recent cache entries (within 24 hours)
+            const maxAge = 24 * 60 * 60 * 1000;
+            if (Date.now() - data.timestamp < maxAge) {
+              acc[Number(chainId)] = data;
+            }
+            return acc;
+          },
+          {} as Record<number, CachedTokenData>,
+        );
 
         return {
           cachedData: validCachedData,
         };
       },
-    }
-  )
+    },
+  ),
 );

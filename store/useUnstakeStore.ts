@@ -21,15 +21,16 @@ export const useUnstakeStore = create<UnstakeState>()(
       previousModal: UNSTAKE_MODAL.CLOSE,
       transaction: {},
 
-      setModal: (modal) => set({
-        previousModal: get().currentModal,
-        currentModal: modal
-      }),
-      setTransaction: (transaction) => set({ transaction }),
+      setModal: modal =>
+        set({
+          previousModal: get().currentModal,
+          currentModal: modal,
+        }),
+      setTransaction: transaction => set({ transaction }),
     }),
     {
       name: USER.unstakeStorageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.unstakeStorageKey)),
-    }
-  )
+    },
+  ),
 );

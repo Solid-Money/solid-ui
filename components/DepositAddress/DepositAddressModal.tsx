@@ -1,10 +1,10 @@
 import { Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
+import { buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
 import { TOKEN_MAP } from '@/constants/tokens';
-import { buttonVariants } from '../ui/button';
 import TokenSelectorFooter from './Footer';
 import TokenSelectorDeposit from './QRCodeAndAddress';
 

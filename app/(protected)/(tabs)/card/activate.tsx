@@ -116,12 +116,7 @@ export default function ActivateCard() {
         });
       }
 
-      router.push({
-        pathname: path.CARD_TERMS_OF_SERVICE,
-        params: {
-          url: kycLinkData.tosLink,
-        },
-      });
+      router.push(`${path.CARD_TERMS_OF_SERVICE}?url=${encodeURIComponent(kycLinkData.tosLink)}`);
     } catch (error) {
       console.error('Error proceeding to ToS:', error);
     } finally {
@@ -145,12 +140,7 @@ export default function ActivateCard() {
 
       setIsLoading(true);
 
-      router.push({
-        pathname: path.CARD_KYC,
-        params: {
-          url: kycLinkData.link,
-        },
-      });
+      router.push(`${path.CARD_KYC}?url=${encodeURIComponent(kycLinkData.link)}`);
     } catch (error) {
       console.error('Error proceeding to KYC:', error);
     } finally {
@@ -166,12 +156,9 @@ export default function ActivateCard() {
   const handleActivateCard = async () => {
     try {
       setIsLoading(true);
-      console.log('Activating card...');
       const card = await withRefreshToken(() => createCard());
 
       if (!card) throw new Error('Failed to create card');
-
-      console.log('Card created:', card);
 
       setCardActivated(true);
       setIsLoading(false);

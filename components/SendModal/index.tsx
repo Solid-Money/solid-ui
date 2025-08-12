@@ -9,7 +9,10 @@ import { formatUnits, isAddress } from 'viem';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
 
+import Max from '@/components/Max';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { NATIVE_TOKENS } from '@/constants/tokens';
@@ -21,9 +24,6 @@ import { Status, TokenIcon } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
-import Max from '../Max';
-import RenderTokenIcon from '../RenderTokenIcon';
-import { Skeleton } from '../ui/skeleton';
 
 type SendProps = {
   tokenAddress: Address;
@@ -120,7 +120,7 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
           image: tokenIcon,
         },
       });
-    } catch (error) {
+    } catch (_error) {
       Toast.show({
         type: 'error',
         text1: 'Error while sending',

@@ -1,40 +1,40 @@
-import axios, { AxiosRequestHeaders } from "axios";
-import { Platform } from "react-native";
-import { fuse } from "viem/chains";
+import axios, { AxiosRequestHeaders } from 'axios';
+import { Platform } from 'react-native';
+import { fuse } from 'viem/chains';
 
-import { explorerUrls } from "@/constants/explorers";
-import { useUserStore } from "@/store/useUserStore";
+import { explorerUrls } from '@/constants/explorers';
+import { useUserStore } from '@/store/useUserStore';
 import {
   EXPO_PUBLIC_ALCHEMY_API_KEY,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
-} from "./config";
+} from './config';
 import {
   BlockscoutTransactions,
   BridgeCustomerResponse,
+  BridgeDeposit,
+  BridgeTransaction,
   CardResponse,
   CardStatus,
   CardStatusResponse,
   KycLink,
   LayerZeroTransaction,
-  BridgeDeposit,
   TokenPriceUsd,
   User,
-  BridgeTransaction,
-} from "./types";
+} from './types';
 
 // Helper function to get platform-specific headers
 const getPlatformHeaders = () => {
   const headers: Record<string, string> = {};
-  if (Platform.OS === "ios" || Platform.OS === "android") {
-    headers["X-Platform"] = "mobile";
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    headers['X-Platform'] = 'mobile';
   }
   return headers;
 };
 
 // Helper function to get JWT token for mobile
 const getJWTToken = (): string | null => {
-  if (Platform.OS === "ios" || Platform.OS === "android") {
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
     const { users } = useUserStore.getState();
     const currentUser = users.find((user: User) => user.selected);
     return currentUser?.tokens?.accessToken || null;
@@ -44,7 +44,7 @@ const getJWTToken = (): string | null => {
 
 // Helper function to get refresh token
 const getRefreshToken = (): string | null => {
-  if (Platform.OS === "ios" || Platform.OS === "android") {
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
     const { users } = useUserStore.getState();
     const currentUser = users.find((user: User) => user.selected);
     return currentUser?.tokens?.refreshToken || null;
@@ -53,7 +53,7 @@ const getRefreshToken = (): string | null => {
 };
 
 // Set up axios interceptor to add headers to all axios requests
-axios.interceptors.request.use((config) => {
+axios.interceptors.request.use(config => {
   const platformHeaders = getPlatformHeaders();
 
   config.headers = {
@@ -61,13 +61,13 @@ axios.interceptors.request.use((config) => {
     ...platformHeaders,
   } as AxiosRequestHeaders;
 
-  if (Platform.OS === "ios" || Platform.OS === "android") {
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
     const jwtToken = getJWTToken();
 
     if (jwtToken) {
-      config.headers["Authorization"] = `Bearer ${jwtToken}`;
+      config.headers['Authorization'] = `Bearer ${jwtToken}`;
     } else {
-      console.error("No JWT token found");
+      console.error('No JWT token found');
     }
   }
 
@@ -78,21 +78,21 @@ export const refreshToken = async () => {
   const refreshTokenValue = getRefreshToken();
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     ...getPlatformHeaders(),
   };
 
   if (refreshTokenValue) {
-    headers["Authorization"] = `Bearer ${refreshTokenValue}`;
+    headers['Authorization'] = `Bearer ${refreshTokenValue}`;
   }
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/refresh-token`,
     {
-      method: "POST",
-      credentials: "include",
+      method: 'POST',
+      credentials: 'include',
       headers,
-    }
+    },
   );
 
   if (!response.ok) throw response;
@@ -106,20 +106,17 @@ export const signUp = async (
   username: string,
   challenge: string,
   attestation: any,
-  inviteCode: string
+  inviteCode: string,
 ) => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/sign-up`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getPlatformHeaders(),
-      },
-      credentials: "include",
-      body: JSON.stringify({ username, challenge, attestation, inviteCode }),
-    }
-  );
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/sign-up`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ username, challenge, attestation, inviteCode }),
+  });
   if (!response.ok) throw response;
   return response.json();
 };
@@ -129,15 +126,15 @@ export const updateSafeAddress = async (safeAddress: string) => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/update-safe-address`,
     {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
-      credentials: "include",
+      credentials: 'include',
       body: JSON.stringify({ safeAddress }),
-    }
+    },
   );
   if (!response.ok) throw response;
   return response.json();
@@ -145,7 +142,7 @@ export const updateSafeAddress = async (safeAddress: string) => {
 
 export const fetchTotalAPY = async () => {
   const response = await axios.get<number>(
-    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/yields/total-apy`
+    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/yields/total-apy`,
   );
   return response.data;
 };
@@ -153,8 +150,8 @@ export const fetchTotalAPY = async () => {
 export const fetchTokenTransfer = async ({
   address,
   token,
-  type = "ERC-20",
-  filter = "to",
+  type = 'ERC-20',
+  filter = 'to',
   explorerUrl = explorerUrls[fuse.id].blockscout,
 }: {
   address: string;
@@ -170,7 +167,7 @@ export const fetchTokenTransfer = async ({
   if (filter) params.push(`filter=${filter}`);
   if (token) params.push(`token=${token}`);
 
-  if (params.length) url += `?${params.join("&")}`;
+  if (params.length) url += `?${params.join('&')}`;
 
   const response = await axios.get<BlockscoutTransactions>(url);
   return response.data;
@@ -178,7 +175,7 @@ export const fetchTokenTransfer = async ({
 
 export const fetchTokenPriceUsd = async (token: string) => {
   const response = await axios.get<TokenPriceUsd>(
-    `https://api.g.alchemy.com/prices/v1/${EXPO_PUBLIC_ALCHEMY_API_KEY}/tokens/by-symbol?symbols=${token}`
+    `https://api.g.alchemy.com/prices/v1/${EXPO_PUBLIC_ALCHEMY_API_KEY}/tokens/by-symbol?symbols=${token}`,
   );
   return response?.data?.data[0]?.prices[0]?.value;
 };
@@ -186,27 +183,24 @@ export const fetchTokenPriceUsd = async (token: string) => {
 export const createKycLink = async (
   fullName: string,
   email: string,
-  redirectUri: string
+  redirectUri: string,
 ): Promise<KycLink> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/link`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        fullName,
-        email,
-        redirectUri,
-      }),
-    }
-  );
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/link`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      fullName,
+      email,
+      redirectUri,
+    }),
+  });
 
   if (!response.ok) throw response;
 
@@ -219,12 +213,12 @@ export const getKycLink = async (kycLinkId: string): Promise<KycLink> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/link/${kycLinkId}`,
     {
-      credentials: "include",
+      credentials: 'include',
       headers: {
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
-    }
+    },
   );
 
   if (!response.ok) throw response;
@@ -235,16 +229,13 @@ export const getKycLink = async (kycLinkId: string): Promise<KycLink> => {
 export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge-customer`,
-    {
-      credentials: "include",
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-    }
-  );
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge-customer`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
 
   if (response.status === 404) return null;
 
@@ -256,18 +247,15 @@ export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
 export const createCard = async (): Promise<CardResponse> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: "include",
-    }
-  );
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 
@@ -277,16 +265,13 @@ export const createCard = async (): Promise<CardResponse> => {
 export const getCardStatus = async (): Promise<CardStatusResponse> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/status`,
-    {
-      credentials: "include",
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-    }
-  );
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/status`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
 
   if (!response.ok) throw response;
 
@@ -295,37 +280,37 @@ export const getCardStatus = async (): Promise<CardStatusResponse> => {
 
 export const getCardDetails = async (): Promise<CardResponse> => {
   return {
-    id: "123",
-    client_reference_id: "123",
-    customer_id: "123",
-    card_image_url: "https://www.google.com",
+    id: '123',
+    client_reference_id: '123',
+    customer_id: '123',
+    card_image_url: 'https://www.google.com',
     status: CardStatus.ACTIVE,
-    status_reason: "123",
+    status_reason: '123',
     balances: {
       available: {
-        amount: "123.12",
-        currency: "USD",
+        amount: '123.12',
+        currency: 'USD',
       },
       hold: {
-        amount: "100",
-        currency: "USD",
+        amount: '100',
+        currency: 'USD',
       },
     },
     card_details: {
-      last_4: "1234",
-      expiry: "12/2025",
-      bin: "123456",
+      last_4: '1234',
+      expiry: '12/2025',
+      bin: '123456',
     },
     freezes: [],
     crypto_account: {
-      address: "0x1234567890",
-      type: "ERC-20",
+      address: '0x1234567890',
+      type: 'ERC-20',
     },
     funding_instructions: {
-      currency: "USD",
-      chain: "ETH",
-      address: "0x1234567890",
-      memo: "123",
+      currency: 'USD',
+      chain: 'ETH',
+      address: '0x1234567890',
+      memo: '123',
     },
   };
 
@@ -348,102 +333,96 @@ export const getCardDetails = async (): Promise<CardResponse> => {
 };
 
 export const fetchInternalTransactions = async (
-  address: string
+  address: string,
 ): Promise<BlockscoutTransactions> => {
   const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`
+    `https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`,
   );
   return response.data;
 };
 
 export const fetchTransactionTokenTransfers = async (
   transactionHash: string,
-  type = "ERC-20"
+  type = 'ERC-20',
 ): Promise<BlockscoutTransactions> => {
   const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`
+    `https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`,
   );
   return response.data;
 };
 
 export const fetchLayerZeroBridgeTransactions = async (
-  transactionHash: string
+  transactionHash: string,
 ): Promise<LayerZeroTransaction> => {
   const response = await axios.get(
-    `https://scan.layerzero-api.com/v1/messages/tx/${transactionHash}`
+    `https://scan.layerzero-api.com/v1/messages/tx/${transactionHash}`,
   );
   return response.data;
 };
 
 export const getClientIp = async () => {
   try {
-    const response = await axios.get("https://api.ipify.org?format=json");
+    const response = await axios.get('https://api.ipify.org?format=json');
     return response.data.ip;
   } catch (error) {
-    console.error("Error fetching IP from ipify:", error);
+    console.error('Error fetching IP from ipify:', error);
   }
 };
 
 export const getSubOrgIdByUsername = async (username: string) => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/sub-org-id`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getPlatformHeaders(),
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        filterType: "USERNAME",
-        filterValue: username,
-      }),
-    }
-  );
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/sub-org-id`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      filterType: 'USERNAME',
+      filterValue: username,
+    }),
+  });
   if (!response.ok) throw response;
   return response.json();
 };
 
 export const login = async (signedRequest: any) => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/log-in`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getPlatformHeaders(),
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        ...signedRequest,
-      }),
-    }
-  );
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/log-in`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      ...signedRequest,
+    }),
+  });
   if (!response.ok) throw response;
   return response.json();
 };
 
 export const createMercuryoTransaction = async (
   userIp: string,
-  transactionId: string
+  transactionId: string,
 ): Promise<string> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/mercuryo/transactions`,
     {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
-      credentials: "include",
+      credentials: 'include',
       body: JSON.stringify({
         userIp,
         transactionId,
       }),
-    }
+    },
   );
 
   if (!response.ok) throw response;
@@ -452,22 +431,21 @@ export const createMercuryoTransaction = async (
   return data.widgetUrl;
 };
 
-export const bridgeDeposit = async (bridge: BridgeDeposit): Promise<{ transactionHash: string }> => {
+export const bridgeDeposit = async (
+  bridge: BridgeDeposit,
+): Promise<{ transactionHash: string }> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/deposit`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: "include",
-      body: JSON.stringify(bridge),
-    }
-  );
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/deposit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(bridge),
+  });
 
   if (!response.ok) throw response;
 
@@ -484,8 +462,8 @@ export const bridgeDepositTransactions = async (): Promise<BridgeTransaction[]> 
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
-      credentials: "include",
-    }
+      credentials: 'include',
+    },
   );
 
   if (!response.ok) throw response;
@@ -497,27 +475,27 @@ export const initGenericOtp = async (
   email: string,
   otpLength?: number,
   alphanumeric?: boolean,
-  userIdentifier?: string
+  userIdentifier?: string,
 ) => {
   const jwt = getJWTToken();
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-generic-otp`,
     {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
-      credentials: "include",
+      credentials: 'include',
       body: JSON.stringify({
         email,
         ...(otpLength !== undefined && { otpLength }),
         ...(alphanumeric !== undefined && { alphanumeric }),
         ...(userIdentifier && { userIdentifier }),
       }),
-    }
+    },
   );
   const data = await response.json();
   if (!response.ok) throw data;
@@ -530,19 +508,19 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-generic-otp`,
     {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
-      credentials: "include",
+      credentials: 'include',
       body: JSON.stringify({
         otpId,
         otpCode,
         email,
       }),
-    }
+    },
   );
   const data = await response.json();
   if (!response.ok) throw data;

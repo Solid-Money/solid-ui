@@ -4,28 +4,31 @@ import { Address, erc20Abi } from 'viem';
 import { useReadContract } from 'wagmi';
 
 export function useNeedAllowance(
-    currency: Currency | null | undefined,
-    amount: CurrencyAmount<Currency> | undefined,
-    spender: Address
+  currency: Currency | null | undefined,
+  amount: CurrencyAmount<Currency> | undefined,
+  spender: Address,
 ) {
-    const { user } = useUser();
-    if (!user) {
-        return false;
-    }
+  const { user } = useUser();
+  const account = user?.safeAddress;
 
-    const account = user.safeAddress;
+  const { data: allowance } = useReadContract({
+    address: currency?.wrapped.address as Address,
+    abi: erc20Abi,
+    functionName: 'allowance',
+    args: [account, spender] as [Address, Address],
+    query: {
+      enabled: !!user && !!account && !!spender && !!currency?.wrapped.address,
+    },
+  });
 
-    const { data: allowance } = useReadContract({
-        address: currency?.wrapped.address as Address,
-        abi: erc20Abi,
-        functionName: 'allowance',
-        args: [account, spender] as [Address, Address],
-        query: {
-            enabled: !!account && !!spender && !!currency?.wrapped.address,
-        }
-    });
+  if (!user) {
+    return false;
+  }
 
-    return Boolean(
-        !currency?.isNative && typeof allowance === 'bigint' && amount && amount.greaterThan(allowance.toString())
-    );
+  return Boolean(
+    !currency?.isNative &&
+      typeof allowance === 'bigint' &&
+      amount &&
+      amount.greaterThan(allowance.toString()),
+  );
 }

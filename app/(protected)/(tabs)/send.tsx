@@ -41,7 +41,7 @@ const SendPage = () => {
   const [showTokenSelector, setShowTokenSelector] = useState(false);
   const { setModal, setTransaction } = useSendStore();
 
-  const { ethereumTokens, fuseTokens, isLoading } = useWalletTokens();
+  const { ethereumTokens, fuseTokens } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
   const allTokens = useMemo(() => {

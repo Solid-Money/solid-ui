@@ -23,12 +23,12 @@ import { TokenListItem } from '@/lib/types/tokens';
 import { formatNumber } from '@/lib/utils';
 import { multicall3 } from '@/lib/utils/multicall';
 
+import CopyToClipboard from '@/components/CopyToClipboard';
+import CurrencyLogo from '@/components/CurrencyLogo';
 import { useAlgebraToken } from '@/hooks/tokens/useAlgebraToken';
 import useUser from '@/hooks/useUser';
 import { useTokensState } from '@/store/tokensStore';
 import { fuse } from 'viem/chains';
-import CopyToClipboard from '../CopyToClipboard';
-import CurrencyLogo from '../CurrencyLogo';
 
 const TokenSelectorView = {
   DEFAULT_LIST: 'DEFAULT_LIST',
@@ -209,14 +209,16 @@ const Search = ({
           }}
         >
           <View
-            className={`rounded-full p-1 border transition-all duration-200 ${result.length > 0
+            className={`rounded-full p-1 border transition-all duration-200 ${
+              result.length > 0
                 ? 'bg-green-500/10 border-green-500/20'
                 : 'bg-orange-500/10 border-orange-500/20'
-              }`}
+            }`}
           >
             <Text
-              className={`text-xs font-semibold px-2 transition-colors duration-200 ${result.length > 0 ? 'text-green-600' : 'text-orange-600'
-                }`}
+              className={`text-xs font-semibold px-2 transition-colors duration-200 ${
+                result.length > 0 ? 'text-green-600' : 'text-orange-600'
+              }`}
             >
               {result.length === 0 ? 'No matches' : `${result.length} found`}
             </Text>
@@ -372,8 +374,9 @@ const TokenRow = ({
       <Animated.View style={{ borderColor, borderWidth: isPopular ? 1.5 : 1, borderRadius: 16 }}>
         <Pressable
           disabled={lock}
-          className={`flex flex-row items-center justify-between w-full py-4 px-5 bg-card/95 backdrop-blur-sm rounded-2xl ${lock ? 'opacity-50' : ''
-            } ${isPopular ? 'bg-card/98' : 'bg-card/95'}`}
+          className={`flex flex-row items-center justify-between w-full py-4 px-5 bg-card/95 backdrop-blur-sm rounded-2xl ${
+            lock ? 'opacity-50' : ''
+          } ${isPopular ? 'bg-card/98' : 'bg-card/95'}`}
           onPress={handlePress}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
@@ -393,8 +396,9 @@ const TokenRow = ({
             <View className="flex-1">
               <View className="flex flex-row gap-2 items-center flex-wrap">
                 <Text
-                  className={`text-base font-bold tracking-wide ${isPopular ? 'text-primary' : 'text-foreground'
-                    }`}
+                  className={`text-base font-bold tracking-wide ${
+                    isPopular ? 'text-primary' : 'text-foreground'
+                  }`}
                 >
                   {token.symbol}
                 </Text>
@@ -406,8 +410,9 @@ const TokenRow = ({
                 <CopyToClipboard text={token.address} />
               </View>
               <Text
-                className={`text-sm mt-1 opacity-80 leading-tight ${isPopular ? 'text-muted-foreground font-medium' : 'text-muted-foreground'
-                  }`}
+                className={`text-sm mt-1 opacity-80 leading-tight ${
+                  isPopular ? 'text-muted-foreground font-medium' : 'text-muted-foreground'
+                }`}
               >
                 {token.name}
               </Text>
@@ -417,19 +422,21 @@ const TokenRow = ({
             {account && (
               <View className="items-end">
                 <Text
-                  className={`font-semibold transition-colors duration-200 ${hasBalance
+                  className={`font-semibold transition-colors duration-200 ${
+                    hasBalance
                       ? isPopular
                         ? 'text-primary font-bold'
                         : 'text-foreground'
                       : 'text-muted-foreground'
-                    }`}
+                  }`}
                 >
                   {balanceString}
                 </Text>
                 {balanceUsdString !== '0.00' && (
                   <Text
-                    className={`text-sm opacity-75 transition-colors duration-200 ${isPopular ? 'text-muted-foreground font-medium' : 'text-muted-foreground'
-                      }`}
+                    className={`text-sm opacity-75 transition-colors duration-200 ${
+                      isPopular ? 'text-muted-foreground font-medium' : 'text-muted-foreground'
+                    }`}
                   >
                     ${balanceUsdString}
                   </Text>
@@ -506,12 +513,14 @@ const EmptyState = ({ message, isSearching }: { message: string; isSearching?: b
       className="flex items-center justify-center h-[534px] px-8"
     >
       <View
-        className={`rounded-3xl p-8 border backdrop-blur-sm transition-all duration-300 ${isSearching ? 'bg-orange-50/50 border-orange-200/30' : 'bg-card/60 border-muted/20'
-          }`}
+        className={`rounded-3xl p-8 border backdrop-blur-sm transition-all duration-300 ${
+          isSearching ? 'bg-orange-50/50 border-orange-200/30' : 'bg-card/60 border-muted/20'
+        }`}
       >
         <Text
-          className={`text-center text-lg font-semibold tracking-wide mb-3 transition-colors duration-200 ${isSearching ? 'text-orange-600' : 'text-muted-foreground'
-            }`}
+          className={`text-center text-lg font-semibold tracking-wide mb-3 transition-colors duration-200 ${
+            isSearching ? 'text-orange-600' : 'text-muted-foreground'
+          }`}
         >
           {message}
         </Text>

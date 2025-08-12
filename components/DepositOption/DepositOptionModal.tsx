@@ -3,19 +3,19 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
+import AnimatedModal from '@/components/AnimatedModal';
+import BuyCrypto from '@/components/BuyCrypto';
+import DepositEmailModal from '@/components/DepositEmailModal';
+import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
+import { DepositToVaultForm } from '@/components/DepositToVault';
+import TransactionStatus from '@/components/TransactionStatus';
+import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
-import AnimatedModal from '../AnimatedModal';
-import BuyCrypto from '../BuyCrypto';
-import DepositEmailModal from '../DepositEmailModal';
-import { DepositToVaultForm } from '../DepositToVault';
-import TransactionStatus from '../TransactionStatus';
-import { buttonVariants } from '../ui/button';
 import DepositOptions from './DepositOptions';
-import DepositNetworks from '../DepositNetwork/DepositNetworks';
 
 interface DepositOptionModalProps {
   buttonText?: string;
