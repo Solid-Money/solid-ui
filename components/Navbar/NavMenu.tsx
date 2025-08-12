@@ -32,7 +32,7 @@ export function NavMenu() {
   return (
     <NavigationMenu value={value} onValueChange={setValue}>
       <NavigationMenuList>
-        {menuItems.map((item) => (
+        {menuItems.map(item => (
           <NavigationMenuItem key={item.label} value={item.label}>
             <NavigationMenuLink
               onPress={() => router.push(item.href)}

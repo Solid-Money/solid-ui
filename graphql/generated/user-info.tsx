@@ -573,7 +573,7 @@ export type GetUserTransactionsQueryVariables = Exact<{
 }>;
 
 
-export type GetUserTransactionsQuery = { __typename?: 'Query', deposits: Array<{ __typename?: 'Deposit', depositor: any, receiver: any, depositAmount: any, depositTimestamp: any, isBridged: boolean, shareAmount: any, transactionHash: any }>, withdraws: Array<{ __typename?: 'Withdraw', user: any, amountOfAssets: any, amountOfShares: any, creationTime: any, requestTimestamp: any, requestStatus: string, requestTxHash: any, solveTxHash: any }>, bridges: Array<{ __typename?: 'Bridge', user: any, transactionHash: any, shareAmount: any, blockTimestamp: any }> };
+export type GetUserTransactionsQuery = { __typename?: 'Query', deposits: Array<{ __typename?: 'Deposit', depositor: any, receiver: any, depositAmount: any, depositTimestamp: any, isBridged: boolean, shareAmount: any, transactionHash: any }>, withdraws: Array<{ __typename?: 'Withdraw', user: any, amountOfAssets: any, amountOfShares: any, creationTime: any, requestTimestamp: any, requestStatus: string, requestTxHash: any, solveTxHash: any, requestId: any }>, bridges: Array<{ __typename?: 'Bridge', user: any, transactionHash: any, shareAmount: any, blockTimestamp: any }> };
 
 
 export const GetUserTransactionsDocument = gql`
@@ -596,6 +596,7 @@ export const GetUserTransactionsDocument = gql`
     requestStatus
     requestTxHash
     solveTxHash
+    requestId
   }
   bridges(where: {user: $address}) {
     user

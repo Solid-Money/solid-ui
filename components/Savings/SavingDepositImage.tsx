@@ -1,4 +1,4 @@
-import { Image } from "expo-image";
+import { Image } from 'expo-image';
 
 const SavingDepositImage = () => {
   return (

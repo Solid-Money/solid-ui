@@ -8,11 +8,14 @@ import Transaction from '@/components/Transaction';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { formatTransactions, useBridgeDepositTransactions, useSendTransactions } from '@/hooks/useAnalytics';
+import {
+  formatTransactions,
+  useBridgeDepositTransactions,
+  useSendTransactions,
+} from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
-import { ActivityTab } from '@/lib/types';
-import { LayerZeroTransactionStatus } from '@/lib/types';
+import { ActivityTab, LayerZeroTransactionStatus } from '@/lib/types';
 
 export default function ActivityTransactions({ tab }: { tab: ActivityTab }) {
   const { user } = useUser();
@@ -50,10 +53,15 @@ export default function ActivityTransactions({ tab }: { tab: ActivityTab }) {
     refetch: refetchFormattedTransactions,
   } = useQuery({
     queryKey: ['formatted-transactions', userDepositTransactions],
-    queryFn: () => formatTransactions(userDepositTransactions, sendTransactions, bridgeDepositTransactions),
+    queryFn: () =>
+      formatTransactions(userDepositTransactions, sendTransactions, bridgeDepositTransactions),
   });
 
-  const isLoading = isTransactionsLoading || isFormattingTransactions || isSendTransactionsLoading || isBridgeDepositTransactionsLoading;
+  const isLoading =
+    isTransactionsLoading ||
+    isFormattingTransactions ||
+    isSendTransactionsLoading ||
+    isBridgeDepositTransactionsLoading;
 
   const getTransactionClassName = (totalTransactions: number, index: number) => {
     const classNames = [];
@@ -75,9 +83,10 @@ export default function ActivityTransactions({ tab }: { tab: ActivityTab }) {
     refetchBridgeDepositTransactions,
   ]);
 
-  const filteredTransactions = transactions?.filter((transaction) => {
+  const filteredTransactions = transactions?.filter(transaction => {
     if (tab === ActivityTab.ALL) return true;
-    if (tab === ActivityTab.PROGRESS) return transaction.status === LayerZeroTransactionStatus.INFLIGHT;
+    if (tab === ActivityTab.PROGRESS)
+      return transaction.status === LayerZeroTransactionStatus.INFLIGHT;
     return false;
   });
 

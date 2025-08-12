@@ -1,19 +1,20 @@
-import ERC20_ABI from "@/lib/abis/ERC20";
-import { createPimlicoClient } from "permissionless/clients/pimlico";
-import { Address, encodeFunctionData, getAddress } from "viem";
-import { entryPoint06Address } from "viem/account-abstraction";
-import { mainnet } from "viem/chains";
-import { http } from "wagmi";
-import { ADDRESSES, USER } from "./config";
+import ERC20_ABI from '@/lib/abis/ERC20';
+import { createPimlicoClient } from 'permissionless/clients/pimlico';
+import { Address, encodeFunctionData, getAddress } from 'viem';
+import { entryPoint06Address } from 'viem/account-abstraction';
+import { mainnet } from 'viem/chains';
+import { http } from 'wagmi';
+import { ADDRESSES, USER } from './config';
 
-export const pimlicoClient = (chainId: number) => createPimlicoClient({
-  chain: mainnet,
-  transport: http(USER.pimlicoUrl(chainId)),
-  entryPoint: {
-    address: entryPoint06Address,
-    version: "0.7",
-  },
-});
+export const pimlicoClient = (chainId: number) =>
+  createPimlicoClient({
+    chain: mainnet,
+    transport: http(USER.pimlicoUrl(chainId)),
+    entryPoint: {
+      address: entryPoint06Address,
+      version: '0.7',
+    },
+  });
 
 export const addPaymasterTransaction = async (
   transactions: {
@@ -21,17 +22,17 @@ export const addPaymasterTransaction = async (
     data: string;
     value: string;
   }[],
-  amount: bigint
+  amount: bigint,
 ) => {
   const updatedPaymasterTransactions = [
     {
       to: ADDRESSES.ethereum.usdc,
       data: encodeFunctionData({
         abi: ERC20_ABI,
-        functionName: "approve",
+        functionName: 'approve',
         args: [ADDRESSES.ethereum.paymasterAddress, amount],
       }),
-      value: "0",
+      value: '0',
     },
     ...transactions,
   ];
@@ -64,12 +65,10 @@ export const estimateGas = async () => {
 
   const userOperationMaxGas = BigInt(1260233);
 
-  const userOperationMaxCost =
-    userOperationMaxGas * userOperationGasPrice.standard.maxFeePerGas;
+  const userOperationMaxCost = userOperationMaxGas * userOperationGasPrice.standard.maxFeePerGas;
 
   // represents the userOperation's max cost in token demoniation (wei)
-  const maxCostInTokenRaw =
-    (userOperationMaxCost * exchangeRate) / BigInt(1e18);
+  const maxCostInTokenRaw = (userOperationMaxCost * exchangeRate) / BigInt(1e18);
 
   return maxCostInTokenRaw;
 };
