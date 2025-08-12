@@ -12,8 +12,8 @@ export default function Activity() {
       <ScrollView className="flex-1">
         {Platform.OS !== 'web' && <NavbarMobile />}
         {Platform.OS === 'web' && <Navbar />}
-        <View className="gap-12 md:gap-16 px-4 pt-4 pb-8 md:pt-12 w-full max-w-7xl mx-auto">
-          <Text className="text-3xl font-semibold">Activity</Text>
+        <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 md:pt-12 w-full max-w-7xl mx-auto">
+          <Text className="text-xl md:text-3xl font-semibold">Activity</Text>
           <ActivityTabs />
         </View>
       </ScrollView>
