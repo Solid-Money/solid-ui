@@ -2,6 +2,7 @@ import { Platform, View } from 'react-native';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
+import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { LayerZeroTransactionStatus, TransactionType } from '@/lib/types';
@@ -24,6 +25,7 @@ interface TransactionProps {
   symbol?: string;
   url?: string;
   logoUrl?: string;
+  requestId?: `0x${string}`;
 }
 
 const Transaction = ({
@@ -35,6 +37,7 @@ const Transaction = ({
   symbol,
   url,
   logoUrl,
+  requestId,
 }: TransactionProps) => {
   const { isScreenMedium } = useDimension();
   const isSuccess = status === LayerZeroTransactionStatus.DELIVERED;
@@ -55,6 +58,13 @@ const Transaction = ({
     tokenSymbol: symbol,
     size: 34,
   });
+
+  const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
+
+  const handleCancelWithdraw = async () => {
+    if (!requestId) return;
+    await cancelOnchainWithdraw(requestId);
+  };
 
   return (
     <View
@@ -87,9 +97,17 @@ const Transaction = ({
           </View>
         )}
         {Platform.OS === 'web' ? (
-          <TransactionDropdown url={url} />
+          <TransactionDropdown
+            url={url}
+            showCancelButton={status === LayerZeroTransactionStatus.INFLIGHT && !!requestId}
+            onCancelWithdraw={handleCancelWithdraw}
+          />
         ) : (
-          <TransactionDrawer url={url} />
+          <TransactionDrawer
+            url={url}
+            showCancelButton={status === LayerZeroTransactionStatus.INFLIGHT && !!requestId}
+            onCancelWithdraw={handleCancelWithdraw}
+          />
         )}
       </View>
     </View>

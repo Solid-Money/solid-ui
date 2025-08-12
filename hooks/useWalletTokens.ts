@@ -26,7 +26,6 @@ export const useWalletTokens = () => {
   }, [soUSDBalance, usdcBalance, refresh]);
 
   const hasTokens = ethereumTokens.length > 0 || fuseTokens.length > 0;
-
   return {
     totalUSD,
     ethereumTokens,

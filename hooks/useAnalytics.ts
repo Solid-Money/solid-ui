@@ -3,6 +3,7 @@ import { QueryClient, useQuery } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
+import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
 import {
   GetUserTransactionsDocument,
   GetUserTransactionsQuery,
@@ -22,7 +23,6 @@ import {
   Transaction,
   TransactionType,
 } from '@/lib/types';
-import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
 import { withRefreshToken } from '@/lib/utils';
 
 const ANALYTICS = 'analytics';
@@ -241,6 +241,7 @@ export const formatTransactions = async (
       hash,
       url: `${explorerUrls[mainnet.id].etherscan}/tx/${hash}`,
       type: TransactionType.WITHDRAW,
+      requestId: internalTransaction.requestId as `0x${string}`,
     };
   });
 
