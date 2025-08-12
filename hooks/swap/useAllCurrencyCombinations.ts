@@ -7,7 +7,7 @@ export function useAllCurrencyCombinations(
   currencyA?: Currency,
   currencyB?: Currency,
 ): [Token, Token][] {
-  const chainId = fuse.id; //useChainId();
+  const chainId = fuse.id;
 
   const [tokenA, tokenB] = chainId
     ? [currencyA?.wrapped, currencyB?.wrapped]

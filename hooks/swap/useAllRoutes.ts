@@ -1,11 +1,11 @@
 import { useUserState } from '@/store/userStore';
 import {
-  ADDRESS_ZERO,
-  Currency,
-  DEFAULT_TICK_SPACING,
-  Pool,
-  Route,
-  Token,
+    ADDRESS_ZERO,
+    Currency,
+    DEFAULT_TICK_SPACING,
+    Pool,
+    Route,
+    Token,
 } from '@cryptoalgebra/fuse-sdk';
 import { useMemo } from 'react';
 import { Address } from 'viem';
@@ -98,7 +98,7 @@ export function useAllRoutes(
   currencyIn?: Currency,
   currencyOut?: Currency,
 ): { loading: boolean; routes: Route<Currency, Currency>[] } {
-  const chainId = fuse.id; //useChainId();
+  const chainId = fuse.id;
 
   const { pools, loading: poolsLoading } = useSwapPools(currencyIn, currencyOut);
 

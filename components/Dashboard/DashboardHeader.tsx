@@ -1,6 +1,5 @@
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
-import WithdrawIcon from '@/assets/images/withdraw-icon';
 import { DepositOptionModal } from '@/components/DepositOption';
 import SavingCountUp from '@/components/SavingCountUp';
 import { Button } from '@/components/ui/button';

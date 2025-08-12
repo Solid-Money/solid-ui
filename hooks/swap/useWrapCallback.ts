@@ -32,7 +32,7 @@ export default function useWrapCallback(
   inputError?: string;
   isSuccess?: boolean;
 } {
-  const chainId = fuse.id; //useChainId();
+  const chainId = fuse.id;
   const { user, safeAA } = useUser();
   const account = user?.safeAddress;
   const [wrapData, setWrapData] = useState<any>(null);
