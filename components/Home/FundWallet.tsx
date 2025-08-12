@@ -1,11 +1,11 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { View } from "react-native";
-import { Image } from "expo-image";
+import { LinearGradient } from 'expo-linear-gradient';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
 
-import { useDimension } from "@/hooks/useDimension";
-import { Text } from "../ui/text";
-import { DepositOptionModal } from "../DepositOption";
-import { buttonVariants } from "../ui/button";
+import { useDimension } from '@/hooks/useDimension';
+import { Text } from '../ui/text';
+import { DepositOptionModal } from '../DepositOption';
+import { buttonVariants } from '../ui/button';
 
 interface FundWalletProps {
   className?: string;
@@ -41,9 +41,7 @@ const FundWallet = ({ className }: FundWalletProps) => {
       <View className="flex-col md:flex-row justify-between gap-y-4 h-full">
         <View className="justify-between gap-4">
           <View className="gap-2">
-            <Text className="text-3xl font-semibold max-w-lg">
-              Fund your wallet
-            </Text>
+            <Text className="text-3xl font-semibold max-w-lg">Fund your wallet</Text>
             <Text className="text-muted-foreground md:max-w-60">
               Fund your account with crypto you already own or with cash
             </Text>
@@ -59,7 +57,7 @@ const FundWallet = ({ className }: FundWalletProps) => {
         </View>
       </View>
     </LinearGradient>
-  )
+  );
 };
 
 export default FundWallet;
