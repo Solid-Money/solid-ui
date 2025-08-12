@@ -56,62 +56,79 @@ export function useSwapCallback(
         client: publicClient(fuse.id),
       });
 
-      const calls: (SuccessfulCall | FailedCall | SwapCallEstimate)[] = await Promise.all(
-        swapCalldata.map(({ calldata, value: _value }) => {
-          const value = BigInt(_value);
+      try {
+        const calls: (SuccessfulCall | FailedCall | SwapCallEstimate)[] = await Promise.all(
+          swapCalldata.map(({ calldata, value: _value }) => {
+            const value = BigInt(_value);
 
-          return algebraRouter.estimateGas
-            .multicall([calldata], {
-              account,
-              value,
-            })
-            .then((gasEstimate) => ({
-              calldata,
-              value,
-              gasEstimate,
-            }))
-            .catch((gasError) => {
-              return algebraRouter.simulate
-                .multicall([calldata], {
-                  account,
-                  value,
-                })
-                .then(() => ({
-                  calldata,
-                  value,
-                  error: new Error(
-                    `Unexpected issue with estimating the gas. Please try again. ${gasError}`
-                  ),
-                }))
-                .catch((callError) => ({
-                  calldata,
-                  value,
-                  // error: new Error(callError),
-                }));
-            });
-        })
-      );
+            return algebraRouter.estimateGas
+              .multicall([calldata], {
+                account,
+                value,
+              })
+              .then((gasEstimate) => ({
+                calldata,
+                value,
+                gasEstimate,
+              }))
+              .catch((gasError) => {
+                return algebraRouter.simulate
+                  .multicall([calldata], {
+                    account,
+                    value,
+                  })
+                  .then(() => ({
+                    calldata,
+                    value,
+                    error: new Error(
+                      `Unexpected issue with estimating the gas. Please try again. ${gasError}`
+                    ),
+                  }))
+                  .catch((callError) => {
+                    console.warn('Swap simulation failed:', callError);
+                    return {
+                      calldata,
+                      value,
+                      error: new Error('Swap simulation failed'),
+                    }
+                  });
+              });
+          })
+        );
 
-      let bestCallOption: SuccessfulCall | SwapCallEstimate | undefined = calls.find(
-        (el, ix, list): el is SuccessfulCall =>
-          'gasEstimate' in el && (ix === list.length - 1 || 'gasEstimate' in list[ix + 1]),
-      );
+        let bestCallOption: SuccessfulCall | SwapCallEstimate | undefined = calls.find(
+          (el, ix, list): el is SuccessfulCall =>
+            'gasEstimate' in el && (ix === list.length - 1 || 'gasEstimate' in list[ix + 1]),
+        );
 
-      if (!bestCallOption) {
-        const errorCalls = calls.filter((call): call is FailedCall => 'error' in call);
-        if (errorCalls.length > 0) throw errorCalls[errorCalls.length - 1].error;
-        const firstNoErrorCall = calls.find((call): call is SwapCallEstimate => !('error' in call));
-        if (!firstNoErrorCall) {
-          console.error('Unexpected error. Could not estimate gas for the swap.');
-          throw new Error('Unexpected error. Could not estimate gas for the swap.');
+        if (!bestCallOption) {
+          const errorCalls = calls.filter((call): call is FailedCall => 'error' in call);
+          if (errorCalls.length > 0) {
+            console.warn('All swap calls failed:', errorCalls[errorCalls.length - 1].error);
+            // Don't throw, just return without setting bestCall
+            return;
+          }
+          const firstNoErrorCall = calls.find((call): call is SwapCallEstimate => !('error' in call));
+          if (!firstNoErrorCall) {
+            console.warn('Could not estimate gas for the swap - no valid calls found');
+            return;
+          }
+          bestCallOption = firstNoErrorCall;
         }
-        bestCallOption = firstNoErrorCall;
-      }
 
-      setBestCall(bestCallOption);
+        setBestCall(bestCallOption);
+      } catch (error) {
+        console.warn('Error in findBestCall:', error);
+        setBestCall(undefined);
+      }
     }
 
-    swapCalldata && findBestCall();
+    if (swapCalldata && account) {
+      findBestCall().catch((error) => {
+        console.warn('Unhandled error in findBestCall:', error);
+        setBestCall(undefined);
+      });
+    }
   }, [swapCalldata, account]);
 
   const { data: swapConfig } = useSimulateAlgebraRouterMulticall({
