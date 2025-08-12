@@ -1,6 +1,6 @@
 import { algebraInfoClient } from '@/graphql/clients';
 import { TokenFieldsFragment, useMultiplePoolsLazyQuery } from '@/graphql/generated/algebra-info';
-import { Currency, Token, computePoolAddress } from '@cryptoalgebra/fuse-sdk';
+import { computePoolAddress, Currency, Token } from '@cryptoalgebra/fuse-sdk';
 import { useEffect, useMemo, useState } from 'react';
 import { Address } from 'viem';
 import { fuse } from 'viem/chains';
@@ -12,105 +12,105 @@ import { useAllCurrencyCombinations } from './useAllCurrencyCombinations';
  * @param currencyOut the output currency
  */
 export function useSwapPools(
-    currencyIn?: Currency,
-    currencyOut?: Currency
+  currencyIn?: Currency,
+  currencyOut?: Currency,
 ): {
-    pools: {
-        tokens: [Token, Token];
-        pool: {
-            address: Address;
-            liquidity: string;
-            price: string;
-            tick: string;
-            fee: string;
-            token0: TokenFieldsFragment;
-            token1: TokenFieldsFragment;
-        };
-    }[];
-    loading: boolean;
+  pools: {
+    tokens: [Token, Token];
+    pool: {
+      address: Address;
+      liquidity: string;
+      price: string;
+      tick: string;
+      fee: string;
+      token0: TokenFieldsFragment;
+      token1: TokenFieldsFragment;
+    };
+  }[];
+  loading: boolean;
 } {
-    const [existingPools, setExistingPools] = useState<any[]>();
+  const [existingPools, setExistingPools] = useState<any[]>();
 
-    const allCurrencyCombinations = useAllCurrencyCombinations(currencyIn, currencyOut);
+  const allCurrencyCombinations = useAllCurrencyCombinations(currencyIn, currencyOut);
 
-    const [getMultiplePools] = useMultiplePoolsLazyQuery({
-        client: algebraInfoClient,
-    });
+  const [getMultiplePools] = useMultiplePoolsLazyQuery({
+    client: algebraInfoClient,
+  });
 
-    useEffect(() => {
-        async function getPools() {
-            const poolsAddresses = allCurrencyCombinations.map(
-                ([tokenA, tokenB]) =>
-                    computePoolAddress({
-                        tokenA,
-                        tokenB,
-                    }) as Address
-            );
+  useEffect(() => {
+    async function getPools() {
+      const poolsAddresses = allCurrencyCombinations.map(
+        ([tokenA, tokenB]) =>
+          computePoolAddress({
+            tokenA,
+            tokenB,
+          }) as Address,
+      );
 
-            const poolsData = await getMultiplePools({
-                variables: {
-                    poolIds: poolsAddresses.map((address) => address.toLowerCase()),
-                },
-            });
+      const poolsData = await getMultiplePools({
+        variables: {
+          poolIds: poolsAddresses.map(address => address.toLowerCase()),
+        },
+      });
 
-            // const poolsLiquidities = await Promise.allSettled(poolsAddresses.map(address => getAlgebraPool({
-            //     address
-            // }).read.liquidity()))
+      // const poolsLiquidities = await Promise.allSettled(poolsAddresses.map(address => getAlgebraPool({
+      //     address
+      // }).read.liquidity()))
 
-            // const poolsGlobalStates = await Promise.allSettled(poolsAddresses.map(address => getAlgebraPool({
-            //     address
-            // }).read.globalState()))
+      // const poolsGlobalStates = await Promise.allSettled(poolsAddresses.map(address => getAlgebraPool({
+      //     address
+      // }).read.globalState()))
 
-            const pools =
-                poolsData.data &&
-                poolsData.data.pools.map((pool) => ({
-                    address: pool.id,
-                    liquidity: pool.liquidity,
-                    price: pool.sqrtPrice,
-                    tick: pool.tick,
-                    fee: pool.fee,
-                    token0: pool.token0,
-                    token1: pool.token1,
-                }));
+      const pools =
+        poolsData.data &&
+        poolsData.data.pools.map(pool => ({
+          address: pool.id,
+          liquidity: pool.liquidity,
+          price: pool.sqrtPrice,
+          tick: pool.tick,
+          fee: pool.fee,
+          token0: pool.token0,
+          token1: pool.token1,
+        }));
 
-            setExistingPools(pools);
-        }
+      setExistingPools(pools);
+    }
 
-        Boolean(allCurrencyCombinations.length > 0) && getPools();
-    }, [allCurrencyCombinations]);
+    Boolean(allCurrencyCombinations.length > 0) && getPools();
+  }, [allCurrencyCombinations]);
 
-    return useMemo(() => {
-        if (!existingPools)
-            return {
-                pools: [],
-                loading: true,
-            };
+  return useMemo(() => {
+    if (!existingPools)
+      return {
+        pools: [],
+        loading: true,
+      };
 
-        return {
-            pools: existingPools
-                .map((pool) => ({
-                    tokens: [
-                        new Token(
-                            fuse.id,
-                            pool.token0.id,
-                            Number(pool.token0.decimals),
-                            pool.token0.symbol,
-                            pool.token0.name
-                        ),
-                        new Token(
-                            fuse.id,
-                            pool.token1.id,
-                            Number(pool.token1.decimals),
-                            pool.token1.symbol,
-                            pool.token1.name
-                        ),
-                    ] as [Token, Token],
-                    pool: pool,
-                }))
-                .filter(({ pool }) => {
-                    return pool;
-                }),
-            loading: false,
-        };
-    }, [existingPools]);
+    return {
+      pools: existingPools
+        .map(pool => ({
+          tokens: [
+            new Token(
+              fuse.id,
+              pool.token0.id,
+              Number(pool.token0.decimals),
+              pool.token0.symbol,
+              pool.token0.name,
+            ),
+            new Token(
+              fuse.id,
+              pool.token1.id,
+              Number(pool.token1.decimals),
+              pool.token1.symbol,
+              pool.token1.name,
+            ),
+          ] as [Token, Token],
+          pool: pool,
+        }))
+        .filter(({ pool }) => {
+          return pool;
+        }),
+      loading: false,
+    };
+  }, [existingPools]);
 }

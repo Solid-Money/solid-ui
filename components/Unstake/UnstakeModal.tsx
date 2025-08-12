@@ -1,12 +1,11 @@
 import React from 'react';
-import { Address } from 'viem';
 
+import AnimatedModal from '@/components/AnimatedModal';
+import TransactionStatus from '@/components/TransactionStatus';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 import { Unstake, UnstakeTrigger } from '.';
-import AnimatedModal from '../AnimatedModal';
-import TransactionStatus from '../TransactionStatus';
 
 const UnstakeModal = () => {
   const { currentModal, previousModal, setModal, transaction } = useUnstakeStore();

@@ -18,6 +18,8 @@ const buttonVariants = cva(
         ghost: 'web:hover:bg-accent web:hover:text-accent-foreground active:bg-accent',
         link: 'web:underline-offset-4 web:hover:underline web:focus:underline',
         brand: 'bg-brand web:hover:opacity-90 active:opacity-90',
+        accent: 'bg-accent web:hover:opacity-90 active:opacity-90',
+        purple: 'bg-purple/60 web:hover:opacity-90 active:opacity-90',
       },
       size: {
         default: 'h-10 px-4 py-2 native:h-12 native:px-5 native:py-3',
@@ -45,6 +47,8 @@ const buttonTextVariants = cva(
         ghost: 'group-active:text-accent-foreground',
         link: 'text-primary group-active:underline',
         brand: 'text-primary-foreground',
+        accent: 'text-primary-foreground',
+        purple: 'text-primary-foreground',
       },
       size: {
         default: '',

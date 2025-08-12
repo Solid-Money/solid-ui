@@ -1,9 +1,9 @@
-import { Image, ImageSourcePropType, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
+import { Image, ImageSourcePropType, View } from 'react-native';
 
-import { Button } from '../ui/button';
-import { Text } from '../ui/text';
-import DepositComingSoon from '../DepositOption/DepositComingSoon';
+import DepositComingSoon from '@/components/DepositOption/DepositComingSoon';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 
 type DepositNetworkProps = {
   name: string;

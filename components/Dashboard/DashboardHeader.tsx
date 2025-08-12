@@ -1,6 +1,6 @@
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
-import WithdrawIcon from '@/assets/images/withdraw-icon';
+import { DepositOptionModal } from '@/components/DepositOption';
 import SavingCountUp from '@/components/SavingCountUp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -9,7 +9,6 @@ import { useDimension } from '@/hooks/useDimension';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
-import { DepositOptionModal } from '../DepositOption';
 
 interface DashboardHeaderProps {
   balance: number;
@@ -19,7 +18,7 @@ interface DashboardHeaderProps {
   hasTokens: boolean;
 }
 
-export function DashboardHeader({
+export default function DashboardHeader({
   balance,
   totalAPY,
   firstDepositTimestamp,
@@ -65,36 +64,26 @@ export function DashboardHeader({
           <>
             <Button
               variant="secondary"
-              className="h-12 px-6 rounded-xl bg-[#303030]"
-              onPress={() => {}}
-            >
-              <View className="flex-row items-center gap-3">
-                <WithdrawIcon />
-                <Text className="text-white font-bold">Withdraw</Text>
-              </View>
-            </Button>
-            <Button
-              variant="secondary"
-              className="h-12 px-6 rounded-xl bg-[#303030]"
+              className="h-12 px-6 rounded-xl bg-[#303030] border-0"
               onPress={() => {
                 router.push(path.SWAP);
               }}
             >
               <View className="flex-row items-center gap-2">
                 <HomeSwap />
-                <Text className="text-white font-bold">Swap</Text>
+                <Text className="text-base text-white font-bold">Swap</Text>
               </View>
             </Button>
             <Button
               variant="secondary"
-              className="h-12 px-6 rounded-xl bg-[#303030]"
+              className="h-12 px-6 rounded-xl bg-[#303030] border-0"
               onPress={() => {
                 router.push(path.SEND);
               }}
             >
               <View className="flex-row items-center gap-2">
                 <HomeSend />
-                <Text className="text-white font-bold">Send</Text>
+                <Text className="text-base text-white font-bold">Send</Text>
               </View>
             </Button>
           </>

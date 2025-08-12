@@ -2,11 +2,14 @@ import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Platform, SafeAreaView, View } from 'react-native';
 
+import AccountCenterModal from '@/components/AccountCenter/AccountCenterModal';
 import { path } from '@/constants/path';
-import AccountCenterModal from '../AccountCenter/AccountCenterModal';
 import { NavMenu } from './NavMenu';
+import { useDimension } from '@/hooks/useDimension';
 
 const Navbar = () => {
+  const { isScreenMedium } = useDimension();
+
   return (
     <SafeAreaView className="sticky top-0 z-50 bg-background/10 backdrop-blur-lg border-b border-border/40">
       <View className="flex-row justify-between items-center p-4 md:py-6 w-full max-w-7xl mx-auto">
@@ -25,7 +28,7 @@ const Navbar = () => {
             className="hidden md:block"
           />
         </Link>
-        <NavMenu />
+        {isScreenMedium && <NavMenu />}
         {Platform.OS === 'web' && (
           <View className="md:w-32">
             <AccountCenterModal />

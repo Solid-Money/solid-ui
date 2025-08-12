@@ -3,19 +3,19 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
+import AnimatedModal from '@/components/AnimatedModal';
+import BuyCrypto from '@/components/BuyCrypto';
+import DepositEmailModal from '@/components/DepositEmailModal';
+import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
+import { DepositToVaultForm } from '@/components/DepositToVault';
+import TransactionStatus from '@/components/TransactionStatus';
+import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
-import AnimatedModal from '../AnimatedModal';
-import BuyCrypto from '../BuyCrypto';
-import DepositEmailModal from '../DepositEmailModal';
-import { DepositToVaultForm } from '../DepositToVault';
-import TransactionStatus from '../TransactionStatus';
-import { buttonVariants } from '../ui/button';
 import DepositOptions from './DepositOptions';
-import DepositNetworks from '../DepositNetwork/DepositNetworks';
 
 interface DepositOptionModalProps {
   buttonText?: string;
@@ -24,7 +24,7 @@ interface DepositOptionModalProps {
 
 const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOptionModalProps) => {
   const { user } = useUser();
-  const { currentModal, previousModal, transaction, setModal } = useDepositStore();
+  const { currentModal, previousModal, transaction, setModal, srcChainId } = useDepositStore();
   const activeAccount = useActiveAccount();
   const status = useActiveWalletConnectionStatus();
   const address = activeAccount?.address;
@@ -124,6 +124,12 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       // Check if user has email when opening deposit modal
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
+      } else if (address) {
+        if (srcChainId) {
+          setModal(DEPOSIT_MODAL.OPEN_FORM);
+        } else {
+          setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
+        }
       } else {
         setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
       }
@@ -135,6 +141,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const handleBackPress = () => {
     if (isEmailGate) {
       setModal(DEPOSIT_MODAL.CLOSE);
+    } else if (isFormAndAddress) {
+      setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }

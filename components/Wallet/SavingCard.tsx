@@ -2,8 +2,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Leaf } from 'lucide-react-native';
 import { View } from 'react-native';
 
+import { Text } from '@/components/ui/text';
 import { cn, formatNumber } from '@/lib/utils';
-import { Text } from '../ui/text';
 
 type SavingCardProps = {
   savings: number;

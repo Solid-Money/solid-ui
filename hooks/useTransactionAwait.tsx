@@ -24,15 +24,15 @@ import useUser from './useUser';
 //     );
 
 export interface TransactionSuccessInfo {
-    title: string;
-    description: string;
-    inputAmount?: string;
-    outputAmount?: string;
-    inputSymbol?: string;
-    outputSymbol?: string;
-    tokenSymbol?: string;
-    chainId?: number;
-    onSuccess?: () => void;
+  title: string;
+  description: string;
+  inputAmount?: string;
+  outputAmount?: string;
+  inputSymbol?: string;
+  outputSymbol?: string;
+  tokenSymbol?: string;
+  chainId?: number;
+  onSuccess?: () => void;
 }
 
 /**
@@ -48,85 +48,83 @@ export interface TransactionSuccessInfo {
  * @returns {boolean} isSuccess - Indicates if the transaction was successful.
  */
 export function useTransactionAwait(
-    hash: `0x${string}` | undefined,
-    successInfo?: TransactionSuccessInfo
+  hash: `0x${string}` | undefined,
+  successInfo?: TransactionSuccessInfo,
 ) {
-    const { user } = useUser();
-    const account = user?.safeAddress;
-    const processedHashes = useRef(new Set<string>());
+  const { user } = useUser();
+  const account = user?.safeAddress;
+  const processedHashes = useRef(new Set<string>());
 
-    // const navigate = useNavigate();
+  // const navigate = useNavigate();
 
-    // const { address: account } = useAccount();
+  // const { address: account } = useAccount();
 
-    // const {
-    //     actions: { addPendingTransaction, updatePendingTransaction },
-    // } = usePendingTransactionsStore();
+  // const {
+  //     actions: { addPendingTransaction, updatePendingTransaction },
+  // } = usePendingTransactionsStore();
 
-    const { data, isError, isLoading, isSuccess } = useWaitForTransactionReceipt({
-        hash,
-    });
+  const { data, isError, isLoading, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
 
-    useEffect(() => {
-        if (isLoading && hash && account) {
-            // toast({
-            //     title: transactionInfo.title,
-            //     description: transactionInfo.description || 'Transaction was sent',
-            //     action: <ViewTxOnExplorer hash={hash} />,
-            // });
-            // addPendingTransaction(account, hash);
-            // updatePendingTransaction(account, hash, {
-            //     data: transactionInfo,
-            //     loading: true,
-            //     success: null,
-            //     error: null,
-            // });
-        }
-    }, [isLoading, hash, account]);
+  useEffect(() => {
+    if (isLoading && hash && account) {
+      // toast({
+      //     title: transactionInfo.title,
+      //     description: transactionInfo.description || 'Transaction was sent',
+      //     action: <ViewTxOnExplorer hash={hash} />,
+      // });
+      // addPendingTransaction(account, hash);
+      // updatePendingTransaction(account, hash, {
+      //     data: transactionInfo,
+      //     loading: true,
+      //     success: null,
+      //     error: null,
+      // });
+    }
+  }, [isLoading, hash, account]);
 
-    useEffect(() => {
-        if (isError && hash) {
-            // toast({
-            //     title: transactionInfo.title,
-            //     description: transactionInfo.description || 'Transaction failed',
-            //     action: <ViewTxOnExplorer hash={hash} />,
-            // });
-        }
-    }, [isError]);
+  useEffect(() => {
+    if (isError && hash) {
+      // toast({
+      //     title: transactionInfo.title,
+      //     description: transactionInfo.description || 'Transaction failed',
+      //     action: <ViewTxOnExplorer hash={hash} />,
+      // });
+    }
+  }, [isError]);
 
-    useEffect(() => {
-        if (isSuccess && hash && successInfo && !processedHashes.current.has(hash)) {
-            // Mark this hash as processed to prevent duplicate calls
-            processedHashes.current.add(hash);
+  useEffect(() => {
+    if (isSuccess && hash && successInfo && !processedHashes.current.has(hash)) {
+      // Mark this hash as processed to prevent duplicate calls
+      processedHashes.current.add(hash);
 
-            // Call success callback if provided (only once per hash)
-            if (successInfo.onSuccess) {
-                successInfo.onSuccess();
-            }
+      // Call success callback if provided (only once per hash)
+      if (successInfo.onSuccess) {
+        successInfo.onSuccess();
+      }
 
-            // Show success Toast notification
-            Toast.show({
-                type: 'success',
-                text1: successInfo.title,
-                text2: successInfo.description,
-                props: {
-                    link: `${getChain(successInfo.chainId || 122)?.blockExplorers?.default.url}/tx/${hash}`,
-                    linkText: eclipseAddress(hash),
-                    image: getTokenIcon({
-                        tokenSymbol: successInfo.tokenSymbol || successInfo.inputSymbol,
-                        size: 24,
-                    }),
-                },
-            });
+      // Show success Toast notification
+      Toast.show({
+        type: 'success',
+        text1: successInfo.title,
+        text2: successInfo.description,
+        props: {
+          link: `${getChain(successInfo.chainId || 122)?.blockExplorers?.default.url}/tx/${hash}`,
+          linkText: eclipseAddress(hash),
+          image: getTokenIcon({
+            tokenSymbol: successInfo.tokenSymbol || successInfo.inputSymbol,
+            size: 24,
+          }),
+        },
+      });
+    }
+  }, [isSuccess, hash, successInfo]);
 
-
-        }
-    }, [isSuccess, hash, successInfo]);
-
-    return {
-        data,
-        isError,
-        isLoading,
-        isSuccess,
-    };
+  return {
+    data,
+    isError,
+    isLoading,
+    isSuccess,
+  };
 }

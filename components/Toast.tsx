@@ -18,10 +18,12 @@ interface IBaseToast extends BaseToastProps {
     link?: Href;
     linkText?: string;
     image?: TokenIcon;
+    badgeText?: string;
   };
 }
 
 const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
+  const { link, linkText, image, badgeText = 'Onchain' } = props || {};
   return (
     <View
       className="flex-row justify-between ml-auto bg-card rounded-2xl w-full h-full max-w-md"
@@ -31,24 +33,24 @@ const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
       <View className="flex-row justify-between items-center p-4 flex-1">
         <View className="gap-2">
           <Text className="font-medium">{text1}</Text>
-          {(text2 || props?.image) && (
+          {(text2 || image) && (
             <View className="flex-row items-center gap-1">
-              {props?.image && <RenderTokenIcon tokenIcon={props.image} size={20} />}
+              {image && <RenderTokenIcon tokenIcon={image} size={20} />}
               {text2 && <Text className="opacity-50">{text2}</Text>}
             </View>
           )}
         </View>
         <View className="items-end gap-2">
-          <View className={cn('border rounded-md px-1 py-0.5', classNames?.badge)}>
-            <Text className={cn('text-sm', classNames?.badgeText)}>Onchain</Text>
-          </View>
-          {props?.link && (
-            <Link href={props.link} target="_blank" className="opacity-50 web:hover:opacity-100">
+          {badgeText ? (
+            <View className={cn('border rounded-md px-1 py-0.5', classNames?.badge)}>
+              <Text className={cn('text-sm', classNames?.badgeText)}>{badgeText}</Text>
+            </View>
+          ) : null}
+          {link && (
+            <Link href={link} target="_blank" className="opacity-50 web:hover:opacity-100">
               <View className="flex-row items-center gap-1">
                 <ExternalLink color="white" size={16} />
-                {props.linkText && (
-                  <Text className="underline underline-offset-2">{props.linkText}</Text>
-                )}
+                {linkText && <Text className="underline underline-offset-2">{linkText}</Text>}
               </View>
             </Link>
           )}

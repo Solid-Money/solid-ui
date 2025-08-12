@@ -9,15 +9,22 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   pressTransactionCredenzaContent,
+  TransactionCancelContent,
   TransactionCredenzaContent,
   TransactionCredenzaTrigger,
 } from './TransactionCredenza';
 
 type TransactionDropdownProps = {
   url?: string;
+  showCancelButton?: boolean;
+  onCancelWithdraw?: () => void;
 };
 
-const TransactionDropdown = ({ url }: TransactionDropdownProps) => {
+const TransactionDropdown = ({
+  url,
+  showCancelButton,
+  onCancelWithdraw,
+}: TransactionDropdownProps) => {
   const insets = useSafeAreaInsets();
   const contentInsets = {
     top: insets.top,
@@ -38,6 +45,14 @@ const TransactionDropdown = ({ url }: TransactionDropdownProps) => {
         >
           <TransactionCredenzaContent />
         </DropdownMenuItem>
+        {showCancelButton && (
+          <DropdownMenuItem
+            className="h-10 web:cursor-pointer rounded-lg"
+            onPress={onCancelWithdraw}
+          >
+            <TransactionCancelContent />
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

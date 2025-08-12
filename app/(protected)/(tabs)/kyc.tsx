@@ -27,8 +27,6 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
   // Setup message listener for KYC completion
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      console.log('Message received:', event.data);
-
       try {
         // Check for completion events
         if (

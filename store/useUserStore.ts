@@ -21,14 +21,14 @@ interface UserState {
 
 export const useUserStore = create<UserState>()(
   persist(
-    (set) => ({
+    set => ({
       users: [],
-      signupInfo: { status: Status.IDLE, message: "" },
-      loginInfo: { status: Status.IDLE, message: "" },
+      signupInfo: { status: Status.IDLE, message: '' },
+      loginInfo: { status: Status.IDLE, message: '' },
 
       storeUser: (user: User) => {
         set(
-          produce((state) => {
+          produce(state => {
             let isUserExists = false;
             state.users.forEach((prevUser: User) => {
               if (prevUser.username === user.username) {
@@ -42,34 +42,36 @@ export const useUserStore = create<UserState>()(
             if (!isUserExists) {
               state.users.push(user);
             }
-          })
+          }),
         );
       },
 
       updateUser: (user: User) => {
         set(
-          produce((state) => {
-            state.users = state.users.map((prevUser: User) => prevUser.username === user.username ? user : prevUser);
-          })
+          produce(state => {
+            state.users = state.users.map((prevUser: User) =>
+              prevUser.username === user.username ? user : prevUser,
+            );
+          }),
         );
       },
 
       selectUser: (username: string) => {
         set(
-          produce((state) => {
+          produce(state => {
             state.users = state.users.map((user: User) => ({
               ...user,
               selected: user.username === username,
             }));
-          })
+          }),
         );
       },
 
       unselectUser: () => {
         set(
-          produce((state) => {
+          produce(state => {
             state.users = state.users.map((user: User) => ({ ...user, selected: false }));
-          })
+          }),
         );
       },
 
@@ -77,12 +79,12 @@ export const useUserStore = create<UserState>()(
         set({ users: [] });
       },
 
-      setSignupInfo: (info) => set({ signupInfo: info }),
-      setLoginInfo: (info) => set({ loginInfo: info }),
+      setSignupInfo: info => set({ signupInfo: info }),
+      setLoginInfo: info => set({ loginInfo: info }),
     }),
     {
       name: USER.storageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.storageKey)),
-    }
-  )
+    },
+  ),
 );

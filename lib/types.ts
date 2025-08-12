@@ -1,18 +1,24 @@
-import { DEPOSIT_MODAL, SEND_MODAL, SWAP_MODAL, UNSTAKE_MODAL, WITHDRAW_MODAL } from "@/constants/modals";
-import { Address } from "viem";
+import {
+  DEPOSIT_MODAL,
+  SEND_MODAL,
+  SWAP_MODAL,
+  UNSTAKE_MODAL,
+  WITHDRAW_MODAL,
+} from '@/constants/modals';
+import { Address } from 'viem';
 
 export enum Status {
-  IDLE = "idle",
-  PENDING = "pending",
-  SUCCESS = "success",
-  ERROR = "error",
+  IDLE = 'idle',
+  PENDING = 'pending',
+  SUCCESS = 'success',
+  ERROR = 'error',
 }
 
 export enum InviteCodeStatus {
   CHECKING = 'checking',
   VALID = 'valid',
   INVALID = 'invalid',
-  NONE = 'none'
+  NONE = 'none',
 }
 
 // from @safe-global/protocol-kit as the package
@@ -34,10 +40,10 @@ export interface AuthTokens {
 }
 
 export interface User {
-  username: string
-  safeAddress: Address
-  selected: boolean
-  signWith:string;
+  username: string;
+  safeAddress: Address;
+  selected: boolean;
+  signWith: string;
   suborgId: string;
   userId: string;
   isDeposited?: boolean;
@@ -49,23 +55,23 @@ export type BlockscoutTransaction = {
   to: {
     hash: Address;
     name: string;
-  },
+  };
   token: {
     address: Address;
     symbol: string;
     icon_url: string;
-  },
+  };
   total: {
     decimals: string;
     value: string;
-  },
-  transaction_hash: string,
-  timestamp: string
+  };
+  transaction_hash: string;
+  timestamp: string;
   type: string;
-}
+};
 
 export interface BlockscoutTransactions {
-  items: BlockscoutTransaction[]
+  items: BlockscoutTransaction[];
 }
 
 export type Token = {
@@ -75,16 +81,16 @@ export type Token = {
   decimals: number;
   imageId: string;
   isComingSoon?: boolean;
-}
+};
 
 export type TokenWithBalance = Token & {
   balance: number;
   balanceUSD: number;
-}
+};
 
 export type TokenMap = {
   [key in number]: Token[];
-}
+};
 
 export type TokenPriceUsd = {
   data: {
@@ -100,14 +106,14 @@ export type TokenPriceUsd = {
 export type KycLink = {
   link: string;
   tosLink: string;
-}
+};
 
 export type BridgeCustomerResponse = {
   bridgeCustomerId: string;
   kycStatus: KycStatus;
   tosStatus: TermsOfServiceStatus;
   kycLinkId: string;
-}
+};
 
 export enum KycStatus {
   NOT_STARTED = 'not_started',
@@ -203,16 +209,16 @@ export interface CardStatusResponse {
 }
 
 export enum LayerZeroTransactionStatus {
-  INFLIGHT = "INFLIGHT",
-  CONFIRMING = "CONFIRMING",
-  FAILED = "FAILED",
-  DELIVERED = "DELIVERED",
-  BLOCKED = "BLOCKED",
-  PAYLOAD_STORED = "PAYLOAD_STORED",
-  APPLICATION_BURNED = "APPLICATION_BURNED",
-  APPLICATION_SKIPPED = "APPLICATION_SKIPPED",
-  UNRESOLVABLE_COMMAND = "UNRESOLVABLE_COMMAND",
-  MALFORMED_COMMAND = "MALFORMED_COMMAND"
+  INFLIGHT = 'INFLIGHT',
+  CONFIRMING = 'CONFIRMING',
+  FAILED = 'FAILED',
+  DELIVERED = 'DELIVERED',
+  BLOCKED = 'BLOCKED',
+  PAYLOAD_STORED = 'PAYLOAD_STORED',
+  APPLICATION_BURNED = 'APPLICATION_BURNED',
+  APPLICATION_SKIPPED = 'APPLICATION_SKIPPED',
+  UNRESOLVABLE_COMMAND = 'UNRESOLVABLE_COMMAND',
+  MALFORMED_COMMAND = 'MALFORMED_COMMAND',
 }
 
 export type LayerZeroTransaction = {
@@ -221,13 +227,14 @@ export type LayerZeroTransaction = {
       name: LayerZeroTransactionStatus;
     };
   }[];
-}
+};
 
 export enum TransactionType {
-  DEPOSIT = "deposit",
-  UNSTAKE = "unstake",
-  WITHDRAW = "withdraw",
-  SEND = "send",
+  DEPOSIT = 'deposit',
+  UNSTAKE = 'unstake',
+  WITHDRAW = 'withdraw',
+  SEND = 'send',
+  BRIDGE = 'bridge',
 }
 
 export type Transaction = {
@@ -237,44 +244,45 @@ export type Transaction = {
   status: LayerZeroTransactionStatus;
   hash?: string;
   type: TransactionType;
-}
+};
 
 export type Faq = {
   question: string;
   answer: string;
-}
+};
 
 export type StatusInfo = {
   status: Status;
   message?: string;
-}
+};
 
-export type DepositModal = typeof DEPOSIT_MODAL[keyof typeof DEPOSIT_MODAL];
-export type SendModal = typeof SEND_MODAL[keyof typeof SEND_MODAL];
-export type SwapModal = typeof SWAP_MODAL[keyof typeof SWAP_MODAL];
-export type WithdrawModal = typeof WITHDRAW_MODAL[keyof typeof WITHDRAW_MODAL];
-export type UnstakeModal = typeof UNSTAKE_MODAL[keyof typeof UNSTAKE_MODAL];
+export type DepositModal = (typeof DEPOSIT_MODAL)[keyof typeof DEPOSIT_MODAL];
+export type SendModal = (typeof SEND_MODAL)[keyof typeof SEND_MODAL];
+export type SwapModal = (typeof SWAP_MODAL)[keyof typeof SWAP_MODAL];
+export type WithdrawModal = (typeof WITHDRAW_MODAL)[keyof typeof WITHDRAW_MODAL];
+export type UnstakeModal = (typeof UNSTAKE_MODAL)[keyof typeof UNSTAKE_MODAL];
 
 export type TransactionStatusModal = {
   amount?: number;
   address?: Address;
-}
+};
 
 export type TokenIcon = {
   type: 'image' | 'component';
   source?: any;
   component?: React.ReactNode;
-}
+};
 
 export type Explorers = {
   blockscout?: string;
   etherscan?: string;
   layerzeroscan?: string;
-}
+  lifi?: string;
+};
 
 export enum SavingMode {
-  TOTAL = "total",
-  INTEREST_ONLY = "interest-only",
+  TOTAL = 'total',
+  INTEREST_ONLY = 'interest-only',
 }
 
 export type BridgeDeposit = {
@@ -286,7 +294,41 @@ export type BridgeDeposit = {
     r: string;
     s: string;
     deadline: number;
-  }
+  };
+};
+
+export enum BridgeTransactionStatus {
+  PENDING = 'pending',
+  PERMIT_COMPLETED = 'permit_completed',
+  TRANSFER_COMPLETED = 'transfer_completed',
+  APPROVAL_COMPLETED = 'approval_completed',
+  BRIDGE_INITIATED = 'bridge_initiated',
+  BRIDGE_COMPLETED = 'bridge_completed',
+  BRIDGE_FAILED = 'bridge_failed',
+  DEPOSIT_INITIATED = 'deposit_initiated',
+  DEPOSIT_COMPLETED = 'deposit_completed',
+  DEPOSIT_FAILED = 'deposit_failed',
+}
+
+export interface BridgeTransaction {
+  eoaAddress: string;
+  srcChainId: number;
+  dstChainId: number;
+  fromAmount: string;
+  toAmount: string;
+  decimals: number;
+  permitTxHash?: string;
+  transferTxHash?: string;
+  approvalTxHash?: string;
+  bridgeTxHash?: string;
+  depositTxHash?: string;
+  status: BridgeTransactionStatus;
+  createdAt: Date;
+}
+
+export enum ActivityTab {
+  ALL = 'all',
+  PROGRESS = 'progress',
 }
 
 export interface SourceDepositInstructions {

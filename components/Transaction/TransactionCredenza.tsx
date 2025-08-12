@@ -1,8 +1,8 @@
+import { ArrowUpRight, EllipsisVertical, X } from 'lucide-react-native';
 import { Linking } from 'react-native';
-import { ArrowUpRight, EllipsisVertical } from 'lucide-react-native';
 
-import { Text } from '../ui/text';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 
 interface TransactionCredenzaTriggerProps {
   onPress?: () => void;
@@ -25,8 +25,22 @@ const TransactionCredenzaContent = () => {
   );
 };
 
+const TransactionCancelContent = () => {
+  return (
+    <>
+      <X color="white" />
+      <Text>Cancel Withdraw</Text>
+    </>
+  );
+};
+
 const pressTransactionCredenzaContent = (url?: string) => {
   if (url) return Linking.openURL(url);
 };
 
-export { TransactionCredenzaTrigger, TransactionCredenzaContent, pressTransactionCredenzaContent };
+export {
+  pressTransactionCredenzaContent,
+  TransactionCancelContent,
+  TransactionCredenzaContent,
+  TransactionCredenzaTrigger,
+};

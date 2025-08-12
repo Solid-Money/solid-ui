@@ -1,10 +1,10 @@
-import { ADDRESSES } from '@/lib/config';
-import { publicClient } from '@/lib/wagmi';
-import { useCallback, useEffect, useState } from 'react';
-import { readContract } from 'viem/actions';
-import { mainnet } from 'viem/chains';
-import useUser from './useUser';
-import { isSoUSDToken } from '@/lib/utils';
+import { ADDRESSES } from "@/lib/config";
+import { isSoUSDToken } from "@/lib/utils";
+import { publicClient } from "@/lib/wagmi";
+import { useCallback, useEffect, useState } from "react";
+import { readContract } from "viem/actions";
+import { mainnet } from "viem/chains";
+import useUser from "./useUser";
 
 interface TokenBalance {
   contractTickerSymbol: string;
@@ -73,18 +73,18 @@ const FUSE_CHAIN_ID = 122;
 // ABI for AccountantWithRateProviders getRate function
 const ACCOUNTANT_ABI = [
   {
-    "inputs": [],
-    "name": "getRate",
-    "outputs": [
+    inputs: [],
+    name: "getRate",
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "rate",
-        "type": "uint256"
-      }
+        internalType: "uint256",
+        name: "rate",
+        type: "uint256",
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
-  }
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 export const useBalances = (): BalanceData => {
@@ -100,146 +100,184 @@ export const useBalances = (): BalanceData => {
     error: null,
   });
 
-  const fetchBalances = useCallback(async (isLoading: string = 'isLoading') => {
-    if (!user?.safeAddress) {
-      setBalanceData(prev => ({ ...prev, [isLoading]: false }));
-      return;
-    }
-
-    setBalanceData(prev => ({ ...prev, [isLoading]: true, error: null }));
-
-    try {
-      // Make parallel requests to both chains and get soUSD rate
-      const [ethereumResponse, fuseResponse, soUSDRate] = await Promise.allSettled([
-        // Ethereum via Blockscout
-        fetch(`https://eth.blockscout.com/api/v2/addresses/${user?.safeAddress}/token-balances`, {
-          headers: {
-            accept: 'application/json',
-          },
-        }),
-        // Fuse via Blockscout
-        fetch(`https://explorer.fuse.io/api/v2/addresses/${user?.safeAddress}/token-balances`, {
-          headers: {
-            accept: 'application/json',
-          },
-        }),
-        readContract(publicClient(mainnet.id), {
-          address: ADDRESSES.ethereum.accountant,
-          abi: ACCOUNTANT_ABI,
-          functionName: 'getRate',
-        }),
-      ]);
-
-      let ethereumTokens: TokenBalance[] = [];
-      let fuseTokens: TokenBalance[] = [];
-      let rate = 0;
-
-      // Process soUSD rate
-      if (soUSDRate.status === 'fulfilled') {
-        rate = Number(soUSDRate.value) / Math.pow(10, 6);
-      } else {
-        console.warn('Failed to fetch soUSD rate:', soUSDRate.reason);
+  const fetchBalances = useCallback(
+    async (isLoading = "isLoading") => {
+      if (!user?.safeAddress) {
+        setBalanceData((prev) => ({ ...prev, [isLoading]: false }));
+        return;
       }
 
-      // Convert Blockscout format to our standard format
-      const convertBlockscoutToTokenBalance = (item: BlockscoutTokenBalance, chainId: number): TokenBalance => ({
-        contractTickerSymbol: item.token.symbol,
-        contractName: item.token.name,
-        contractAddress: item.token.address,
-        balance: item.value,
-        quoteRate: item.token.exchange_rate ? parseFloat(item.token.exchange_rate) : isSoUSDToken(item.token.address) ? rate : 0,
-        logoUrl: item.token.icon_url,
-        contractDecimals: parseInt(item.token.decimals),
-        type: item.token.type,
-        verified: true, // Assume verified if it's on Blockscout
-        chainId: chainId,
-      });
+      setBalanceData((prev) => ({ ...prev, [isLoading]: true, error: null }));
 
-      // Process Ethereum response (Blockscout)
-      if (ethereumResponse.status === 'fulfilled' && ethereumResponse.value.ok) {
-        const ethereumData: BlockscoutResponse = await ethereumResponse.value.json();
-        // Filter out NFTs and only include ERC-20 tokens
-        const erc20Tokens = ethereumData.filter(item => item.token.type === 'ERC-20');
-        ethereumTokens = erc20Tokens.map(item => convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID));
-      } else if (ethereumResponse.status === 'rejected') {
-        console.warn('Failed to fetch Ethereum balances:', ethereumResponse.reason);
-      }
+      try {
+        // Make parallel requests to both chains and get soUSD rate
+        const [ethereumResponse, fuseResponse, soUSDRate] =
+          await Promise.allSettled([
+            // Ethereum via Blockscout
+            fetch(
+              `https://eth.blockscout.com/api/v2/addresses/${user?.safeAddress}/token-balances`,
+              {
+                headers: {
+                  accept: "application/json",
+                },
+              },
+            ),
+            // Fuse via Blockscout
+            fetch(
+              `https://explorer.fuse.io/api/v2/addresses/${user?.safeAddress}/token-balances`,
+              {
+                headers: {
+                  accept: "application/json",
+                },
+              },
+            ),
+            readContract(publicClient(mainnet.id), {
+              address: ADDRESSES.ethereum.accountant,
+              abi: ACCOUNTANT_ABI,
+              functionName: "getRate",
+            }),
+          ]);
 
-      // Process Fuse response (Blockscout)
-      if (fuseResponse.status === 'fulfilled' && fuseResponse.value.ok) {
-        const fuseData: BlockscoutResponse = await fuseResponse.value.json();
-        // Filter out NFTs and only include ERC-20 tokens
-        const erc20Tokens = fuseData.filter(item => item.token.type === 'ERC-20');
-        fuseTokens = erc20Tokens.map(item => convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID));
-      } else if (fuseResponse.status === 'rejected') {
-        console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
-      }
+        let ethereumTokens: TokenBalance[] = [];
+        let fuseTokens: TokenBalance[] = [];
+        let rate = 0;
 
-      // Calculate token values separately for soUSD and regular tokens
-      const calculateTokenValue = (token: TokenBalance): { soUSDValue: number; regularValue: number } => {
-        if (!token.balance || !token.quoteRate) return { soUSDValue: 0, regularValue: 0 };
-
-        // Convert balance from raw format to decimal format using contractDecimals
-        const formattedBalance = parseFloat(token.balance) / Math.pow(10, token.contractDecimals);
-
-        const value = formattedBalance * token.quoteRate;
-
-        if (isSoUSDToken(token.contractAddress)) {
-          return { soUSDValue: value, regularValue: 0 };
+        // Process soUSD rate
+        if (soUSDRate.status === "fulfilled") {
+          rate = Number(soUSDRate.value) / Math.pow(10, 6);
+        } else {
+          console.warn("Failed to fetch soUSD rate:", soUSDRate.reason);
         }
 
-        return { soUSDValue: 0, regularValue: value };
-      };
-
-      // Calculate totals for both chains
-      const ethereumTotals = ethereumTokens.reduce(
-        (acc, token) => {
-          const { soUSDValue, regularValue } = calculateTokenValue(token);
+        // Convert Blockscout format to our standard format
+        const convertBlockscoutToTokenBalance = (
+          item: BlockscoutTokenBalance,
+          chainId: number,
+        ): TokenBalance => {
+          const address = item.token.address || item.token.address_hash;
           return {
-            soUSD: acc.soUSD + soUSDValue,
-            regular: acc.regular + regularValue,
+            contractTickerSymbol: item.token.symbol,
+            contractName: item.token.name,
+            contractAddress: address,
+            balance: item.value,
+            quoteRate: item.token.exchange_rate
+              ? parseFloat(item.token.exchange_rate)
+              : isSoUSDToken(address)
+                ? rate
+                : 0,
+            logoUrl: item.token.icon_url,
+            contractDecimals: parseInt(item.token.decimals),
+            type: item.token.type,
+            verified: true, // Assume verified if it's on Blockscout
+            chainId: chainId,
           };
-        },
-        { soUSD: 0, regular: 0 }
-      );
+        };
 
-      const fuseTotals = fuseTokens.reduce(
-        (acc, token) => {
-          const { soUSDValue, regularValue } = calculateTokenValue(token);
-          return {
-            soUSD: acc.soUSD + soUSDValue,
-            regular: acc.regular + regularValue,
-          };
-        },
-        { soUSD: 0, regular: 0 }
-      );
+        // Process Ethereum response (Blockscout)
+        if (
+          ethereumResponse.status === "fulfilled" &&
+          ethereumResponse.value.ok
+        ) {
+          const ethereumData: BlockscoutResponse =
+            await ethereumResponse.value.json();
+          // Filter out NFTs and only include ERC-20 tokens
+          const erc20Tokens = ethereumData.filter(
+            (item) => item.token.type === "ERC-20",
+          );
+          ethereumTokens = erc20Tokens.map((item) =>
+            convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID),
+          );
+        } else if (ethereumResponse.status === "rejected") {
+          console.warn(
+            "Failed to fetch Ethereum balances:",
+            ethereumResponse.reason,
+          );
+        }
 
-      const totalSoUSD = ethereumTotals.soUSD + fuseTotals.soUSD;
-      const totalRegular = ethereumTotals.regular + fuseTotals.regular;
+        // Process Fuse response (Blockscout)
+        if (fuseResponse.status === "fulfilled" && fuseResponse.value.ok) {
+          const fuseData: BlockscoutResponse = await fuseResponse.value.json();
+          // Filter out NFTs and only include ERC-20 tokens
+          const erc20Tokens = fuseData.filter(
+            (item) => item.token.type === "ERC-20",
+          );
+          fuseTokens = erc20Tokens.map((item) =>
+            convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID),
+          );
+        } else if (fuseResponse.status === "rejected") {
+          console.warn("Failed to fetch Fuse balances:", fuseResponse.reason);
+        }
 
-      setBalanceData(prev => ({
-        ...prev,
-        totalUSD: totalSoUSD + totalRegular,
-        soUSDValue: totalSoUSD,
-        totalUSDExcludingSoUSD: totalRegular,
-        ethereumTokens,
-        fuseTokens,
-        [isLoading]: false,
-        error: null,
-      }));
+        // Calculate token values separately for soUSD and regular tokens
+        const calculateTokenValue = (
+          token: TokenBalance,
+        ): { soUSDValue: number; regularValue: number } => {
+          if (!token.balance || !token.quoteRate)
+            return { soUSDValue: 0, regularValue: 0 };
 
-    } catch (error) {
-      console.error('Error fetching balances:', error);
-      setBalanceData(prev => ({
-        ...prev,
-        [isLoading]: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }));
-    }
-  }, [user?.safeAddress]);
+          // Convert balance from raw format to decimal format using contractDecimals
+          const formattedBalance =
+            parseFloat(token.balance) / Math.pow(10, token.contractDecimals);
+
+          const value = formattedBalance * token.quoteRate;
+
+          if (isSoUSDToken(token.contractAddress)) {
+            return { soUSDValue: value, regularValue: 0 };
+          }
+
+          return { soUSDValue: 0, regularValue: value };
+        };
+
+        // Calculate totals for both chains
+        const ethereumTotals = ethereumTokens.reduce(
+          (acc, token) => {
+            const { soUSDValue, regularValue } = calculateTokenValue(token);
+            return {
+              soUSD: acc.soUSD + soUSDValue,
+              regular: acc.regular + regularValue,
+            };
+          },
+          { soUSD: 0, regular: 0 },
+        );
+
+        const fuseTotals = fuseTokens.reduce(
+          (acc, token) => {
+            const { soUSDValue, regularValue } = calculateTokenValue(token);
+            return {
+              soUSD: acc.soUSD + soUSDValue,
+              regular: acc.regular + regularValue,
+            };
+          },
+          { soUSD: 0, regular: 0 },
+        );
+
+        const totalSoUSD = ethereumTotals.soUSD + fuseTotals.soUSD;
+        const totalRegular = ethereumTotals.regular + fuseTotals.regular;
+
+        setBalanceData((prev) => ({
+          ...prev,
+          totalUSD: totalSoUSD + totalRegular,
+          soUSDValue: totalSoUSD,
+          totalUSDExcludingSoUSD: totalRegular,
+          ethereumTokens,
+          fuseTokens,
+          [isLoading]: false,
+          error: null,
+        }));
+      } catch (error) {
+        console.error("Error fetching balances:", error);
+        setBalanceData((prev) => ({
+          ...prev,
+          [isLoading]: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        }));
+      }
+    },
+    [user?.safeAddress],
+  );
 
   const refresh = useCallback(() => {
-    fetchBalances('isRefreshing');
+    fetchBalances("isRefreshing");
   }, [fetchBalances]);
 
   useEffect(() => {
@@ -256,4 +294,4 @@ export const useBalances = (): BalanceData => {
     error: balanceData.error,
     refresh,
   };
-}; 
+};

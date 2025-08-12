@@ -1,4 +1,4 @@
-import { gql } from "graphql-request";
+import { gql } from 'graphql-request';
 
 export const GET_USER_TRANSACTIONS_QUERY = gql`
   query GetUserTransactions($address: Bytes!) {
@@ -20,6 +20,7 @@ export const GET_USER_TRANSACTIONS_QUERY = gql`
       requestStatus
       requestTxHash
       solveTxHash
+      requestId
     }
     bridges(where: { user: $address }) {
       user

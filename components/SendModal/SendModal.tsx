@@ -1,12 +1,12 @@
 import React from 'react';
 import { Address } from 'viem';
 
+import AnimatedModal from '@/components/AnimatedModal';
+import TransactionStatus from '@/components/TransactionStatus';
 import { SEND_MODAL } from '@/constants/modals';
 import { TokenIcon } from '@/lib/types';
 import { useSendStore } from '@/store/useSendStore';
 import { Send, SendTrigger } from '.';
-import AnimatedModal from '../AnimatedModal';
-import TransactionStatus from '../TransactionStatus';
 
 type SendModalProps = {
   tokenAddress: Address;

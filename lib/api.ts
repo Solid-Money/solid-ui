@@ -13,6 +13,7 @@ import {
   BlockscoutTransactions,
   BridgeCustomerResponse,
   BridgeDeposit,
+  BridgeTransaction,
   BridgeTransferResponse,
   CardResponse,
   CardStatus,
@@ -74,7 +75,7 @@ axios.interceptors.request.use(config => {
   return config;
 });
 
-export const refreshToken = () => {
+export const refreshToken = async () => {
   const refreshTokenValue = getRefreshToken();
 
   const headers: Record<string, string> = {
@@ -86,11 +87,18 @@ export const refreshToken = () => {
     headers['Authorization'] = `Bearer ${refreshTokenValue}`;
   }
 
-  return fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/refresh-token`, {
-    method: 'POST',
-    credentials: 'include',
-    headers,
-  });
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/refresh-token`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response;
 };
 
 // use fetch because some browser doesn't support fetch wrappers such as axios
@@ -441,6 +449,25 @@ export const bridgeDeposit = async (
     credentials: 'include',
     body: JSON.stringify(bridge),
   });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const bridgeDepositTransactions = async (): Promise<BridgeTransaction[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/transactions`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
 
   if (!response.ok) throw response;
 

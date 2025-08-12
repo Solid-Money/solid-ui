@@ -84,7 +84,7 @@ export default function Deposit() {
       await deposit(data.amount.toString());
       reset(); // Reset form after successful transaction
       router.back();
-    } catch (error) {
+    } catch (_error) {
       Toast.show({
         type: 'error',
         text1: 'Error while depositing',
@@ -102,7 +102,7 @@ export default function Deposit() {
       edges={isDesktop ? [] : ['top', 'right', 'left', 'bottom']}
     >
       <ScrollView className="flex-1">
-        <View className="w-full max-w-2xl mx-auto gap-12 md:gap-16 px-4 py-8 md:py-16">
+        <View className="w-full max-w-2xl mx-auto gap-8 md:gap-16 px-4 py-8 md:py-16">
           <View className="gap-4">
             <Text className="text-3xl font-semibold">Deposit to your saving account</Text>
             <Text className="text-xl opacity-50 max-w-md">

@@ -1,13 +1,13 @@
-import { Address } from "abitype";
-import { useState } from "react";
-import { TransactionReceipt } from "viem";
-import { encodeFunctionData, parseUnits } from "viem/utils";
+import { Address } from 'abitype';
+import { useState } from 'react';
+import { TransactionReceipt } from 'viem';
+import { encodeFunctionData, parseUnits } from 'viem/utils';
 
-import ERC20_ABI from "@/lib/abis/ERC20";
-import { executeTransactions } from "@/lib/execute";
-import { Status } from "@/lib/types";
-import { getChain } from "@/lib/wagmi";
-import useUser from "./useUser";
+import ERC20_ABI from '@/lib/abis/ERC20';
+import { executeTransactions } from '@/lib/execute';
+import { Status } from '@/lib/types';
+import { getChain } from '@/lib/wagmi';
+import useUser from './useUser';
 
 type SendProps = {
   tokenAddress: Address;
@@ -22,11 +22,7 @@ type SendResult = {
   resetSendStatus: () => void;
 };
 
-const useSend = ({
-  tokenAddress,
-  tokenDecimals,
-  chainId,
-}: SendProps): SendResult => {
+const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResult => {
   const { user, safeAA } = useUser();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +31,11 @@ const useSend = ({
   const send = async (amount: string, to: Address) => {
     try {
       if (!user) {
-        throw new Error("User not found");
+        throw new Error('User not found');
       }
 
       if (!chain) {
-        throw new Error("Chain not found");
+        throw new Error('Chain not found');
       }
 
       setSendStatus(Status.PENDING);
@@ -52,24 +48,20 @@ const useSend = ({
           to: tokenAddress,
           data: encodeFunctionData({
             abi: ERC20_ABI,
-            functionName: "transfer",
+            functionName: 'transfer',
             args: [to, amountWei],
           }),
           value: 0n,
         },
       ];
 
-      const smartAccountClient = await safeAA(
-        chain,
-        user.suborgId,
-        user.signWith
-      );
+      const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 
       const transaction = await executeTransactions(
         smartAccountClient,
         transactions,
-        "Send failed",
-        chain
+        'Send failed',
+        chain,
       );
 
       setSendStatus(Status.SUCCESS);
@@ -77,7 +69,7 @@ const useSend = ({
     } catch (error) {
       console.error(error);
       setSendStatus(Status.ERROR);
-      setError(error instanceof Error ? error.message : "Unknown error");
+      setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   };

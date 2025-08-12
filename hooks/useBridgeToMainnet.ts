@@ -1,21 +1,21 @@
-import BridgePayamster_ABI from "@/lib/abis/BridgePayamster";
-import ERC20_ABI from "@/lib/abis/ERC20";
-import ETHEREUM_TELLER_ABI from "@/lib/abis/EthereumTeller";
-import { ADDRESSES } from "@/lib/config";
-import { executeTransactions } from "@/lib/execute";
-import { Status } from "@/lib/types";
-import { Address } from "abitype";
-import { useState } from "react";
-import { TransactionReceipt } from "viem";
-import { fuse } from "viem/chains";
+import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
+import ERC20_ABI from '@/lib/abis/ERC20';
+import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
+import { ADDRESSES } from '@/lib/config';
+import { executeTransactions } from '@/lib/execute';
+import { Status } from '@/lib/types';
+import { Address } from 'abitype';
+import { useState } from 'react';
+import { TransactionReceipt } from 'viem';
+import { fuse } from 'viem/chains';
 import {
   encodeAbiParameters,
   encodeFunctionData,
   parseAbiParameters,
   parseUnits,
-} from "viem/utils";
-import { useReadContract } from "wagmi";
-import useUser from "./useUser";
+} from 'viem/utils';
+import { useReadContract } from 'wagmi';
+import useUser from './useUser';
 
 type BridgeResult = {
   bridge: (amount: string) => Promise<TransactionReceipt>;
@@ -31,11 +31,11 @@ const useBridgeToMainnet = (): BridgeResult => {
   const { data: fee } = useReadContract({
     abi: ETHEREUM_TELLER_ABI,
     address: ADDRESSES.fuse.teller,
-    functionName: "previewFee",
+    functionName: 'previewFee',
     args: [
       BigInt(0),
       user?.safeAddress as Address,
-      encodeAbiParameters(parseAbiParameters("uint32"), [30101]),
+      encodeAbiParameters(parseAbiParameters('uint32'), [30101]),
       ADDRESSES.fuse.nativeFeeToken,
     ],
     chainId: fuse.id,
@@ -44,7 +44,7 @@ const useBridgeToMainnet = (): BridgeResult => {
   const bridge = async (amount: string) => {
     try {
       if (!user) {
-        throw new Error("User is not selected");
+        throw new Error('User is not selected');
       }
 
       setBridgeStatus(Status.PENDING);
@@ -54,11 +54,11 @@ const useBridgeToMainnet = (): BridgeResult => {
 
       const callData = encodeFunctionData({
         abi: ETHEREUM_TELLER_ABI,
-        functionName: "bridge",
+        functionName: 'bridge',
         args: [
           amountWei,
           user.safeAddress,
-          encodeAbiParameters(parseAbiParameters("uint32"), [30101]),
+          encodeAbiParameters(parseAbiParameters('uint32'), [30101]),
           ADDRESSES.fuse.nativeFeeToken,
           fee ? fee : 0n,
         ],
@@ -69,7 +69,7 @@ const useBridgeToMainnet = (): BridgeResult => {
           to: ADDRESSES.fuse.vault,
           data: encodeFunctionData({
             abi: ERC20_ABI,
-            functionName: "transfer",
+            functionName: 'transfer',
             args: [ADDRESSES.fuse.bridgePaymasterAddress, amountWei],
           }),
           value: 0n,
@@ -78,7 +78,7 @@ const useBridgeToMainnet = (): BridgeResult => {
           to: ADDRESSES.fuse.bridgePaymasterAddress,
           data: encodeFunctionData({
             abi: BridgePayamster_ABI,
-            functionName: "callWithValue",
+            functionName: 'callWithValue',
             args: [ADDRESSES.fuse.teller, '0x05921740', callData, fee ? fee : 0n],
           }),
           value: 0n,
@@ -90,8 +90,8 @@ const useBridgeToMainnet = (): BridgeResult => {
       const transaction = await executeTransactions(
         smartAccountClient,
         transactions,
-        "Unstake failed",
-        fuse
+        'Unstake failed',
+        fuse,
       );
 
       setBridgeStatus(Status.SUCCESS);
@@ -99,7 +99,7 @@ const useBridgeToMainnet = (): BridgeResult => {
     } catch (error) {
       console.error(error);
       setBridgeStatus(Status.ERROR);
-      setError(error instanceof Error ? error.message : "Unknown error");
+      setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   };
