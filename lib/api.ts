@@ -177,6 +177,7 @@ export const createKycLink = async (
   fullName: string,
   email: string,
   redirectUri: string,
+  endorsements: string[],
 ): Promise<KycLink> => {
   const jwt = getJWTToken();
 
@@ -192,6 +193,7 @@ export const createKycLink = async (
       fullName,
       email,
       redirectUri,
+      endorsements,
     }),
   });
 
