@@ -146,7 +146,7 @@ export default function ActivateCard() {
       setIsLoading(true);
 
       router.push({
-        pathname: path.CARD_KYC,
+        pathname: path.KYC,
         params: {
           url: kycLinkData.link,
         },
