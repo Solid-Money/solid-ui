@@ -17,7 +17,12 @@ type FAQProps = {
 
 const FAQ = ({ faqs, className }: FAQProps) => {
   return (
-    <Accordion type="multiple" collapsible defaultValue={['item-1']} className={cn('w-full', className)}>
+    <Accordion
+      type="multiple"
+      collapsible
+      defaultValue={['item-1']}
+      className={cn('w-full', className)}
+    >
       {faqs.map((faq, index) => (
         <AccordionItem key={index} value={`item-${index + 1}`}>
           <AccordionTrigger>

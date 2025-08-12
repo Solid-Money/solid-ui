@@ -11,10 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import {
-  useLatestTokenTransfer,
-  useTotalAPY,
-} from '@/hooks/useAnalytics';
+import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -72,11 +69,7 @@ export default function Savings() {
   useEffect(() => {
     refetchBalance();
     refetchTransactions();
-  }, [
-    blockNumber,
-    refetchBalance,
-    refetchTransactions,
-  ]);
+  }, [blockNumber, refetchBalance, refetchTransactions]);
 
   if (isBalanceLoading || isTransactionsLoading) {
     return <Loading />;
