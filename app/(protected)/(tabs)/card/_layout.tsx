@@ -31,12 +31,6 @@ export default function CardLayout() {
           title: 'Solid card',
         }}
       />
-      <Stack.Screen
-        name="user_info_mobile"
-        options={{
-          title: 'Personal Information',
-        }}
-      />
     </Stack>
   );
 }
