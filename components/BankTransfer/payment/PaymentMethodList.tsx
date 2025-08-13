@@ -1,15 +1,15 @@
+import {
+  BridgeTransferCryptoCurrency,
+  BridgeTransferFiatCurrency,
+  BridgeTransferMethod,
+  METHOD_LABEL,
+} from '@/components/BankTransfer/enums';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCustomer } from '@/hooks/useCustomer';
 import { createBridgeTransfer } from '@/lib/api';
 import { router } from 'expo-router';
 import { View } from 'react-native';
-import {
-  BridgeTransferCryptoCurrency,
-  BridgeTransferFiatCurrency,
-  BridgeTransferMethod,
-  METHOD_LABEL,
-} from '../enums';
 import { PaymentMethodTile } from './PaymentMethodTile';
 
 type Props = {

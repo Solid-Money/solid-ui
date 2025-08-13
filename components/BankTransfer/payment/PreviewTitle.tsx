@@ -1,6 +1,6 @@
+import { getFiatIcon } from '@/components/BankTransfer/icons';
 import { Text } from '@/components/ui/text';
 import { View } from 'react-native';
-import { getFiatIcon } from '../icons';
 
 type Props = {
   amount: string | undefined | null;
