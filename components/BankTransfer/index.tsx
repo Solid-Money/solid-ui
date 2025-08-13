@@ -35,7 +35,7 @@ export default function BankTransferAmount() {
   // TODO: about the exchange rates.
   useEffect(() => {
     setCryptoAmount(fiatAmount);
-  }, [cryptoAmount, fiatAmount]);
+  }, [fiatAmount]);
 
   return (
     <View className="gap-4">
