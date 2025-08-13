@@ -14,9 +14,9 @@ const home: MenuItem = {
   href: path.HOME,
 };
 
-const wallet: MenuItem = {
-  label: 'Wallet',
-  href: path.WALLET,
+const savings: MenuItem = {
+  label: 'Savings',
+  href: path.SAVINGS,
 };
 
 const useNav = () => {
@@ -25,7 +25,7 @@ const useNav = () => {
 
   const menuItems = useMemo<MenuItem[]>(() => {
     if (hasDeposited) {
-      return [home, wallet];
+      return [home, savings];
     }
     return [];
   }, [hasDeposited]);

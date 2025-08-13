@@ -220,7 +220,7 @@ export default function Register() {
           <Text className="text-sm text-muted-foreground">
             Your Solid Account is secured with a passkey - a safer replacement for passwords.{' '}
             <Link
-              href="https://solid-3.gitbook.io/solid.xyz-docs"
+              href="https://docs.solid.xyz"
               target="_blank"
               className="underline hover:opacity-70"
             >

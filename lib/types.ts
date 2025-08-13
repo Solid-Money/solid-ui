@@ -283,6 +283,7 @@ export type Explorers = {
 export enum SavingMode {
   TOTAL = 'total',
   INTEREST_ONLY = 'interest-only',
+  BALANCE_ONLY = 'balance-only',
 }
 
 export type BridgeDeposit = {

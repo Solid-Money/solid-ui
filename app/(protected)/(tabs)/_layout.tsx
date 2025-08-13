@@ -62,7 +62,7 @@ export default function TabLayout() {
           title: 'Savings',
           headerShown: false,
           tabBarIcon: ({ color }) => <SavingsNavBarIcon color={color} />,
-          href: null,
+          href: hasDeposited ? path.SAVINGS : null,
         }}
       />
 
@@ -145,7 +145,7 @@ export default function TabLayout() {
         options={{
           title: 'Wallet',
           tabBarIcon: ({ color }) => <Wallet size={28} color={color} />,
-          href: hasDeposited ? path.WALLET : null,
+          href: null,
         }}
       />
       <Tabs.Screen

@@ -29,7 +29,7 @@ const TransactionStatus = ({
   status = 'Initiated',
   icon,
   token = 'USDC',
-  buttonText = 'Back to wallet',
+  buttonText = 'View recent activity',
 }: TransactionStatusProps) => {
   return (
     <View className="gap-8">
