@@ -155,13 +155,24 @@ const SwapPair: React.FC = () => {
     () => ({
       [independentField]: typedValue,
       [dependentField]:
-        showWrap || showPegSwap
-          ? (parsedAmounts[independentField]?.toExact() ?? '')
-          : (parsedAmounts[dependentField]?.toFixed(
-              (parsedAmounts[dependentField]?.currency.decimals || 6) / 2,
-            ) ?? ''),
+        isVoltageTradeLoading || tradeState.state === 'LOADING'
+          ? '...'
+          : showWrap || showPegSwap
+            ? (parsedAmounts[independentField]?.toExact() ?? '')
+            : (parsedAmounts[dependentField]?.toFixed(
+                (parsedAmounts[dependentField]?.currency.decimals || 6) / 2,
+              ) ?? ''),
     }),
-    [independentField, dependentField, typedValue, showWrap, showPegSwap, parsedAmounts],
+    [
+      independentField,
+      dependentField,
+      typedValue,
+      showWrap,
+      showPegSwap,
+      parsedAmounts,
+      isVoltageTradeLoading,
+      tradeState.state,
+    ],
   );
 
   return (
