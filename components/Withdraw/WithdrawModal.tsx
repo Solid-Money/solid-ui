@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRouter } from 'expo-router';
 
 import AnimatedModal from '@/components/AnimatedModal';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -6,8 +7,10 @@ import { WITHDRAW_MODAL } from '@/constants/modals';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useWithdrawStore } from '@/store/useWithdrawStore';
 import { Withdraw, WithdrawTrigger } from '.';
+import { path } from '@/constants/path';
 
 const WithdrawModal = () => {
+  const router = useRouter();
   const { currentModal, previousModal, setModal, transaction } = useWithdrawStore();
 
   const isTransactionStatus = currentModal.name === WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS.name;
@@ -16,6 +19,11 @@ const WithdrawModal = () => {
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
     return 'Withdraw';
+  };
+
+  const handleTransactionStatusPress = () => {
+    setModal(WITHDRAW_MODAL.CLOSE);
+    router.push(path.SAVINGS);
   };
 
   const getContentKey = () => {
@@ -28,7 +36,7 @@ const WithdrawModal = () => {
       return (
         <TransactionStatus
           amount={transaction.amount ?? 0}
-          onPress={() => setModal(WITHDRAW_MODAL.CLOSE)}
+          onPress={handleTransactionStatusPress}
           token={'SoUSD'}
           icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
         />

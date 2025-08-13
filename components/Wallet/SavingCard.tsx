@@ -1,9 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Leaf } from 'lucide-react-native';
 import { View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 import { cn, formatNumber } from '@/lib/utils';
+import TooltipPopover from '../Tooltip';
 
 type SavingCardProps = {
   savings: number;
@@ -24,10 +26,13 @@ const SavingCard = ({ savings, className }: SavingCardProps) => {
       </View>
 
       <View className="flex-row justify-between items-center">
-        <Text className="text-2xl md:text-3xl text-brand font-semibold">
-          ${formatNumber(savings)}
-        </Text>
-        {/* <Image source={require('@/assets/images/bitcoin-usdc-4x.png')} style={{ width: 53, height: 28 }} /> */}
+        <View className="flex-row items-center gap-2">
+          <Text className="text-2xl md:text-3xl text-brand font-semibold">
+            ${formatNumber(savings)}
+          </Text>
+          <TooltipPopover text="Balance + Yield, same as Savings page" />
+        </View>
+        <Image source={require('@/assets/images/sousd-4x.png')} style={{ width: 28, height: 28 }} />
       </View>
     </LinearGradient>
   );
