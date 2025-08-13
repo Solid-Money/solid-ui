@@ -1,21 +1,23 @@
+import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
+import AnimatedModal from '@/components/AnimatedModal';
+import BuyCrypto from '@/components/BuyCrypto';
+import DepositEmailModal from '@/components/DepositEmailModal';
+import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
+import { DepositToVaultForm } from '@/components/DepositToVault';
+import TransactionStatus from '@/components/TransactionStatus';
+import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
-import AnimatedModal from '../AnimatedModal';
-import BuyCrypto from '../BuyCrypto';
-import DepositEmailModal from '../DepositEmailModal';
-import { DepositToVaultForm } from '../DepositToVault';
-import TransactionStatus from '../TransactionStatus';
-import { buttonVariants } from '../ui/button';
 import DepositOptions from './DepositOptions';
-import DepositNetworks from '../DepositNetwork/DepositNetworks';
+import { path } from '@/constants/path';
 
 interface DepositOptionModalProps {
   buttonText?: string;
@@ -28,6 +30,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const activeAccount = useActiveAccount();
   const status = useActiveWalletConnectionStatus();
   const address = activeAccount?.address;
+  const router = useRouter();
 
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(isForm && address);
@@ -38,6 +41,11 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
+
+  const handleTransactionStatusPress = () => {
+    setModal(DEPOSIT_MODAL.CLOSE);
+    router.push(path.SAVINGS);
+  };
 
   const getTrigger = () => {
     return (
@@ -60,7 +68,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       return (
         <TransactionStatus
           amount={transaction.amount ?? 0}
-          onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
+          onPress={handleTransactionStatusPress}
           icon={getTokenIcon({ tokenSymbol: 'USDC' })}
         />
       );

@@ -2,7 +2,7 @@ import * as React from 'react';
 import Svg, { Path, SvgProps } from 'react-native-svg';
 
 const SvgComponent = ({ color = '#9A9A9A', ...props }: SvgProps) => (
-  <Svg xmlns="http://www.w3.org/2000/svg" width={22} height={16} fill="none" {...props}>
+  <Svg width={22} height={16} fill="none" {...props}>
     <Path
       stroke={color}
       strokeLinecap="round"

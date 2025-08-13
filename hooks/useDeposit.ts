@@ -1,23 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 import {
+  type Address,
   encodeAbiParameters,
   encodeFunctionData,
   parseAbiParameters,
   parseUnits,
   TransactionReceipt,
-  type Address
-} from "viem";
-import { mainnet } from "viem/chains";
-import { useBlockNumber, useReadContract } from "wagmi";
+} from 'viem';
+import { mainnet } from 'viem/chains';
+import { useBlockNumber, useReadContract } from 'wagmi';
 
-import BridgePayamster_ABI from "@/lib/abis/BridgePayamster";
-import ERC20_ABI from "@/lib/abis/ERC20";
-import ETHEREUM_TELLER_ABI from "@/lib/abis/EthereumTeller";
-import { ADDRESSES } from "@/lib/config";
-import { executeTransactions } from "@/lib/execute";
-import { Status } from "@/lib/types";
-import { useUserStore } from "@/store/useUserStore";
-import useUser from "./useUser";
+import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
+import ERC20_ABI from '@/lib/abis/ERC20';
+import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
+import { ADDRESSES } from '@/lib/config';
+import { executeTransactions } from '@/lib/execute';
+import { Status } from '@/lib/types';
+import { useUserStore } from '@/store/useUserStore';
+import useUser from './useUser';
 
 type DepositResult = {
   allowance: bigint | undefined;
@@ -40,7 +40,7 @@ const useDeposit = (): DepositResult => {
   const { data: balance, refetch: refetchBalance } = useReadContract({
     abi: ERC20_ABI,
     address: ADDRESSES.ethereum.usdc,
-    functionName: "balanceOf",
+    functionName: 'balanceOf',
     args: [user?.safeAddress as Address],
     chainId: mainnet.id,
     query: {
@@ -51,7 +51,7 @@ const useDeposit = (): DepositResult => {
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     abi: ERC20_ABI,
     address: ADDRESSES.ethereum.usdc,
-    functionName: "allowance",
+    functionName: 'allowance',
     args: [user?.safeAddress as Address, ADDRESSES.ethereum.vault],
     chainId: mainnet.id,
     query: {
@@ -62,11 +62,11 @@ const useDeposit = (): DepositResult => {
   const { data: fee } = useReadContract({
     abi: ETHEREUM_TELLER_ABI,
     address: ADDRESSES.ethereum.teller,
-    functionName: "previewFee",
+    functionName: 'previewFee',
     args: [
       BigInt(0),
       user?.safeAddress as Address,
-      encodeAbiParameters(parseAbiParameters("uint32"), [30138]),
+      encodeAbiParameters(parseAbiParameters('uint32'), [30138]),
       ADDRESSES.ethereum.nativeFeeToken,
     ],
     chainId: mainnet.id,
@@ -75,7 +75,7 @@ const useDeposit = (): DepositResult => {
   const approve = async (amount: string) => {
     try {
       if (!user?.passkey) {
-        throw new Error("Passkey not found");
+        throw new Error('Passkey not found');
       }
 
       setApproveStatus(Status.PENDING);
@@ -87,7 +87,7 @@ const useDeposit = (): DepositResult => {
         to: ADDRESSES.ethereum.usdc,
         data: encodeFunctionData({
           abi: ERC20_ABI,
-          functionName: "approve",
+          functionName: 'approve',
           args: [ADDRESSES.ethereum.vault, amountWei],
         }),
         value: 0n,
@@ -99,8 +99,8 @@ const useDeposit = (): DepositResult => {
         smartAccountClient,
         user.passkey,
         [approveTransaction],
-        "Approval failed",
-        mainnet
+        'Approval failed',
+        mainnet,
       );
 
       await refetchAllowance();
@@ -108,14 +108,14 @@ const useDeposit = (): DepositResult => {
     } catch (error) {
       console.error(error);
       setApproveStatus(Status.ERROR);
-      setError(error instanceof Error ? error.message : "Unknown error");
+      setError(error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
   const deposit = async (amount: string) => {
     try {
       if (!user?.passkey) {
-        throw new Error("Passkey not found");
+        throw new Error('Passkey not found');
       }
 
       setDepositStatus(Status.PENDING);
@@ -125,13 +125,13 @@ const useDeposit = (): DepositResult => {
 
       const callData = encodeFunctionData({
         abi: ETHEREUM_TELLER_ABI,
-        functionName: "depositAndBridge",
+        functionName: 'depositAndBridge',
         args: [
           ADDRESSES.ethereum.usdc,
           amountWei,
           BigInt(0),
           user.safeAddress,
-          encodeAbiParameters(parseAbiParameters("uint32"), [30138]),
+          encodeAbiParameters(parseAbiParameters('uint32'), [30138]),
           ADDRESSES.ethereum.nativeFeeToken,
           fee ? fee : 0n,
         ],
@@ -142,7 +142,7 @@ const useDeposit = (): DepositResult => {
           to: ADDRESSES.ethereum.usdc,
           data: encodeFunctionData({
             abi: ERC20_ABI,
-            functionName: "transfer",
+            functionName: 'transfer',
             args: [ADDRESSES.ethereum.bridgePaymasterAddress, amountWei],
           }),
           value: 0n,
@@ -151,11 +151,11 @@ const useDeposit = (): DepositResult => {
           to: ADDRESSES.ethereum.bridgePaymasterAddress,
           data: encodeFunctionData({
             abi: BridgePayamster_ABI,
-            functionName: "callWithValue",
+            functionName: 'callWithValue',
             args: [ADDRESSES.ethereum.teller, callData, fee ? fee : 0n],
           }),
           value: 0n,
-        }
+        },
       ];
 
       const smartAccountClient = await safeAA(user.passkey, mainnet);
@@ -164,8 +164,8 @@ const useDeposit = (): DepositResult => {
         smartAccountClient,
         user.passkey,
         transactions,
-        "Deposit failed",
-        mainnet
+        'Deposit failed',
+        mainnet,
       );
 
       updateUser({
@@ -177,7 +177,7 @@ const useDeposit = (): DepositResult => {
     } catch (error) {
       console.error(error);
       setDepositStatus(Status.ERROR);
-      setError(error instanceof Error ? error.message : "Unknown error");
+      setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   };

@@ -109,7 +109,7 @@ const SwapParams = () => {
                 { account: address },
               )
               .then(v => v.result as [string, number, number]);
-          } catch (error) {
+          } catch (_error) {
             beforeSwap = ['', 0, 0];
           }
           const [, overrideFee, pluginFee] = beforeSwap || ['', 0, 0];
@@ -219,7 +219,7 @@ const SwapParams = () => {
 };
 
 const SwapRoute = ({ trade }: { trade: Trade<Currency, Currency, TradeType> }) => {
-  const path = trade.route.tokenPath;
+  const path = trade.swaps[0].route.tokenPath;
 
   return (
     <View className="flex flex-row items-center gap-1">

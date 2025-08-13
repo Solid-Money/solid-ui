@@ -2,7 +2,7 @@ import { Href, Link } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
-import { Text } from '../ui/text';
+import { Text } from '@/components/ui/text';
 
 interface SettingsCardProps {
   title: string;

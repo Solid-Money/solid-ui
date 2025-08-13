@@ -1,14 +1,14 @@
 import { Platform, View } from 'react-native';
 
+import RenderTokenIcon from '@/components/RenderTokenIcon';
+import { Text } from '@/components/ui/text';
+import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { LayerZeroTransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
-import RenderTokenIcon from '../RenderTokenIcon';
-import { Text } from '../ui/text';
 import TransactionDrawer from './TransactionDrawer';
 import TransactionDropdown from './TransactionDropdown';
-import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 
 type TransactionClassNames = {
   container?: string;

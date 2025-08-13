@@ -1,12 +1,14 @@
 import React from 'react';
+import { useRouter } from 'expo-router';
 import { Address } from 'viem';
 
+import AnimatedModal from '@/components/AnimatedModal';
+import TransactionStatus from '@/components/TransactionStatus';
 import { SEND_MODAL } from '@/constants/modals';
 import { TokenIcon } from '@/lib/types';
 import { useSendStore } from '@/store/useSendStore';
 import { Send, SendTrigger } from '.';
-import AnimatedModal from '../AnimatedModal';
-import TransactionStatus from '../TransactionStatus';
+import { path } from '@/constants/path';
 
 type SendModalProps = {
   tokenAddress: Address;
@@ -23,6 +25,8 @@ const SendModal = ({
   tokenSymbol,
   chainId,
 }: SendModalProps) => {
+  const router = useRouter();
+
   const {
     currentModal,
     previousModal,
@@ -35,6 +39,11 @@ const SendModal = ({
   const isTransactionStatus = currentModal.name === SEND_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isClose = currentModal.name === SEND_MODAL.CLOSE.name;
   const isCurrentTokenAddress = currentTokenAddress === tokenAddress;
+
+  const handleTransactionStatusPress = () => {
+    setModal(SEND_MODAL.CLOSE);
+    router.push(path.SAVINGS);
+  };
 
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
@@ -52,7 +61,7 @@ const SendModal = ({
         <TransactionStatus
           amount={transaction.amount ?? 0}
           address={transaction.address}
-          onPress={() => setModal(SEND_MODAL.CLOSE)}
+          onPress={handleTransactionStatusPress}
           token={tokenSymbol}
           icon={tokenIcon}
         />

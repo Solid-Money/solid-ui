@@ -23,12 +23,12 @@ import { TokenListItem } from '@/lib/types/tokens';
 import { formatNumber } from '@/lib/utils';
 import { multicall3 } from '@/lib/utils/multicall';
 
+import CopyToClipboard from '@/components/CopyToClipboard';
+import CurrencyLogo from '@/components/CurrencyLogo';
 import { useAlgebraToken } from '@/hooks/tokens/useAlgebraToken';
 import useUser from '@/hooks/useUser';
 import { useTokensState } from '@/store/tokensStore';
 import { fuse } from 'viem/chains';
-import CopyToClipboard from '../CopyToClipboard';
-import CurrencyLogo from '../CurrencyLogo';
 
 const TokenSelectorView = {
   DEFAULT_LIST: 'DEFAULT_LIST',

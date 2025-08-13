@@ -1,13 +1,13 @@
 import { Image } from 'expo-image';
 import { View } from 'react-native';
 
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { TOKEN_IMAGES } from '@/constants/tokens';
 import { useTokenSelector } from '@/hooks/useToken';
 import useUser from '@/hooks/useUser';
 import { Token } from '@/lib/types';
-import { Button } from '../ui/button';
-import { Skeleton } from '../ui/skeleton';
-import { Text } from '../ui/text';
-import { TOKEN_IMAGES } from '@/constants/tokens';
 
 type TokenSelectorProps = {
   tokens: Token[];

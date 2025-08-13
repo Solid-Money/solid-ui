@@ -1,11 +1,11 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { View } from 'react-native';
-import { Image } from 'expo-image';
 
+import { DepositOptionModal } from '@/components/DepositOption';
+import { buttonVariants } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
-import { Text } from '../ui/text';
-import { DepositOptionModal } from '../DepositOption';
-import { buttonVariants } from '../ui/button';
 
 interface FundWalletProps {
   className?: string;

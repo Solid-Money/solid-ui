@@ -1,13 +1,12 @@
 import { View } from 'react-native';
 import { Address } from 'viem';
 
-import { Text } from '../ui/text';
-import { eclipseAddress, formatNumber } from '@/lib/utils';
-import { Button } from '../ui/button';
-import RenderTokenIcon from '../RenderTokenIcon';
-import { TokenIcon } from '@/lib/types';
-
 import Checkmark from '@/assets/images/checkmark';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { TokenIcon } from '@/lib/types';
+import { eclipseAddress, formatNumber } from '@/lib/utils';
 
 type TransactionStatusProps = {
   amount: number;
@@ -30,7 +29,7 @@ const TransactionStatus = ({
   status = 'Initiated',
   icon,
   token = 'USDC',
-  buttonText = 'Back to wallet',
+  buttonText = 'View recent activity',
 }: TransactionStatusProps) => {
   return (
     <View className="gap-8">

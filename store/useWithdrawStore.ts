@@ -21,15 +21,16 @@ export const useWithdrawStore = create<WithdrawState>()(
       previousModal: WITHDRAW_MODAL.CLOSE,
       transaction: {},
 
-      setModal: (modal) => set({
-        previousModal: get().currentModal,
-        currentModal: modal
-      }),
-      setTransaction: (transaction) => set({ transaction }),
+      setModal: modal =>
+        set({
+          previousModal: get().currentModal,
+          currentModal: modal,
+        }),
+      setTransaction: transaction => set({ transaction }),
     }),
     {
       name: USER.withdrawStorageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.withdrawStorageKey)),
-    }
-  )
+    },
+  ),
 );

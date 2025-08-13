@@ -4,6 +4,9 @@ import { LayoutChangeEvent, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Address, formatUnits } from 'viem';
 
+import Ping from '@/components/Ping';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
+import SendModal from '@/components/SendModal/SendModal';
 import {
   Table,
   TableBody,
@@ -13,15 +16,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Text } from '@/components/ui/text';
-import { useWalletTokens } from '@/hooks/useWalletTokens';
+import UnstakeModal from '@/components/Unstake/UnstakeModal';
+import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { useDimension } from '@/hooks/useDimension';
-import { cn, compactNumberFormat, formatNumber, isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
-import SendModal from '../SendModal/SendModal';
-import UnstakeModal from '../Unstake/UnstakeModal';
-import WithdrawModal from '../Withdraw/WithdrawModal';
+import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
-import RenderTokenIcon from '../RenderTokenIcon';
-import Ping from '../Ping';
+import { cn, compactNumberFormat, formatNumber, isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
 
 const WalletTokenTab = () => {
   const insets = useSafeAreaInsets();

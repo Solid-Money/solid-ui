@@ -1,8 +1,10 @@
 import { Wallet } from 'lucide-react-native';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 
+import { Text } from '@/components/ui/text';
 import { cn, formatNumber } from '@/lib/utils';
-import { Text } from '../ui/text';
+import TooltipPopover from '@/components/Tooltip';
 
 type WalletCardProps = {
   balance: number;
@@ -18,8 +20,25 @@ const WalletCard = ({ balance, className }: WalletCardProps) => {
       </View>
 
       <View className="flex-row justify-between items-center">
-        <Text className="text-2xl md:text-3xl font-semibold">${formatNumber(balance)}</Text>
-        {/* <Image source={require('@/assets/images/eth-bitcoin-usdc-4x.png')} style={{ width: 78, height: 28 }} /> */}
+        <View className="flex-row items-center gap-2">
+          <Text className="text-2xl md:text-3xl font-semibold">${formatNumber(balance)}</Text>
+          <TooltipPopover text="Sum of all the coins balances" />
+        </View>
+        <TooltipPopover
+          trigger={
+            <Pressable>
+              <Image
+                source={require('@/assets/images/eth-fuse-usdc-4x.png')}
+                style={{ width: 78, height: 28 }}
+              />
+            </Pressable>
+          }
+          content={
+            <Text className="max-w-64">
+              Wallet can contain any ERC-20 token in Ethereum and Fuse for Swap and Send
+            </Text>
+          }
+        />
       </View>
     </View>
   );

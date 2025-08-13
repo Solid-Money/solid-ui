@@ -9,8 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { createKycLink } from '@/lib/api';
-import { KycStatus } from '@/lib/types';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 // Zod schema for validation
 const userInfoSchema = z.object({
@@ -28,12 +27,14 @@ const userInfoSchema = z.object({
 type UserInfoFormData = z.infer<typeof userInfoSchema>;
 
 // Header Component
-function UserInfoHeader() {
-  return (
-    <Text className="text-base text-white/70 text-center">
-      We need some basic information to get started with your card activation
-    </Text>
-  );
+function UserInfoHeader({ kycMode }: { kycMode?: 'bankTransfer' | 'card' }) {
+  const text =
+    kycMode === 'bankTransfer'
+      ? 'We need some basic information to get started with your bank transfer'
+      : kycMode === 'card'
+        ? 'We need some basic information to get started with your card activation'
+        : 'We need some basic information to get started';
+  return <Text className="text-base text-white/70 text-center">{text}</Text>;
 }
 
 // Form Component
@@ -153,9 +154,29 @@ function UserInfoFooter({ control, errors, onContinue, isValid, isLoading }: Use
 }
 
 // Main Component
-export default function UserInfoMobile() {
+export default function UserKycInfo() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  // `returnTo` encodes where to resume after KYC. It can be a string path or a serialized
+  // object with `pathname` and `params`. We pass this through KYC provider and handle it
+  // when the app is redirected back (mobile via base URL, web via /kyc route).
+  const params = useLocalSearchParams<{
+    returnTo?: string;
+    endorsements?: string;
+    kycMode?: 'bankTransfer' | 'card';
+  }>();
+
+  const { returnTo, kycMode } = params;
+
+  const endorsementsArray = React.useMemo((): string[] => {
+    const raw = params.endorsements;
+    if (!raw) return [];
+    const parts = Array.isArray(raw) ? raw : [raw];
+    return parts
+      .flatMap(s => s.split(','))
+      .map(s => s.trim())
+      .filter(Boolean);
+  }, [params.endorsements]);
 
   const {
     control,
@@ -173,17 +194,23 @@ export default function UserInfoMobile() {
 
   const getRedirectUrl = () => {
     const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
-    return `${baseUrl}${path.CARD_ACTIVATE_MOBILE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
+    const returnToPart = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '';
+    return `${baseUrl}${returnToPart}`;
   };
 
   const onSubmit = async (data: UserInfoFormData) => {
     setIsLoading(true);
 
     const redirectUrl = getRedirectUrl();
-    console.log('redirectUrl', redirectUrl);
+    console.warn('redirectUrl', redirectUrl);
 
     try {
-      const kycLink = await createKycLink(data.fullName.trim(), data.email.trim(), redirectUrl);
+      const kycLink = await createKycLink(
+        data.fullName.trim(),
+        data.email.trim(),
+        redirectUrl,
+        endorsementsArray,
+      );
 
       if (Platform.OS === 'ios' || Platform.OS === 'android') {
         WebBrowser.openBrowserAsync(kycLink.link, {
@@ -194,11 +221,10 @@ export default function UserInfoMobile() {
           enableBarCollapsing: true,
         });
       } else {
+        // On web, we render the KYC widget in /kyc, forwarding the link and returnTo
         router.push({
-          pathname: path.CARD_KYC,
-          params: {
-            url: kycLink.link,
-          },
+          pathname: path.KYC as any,
+          params: { url: kycLink.link, ...(returnTo ? { returnTo } : {}) },
         });
       }
     } catch (error) {
@@ -211,7 +237,7 @@ export default function UserInfoMobile() {
   return (
     <View className="flex-1 bg-background px-6 pt-4">
       <View className="flex-1 justify-evenly">
-        <UserInfoHeader />
+        <UserInfoHeader kycMode={kycMode as any} />
 
         <UserInfoForm control={control} errors={errors} />
 

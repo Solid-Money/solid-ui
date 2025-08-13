@@ -70,7 +70,7 @@ export interface RecoveryActions {
 
 export const useEmailManagement = (
   onSuccess?: () => void,
-  initialStep?: 'email' | 'existing'
+  initialStep?: 'email' | 'existing',
 ): EmailManagementState & EmailManagementActions => {
   const { user } = useUser();
   const { updateUser } = useUserStore();
@@ -181,15 +181,20 @@ export const useEmailManagement = (
       }
     } catch (error: any) {
       const errorMessage = error?.message || error?.toString() || '';
-      const isRateLimitError = errorMessage.includes('Max number of OTPs have been initiated') ||
+      const isRateLimitError =
+        errorMessage.includes('Max number of OTPs have been initiated') ||
         errorMessage.includes('please wait and try again') ||
         errorMessage.includes('Turnkey error 3');
 
       if (isRateLimitError) {
-        setRateLimitError('Too many verification codes requested. Please wait a few minutes before trying again.');
+        setRateLimitError(
+          'Too many verification codes requested. Please wait a few minutes before trying again.',
+        );
       } else {
         if (Platform.OS !== 'web') {
-          Alert.alert('Error', 'Failed to send verification code. Please try again.', [{ text: 'OK' }]);
+          Alert.alert('Error', 'Failed to send verification code. Please try again.', [
+            { text: 'OK' },
+          ]);
         }
       }
     } finally {
@@ -200,7 +205,9 @@ export const useEmailManagement = (
   const handleVerifyOtp = async (data: OtpFormData) => {
     setIsLoading(true);
     try {
-      const verifyResponse = await withRefreshToken(() => verifyGenericOtp(otpId, data.otpCode, emailValue));
+      const verifyResponse = await withRefreshToken(() =>
+        verifyGenericOtp(otpId, data.otpCode, emailValue),
+      );
 
       await updateUserEmail(emailValue, verifyResponse.verificationToken);
 

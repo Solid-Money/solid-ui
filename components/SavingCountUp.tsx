@@ -44,6 +44,7 @@ const SavingCountUp = ({
 
   const updateYield = useCallback(() => {
     const now = Math.floor(Date.now() / 1000);
+    if (mode === SavingMode.BALANCE_ONLY) return setLiveYield(balance);
     const calculatedYield = calculateYield(balance, apy, lastTimestamp, now, principal, mode);
     setLiveYield(calculatedYield);
   }, [balance, apy, lastTimestamp, principal, mode]);

@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { LayoutChangeEvent } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Text } from '@/components/ui/text';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import WalletTokenTab from './WalletTokenTab';
 
 enum Tab {
@@ -28,28 +26,28 @@ type TabLayouts = Record<string, TabLayout>;
 
 const WalletTabs = () => {
   const [tab, setTab] = useState(Tab.TOKENS);
-  const [layouts, setLayouts] = useState<TabLayouts>({});
+  const [layouts] = useState<TabLayouts>({});
   const translateX = useSharedValue(0);
   const width = useSharedValue(0);
 
-  const underlineStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateX: translateX.value }],
-      width: width.value,
-      position: 'absolute',
-      bottom: 0,
-      height: 2,
-      backgroundColor: 'white',
-    };
-  });
+  // const underlineStyle = useAnimatedStyle(() => {
+  //   return {
+  //     transform: [{ translateX: translateX.value }],
+  //     width: width.value,
+  //     position: 'absolute',
+  //     bottom: 0,
+  //     height: 2,
+  //     backgroundColor: 'white',
+  //   };
+  // });
 
-  const handleLayout = (e: LayoutChangeEvent, element: string, tabValue: Tab) => {
-    const { x, width: w } = e.nativeEvent.layout;
-    setLayouts(prev => ({
-      ...prev,
-      [tabValue]: { ...prev[tabValue], [element]: { x, width: w } },
-    }));
-  };
+  // const handleLayout = (e: LayoutChangeEvent, element: string, tabValue: Tab) => {
+  //   const { x, width: w } = e.nativeEvent.layout;
+  //   setLayouts(prev => ({
+  //     ...prev,
+  //     [tabValue]: { ...prev[tabValue], [element]: { x, width: w } },
+  //   }));
+  // };
 
   const animateUnderline = useCallback(
     (tab: Tab) => {
