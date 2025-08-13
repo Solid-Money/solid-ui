@@ -221,6 +221,12 @@ export function useDerivedSwapInfo(): {
     inputCurrency ?? undefined,
     !isExactIn ? parsedAmount : undefined,
   );
+
+  const currentTrade = useMemo(() =>
+    isExactIn ? bestTradeExactIn : bestTradeExactOut,
+    [isExactIn, bestTradeExactIn, bestTradeExactOut]
+  );
+
   const slippage = useSwapSlippageTolerance().divide(100);
   const voltageTrade = useVoltageRouter(
     inputCurrency,
@@ -229,11 +235,9 @@ export function useDerivedSwapInfo(): {
     isExactIn,
     slippage.toFixed(),
   );
-  const trade = isExactIn ? bestTradeExactIn : bestTradeExactOut;
 
   useEffect(() => {
     if (voltageTrade.isLoading) return;
-    const currentTrade = isExactIn ? bestTradeExactIn : bestTradeExactOut;
     if (currentTrade.state === TradeState.NO_ROUTE_FOUND) {
       setIsVoltageTrade(false);
     } else if (voltageTrade.isValid) {
@@ -255,7 +259,16 @@ export function useDerivedSwapInfo(): {
         setIsVoltageTrade(false);
       }
     }
-  }, [voltageTrade.isLoading, voltageTrade.isValid, voltageTrade.trade?.outputAmount, voltageTrade.trade?.inputAmount, isExactIn, bestTradeExactIn.state, bestTradeExactIn.trade?.outputAmount, bestTradeExactOut.state, bestTradeExactOut.trade?.inputAmount]);
+  }, [
+    voltageTrade.isLoading,
+    voltageTrade.isValid,
+    voltageTrade.trade?.outputAmount,
+    voltageTrade.trade?.inputAmount,
+    isExactIn,
+    currentTrade.state,
+    currentTrade.trade?.outputAmount,
+    currentTrade.trade?.inputAmount,
+  ]);
 
   const [addressA, addressB] = [
     inputCurrency?.isNative ? undefined : inputCurrency?.address || '',
@@ -306,12 +319,12 @@ export function useDerivedSwapInfo(): {
     inputError = inputError ?? `Select a token`;
   }
 
-  const toggledTrade = trade.trade ?? undefined;
+  const toggledTrade = currentTrade.trade ?? undefined;
 
   const tickAfterSwap =
-    trade.priceAfterSwap &&
+    currentTrade.priceAfterSwap &&
     TickMath.getTickAtSqrtRatio(
-      JSBI.BigInt(trade.priceAfterSwap[trade.priceAfterSwap.length - 1].toString()),
+      JSBI.BigInt(currentTrade.priceAfterSwap[currentTrade.priceAfterSwap.length - 1].toString()),
     );
 
   const allowedSlippage = useSwapSlippageTolerance(toggledTrade);
@@ -359,7 +372,7 @@ export function useDerivedSwapInfo(): {
     currencyBalances,
     parsedAmount,
     inputError,
-    tradeState: trade,
+    tradeState: currentTrade,
     toggledTrade,
     tickAfterSwap,
     allowedSlippage,
