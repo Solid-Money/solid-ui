@@ -1,10 +1,10 @@
-import { View } from "react-native";
-import { router } from "expo-router";
+import { View } from 'react-native';
+import { router } from 'expo-router';
 
-import { Text } from "../ui/text";
-import { Button } from "../ui/button";
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
 import { DepositOptionModal } from '@/components/DepositOption';
-import { path } from "@/constants/path";
+import { path } from '@/constants/path';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';

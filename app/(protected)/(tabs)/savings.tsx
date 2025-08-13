@@ -1,5 +1,9 @@
 import ActivityTabs from '@/components/Activity/ActivityTabs';
-import { DashboardHeaderButtons, DashboardHeaderButtonsMobile, DashboardTitle } from '@/components/Dashboard';
+import {
+  DashboardHeaderButtons,
+  DashboardHeaderButtonsMobile,
+  DashboardTitle,
+} from '@/components/Dashboard';
 import { FAQs } from '@/components/FAQ';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';

@@ -26,25 +26,17 @@ const TooltipPopover = ({ trigger, content, text }: TooltipProps) => {
       <Pressable>
         <CircleQuestionMark size={16} />
       </Pressable>
-    )
+    );
   };
 
   const getContent = () => {
-    return (
-      <Text className='text-sm'>
-        {text}
-      </Text>
-    )
-  }
+    return <Text className="text-sm">{text}</Text>;
+  };
 
   return (
     <Tooltip delayDuration={150}>
-      <TooltipTrigger asChild>
-        {trigger || getTrigger()}
-      </TooltipTrigger>
-      <TooltipContent insets={contentInsets}>
-        {content || getContent()}
-      </TooltipContent>
+      <TooltipTrigger asChild>{trigger || getTrigger()}</TooltipTrigger>
+      <TooltipContent insets={contentInsets}>{content || getContent()}</TooltipContent>
     </Tooltip>
   );
 };

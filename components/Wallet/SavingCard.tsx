@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 import { cn, formatNumber } from '@/lib/utils';
-import TooltipPopover from '../Tooltip';
+import TooltipPopover from '@/components/Tooltip';
 
 type SavingCardProps = {
   savings: number;

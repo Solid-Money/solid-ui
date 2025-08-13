@@ -1,7 +1,7 @@
-import { Link } from "expo-router";
-import { View } from "react-native";
+import { Link } from 'expo-router';
+import { View } from 'react-native';
 
-import { Text } from "../ui/text";
+import { Text } from '@/components/ui/text';
 
 const DashboardTitle = () => {
   return (
@@ -9,8 +9,8 @@ const DashboardTitle = () => {
       <Text className="text-3xl font-semibold">Your saving account</Text>
       <Text className="max-w-lg">
         <Text className="opacity-70">
-          Our Solid vault will automatically manage your funds to maximize your yield
-          without exposing you to unnecessary risk.
+          Our Solid vault will automatically manage your funds to maximize your yield without
+          exposing you to unnecessary risk.
         </Text>{' '}
         <Link
           href="https://docs.solid.xyz"

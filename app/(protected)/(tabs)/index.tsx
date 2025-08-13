@@ -98,10 +98,7 @@ export default function Savings() {
               tooltipText="Total = Wallet + Savings"
             />
           ) : (
-            <DashboardHeaderMobile
-              balance={totalUSD + savings}
-              mode={SavingMode.BALANCE_ONLY}
-            />
+            <DashboardHeaderMobile balance={totalUSD + savings} mode={SavingMode.BALANCE_ONLY} />
           )}
           <View className="md:flex-row gap-4 min-h-44">
             <WalletCard balance={totalUSD} className="flex-1" />

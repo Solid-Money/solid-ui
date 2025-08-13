@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 import { cn, formatNumber } from '@/lib/utils';
-import TooltipPopover from '../Tooltip';
+import TooltipPopover from '@/components/Tooltip';
 
 type WalletCardProps = {
   balance: number;
@@ -27,11 +27,14 @@ const WalletCard = ({ balance, className }: WalletCardProps) => {
         <TooltipPopover
           trigger={
             <Pressable>
-              <Image source={require('@/assets/images/eth-fuse-usdc-4x.png')} style={{ width: 78, height: 28 }} />
+              <Image
+                source={require('@/assets/images/eth-fuse-usdc-4x.png')}
+                style={{ width: 78, height: 28 }}
+              />
             </Pressable>
           }
           content={
-            <Text className='max-w-64'>
+            <Text className="max-w-64">
               Wallet can contain any ERC-20 token in Ethereum and Fuse for Swap and Send
             </Text>
           }
