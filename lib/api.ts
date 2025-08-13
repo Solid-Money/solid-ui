@@ -14,6 +14,7 @@ import {
   BridgeCustomerResponse,
   BridgeDeposit,
   BridgeTransaction,
+  BridgeTransferResponse,
   CardResponse,
   CardStatus,
   CardStatusResponse,
@@ -184,6 +185,7 @@ export const createKycLink = async (
   fullName: string,
   email: string,
   redirectUri: string,
+  endorsements: string[],
 ): Promise<KycLink> => {
   const jwt = getJWTToken();
 
@@ -199,6 +201,7 @@ export const createKycLink = async (
       fullName,
       email,
       redirectUri,
+      endorsements,
     }),
   });
 
@@ -500,6 +503,30 @@ export const initGenericOtp = async (
   const data = await response.json();
   if (!response.ok) throw data;
   return data;
+};
+
+export const createBridgeTransfer = async (params: {
+  amount: string;
+  sourcePaymentRail: string;
+  fiatCurrency: string;
+  cryptoCurrency: string;
+}): Promise<BridgeTransferResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge-transfers`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };
 
 export const verifyGenericOtp = async (otpId: string, otpCode: string, email: string) => {

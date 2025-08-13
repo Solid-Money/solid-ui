@@ -175,6 +175,7 @@ export default function RootLayout() {
                   <GestureHandlerRootView>
                     <BottomSheetModalProvider>
                       <AppContent />
+                      <PortalHost />
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>
                 )}

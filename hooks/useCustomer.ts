@@ -30,12 +30,16 @@ export const useCreateKycLink = () => {
       fullName,
       email,
       redirectUri,
+      endorsements,
     }: {
       fullName: string;
       email: string;
       redirectUri: string;
+      endorsements: string[];
     }) => {
-      const result = await withRefreshToken(() => createKycLink(fullName, email, redirectUri));
+      const result = await withRefreshToken(() =>
+        createKycLink(fullName, email, redirectUri, endorsements),
+      );
       if (!result) {
         throw new Error('Failed to create KYC link');
       }

@@ -1,7 +1,5 @@
 import { path } from '@/constants/path';
-import { createCard } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCustomer } from './useCustomer';
@@ -29,7 +27,13 @@ export function useCardSteps() {
   const kycStatus = customer?.kycStatus || KycStatus.NOT_STARTED;
 
   const handleProceedToKyc = useCallback(async () => {
-    router.push(path.CARD_USER_INFO_MOBILE);
+    router.push({
+      pathname: path.USER_KYC_INFO,
+      params: {
+        returnTo: JSON.stringify({ pathname: path.CARD_ACTIVATE as any }),
+        kycMode: 'card',
+      },
+    } as any);
   }, [router]);
 
   const handleActivateCard = useCallback(async () => {

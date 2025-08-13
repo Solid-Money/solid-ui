@@ -113,6 +113,7 @@ export default function ActivateCard() {
           fullName: fullName.trim(),
           email: email.trim().toLowerCase(),
           redirectUri: getRedirectUrl(),
+          endorsements: [],
         });
       }
 
@@ -135,12 +136,18 @@ export default function ActivateCard() {
           fullName,
           email,
           redirectUri: getRedirectUrl(),
+          endorsements: [],
         });
       }
 
       setIsLoading(true);
 
-      router.push(`${path.CARD_KYC}?url=${encodeURIComponent(kycLinkData.link)}`);
+      router.push({
+        pathname: path.KYC,
+        params: {
+          url: kycLinkData.link,
+        },
+      });
     } catch (error) {
       console.error('Error proceeding to KYC:', error);
     } finally {

@@ -1,16 +1,18 @@
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
-import { KycStatus } from '@/lib/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-export default function Kyc() {
-  const { url } = useLocalSearchParams<{ url: string }>();
+export type KycParams = {
+  onSuccess?: () => void;
+};
+
+export default function Kyc({ onSuccess }: KycParams = {}) {
+  const router = useRouter();
+  const { url, returnTo } = useLocalSearchParams<{ url: string; returnTo?: string }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finalUrl, setFinalUrl] = useState<string>('');
-  const router = useRouter();
 
   // Handle iframe load events
   const handleIframeLoad = () => {
@@ -31,12 +33,30 @@ export default function Kyc() {
           typeof event.data === 'object' &&
           (event.data.status === 'completed' || event.data.event === 'verification.complete')
         ) {
-          router.replace({
-            pathname: path.CARD_ACTIVATE,
-            params: {
-              kycStatus: KycStatus.APPROVED,
-            },
-          });
+          // If a returnTo is provided, resume the calling flow (e.g., bank-transfer)
+          // by replacing the current route. Accepts either a string path or a
+          // serialized object with pathname/params.
+          if (returnTo) {
+            try {
+              if (returnTo.startsWith('{')) {
+                const returnToAsJson = JSON.parse(returnTo) as {
+                  pathname: string;
+                  params?: Record<string, string>;
+                };
+
+                router.replace({
+                  pathname: returnToAsJson.pathname as any,
+                  params: returnToAsJson.params,
+                });
+              } else {
+                router.replace(returnTo as any);
+              }
+            } catch (_) {
+              router.replace('/');
+            }
+          } else {
+            onSuccess?.();
+          }
         }
       } catch (err) {
         console.error('Error handling message:', err);
@@ -45,7 +65,7 @@ export default function Kyc() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [router]);
+  }, [onSuccess, returnTo, router]);
 
   // Process the URL to add required parameters
   useEffect(() => {
@@ -63,7 +83,7 @@ export default function Kyc() {
         urlObj.pathname = urlObj.pathname.replace('/verify', '/widget');
       }
 
-      // Add iframe-origin parameter
+      // Add iframe-origin parameter for postMessage security and routing
       urlObj.searchParams.set('iframe-origin', window.location.origin);
 
       setFinalUrl(urlObj.toString());

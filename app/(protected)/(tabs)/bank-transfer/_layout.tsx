@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
 
-export default function CardLayout() {
+export default function BankTransferLayout() {
   return (
     <Stack
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#262626',
+          backgroundColor: '#000',
         },
         headerTitleAlign: 'center',
         headerTintColor: '#ffffff',
@@ -16,21 +16,17 @@ export default function CardLayout() {
           fontSize: 20,
           fontWeight: 'bold',
         },
-        headerLeft: ({ canGoBack, tintColor }) =>
-          canGoBack ? (
+        headerLeft: ({ tintColor }) =>
+          router.canGoBack() ? (
             <TouchableOpacity onPress={() => router.back()}>
               <Ionicons name="chevron-back" size={24} color={tintColor} />
             </TouchableOpacity>
           ) : null,
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="activate_mobile"
-        options={{
-          title: 'Solid card',
-        }}
-      />
+      <Stack.Screen name="index" options={{ title: 'Amount to buy' }} />
+      <Stack.Screen name="payment-method" options={{ title: 'Choose payment method' }} />
+      <Stack.Screen name="preview" options={{ title: '' }} />
     </Stack>
   );
 }
