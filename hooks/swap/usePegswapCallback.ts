@@ -13,15 +13,12 @@ import {
   FUSD_V2,
   LAYER_ZERO_PEGSWAP,
   PEG_SWAP,
-  STARGATE_PEGSWAP,
   USDC_SOLANA,
   USDC_V2,
   USDT,
-  USDT_STARGATE,
   USDT_V2,
   WETH,
-  WETH_STARGATE,
-  WETH_V2,
+  WETH_V2
 } from '@/constants/addresses';
 import { useReadPegSwapGetSwappableAmount, useSimulatePegSwapSwap } from '@/generated/wagmi';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -119,10 +116,6 @@ function usePegSwapAddress(
       { addresses: [WETH, WETH_V2], pegSwap: LAYER_ZERO_PEGSWAP },
       { addresses: [WETH_V2, WETH], pegSwap: LAYER_ZERO_PEGSWAP },
       { addresses: [USDC_SOLANA, USDC_V2], pegSwap: LAYER_ZERO_PEGSWAP },
-
-      // STARGATE PEGSWAP
-      { addresses: [USDT_V2, USDT_STARGATE], pegSwap: STARGATE_PEGSWAP },
-      { addresses: [WETH_V2, WETH_STARGATE], pegSwap: STARGATE_PEGSWAP },
     ];
 
     for (const { addresses, pegSwap } of swapPairs) {

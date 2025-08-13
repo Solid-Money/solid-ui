@@ -113,13 +113,13 @@ const SwapPair: React.FC = () => {
     () =>
       showWrap || showPegSwap
         ? {
-            [SwapField.INPUT]: parsedAmount,
-            [SwapField.OUTPUT]: parsedAmount,
-          }
+          [SwapField.INPUT]: parsedAmount,
+          [SwapField.OUTPUT]: parsedAmount,
+        }
         : {
-            [SwapField.INPUT]: parsedAmountA,
-            [SwapField.OUTPUT]: parsedAmountB,
-          },
+          [SwapField.INPUT]: parsedAmountA,
+          [SwapField.OUTPUT]: parsedAmountB,
+        },
     [showWrap, showPegSwap, parsedAmount, parsedAmountA, parsedAmountB],
   );
 
@@ -155,13 +155,15 @@ const SwapPair: React.FC = () => {
     () => ({
       [independentField]: typedValue,
       [dependentField]:
-        showWrap || showPegSwap
-          ? (parsedAmounts[independentField]?.toExact() ?? '')
-          : (parsedAmounts[dependentField]?.toFixed(
+        isVoltageTradeLoading || tradeState.state === 'LOADING'
+          ? '...'
+          : showWrap || showPegSwap
+            ? (parsedAmounts[independentField]?.toExact() ?? '')
+            : (parsedAmounts[dependentField]?.toFixed(
               (parsedAmounts[dependentField]?.currency.decimals || 6) / 2,
             ) ?? ''),
     }),
-    [independentField, dependentField, typedValue, showWrap, showPegSwap, parsedAmounts],
+    [independentField, dependentField, typedValue, showWrap, showPegSwap, parsedAmounts, isVoltageTradeLoading, tradeState.state],
   );
 
   return (
