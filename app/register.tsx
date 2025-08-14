@@ -65,7 +65,11 @@ export default function Register() {
   }, [signupInfo.status, reset]);
 
   const handleSignupForm = (data: RegisterFormData) => {
-    handleSignup(data.username, code);
+    // To let users sign up in native, we need to use a test invite code.
+    // We'll keep this until we remove the invite code functionality or
+    // develop a way to enter the invite code in native.
+    const isAndroidOrIOS = Platform.OS === 'android' || Platform.OS === 'ios';
+    handleSignup(data.username, isAndroidOrIOS ? 'TEST_INVITE_123' : code);
   };
 
   const getSignupButtonText = () => {
