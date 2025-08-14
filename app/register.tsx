@@ -68,7 +68,7 @@ export default function Register() {
     // To let users sign up in native, we need to use a test invite code.
     // We'll keep this until we remove the invite code functionality or
     // develop a way to enter the invite code in native.
-    const isAndroidOrIOS = Platform.OS === 'android' || Platform.OS === 'ios';
+    const isAndroidOrIOS = Platform.OS !== 'web';
     handleSignup(data.username, isAndroidOrIOS ? 'TEST_INVITE_123' : code);
   };
 
