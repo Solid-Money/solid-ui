@@ -17,7 +17,11 @@ import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
 import { ActivityTab, LayerZeroTransactionStatus } from '@/lib/types';
 
-export default function ActivityTransactions({ tab }: { tab: ActivityTab }) {
+type ActivityTransactionsProps = {
+  tab?: ActivityTab;
+};
+
+export default function ActivityTransactions({ tab = ActivityTab.ALL }: ActivityTransactionsProps) {
   const { user } = useUser();
 
   const { data: blockNumber } = useBlockNumber({

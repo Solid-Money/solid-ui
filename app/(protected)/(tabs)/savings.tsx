@@ -1,9 +1,7 @@
-import ActivityTabs from '@/components/Activity/ActivityTabs';
-import {
-  DashboardHeaderButtons,
-  DashboardHeaderButtonsMobile,
-  DashboardTitle,
-} from '@/components/Dashboard';
+import { ActivityTransactions } from '@/components/Activity';
+import { DashboardTitle } from '@/components/Dashboard';
+import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import { FAQs } from '@/components/FAQ';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
@@ -122,7 +120,7 @@ export default function Savings() {
             >
               <View className="flex-1 bg-transparent p-6 pb-16 md:px-10 md:py-8 justify-between gap-12 md:gap-4 border-b border-border md:border-b-0 md:border-r">
                 <View>
-                  <Text className="md:text-lg text-primary/50 font-medium">Total value</Text>
+                  <Text className="md:text-lg text-primary/50">Total value</Text>
                   <View className="flex-row items-center">
                     <Text className="text-5xl md:text-8xl native:leading-[1.2] text-foreground font-semibold">
                       $
@@ -153,9 +151,9 @@ export default function Savings() {
                   </View>
                 </View>
                 <View className="gap-1">
-                  <Text className="md:text-lg text-primary/50 font-medium">Interest earned</Text>
+                  <Text className="md:text-lg text-primary/50">Interest earned</Text>
                   <View className="flex-row items-center">
-                    <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-brand font-medium">
+                    <Text className="text-4xl md:text-4.5xl native:leading-[1.2] font-medium">
                       $
                     </Text>
                     <SavingCountUp
@@ -165,17 +163,17 @@ export default function Savings() {
                       principal={originalDepositAmount}
                       mode={SavingMode.INTEREST_ONLY}
                       classNames={{
-                        decimalSeparator: 'md:text-xl text-brand font-medium',
+                        decimalSeparator: 'md:text-xl font-medium',
                       }}
                       styles={{
                         wholeText: {
                           fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
                           fontWeight: 'semibold',
-                          color: '#94F27F',
+                          color: '#ffffff',
                         },
                         decimalText: {
                           fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
-                          color: '#94F27F',
+                          color: '#ffffff',
                         },
                       }}
                     />
@@ -186,7 +184,7 @@ export default function Savings() {
 
             <View className="flex-row md:flex-col web:md:w-80 bg-transparent justify-between md:justify-center">
               <View className="p-6 md:p-7">
-                <Text className="md:text-lg text-primary/50 font-medium">Current Yield</Text>
+                <Text className="md:text-lg text-primary/50">Current Yield</Text>
                 <View className="flex-row items-center gap-2">
                   <Text className="text-2xl text-brand font-semibold">
                     {isTotalAPYLoading ? (
@@ -204,7 +202,7 @@ export default function Savings() {
               <View className="border-r md:border-t border-border/50" />
 
               <View className="p-6 md:p-7">
-                <Text className="md:text-lg text-primary/50 font-medium">P&L</Text>
+                <Text className="md:text-lg text-primary/50">P&L</Text>
                 <Text className="text-2xl font-semibold">
                   {isBalanceLoading ? (
                     <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
@@ -224,9 +222,7 @@ export default function Savings() {
               <View className="border-t border-border/50 hidden md:block" />
 
               <View className="p-6 md:p-7 hidden md:flex">
-                <Text className="md:text-lg text-primary/50 font-medium">
-                  Projected 1Y Earnings
-                </Text>
+                <Text className="md:text-lg text-primary/50">Projected 1Y Earnings</Text>
                 <Text className="text-2xl font-semibold">
                   {isBalanceLoading ? (
                     <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
@@ -241,7 +237,7 @@ export default function Savings() {
           {isScreenMedium ? (
             <View className="gap-4">
               <Text className="text-2xl font-medium">Recent activity</Text>
-              <ActivityTabs />
+              <ActivityTransactions />
             </View>
           ) : (
             <DashboardHeaderButtonsMobile />
