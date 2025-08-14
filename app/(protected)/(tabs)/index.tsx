@@ -1,8 +1,9 @@
-import { DashboardHeader, DashboardHeaderMobile } from '@/components/Dashboard';
+import { DashboardHeaderButtons, DashboardHeaderMobile } from '@/components/Dashboard';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
+import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
 import WalletTabs from '@/components/Wallet/WalletTabs';
@@ -16,6 +17,7 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
 import React, { useEffect } from 'react';
 import { Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -93,12 +95,13 @@ export default function Savings() {
         {Platform.OS === 'web' && <Navbar />}
         <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
           {isScreenMedium ? (
-            <DashboardHeader
-              balance={soUSDEthereum + savings}
-              mode={SavingMode.BALANCE_ONLY}
-              hasTokens={hasTokens}
-              tooltipText="Total = Wallet + Savings"
-            />
+            <View className="flex-row justify-between items-center">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-5xl font-semibold">${formatNumber(soUSDEthereum + savings)}</Text>
+                <TooltipPopover text="Total = Wallet + Savings" />
+              </View>
+              <DashboardHeaderButtons hasTokens={hasTokens} />
+            </View>
           ) : (
             <DashboardHeaderMobile
               balance={soUSDEthereum + savings}
