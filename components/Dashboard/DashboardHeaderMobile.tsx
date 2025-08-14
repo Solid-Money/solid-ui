@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import SavingCountUp from '@/components/SavingCountUp';
 import { Text } from '@/components/ui/text';
 import { SavingMode } from '@/lib/types';
-import { DashboardHeaderButtonsMobile } from '.';
+import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 
 interface DashboardHeaderMobileProps {
   balance: number;
