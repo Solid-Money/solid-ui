@@ -24,6 +24,7 @@ import { useEstimateGas } from '@/hooks/useEstimateGas';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, fee, isEthereum } = useDepositFromEOA();
@@ -34,7 +35,7 @@ function DepositToVaultForm() {
       enabled: isEthereum,
     },
   });
-  const { setModal, setTransaction } = useDepositStore();
+  const { setModal, setTransaction, srcChainId } = useDepositStore();
 
   const isLoading =
     depositStatus === DepositStatus.PENDING ||
@@ -161,7 +162,9 @@ function DepositToVaultForm() {
               alt="USDC"
               style={{ width: 32, height: 32 }}
             />
-            <Text className="font-semibold text-white text-lg">USDC</Text>
+            <Text className="font-semibold text-white text-lg">
+              {BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.name}
+            </Text>
           </View>
         </View>
         <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
