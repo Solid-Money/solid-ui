@@ -2,6 +2,7 @@ import { ImageSourcePropType } from "react-native";
 import { arbitrum, base, fuse, mainnet, polygon } from "viem/chains";
 
 type BridgeToken = {
+  name?: string;
   address: string;
 }
 
@@ -21,6 +22,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
   [mainnet.id]: {
     tokens: {
       USDC: {
+        name: 'USDC',
         address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
       },
     },
@@ -31,6 +33,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
   [polygon.id]: {
     tokens: {
       USDC: {
+        name: 'USDC',
         address: '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
       },
     },
@@ -41,6 +44,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
   [base.id]: {
     tokens: {
       USDC: {
+        name: 'USDC',
         address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       },
     },
@@ -51,6 +55,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
   [arbitrum.id]: {
     tokens: {
       USDC: {
+        name: 'USDC',
         address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
       },
     },
@@ -59,9 +64,14 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     sort: 4,
   },
   [fuse.id]: {
+    tokens: {
+      USDC: {
+        name: 'USDC.e (Stargate)',
+        address: '0xc6Bc407706B7140EE8Eef2f86F9504651b63e7f9',
+      },
+    },
     name: 'Fuse',
     icon: require('@/assets/images/fuse.png'),
-    isComingSoon: true,
     sort: 5,
   },
   [0]: {
