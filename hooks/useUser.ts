@@ -57,59 +57,71 @@ const useUser = (): UseUserReturn => {
 
   const user = useMemo(() => users.find((user: User) => user.selected), [users]);
 
-  const safeAA = useCallback(async (chain: Chain, subOrganization: string, signWith: string) => {
-    let stamper: WebauthnStamper | PasskeyStamper;
+  const safeAA = useCallback(
+    async (chain: Chain, subOrganization: string, signWith: string) => {
+      let stamper: WebauthnStamper | PasskeyStamper;
+      const rpId = getRuntimeRpId();
 
-    if (Platform.OS === 'web') {
-      stamper = new WebauthnStamper({
-        rpId: getRuntimeRpId(),
-        timeout: 60000,
+      console.log("🔐 safeAA - Creating passkey stamper with RP ID:", rpId);
+      console.log("🔐 safeAA - Platform:", Platform.OS);
+
+      if (Platform.OS === "web") {
+        console.log("🌐 Creating WebauthnStamper for web");
+        stamper = new WebauthnStamper({
+          rpId: rpId,
+          timeout: 60000,
+        });
+      } else {
+        console.log("📱 Creating PasskeyStamper for iOS");
+        stamper = new PasskeyStamper({
+          rpId: rpId,
+        });
+      }
+
+      const turnkeyClient = new TurnkeyClient(
+        { baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL },
+        stamper
+      );
+
+      const turnkeyAccount = await createAccount({
+        client: turnkeyClient,
+        organizationId: subOrganization,
+        signWith: signWith,
       });
-    } else {
-      stamper = new PasskeyStamper({
-        rpId: getRuntimeRpId(),
+
+      // Create a wallet client from the turnkeyAccount
+      const smartAccountOwner = createWalletClient({
+        account: turnkeyAccount,
+        transport: http(rpcUrls[chain.id]),
+        chain: chain,
       });
-    }
 
-    const turnkeyClient = new TurnkeyClient({ baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL }, stamper);
+      const safeAccount = await toSafeSmartAccount({
+        saltNonce: await getNonce({
+          appId: "solid",
+        }),
+        client: publicClient(chain.id),
+        owners: [smartAccountOwner.account],
+        version: "1.4.1",
+        entryPoint: {
+          address: entryPoint07Address,
+          version: "0.7",
+        },
+      });
 
-    const turnkeyAccount = await createAccount({
-      client: turnkeyClient,
-      organizationId: subOrganization,
-      signWith: signWith,
-    });
-
-    // Create a wallet client from the turnkeyAccount
-    const smartAccountOwner = createWalletClient({
-      account: turnkeyAccount,
-      transport: http(rpcUrls[chain.id]),
-      chain: chain,
-    });
-
-    const safeAccount = await toSafeSmartAccount({
-      saltNonce: await getNonce({
-        appId: 'solid',
-      }),
-      client: publicClient(chain.id),
-      owners: [smartAccountOwner.account],
-      version: '1.4.1',
-      entryPoint: {
-        address: entryPoint07Address,
-        version: '0.7',
-      },
-    });
-
-    return createSmartAccountClient({
-      account: safeAccount,
-      chain: chain,
-      paymaster: pimlicoClient(chain.id),
-      userOperation: {
-        estimateFeesPerGas: async () =>
-          (await pimlicoClient(chain.id).getUserOperationGasPrice()).fast,
-      },
-      bundlerTransport: http(USER.pimlicoUrl(chain.id)),
-    });
-  }, []);
+      return createSmartAccountClient({
+        account: safeAccount,
+        chain: chain,
+        paymaster: pimlicoClient(chain.id),
+        userOperation: {
+          estimateFeesPerGas: async () =>
+            (await pimlicoClient(chain.id).getUserOperationGasPrice()).fast,
+        },
+        bundlerTransport: http(USER.pimlicoUrl(chain.id)),
+      });
+    },
+    []
+  );
 
   const checkBalance = useCallback(
     async (user: User): Promise<boolean> => {
@@ -167,22 +179,45 @@ const useUser = (): UseUserReturn => {
           attestation = passkey.attestation;
         } else {
           // Use the already imported React Native passkey stamper
+          const rpId = getRuntimeRpId();
+          console.log("📱 handleSignup - iOS passkey creation");
+          console.log("📱 handleSignup - RP ID:", rpId);
+          console.log("📱 handleSignup - Passkey name:", passkeyName);
+
           //@ts-ignore
-          const { createPasskey } = await import('@turnkey/react-native-passkey-stamper');
-          const passkey = await createPasskey({
-            authenticatorName: 'End-User Passkey',
-            rp: {
-              id: getRuntimeRpId(),
-              name: 'Solid',
-            },
-            user: {
-              id: uuidv4(),
-              name: passkeyName,
-              displayName: passkeyName,
-            },
-          });
-          challenge = passkey.challenge;
-          attestation = passkey.attestation;
+          const { createPasskey } = await import(
+            "@turnkey/react-native-passkey-stamper"
+          );
+
+          console.log("📱 handleSignup - About to call createPasskey with config:");
+          console.log("📱 handleSignup - authenticatorName: End-User Passkey");
+          console.log("📱 handleSignup - rp.id:", rpId);
+          console.log("📱 handleSignup - rp.name: Solid");
+
+          try {
+            const passkey = await createPasskey({
+              authenticatorName: "End-User Passkey",
+              rp: {
+                id: rpId,
+                name: "Solid",
+              },
+              user: {
+                id: uuidv4(),
+                name: passkeyName,
+                displayName: passkeyName,
+              },
+            });
+
+            console.log("✅ handleSignup - Passkey created successfully");
+            console.log("📱 handleSignup - Challenge:", passkey.challenge ? "present" : "missing");
+            console.log("📱 handleSignup - Attestation:", passkey.attestation ? "present" : "missing");
+
+            challenge = passkey.challenge;
+            attestation = passkey.attestation;
+          } catch (error) {
+            console.error("❌ handleSignup - Passkey creation failed:", error);
+            throw error;
+          }
         }
 
         if (!challenge || !attestation) {
@@ -309,7 +344,7 @@ const useUser = (): UseUserReturn => {
         email: 'dummy@dummy.com',
       });
       router.replace(path.HOME);
-    } catch (error) {}
+    } catch (error) { }
   }, [router, storeUser]);
 
   const handleLogout = useCallback(() => {

@@ -49,3 +49,7 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# local HTTPS certs (mkcert)
+/ssl-certs/localhost-key.pem
+/ssl-certs/localhost.crt

@@ -10,25 +10,27 @@ export default {
     newArchEnabled: true,
     owner: "fuseio",
     ios: {
-      googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? "./GoogleService-Info.plist",
+      googleServicesFile:
+        process.env.GOOGLE_SERVICES_PLIST ?? "./GoogleService-Info.plist",
       supportsTablet: true,
       bundleIdentifier: "xyz.solid.ios",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
       associatedDomains: [
-        "webcredentials:solid.xyz",
-        "applinks:solid.xyz",
+        "webcredentials:localhost.com?mode=developer",
+        "applinks:localhost.com?mode=developer",
       ],
       appleTeamId: "QC9255BHMY",
       splash: {
         image: "./assets/splash/splash-icon.png",
         resizeMode: "contain",
-        backgroundColor: "#94F27F"
-      }
+        backgroundColor: "#94F27F",
+      },
     },
     android: {
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
+      googleServicesFile:
+        process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#94F27F",
@@ -38,7 +40,7 @@ export default {
       splash: {
         image: "./assets/splash/splash-icon.png",
         resizeMode: "contain",
-        backgroundColor: "#94F27F"
+        backgroundColor: "#94F27F",
       },
       intentFilters: [
         {

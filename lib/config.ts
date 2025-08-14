@@ -1,20 +1,25 @@
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 
-export const EXPO_PUBLIC_ALCHEMY_API_KEY = process.env.EXPO_PUBLIC_ALCHEMY_API_KEY ?? '';
-export const EXPO_PUBLIC_PIMLICO_API_KEY = process.env.EXPO_PUBLIC_PIMLICO_API_KEY ?? '';
-export const EXPO_PUBLIC_FLASH_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_API_BASE_URL ?? '';
-export const EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL =
-  process.env.EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL ?? '';
-export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? '';
-export const EXPO_PUBLIC_THIRDWEB_CLIENT_ID = process.env.EXPO_PUBLIC_THIRDWEB_CLIENT_ID ?? '';
-export const EXPO_PUBLIC_TURNKEY_API_BASE_URL = process.env.EXPO_PUBLIC_TURNKEY_API_BASE_URL ?? '';
-export const EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID =
-  process.env.EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID ?? '';
-export const EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS =
-  process.env.EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS ?? '';
+export const EXPO_PUBLIC_ALCHEMY_API_KEY = process.env.EXPO_PUBLIC_ALCHEMY_API_KEY ?? ""
+export const EXPO_PUBLIC_PIMLICO_API_KEY = process.env.EXPO_PUBLIC_PIMLICO_API_KEY ?? ""
+export const EXPO_PUBLIC_FLASH_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_API_BASE_URL ?? ""
+export const EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL ?? ""
+export const EXPO_PUBLIC_ENVIRONMENT = process.env.EXPO_PUBLIC_ENVIRONMENT ?? ""
+export const EXPO_PUBLIC_THIRDWEB_CLIENT_ID = process.env.EXPO_PUBLIC_THIRDWEB_CLIENT_ID ?? ""
+export const EXPO_PUBLIC_TURNKEY_API_BASE_URL = process.env.EXPO_PUBLIC_TURNKEY_API_BASE_URL ?? ""
+export const EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID = process.env.EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID ?? ""
 
-export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
+// Local AASA/Passkey configuration
+export const EXPO_PUBLIC_ASA_PORT = process.env.EXPO_PUBLIC_ASA_PORT ?? ""
+export const EXPO_PUBLIC_AASA_URL = process.env.EXPO_PUBLIC_AASA_URL ?? ""
+export const EXPO_PUBLIC_RELYING_PARTY_ID = process.env.EXPO_PUBLIC_RELYING_PARTY_ID ?? ""
+export const EXPO_PUBLIC_FRONTEND_URL = process.env.EXPO_PUBLIC_FRONTEND_URL ?? ""
+export const EXPO_PUBLIC_ALLOWED_ORIGINS = process.env.EXPO_PUBLIC_ALLOWED_ORIGINS ?? ""
+
+export const isProduction = EXPO_PUBLIC_ENVIRONMENT === "production"
+export const isAASADevelopment = EXPO_PUBLIC_RELYING_PARTY_ID === "localhost.com" && EXPO_PUBLIC_AASA_URL !== ""
+export const isLocalDevelopment = EXPO_PUBLIC_ENVIRONMENT === "development"
 
 type Addresses = {
   ethereum: {

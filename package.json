@@ -4,9 +4,10 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "start:https": "sudo expo start --web --https --host localhost --port 443",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web",
+    "web": "expo start --web --https --host localhost --port 443",
     "lint": "expo lint --fix",
     "codegen": "graphql-codegen --config codegen.ts",
     "wagmi-generate": "wagmi generate"
