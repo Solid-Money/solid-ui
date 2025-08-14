@@ -11,7 +11,7 @@ import HomeSwap from '@/assets/images/home-swap';
 const DashboardHeaderButtonsMobile = () => {
   const router = useRouter();
   return (
-    <View className="flex-row justify-around px-2 items-center w-full mx-auto">
+    <View className="flex-row justify-between gap-8 items-center mx-auto">
       <CircleButton
         icon={Plus}
         label="Fund"
