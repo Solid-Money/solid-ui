@@ -38,7 +38,7 @@ export default function Savings() {
   });
 
   const { data: totalAPY } = useTotalAPY();
-  const { isLoading: isLoadingTokens, hasTokens, totalUSD } = useWalletTokens();
+  const { isLoading: isLoadingTokens, hasTokens, soUSDEthereum } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
@@ -92,16 +92,16 @@ export default function Savings() {
         <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
           {isScreenMedium ? (
             <DashboardHeader
-              balance={totalUSD + savings}
+              balance={soUSDEthereum + savings}
               mode={SavingMode.BALANCE_ONLY}
               hasTokens={hasTokens}
               tooltipText="Total = Wallet + Savings"
             />
           ) : (
-            <DashboardHeaderMobile balance={totalUSD + savings} mode={SavingMode.BALANCE_ONLY} />
+            <DashboardHeaderMobile balance={soUSDEthereum + savings} mode={SavingMode.BALANCE_ONLY} />
           )}
           <View className="md:flex-row gap-4 min-h-44">
-            <WalletCard balance={totalUSD} className="flex-1" />
+            <WalletCard balance={soUSDEthereum} className="flex-1" />
             <SavingCard savings={savings} className="flex-1" />
           </View>
 

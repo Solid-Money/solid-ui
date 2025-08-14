@@ -22,7 +22,7 @@ const WalletCard = ({ balance, className }: WalletCardProps) => {
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-2">
           <Text className="text-2xl md:text-3xl font-semibold">${formatNumber(balance)}</Text>
-          <TooltipPopover text="Sum of all the coins balances" />
+          <TooltipPopover text="Unstaked soUSD coin balance" />
         </View>
         <TooltipPopover
           trigger={

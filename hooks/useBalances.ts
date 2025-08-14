@@ -46,8 +46,10 @@ type BlockscoutResponse = BlockscoutTokenBalance[];
 
 interface BalanceData {
   totalUSD: number;
-  soUSDValue: number;
+  totalSoUSD: number;
   totalUSDExcludingSoUSD: number;
+  soUSDEthereum: number;
+  soUSDFuse: number;
   ethereumTokens: TokenBalance[];
   fuseTokens: TokenBalance[];
   isLoading: boolean;
@@ -57,8 +59,10 @@ interface BalanceData {
 
 interface BalanceState {
   totalUSD: number;
-  soUSDValue: number;
+  totalSoUSD: number;
   totalUSDExcludingSoUSD: number;
+  soUSDEthereum: number;
+  soUSDFuse: number;
   ethereumTokens: TokenBalance[];
   fuseTokens: TokenBalance[];
   isLoading: boolean;
@@ -91,8 +95,10 @@ export const useBalances = (): BalanceData => {
   const { user } = useUser();
   const [balanceData, setBalanceData] = useState<BalanceState>({
     totalUSD: 0,
-    soUSDValue: 0,
+    totalSoUSD: 0,
     totalUSDExcludingSoUSD: 0,
+    soUSDEthereum: 0,
+    soUSDFuse: 0,
     ethereumTokens: [],
     fuseTokens: [],
     isLoading: false,
@@ -257,8 +263,10 @@ export const useBalances = (): BalanceData => {
         setBalanceData((prev) => ({
           ...prev,
           totalUSD: totalSoUSD + totalRegular,
-          soUSDValue: totalSoUSD,
+          totalSoUSD,
           totalUSDExcludingSoUSD: totalRegular,
+          soUSDEthereum: ethereumTotals.soUSD,
+          soUSDFuse: fuseTotals.soUSD,
           ethereumTokens,
           fuseTokens,
           [isLoading]: false,
@@ -286,8 +294,10 @@ export const useBalances = (): BalanceData => {
 
   return {
     totalUSD: balanceData.totalUSD,
-    soUSDValue: balanceData.soUSDValue,
+    totalSoUSD: balanceData.totalSoUSD,
     totalUSDExcludingSoUSD: balanceData.totalUSDExcludingSoUSD,
+    soUSDEthereum: balanceData.soUSDEthereum,
+    soUSDFuse: balanceData.soUSDFuse,
     ethereumTokens: balanceData.ethereumTokens,
     fuseTokens: balanceData.fuseTokens,
     isLoading: balanceData.isLoading,
