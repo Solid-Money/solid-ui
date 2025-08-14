@@ -5,19 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { readContract } from "viem/actions";
 import { mainnet } from "viem/chains";
 import useUser from "./useUser";
-
-interface TokenBalance {
-  contractTickerSymbol: string;
-  contractName: string;
-  contractAddress: string;
-  balance: string;
-  quoteRate?: number;
-  logoUrl?: string;
-  contractDecimals: number;
-  type: string;
-  verified?: boolean;
-  chainId: number;
-}
+import { TokenBalance } from "@/lib/types";
 
 // Blockscout response structure for both Ethereum and Fuse
 interface BlockscoutTokenBalance {
@@ -44,6 +32,12 @@ interface BlockscoutTokenBalance {
 
 type BlockscoutResponse = BlockscoutTokenBalance[];
 
+type CalculatedTokenValue = {
+  soUSDValue: number;
+  regularValue: number;
+  value: number;
+}
+
 interface BalanceData {
   totalUSD: number;
   totalSoUSD: number;
@@ -52,6 +46,7 @@ interface BalanceData {
   soUSDFuse: number;
   ethereumTokens: TokenBalance[];
   fuseTokens: TokenBalance[];
+  tokens: TokenBalance[];
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
@@ -65,6 +60,7 @@ interface BalanceState {
   soUSDFuse: number;
   ethereumTokens: TokenBalance[];
   fuseTokens: TokenBalance[];
+  tokens: TokenBalance[];
   isLoading: boolean;
   isRefreshing: boolean;
   error: string | null;
@@ -101,6 +97,7 @@ export const useBalances = (): BalanceData => {
     soUSDFuse: 0,
     ethereumTokens: [],
     fuseTokens: [],
+    tokens: [],
     isLoading: false,
     isRefreshing: false,
     error: null,
@@ -217,9 +214,9 @@ export const useBalances = (): BalanceData => {
         // Calculate token values separately for soUSD and regular tokens
         const calculateTokenValue = (
           token: TokenBalance,
-        ): { soUSDValue: number; regularValue: number } => {
+        ): CalculatedTokenValue => {
           if (!token.balance || !token.quoteRate)
-            return { soUSDValue: 0, regularValue: 0 };
+            return { soUSDValue: 0, regularValue: 0, value: 0 };
 
           // Convert balance from raw format to decimal format using contractDecimals
           const formattedBalance =
@@ -228,10 +225,10 @@ export const useBalances = (): BalanceData => {
           const value = formattedBalance * token.quoteRate;
 
           if (isSoUSDToken(token.contractAddress)) {
-            return { soUSDValue: value, regularValue: 0 };
+            return { soUSDValue: value, regularValue: 0, value };
           }
 
-          return { soUSDValue: 0, regularValue: value };
+          return { soUSDValue: 0, regularValue: value, value };
         };
 
         // Calculate totals for both chains
@@ -260,6 +257,13 @@ export const useBalances = (): BalanceData => {
         const totalSoUSD = ethereumTotals.soUSD + fuseTotals.soUSD;
         const totalRegular = ethereumTotals.regular + fuseTotals.regular;
 
+        const allTokens = [...ethereumTokens, ...fuseTokens]
+          .sort((a, b) => {
+            const aValue = calculateTokenValue(a);
+            const bValue = calculateTokenValue(b);
+            return bValue.value - aValue.value;
+          });
+
         setBalanceData((prev) => ({
           ...prev,
           totalUSD: totalSoUSD + totalRegular,
@@ -269,6 +273,7 @@ export const useBalances = (): BalanceData => {
           soUSDFuse: fuseTotals.soUSD,
           ethereumTokens,
           fuseTokens,
+          tokens: allTokens,
           [isLoading]: false,
           error: null,
         }));
@@ -300,6 +305,7 @@ export const useBalances = (): BalanceData => {
     soUSDFuse: balanceData.soUSDFuse,
     ethereumTokens: balanceData.ethereumTokens,
     fuseTokens: balanceData.fuseTokens,
+    tokens: balanceData.tokens,
     isLoading: balanceData.isLoading,
     error: balanceData.error,
     refresh,

@@ -38,7 +38,7 @@ export default function Savings() {
   });
 
   const { data: totalAPY } = useTotalAPY();
-  const { isLoading: isLoadingTokens, hasTokens, soUSDEthereum } = useWalletTokens();
+  const { isLoading: isLoadingTokens, hasTokens, soUSDEthereum, uniqueTokens } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
@@ -67,6 +67,8 @@ export default function Savings() {
     Math.floor(Date.now() / 1000),
     originalDepositAmount,
   );
+
+  const topThreeTokens = uniqueTokens.slice(0, 3);
 
   useEffect(() => {
     refetchBalance();
@@ -98,10 +100,13 @@ export default function Savings() {
               tooltipText="Total = Wallet + Savings"
             />
           ) : (
-            <DashboardHeaderMobile balance={soUSDEthereum + savings} mode={SavingMode.BALANCE_ONLY} />
+            <DashboardHeaderMobile
+              balance={soUSDEthereum + savings}
+              mode={SavingMode.BALANCE_ONLY}
+            />
           )}
           <View className="md:flex-row gap-4 min-h-44">
-            <WalletCard balance={soUSDEthereum} className="flex-1" />
+            <WalletCard balance={soUSDEthereum} className="flex-1" tokens={topThreeTokens} />
             <SavingCard savings={savings} className="flex-1" />
           </View>
 
