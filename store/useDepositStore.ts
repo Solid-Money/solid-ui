@@ -36,6 +36,20 @@ export const useDepositStore = create<DepositState>()(
     {
       name: USER.depositStorageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.depositStorageKey)),
+      // Do not persist modal open state
+      partialize: state => ({
+        transaction: state.transaction,
+        srcChainId: state.srcChainId,
+      }),
+      // Ignore any legacy stored modal fields
+      merge: (persisted, current) => {
+        const next = { ...current, ...(persisted as any) };
+        return {
+          ...next,
+          currentModal: current.currentModal,
+          previousModal: current.previousModal,
+        };
+      },
     },
   ),
 );
