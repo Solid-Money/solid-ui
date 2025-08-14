@@ -65,7 +65,11 @@ export default function Register() {
   }, [signupInfo.status, reset]);
 
   const handleSignupForm = (data: RegisterFormData) => {
-    handleSignup(data.username, code);
+    // To let users sign up in native, we need to use a test invite code.
+    // We'll keep this until we remove the invite code functionality or
+    // develop a way to enter the invite code in native.
+    const isAndroidOrIOS = Platform.OS !== 'web';
+    handleSignup(data.username, isAndroidOrIOS ? 'TEST_INVITE_123' : code);
   };
 
   const getSignupButtonText = () => {
@@ -155,7 +159,7 @@ export default function Register() {
                     onBlur={onBlur}
                     placeholder="Choose a username"
                     className={cn(
-                      'h-14 px-6 rounded-xl border text-lg font-semibold placeholder:text-muted-foreground',
+                      'h-14 px-6 rounded-xl border text-lg text-foreground font-semibold placeholder:text-muted-foreground',
                       errors.username ? 'border-red-500' : 'border-border',
                     )}
                   />
