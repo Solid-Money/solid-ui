@@ -5,7 +5,7 @@ import { Text } from '@/components/ui/text';
 import { cn, formatNumber } from '@/lib/utils';
 import TooltipPopover from '@/components/Tooltip';
 import { TokenBalance } from '@/lib/types';
-import { WalletCardIcons } from '.';
+import WalletCardIcons from '@/components/Wallet/WalletCardIcons';
 
 type WalletCardProps = {
   balance: number;

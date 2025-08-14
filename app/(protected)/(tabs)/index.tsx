@@ -1,4 +1,5 @@
-import { DashboardHeaderButtons, DashboardHeaderMobile } from '@/components/Dashboard';
+import { DashboardHeaderMobile } from '@/components/Dashboard';
+import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
@@ -97,7 +98,9 @@ export default function Savings() {
           {isScreenMedium ? (
             <View className="flex-row justify-between items-center">
               <View className="flex-row items-center gap-2">
-                <Text className="text-5xl font-semibold">${formatNumber(soUSDEthereum + savings)}</Text>
+                <Text className="text-5xl font-semibold">
+                  ${formatNumber(soUSDEthereum + savings)}
+                </Text>
                 <TooltipPopover text="Total = Wallet + Savings" />
               </View>
               <DashboardHeaderButtons hasTokens={hasTokens} />

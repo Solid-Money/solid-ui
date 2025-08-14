@@ -2,8 +2,8 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { SavingMode } from '@/lib/types';
-import DashboardHeaderButtons from './DashboardHeaderButtons';
-import { DashboardSavings } from '.';
+import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import DashboardSavings from '@/components/Dashboard/DashboardSavings';
 
 interface DashboardHeaderProps {
   balance: number;
