@@ -185,7 +185,10 @@ const UnstakeTrigger = (props: any) => {
   return (
     <Button
       variant="outline"
-      className={buttonVariants({ variant: 'secondary', className: 'h-12 md:pr-6 rounded-xl' })}
+      className={buttonVariants({
+        variant: 'secondary',
+        className: 'border-0 md:border md:h-12 md:pr-6 rounded-xl',
+      })}
       {...props}
     >
       <View className="flex-row items-center gap-4">

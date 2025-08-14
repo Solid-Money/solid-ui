@@ -1,5 +1,6 @@
 import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
@@ -20,7 +21,7 @@ import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 import React, { useEffect } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
@@ -92,8 +93,8 @@ export default function Savings() {
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        {Platform.OS !== 'web' && <NavbarMobile />}
-        {Platform.OS === 'web' && <Navbar />}
+        {!isScreenMedium && <NavbarMobile />}
+        {isScreenMedium && <Navbar />}
         <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
           {isScreenMedium ? (
             <View className="flex-row justify-between items-center">
@@ -111,13 +112,19 @@ export default function Savings() {
               mode={SavingMode.BALANCE_ONLY}
             />
           )}
-          <View className="md:flex-row gap-4 min-h-44">
-            <WalletCard balance={soUSDEthereum} className="flex-1" tokens={topThreeTokens} />
-            <SavingCard savings={savings} className="flex-1" />
-          </View>
+          {isScreenMedium ? (
+            <View className="md:flex-row gap-4 min-h-44">
+              <WalletCard balance={soUSDEthereum} className="flex-1" tokens={topThreeTokens} />
+              <SavingCard savings={savings} className="flex-1" />
+            </View>
+          ) : (
+            <HomeBanners />
+          )}
 
           <View className="gap-4">
-            <Text className="text-2xl font-medium">Coins</Text>
+            <Text className="md:text-2xl text-muted-foreground md:text-foreground font-semibold md:font-medium">
+              Coins
+            </Text>
             <View>
               {isLoadingTokens ? (
                 <WalletInfo text="Loading tokens..." />
