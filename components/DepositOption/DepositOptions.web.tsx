@@ -9,6 +9,7 @@ import { View } from 'react-native';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
 import DepositOption from './DepositOption';
+import { isProduction } from '@/lib/config';
 
 const DepositOptions = () => {
   const activeAccount = useActiveAccount();
@@ -77,6 +78,7 @@ const DepositOptions = () => {
       text: 'Bank Deposit',
       icon: <Landmark color="white" size={26} />,
       onPress: handleBankDepositPress,
+      isComingSoon: isProduction,
     },
   ];
 
@@ -89,6 +91,7 @@ const DepositOptions = () => {
           icon={option.icon}
           onPress={option.onPress}
           isLoading={option.isLoading}
+          isComingSoon={option.isComingSoon}
         />
       ))}
     </View>
