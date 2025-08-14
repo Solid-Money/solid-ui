@@ -155,7 +155,7 @@ export default function Savings() {
                 <View className="gap-1">
                   <Text className="md:text-lg text-primary/50">Interest earned</Text>
                   <View className="flex-row items-center">
-                    <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-brand font-medium">
+                    <Text className="text-4xl md:text-4.5xl native:leading-[1.2] font-medium">
                       $
                     </Text>
                     <SavingCountUp
@@ -165,17 +165,17 @@ export default function Savings() {
                       principal={originalDepositAmount}
                       mode={SavingMode.INTEREST_ONLY}
                       classNames={{
-                        decimalSeparator: 'md:text-xl text-brand font-medium',
+                        decimalSeparator: 'md:text-xl font-medium',
                       }}
                       styles={{
                         wholeText: {
                           fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
                           fontWeight: 'semibold',
-                          color: '#94F27F',
+                          color: '#ffffff',
                         },
                         decimalText: {
                           fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
-                          color: '#94F27F',
+                          color: '#ffffff',
                         },
                       }}
                     />
