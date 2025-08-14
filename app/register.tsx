@@ -159,7 +159,7 @@ export default function Register() {
                     onBlur={onBlur}
                     placeholder="Choose a username"
                     className={cn(
-                      'h-14 px-6 rounded-xl border text-lg font-semibold placeholder:text-muted-foreground',
+                      'h-14 px-6 rounded-xl border text-lg text-foreground font-semibold placeholder:text-muted-foreground',
                       errors.username ? 'border-red-500' : 'border-border',
                     )}
                   />
