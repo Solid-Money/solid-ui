@@ -129,13 +129,15 @@ export default function ActivateCard() {
     try {
       let kycLinkData: KycLink;
 
+      const redirectUri = getRedirectUrl();
+
       if (kycLink) {
         kycLinkData = kycLink;
       } else {
         kycLinkData = await createKycLinkMutation.mutateAsync({
           fullName,
           email,
-          redirectUri: getRedirectUrl(),
+          redirectUri,
           endorsements: [],
         });
       }
@@ -146,6 +148,7 @@ export default function ActivateCard() {
         pathname: path.KYC,
         params: {
           url: kycLinkData.link,
+          redirectUri,
         },
       });
     } catch (error) {
