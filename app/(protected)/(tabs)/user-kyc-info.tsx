@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { createKycLink, getKycLinkForExistingCustomer } from '@/lib/api';
+import { createKycLink } from '@/lib/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { startKycFlow } from '@/lib/utils/kyc';
 
