@@ -233,25 +233,15 @@ export default function UserKycInfo() {
     redirectUrl: string,
     data: { fullName: string; email: string; agreedToTerms: boolean },
   ) {
-    // TODO: Remove the existing customer check. We don't need this here.
-    if (Boolean(existingCustomer)) {
-      const kycLinkForExistingCustomer = await getKycLinkForExistingCustomer({
-        endorsement: params.endorsement ?? '',
-        redirectUri: redirectUrl,
-      });
+    const endorsements = params.endorsement ? [params.endorsement] : [];
 
-      return kycLinkForExistingCustomer?.url;
-    } else {
-      const endorsements = params.endorsement ? [params.endorsement] : [];
+    const newKycLink = await createKycLink(
+      data.fullName.trim(),
+      data.email.trim(),
+      redirectUrl,
+      endorsements,
+    );
 
-      const newKycLink = await createKycLink(
-        data.fullName.trim(),
-        data.email.trim(),
-        redirectUrl,
-        endorsements,
-      );
-
-      return newKycLink.link;
-    }
+    return newKycLink.link;
   }
 }
