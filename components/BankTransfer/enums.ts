@@ -15,7 +15,6 @@ export enum BridgeTransferMethod {
   WIRE = 'wire',
   SEPA = 'sepa',
   SPEI = 'spei',
-  SWIFT = 'swift',
 }
 
 export const FIAT_LABEL: Record<BridgeTransferFiatCurrency, string> = {
@@ -35,7 +34,6 @@ export const METHOD_LABEL: Record<BridgeTransferMethod, string> = {
   [BridgeTransferMethod.WIRE]: 'Wire',
   [BridgeTransferMethod.SEPA]: 'SEPA',
   [BridgeTransferMethod.SPEI]: 'SPEI',
-  [BridgeTransferMethod.SWIFT]: 'SWIFT',
 };
 
 export enum Endorsements {

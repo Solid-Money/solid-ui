@@ -33,7 +33,6 @@ const ALL_METHODS: BridgeTransferMethod[] = [
   BridgeTransferMethod.WIRE,
   BridgeTransferMethod.SEPA,
   BridgeTransferMethod.SPEI,
-  BridgeTransferMethod.SWIFT,
 ];
 
 export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
@@ -48,12 +47,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
   } else if (normalizedFiat === BridgeTransferFiatCurrency.MXN) {
     filtered = [BridgeTransferMethod.SPEI];
   } else if (normalizedFiat === BridgeTransferFiatCurrency.USD) {
-    filtered = [
-      BridgeTransferMethod.ACH,
-      BridgeTransferMethod.ACH_PUSH,
-      BridgeTransferMethod.WIRE,
-      BridgeTransferMethod.SWIFT,
-    ];
+    filtered = [BridgeTransferMethod.ACH, BridgeTransferMethod.ACH_PUSH, BridgeTransferMethod.WIRE];
   }
 
   return (
