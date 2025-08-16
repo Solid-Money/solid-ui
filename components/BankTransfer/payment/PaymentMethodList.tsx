@@ -14,10 +14,11 @@ import {
   getCustomerEndorsements,
   getKycLinkForExistingCustomer,
 } from '@/lib/api';
+import { startKycFlow } from '@/lib/utils/kyc';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { PaymentMethodTile } from './PaymentMethodTile';
-import { startKycFlow } from '@/lib/utils/kyc';
 
 type Props = {
   fiat?: BridgeTransferFiatCurrency;
@@ -38,6 +39,7 @@ const ALL_METHODS: BridgeTransferMethod[] = [
 export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
   const normalizedFiat = (fiat || '') as BridgeTransferFiatCurrency;
   const { data: customer } = useCustomer();
+  const [loadingMethod, setLoadingMethod] = useState<BridgeTransferMethod | null>(null);
 
   let filtered: BridgeTransferMethod[] = ALL_METHODS;
 
@@ -61,6 +63,8 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
           key={method}
           title={METHOD_LABEL[method]}
           onPress={() => onPressed(method)}
+          loading={loadingMethod === method}
+          disabled={Boolean(loadingMethod)}
         />
       ))}
       {filtered.length === 0 && (
@@ -73,6 +77,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
 
   async function onPressed(method: BridgeTransferMethod) {
     try {
+      setLoadingMethod(method);
       if (!customer) {
         const redirectUri = buildResumeRedirectUri({
           pathname: '/bank-transfer/payment-method',
@@ -106,13 +111,15 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
       );
 
       if (!endorsement || endorsement.status !== EndorsementStatus.APPROVED) {
-        startKycFlowForExistingCustomer(method, requiredEndorsement);
+        await startKycFlowForExistingCustomer(method, requiredEndorsement);
         return;
       }
 
       await createTransfer(method);
     } catch (err) {
       console.error('createBridgeTransfer failed', err);
+    } finally {
+      setLoadingMethod(null);
     }
   }
 
