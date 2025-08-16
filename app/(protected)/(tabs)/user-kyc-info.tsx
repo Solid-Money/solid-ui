@@ -1,15 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Linking, Platform, Pressable, TextInput, View } from 'react-native';
+import { Linking, Pressable, TextInput, View } from 'react-native';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
-import { createKycLink } from '@/lib/api';
+import { createKycLink, getKycLinkForExistingCustomer } from '@/lib/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { startKycFlow } from '@/lib/utils/kyc';
+
+export enum KycMode {
+  BANK_TRANSFER = 'bankTransfer',
+  CARD = 'card',
+}
 
 // Zod schema for validation
 const userInfoSchema = z.object({
@@ -27,11 +31,11 @@ const userInfoSchema = z.object({
 type UserInfoFormData = z.infer<typeof userInfoSchema>;
 
 // Header Component
-function UserInfoHeader({ kycMode }: { kycMode?: 'bankTransfer' | 'card' }) {
+function UserInfoHeader({ kycMode }: { kycMode?: KycMode }) {
   const text =
-    kycMode === 'bankTransfer'
+    kycMode === KycMode.BANK_TRANSFER
       ? 'We need some basic information to get started with your bank transfer'
-      : kycMode === 'card'
+      : kycMode === KycMode.CARD
         ? 'We need some basic information to get started with your card activation'
         : 'We need some basic information to get started';
   return <Text className="text-base text-white/70 text-center">{text}</Text>;
@@ -157,26 +161,15 @@ function UserInfoFooter({ control, errors, onContinue, isValid, isLoading }: Use
 export default function UserKycInfo() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  // `returnTo` encodes where to resume after KYC. It can be a string path or a serialized
-  // object with `pathname` and `params`. We pass this through KYC provider and handle it
-  // when the app is redirected back (mobile via base URL, web via /kyc route).
+  // `redirectUri` tells where to resume after KYC.
   const params = useLocalSearchParams<{
-    returnTo?: string;
-    endorsements?: string;
-    kycMode?: 'bankTransfer' | 'card';
+    redirectUri?: string;
+    endorsement?: string;
+    kycMode?: KycMode;
+    existingCustomer?: string;
   }>();
 
-  const { returnTo, kycMode } = params;
-
-  const endorsementsArray = React.useMemo((): string[] => {
-    const raw = params.endorsements;
-    if (!raw) return [];
-    const parts = Array.isArray(raw) ? raw : [raw];
-    return parts
-      .flatMap(s => s.split(','))
-      .map(s => s.trim())
-      .filter(Boolean);
-  }, [params.endorsements]);
+  const { redirectUri, kycMode, existingCustomer } = params;
 
   const {
     control,
@@ -194,8 +187,7 @@ export default function UserKycInfo() {
 
   const getRedirectUrl = () => {
     const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
-    const returnToPart = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '';
-    return `${baseUrl}${returnToPart}`;
+    return (redirectUri as string) || `${baseUrl}`;
   };
 
   const onSubmit = async (data: UserInfoFormData) => {
@@ -205,28 +197,13 @@ export default function UserKycInfo() {
     console.warn('redirectUrl', redirectUrl);
 
     try {
-      const kycLink = await createKycLink(
-        data.fullName.trim(),
-        data.email.trim(),
-        redirectUrl,
-        endorsementsArray,
-      );
+      const kycLink = await getKycLink(redirectUrl, data);
 
-      if (Platform.OS === 'ios' || Platform.OS === 'android') {
-        WebBrowser.openBrowserAsync(kycLink.link, {
-          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-          controlsColor: '#94F27F',
-          toolbarColor: '#94F27F',
-          showTitle: true,
-          enableBarCollapsing: true,
-        });
-      } else {
-        // On web, we render the KYC widget in /kyc, forwarding the link and returnTo
-        router.push({
-          pathname: path.KYC as any,
-          params: { url: kycLink.link, ...(returnTo ? { returnTo } : {}) },
-        });
+      if (!kycLink) {
+        throw new Error('An error occurred while creating the KYC link');
       }
+
+      startKycFlow({ router, kycLink, redirectUri: redirectUrl });
     } catch (error) {
       console.error('KYC link creation failed:', error);
     } finally {
@@ -251,4 +228,30 @@ export default function UserKycInfo() {
       </View>
     </View>
   );
+
+  async function getKycLink(
+    redirectUrl: string,
+    data: { fullName: string; email: string; agreedToTerms: boolean },
+  ) {
+    // TODO: Remove the existing customer check. We don't need this here.
+    if (Boolean(existingCustomer)) {
+      const kycLinkForExistingCustomer = await getKycLinkForExistingCustomer({
+        endorsement: params.endorsement ?? '',
+        redirectUri: redirectUrl,
+      });
+
+      return kycLinkForExistingCustomer?.url;
+    } else {
+      const endorsements = params.endorsement ? [params.endorsement] : [];
+
+      const newKycLink = await createKycLink(
+        data.fullName.trim(),
+        data.email.trim(),
+        redirectUrl,
+        endorsements,
+      );
+
+      return newKycLink.link;
+    }
+  }
 }

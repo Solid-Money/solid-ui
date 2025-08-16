@@ -37,3 +37,16 @@ export const METHOD_LABEL: Record<BridgeTransferMethod, string> = {
   [BridgeTransferMethod.SPEI]: 'SPEI',
   [BridgeTransferMethod.SWIFT]: 'SWIFT',
 };
+
+export enum Endorsements {
+  BASE = 'base',
+  SEPA = 'sepa',
+  SPEI = 'spei',
+  CARDS = 'cards',
+}
+
+export enum EndorsementStatus {
+  INCOMPLETE = 'incomplete',
+  APPROVED = 'approved',
+  REVOKED = 'revoked',
+}
