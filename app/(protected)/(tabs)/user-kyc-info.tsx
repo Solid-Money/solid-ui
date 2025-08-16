@@ -166,10 +166,9 @@ export default function UserKycInfo() {
     redirectUri?: string;
     endorsement?: string;
     kycMode?: KycMode;
-    existingCustomer?: string;
   }>();
 
-  const { redirectUri, kycMode, existingCustomer } = params;
+  const { redirectUri, kycMode } = params;
 
   const {
     control,
