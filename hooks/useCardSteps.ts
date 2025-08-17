@@ -1,3 +1,4 @@
+import { KycMode } from '@/app/(protected)/(tabs)/user-kyc-info';
 import { path } from '@/constants/path';
 import { KycStatus } from '@/lib/types';
 import { useRouter } from 'expo-router';
@@ -27,11 +28,13 @@ export function useCardSteps() {
   const kycStatus = customer?.kycStatus || KycStatus.NOT_STARTED;
 
   const handleProceedToKyc = useCallback(async () => {
+    const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
+    const redirectUri = `${baseUrl}${path.CARD_ACTIVATE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
     router.push({
       pathname: path.USER_KYC_INFO,
       params: {
-        returnTo: JSON.stringify({ pathname: path.CARD_ACTIVATE as any }),
-        kycMode: 'card',
+        redirectUri,
+        kycMode: KycMode.CARD,
       },
     } as any);
   }, [router]);
@@ -39,7 +42,6 @@ export function useCardSteps() {
   const handleActivateCard = useCallback(async () => {
     try {
       setIsLoading(true);
-      console.log('Activating card...');
       // const card = await withRefreshToken(() => createCard());
 
       // if (!card) throw new Error("Failed to create card");
@@ -107,7 +109,7 @@ export function useCardSteps() {
   }, [steps]);
 
   // Check if a step's button should be enabled
-  const isStepButtonEnabled = (stepIndex: number) => {
+  const isStepButtonEnabled = (_stepIndex: number) => {
     return true;
     // return steps.slice(0, stepIndex).every((step) => step.completed);
   };

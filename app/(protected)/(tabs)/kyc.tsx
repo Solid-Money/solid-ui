@@ -9,7 +9,7 @@ export type KycParams = {
 
 export default function Kyc({ onSuccess }: KycParams = {}) {
   const router = useRouter();
-  const { url, returnTo } = useLocalSearchParams<{ url: string; returnTo?: string }>();
+  const { url, redirectUri } = useLocalSearchParams<{ url: string; redirectUri?: string }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finalUrl, setFinalUrl] = useState<string>('');
@@ -33,30 +33,8 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           typeof event.data === 'object' &&
           (event.data.status === 'completed' || event.data.event === 'verification.complete')
         ) {
-          // If a returnTo is provided, resume the calling flow (e.g., bank-transfer)
-          // by replacing the current route. Accepts either a string path or a
-          // serialized object with pathname/params.
-          if (returnTo) {
-            try {
-              if (returnTo.startsWith('{')) {
-                const returnToAsJson = JSON.parse(returnTo) as {
-                  pathname: string;
-                  params?: Record<string, string>;
-                };
-
-                router.replace({
-                  pathname: returnToAsJson.pathname as any,
-                  params: returnToAsJson.params,
-                });
-              } else {
-                router.replace(returnTo as any);
-              }
-            } catch (_) {
-              router.replace('/');
-            }
-          } else {
-            onSuccess?.();
-          }
+          console.warn('Verification completed');
+          onSuccess?.();
         }
       } catch (err) {
         console.error('Error handling message:', err);
@@ -65,7 +43,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onSuccess, returnTo, router]);
+  }, [onSuccess, redirectUri, router]);
 
   // Process the URL to add required parameters
   useEffect(() => {
@@ -80,6 +58,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
 
       // If URL is from Persona and contains /verify, replace with /widget
       if (urlObj.hostname.includes('withpersona.com') && urlObj.pathname.includes('/verify')) {
+        console.warn('Replacing /verify with /widget');
         urlObj.pathname = urlObj.pathname.replace('/verify', '/widget');
       }
 

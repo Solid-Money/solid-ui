@@ -11,6 +11,7 @@ import {
 } from './config';
 import {
   BlockscoutTransactions,
+  BridgeCustomerEndorsement,
   BridgeCustomerResponse,
   BridgeDeposit,
   BridgeTransaction,
@@ -19,6 +20,7 @@ import {
   CardStatus,
   CardStatusResponse,
   KycLink,
+  KycLinkForExistingCustomer,
   LayerZeroTransaction,
   TokenPriceUsd,
   User,
@@ -239,6 +241,54 @@ export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getKycLinkForExistingCustomer = async (params: {
+  endorsement: string;
+  redirectUri: string;
+}): Promise<KycLinkForExistingCustomer | null> => {
+  const jwt = getJWTToken();
+
+  const url = new URL('/accounts/v1/bridge-customer/kyc-link', EXPO_PUBLIC_FLASH_API_BASE_URL);
+
+  url.search = new URLSearchParams({
+    endorsement: params.endorsement,
+    redirectUri: params.redirectUri,
+  }).toString();
+
+  const response = await fetch(url.toString(), {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getCustomerEndorsements = async (): Promise<BridgeCustomerEndorsement[] | null> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge-customer/endorsements`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
 
   if (response.status === 404) return null;
 
