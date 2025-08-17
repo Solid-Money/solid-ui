@@ -173,15 +173,15 @@ const SwapParams = () => {
         </Pressable>
       </View>
       <View className={`overflow-hidden ${isExpanded ? 'h-auto' : 'h-0'}`}>
-        <View className="flex flex-col gap-2.5 py-2 rounded-xl">
-          <View className="flex flex-row items-center justify-between">
-            <Text className="text-sm text-muted-foreground">Route</Text>
+        <View className="flex flex-col gap-2.5 bg-card rounded-xl mt-2">
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
+            <Text className="text-sm text-muted-foreground font-semibold">Route</Text>
             <View>
               <SwapRoute trade={trade} />
             </View>
           </View>
-          <View className="flex flex-row items-center justify-between">
-            <Text className="text-sm text-muted-foreground">
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
+            <Text className="text-sm text-muted-foreground font-semibold">
               {trade.tradeType === TradeType.EXACT_INPUT ? 'Minimum received' : 'Maximum sent'}
             </Text>
             <Text className="text-sm">
@@ -194,18 +194,18 @@ const SwapParams = () => {
                   : `${trade.maximumAmountIn(allowedSlippage).toSignificant(6)} ${trade.inputAmount.currency.symbol}`}
             </Text>
           </View>
-          <View className="flex flex-row items-center justify-between">
-            <Text className="text-sm text-muted-foreground">LP Fee</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
+            <Text className="text-sm text-muted-foreground font-semibold">LP Fee</Text>
             <Text className="text-sm">{LPFeeString}</Text>
           </View>
-          <View className="flex flex-row items-center justify-between">
-            <Text className="text-sm text-muted-foreground">Price impact</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
+            <Text className="text-sm text-muted-foreground font-semibold">Price impact</Text>
             <View>
               <PriceImpact priceImpact={priceImpact} />
             </View>
           </View>
-          <View className="flex flex-row items-center justify-between">
-            <Text className="text-sm text-muted-foreground">Slippage tolerance</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6">
+            <Text className="text-sm text-muted-foreground font-semibold">Slippage tolerance</Text>
             <Text className="text-sm">{allowedSlippage.toFixed(2)}%</Text>
           </View>
         </View>
