@@ -7,7 +7,7 @@ import { Text } from './ui/text';
 interface CircleButtonProps {
   icon: React.ComponentType<SvgProps>;
   label: string;
-  onPress: () => void;
+  onPress?: () => void;
   backgroundColor?: string;
   iconColor?: string;
   scale?: number;
