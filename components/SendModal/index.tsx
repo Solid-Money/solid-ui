@@ -237,7 +237,7 @@ const SendTrigger = (props: any) => {
       variant="outline"
       className={buttonVariants({
         variant: 'secondary',
-        className: 'h-12 rounded-xl gap-4 md:pr-6',
+        className: 'border-0 md:border md:h-12 rounded-xl gap-4 md:pr-6',
       })}
       {...props}
     >
