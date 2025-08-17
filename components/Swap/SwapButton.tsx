@@ -300,17 +300,17 @@ const SwapButton: React.FC = () => {
     const isPegSwapAnyLoading = isBatchPegSwapLoading || isPegSwapLoading;
     return (
       <Button
-        className="mx-[30px] rounded-[15px]"
+        className="rounded-xl"
         size="lg"
         onPress={handlePegSwap}
         disabled={isPegSwapAnyLoading}
       >
         {isPegSwapAnyLoading ? (
-          <Text>Migrating...</Text>
+          <Text className="font-semibold">Migrating...</Text>
         ) : needPegSwapAllowance ? (
-          <Text>Approve & Migrate</Text>
+          <Text className="font-semibold">Approve & Migrate</Text>
         ) : (
-          <Text>Migrate</Text>
+          <Text className="font-semibold">Migrate</Text>
         )}
       </Button>
     );
@@ -318,21 +318,23 @@ const SwapButton: React.FC = () => {
 
   if (showWrap && wrapInputError) {
     return (
-      <Button className="mx-[30px] rounded-[15px]" size="lg" disabled>
-        <Text>{wrapInputError}</Text>
+      <Button className="rounded-xl" size="lg" disabled>
+        <Text className="font-semibold">{wrapInputError}</Text>
       </Button>
     );
   }
 
   if (showWrap) {
     return (
-      <Button className="mx-[30px] rounded-[15px]" size="lg" onPress={() => onWrap && onWrap()}>
+      <Button className="rounded-xl" size="lg" onPress={() => onWrap && onWrap()}>
         {isWrapLoading ? (
-          <Text>{wrapType === WrapType.WRAP ? 'Wrapping...' : 'Unwrapping...'}</Text>
+          <Text className="font-semibold">
+            {wrapType === WrapType.WRAP ? 'Wrapping...' : 'Unwrapping...'}
+          </Text>
         ) : wrapType === WrapType.WRAP ? (
-          <Text>Wrap</Text>
+          <Text className="font-semibold">Wrap</Text>
         ) : (
-          <Text>Unwrap</Text>
+          <Text className="font-semibold">Unwrap</Text>
         )}
       </Button>
     );
@@ -340,11 +342,11 @@ const SwapButton: React.FC = () => {
 
   if (routeNotFound && userHasSpecifiedInputOutput) {
     return (
-      <Button className="mx-[30px] rounded-[15px]" size="lg" disabled>
+      <Button className="rounded-xl" size="lg" disabled>
         {isLoadingRoute ? (
-          <Text>Finding Routes...</Text>
+          <Text className="font-semibold">Finding Routes...</Text>
         ) : (
-          <Text>Insufficient liquidity for this trade.</Text>
+          <Text className="font-semibold">Insufficient liquidity for this trade.</Text>
         )}
       </Button>
     );
@@ -360,7 +362,8 @@ const SwapButton: React.FC = () => {
 
   return (
     <Button
-      className="mx-[30px] rounded-[15px]"
+      className="rounded-xl"
+      variant="brand"
       size="lg"
       onPress={handleSwap}
       disabled={
@@ -375,17 +378,17 @@ const SwapButton: React.FC = () => {
       }
     >
       {isAnyLoading ? (
-        <Text>Processing Transaction...</Text>
+        <Text className="font-semibold">Processing Transaction...</Text>
       ) : swapInputError ? (
-        <Text>{swapInputError}</Text>
+        <Text className="font-semibold">{swapInputError}</Text>
       ) : priceImpactTooHigh ? (
-        <Text>Price Impact Too High</Text>
+        <Text className="font-semibold">Price Impact Too High</Text>
       ) : priceImpactSeverity > 2 ? (
-        <Text>Swap Anyway</Text>
+        <Text className="font-semibold">Swap Anyway</Text>
       ) : needsApproval ? (
-        <Text>Approve & Swap</Text>
+        <Text className="font-semibold">Approve & Swap</Text>
       ) : (
-        <Text>Swap</Text>
+        <Text className="font-semibold">Swap</Text>
       )}
     </Button>
   );
