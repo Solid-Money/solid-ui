@@ -108,11 +108,21 @@ export type KycLink = {
   tosLink: string;
 };
 
+export type KycLinkForExistingCustomer = {
+  url: string;
+};
+
 export type BridgeCustomerResponse = {
   bridgeCustomerId: string;
   kycStatus: KycStatus;
   tosStatus: TermsOfServiceStatus;
   kycLinkId: string;
+};
+
+export type BridgeCustomerEndorsement = {
+  name: string;
+  status: string;
+  additional_requirements?: string[];
 };
 
 export enum KycStatus {

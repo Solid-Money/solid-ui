@@ -227,7 +227,7 @@ export default function Savings() {
                   {isBalanceLoading ? (
                     <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
                   ) : (
-                    `$${balance && totalAPY ? formatNumber(balance * (totalAPY / 100), 0) : 0}`
+                    `$${balance && totalAPY ? formatNumber(balance * (totalAPY / 100), 2) : 0}`
                   )}
                 </Text>
               </View>

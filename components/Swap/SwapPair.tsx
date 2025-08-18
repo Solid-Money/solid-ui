@@ -176,7 +176,7 @@ const SwapPair: React.FC = () => {
   );
 
   return (
-    <View className="flex flex-col gap-1 relative p-6">
+    <View className="flex flex-col gap-2 relative">
       <TokenCard
         value={formattedAmounts[SwapField.INPUT] || ''}
         currency={baseCurrency}
@@ -190,19 +190,14 @@ const SwapPair: React.FC = () => {
         title="Pay"
       />
 
-      <View className="flex-row justify-center py-4 relative">
-        <View className="absolute inset-0 flex-row items-center">
-          <View className="flex-1 h-px bg-border/30" />
-          <View className="flex-1 h-px bg-border/30" />
-        </View>
-
+      <View className="flex-row justify-center absolute top-1/2 -translate-y-1/2 left-0 right-0 z-10">
         <Button
           variant="outline"
           size="icon"
           onPress={onSwitchTokens}
-          className="bg-background border-border/20 rounded-full w-12 h-12 z-10 shadow-sm web:hover:bg-accent"
+          className="bg-background border-0 rounded-full w-12 h-12 z-10 shadow-sm web:hover:bg-accent"
         >
-          <ArrowUpDown size={20} color="#888" />
+          <ArrowUpDown size={20} color="white" />
         </Button>
       </View>
 

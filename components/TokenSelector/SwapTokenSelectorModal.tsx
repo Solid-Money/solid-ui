@@ -49,7 +49,7 @@ const SwapTokenSelectorModal = ({
 
   const buttonContent = useMemo(
     () => (
-      <View className="flex flex-row items-center gap-3">
+      <View className="flex flex-row items-center gap-1">
         <CurrencyLogo currency={currentCurrency} size={24} />
         <Text className="text-sm font-bold text-white flex-1">{buttonText}</Text>
         <ChevronDown className="text-white" />
@@ -62,7 +62,7 @@ const SwapTokenSelectorModal = ({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          className={`bg-accent h-12 px-4 rounded-full text-white flex items-center ${className}`}
+          className={`bg-accent h-10 px-3 rounded-full text-white flex items-center ${className}`}
           disabled={disabled}
           accessibilityLabel={`Select token. Currently selected: ${buttonText}`}
           accessibilityHint="Opens token selection dialog"
@@ -70,7 +70,7 @@ const SwapTokenSelectorModal = ({
           {buttonContent}
         </Button>
       </DialogTrigger>
-      <DialogContent className="md:gap-8 md:max-w-sm">
+      <DialogContent className="md:gap-8 md:max-w-md">
         <View className="gap-2 md:gap-4">
           <DialogTitle>Select Token</DialogTitle>
           <SwapTokenSelector

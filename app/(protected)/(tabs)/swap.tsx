@@ -1,34 +1,42 @@
 import React from 'react';
-import { Platform, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import SwapButton from '@/components/Swap/SwapButton';
 import SwapPair from '@/components/Swap/SwapPair';
 import SwapParams from '@/components/Swap/SwapParams';
 import { Text } from '@/components/ui/text';
+import { useDimension } from '@/hooks/useDimension';
 
 export default function SwapPage() {
+  const router = useRouter();
+  const { isScreenMedium } = useDimension();
+
   return (
     <SafeAreaView
       className="bg-background text-foreground flex-1"
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        {Platform.OS !== 'web' && <NavbarMobile />}
-        {Platform.OS === 'web' && <Navbar />}
+        {isScreenMedium && <Navbar />}
 
-        <View className="flex-1 bg-black px-6 py-12">
-          <Text className="text-white text-2xl font-semibold text-center mb-12">Swap</Text>
+        <View className="flex-1 gap-10 px-4 py-8 w-full max-w-lg mx-auto">
+          <View className="flex-row items-center justify-between">
+            <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+              <ArrowLeft color="white" />
+            </Pressable>
+            <Text className="text-white text-xl md:text-3xl font-semibold text-center">Swap</Text>
+            <View className="w-10" />
+          </View>
 
-          <View className="flex flex-col lg:flex-row gap-8 items-start justify-center">
-            <View className="flex flex-col gap-1 w-full lg:w-[450px] flex-shrink-0 bg-card rounded-3xl border border-border/10">
-              <SwapPair />
-              <SwapParams />
-              <View className="mt-auto flex flex-col px-6 pb-6">
-                <SwapButton />
-              </View>
+          <View className="flex flex-col gap-2 flex-shrink-0">
+            <SwapPair />
+            <SwapParams />
+            <View className="mt-auto flex flex-col">
+              <SwapButton />
             </View>
           </View>
         </View>
