@@ -154,7 +154,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
 
     if (!kycLink) throw new Error('Failed to get KYC link');
 
-    startKycFlow({ router, kycLink: kycLink.url, redirectUri: redirectUrl });
+    startKycFlow({ router, kycLink: kycLink.url });
   }
 
   function buildResumeRedirectUri(resume: { pathname: string; params: Record<string, string> }) {

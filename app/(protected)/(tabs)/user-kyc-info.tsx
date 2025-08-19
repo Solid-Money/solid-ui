@@ -202,7 +202,7 @@ export default function UserKycInfo() {
         throw new Error('An error occurred while creating the KYC link');
       }
 
-      startKycFlow({ router, kycLink, redirectUri: redirectUrl });
+      startKycFlow({ router, kycLink });
     } catch (error) {
       console.error('KYC link creation failed:', error);
     } finally {

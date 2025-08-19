@@ -9,7 +9,7 @@ export type KycParams = {
 
 export default function Kyc({ onSuccess }: KycParams = {}) {
   const router = useRouter();
-  const { url, redirectUri } = useLocalSearchParams<{ url: string; redirectUri?: string }>();
+  const { url } = useLocalSearchParams<{ url: string }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finalUrl, setFinalUrl] = useState<string>('');
@@ -43,7 +43,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onSuccess, redirectUri, router]);
+  }, [onSuccess, router]);
 
   // Process the URL to add required parameters
   useEffect(() => {

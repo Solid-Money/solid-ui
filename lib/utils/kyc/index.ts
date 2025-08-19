@@ -6,11 +6,10 @@ import { Router } from 'expo-router';
 type StartKycFlowParams = {
   router: Router;
   kycLink: string;
-  redirectUri: string;
 };
 
 export function startKycFlow(params: StartKycFlowParams) {
-  const { router, kycLink, redirectUri } = params;
+  const { router, kycLink } = params;
 
   if (Platform.OS === 'ios' || Platform.OS === 'android') {
     WebBrowser.openBrowserAsync(kycLink, {
@@ -25,7 +24,7 @@ export function startKycFlow(params: StartKycFlowParams) {
 
     router.push({
       pathname: path.KYC,
-      params: { url: kycLink, redirectUri },
+      params: { url: kycLink },
     });
   }
 }
