@@ -1,4 +1,5 @@
-import { ScrollView, View } from 'react-native';
+import * as Application from 'expo-application';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SettingsCard } from '@/components/Settings';
@@ -34,6 +35,15 @@ export default function Settings() {
 
           <View className="bg-card rounded-xl">
             <SettingsCard key="logout" title="Logout" onPress={handleLogout} />
+          </View>
+
+          {/* Build Information */}
+          <View className="px-4 pt-8 pb-2 items-center">
+            <Text className="text-muted-foreground text-xs">
+              {Application.applicationName || 'Solid'} v
+              {Application.nativeApplicationVersion || 'Unknown'} - Build{' '}
+              {Application.nativeBuildVersion || 'Unknown'}
+            </Text>
           </View>
         </View>
       </ScrollView>
