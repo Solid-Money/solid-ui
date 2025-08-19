@@ -14,7 +14,13 @@ import { mainnet } from 'viem/chains';
 
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
-import { getSubOrgIdByUsername, login, signUp, updateSafeAddress } from '@/lib/api';
+import {
+  fetchIsDeposited,
+  getSubOrgIdByUsername,
+  login,
+  signUp,
+  updateSafeAddress,
+} from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -26,7 +32,8 @@ import { getNonce, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils'
 import { publicClient, rpcUrls } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 import { Platform } from 'react-native';
-import { fetchIsDeposited } from './useAnalytics';
+
+import { usePointsStore } from '@/store/usePointsStore';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -215,6 +222,16 @@ const useUser = (): UseUserReturn => {
           if (!resp) {
             throw new Error('Error updating safe address');
           }
+
+          // Fetch points after successful signup
+          try {
+            const { fetchPoints } = usePointsStore.getState();
+            await fetchPoints();
+          } catch (error) {
+            console.warn('Failed to fetch points:', error);
+            // Don't fail signup if points fetch fails
+          }
+
           setSignupInfo({ status: Status.SUCCESS });
 
           // On mobile, navigate to notifications for new signups
@@ -288,6 +305,16 @@ const useUser = (): UseUserReturn => {
       };
       storeUser(selectedUser);
       await checkBalance(selectedUser);
+
+      // Fetch points after successful login
+      try {
+        const { fetchPoints } = usePointsStore.getState();
+        await fetchPoints();
+      } catch (error) {
+        console.warn('Failed to fetch points:', error);
+        // Don't fail login if points fetch fails
+      }
+
       setLoginInfo({ status: Status.SUCCESS });
 
       router.replace(path.HOME);

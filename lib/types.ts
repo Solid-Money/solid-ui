@@ -348,3 +348,21 @@ export interface SourceDepositInstructions {
 export interface BridgeTransferResponse {
   source_deposit_instructions: SourceDepositInstructions;
 }
+
+export enum RewardsType {
+  DEPOSIT = 'deposit',
+  REFERRAL_SIGNUP = 'referral_signup',
+  DAILY_LOGIN = 'daily_login',
+}
+
+export interface Points {
+  pointsLast24Hours: number;
+  userRewardsSummary: {
+    totalPoints: number;
+    rewardsByType: {
+      type: RewardsType;
+      count: number;
+      totalPoints: number;
+    }[];
+  };
+}

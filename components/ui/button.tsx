@@ -20,6 +20,7 @@ const buttonVariants = cva(
         brand: 'bg-brand web:hover:opacity-90 active:opacity-90',
         accent: 'bg-accent web:hover:opacity-90 active:opacity-90',
         purple: 'bg-purple/60 web:hover:opacity-90 active:opacity-90',
+        rewards: 'bg-rewards/20 web:hover:opacity-90 active:opacity-90',
       },
       size: {
         default: 'h-10 px-4 py-2 native:h-12 native:px-5 native:py-3',
@@ -90,3 +91,4 @@ Button.displayName = 'Button';
 
 export { Button, buttonTextVariants, buttonVariants };
 export type { ButtonProps };
+
