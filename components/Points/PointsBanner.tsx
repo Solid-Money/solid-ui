@@ -1,12 +1,14 @@
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { usePoints } from '@/hooks/usePoints';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Platform, View } from 'react-native';
 
 const PointsTitle = () => {
+  const { points } = usePoints();
   return (
     <LinearGradient
       start={{ x: 0.5, y: 0 }}
@@ -25,7 +27,9 @@ const PointsTitle = () => {
         <View className="flex-row items-end">
           <View className="flex-row items-end">
             <Text className="text-2xl/none font-semibold">
-              <Text className="text-2xl/none font-semibold text-rewards">12,045 </Text>
+              <Text className="text-2xl/none font-semibold text-rewards mr-1">
+                {points.userRewardsSummary.totalPoints || 0}
+              </Text>
               points earned
             </Text>
             <Text className="text-lg/none text-rewards/70 ml-4">

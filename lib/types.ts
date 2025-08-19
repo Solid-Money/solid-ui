@@ -46,6 +46,7 @@ export interface User {
   signWith: string;
   suborgId: string;
   userId: string;
+  referralCode?: string;
   isDeposited?: boolean;
   tokens?: AuthTokens;
   email?: string;

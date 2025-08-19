@@ -206,6 +206,7 @@ const useUser = (): UseUserReturn => {
             suborgId: user.subOrganizationId,
             selected: true,
             tokens: user.tokens || null,
+            referralCode: user.referralCode,
           };
           storeUser(selectedUser);
           await checkBalance(selectedUser);
@@ -295,6 +296,7 @@ const useUser = (): UseUserReturn => {
         selected: true,
         tokens: user.tokens || null,
         email: user.email,
+        referralCode: user.referralCode,
       };
       storeUser(selectedUser);
       await checkBalance(selectedUser);

@@ -164,6 +164,13 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="referral"
+        options={{
+          title: 'Referral',
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

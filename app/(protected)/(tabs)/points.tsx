@@ -5,17 +5,21 @@ import PointsTitle from '@/components/Points/PointsTitle';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useCountdownTimer } from '@/hooks/useCountdownTimer';
 import { useDimension } from '@/hooks/useDimension';
 import { usePoints } from '@/hooks/usePoints';
+import { RewardsType } from '@/lib/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
-import { Image, ImageBackground, Platform, ScrollView, View } from 'react-native';
+import { Image, ImageBackground, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Savings() {
   const { points, isLoading: isPointsLoading } = usePoints();
   const { isScreenMedium } = useDimension();
+  const countdownTime = useCountdownTimer();
 
   if (isPointsLoading) {
     return <Loading />;
@@ -35,7 +39,15 @@ export default function Savings() {
               <PointsTitle />
             </View>
           ) : (
-            <Text className="text-xl font-semibold">Points</Text>
+            <View className="flex-row items-center justify-between">
+              <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+                <ArrowLeft color="white" />
+              </Pressable>
+              <Text className="text-white text-xl md:text-3xl font-semibold text-center">
+                Points
+              </Text>
+              <View className="w-10" />
+            </View>
           )}
           <LinearGradient
             colors={['rgba(255, 209, 81, 0.25)', 'rgba(255, 209, 81, 0.17)']}
@@ -70,8 +82,9 @@ export default function Savings() {
                     <Text className="md:text-lg text-rewards/70">From deposits</Text>
                     <View className="flex-row items-center">
                       <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
-                        {points.userRewardsSummary.rewardsByType.find(r => r.type === 'deposit')
-                          ?.totalPoints || 0}
+                        {points.userRewardsSummary.rewardsByType.find(
+                          r => r.type === RewardsType.DEPOSIT,
+                        )?.totalPoints || 0}
                       </Text>
                     </View>
                   </View>
@@ -80,16 +93,16 @@ export default function Savings() {
                     <View className="flex-row items-end">
                       <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
                         {points.userRewardsSummary.rewardsByType.find(
-                          r => r.type === 'referral_signup',
+                          r => r.type === RewardsType.REFERRAL_SIGNUP,
                         )?.totalPoints || 0}
                       </Text>
                       <Text className="text-base text-rewards/70 ml-2">
                         {points.userRewardsSummary.rewardsByType.find(
-                          r => r.type === 'referral_signup',
+                          r => r.type === RewardsType.REFERRAL_SIGNUP,
                         )?.count || 0}{' '}
                         referred |{' '}
                         {points.userRewardsSummary.rewardsByType.find(
-                          r => r.type === 'referral_signup',
+                          r => r.type === RewardsType.REFERRAL_SIGNUP,
                         )?.count || 0}{' '}
                         deposited
                       </Text>
@@ -103,12 +116,12 @@ export default function Savings() {
               <View className="p-6 md:p-7">
                 <Text className="text-lg text-rewards/70">Next drop in</Text>
                 <View className="flex-row items-center gap-2">
-                  <Text className="text-3xl text-rewards font-semibold mt-2">16:26:33</Text>
+                  <Text className="text-3xl text-rewards font-semibold mt-2">{countdownTime}</Text>
                 </View>
                 <Text className="mt-4 text-rewards/70 text-sm">
                   Earning 10 points per $1 per day
                   <br />
-                  Earned yesterday: 22.60K points
+                  Earned yesterday: {points.pointsLast24Hours} points
                 </Text>
               </View>
 
@@ -171,7 +184,7 @@ export default function Savings() {
                 variant="secondary"
                 className="h-12 px-6 rounded-xl bg-[#303030] border-0 mt-7"
                 onPress={() => {
-                  router.push(path.DEPOSIT);
+                  router.push(path.REFERRAL);
                 }}
               >
                 <View className="flex-row items-center gap-4">
