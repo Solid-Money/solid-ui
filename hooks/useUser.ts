@@ -1,26 +1,6 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { TurnkeyClient } from '@turnkey/http';
-import { PasskeyStamper } from '@turnkey/react-native-passkey-stamper';
-import { createAccount } from '@turnkey/viem';
-import { WebauthnStamper } from '@turnkey/webauthn-stamper';
-import { useRouter } from 'expo-router';
-import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
-import { toSafeSmartAccount } from 'permissionless/accounts';
-import { useCallback, useEffect, useMemo } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { Chain, createWalletClient, http } from 'viem';
-import { entryPoint07Address } from 'viem/account-abstraction';
-import { mainnet } from 'viem/chains';
-
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
-import {
-  fetchIsDeposited,
-  getSubOrgIdByUsername,
-  login,
-  signUp,
-  updateSafeAddress,
-} from '@/lib/api';
+import { getSubOrgIdByUsername, login, signUp, updateSafeAddress } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -30,10 +10,23 @@ import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import { getNonce, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
 import { publicClient, rpcUrls } from '@/lib/wagmi';
-import { useUserStore } from '@/store/useUserStore';
-import { Platform } from 'react-native';
-
 import { usePointsStore } from '@/store/usePointsStore';
+import { useUserStore } from '@/store/useUserStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { TurnkeyClient } from '@turnkey/http';
+import { PasskeyStamper } from '@turnkey/react-native-passkey-stamper';
+import { createAccount } from '@turnkey/viem';
+import { WebauthnStamper } from '@turnkey/webauthn-stamper';
+import { useRouter } from 'expo-router';
+import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
+import { toSafeSmartAccount } from 'permissionless/accounts';
+import { useCallback, useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
+import { v4 as uuidv4 } from 'uuid';
+import { Chain, createWalletClient, http } from 'viem';
+import { entryPoint07Address } from 'viem/account-abstraction';
+import { mainnet } from 'viem/chains';
+import { fetchIsDeposited } from './useAnalytics';
 
 interface UseUserReturn {
   user: User | undefined;

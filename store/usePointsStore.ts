@@ -1,6 +1,7 @@
 import { fetchPoints } from '@/lib/api';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { Points } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 import { produce } from 'immer';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -44,7 +45,7 @@ export const usePointsStore = create<PointsState>()(
         );
 
         try {
-          const points = await fetchPoints();
+          const points = await withRefreshToken(() => fetchPoints());
           set(
             produce(state => {
               state.points = points;
