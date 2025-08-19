@@ -26,6 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
+import { useUserStore } from '@/store/useUserStore';
 
 export default function Savings() {
   const { user } = useUser();
@@ -35,6 +36,7 @@ export default function Savings() {
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
   } = useFuseVaultBalance(user?.safeAddress as Address);
+  const { updateUser } = useUserStore();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -73,17 +75,27 @@ export default function Savings() {
   );
 
   const topThreeTokens = uniqueTokens.slice(0, 3);
+  const isDeposited = !!userDepositTransactions?.deposits?.length;
 
   useEffect(() => {
     refetchBalance();
     refetchTransactions();
   }, [blockNumber, refetchBalance, refetchTransactions]);
 
+  useEffect(() => {
+    if (isDeposited && user) {
+      updateUser({
+        ...user,
+        isDeposited,
+      });
+    }
+  }, [isDeposited, user]);
+
   if (isBalanceLoading || isTransactionsLoading) {
     return <Loading />;
   }
 
-  if (!balance && !userDepositTransactions?.deposits?.length) {
+  if (!balance && !isDeposited) {
     return <SavingsEmptyState />;
   }
 
