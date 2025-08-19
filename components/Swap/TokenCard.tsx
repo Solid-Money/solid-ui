@@ -1,15 +1,16 @@
+import { Wallet } from 'lucide-react-native';
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useBalance } from 'wagmi';
-import { Wallet } from 'lucide-react-native';
 
+import Max from '@/components/Max';
 import SwapTokenSelectorModal from '@/components/TokenSelector/SwapTokenSelectorModal';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { formatNumber } from '@/lib/utils';
 import { Currency, Percent } from '@cryptoalgebra/fuse-sdk';
 import { formatUnits } from 'viem';
-import Max from '@/components/Max';
+import { fuse } from 'viem/chains';
 
 interface TokenCardProps {
   handleTokenSelection: (token: Currency) => void;
@@ -53,6 +54,7 @@ const TokenCard: React.FC<TokenCardProps> = ({
     query: {
       enabled: true,
     },
+    chainId: fuse.id,
   });
 
   const balanceString = useMemo(() => {

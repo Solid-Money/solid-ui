@@ -144,6 +144,7 @@ export default function useWrapCallback(
     },
     address: account,
     token: inputCurrency?.isNative ? undefined : (inputCurrency?.address as Address),
+    chainId: fuse.id,
   });
 
   return useMemo(() => {
@@ -153,7 +154,7 @@ export default function useWrapCallback(
 
     const hasInputAmount = Boolean(inputAmount?.greaterThan('0'));
     const sufficientBalance =
-      inputAmount && balance && Number(balance.formatted) >= Number(inputAmount.toSignificant(18));
+      inputAmount && balance && Number(balance.value) >= Number(inputAmount.toSignificant(18));
 
     if (inputCurrency.isNative && weth.equals(outputCurrency)) {
       return {
