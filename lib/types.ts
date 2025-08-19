@@ -108,11 +108,21 @@ export type KycLink = {
   tosLink: string;
 };
 
+export type KycLinkForExistingCustomer = {
+  url: string;
+};
+
 export type BridgeCustomerResponse = {
   bridgeCustomerId: string;
   kycStatus: KycStatus;
   tosStatus: TermsOfServiceStatus;
   kycLinkId: string;
+};
+
+export type BridgeCustomerEndorsement = {
+  name: string;
+  status: string;
+  additional_requirements?: string[];
 };
 
 export enum KycStatus {
@@ -347,6 +357,19 @@ export interface SourceDepositInstructions {
 
 export interface BridgeTransferResponse {
   source_deposit_instructions: SourceDepositInstructions;
+}
+
+export interface TokenBalance {
+  contractTickerSymbol: string;
+  contractName: string;
+  contractAddress: string;
+  balance: string;
+  quoteRate?: number;
+  logoUrl?: string;
+  contractDecimals: number;
+  type: string;
+  verified?: boolean;
+  chainId: number;
 }
 
 export enum RewardsType {

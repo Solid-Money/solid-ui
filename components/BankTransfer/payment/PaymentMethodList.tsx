@@ -1,14 +1,22 @@
+import { KycMode } from '@/app/(protected)/(tabs)/user-kyc-info';
 import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
   BridgeTransferMethod,
+  Endorsements,
+  EndorsementStatus,
   METHOD_LABEL,
 } from '@/components/BankTransfer/enums';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { useCustomer } from '@/hooks/useCustomer';
-import { createBridgeTransfer } from '@/lib/api';
+import {
+  createBridgeTransfer,
+  getCustomerEndorsements,
+  getKycLinkForExistingCustomer,
+} from '@/lib/api';
+import { startKycFlow } from '@/lib/utils/kyc';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { PaymentMethodTile } from './PaymentMethodTile';
 
@@ -25,19 +33,21 @@ const ALL_METHODS: BridgeTransferMethod[] = [
   BridgeTransferMethod.WIRE,
   BridgeTransferMethod.SEPA,
   BridgeTransferMethod.SPEI,
-  BridgeTransferMethod.SWIFT,
 ];
 
 export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
   const normalizedFiat = (fiat || '') as BridgeTransferFiatCurrency;
   const { data: customer } = useCustomer();
+  const [loadingMethod, setLoadingMethod] = useState<BridgeTransferMethod | null>(null);
 
   let filtered: BridgeTransferMethod[] = ALL_METHODS;
+
   if (normalizedFiat === BridgeTransferFiatCurrency.EUR) {
     filtered = [BridgeTransferMethod.SEPA];
-    // TODO: Check if there is a limitation regarding the MXN. Remove the if there isn't.
   } else if (normalizedFiat === BridgeTransferFiatCurrency.MXN) {
     filtered = [BridgeTransferMethod.SPEI];
+  } else if (normalizedFiat === BridgeTransferFiatCurrency.USD) {
+    filtered = [BridgeTransferMethod.ACH, BridgeTransferMethod.ACH_PUSH, BridgeTransferMethod.WIRE];
   }
 
   return (
@@ -46,67 +56,9 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
         <PaymentMethodTile
           key={method}
           title={METHOD_LABEL[method]}
-          onPress={async () => {
-            try {
-              // If user doesn't have a Bridge customer yet, collect info and start KYC first.
-              // We include a serialized `returnTo` payload so that, after KYC completes,
-              // we can resume this exact bank-transfer flow with the selected parameters.
-              if (!customer) {
-                const resume = {
-                  pathname: '/bank-transfer/payment-method',
-                  params: {
-                    fiat: normalizedFiat,
-                    crypto: crypto ?? '',
-                    fiatAmount: String(fiatAmount ?? ''),
-                    method,
-                  },
-                } as const;
-
-                // If method is SEPA, add the sepa endorsement
-                const endorsements = [];
-
-                if (method === BridgeTransferMethod.SEPA) {
-                  endorsements.push('sepa');
-                } else if (method === BridgeTransferMethod.SPEI) {
-                  endorsements.push('spei');
-                } else {
-                  endorsements.push('base');
-                }
-
-                // Push to the KYC info screen and attach returnTo so it can be forwarded to KYC provider
-                router.push({
-                  pathname: path.USER_KYC_INFO as any,
-                  params: {
-                    returnTo: JSON.stringify(resume),
-                    kycMode: 'bankTransfer',
-                    endorsements: endorsements.join(','),
-                  },
-                });
-                return;
-              }
-
-              // Customer exists.
-              // TODO: Check the KYC status.
-
-              // TODO: Check endorsements for existing customer before proceeding
-
-              const sourceDepositInstructions = await createBridgeTransfer({
-                amount: String(fiatAmount ?? ''),
-                sourcePaymentRail: method,
-                fiatCurrency: normalizedFiat,
-                cryptoCurrency: String(crypto ?? ''),
-              });
-
-              router.push({
-                pathname: '/bank-transfer/preview',
-                params: {
-                  instructions: JSON.stringify(sourceDepositInstructions),
-                },
-              });
-            } catch (err) {
-              console.error('createBridgeTransfer failed', err);
-            }
-          }}
+          onPress={() => onPressed(method)}
+          loading={loadingMethod === method}
+          disabled={Boolean(loadingMethod)}
         />
       ))}
       {filtered.length === 0 && (
@@ -116,4 +68,109 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
       )}
     </View>
   );
+
+  async function onPressed(method: BridgeTransferMethod) {
+    try {
+      setLoadingMethod(method);
+      if (!customer) {
+        const redirectUri = buildResumeRedirectUri({
+          pathname: '/bank-transfer/payment-method',
+          params: {
+            fiat: normalizedFiat,
+            crypto: String(crypto ?? ''),
+            fiatAmount: String(fiatAmount ?? ''),
+            method,
+          },
+        });
+
+        const endorsement = getEndorsementByMethod(method);
+
+        const params = new URLSearchParams({
+          kycMode: KycMode.BANK_TRANSFER,
+          endorsement: endorsement,
+          redirectUri,
+        }).toString();
+
+        router.push(`/user-kyc-info?${params}`);
+
+        return;
+      }
+
+      // Check if the customer has the required endorsement approved
+      const endorsements = await getCustomerEndorsements();
+      const requiredEndorsement = getEndorsementByMethod(method);
+
+      const endorsement = endorsements?.find(
+        endorsement => endorsement.name === requiredEndorsement,
+      );
+
+      if (!endorsement || endorsement.status !== EndorsementStatus.APPROVED) {
+        await startKycFlowForExistingCustomer(method, requiredEndorsement);
+        return;
+      }
+
+      await createTransfer(method);
+    } catch (err) {
+      console.error('createBridgeTransfer failed', err);
+    } finally {
+      setLoadingMethod(null);
+    }
+  }
+
+  async function createTransfer(method: BridgeTransferMethod) {
+    const sourceDepositInstructions = await createBridgeTransfer({
+      amount: String(fiatAmount ?? ''),
+      sourcePaymentRail: method,
+      fiatCurrency: normalizedFiat,
+      cryptoCurrency: String(crypto ?? ''),
+    });
+
+    router.push({
+      pathname: '/bank-transfer/preview',
+      params: {
+        instructions: JSON.stringify(sourceDepositInstructions),
+      },
+    });
+  }
+
+  async function startKycFlowForExistingCustomer(
+    method: BridgeTransferMethod,
+    requiredEndorsement: Endorsements,
+  ) {
+    const redirectUrl = buildResumeRedirectUri({
+      pathname: '/bank-transfer/payment-method',
+      params: {
+        fiat: normalizedFiat,
+        crypto: String(crypto ?? ''),
+        fiatAmount: String(fiatAmount ?? ''),
+        method,
+      },
+    });
+
+    const kycLink = await getKycLinkForExistingCustomer({
+      endorsement: requiredEndorsement,
+      redirectUri: redirectUrl,
+    });
+
+    if (!kycLink) throw new Error('Failed to get KYC link');
+
+    startKycFlow({ router, kycLink: kycLink.url, redirectUri: redirectUrl });
+  }
+
+  function buildResumeRedirectUri(resume: { pathname: string; params: Record<string, string> }) {
+    const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
+    const search = new URLSearchParams(resume.params).toString();
+    const uri = `${baseUrl}${resume.pathname}${search ? `?${search}` : ''}`;
+    return encodeURIComponent(uri);
+  }
+
+  function getEndorsementByMethod(method: BridgeTransferMethod) {
+    if (method === BridgeTransferMethod.SEPA) {
+      return Endorsements.SEPA;
+    } else if (method === BridgeTransferMethod.SPEI) {
+      return Endorsements.SPEI;
+    } else {
+      return Endorsements.BASE;
+    }
+  }
 }

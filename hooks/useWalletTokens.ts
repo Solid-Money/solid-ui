@@ -9,7 +9,7 @@ import useUser from './useUser';
 
 export const useWalletTokens = () => {
   const { user } = useUser();
-  const { totalUSD, ethereumTokens, fuseTokens, isLoading, refresh } = useBalances();
+  const { totalUSD, soUSDEthereum, soUSDFuse, ethereumTokens, fuseTokens, tokens, isLoading, refresh } = useBalances();
   const { data: usdcBalance } = useBalance({
     address: user?.safeAddress as Address,
     token: ADDRESSES.ethereum.usdc,
@@ -26,10 +26,18 @@ export const useWalletTokens = () => {
   }, [soUSDBalance, usdcBalance, refresh]);
 
   const hasTokens = ethereumTokens.length > 0 || fuseTokens.length > 0;
+
+  const uniqueTokens = tokens.filter((token, index, self) =>
+    index === self.findIndex((t) => t.contractTickerSymbol === token.contractTickerSymbol),
+  );
+
   return {
     totalUSD,
+    soUSDEthereum,
+    soUSDFuse,
     ethereumTokens,
     fuseTokens,
+    uniqueTokens,
     isLoading,
     hasTokens,
   };

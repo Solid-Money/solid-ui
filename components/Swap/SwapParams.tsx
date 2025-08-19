@@ -1,3 +1,4 @@
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { ALGEBRA_ROUTER } from '@/constants/addresses';
 import { MAX_UINT128 } from '@/constants/max-uint128';
@@ -25,9 +26,8 @@ import {
   TradeType,
   unwrappedToken,
 } from '@cryptoalgebra/fuse-sdk';
-import { Loader2, ZapIcon } from 'lucide-react-native';
+import { ZapIcon } from 'lucide-react-native';
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
 import { Address, getContract } from 'viem';
 import { fuse } from 'viem/chains';
 
@@ -156,16 +156,16 @@ const SwapParams = () => {
     <View>
       <View className="flex flex-row justify-between">
         <Pressable
-          className="flex flex-row items-center w-full mb-1 text-center py-1 px-6"
+          className="flex flex-row items-center w-full text-center web:hover:opacity-70"
           onPress={() => toggleExpanded(!isExpanded)}
         >
           {slidingFee && (
-            <div className="rounded select-none pointer px-1.5 py-1 flex items-center relative">
+            <View className="rounded select-none pointer flex-row items-center relative">
               {dynamicFeePlugin && (
                 <ZapIcon className="mr-2" strokeWidth={1} stroke="white" fill="white" size={16} />
               )}
-              <span>{`${slidingFee?.toFixed(4)}% fee`}</span>
-            </div>
+              <Text>{`${slidingFee?.toFixed(4)}% fee`}</Text>
+            </View>
           )}
           <View className={`ml-auto ${isExpanded && 'rotate-180'}`}>
             <ChevronDown strokeWidth={2} size={16} className="text-foreground" />
@@ -173,15 +173,15 @@ const SwapParams = () => {
         </Pressable>
       </View>
       <View className={`overflow-hidden ${isExpanded ? 'h-auto' : 'h-0'}`}>
-        <View className="flex flex-col gap-2.5 px-[30px] py-2 rounded-xl">
-          <View className="flex flex-row items-center justify-between">
-            <Text className="font-semibold text-sm">Route</Text>
+        <View className="flex flex-col gap-2.5 bg-card rounded-xl mt-2">
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
+            <Text className="text-sm text-muted-foreground font-semibold">Route</Text>
             <View>
               <SwapRoute trade={trade} />
             </View>
           </View>
-          <View className="flex flex-row items-center justify-between">
-            <Text className="font-semibold text-sm">
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
+            <Text className="text-sm text-muted-foreground font-semibold">
               {trade.tradeType === TradeType.EXACT_INPUT ? 'Minimum received' : 'Maximum sent'}
             </Text>
             <Text className="text-sm">
@@ -194,26 +194,26 @@ const SwapParams = () => {
                   : `${trade.maximumAmountIn(allowedSlippage).toSignificant(6)} ${trade.inputAmount.currency.symbol}`}
             </Text>
           </View>
-          <View className="flex flex-row items-center justify-between">
-            <Text className="font-semibold text-sm">LP Fee</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
+            <Text className="text-sm text-muted-foreground font-semibold">LP Fee</Text>
             <Text className="text-sm">{LPFeeString}</Text>
           </View>
-          <View className="flex flex-row items-center justify-between">
-            <Text className="font-semibold text-sm">Price impact</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
+            <Text className="text-sm text-muted-foreground font-semibold">Price impact</Text>
             <View>
               <PriceImpact priceImpact={priceImpact} />
             </View>
           </View>
-          <View className="flex flex-row items-center justify-between">
-            <Text className="font-semibold text-sm">Slippage tolerance</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6">
+            <Text className="text-sm text-muted-foreground font-semibold">Slippage tolerance</Text>
             <Text className="text-sm">{allowedSlippage.toFixed(2)}%</Text>
           </View>
         </View>
       </View>
     </View>
   ) : trade !== undefined || tradeState.state === TradeState.LOADING ? (
-    <View className="flex flex-row justify-center mb-1 py-3 px-3">
-      <Loader2 size={17} className="text-foreground animate-spin" />
+    <View className="flex flex-row justify-center px-3">
+      <ActivityIndicator size={17} color="white" />
     </View>
   ) : null;
 };

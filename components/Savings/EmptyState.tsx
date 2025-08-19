@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Platform, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DepositOptionModal } from '@/components/DepositOption';
@@ -25,8 +25,8 @@ export default function SavingsEmptyState() {
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        {Platform.OS !== 'web' && <NavbarMobile />}
-        {Platform.OS === 'web' && <Navbar />}
+        {!isScreenMedium && <NavbarMobile />}
+        {isScreenMedium && <Navbar />}
         <View className="w-full max-w-7xl mx-auto gap-8 md:gap-16 px-4 pt-4 pb-8">
           {isScreenMedium ? (
             <View className="md:flex-row justify-between md:items-center gap-y-4">

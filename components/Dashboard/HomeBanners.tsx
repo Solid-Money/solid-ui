@@ -1,29 +1,12 @@
 import React, { useRef } from 'react';
-import { Dimensions, Image, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const BANNER_HEIGHT = SCREEN_HEIGHT * 0.12;
+import HomeBannerDeposit from './HomeBannerDeposit';
 
-const bannerData = [
-  {
-    id: '1',
-    image: require('@/assets/images/deposit_banner.png'),
-  },
-  {
-    id: '2',
-    image: require('@/assets/images/deposit_banner.png'),
-  },
-  {
-    id: '3',
-    image: require('@/assets/images/deposit_banner.png'),
-  },
-  {
-    id: '4',
-    image: require('@/assets/images/deposit_banner.png'),
-  },
-];
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BANNER_HEIGHT = 90;
 
 // Won't be used until we have more than one banner
 export const HomeBanners = () => {
@@ -37,21 +20,17 @@ export const HomeBanners = () => {
     });
   };
 
-  const renderItem = ({ item }) => {
-    return (
-      <View style={styles.bannerContainer}>
-        <Image source={item.image} style={styles.bannerImage} resizeMode="contain" />
-      </View>
-    );
+  const renderItem = () => {
+    return <HomeBannerDeposit />;
   };
 
   return (
     <View style={styles.container}>
       <Carousel
         ref={ref}
-        width={SCREEN_WIDTH}
-        height={BANNER_HEIGHT + 32}
-        data={bannerData}
+        width={SCREEN_WIDTH - 32}
+        height={BANNER_HEIGHT}
+        data={[1]}
         scrollAnimationDuration={1000}
         onProgressChange={progress}
         renderItem={renderItem}
@@ -59,11 +38,10 @@ export const HomeBanners = () => {
           parallaxScrollingScale: 0.9,
           parallaxScrollingOffset: 50,
         }}
-        style={styles.carousel}
       />
       <Pagination.Custom
         progress={progress}
-        data={bannerData}
+        data={[1]}
         dotStyle={styles.dotStyle}
         activeDotStyle={styles.activeDot}
         containerStyle={styles.paginationContainer}
@@ -76,20 +54,6 @@ export const HomeBanners = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  carousel: {
-    width: SCREEN_WIDTH,
-    height: BANNER_HEIGHT + 32,
-  },
-  bannerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bannerImage: {
-    width: SCREEN_WIDTH,
-    height: BANNER_HEIGHT,
-    borderRadius: 12,
   },
   paginationContainer: {
     gap: SCREEN_WIDTH * 0.012,

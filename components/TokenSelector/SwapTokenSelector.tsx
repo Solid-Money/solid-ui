@@ -159,7 +159,7 @@ const Search = ({
   });
 
   return (
-    <View className="relative">
+    <View className="relative gap-2">
       <Animated.View
         style={{
           borderWidth: isFocused ? 2.5 : 2,
@@ -357,11 +357,6 @@ const TokenRow = ({
     outputRange: [0, 1],
   });
 
-  const borderColor = hoverAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(156, 163, 175, 0.1)', 'rgba(59, 130, 246, 0.3)'],
-  });
-
   const hasBalance = balance > 0;
 
   return (
@@ -371,12 +366,12 @@ const TokenRow = ({
         opacity,
       }}
     >
-      <Animated.View style={{ borderColor, borderWidth: isPopular ? 1.5 : 1, borderRadius: 16 }}>
+      <Animated.View>
         <Pressable
           disabled={lock}
-          className={`flex flex-row items-center justify-between w-full py-4 px-5 bg-card/95 backdrop-blur-sm rounded-2xl ${
+          className={`flex flex-row items-center justify-between w-full py-4 px-5 bg-accent/50 web:hover:bg-accent/30 backdrop-blur-sm rounded-2xl ${
             lock ? 'opacity-50' : ''
-          } ${isPopular ? 'bg-card/98' : 'bg-card/95'}`}
+          }`}
           onPress={handlePress}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
@@ -407,10 +402,10 @@ const TokenRow = ({
                     <Text className="text-xs text-primary font-medium">Native</Text>
                   </View>
                 )}
-                <CopyToClipboard text={token.address} />
+                <CopyToClipboard text={token.address} className="w-6 h-6" />
               </View>
               <Text
-                className={`text-sm mt-1 opacity-80 leading-tight ${
+                className={`text-sm opacity-80 leading-tight ${
                   isPopular ? 'text-muted-foreground font-medium' : 'text-muted-foreground'
                 }`}
               >
@@ -440,9 +435,6 @@ const TokenRow = ({
                   >
                     ${balanceUsdString}
                   </Text>
-                )}
-                {!hasBalance && (
-                  <Text className="text-xs text-muted-foreground/50 mt-1">No balance</Text>
                 )}
               </View>
             )}

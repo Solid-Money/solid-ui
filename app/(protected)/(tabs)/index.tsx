@@ -1,8 +1,11 @@
-import { DashboardHeader, DashboardHeaderMobile } from '@/components/Dashboard';
+import { DashboardHeaderMobile } from '@/components/Dashboard';
+import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
+import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
 import WalletTabs from '@/components/Wallet/WalletTabs';
@@ -16,8 +19,9 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
 import React, { useEffect } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
@@ -38,7 +42,7 @@ export default function Savings() {
   });
 
   const { data: totalAPY } = useTotalAPY();
-  const { isLoading: isLoadingTokens, hasTokens, totalUSD } = useWalletTokens();
+  const { isLoading: isLoadingTokens, hasTokens, soUSDEthereum, uniqueTokens } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
@@ -68,6 +72,8 @@ export default function Savings() {
     originalDepositAmount,
   );
 
+  const topThreeTokens = uniqueTokens.slice(0, 3);
+
   useEffect(() => {
     refetchBalance();
     refetchTransactions();
@@ -87,26 +93,38 @@ export default function Savings() {
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        {Platform.OS !== 'web' && <NavbarMobile />}
-        {Platform.OS === 'web' && <Navbar />}
+        {!isScreenMedium && <NavbarMobile />}
+        {isScreenMedium && <Navbar />}
         <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
           {isScreenMedium ? (
-            <DashboardHeader
-              balance={totalUSD + savings}
-              mode={SavingMode.BALANCE_ONLY}
-              hasTokens={hasTokens}
-              tooltipText="Total = Wallet + Savings"
-            />
+            <View className="flex-row justify-between items-center">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-5xl font-semibold">
+                  ${formatNumber(soUSDEthereum + savings)}
+                </Text>
+                <TooltipPopover text="Total = Wallet + Savings" />
+              </View>
+              <DashboardHeaderButtons hasTokens={hasTokens} />
+            </View>
           ) : (
-            <DashboardHeaderMobile balance={totalUSD + savings} mode={SavingMode.BALANCE_ONLY} />
+            <DashboardHeaderMobile
+              balance={soUSDEthereum + savings}
+              mode={SavingMode.BALANCE_ONLY}
+            />
           )}
-          <View className="md:flex-row gap-4 min-h-44">
-            <WalletCard balance={totalUSD} className="flex-1" />
-            <SavingCard savings={savings} className="flex-1" />
-          </View>
+          {isScreenMedium ? (
+            <View className="md:flex-row gap-4 min-h-44">
+              <WalletCard balance={soUSDEthereum} className="flex-1" tokens={topThreeTokens} />
+              <SavingCard savings={savings} className="flex-1" />
+            </View>
+          ) : (
+            <HomeBanners />
+          )}
 
           <View className="gap-4">
-            <Text className="text-2xl font-medium">Coins</Text>
+            <Text className="md:text-2xl text-muted-foreground md:text-foreground font-semibold md:font-medium">
+              Coins
+            </Text>
             <View>
               {isLoadingTokens ? (
                 <WalletInfo text="Loading tokens..." />

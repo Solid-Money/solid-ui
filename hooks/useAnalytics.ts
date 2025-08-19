@@ -132,7 +132,7 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
   return {
     title: 'Bridge USDC',
     timestamp: (new Date(transaction.createdAt).getTime() / 1000).toString(),
-    amount: Number(formatUnits(BigInt(transaction.fromAmount), transaction.decimals)),
+    amount: Number(formatUnits(BigInt(transaction.toAmount), transaction.decimals)),
     symbol: 'USDC',
     status,
     hash: transaction.bridgeTxHash,

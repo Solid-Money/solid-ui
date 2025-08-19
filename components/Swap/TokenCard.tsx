@@ -1,14 +1,15 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useBalance } from 'wagmi';
+import { Wallet } from 'lucide-react-native';
 
 import SwapTokenSelectorModal from '@/components/TokenSelector/SwapTokenSelectorModal';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { formatNumber } from '@/lib/utils';
 import { Currency, Percent } from '@cryptoalgebra/fuse-sdk';
 import { formatUnits } from 'viem';
+import Max from '@/components/Max';
 
 interface TokenCardProps {
   handleTokenSelection: (token: Currency) => void;
@@ -78,37 +79,16 @@ const TokenCard: React.FC<TokenCardProps> = ({
   );
 
   return (
-    <View className="flex flex-col w-full gap-2 transition-all duration-300 ease-out">
+    <View className="bg-card flex flex-col w-full gap-2 transition-all duration-300 ease-out p-4 rounded-xl">
       {title && (
-        <View className="flex-row items-center justify-between gap-2 px-1 mb-1">
+        <View className="flex-row items-center justify-between gap-2 px-1">
           <Text className="text-sm text-muted-foreground font-medium tracking-wide">{title}</Text>
-          <View className="flex-row items-center">
-            {currency && account && showBalance && (
-              <Text className="text-sm text-muted-foreground">
-                Balance: {isBalanceLoading ? '...' : balanceString}
-              </Text>
-            )}
-            {currency &&
-              account &&
-              showMaxButton &&
-              !isBalanceLoading &&
-              Number(balanceString) > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onPress={handleMaxValue}
-                  className="ml-2 h-6 px-2 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
-                >
-                  <Text className="text-xs font-medium">Max</Text>
-                </Button>
-              )}
-          </View>
         </View>
       )}
       <View className="flex-row items-center justify-between w-full transition-all duration-300">
         <View className="flex-1 mr-4">
           {disabled ? (
-            <Text className="text-3xl font-semibold text-foreground">
+            <Text className="text-4xl font-semibold text-foreground">
               {isLoading ? '...' : value || '0.0'}
             </Text>
           ) : (
@@ -117,9 +97,8 @@ const TokenCard: React.FC<TokenCardProps> = ({
               onChangeText={handleInput}
               placeholder="0.0"
               keyboardType="numeric"
-              className="text-3xl font-semibold text-foreground web:focus:outline-none"
+              className="text-4xl font-semibold text-foreground web:focus:outline-none"
               style={{
-                fontSize: 30,
                 fontWeight: '600',
                 padding: 0,
               }}
@@ -127,11 +106,6 @@ const TokenCard: React.FC<TokenCardProps> = ({
               placeholderTextColor="rgba(255, 255, 255, 0.4)"
             />
           )}
-          {fiatValue && fiatValue > 0 ? (
-            <Text className="text-sm text-muted-foreground mt-1">${fiatValue.toFixed(2)}</Text>
-          ) : value && Number(value) > 0 ? (
-            <Text className="text-sm text-muted-foreground mt-1 opacity-60">~$0.00</Text>
-          ) : null}
         </View>
 
         <SwapTokenSelectorModal
@@ -142,6 +116,29 @@ const TokenCard: React.FC<TokenCardProps> = ({
           otherCurrency={otherCurrency}
           showNativeToken={showNativeToken}
         />
+      </View>
+      <View className="flex-row items-center justify-between">
+        {fiatValue && fiatValue > 0 ? (
+          <Text className="text-sm text-muted-foreground mt-1">${fiatValue.toFixed(2)}</Text>
+        ) : value && Number(value) > 0 ? (
+          <Text className="text-sm text-muted-foreground mt-1 opacity-60">~$0.00</Text>
+        ) : (
+          <Text className="text-sm text-muted-foreground mt-1 opacity-60">$0.00</Text>
+        )}
+
+        {currency && account && (
+          <View className="flex-row items-center gap-2">
+            {showBalance && (
+              <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
+                <Wallet size={16} />{' '}
+                {isBalanceLoading ? '...' : formatNumber(Number(balanceString))}
+              </Text>
+            )}
+            {!isBalanceLoading && Number(balanceString) > 0 && showMaxButton && handleMaxValue && (
+              <Max onPress={handleMaxValue} />
+            )}
+          </View>
+        )}
       </View>
     </View>
   );

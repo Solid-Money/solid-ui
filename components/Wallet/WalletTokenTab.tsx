@@ -52,32 +52,45 @@ const WalletTokenTab = () => {
   };
 
   const columnWidths = useMemo(() => {
-    const COLUMN_WIDTHS = isScreenMedium ? [0.15, 0.15, 0.3, 0.2, 0.2] : [0.3, 0, 0.3, 0.2, 0.2];
+    const COLUMN_WIDTHS = isScreenMedium ? [0.15, 0.15, 0.3, 0.2, 0.2] : [0.3, 0, 0.5, 0, 0.2];
+    const offset = isScreenMedium ? 0 : 32;
 
-    return COLUMN_WIDTHS.map(ratio => width * ratio);
+    return COLUMN_WIDTHS.map(ratio => (width - offset) * ratio);
   }, [width, isScreenMedium]);
 
   return (
     <>
-      <View className="w-full" onLayout={handleLayout} />
+      <View className="flex-1" onLayout={handleLayout} />
       <ScrollView horizontal bounces={false} showsHorizontalScrollIndicator={false}>
         <Table aria-labelledby="token-table">
           <TableHeader>
             <TableRow className="border-0 web:hover:bg-transparent">
-              <TableHead className="px-3 md:px-6" style={{ width: columnWidths[0] }}>
-                <Text className="text-sm">Asset</Text>
+              <TableHead
+                className="h-0 md:h-full md:px-6 md:py-2"
+                style={{ width: columnWidths[0] }}
+              >
+                <Text className="hidden md:block text-sm">Asset</Text>
               </TableHead>
               <TableHead
-                className="hidden md:block px-3 md:px-6"
+                className="hidden md:block h-0 md:h-full md:px-6 md:py-2"
                 style={{ width: columnWidths[1] }}
               ></TableHead>
-              <TableHead className="px-3 md:px-6" style={{ width: columnWidths[2] }}>
-                <Text className="text-sm">Balance</Text>
+              <TableHead
+                className="h-0 md:h-full md:px-6 md:py-2"
+                style={{ width: columnWidths[2] }}
+              >
+                <Text className="hidden md:block text-sm">Balance</Text>
               </TableHead>
-              <TableHead className="px-3 md:px-6" style={{ width: columnWidths[3] }}>
-                <Text className="text-sm">Price</Text>
+              <TableHead
+                className="h-0 md:h-full md:px-6 md:py-2"
+                style={{ width: columnWidths[3] }}
+              >
+                <Text className="hidden md:block text-sm">Price</Text>
               </TableHead>
-              <TableHead className="px-3 md:px-6" style={{ width: columnWidths[4] }}></TableHead>
+              <TableHead
+                className="h-0 md:h-full md:px-6 md:py-2"
+                style={{ width: columnWidths[4] }}
+              ></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -104,7 +117,7 @@ const WalletTokenTab = () => {
                   <TableRow
                     key={`${token.contractAddress}-${token.balance}`}
                     className={cn(
-                      'bg-card active:bg-secondary items-center border-border/40',
+                      'flex-row justify-between md:justify-start bg-card active:bg-secondary items-center border-border/40',
                       index === 0 && 'rounded-t-twice',
                       index === allTokens.length - 1 && 'rounded-b-twice border-0',
                     )}
@@ -134,16 +147,19 @@ const WalletTokenTab = () => {
                       ) : null}
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
-                      <View className="items-start">
+                      <View className="items-end md:items-start">
                         <Text className="font-bold">${format(balanceUSD)}</Text>
                       </View>
                     </TableCell>
-                    <TableCell className="p-3 md:p-6" style={{ width: columnWidths[3] }}>
+                    <TableCell
+                      className="hidden md:block md:p-6"
+                      style={{ width: columnWidths[3] }}
+                    >
                       <View className="items-start">
                         <Text className="font-bold">${format(token.quoteRate || 0)}</Text>
                       </View>
                     </TableCell>
-                    <TableCell className="p-3 md:p-6" style={{ width: columnWidths[4] }}>
+                    <TableCell className="p-3 pl-0 md:p-6" style={{ width: columnWidths[4] }}>
                       <View className="flex-row items-center justify-end">
                         {isSoUSDFuse(token.contractAddress) ? (
                           <UnstakeModal />
