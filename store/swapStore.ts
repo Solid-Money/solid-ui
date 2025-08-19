@@ -278,13 +278,16 @@ export function useDerivedSwapInfo(): {
   const { data: inputCurrencyBalance } = useBalance({
     address: account,
     token: addressA,
+    chainId: fuse.id,
     query: {
       enabled: !!account && !!addressA,
     },
   });
+
   const { data: outputCurrencyBalance } = useBalance({
     address: account,
     token: addressB,
+    chainId: fuse.id,
     query: {
       enabled: !!account && !!addressB,
     },

@@ -1,10 +1,12 @@
 import getTokenIcon from '@/lib/getTokenIcon';
 import { eclipseAddress } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import Toast from 'react-native-toast-message';
 import { Address } from 'viem';
 import { useWaitForTransactionReceipt } from 'wagmi';
+import { getBalanceQueryKey } from 'wagmi/query';
 import useUser from './useUser';
 
 // export const ViewTxOnExplorer = ({ hash }: { hash: Address | undefined }) =>
@@ -53,6 +55,7 @@ export function useTransactionAwait(
 ) {
   const { user } = useUser();
   const account = user?.safeAddress;
+  const queryClient = useQueryClient();
   const processedHashes = useRef(new Set<string>());
 
   // const navigate = useNavigate();
@@ -95,31 +98,41 @@ export function useTransactionAwait(
   }, [isError]);
 
   useEffect(() => {
-    if (isSuccess && hash && successInfo && !processedHashes.current.has(hash)) {
+    if (isSuccess && hash && !processedHashes.current.has(hash)) {
       // Mark this hash as processed to prevent duplicate calls
       processedHashes.current.add(hash);
 
-      // Call success callback if provided (only once per hash)
-      if (successInfo.onSuccess) {
-        successInfo.onSuccess();
+      // Invalidate all balance queries for this account to refresh displayed balances
+      if (account) {
+        queryClient.invalidateQueries({
+          queryKey: getBalanceQueryKey({ address: account as Address }),
+        });
       }
 
-      // Show success Toast notification
-      Toast.show({
-        type: 'success',
-        text1: successInfo.title,
-        text2: successInfo.description,
-        props: {
-          link: `${getChain(successInfo.chainId || 122)?.blockExplorers?.default.url}/tx/${hash}`,
-          linkText: eclipseAddress(hash),
-          image: getTokenIcon({
-            tokenSymbol: successInfo.tokenSymbol || successInfo.inputSymbol,
-            size: 24,
-          }),
-        },
-      });
+      // Call success callback and show toast if successInfo is provided
+      if (successInfo) {
+        // Call success callback if provided (only once per hash)
+        if (successInfo.onSuccess) {
+          successInfo.onSuccess();
+        }
+
+        // Show success Toast notification
+        Toast.show({
+          type: 'success',
+          text1: successInfo.title,
+          text2: successInfo.description,
+          props: {
+            link: `${getChain(successInfo.chainId || 122)?.blockExplorers?.default.url}/tx/${hash}`,
+            linkText: eclipseAddress(hash),
+            image: getTokenIcon({
+              tokenSymbol: successInfo.tokenSymbol || successInfo.inputSymbol,
+              size: 24,
+            }),
+          },
+        });
+      }
     }
-  }, [isSuccess, hash, successInfo]);
+  }, [isSuccess, hash, successInfo, account, queryClient]);
 
   return {
     data,
