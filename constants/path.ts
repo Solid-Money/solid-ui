@@ -24,6 +24,8 @@ type Path = {
   SETTINGS: Href;
   NOTIFICATIONS: Href;
   PASSKEY_NOT_SUPPORTED: Href;
+  POINTS: Href;
+  REFERRAL: Href;
 };
 
 export const path: Path = {
@@ -50,4 +52,6 @@ export const path: Path = {
   SETTINGS: '/settings',
   NOTIFICATIONS: '/notifications',
   PASSKEY_NOT_SUPPORTED: '/passkey-not-supported',
+  POINTS: '/points',
+  REFERRAL: '/referral',
 };

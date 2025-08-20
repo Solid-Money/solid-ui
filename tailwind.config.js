@@ -84,6 +84,9 @@ module.exports = {
         purple: {
           DEFAULT: 'hsl(var(--purple))',
         },
+        rewards: {
+          DEFAULT: 'hsl(var(--rewards))',
+        },
       },
       borderWidth: {
         hairline: hairlineWidth(),
