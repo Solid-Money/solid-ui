@@ -20,13 +20,13 @@ import { ADDRESSES } from '@/lib/config';
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
+import { useUserStore } from '@/store/useUserStore';
 import React, { useEffect } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
-import { useUserStore } from '@/store/useUserStore';
 
 export default function Savings() {
   const { user } = useUser();
@@ -83,13 +83,12 @@ export default function Savings() {
   }, [blockNumber, refetchBalance, refetchTransactions]);
 
   useEffect(() => {
-    if (isDeposited && user) {
-      updateUser({
-        ...user,
-        isDeposited,
-      });
+    if (!user) return;
+    if (user.isDeposited === isDeposited) return;
+    if (isDeposited) {
+      updateUser({ ...user, isDeposited });
     }
-  }, [isDeposited, user]);
+  }, [isDeposited, user, updateUser]);
 
   if (isBalanceLoading || isTransactionsLoading) {
     return <Loading />;
