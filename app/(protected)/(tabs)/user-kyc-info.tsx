@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { z } from 'zod';
 
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
@@ -9,6 +9,7 @@ import { KycMode, type UserInfoFormData, userInfoSchema } from '@/components/Use
 import { createKycLink } from '@/lib/api';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 // Main Component
 export default function UserKycInfo() {
@@ -69,6 +70,15 @@ export default function UserKycInfo() {
       startKycFlow({ router, kycLink });
     } catch (error) {
       console.error('KYC link creation failed:', error);
+
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'An error occurred while creating the KYC link',
+        props: {
+          badgeText: '',
+        },
+      });
     } finally {
       setIsLoading(false);
     }
@@ -76,21 +86,19 @@ export default function UserKycInfo() {
 
   return (
     <View className="flex-1 bg-[#262624] px-6 pt-4">
-      <View className="w-full web:max-w-3xl web:mx-auto">
-        <View className="flex-1 justify-evenly">
-          <UserInfoHeader kycMode={kycMode as any} />
+      <View className="w-full flex-1 web:max-w-3xl web:mx-auto justify-evenly">
+        <UserInfoHeader kycMode={kycMode as any} />
 
-          <UserInfoForm control={control} errors={errors} />
+        <UserInfoForm control={control} errors={errors} />
 
-          <UserInfoFooter
-            control={control}
-            errors={errors}
-            onContinue={handleSubmit(onSubmit)}
-            isValid={isValid}
-            isLoading={isLoading}
-            kycMode={kycMode as KycMode}
-          />
-        </View>
+        <UserInfoFooter
+          control={control}
+          errors={errors}
+          onContinue={handleSubmit(onSubmit)}
+          isValid={isValid}
+          isLoading={isLoading}
+          kycMode={kycMode as KycMode}
+        />
       </View>
     </View>
   );
