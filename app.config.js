@@ -79,7 +79,14 @@ export default {
         "expo-font",
         {
           fonts: [
+            "node_modules/@expo-google-fonts/mona-sans/200ExtraLight/MonaSans_200ExtraLight.ttf",
+            "node_modules/@expo-google-fonts/mona-sans/300Light/MonaSans_300Light.ttf",
             "node_modules/@expo-google-fonts/mona-sans/400Regular/MonaSans_400Regular.ttf",
+            "node_modules/@expo-google-fonts/mona-sans/500Medium/MonaSans_500Medium.ttf",
+            "node_modules/@expo-google-fonts/mona-sans/600SemiBold/MonaSans_600SemiBold.ttf",
+            "node_modules/@expo-google-fonts/mona-sans/700Bold/MonaSans_700Bold.ttf",
+            "node_modules/@expo-google-fonts/mona-sans/800ExtraBold/MonaSans_800ExtraBold.ttf",
+            "node_modules/@expo-google-fonts/mona-sans/900Black/MonaSans_900Black.ttf",
           ],
         },
       ],
