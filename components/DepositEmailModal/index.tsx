@@ -1,11 +1,11 @@
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
-import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositEmailModal: React.FC = () => {
@@ -29,147 +29,130 @@ const DepositEmailModal: React.FC = () => {
     setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
   }, 'email');
 
-  const handleBack = () => {
-    if (step === 'otp') {
-      handleEmailBack();
-    } else {
-      setModal(DEPOSIT_MODAL.CLOSE);
-    }
-  };
-
   const currentStep = step === 'existing' ? 'email' : step;
 
   return (
-    <View className="flex-1 px-6 py-8">
-      <View className="mb-8 items-center">
-        <View className="w-16 h-16 bg-yellow-100 rounded-full mb-4 items-center justify-center">
-          <Text className="text-2xl">{currentStep === 'email' ? '🔒' : '📧'}</Text>
-        </View>
-        <Text className="text-2xl font-bold text-center mb-4">
-          {currentStep === 'email' ? 'Email Required for Deposits' : 'Verify Your Email'}
-        </Text>
-        <Text className="text-gray-600 text-center mb-2">
-          {currentStep === 'email'
-            ? 'For your security, we require a verified email address before you can make deposits.'
-            : 'Enter the 6-digit verification code sent to your email address.'}
-        </Text>
-        {currentStep === 'email' && (
-          <Text className="text-gray-500 text-center text-sm">
-            This email will also serve as your account recovery method if you lose your passkey.
-          </Text>
-        )}
-        {currentStep === 'otp' && (
-          <Text className="text-gray-500 text-center text-sm">Sent to: {emailValue}</Text>
-        )}
+    <View className="flex-1 gap-8 py-2">
+      <View className="items-center">
+        <Image
+          source={require('@/assets/images/email.png')}
+          style={{ width: 100, height: 100 }}
+          contentFit="contain"
+        />
       </View>
 
-      {rateLimitError && (
-        <View className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
-          <Text className="text-red-600 text-sm text-center">{rateLimitError}</Text>
+      <View className="items-center gap-2">
+        <Text className="text-2xl font-bold text-center">
+          {currentStep === 'email' ? 'Email required' : 'Verify your email'}
+        </Text>
+        <Text className="text-muted-foreground text-center leading-5 max-w-xs">
+          {currentStep === 'email'
+            ? 'For your security, we require a verified email address before you can make deposits.'
+            : `Enter the 6-digit verification code sent to your email address:\n${emailValue}`}
+        </Text>
+      </View>
+
+      {currentStep === 'email' && (
+        <View className="flex-row gap-2 border border-yellow-300 rounded-2xl p-2.5">
+          <View>
+            <Image
+              source={require('@/assets/images/exclamation-warning.png')}
+              style={{ width: 20, height: 20 }}
+              contentFit="contain"
+            />
+          </View>
+          <Text className="text-yellow-400 font-bold text-sm">
+            This email will be used for account recovery if you lose access to your passkey.
+          </Text>
         </View>
       )}
 
-      <View className="mb-6">
+      {rateLimitError && (
+        <View className="p-2.5 border border-red-300 rounded-2xl">
+          <Text className="text-red-400 text-sm text-center">{rateLimitError}</Text>
+        </View>
+      )}
+
+      <View className="gap-4">
         {currentStep === 'email' ? (
-          <>
-            <Text className="font-medium mb-2 text-foreground">Email Address</Text>
+          <View className="gap-2">
+            <Text className="font-medium text-muted-foreground">Email Address</Text>
             <Controller
               control={emailForm.control}
               name="email"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  placeholder="Enter your email address"
+                  placeholder="email@example.com"
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
-                  className={cn(
-                    'h-14 px-6 rounded-xl border text-lg font-semibold placeholder:text-muted-foreground mb-4',
-                    'border-border bg-background text-foreground',
-                  )}
-                  placeholderTextColor="#9CA3AF"
+                  className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
+                  placeholderTextColor="#666"
                 />
               )}
             />
-          </>
+          </View>
         ) : (
-          <>
-            <Text className="font-medium mb-2 text-foreground">Verification Code</Text>
+          <View className="gap-2">
+            <View className="flex-row items-baseline justify-between">
+              <Text className="font-medium text-foreground">Verification Code</Text>
+              {currentStep === 'otp' && !rateLimitError && (
+                <Pressable onPress={handleResendOtp} disabled={isLoading} className="group">
+                  <Text className="text-sm underline group-hover:opacity-70">
+                    Resend verification code
+                  </Text>
+                </Pressable>
+              )}
+            </View>
             <Controller
               key="otp-input"
               control={otpForm.control}
               name="otpCode"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  placeholder="Enter 6-digit code"
+                  placeholder="123456"
                   value={value || ''}
                   onChangeText={onChange}
                   onBlur={onBlur}
                   keyboardType="numeric"
                   maxLength={6}
-                  className={cn(
-                    'h-14 px-6 rounded-xl border text-lg font-semibold placeholder:text-muted-foreground mb-4 text-center',
-                    'border-border bg-background text-foreground',
-                  )}
+                  className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
                   placeholderTextColor="#666"
                 />
               )}
             />
-          </>
-        )}
-      </View>
-
-      <View className="gap-3">
-        <Button
-          onPress={
-            currentStep === 'email'
-              ? emailForm.handleSubmit(handleSendOtp)
-              : otpForm.handleSubmit(handleVerifyOtp)
-          }
-          disabled={isFormDisabled()}
-          variant="brand"
-          className="rounded-xl h-14"
-        >
-          <Text className="text-white font-semibold">{getButtonText()}</Text>
-          {isLoading && <ActivityIndicator color="white" />}
-        </Button>
-
-        {currentStep === 'otp' && (
-          <Button
-            onPress={handleBack}
-            variant="outline"
-            disabled={isLoading}
-            className="rounded-xl h-14"
-          >
-            <Text className="text-gray-600">Back to Email</Text>
-          </Button>
-        )}
-
-        <Button
-          onPress={handleBack}
-          variant="outline"
-          disabled={isLoading}
-          className="rounded-xl h-14"
-        >
-          <Text className="text-gray-600">Cancel</Text>
-        </Button>
-      </View>
-
-      <View className="mt-6 px-4">
-        <Text className="text-xs text-gray-500 text-center">
-          {currentStep === 'email'
-            ? '⚠️ Important: This email will be used for account recovery if you lose access to your passkey.'
-            : "Didn't receive the code? Check your spam folder."}
-        </Text>
-        {currentStep === 'otp' && !rateLimitError && (
-          <View className="mt-2 items-center">
-            <Button onPress={handleResendOtp} variant="ghost" disabled={isLoading} className="h-8">
-              <Text className="text-blue-600 text-sm underline">Resend verification code</Text>
-            </Button>
           </View>
         )}
+
+        <View className="gap-3">
+          <Button
+            onPress={
+              currentStep === 'email'
+                ? emailForm.handleSubmit(handleSendOtp)
+                : otpForm.handleSubmit(handleVerifyOtp)
+            }
+            disabled={isFormDisabled()}
+            variant="brand"
+            className="rounded-2xl h-14"
+          >
+            <Text className="text-lg font-semibold">{getButtonText()}</Text>
+            {isLoading && <ActivityIndicator color="gray" />}
+          </Button>
+
+          {currentStep === 'otp' && (
+            <Button
+              onPress={handleEmailBack}
+              variant="outline"
+              disabled={isLoading}
+              className="rounded-2xl h-14 border-0"
+            >
+              <Text className="text-lg font-semibold">Back to Email</Text>
+            </Button>
+          )}
+        </View>
       </View>
     </View>
   );

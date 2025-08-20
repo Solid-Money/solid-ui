@@ -253,12 +253,12 @@ export const useEmailManagement = (
       const errors = emailForm.formState.errors;
       if (errors.email?.message) return errors.email.message;
       if (!emailForm.formState.isValid || !watchedEmail) return 'Enter email address';
-      if (isLoading) return 'Sending Code...';
+      if (isLoading) return 'Sending Code';
       return 'Send Verification Code';
     } else {
       if (!watchedOtp) return 'Enter verification code';
       if (watchedOtp.length < 6) return 'Enter 6-digit code';
-      if (isLoading) return 'Verifying...';
+      if (isLoading) return 'Verifying';
       return 'Verify & Save';
     }
   };

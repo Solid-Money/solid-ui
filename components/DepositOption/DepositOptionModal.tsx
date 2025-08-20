@@ -103,8 +103,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   };
 
   const getTitle = () => {
-    if (isTransactionStatus) return undefined;
-    if (isEmailGate) return 'Email Required';
+    if (isTransactionStatus || isEmailGate) return undefined;
     return 'Deposit';
   };
 
@@ -147,9 +146,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   };
 
   const handleBackPress = () => {
-    if (isEmailGate) {
-      setModal(DEPOSIT_MODAL.CLOSE);
-    } else if (isFormAndAddress) {
+    if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
@@ -172,7 +169,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       title={getTitle()}
       contentClassName={getContentClassName()}
       containerClassName={getContainerClassName()}
-      showBackButton={isFormAndAddress || isBuyCrypto || isEmailGate || isNetworks}
+      showBackButton={isFormAndAddress || isBuyCrypto || isNetworks}
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}
       isForward={isForward}
