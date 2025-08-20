@@ -1,17 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { TurnkeyClient } from '@turnkey/http';
-import { PasskeyStamper } from '@turnkey/react-native-passkey-stamper';
-import { createAccount } from '@turnkey/viem';
-import { WebauthnStamper } from '@turnkey/webauthn-stamper';
-import { useRouter } from 'expo-router';
-import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
-import { toSafeSmartAccount } from 'permissionless/accounts';
-import { useCallback, useEffect, useMemo } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { Chain, createWalletClient, http } from 'viem';
-import { entryPoint07Address } from 'viem/account-abstraction';
-import { mainnet } from 'viem/chains';
-
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
 import { getSubOrgIdByUsername, login, signUp, updateSafeAddress } from '@/lib/api';
@@ -24,8 +10,22 @@ import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import { getNonce, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
 import { publicClient, rpcUrls } from '@/lib/wagmi';
+import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { TurnkeyClient } from '@turnkey/http';
+import { PasskeyStamper } from '@turnkey/react-native-passkey-stamper';
+import { createAccount } from '@turnkey/viem';
+import { WebauthnStamper } from '@turnkey/webauthn-stamper';
+import { useRouter } from 'expo-router';
+import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
+import { toSafeSmartAccount } from 'permissionless/accounts';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
+import { v4 as uuidv4 } from 'uuid';
+import { Chain, createWalletClient, http } from 'viem';
+import { entryPoint07Address } from 'viem/account-abstraction';
+import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
 
 interface UseUserReturn {
@@ -206,6 +206,7 @@ const useUser = (): UseUserReturn => {
             suborgId: user.subOrganizationId,
             selected: true,
             tokens: user.tokens || null,
+            referralCode: user.referralCode,
           };
           storeUser(selectedUser);
           await checkBalance(selectedUser);
@@ -215,6 +216,16 @@ const useUser = (): UseUserReturn => {
           if (!resp) {
             throw new Error('Error updating safe address');
           }
+
+          // Fetch points after successful signup
+          try {
+            const { fetchPoints } = usePointsStore.getState();
+            await fetchPoints();
+          } catch (error) {
+            console.warn('Failed to fetch points:', error);
+            // Don't fail signup if points fetch fails
+          }
+
           setSignupInfo({ status: Status.SUCCESS });
 
           // On mobile, navigate to notifications for new signups
@@ -285,9 +296,20 @@ const useUser = (): UseUserReturn => {
         selected: true,
         tokens: user.tokens || null,
         email: user.email,
+        referralCode: user.referralCode,
       };
       storeUser(selectedUser);
       await checkBalance(selectedUser);
+
+      // Fetch points after successful login
+      try {
+        const { fetchPoints } = usePointsStore.getState();
+        await fetchPoints();
+      } catch (error) {
+        console.warn('Failed to fetch points:', error);
+        // Don't fail login if points fetch fails
+      }
+
       setLoginInfo({ status: Status.SUCCESS });
 
       router.replace(path.HOME);

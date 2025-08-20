@@ -17,8 +17,7 @@ export function PaymentMethodTile({ title, onPress, loading, disabled }: Props) 
       disabled={disabled}
       className="bg-[#1C1C1C] rounded-2xl px-6 py-4"
     >
-      <View className="flex-row items-center">
-        <View className="w-12 h-12 rounded-full bg-[#3E3E3E] mr-4" />
+      <View className="flex-row items-center py-3 pl-2">
         <View className="flex-1">
           <Text className="text-white text-lg font-bold">{title}</Text>
         </View>

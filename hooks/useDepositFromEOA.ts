@@ -202,11 +202,6 @@ const useDepositFromEOA = (): DepositResult => {
           value: fee,
         });
         txHash = transaction.transactionHash;
-
-        updateUser({
-          ...user,
-          isDeposited: true,
-        });
       } else {
         setDepositStatus(DepositStatus.BRIDGING);
         const transaction = await withRefreshToken(() =>
@@ -225,8 +220,11 @@ const useDepositFromEOA = (): DepositResult => {
         txHash = transaction?.transactionHash;
       }
 
-      console.log('txHash: ', txHash);
       setHash(txHash);
+      updateUser({
+        ...user,
+        isDeposited: true,
+      });
       setDepositStatus(DepositStatus.SUCCESS);
     } catch (error) {
       console.error(error);

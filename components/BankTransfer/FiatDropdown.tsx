@@ -5,7 +5,6 @@ import { ChevronDown } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { BridgeTransferFiatCurrency, FIAT_LABEL } from './enums';
-import { getFiatIcon } from './icons';
 
 type FiatDropdownProps = {
   value: BridgeTransferFiatCurrency;
@@ -24,10 +23,10 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
     [],
   );
 
-  const renderFlag = (code: BridgeTransferFiatCurrency) => {
-    const Icon = getFiatIcon(code);
-    return Icon ? <Icon width={21} height={22} /> : null;
-  };
+  // const renderFlag = (code: BridgeTransferFiatCurrency) => {
+  //   const Icon = getFiatIcon(code);
+  //   return Icon ? <Icon width={21} height={22} /> : null;
+  // };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -37,7 +36,8 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
           onPress={() => setOpen(true)}
         >
           <View className="flex-row items-center gap-2">
-            {renderFlag(value)}
+            {/* TODO: Uncomment below when flag icons are ready */}
+            {/* {renderFlag(value)} */}
             <Text className="native:text-lg native:leading-[20px] text-lg ml-1 font-bold text-white">
               {FIAT_LABEL[value]}
             </Text>
@@ -59,7 +59,8 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
               }}
             >
               <View className="flex-row items-center gap-2">
-                {renderFlag(item)}
+                {/* TODO: Uncomment below when flag icons are ready */}
+                {/* {renderFlag(item)} */}
                 <Text className="text-base font-semibold">{FIAT_LABEL[item]}</Text>
               </View>
             </Button>

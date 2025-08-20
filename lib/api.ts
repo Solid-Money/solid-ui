@@ -8,6 +8,7 @@ import {
   EXPO_PUBLIC_ALCHEMY_API_KEY,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
 } from './config';
 import {
   BlockscoutTransactions,
@@ -22,6 +23,7 @@ import {
   KycLink,
   KycLinkForExistingCustomer,
   LayerZeroTransaction,
+  Points,
   TokenPriceUsd,
   User,
 } from './types';
@@ -435,6 +437,25 @@ export const getSubOrgIdByUsername = async (username: string) => {
       filterValue: username,
     }),
   });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const fetchPoints = async (): Promise<Points> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/points/user-summary`,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
   if (!response.ok) throw response;
   return response.json();
 };

@@ -46,6 +46,7 @@ export interface User {
   signWith: string;
   suborgId: string;
   userId: string;
+  referralCode?: string;
   isDeposited?: boolean;
   tokens?: AuthTokens;
   email?: string;
@@ -370,4 +371,22 @@ export interface TokenBalance {
   type: string;
   verified?: boolean;
   chainId: number;
+}
+
+export enum RewardsType {
+  DEPOSIT = 'deposit',
+  REFERRAL_SIGNUP = 'referral_signup',
+  DAILY_LOGIN = 'daily_login',
+}
+
+export interface Points {
+  pointsLast24Hours: number;
+  userRewardsSummary: {
+    totalPoints: number;
+    rewardsByType: {
+      type: RewardsType;
+      count: number;
+      totalPoints: number;
+    }[];
+  };
 }
