@@ -10,7 +10,7 @@ export const usePoints = () => {
     if (user && points.userRewardsSummary.totalPoints === 0) {
       fetchPoints();
     }
-  }, [user, points.userRewardsSummary.totalPoints, fetchPoints]);
+  }, [user, fetchPoints]);
 
   return {
     points,
