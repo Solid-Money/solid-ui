@@ -5,7 +5,6 @@ import { ChevronDown } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { BridgeTransferCryptoCurrency, CRYPTO_LABEL } from './enums';
-import { getCryptoIcon } from './icons';
 
 type CryptoDropdownProps = {
   value: BridgeTransferCryptoCurrency;
@@ -26,10 +25,11 @@ export default function CryptoDropdown({ value, allowed, onChange }: CryptoDropd
           onPress={() => setOpen(true)}
         >
           <View className="flex-row items-center gap-2">
-            {(() => {
+            {/* TODO: Uncomment below when crypto icons are ready */}
+            {/* {(() => {
               const Icon = getCryptoIcon(value);
               return Icon ? <Icon width={21} height={21} /> : null;
-            })()}
+            })()} */}
             <Text className="native:text-lg native:leading-[20px] text-lg ml-1 font-bold text-white">
               {CRYPTO_LABEL[value]}
             </Text>
@@ -51,10 +51,11 @@ export default function CryptoDropdown({ value, allowed, onChange }: CryptoDropd
               }}
             >
               <View className="flex-row items-center gap-2">
-                {(() => {
+                {/* TODO: Uncomment below when crypto icons are ready */}
+                {/* {(() => {
                   const Icon = getCryptoIcon(item);
                   return Icon ? <Icon width={21} height={21} /> : null;
-                })()}
+                })()} */}
                 <Text className="text-base font-semibold">{CRYPTO_LABEL[item]}</Text>
               </View>
             </Button>
