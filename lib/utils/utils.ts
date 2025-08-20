@@ -48,6 +48,13 @@ export const setGlobalLogoutHandler = (handler: () => void) => {
   globalLogoutHandler = handler;
 };
 
+const isUnauthorizedError = (error: any) => {
+  return (
+    (error?.status !== undefined && error?.status === 401) ||
+    (error?.statusCode !== undefined && error?.statusCode === 401)
+  );
+};
+
 export const withRefreshToken = async <T>(
   apiCall: () => Promise<T>,
   { onError }: { onError?: () => void } = {},
@@ -55,13 +62,11 @@ export const withRefreshToken = async <T>(
   try {
     return await apiCall();
   } catch (error: any) {
-    if (
-      (error?.status !== undefined && error?.status !== 401) ||
-      (error?.statusCode !== undefined && error?.statusCode !== 401)
-    ) {
+    if (!isUnauthorizedError(error)) {
       console.error(error);
       throw error;
     }
+
     try {
       // Use existing refresh token promise if one is in progress
       if (!refreshTokenPromise) {
@@ -78,17 +83,17 @@ export const withRefreshToken = async <T>(
       if (Platform.OS === 'ios' || Platform.OS === 'android') {
         await saveNewTokens(refreshResponse);
       }
-
-      // Retry original request with new access token
-      return await apiCall();
     } catch (refreshTokenError) {
       console.error(refreshTokenError);
       if (onError) {
         onError();
-      } else {
+      } else if (isUnauthorizedError(refreshTokenError)) {
         globalLogoutHandler?.();
       }
     }
+
+    // Retry original request with new access token
+    return await apiCall();
   }
 };
 

@@ -20,6 +20,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { ThirdwebProvider } from 'thirdweb/react';
 import { WagmiProvider } from 'wagmi';
+import {
+  MonaSans_200ExtraLight,
+  MonaSans_300Light,
+  MonaSans_400Regular,
+  MonaSans_500Medium,
+  MonaSans_600SemiBold,
+  MonaSans_700Bold,
+  MonaSans_800ExtraBold,
+  MonaSans_900Black,
+  useFonts,
+} from '@expo-google-fonts/mona-sans';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -58,6 +69,16 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
+  const [loaded, error] = useFonts({
+    MonaSans_200ExtraLight,
+    MonaSans_300Light,
+    MonaSans_400Regular,
+    MonaSans_500Medium,
+    MonaSans_600SemiBold,
+    MonaSans_700Bold,
+    MonaSans_800ExtraBold,
+    MonaSans_900Black,
+  });
 
   useEffect(() => {
     async function prepare() {
@@ -98,7 +119,13 @@ export default function RootLayout() {
     }
   }, [appIsReady, splashScreenHidden]);
 
-  if (!appIsReady) {
+  useEffect(() => {
+    if (error) {
+      console.error('Error loading fonts:', error);
+    }
+  }, [error]);
+
+  if (!appIsReady || !loaded) {
     return null;
   }
 

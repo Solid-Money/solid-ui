@@ -1,4 +1,4 @@
-import { KycMode } from '@/app/(protected)/(tabs)/user-kyc-info';
+import { KycMode } from '@/components/UserKyc';
 import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
