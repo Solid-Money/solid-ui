@@ -24,10 +24,17 @@ const DepositEmailModal: React.FC = () => {
     isFormDisabled,
     rateLimitError,
     emailValue,
+    isSkip,
+    setIsSkip,
   } = useEmailManagement(() => {
     // On success, proceed to deposit options
     setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
   }, 'email');
+
+  const handleSkip = () => {
+    setIsSkip(false);
+    setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+  };
 
   const currentStep = step === 'existing' ? 'email' : step;
 
@@ -150,6 +157,12 @@ const DepositEmailModal: React.FC = () => {
               className="rounded-2xl h-14 border-0"
             >
               <Text className="text-lg font-semibold">Back to Email</Text>
+            </Button>
+          )}
+
+          {isSkip && (
+            <Button onPress={handleSkip} variant="outline" className="rounded-2xl h-14 border-0">
+              <Text className="text-lg font-semibold">Skip for now</Text>
             </Button>
           )}
         </View>

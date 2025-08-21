@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Platform } from 'react-native';
 import { z } from 'zod';
+import Toast from 'react-native-toast-message';
 
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import useUser from '@/hooks/useUser';
@@ -53,6 +54,8 @@ export interface EmailManagementActions {
   watchedEmail: string;
   watchedOtp: string;
   clearRateLimitError: () => void;
+  isSkip: boolean;
+  setIsSkip: (isSkip: boolean) => void;
 }
 
 export interface RecoveryState {
@@ -82,6 +85,7 @@ export const useEmailManagement = (
   const [otpId, setOtpId] = useState('');
   const [emailValue, setEmailValue] = useState('');
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+  const [isSkip, setIsSkip] = useState(false);
 
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
@@ -180,7 +184,11 @@ export const useEmailManagement = (
         ]);
       }
     } catch (error: any) {
-      const errorMessage = error?.message || error?.toString() || '';
+      const errorTitle = "Failed to send OTP";
+      let errorMessage = error?.message || error?.toString() || '';
+      console.error(errorTitle, error);
+      setIsSkip(true);
+
       const isRateLimitError =
         errorMessage.includes('Max number of OTPs have been initiated') ||
         errorMessage.includes('please wait and try again') ||
@@ -191,8 +199,18 @@ export const useEmailManagement = (
           'Too many verification codes requested. Please wait a few minutes before trying again.',
         );
       } else {
-        if (Platform.OS !== 'web') {
-          Alert.alert('Error', 'Failed to send verification code. Please try again.', [
+        errorMessage = 'Inspect console log for more details and try again';
+        if (Platform.OS === 'web') {
+          Toast.show({
+            type: 'error',
+            text1: errorTitle,
+            text2: errorMessage,
+            props: {
+              badgeText: '',
+            },
+          });
+        } else {
+          Alert.alert('Error', errorMessage, [
             { text: 'OK' },
           ]);
         }
@@ -219,8 +237,29 @@ export const useEmailManagement = (
       }
 
       onSuccess?.();
-    } catch (error) {
-      Alert.alert('Error', 'Invalid verification code. Please try again.', [{ text: 'OK' }]);
+    } catch (error: any) {
+      let errorTitle = "Failed to verify OTP";
+      let errorMessage = 'Inspect console log for more details and try again';
+      console.error(errorTitle, error);
+      setIsSkip(true);
+
+      if(error?.toString().includes("SIGNATURE_INVALID")) {
+        errorTitle = 'Incorrect passkey used';
+        errorMessage = 'Passkey must match with the registered account';
+      }
+
+      if (Platform.OS === 'web') {
+        Toast.show({
+          type: 'error',
+          text1: errorTitle,
+          text2: errorMessage,
+          props: {
+            badgeText: '',
+          },
+        });
+      } else {
+        Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -298,5 +337,7 @@ export const useEmailManagement = (
     watchedEmail,
     watchedOtp,
     clearRateLimitError,
+    isSkip,
+    setIsSkip,
   };
 };
