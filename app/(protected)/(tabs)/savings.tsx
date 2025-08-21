@@ -235,7 +235,7 @@ export default function Savings() {
             </View>
           </LinearGradient>
 
-          <PointsBanner />
+          {/* <PointsBanner /> */}
 
           {isScreenMedium ? (
             <View className="gap-4">

@@ -1,5 +1,4 @@
 import HomeQr from '@/assets/images/home-qr';
-import PointsNavButton from '@/components/Points/PointsNavButton';
 import { path } from '@/constants/path';
 import { Link } from 'expo-router';
 import { Settings } from 'lucide-react-native';
@@ -13,9 +12,9 @@ const NavbarMobile = () => {
           <Link href={path.SETTINGS}>
             <Settings color="#fff" />
           </Link>
-          <Link href={path.POINTS} className="-mt-1.5">
+          {/* <Link href={path.POINTS} className="-mt-1.5">
             <PointsNavButton />
-          </Link>
+          </Link> */}
         </View>
         <Link href={path.SETTINGS}>
           <HomeQr />
