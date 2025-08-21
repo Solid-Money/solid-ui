@@ -1,4 +1,3 @@
-import { ActivityTransactions } from '@/components/Activity';
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
@@ -7,7 +6,6 @@ import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import Ping from '@/components/Ping';
-import PointsBanner from '@/components/Points/PointsBanner';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -237,14 +235,7 @@ export default function Savings() {
 
           {/* <PointsBanner /> */}
 
-          {isScreenMedium ? (
-            <View className="gap-4">
-              <Text className="text-2xl font-medium">Recent activity</Text>
-              <ActivityTransactions />
-            </View>
-          ) : (
-            <DashboardHeaderButtonsMobile />
-          )}
+          {!isScreenMedium && <DashboardHeaderButtonsMobile />}
 
           <FAQs faqs={faqs} className="md:mt-20" />
         </View>
