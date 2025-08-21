@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Platform, Pressable, TextInput, View } from 'react-native';
@@ -37,6 +38,7 @@ interface TokenBalance {
 }
 
 const SendPage = () => {
+  const router = useRouter();
   const [selectedToken, setSelectedToken] = useState<TokenBalance | null>(null);
   const [showTokenSelector, setShowTokenSelector] = useState(false);
   const { setModal, setTransaction } = useSendStore();
@@ -163,11 +165,16 @@ const SendPage = () => {
       {Platform.OS !== 'web' && <NavbarMobile />}
       {Platform.OS === 'web' && <Navbar />}
       <View className="flex-1 bg-black px-6 py-12">
-        {/* Header */}
-        <Text className="text-white text-2xl font-semibold text-center mb-12">Send</Text>
-
         {/* Form Fields */}
         <View className="max-w-md mx-auto w-full gap-4">
+          {/* Header */}
+          <View className="flex-row items-center justify-between mb-8">
+            <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+              <ArrowLeft color="white" />
+            </Pressable>
+            <Text className="text-white text-2xl font-semibold text-center">Send</Text>
+            <View className="w-10" />
+          </View>
           {/* To Section */}
           <View className="bg-card rounded-2xl px-4 py-5">
             <Text className="text-gray-400 text-sm mb-2">To</Text>
