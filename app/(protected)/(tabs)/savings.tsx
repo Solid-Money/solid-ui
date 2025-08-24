@@ -122,7 +122,7 @@ export default function Savings() {
                 <View>
                   <Text className="md:text-lg text-primary/50">Total value</Text>
                   <View className="flex-row items-center">
-                    <Text className="text-5xl md:text-8xl native:leading-[1.2] text-foreground font-semibold">
+                    <Text className="text-5xl md:text-8xl native:leading-[1.2] text-foreground font-medium">
                       $
                     </Text>
                     <SavingCountUp
@@ -137,13 +137,15 @@ export default function Savings() {
                       styles={{
                         wholeText: {
                           fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
-                          fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                          fontWeight: 'medium',
+                          fontFamily: 'MonaSans_500Medium',
                           color: '#ffffff',
                           marginRight: -2,
                         },
                         decimalText: {
                           fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                          fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                          fontWeight: 'medium',
+                          fontFamily: 'MonaSans_500Medium',
                           color: '#ffffff',
                         },
                       }}
@@ -168,11 +170,14 @@ export default function Savings() {
                       styles={{
                         wholeText: {
                           fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
-                          fontWeight: 'semibold',
+                          fontWeight: 'medium',
+                          fontFamily: 'MonaSans_500Medium',
                           color: '#ffffff',
                         },
                         decimalText: {
                           fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
+                          fontWeight: 'medium',
+                          fontFamily: 'MonaSans_500Medium',
                           color: '#ffffff',
                         },
                       }}

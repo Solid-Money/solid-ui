@@ -31,7 +31,7 @@ export default function SavingsEmptyState() {
           {isScreenMedium ? (
             <View className="md:flex-row justify-between md:items-center gap-y-4">
               <View className="flex-row items-center">
-                <Text className="text-5xl md:text-8xl text-foreground font-semibold">$</Text>
+                <Text className="text-5xl md:text-8xl text-foreground font-medium">$</Text>
                 <SavingCountUp
                   balance={0}
                   apy={0}
@@ -44,13 +44,15 @@ export default function SavingsEmptyState() {
                   styles={{
                     wholeText: {
                       fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
-                      fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                      fontWeight: 'medium',
+                      fontFamily: 'MonaSans_500Medium',
                       color: '#ffffff',
                       marginRight: -2,
                     },
                     decimalText: {
                       fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                      fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                      fontWeight: 'medium',
+                      fontFamily: 'MonaSans_500Medium',
                       color: '#ffffff',
                     },
                   }}
