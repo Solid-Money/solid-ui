@@ -52,7 +52,7 @@ const WalletTokenTab = () => {
   };
 
   const columnWidths = useMemo(() => {
-    const COLUMN_WIDTHS = isScreenMedium ? [0.15, 0.15, 0.3, 0.2, 0.2] : [0.3, 0, 0.5, 0, 0.2];
+    const COLUMN_WIDTHS = isScreenMedium ? [0.15, 0.15, 0.3, 0.2, 0.2] : [0.3, 0, 0.3, 0, 0.4];
     const offset = isScreenMedium ? 0 : 32;
 
     return COLUMN_WIDTHS.map(ratio => (width - offset) * ratio);
@@ -160,20 +160,19 @@ const WalletTokenTab = () => {
                       </View>
                     </TableCell>
                     <TableCell className="p-3 pl-0 md:p-6" style={{ width: columnWidths[4] }}>
-                      <View className="flex-row items-center justify-end">
+                      <View className="flex-row items-center justify-end gap-2">
+                        <SendModal
+                          tokenAddress={token.contractAddress as Address}
+                          tokenDecimals={token.contractDecimals}
+                          tokenIcon={tokenIcon}
+                          tokenSymbol={token.contractTickerSymbol || 'Unknown'}
+                          chainId={token.chainId}
+                        />
                         {isSoUSDFuse(token.contractAddress) ? (
                           <UnstakeModal />
                         ) : isSoUSDEthereum(token.contractAddress) ? (
                           <WithdrawModal />
-                        ) : (
-                          <SendModal
-                            tokenAddress={token.contractAddress as Address}
-                            tokenDecimals={token.contractDecimals}
-                            tokenIcon={tokenIcon}
-                            tokenSymbol={token.contractTickerSymbol || 'Unknown'}
-                            chainId={token.chainId}
-                          />
-                        )}
+                        ) : null}
                       </View>
                     </TableCell>
                   </TableRow>
