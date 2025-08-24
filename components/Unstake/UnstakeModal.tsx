@@ -23,7 +23,7 @@ const UnstakeModal = () => {
 
   const handleTransactionStatusPress = () => {
     setModal(UNSTAKE_MODAL.CLOSE);
-    router.push(path.SAVINGS);
+    router.push(path.ACTIVITY);
   };
 
   const getContentKey = () => {

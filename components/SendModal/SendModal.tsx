@@ -42,7 +42,7 @@ const SendModal = ({
 
   const handleTransactionStatusPress = () => {
     setModal(SEND_MODAL.CLOSE);
-    router.push(path.SAVINGS);
+    router.push(path.ACTIVITY);
   };
 
   const getTitle = () => {
