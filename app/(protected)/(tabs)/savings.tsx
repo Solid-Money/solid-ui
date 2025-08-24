@@ -8,6 +8,7 @@ import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
+import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
@@ -201,7 +202,10 @@ export default function Savings() {
               <View className="border-r md:border-t border-border/50" />
 
               <View className="p-6 md:p-7">
-                <Text className="md:text-lg text-primary/50">P&L</Text>
+                <View className="flex-row items-center gap-1">
+                  <Text className="md:text-lg text-primary/50">P&L</Text>
+                  <TooltipPopover text="Profit and loss" />
+                </View>
                 <Text className="text-2xl font-semibold">
                   {isBalanceLoading ? (
                     <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
