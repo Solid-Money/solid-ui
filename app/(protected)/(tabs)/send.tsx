@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Platform, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address, formatUnits, isAddress } from 'viem';
 import { z } from 'zod';
@@ -119,7 +119,7 @@ const SendPage = () => {
   const getSendText = () => {
     if (errors.amount) return errors.amount.message;
     if (errors.address) return errors.address.message;
-    if (sendStatus === Status.PENDING) return 'Sending...';
+    if (sendStatus === Status.PENDING) return 'Sending';
     if (sendStatus === Status.ERROR) return 'Error while Sending';
     if (sendStatus === Status.SUCCESS) return 'Successfully sent!';
     if (!selectedToken) return 'Select token';
@@ -164,20 +164,20 @@ const SendPage = () => {
     >
       {Platform.OS !== 'web' && <NavbarMobile />}
       {Platform.OS === 'web' && <Navbar />}
-      <View className="flex-1 bg-black px-6 py-12">
+      <View className="flex-1 px-4 py-8 md:py-12">
         {/* Form Fields */}
-        <View className="max-w-md mx-auto w-full gap-4">
+        <View className="max-w-md mx-auto w-full gap-2">
           {/* Header */}
           <View className="flex-row items-center justify-between mb-8">
             <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
               <ArrowLeft color="white" />
             </Pressable>
-            <Text className="text-white text-2xl font-semibold text-center">Send</Text>
+            <Text className="text-xl md:text-3xl font-semibold text-center">Send</Text>
             <View className="w-10" />
           </View>
           {/* To Section */}
-          <View className="bg-card rounded-2xl px-4 py-5">
-            <Text className="text-gray-400 text-sm mb-2">To</Text>
+          <View className="gap-4 bg-card rounded-xl p-4">
+            <Text className="text-muted-foreground font-medium">To</Text>
             <View className="flex-row items-center justify-between">
               <Controller
                 control={control}
@@ -203,11 +203,11 @@ const SendPage = () => {
           </View>
 
           {/* Send Section */}
-          <View className="bg-card rounded-2xl px-4 py-4">
-            <Text className="text-gray-400 text-sm mb-2">Send</Text>
-            <View className="flex-row items-center">
+          <View className="gap-2 bg-card rounded-xl p-4">
+            <Text className="text-muted-foreground font-medium">Send</Text>
+            <View className="flex-row items-center justify-between gap-2">
               <Pressable
-                className="flex-row items-center gap-3"
+                className="flex-row items-center gap-3 web:hover:bg-accent rounded-full px-2 h-10"
                 onPress={() => setShowTokenSelector(true)}
               >
                 {selectedToken ? (
@@ -221,10 +221,10 @@ const SendPage = () => {
                       size={24}
                     />
                     <View>
-                      <Text className="text-white text-base">
+                      <Text className="text-sm font-medium">
                         {selectedToken.contractTickerSymbol}
                       </Text>
-                      <Text className="text-gray-400 text-xs">
+                      <Text className="text-muted-foreground text-xs">
                         {formatNumber(
                           Number(
                             formatUnits(
@@ -240,14 +240,12 @@ const SendPage = () => {
                   </>
                 ) : (
                   <>
-                    <View className="w-6 h-6 bg-gray-600 rounded-full" />
-                    <Text className="text-gray-400 text-base">Select token</Text>
+                    <View className="w-6 h-6 bg-primary/20 rounded-full" />
+                    <Text className="text-muted-foreground text-sm font-medium">Select token</Text>
                     <ChevronDown size={16} color="#666" />
                   </>
                 )}
               </Pressable>
-
-              <View className="flex-1" />
 
               <Controller
                 control={control}
@@ -255,7 +253,7 @@ const SendPage = () => {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     className={cn(
-                      'w-full web:focus:outline-none text-white text-6xl font-light text-right',
+                      'w-full web:focus:outline-none text-white text-4xl font-bold text-right',
                       // errors.amount && "text-red-400"
                     )}
                     placeholder="0"
@@ -272,15 +270,16 @@ const SendPage = () => {
           </View>
 
           {/* Send Button */}
-          <View className="mt-8">
-            <Button
-              className="bg-green-500 rounded-2xl h-14 w-full"
-              onPress={handleSubmit(onSubmit)}
-              disabled={!selectedToken || !isValid || isSendLoading}
-            >
-              <Text className="text-black text-lg font-semibold">{getSendText()}</Text>
-            </Button>
-          </View>
+          <Button
+            variant="brand"
+            className="rounded-xl"
+            size="lg"
+            onPress={handleSubmit(onSubmit)}
+            disabled={!selectedToken || !isValid || isSendLoading}
+          >
+            <Text className="font-semibold">{getSendText()}</Text>
+            {isSendLoading && <ActivityIndicator color="gray" />}
+          </Button>
         </View>
 
         {/* Token Selector Modal */}
