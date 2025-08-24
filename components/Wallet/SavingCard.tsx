@@ -1,11 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Leaf } from 'lucide-react-native';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 
 import { Text } from '@/components/ui/text';
 import { cn, formatNumber } from '@/lib/utils';
 import TooltipPopover from '@/components/Tooltip';
+import { path } from '@/constants/path';
 
 type SavingCardProps = {
   savings: number;
@@ -13,26 +15,33 @@ type SavingCardProps = {
 };
 
 const SavingCard = ({ savings, className }: SavingCardProps) => {
-  return (
-    <LinearGradient
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      colors={['rgb(52, 10, 89)', 'rgba(40, 9, 67, 0.7)']}
-      className={cn('bg-card rounded-twice p-6 justify-between w-full h-full', className)}
-    >
-      <View className="flex-row items-center gap-2 opacity-50">
-        <Leaf size={18} />
-        <Text className="text-lg font-semibold">Savings</Text>
-      </View>
+  const router = useRouter();
 
-      <View className="flex-row justify-between items-center">
-        <View className="flex-row items-center gap-2">
-          <Text className="text-2xl md:text-3xl font-semibold">${formatNumber(savings)}</Text>
-          <TooltipPopover text="Balance + Yield, same as Savings page" />
+  return (
+    <Pressable onPress={() => router.push(path.SAVINGS)} className="flex-1 web:hover:opacity-95">
+      <LinearGradient
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        colors={['rgb(52, 10, 89)', 'rgba(40, 9, 67, 0.7)']}
+        className={cn('bg-card rounded-twice p-6 justify-between w-full h-full', className)}
+      >
+        <View className="flex-row items-center gap-2 opacity-50">
+          <Leaf size={18} />
+          <Text className="text-lg font-semibold">Savings</Text>
         </View>
-        <Image source={require('@/assets/images/sousd-4x.png')} style={{ width: 28, height: 28 }} />
-      </View>
-    </LinearGradient>
+
+        <View className="flex-row justify-between items-center">
+          <View className="flex-row items-center gap-2">
+            <Text className="text-2xl md:text-3xl font-semibold">${formatNumber(savings)}</Text>
+            <TooltipPopover text="Balance + Yield, same as Savings page" />
+          </View>
+          <Image
+            source={require('@/assets/images/sousd-4x.png')}
+            style={{ width: 28, height: 28 }}
+          />
+        </View>
+      </LinearGradient>
+    </Pressable>
   );
 };
 
