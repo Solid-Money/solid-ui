@@ -23,7 +23,7 @@ const DashboardHeaderMobile = ({
   return (
     <View className="gap-10 mt-10">
       <View className="flex-row justify-center items-center">
-        <Text className="text-6xl font-semibold">$</Text>
+        <Text className="text-6xl font-medium">$</Text>
         <SavingCountUp
           balance={balance ?? 0}
           apy={totalAPY ?? 0}
@@ -37,12 +37,14 @@ const DashboardHeaderMobile = ({
           styles={{
             wholeText: {
               fontSize: 60,
-              fontWeight: '600',
+              fontWeight: 'medium',
+              fontFamily: 'MonaSans_500Medium',
               color: '#ffffff',
             },
             decimalText: {
               fontSize: 24,
-              fontWeight: '500',
+              fontWeight: 'medium',
+              fontFamily: 'MonaSans_500Medium',
               color: '#ffffff',
             },
           }}

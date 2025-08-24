@@ -4,10 +4,10 @@ import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeader
 import { FAQs } from '@/components/FAQ';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
+import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
@@ -86,9 +86,8 @@ export default function Savings() {
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        {!isScreenMedium && <NavbarMobile />}
         {isScreenMedium && <Navbar />}
-        <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
+        <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
           {isScreenMedium ? (
             <View className="flex-row justify-between items-center">
               <DashboardTitle />
@@ -121,7 +120,7 @@ export default function Savings() {
                 <View>
                   <Text className="md:text-lg text-primary/50">Total value</Text>
                   <View className="flex-row items-center">
-                    <Text className="text-5xl md:text-8xl native:leading-[1.2] text-foreground font-semibold">
+                    <Text className="text-5xl md:text-8xl native:leading-[1.2] text-foreground font-medium">
                       $
                     </Text>
                     <SavingCountUp
@@ -136,13 +135,15 @@ export default function Savings() {
                       styles={{
                         wholeText: {
                           fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
-                          fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                          fontWeight: 'medium',
+                          fontFamily: 'MonaSans_500Medium',
                           color: '#ffffff',
                           marginRight: -2,
                         },
                         decimalText: {
                           fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                          fontWeight: isScreenMedium ? 'medium' : 'semibold',
+                          fontWeight: 'medium',
+                          fontFamily: 'MonaSans_500Medium',
                           color: '#ffffff',
                         },
                       }}
@@ -167,11 +168,14 @@ export default function Savings() {
                       styles={{
                         wholeText: {
                           fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
-                          fontWeight: 'semibold',
+                          fontWeight: 'medium',
+                          fontFamily: 'MonaSans_500Medium',
                           color: '#ffffff',
                         },
                         decimalText: {
                           fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
+                          fontWeight: 'medium',
+                          fontFamily: 'MonaSans_500Medium',
                           color: '#ffffff',
                         },
                       }}
@@ -201,7 +205,10 @@ export default function Savings() {
               <View className="border-r md:border-t border-border/50" />
 
               <View className="p-6 md:p-7">
-                <Text className="md:text-lg text-primary/50">P&L</Text>
+                <View className="flex-row items-center gap-1">
+                  <Text className="md:text-lg text-primary/50">P&L</Text>
+                  <TooltipPopover text="Profit and loss" />
+                </View>
                 <Text className="text-2xl font-semibold">
                   {isBalanceLoading ? (
                     <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />

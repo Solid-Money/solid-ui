@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CircleQuestionMark } from 'lucide-react-native';
+import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -24,7 +24,12 @@ const TooltipPopover = ({ trigger, content, text }: TooltipProps) => {
   const getTrigger = () => {
     return (
       <Pressable>
-        <CircleQuestionMark size={16} />
+        <Image
+          source={require('@/assets/images/question-mark-gray.png')}
+          alt="Tooltip"
+          style={{ width: 16, height: 16 }}
+          contentFit="contain"
+        />
       </Pressable>
     );
   };

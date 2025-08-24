@@ -23,7 +23,7 @@ const WithdrawModal = () => {
 
   const handleTransactionStatusPress = () => {
     setModal(WITHDRAW_MODAL.CLOSE);
-    router.push(path.SAVINGS);
+    router.push(path.ACTIVITY);
   };
 
   const getContentKey = () => {

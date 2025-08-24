@@ -56,7 +56,14 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
     isLoading: isFormattingTransactions,
     refetch: refetchFormattedTransactions,
   } = useQuery({
-    queryKey: ['formatted-transactions', userDepositTransactions],
+    queryKey: [
+      'formatted-transactions',
+      user?.safeAddress,
+      userDepositTransactions?.deposits?.length,
+      sendTransactions?.fuse?.length,
+      sendTransactions?.ethereum?.length,
+      bridgeDepositTransactions?.length,
+    ],
     queryFn: () =>
       formatTransactions(userDepositTransactions, sendTransactions, bridgeDepositTransactions),
   });

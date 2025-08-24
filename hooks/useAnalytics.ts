@@ -130,7 +130,8 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
         : LayerZeroTransactionStatus.INFLIGHT;
 
   return {
-    title: 'Bridge USDC',
+    title: 'Bridge USDC to Ethereum',
+    shortTitle: 'Bridge USDC',
     timestamp: (new Date(transaction.createdAt).getTime() / 1000).toString(),
     amount: Number(formatUnits(BigInt(transaction.toAmount), transaction.decimals)),
     symbol: 'USDC',
@@ -145,9 +146,9 @@ export const formatTransactions = async (
   transactions: GetUserTransactionsQuery | undefined,
   sendTransactions:
     | {
-        fuse: BlockscoutTransaction[];
-        ethereum: BlockscoutTransaction[];
-      }
+      fuse: BlockscoutTransaction[];
+      ethereum: BlockscoutTransaction[];
+    }
     | undefined,
   bridgeDepositTransactions: BridgeTransaction[] | undefined,
 ): Promise<Transaction[]> => {
@@ -159,10 +160,10 @@ export const formatTransactions = async (
       const status = lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
 
       return {
-        title: 'Deposit USDC',
+        title: 'Staked USDC',
         timestamp: internalTransaction.depositTimestamp,
         amount: Number(formatUnits(BigInt(internalTransaction.depositAmount), 6)),
-        symbol: 'USDC',
+        symbol: 'soUsd',
         status,
         hash,
         url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
@@ -171,10 +172,10 @@ export const formatTransactions = async (
     } catch (error: any) {
       console.error('Failed to fetch LZ transaction:', error);
       return {
-        title: 'Deposit USDC',
+        title: 'Staked USDC',
         timestamp: internalTransaction.depositTimestamp,
         amount: Number(formatUnits(BigInt(internalTransaction.depositAmount), 6)),
-        symbol: 'USDC',
+        symbol: 'soUsd',
         status:
           error.response.status === 404
             ? LayerZeroTransactionStatus.INFLIGHT

@@ -1,6 +1,5 @@
 import CopyToClipboard from '@/components/CopyToClipboard';
 import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import ReferralTitle from '@/components/Points/RewardsTitle';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
@@ -9,7 +8,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
-import { Platform, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Savings() {
@@ -22,8 +21,7 @@ export default function Savings() {
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        {Platform.OS !== 'web' && <NavbarMobile />}
-        {Platform.OS === 'web' && <Navbar />}
+        {isScreenMedium && <Navbar />}
         <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
           {isScreenMedium ? (
             <View className="flex-row justify-between items-center mt-5">

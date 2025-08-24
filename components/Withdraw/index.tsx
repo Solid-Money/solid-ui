@@ -186,7 +186,7 @@ const WithdrawTrigger = (props: any) => {
       variant="outline"
       className={buttonVariants({
         variant: 'secondary',
-        className: 'border-0 md:border md:h-12 md:pr-6 rounded-xl',
+        className: 'border-0 md:h-12 md:pr-6 rounded-xl',
       })}
       {...props}
     >

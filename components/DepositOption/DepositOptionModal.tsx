@@ -44,7 +44,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
 
   const handleTransactionStatusPress = () => {
     setModal(DEPOSIT_MODAL.CLOSE);
-    router.push(path.SAVINGS);
+    router.push(path.ACTIVITY);
   };
 
   const getTrigger = () => {

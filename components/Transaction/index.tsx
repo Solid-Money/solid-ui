@@ -16,6 +16,7 @@ type TransactionClassNames = {
 
 interface TransactionProps {
   title: string;
+  shortTitle?: string;
   timestamp: string;
   amount: number;
   status: LayerZeroTransactionStatus;
@@ -30,6 +31,7 @@ interface TransactionProps {
 
 const Transaction = ({
   title,
+  shortTitle,
   timestamp,
   amount,
   status,
@@ -76,7 +78,8 @@ const Transaction = ({
       <View className="flex-row items-center gap-2 md:gap-4">
         <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
         <View>
-          <Text className="text-lg font-medium">{title}</Text>
+          <Text className="hidden md:block text-lg font-medium">{title}</Text>
+          <Text className="block md:hidden text-lg font-medium">{shortTitle || title}</Text>
           <Text className="text-sm text-muted-foreground">
             {new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', {
               month: 'short',

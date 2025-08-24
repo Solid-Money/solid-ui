@@ -26,7 +26,7 @@ const DashboardSavings = ({
   const { isScreenMedium } = useDimension();
   return (
     <View className="flex-row items-center">
-      <Text className="text-5xl md:text-8xl text-foreground font-semibold">$</Text>
+      <Text className="text-5xl md:text-8xl text-foreground font-medium">$</Text>
       <SavingCountUp
         balance={balance}
         apy={totalAPY ?? 0}
@@ -40,13 +40,15 @@ const DashboardSavings = ({
         styles={{
           wholeText: {
             fontSize: isScreenMedium ? 96 : 48,
-            fontWeight: isScreenMedium ? 'medium' : 'semibold',
+            fontWeight: 'medium',
+            fontFamily: 'MonaSans_500Medium',
             color: '#ffffff',
             marginRight: -2,
           },
           decimalText: {
             fontSize: isScreenMedium ? 40 : 24,
-            fontWeight: isScreenMedium ? 'medium' : 'semibold',
+            fontWeight: 'medium',
+            fontFamily: 'MonaSans_500Medium',
             color: '#ffffff',
           },
         }}
