@@ -3,13 +3,12 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address, formatUnits, isAddress } from 'viem';
 import { z } from 'zod';
 
 import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TokenSelectorModal from '@/components/SendModal/TokenSelectorModal';
 import { Button } from '@/components/ui/button';
@@ -23,6 +22,7 @@ import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 import Toast from 'react-native-toast-message';
+import { useDimension } from '@/hooks/useDimension';
 
 interface TokenBalance {
   contractTickerSymbol: string;
@@ -42,7 +42,7 @@ const SendPage = () => {
   const [selectedToken, setSelectedToken] = useState<TokenBalance | null>(null);
   const [showTokenSelector, setShowTokenSelector] = useState(false);
   const { setModal, setTransaction } = useSendStore();
-
+  const { isScreenMedium } = useDimension();
   const { ethereumTokens, fuseTokens } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
@@ -162,8 +162,7 @@ const SendPage = () => {
       className="bg-background text-foreground flex-1"
       edges={['right', 'left', 'bottom', 'top']}
     >
-      {Platform.OS !== 'web' && <NavbarMobile />}
-      {Platform.OS === 'web' && <Navbar />}
+      {isScreenMedium && <Navbar />}
       <View className="flex-1 px-4 py-8 md:py-12">
         {/* Form Fields */}
         <View className="max-w-md mx-auto w-full gap-2">

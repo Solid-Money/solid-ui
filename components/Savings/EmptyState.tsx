@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DepositOptionModal } from '@/components/DepositOption';
 import { FAQs } from '@/components/FAQ';
 import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import SavingCountUp from '@/components/SavingCountUp';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
@@ -25,9 +24,8 @@ export default function SavingsEmptyState() {
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        {!isScreenMedium && <NavbarMobile />}
         {isScreenMedium && <Navbar />}
-        <View className="w-full max-w-7xl mx-auto gap-8 md:gap-16 px-4 pt-4 pb-8">
+        <View className="w-full max-w-7xl mx-auto gap-8 md:gap-16 px-4 py-8">
           {isScreenMedium ? (
             <View className="md:flex-row justify-between md:items-center gap-y-4">
               <View className="flex-row items-center">

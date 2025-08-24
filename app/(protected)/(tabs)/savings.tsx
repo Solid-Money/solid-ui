@@ -4,7 +4,6 @@ import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeader
 import { FAQs } from '@/components/FAQ';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
@@ -87,7 +86,6 @@ export default function Savings() {
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        {!isScreenMedium && <NavbarMobile />}
         {isScreenMedium && <Navbar />}
         <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
           {isScreenMedium ? (

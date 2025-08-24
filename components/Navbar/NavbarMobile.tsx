@@ -2,7 +2,7 @@ import HomeQr from '@/assets/images/home-qr';
 import { path } from '@/constants/path';
 import { Link } from 'expo-router';
 import { Settings } from 'lucide-react-native';
-import { SafeAreaView, View } from 'react-native';
+import { Platform, SafeAreaView, View } from 'react-native';
 
 const NavbarMobile = () => {
   return (
@@ -16,9 +16,11 @@ const NavbarMobile = () => {
             <PointsNavButton />
           </Link> */}
         </View>
-        <Link href={path.SETTINGS}>
-          <HomeQr />
-        </Link>
+        {Platform.OS !== 'web' && (
+          <Link href={path.SETTINGS}>
+            <HomeQr />
+          </Link>
+        )}
       </View>
     </SafeAreaView>
   );
