@@ -15,7 +15,7 @@ const WalletCardIcons = ({ tokens, size = 28 }: WalletCardIconsProps) => {
       {tokens?.map((token, index) => (
         <View
           key={token.contractAddress}
-          className="-mr-2"
+          className="-ml-2"
           style={{
             zIndex: tokens.length - index,
           }}
