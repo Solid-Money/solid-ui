@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { TurnkeyClient } from '@turnkey/http';
-import { SessionType } from '@turnkey/sdk-browser';
 import { PasskeyStamper } from '@turnkey/sdk-react-native';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -137,14 +136,10 @@ export const useEmailManagement = (
       const indexedDbClient = await turnkey.indexedDbClient();
       await indexedDbClient?.init();
       await indexedDbClient!.resetKeyPair();
-      const pubKey = await indexedDbClient!.getPublicKey();
-      await passkeyClient?.loginWithPasskey({
-        sessionType: SessionType.READ_WRITE,
-        publicKey: pubKey!,
-      });
       await passkeyClient?.updateUserEmail({
         userId: user?.userId as string,
         userEmail: email,
+        organizationId: user?.suborgId,
         verificationToken,
       });
     } else {
