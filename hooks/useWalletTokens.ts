@@ -1,35 +1,50 @@
-import { useEffect } from 'react';
-import { Address } from 'viem';
-import { fuse, mainnet } from 'viem/chains';
-import { useBalance } from 'wagmi';
+import { useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
-import { ADDRESSES } from '@/lib/config';
 import { useBalances } from './useBalances';
 import useUser from './useUser';
 
 export const useWalletTokens = () => {
   const { user } = useUser();
-  const { totalUSD, soUSDEthereum, soUSDFuse, ethereumTokens, fuseTokens, tokens, isLoading, refresh } = useBalances();
-  const { data: usdcBalance } = useBalance({
-    address: user?.safeAddress as Address,
-    token: ADDRESSES.ethereum.usdc,
-    chainId: mainnet.id,
-  });
-  const { data: soUSDBalance } = useBalance({
-    address: user?.safeAddress as Address,
-    token: ADDRESSES.fuse.vault,
-    chainId: fuse.id,
-  });
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    refresh();
-  }, [soUSDBalance, usdcBalance, refresh]);
+  const {
+    totalUSD,
+    soUSDEthereum,
+    soUSDFuse,
+    ethereumTokens,
+    fuseTokens,
+    tokens,
+    isLoading,
+    isRefreshing,
+    error,
+    refresh,
+    retry
+  } = useBalances();
 
-  const hasTokens = ethereumTokens.length > 0 || fuseTokens.length > 0;
 
-  const uniqueTokens = tokens.filter((token, index, self) =>
-    index === self.findIndex((t) => t.contractTickerSymbol === token.contractTickerSymbol),
+  const hasTokens = useMemo(
+    () => ethereumTokens.length > 0 || fuseTokens.length > 0,
+    [ethereumTokens.length, fuseTokens.length]
   );
+
+  const uniqueTokens = useMemo(
+    () => tokens.filter((token, index, self) =>
+      index === self.findIndex((t) => t.contractTickerSymbol === token.contractTickerSymbol)
+    ),
+    [tokens]
+  );
+
+  // Enhanced refresh function that invalidates the query when balances change
+  const enhancedRefresh = useMemo(() => {
+    return () => {
+      // Invalidate the token balances query to force a fresh fetch
+      queryClient.invalidateQueries({
+        queryKey: ["tokenBalances", user?.safeAddress]
+      });
+      refresh();
+    };
+  }, [queryClient, user?.safeAddress, refresh]);
 
   return {
     totalUSD,
@@ -39,6 +54,10 @@ export const useWalletTokens = () => {
     fuseTokens,
     uniqueTokens,
     isLoading,
+    isRefreshing,
     hasTokens,
+    error,
+    retry,
+    refresh: enhancedRefresh,
   };
 };

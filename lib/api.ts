@@ -20,6 +20,7 @@ import {
   CardResponse,
   CardStatus,
   CardStatusResponse,
+  Deposit,
   KycLink,
   KycLinkForExistingCustomer,
   LayerZeroTransaction,
@@ -112,6 +113,7 @@ export const signUp = async (
   challenge: string,
   attestation: any,
   inviteCode: string,
+  referralCode?: string,
 ) => {
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/sign-up`, {
     method: 'POST',
@@ -120,7 +122,7 @@ export const signUp = async (
       ...getPlatformHeaders(),
     },
     credentials: 'include',
-    body: JSON.stringify({ username, challenge, attestation, inviteCode }),
+    body: JSON.stringify({ username, challenge, attestation, inviteCode, referralCode }),
   });
   if (!response.ok) throw response;
   return response.json();
@@ -623,4 +625,25 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
   const data = await response.json();
   if (!response.ok) throw data;
   return data;
+};
+
+export const createDeposit = async (
+  deposit: Deposit,
+): Promise<{ transactionHash: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(deposit),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };

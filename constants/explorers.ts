@@ -24,7 +24,7 @@ export const layerzero = {
 
 export const explorerUrls: Record<number, Explorers> = {
   [lifi.id]: {
-    lifi: lifi.blockExplorers?.default.url,
+    lifiscan: lifi.blockExplorers?.default.url,
   },
   [layerzero.id]: {
     layerzeroscan: layerzero.blockExplorers?.default.url,

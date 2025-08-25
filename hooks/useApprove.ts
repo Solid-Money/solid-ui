@@ -139,9 +139,11 @@ export function useBatchApproveAndSwap(
 
       // Add swap transaction
       if (swapCalldata) {
+        const calldata = typeof swapCalldata === 'string' ? swapCalldata : String(swapCalldata);
+
         transactions.push({
           to: ALGEBRA_ROUTER,
-          data: swapCalldata,
+          data: calldata,
           value: swapValue,
         });
       }
@@ -154,6 +156,8 @@ export function useBatchApproveAndSwap(
       );
       setBatchData(result);
       return result;
+    } catch (error) {
+      console.error('Batch approve and swap failed', error);
     } finally {
       setIsSendingBatch(false);
     }
@@ -249,6 +253,8 @@ export function useBatchApproveAndVoltageSwap(
       );
       setBatchData(result);
       return result;
+    } catch (error) {
+      console.error('Batch approve and voltage swap failed', error);
     } finally {
       setIsSendingBatch(false);
     }
@@ -333,6 +339,8 @@ export function useBatchApproveAndPegSwap(
       );
       setBatchData(result);
       return result;
+    } catch (error) {
+      console.error('Batch approve and peg swap failed', error);
     } finally {
       setIsSendingBatch(false);
     }

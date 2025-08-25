@@ -750,6 +750,11 @@ const SwapTokenSelector = ({
         isLoading={false}
         onQueryChange={setCurrentQuery}
       />
+      <View className="bg-accent/50 border border-accent/40 rounded-2xl p-4">
+        <Text className="text-foreground text-sm font-semibold text-center">
+          Only tokens on the Fuse network are supported for swapping
+        </Text>
+      </View>
       {selectorView === TokenSelectorView.DEFAULT_LIST ? (
         isLoading ? (
           <LoadingState />

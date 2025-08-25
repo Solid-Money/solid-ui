@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function Savings() {
   const { points, isLoading: isPointsLoading } = usePoints();
   const { isScreenMedium } = useDimension();
-  const countdownTime = useCountdownTimer();
+  const countdownTime = useCountdownTimer(points.nextRewardTime);
 
   if (isPointsLoading) {
     return <Loading />;

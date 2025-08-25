@@ -83,4 +83,5 @@ export const USER = {
   sendStorageKey: 'flash_send',
   withdrawStorageKey: 'flash_withdraw',
   unstakeStorageKey: 'flash_unstake',
+  referralStorageKey: 'flash_referral',
 };

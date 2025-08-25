@@ -2,9 +2,6 @@ import { useEffect, useState } from 'react';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import {
   type Address,
-  encodeAbiParameters,
-  encodeFunctionData,
-  parseAbiParameters,
   parseSignature,
   parseUnits,
   verifyTypedData,
@@ -13,20 +10,20 @@ import { mainnet } from 'viem/chains';
 import { useBlockNumber, useChainId, useReadContract } from 'wagmi';
 
 import ERC20_ABI from '@/lib/abis/ERC20';
-import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
-import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
+import { EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
 import { useUserStore } from '@/store/useUserStore';
 import useUser from './useUser';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { getChain } from '@/lib/thirdweb';
 import { withRefreshToken } from '@/lib/utils';
-import { bridgeDeposit } from '@/lib/api';
+import { bridgeDeposit, createDeposit } from '@/lib/api';
 import { useDepositStore } from '@/store/useDepositStore';
 
 export enum DepositStatus {
   IDLE = 'idle',
   PENDING = 'pending',
+  DEPOSITING = 'depositing',
   BRIDGING = 'bridging',
   SUCCESS = 'success',
   ERROR = 'error',
@@ -38,7 +35,6 @@ type DepositResult = {
   depositStatus: DepositStatus;
   error: string | null;
   hash: Address | undefined;
-  fee: bigint | undefined;
   isEthereum: boolean;
 };
 
@@ -74,22 +70,6 @@ const useDepositFromEOA = (): DepositResult => {
     },
   });
 
-  const { data: fee } = useReadContract({
-    abi: ETHEREUM_TELLER_ABI,
-    address: ADDRESSES.ethereum.teller,
-    functionName: 'previewFee',
-    args: [
-      BigInt(0),
-      user?.safeAddress as Address,
-      encodeAbiParameters(parseAbiParameters('uint32'), [30138]),
-      ADDRESSES.ethereum.nativeFeeToken,
-    ],
-    chainId: mainnet.id,
-    query: {
-      enabled: !!user?.safeAddress && !!srcChainId,
-    },
-  });
-
   const { data: nonce } = useReadContract({
     abi: FiatTokenV2_2,
     address: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
@@ -116,7 +96,6 @@ const useDepositFromEOA = (): DepositResult => {
       if (!eoaAddress) throw new Error('EOA not connected');
       if (nonce === undefined) throw new Error('Could not get nonce');
       if (!tokenName) throw new Error('Could not get token name');
-      if (isEthereum && fee === undefined) throw new Error('Could not get fee');
       if (!user?.safeAddress) throw new Error('User safe address not found');
 
       if (chainId !== srcChainId) {
@@ -151,7 +130,7 @@ const useDepositFromEOA = (): DepositResult => {
 
       const message = {
         owner: eoaAddress,
-        spender: isEthereum ? ADDRESSES.ethereum.vault : EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
+        spender: EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
         value: amountWei,
         nonce: nonce,
         deadline: deadline,
@@ -177,31 +156,20 @@ const useDepositFromEOA = (): DepositResult => {
 
       let txHash: Address | undefined;
       if (isEthereum) {
-        const callData = encodeFunctionData({
-          abi: ETHEREUM_TELLER_ABI,
-          functionName: 'depositAndBridgeWithPermit',
-          args: [
-            ADDRESSES.ethereum.usdc,
-            amountWei,
-            0n,
-            deadline,
-            Number(signatureData.v),
-            signatureData.r,
-            signatureData.s,
-            user.safeAddress,
-            encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
-            ADDRESSES.ethereum.nativeFeeToken,
-            fee ? fee : 0n,
-          ],
-        });
-
-        const transaction = await account?.sendTransaction({
-          chainId: mainnet.id,
-          to: ADDRESSES.ethereum.teller,
-          data: callData,
-          value: fee,
-        });
-        txHash = transaction.transactionHash;
+        setDepositStatus(DepositStatus.DEPOSITING);
+        const transaction = await withRefreshToken(() =>
+          createDeposit({
+            eoaAddress,
+            amount,
+            permitSignature: {
+              v: Number(signatureData.v),
+              r: signatureData.r,
+              s: signatureData.s,
+              deadline: Number(deadline),
+            },
+          }),
+        );
+        txHash = transaction?.transactionHash;
       } else {
         setDepositStatus(DepositStatus.BRIDGING);
         const transaction = await withRefreshToken(() =>
@@ -244,7 +212,6 @@ const useDepositFromEOA = (): DepositResult => {
     depositStatus,
     error,
     hash,
-    fee,
     isEthereum,
   };
 };

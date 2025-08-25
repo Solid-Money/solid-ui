@@ -18,6 +18,7 @@ export const usePointsStore = create<PointsState>()(
   persist(
     set => ({
       points: {
+        nextRewardTime: 0,
         pointsLast24Hours: 0,
         userRewardsSummary: {
           totalPoints: 0,
