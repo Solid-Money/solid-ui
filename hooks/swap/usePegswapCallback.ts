@@ -212,6 +212,8 @@ export default function usePegSwapCallback(
 
       setSwapData(result);
       return result;
+    } catch (error) {
+      console.error('Peg swap failed', error);
     } finally {
       setIsSendingSwap(false);
     }
