@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
+import Toast from 'react-native-toast-message';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -66,6 +67,12 @@ const SwapButton: React.FC = () => {
   const createSwapSuccessHandler = useCallback(
     (inputSymbol: string, outputSymbol: string, inputAmount: string, _outputAmount?: string) =>
       () => {
+        console.log('🔥 SWAP SUCCESS HANDLER CALLED', {
+          inputSymbol,
+          outputSymbol,
+          inputAmount,
+        });
+
         setTransaction({
           amount: Number(inputAmount),
           address: currencies[SwapField.INPUT]?.wrapped.address,
@@ -73,6 +80,7 @@ const SwapButton: React.FC = () => {
           outputCurrencySymbol: outputSymbol,
         });
 
+        console.log('🔥 SETTING MODAL TO TRANSACTION STATUS');
         setModal(SWAP_MODAL.OPEN_TRANSACTION_STATUS);
         resetForm();
       },
@@ -93,8 +101,8 @@ const SwapButton: React.FC = () => {
 
   const userHasSpecifiedInputOutput = Boolean(
     currencies[SwapField.INPUT] &&
-      currencies[SwapField.OUTPUT] &&
-      parsedAmounts[independentField]?.greaterThan('0'),
+    currencies[SwapField.OUTPUT] &&
+    parsedAmounts[independentField]?.greaterThan('0'),
   );
 
   const routeNotFound = trade?.swaps.length === 0;
@@ -139,32 +147,32 @@ const SwapButton: React.FC = () => {
     swapValue,
     currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && trade
       ? (() => {
-          const successInfo = {
-            title: 'Swap transaction completed',
-            description: `${trade.inputAmount.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${trade.outputAmount.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
-            inputAmount: trade.inputAmount.toSignificant(),
-            outputAmount: trade.outputAmount.toSignificant(),
-            inputSymbol: currencies[SwapField.INPUT]?.symbol,
-            outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
-            chainId: 122,
-            onSuccess: createSwapSuccessHandler(
-              currencies[SwapField.INPUT]?.symbol || '',
-              currencies[SwapField.OUTPUT]?.symbol || '',
-              trade.inputAmount.toSignificant(),
-              trade.outputAmount.toSignificant(),
-            ),
-          };
-          // console.log('Creating batch swap success info:', successInfo);
-          return successInfo;
-        })()
+        const successInfo = {
+          title: 'Swap transaction completed',
+          description: `${trade.inputAmount.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${trade.outputAmount.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
+          inputAmount: trade.inputAmount.toSignificant(),
+          outputAmount: trade.outputAmount.toSignificant(),
+          inputSymbol: currencies[SwapField.INPUT]?.symbol,
+          outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
+          chainId: 122,
+          onSuccess: createSwapSuccessHandler(
+            currencies[SwapField.INPUT]?.symbol || '',
+            currencies[SwapField.OUTPUT]?.symbol || '',
+            trade.inputAmount.toSignificant(),
+            trade.outputAmount.toSignificant(),
+          ),
+        };
+        // console.log('Creating batch swap success info:', successInfo);
+        return successInfo;
+      })()
       : (() => {
-          // console.log('No success info created - missing currencies or trade:', {
-          //   inputCurrency: !!currencies[SwapField.INPUT],
-          //   outputCurrency: !!currencies[SwapField.OUTPUT],
-          //   trade: !!trade,
-          // });
-          return undefined;
-        })(),
+        // console.log('No success info created - missing currencies or trade:', {
+        //   inputCurrency: !!currencies[SwapField.INPUT],
+        //   outputCurrency: !!currencies[SwapField.OUTPUT],
+        //   trade: !!trade,
+        // });
+        return undefined;
+      })(),
   );
 
   const {
@@ -176,20 +184,20 @@ const SwapButton: React.FC = () => {
     allowedSlippage,
     currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && voltageTrade.trade
       ? {
-          title: 'Voltage swap transaction completed',
-          description: `${voltageTrade.trade.inputAmount?.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${voltageTrade.trade.outputAmount?.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
-          inputAmount: voltageTrade.trade.inputAmount?.toSignificant(),
-          outputAmount: voltageTrade.trade.outputAmount?.toSignificant(),
-          inputSymbol: currencies[SwapField.INPUT]?.symbol,
-          outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
-          chainId: 122,
-          onSuccess: createSwapSuccessHandler(
-            currencies[SwapField.INPUT]?.symbol || '',
-            currencies[SwapField.OUTPUT]?.symbol || '',
-            voltageTrade.trade.inputAmount?.toSignificant() || '',
-            voltageTrade.trade.outputAmount?.toSignificant(),
-          ),
-        }
+        title: 'Voltage swap transaction completed',
+        description: `${voltageTrade.trade.inputAmount?.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${voltageTrade.trade.outputAmount?.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
+        inputAmount: voltageTrade.trade.inputAmount?.toSignificant(),
+        outputAmount: voltageTrade.trade.outputAmount?.toSignificant(),
+        inputSymbol: currencies[SwapField.INPUT]?.symbol,
+        outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
+        chainId: 122,
+        onSuccess: createSwapSuccessHandler(
+          currencies[SwapField.INPUT]?.symbol || '',
+          currencies[SwapField.OUTPUT]?.symbol || '',
+          voltageTrade.trade.inputAmount?.toSignificant() || '',
+          voltageTrade.trade.outputAmount?.toSignificant(),
+        ),
+      }
       : undefined,
   );
 
@@ -202,26 +210,26 @@ const SwapButton: React.FC = () => {
     pegSwapAddress,
     pegSwapConfig?.request
       ? encodeFunctionData({
-          abi: pegSwapConfig.request.abi,
-          functionName: pegSwapConfig.request.functionName,
-          args: pegSwapConfig.request.args,
-        })
+        abi: pegSwapConfig.request.abi,
+        functionName: pegSwapConfig.request.functionName,
+        args: pegSwapConfig.request.args,
+      })
       : undefined,
     pegSwapConfig?.request?.value || 0n,
     currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && inputAmount
       ? {
-          title: 'Migration transaction completed',
-          description: `${inputAmount.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${currencies[SwapField.OUTPUT]?.symbol}`,
-          inputAmount: inputAmount.toSignificant(),
-          inputSymbol: currencies[SwapField.INPUT]?.symbol,
-          outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
-          chainId: 122,
-          onSuccess: createSwapSuccessHandler(
-            currencies[SwapField.INPUT]?.symbol || '',
-            currencies[SwapField.OUTPUT]?.symbol || '',
-            inputAmount.toSignificant(),
-          ),
-        }
+        title: 'Migration transaction completed',
+        description: `${inputAmount.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${currencies[SwapField.OUTPUT]?.symbol}`,
+        inputAmount: inputAmount.toSignificant(),
+        inputSymbol: currencies[SwapField.INPUT]?.symbol,
+        outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
+        chainId: 122,
+        onSuccess: createSwapSuccessHandler(
+          currencies[SwapField.INPUT]?.symbol || '',
+          currencies[SwapField.OUTPUT]?.symbol || '',
+          inputAmount.toSignificant(),
+        ),
+      }
       : undefined,
   );
 
@@ -262,24 +270,50 @@ const SwapButton: React.FC = () => {
     );
 
   const handleSwap = useCallback(async () => {
+    console.log('🔥 HANDLE SWAP CALLED', {
+      isVoltageTrade,
+      hasBatchVoltageSwapCallback: !!batchVoltageSwapCallback,
+      hasBatchSwapCallback: !!batchSwapCallback,
+    });
+
     try {
       if (isVoltageTrade) {
-        if (!batchVoltageSwapCallback) return;
+        if (!batchVoltageSwapCallback) {
+          console.log('❌ No voltage swap callback available');
+          return;
+        }
+        console.log('🔥 Calling voltage swap callback');
         await batchVoltageSwapCallback();
       } else {
-        if (!batchSwapCallback) return;
+        if (!batchSwapCallback) {
+          console.log('❌ No batch swap callback available');
+          return;
+        }
+        console.log('🔥 Calling batch swap callback');
         await batchSwapCallback();
       }
+      console.log('✅ Swap transaction completed successfully');
     } catch (error) {
+      console.error('❌ Swap transaction failed:', error);
       return new Error(`Swap Failed ${error}`);
     }
   }, [batchSwapCallback, batchVoltageSwapCallback, isVoltageTrade]);
 
   const handlePegSwap = useCallback(async () => {
+    console.log('🔥 HANDLE PEG SWAP CALLED', {
+      hasBatchPegSwapCallback: !!batchPegSwapCallback,
+    });
+
     try {
-      if (!batchPegSwapCallback) return;
+      if (!batchPegSwapCallback) {
+        console.log('❌ No peg swap callback available');
+        return;
+      }
+      console.log('🔥 Calling peg swap callback');
       await batchPegSwapCallback();
+      console.log('✅ Peg swap transaction completed successfully');
     } catch (error) {
+      console.error('❌ Peg swap transaction failed:', error);
       return new Error(`Peg Swap Failed ${error}`);
     }
   }, [batchPegSwapCallback]);
@@ -298,11 +332,17 @@ const SwapButton: React.FC = () => {
 
   if (showPegSwap) {
     const isPegSwapAnyLoading = isBatchPegSwapLoading || isPegSwapLoading;
+
+    const handlePegSwapWithLogging = () => {
+      console.log('🔥 PEG SWAP BUTTON CLICKED!');
+      handlePegSwap();
+    };
+
     return (
       <Button
         className="rounded-xl"
         size="lg"
-        onPress={handlePegSwap}
+        onPress={handlePegSwapWithLogging}
         disabled={isPegSwapAnyLoading}
       >
         {isPegSwapAnyLoading ? (
@@ -325,8 +365,32 @@ const SwapButton: React.FC = () => {
   }
 
   if (showWrap) {
+    const handleWrapWithLogging = async () => {
+      console.log('🔥 WRAP BUTTON CLICKED!', { wrapType, hasOnWrap: !!onWrap });
+
+      if (onWrap) {
+        // Set transaction data in store similar to swap
+        setTransaction({
+          amount: Number(typedValue || '0'),
+          address: currencies[SwapField.INPUT]?.wrapped.address,
+          inputCurrencySymbol: currencies[SwapField.INPUT]?.symbol,
+          outputCurrencySymbol: currencies[SwapField.OUTPUT]?.symbol,
+        });
+
+        // Execute the wrap/unwrap
+        const result = await onWrap();
+
+        if (result) {
+          console.log('🔥 WRAP SUCCESS - SETTING MODAL TO TRANSACTION STATUS');
+          // Open transaction status modal
+          setModal(SWAP_MODAL.OPEN_TRANSACTION_STATUS);
+          resetForm();
+        }
+      }
+    };
+
     return (
-      <Button className="rounded-xl" size="lg" onPress={() => onWrap && onWrap()}>
+      <Button className="rounded-xl" size="lg" onPress={handleWrapWithLogging}>
         {isWrapLoading ? (
           <Text className="font-semibold">
             {wrapType === WrapType.WRAP ? 'Wrapping...' : 'Unwrapping...'}
@@ -360,22 +424,47 @@ const SwapButton: React.FC = () => {
     isBatchSwapLoading ||
     isBatchVoltageSwapLoading;
 
+  const isButtonDisabled =
+    !isValid ||
+    priceImpactTooHigh ||
+    !!swapCallbackError ||
+    isSwapLoading ||
+    isVoltageTradeLoading ||
+    (isVoltageTrade && (!!voltageSwapCallbackError || isVoltageSwapLoading)) ||
+    isBatchSwapLoading ||
+    isBatchVoltageSwapLoading;
+
+  console.log('🔥 SWAP BUTTON STATE', {
+    isValid,
+    priceImpactTooHigh,
+    swapCallbackError,
+    isSwapLoading,
+    isVoltageTradeLoading,
+    isVoltageTrade,
+    voltageSwapCallbackError,
+    isVoltageSwapLoading,
+    isBatchSwapLoading,
+    isBatchVoltageSwapLoading,
+    isButtonDisabled,
+    isAnyLoading,
+    showWrap,
+    showPegSwap,
+    routeNotFound,
+    userHasSpecifiedInputOutput,
+  });
+
+  const handleSwapWithLogging = () => {
+    console.log('🔥 SWAP BUTTON CLICKED!');
+    handleSwap();
+  };
+
   return (
     <Button
       className="rounded-xl"
       variant="brand"
       size="lg"
-      onPress={handleSwap}
-      disabled={
-        !isValid ||
-        priceImpactTooHigh ||
-        !!swapCallbackError ||
-        isSwapLoading ||
-        isVoltageTradeLoading ||
-        (isVoltageTrade && (!!voltageSwapCallbackError || isVoltageSwapLoading)) ||
-        isBatchSwapLoading ||
-        isBatchVoltageSwapLoading
-      }
+      onPress={handleSwapWithLogging}
+      disabled={isButtonDisabled}
     >
       {isAnyLoading ? (
         <Text className="font-semibold">Processing Transaction...</Text>

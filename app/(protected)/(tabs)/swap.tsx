@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 
 import Navbar from '@/components/Navbar';
 import SwapButton from '@/components/Swap/SwapButton';
+import SwapModal from '@/components/Swap/SwapModal';
 import SwapPair from '@/components/Swap/SwapPair';
 import SwapParams from '@/components/Swap/SwapParams';
 import { Text } from '@/components/ui/text';
@@ -41,6 +42,8 @@ export default function SwapPage() {
           </View>
         </View>
       </ScrollView>
+
+      <SwapModal />
     </SafeAreaView>
   );
 }

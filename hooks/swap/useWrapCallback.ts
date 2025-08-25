@@ -39,6 +39,8 @@ export default function useWrapCallback(
   const [unwrapData, setUnwrapData] = useState<any>(null);
   const [isSendingWrap, setIsSendingWrap] = useState(false);
   const [isSendingUnwrap, setIsSendingUnwrap] = useState(false);
+  const [capturedWrapSuccessInfo, setCapturedWrapSuccessInfo] = useState<any>(null);
+  const [capturedUnwrapSuccessInfo, setCapturedUnwrapSuccessInfo] = useState<any>(null);
 
   const inputAmount = useMemo(
     () => tryParseAmount(typedValue, inputCurrency),
@@ -51,8 +53,29 @@ export default function useWrapCallback(
     chainId: fuse.id,
   });
 
+  const wrapSuccessInfo = useMemo(() => {
+    const successInfo = inputAmount && inputCurrency && outputCurrency ? {
+      title: 'Wrap transaction completed',
+      description: `${inputAmount.toSignificant()} ${inputCurrency.symbol} → ${outputCurrency.symbol}`,
+      inputAmount: inputAmount.toSignificant(),
+      inputSymbol: inputCurrency.symbol,
+      outputSymbol: outputCurrency.symbol,
+      chainId: 122,
+    } : undefined;
+
+    console.log('🔥 useWrapCallback - creating wrap success info', {
+      hasInputAmount: !!inputAmount,
+      hasInputCurrency: !!inputCurrency,
+      hasOutputCurrency: !!outputCurrency,
+      successInfo,
+    });
+
+    return successInfo;
+  }, [inputAmount, inputCurrency, outputCurrency]);
+
   const { isLoading: isWrapLoading, isSuccess: isWrapSuccess } = useTransactionAwait(
     wrapData?.transactionHash,
+    capturedWrapSuccessInfo
   );
 
   const { data: unwrapConfig } = useSimulateWrappedNativeWithdraw({
@@ -61,8 +84,29 @@ export default function useWrapCallback(
     chainId: fuse.id,
   });
 
+  const unwrapSuccessInfo = useMemo(() => {
+    const successInfo = inputAmount && inputCurrency && outputCurrency ? {
+      title: 'Unwrap transaction completed',
+      description: `${inputAmount.toSignificant()} ${inputCurrency.symbol} → ${outputCurrency.symbol}`,
+      inputAmount: inputAmount.toSignificant(),
+      inputSymbol: inputCurrency.symbol,
+      outputSymbol: outputCurrency.symbol,
+      chainId: 122,
+    } : undefined;
+
+    console.log('🔥 useWrapCallback - creating unwrap success info', {
+      hasInputAmount: !!inputAmount,
+      hasInputCurrency: !!inputCurrency,
+      hasOutputCurrency: !!outputCurrency,
+      successInfo,
+    });
+
+    return successInfo;
+  }, [inputAmount, inputCurrency, outputCurrency]);
+
   const { isLoading: isUnwrapLoading, isSuccess: isUnwrapSuccess } = useTransactionAwait(
     unwrapData?.transactionHash,
+    capturedUnwrapSuccessInfo
   );
 
   const wrap = useCallback(async () => {
@@ -70,6 +114,11 @@ export default function useWrapCallback(
       return;
     }
     try {
+      // Capture success info before form gets reset
+      const currentSuccessInfo = wrapSuccessInfo;
+      console.log('🔥 CAPTURING WRAP SUCCESS INFO BEFORE TRANSACTION', currentSuccessInfo);
+      setCapturedWrapSuccessInfo(currentSuccessInfo);
+
       setIsSendingWrap(true);
       const smartAccountClient = await safeAA(fuse, user?.suborgId, user?.signWith);
       const transactions = [
@@ -99,13 +148,18 @@ export default function useWrapCallback(
     } finally {
       setIsSendingWrap(false);
     }
-  }, [wrapConfig, user?.suborgId, user?.signWith, account, safeAA]);
+  }, [wrapConfig, user?.suborgId, user?.signWith, account, safeAA, wrapSuccessInfo]);
 
   const unwrap = useCallback(async () => {
     if (!unwrapConfig || !user?.suborgId || !user?.signWith || !account) {
       return;
     }
     try {
+      // Capture success info before form gets reset
+      const currentSuccessInfo = unwrapSuccessInfo;
+      console.log('🔥 CAPTURING UNWRAP SUCCESS INFO BEFORE TRANSACTION', currentSuccessInfo);
+      setCapturedUnwrapSuccessInfo(currentSuccessInfo);
+
       setIsSendingUnwrap(true);
       const smartAccountClient = await safeAA(fuse, user?.suborgId, user?.signWith);
 
@@ -136,7 +190,7 @@ export default function useWrapCallback(
     } finally {
       setIsSendingUnwrap(false);
     }
-  }, [unwrapConfig, user?.suborgId, user?.signWith, account, safeAA]);
+  }, [unwrapConfig, user?.suborgId, user?.signWith, account, safeAA, unwrapSuccessInfo]);
 
   const { data: balance } = useBalance({
     query: {

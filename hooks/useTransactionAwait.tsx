@@ -98,7 +98,18 @@ export function useTransactionAwait(
   }, [isError]);
 
   useEffect(() => {
+    console.log('🔥 useTransactionAwait effect triggered', {
+      isSuccess,
+      hash,
+      hasSuccessInfo: !!successInfo,
+      successInfo,
+      account,
+      alreadyProcessed: hash ? processedHashes.current.has(hash) : false,
+    });
+
     if (isSuccess && hash && !processedHashes.current.has(hash)) {
+      console.log('🔥 Processing successful transaction', { hash, successInfo });
+      
       // Mark this hash as processed to prevent duplicate calls
       processedHashes.current.add(hash);
 
@@ -111,12 +122,16 @@ export function useTransactionAwait(
 
       // Call success callback and show toast if successInfo is provided
       if (successInfo) {
+        console.log('🔥 Success info found, processing toast and callback', successInfo);
+        
         // Call success callback if provided (only once per hash)
         if (successInfo.onSuccess) {
+          console.log('🔥 Calling success callback');
           successInfo.onSuccess();
         }
 
         // Show success Toast notification
+        console.log('🔥 Showing toast notification');
         Toast.show({
           type: 'success',
           text1: successInfo.title,
@@ -130,6 +145,8 @@ export function useTransactionAwait(
             }),
           },
         });
+      } else {
+        console.log('❌ No success info provided, skipping toast');
       }
     }
   }, [isSuccess, hash, successInfo, account, queryClient]);
