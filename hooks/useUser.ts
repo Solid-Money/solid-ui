@@ -9,6 +9,7 @@ import {
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import { getNonce, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
+import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { publicClient, rpcUrls } from '@/lib/wagmi';
 import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -189,7 +190,16 @@ const useUser = (): UseUserReturn => {
           throw new Error('Error creating passkey');
         }
 
-        const user = await signUp(username, challenge, attestation, inviteCode);
+        // Get referral code from storage (if any)
+        const referralCode = getReferralCodeForSignup();
+
+        const user = await signUp(
+          username,
+          challenge,
+          attestation,
+          inviteCode,
+          referralCode || undefined,
+        );
 
         const smartAccountClient = await safeAA(
           mainnet,

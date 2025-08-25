@@ -112,6 +112,7 @@ export const signUp = async (
   challenge: string,
   attestation: any,
   inviteCode: string,
+  referralCode?: string,
 ) => {
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/sign-up`, {
     method: 'POST',
@@ -120,7 +121,7 @@ export const signUp = async (
       ...getPlatformHeaders(),
     },
     credentials: 'include',
-    body: JSON.stringify({ username, challenge, attestation, inviteCode }),
+    body: JSON.stringify({ username, challenge, attestation, inviteCode, referralCode }),
   });
   if (!response.ok) throw response;
   return response.json();
