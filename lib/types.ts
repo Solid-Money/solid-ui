@@ -380,6 +380,7 @@ export enum RewardsType {
 }
 
 export interface Points {
+  nextRewardTime: number;
   pointsLast24Hours: number;
   userRewardsSummary: {
     totalPoints: number;
