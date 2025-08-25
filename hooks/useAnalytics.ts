@@ -137,7 +137,7 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
     symbol: 'USDC',
     status,
     hash: transaction.bridgeTxHash,
-    url: `${explorerUrls[lifi.id].lifi}/tx/${transaction.bridgeTxHash}`,
+    url: `${explorerUrls[lifi.id].lifiscan}/tx/${transaction.bridgeTxHash}`,
     type: TransactionType.BRIDGE,
   };
 };
