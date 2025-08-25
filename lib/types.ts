@@ -288,7 +288,7 @@ export type Explorers = {
   blockscout?: string;
   etherscan?: string;
   layerzeroscan?: string;
-  lifi?: string;
+  lifiscan?: string;
 };
 
 export enum SavingMode {
@@ -300,6 +300,17 @@ export enum SavingMode {
 export type BridgeDeposit = {
   eoaAddress: Address;
   srcChainId: number;
+  amount: string;
+  permitSignature: {
+    v: number;
+    r: string;
+    s: string;
+    deadline: number;
+  };
+};
+
+export type Deposit = {
+  eoaAddress: Address;
   amount: string;
   permitSignature: {
     v: number;
