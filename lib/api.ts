@@ -526,11 +526,11 @@ export const bridgeDeposit = async (
   return response.json();
 };
 
-export const bridgeDepositTransactions = async (): Promise<BridgeTransaction[]> => {
+export const bridgeDepositTransactions = async (safeAddress: string): Promise<BridgeTransaction[]> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/transactions`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/transactions/${safeAddress}`,
     {
       headers: {
         ...getPlatformHeaders(),

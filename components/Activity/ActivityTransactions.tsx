@@ -49,7 +49,7 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
     data: bridgeDepositTransactions,
     isLoading: isBridgeDepositTransactionsLoading,
     refetch: refetchBridgeDepositTransactions,
-  } = useBridgeDepositTransactions();
+  } = useBridgeDepositTransactions(user?.safeAddress ?? '');
 
   const {
     data: transactions,
