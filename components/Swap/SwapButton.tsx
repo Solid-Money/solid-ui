@@ -162,15 +162,9 @@ const SwapButton: React.FC = () => {
             trade.outputAmount.toSignificant(),
           ),
         };
-        // console.log('Creating batch swap success info:', successInfo);
         return successInfo;
       })()
       : (() => {
-        // console.log('No success info created - missing currencies or trade:', {
-        //   inputCurrency: !!currencies[SwapField.INPUT],
-        //   outputCurrency: !!currencies[SwapField.OUTPUT],
-        //   trade: !!trade,
-        // });
         return undefined;
       })(),
   );

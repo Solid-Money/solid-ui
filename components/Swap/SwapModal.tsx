@@ -1,5 +1,5 @@
-import React from 'react';
 import { useRouter } from 'expo-router';
+import React from 'react';
 
 import AnimatedModal from '@/components/AnimatedModal';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -20,14 +20,6 @@ const SwapModal = () => {
 
   const isTransactionStatus = currentModal.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isClose = currentModal.name === SWAP_MODAL.CLOSE.name;
-
-  console.log('🔥 SWAP MODAL RENDER', {
-    currentModal: currentModal.name,
-    isTransactionStatus,
-    isClose,
-    isOpen: !isClose,
-    transaction,
-  });
 
   const handleTransactionStatusPress = () => {
     setModal(SWAP_MODAL.CLOSE);
@@ -51,6 +43,9 @@ const SwapModal = () => {
           amount={transaction.amount ?? 0}
           address={transaction.address}
           onPress={handleTransactionStatusPress}
+          title="Transaction completed"
+          description="Your transaction has been successfully processed and confirmed."
+          status="Completed"
           token={transaction.inputCurrencySymbol ?? 'Token'}
           icon={getTokenIcon({
             tokenSymbol: transaction.inputCurrencySymbol,
@@ -63,22 +58,12 @@ const SwapModal = () => {
     return null;
   };
 
-  console.log('🔥 SWAP MODAL ABOUT TO RENDER AnimatedModal', {
-    currentModal,
-    previousModal,
-    isOpen: !isClose,
-    title: getTitle(),
-    contentKey: getContentKey(),
-    content: getContent(),
-  });
-
   return (
     <AnimatedModal
       currentModal={currentModal}
       previousModal={previousModal}
       isOpen={!isClose}
       onOpenChange={(value: boolean) => {
-        console.log('🔥 SWAP MODAL onOpenChange called', { value });
         if (!value) {
           setModal(SWAP_MODAL.CLOSE);
         }

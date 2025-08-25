@@ -175,7 +175,9 @@ export function useSwapCallback(
 
       setSwapData(result);
       return result;
-    } finally {
+    } catch (error) {
+      console.error('Swap failed', error);
+    }  finally {
       setIsSendingSwap(false);
     }
   }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA]);

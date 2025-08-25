@@ -1,8 +1,8 @@
+import { useRouter } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
 
 import Navbar from '@/components/Navbar';
 import SwapButton from '@/components/Swap/SwapButton';

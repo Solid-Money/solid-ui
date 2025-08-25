@@ -42,7 +42,9 @@ export function useVoltageSwapCallback(trade: VoltageTrade | undefined) {
 
       setSwapData(result);
       return result;
-    } finally {
+    } catch (error) {
+      console.error('Voltage swap failed', error);
+    }  finally {
       setIsSendingSwap(false);
     }
   }, [trade, account, safeAA, user]);

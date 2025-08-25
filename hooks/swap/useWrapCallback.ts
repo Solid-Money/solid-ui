@@ -145,6 +145,8 @@ export default function useWrapCallback(
 
       setWrapData(result);
       return result;
+    } catch (error) {
+      console.error('Wrap failed', error);
     } finally {
       setIsSendingWrap(false);
     }
@@ -187,6 +189,8 @@ export default function useWrapCallback(
 
       setUnwrapData(result);
       return result;
+    } catch (error) {
+      console.error('Unwrap failed', error);
     } finally {
       setIsSendingUnwrap(false);
     }
