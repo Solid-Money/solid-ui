@@ -23,7 +23,6 @@ import {
   Transaction,
   TransactionType,
 } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
 
 const ANALYTICS = 'analytics';
 
@@ -109,12 +108,13 @@ const constructSendTransaction = (
   };
 };
 
-export const useBridgeDepositTransactions = () => {
+export const useBridgeDepositTransactions = (safeAddress: string) => {
   return useQuery({
     queryKey: [ANALYTICS, 'bridgeDepositTransactions'],
     queryFn: async () => {
-      return await withRefreshToken(() => bridgeDepositTransactions());
+      return await bridgeDepositTransactions(safeAddress);
     },
+    enabled: !!safeAddress,
   });
 };
 
