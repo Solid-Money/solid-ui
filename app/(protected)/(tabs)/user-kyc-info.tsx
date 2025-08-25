@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { z } from 'zod';
 
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';

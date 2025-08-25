@@ -24,13 +24,13 @@ export function DashboardWeb() {
   const { user } = useUser();
 
   const { data: blockNumber } = useBlockNumber({ watch: true, chainId: mainnet.id });
-  const { 
-    totalUSD, 
-    isLoading: isTokensLoading, 
-    hasTokens, 
+  const {
+    totalUSD,
+    isLoading: isTokensLoading,
+    hasTokens,
     error: tokenError,
     retry: retryTokens,
-    isRefreshing 
+    isRefreshing,
   } = useWalletTokens();
   const { data: balance, refetch: refetchBalance } = useFuseVaultBalance(
     user?.safeAddress as Address,
@@ -89,8 +89,8 @@ export function DashboardWeb() {
             <DashboardCardsNoFunds />
           )}
           {(hasTokens || tokenError) && (
-            <DashboardTokens 
-              isTokensLoading={isTokensLoading} 
+            <DashboardTokens
+              isTokensLoading={isTokensLoading}
               hasTokens={hasTokens}
               error={tokenError}
               onRetry={retryTokens}
