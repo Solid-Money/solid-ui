@@ -33,7 +33,7 @@ const PointsTitle = () => {
               points earned
             </Text>
             <Text className="text-lg/none text-rewards/70 ml-4">
-              Earning 10 points per $1 per day
+              Earning 4 points per $1 per hour
             </Text>
           </View>
         </View>
