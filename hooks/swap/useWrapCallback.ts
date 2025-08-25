@@ -63,13 +63,6 @@ export default function useWrapCallback(
       chainId: 122,
     } : undefined;
 
-    console.log('🔥 useWrapCallback - creating wrap success info', {
-      hasInputAmount: !!inputAmount,
-      hasInputCurrency: !!inputCurrency,
-      hasOutputCurrency: !!outputCurrency,
-      successInfo,
-    });
-
     return successInfo;
   }, [inputAmount, inputCurrency, outputCurrency]);
 
@@ -94,13 +87,6 @@ export default function useWrapCallback(
       chainId: 122,
     } : undefined;
 
-    console.log('🔥 useWrapCallback - creating unwrap success info', {
-      hasInputAmount: !!inputAmount,
-      hasInputCurrency: !!inputCurrency,
-      hasOutputCurrency: !!outputCurrency,
-      successInfo,
-    });
-
     return successInfo;
   }, [inputAmount, inputCurrency, outputCurrency]);
 
@@ -116,7 +102,6 @@ export default function useWrapCallback(
     try {
       // Capture success info before form gets reset
       const currentSuccessInfo = wrapSuccessInfo;
-      console.log('🔥 CAPTURING WRAP SUCCESS INFO BEFORE TRANSACTION', currentSuccessInfo);
       setCapturedWrapSuccessInfo(currentSuccessInfo);
 
       setIsSendingWrap(true);
@@ -159,7 +144,6 @@ export default function useWrapCallback(
     try {
       // Capture success info before form gets reset
       const currentSuccessInfo = unwrapSuccessInfo;
-      console.log('🔥 CAPTURING UNWRAP SUCCESS INFO BEFORE TRANSACTION', currentSuccessInfo);
       setCapturedUnwrapSuccessInfo(currentSuccessInfo);
 
       setIsSendingUnwrap(true);

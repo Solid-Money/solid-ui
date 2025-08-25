@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from 'react';
-import Toast from 'react-native-toast-message';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -67,12 +66,6 @@ const SwapButton: React.FC = () => {
   const createSwapSuccessHandler = useCallback(
     (inputSymbol: string, outputSymbol: string, inputAmount: string, _outputAmount?: string) =>
       () => {
-        console.log('🔥 SWAP SUCCESS HANDLER CALLED', {
-          inputSymbol,
-          outputSymbol,
-          inputAmount,
-        });
-
         setTransaction({
           amount: Number(inputAmount),
           address: currencies[SwapField.INPUT]?.wrapped.address,
@@ -80,7 +73,6 @@ const SwapButton: React.FC = () => {
           outputCurrencySymbol: outputSymbol,
         });
 
-        console.log('🔥 SETTING MODAL TO TRANSACTION STATUS');
         setModal(SWAP_MODAL.OPEN_TRANSACTION_STATUS);
         resetForm();
       },
@@ -264,29 +256,14 @@ const SwapButton: React.FC = () => {
     );
 
   const handleSwap = useCallback(async () => {
-    console.log('🔥 HANDLE SWAP CALLED', {
-      isVoltageTrade,
-      hasBatchVoltageSwapCallback: !!batchVoltageSwapCallback,
-      hasBatchSwapCallback: !!batchSwapCallback,
-    });
-
     try {
       if (isVoltageTrade) {
-        if (!batchVoltageSwapCallback) {
-          console.log('❌ No voltage swap callback available');
-          return;
-        }
-        console.log('🔥 Calling voltage swap callback');
+        if (!batchVoltageSwapCallback) return;
         await batchVoltageSwapCallback();
       } else {
-        if (!batchSwapCallback) {
-          console.log('❌ No batch swap callback available');
-          return;
-        }
-        console.log('🔥 Calling batch swap callback');
+        if (!batchSwapCallback) return;
         await batchSwapCallback();
       }
-      console.log('✅ Swap transaction completed successfully');
     } catch (error) {
       console.error('❌ Swap transaction failed:', error);
       return new Error(`Swap Failed ${error}`);
@@ -294,18 +271,9 @@ const SwapButton: React.FC = () => {
   }, [batchSwapCallback, batchVoltageSwapCallback, isVoltageTrade]);
 
   const handlePegSwap = useCallback(async () => {
-    console.log('🔥 HANDLE PEG SWAP CALLED', {
-      hasBatchPegSwapCallback: !!batchPegSwapCallback,
-    });
-
     try {
-      if (!batchPegSwapCallback) {
-        console.log('❌ No peg swap callback available');
-        return;
-      }
-      console.log('🔥 Calling peg swap callback');
+      if (!batchPegSwapCallback) return;
       await batchPegSwapCallback();
-      console.log('✅ Peg swap transaction completed successfully');
     } catch (error) {
       console.error('❌ Peg swap transaction failed:', error);
       return new Error(`Peg Swap Failed ${error}`);
@@ -327,16 +295,11 @@ const SwapButton: React.FC = () => {
   if (showPegSwap) {
     const isPegSwapAnyLoading = isBatchPegSwapLoading || isPegSwapLoading;
 
-    const handlePegSwapWithLogging = () => {
-      console.log('🔥 PEG SWAP BUTTON CLICKED!');
-      handlePegSwap();
-    };
-
     return (
       <Button
         className="rounded-xl"
         size="lg"
-        onPress={handlePegSwapWithLogging}
+        onPress={handlePegSwap}
         disabled={isPegSwapAnyLoading}
       >
         {isPegSwapAnyLoading ? (
@@ -359,11 +322,8 @@ const SwapButton: React.FC = () => {
   }
 
   if (showWrap) {
-    const handleWrapWithLogging = async () => {
-      console.log('🔥 WRAP BUTTON CLICKED!', { wrapType, hasOnWrap: !!onWrap });
-
+    const handleWrap = async () => {
       if (onWrap) {
-        // Set transaction data in store similar to swap
         setTransaction({
           amount: Number(typedValue || '0'),
           address: currencies[SwapField.INPUT]?.wrapped.address,
@@ -371,12 +331,9 @@ const SwapButton: React.FC = () => {
           outputCurrencySymbol: currencies[SwapField.OUTPUT]?.symbol,
         });
 
-        // Execute the wrap/unwrap
         const result = await onWrap();
 
-        if (result) {
-          console.log('🔥 WRAP SUCCESS - SETTING MODAL TO TRANSACTION STATUS');
-          // Open transaction status modal
+        if (result !== undefined) {
           setModal(SWAP_MODAL.OPEN_TRANSACTION_STATUS);
           resetForm();
         }
@@ -384,7 +341,7 @@ const SwapButton: React.FC = () => {
     };
 
     return (
-      <Button className="rounded-xl" size="lg" onPress={handleWrapWithLogging}>
+      <Button className="rounded-xl" size="lg" onPress={handleWrap}>
         {isWrapLoading ? (
           <Text className="font-semibold">
             {wrapType === WrapType.WRAP ? 'Wrapping...' : 'Unwrapping...'}
@@ -428,36 +385,12 @@ const SwapButton: React.FC = () => {
     isBatchSwapLoading ||
     isBatchVoltageSwapLoading;
 
-  console.log('🔥 SWAP BUTTON STATE', {
-    isValid,
-    priceImpactTooHigh,
-    swapCallbackError,
-    isSwapLoading,
-    isVoltageTradeLoading,
-    isVoltageTrade,
-    voltageSwapCallbackError,
-    isVoltageSwapLoading,
-    isBatchSwapLoading,
-    isBatchVoltageSwapLoading,
-    isButtonDisabled,
-    isAnyLoading,
-    showWrap,
-    showPegSwap,
-    routeNotFound,
-    userHasSpecifiedInputOutput,
-  });
-
-  const handleSwapWithLogging = () => {
-    console.log('🔥 SWAP BUTTON CLICKED!');
-    handleSwap();
-  };
-
   return (
     <Button
       className="rounded-xl"
       variant="brand"
       size="lg"
-      onPress={handleSwapWithLogging}
+      onPress={handleSwap}
       disabled={isButtonDisabled}
     >
       {isAnyLoading ? (
