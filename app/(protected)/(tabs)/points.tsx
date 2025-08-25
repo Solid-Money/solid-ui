@@ -8,11 +8,12 @@ import { useCountdownTimer } from '@/hooks/useCountdownTimer';
 import { useDimension } from '@/hooks/useDimension';
 import { usePoints } from '@/hooks/usePoints';
 import { RewardsType } from '@/lib/types';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
-import { Image, ImageBackground, Platform, Pressable, ScrollView, View } from 'react-native';
+import { ImageBackground, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Savings() {
@@ -117,7 +118,7 @@ export default function Savings() {
                   <Text className="text-3xl text-rewards font-semibold mt-2">{countdownTime}</Text>
                 </View>
                 <Text className="mt-4 text-rewards/70 text-sm">
-                  Earning 10 points per $1 per day
+                  Earning 4 points per $1 per hour
                   <br />
                   Earned yesterday: {points.pointsLast24Hours} points
                 </Text>
@@ -146,18 +147,22 @@ export default function Savings() {
                   colors={['rgba(165, 84, 234, 0.25)', 'rgba(165, 84, 234, 0.17)']}
                   start={{ x: 0.1965, y: 0 }}
                   end={{ x: 0.7962, y: 1 }}
-                  className="h-[90px] w-[90px] rounded-full flex justify-center items-center"
+                  className="md:h-[90px] md:w-[90px] h-[70px] w-[70px] rounded-full flex justify-center items-center"
                 >
-                  <Text className="text-2xl font-semibold text-[#C693E5]">10X</Text>
+                  <Text className="md:text-2xl text-xl font-semibold text-[#C693E5]">10X</Text>
                 </LinearGradient>
-                <View className="flex-col ml-5">
-                  <Text className="text-2xl font-semibold">Deposit and earn 10x points</Text>
-                  <Text className="text-lg text-white/70">Earn 10 points per $1 per day</Text>
+                <View className="flex-col md:ml-5 ml-2">
+                  <Text className="md:text-2xl text-xl font-semibold">
+                    Deposit and earn 10x points
+                  </Text>
+                  <Text className="md:text-lg text-base text-white/70">
+                    Earn 4 points per $1 per hour
+                  </Text>
                 </View>
               </View>
               <Button
                 variant="secondary"
-                className="h-12 px-6 rounded-xl bg-[#303030] border-0 mt-7"
+                className="md:h-12 h-10 px-6 rounded-xl bg-[#303030] border-0 mt-7"
                 onPress={() => {
                   router.push(path.DEPOSIT);
                 }}
@@ -171,16 +176,19 @@ export default function Savings() {
               <View className="flex-row items-center gap-2">
                 <Image
                   source={require('@/assets/images/refer_friend.png')}
-                  style={{ width: 90, height: 90 }}
+                  style={{ width: isScreenMedium ? 90 : 70, height: isScreenMedium ? 90 : 70 }}
+                  contentFit="contain"
                 />
-                <View className="flex-col ml-5">
-                  <Text className="text-2xl font-semibold">Refer a Friend</Text>
-                  <Text className="text-lg text-white/70">Earn 10% of their daily points.</Text>
+                <View className="flex-col md:ml-5 ml-2">
+                  <Text className="md:text-2xl text-xl font-semibold">Refer a Friend</Text>
+                  <Text className="md:text-lg text-base text-white/70">
+                    Earn 10% of their daily points.
+                  </Text>
                 </View>
               </View>
               <Button
                 variant="secondary"
-                className="h-12 px-6 rounded-xl bg-[#303030] border-0 mt-7"
+                className="md:h-12 h-10 px-6 rounded-xl bg-[#303030] border-0 mt-7"
                 onPress={() => {
                   router.push(path.REFERRAL);
                 }}
