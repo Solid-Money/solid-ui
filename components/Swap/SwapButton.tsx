@@ -170,7 +170,7 @@ const SwapButton: React.FC = () => {
     allowedSlippage,
     currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && voltageTrade.trade
       ? {
-          title: 'Voltage swap transaction completed',
+          title: 'Swap transaction completed',
           description: `${voltageTrade.trade.inputAmount?.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${voltageTrade.trade.outputAmount?.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
           inputAmount: voltageTrade.trade.inputAmount?.toSignificant(),
           outputAmount: voltageTrade.trade.outputAmount?.toSignificant(),
