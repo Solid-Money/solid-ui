@@ -93,8 +93,8 @@ const SwapButton: React.FC = () => {
 
   const userHasSpecifiedInputOutput = Boolean(
     currencies[SwapField.INPUT] &&
-    currencies[SwapField.OUTPUT] &&
-    parsedAmounts[independentField]?.greaterThan('0'),
+      currencies[SwapField.OUTPUT] &&
+      parsedAmounts[independentField]?.greaterThan('0'),
   );
 
   const routeNotFound = trade?.swaps.length === 0;
@@ -139,26 +139,26 @@ const SwapButton: React.FC = () => {
     swapValue,
     currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && trade
       ? (() => {
-        const successInfo = {
-          title: 'Swap transaction completed',
-          description: `${trade.inputAmount.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${trade.outputAmount.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
-          inputAmount: trade.inputAmount.toSignificant(),
-          outputAmount: trade.outputAmount.toSignificant(),
-          inputSymbol: currencies[SwapField.INPUT]?.symbol,
-          outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
-          chainId: 122,
-          onSuccess: createSwapSuccessHandler(
-            currencies[SwapField.INPUT]?.symbol || '',
-            currencies[SwapField.OUTPUT]?.symbol || '',
-            trade.inputAmount.toSignificant(),
-            trade.outputAmount.toSignificant(),
-          ),
-        };
-        return successInfo;
-      })()
+          const successInfo = {
+            title: 'Swap transaction completed',
+            description: `${trade.inputAmount.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${trade.outputAmount.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
+            inputAmount: trade.inputAmount.toSignificant(),
+            outputAmount: trade.outputAmount.toSignificant(),
+            inputSymbol: currencies[SwapField.INPUT]?.symbol,
+            outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
+            chainId: 122,
+            onSuccess: createSwapSuccessHandler(
+              currencies[SwapField.INPUT]?.symbol || '',
+              currencies[SwapField.OUTPUT]?.symbol || '',
+              trade.inputAmount.toSignificant(),
+              trade.outputAmount.toSignificant(),
+            ),
+          };
+          return successInfo;
+        })()
       : (() => {
-        return undefined;
-      })(),
+          return undefined;
+        })(),
   );
 
   const {
@@ -170,20 +170,20 @@ const SwapButton: React.FC = () => {
     allowedSlippage,
     currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && voltageTrade.trade
       ? {
-        title: 'Voltage swap transaction completed',
-        description: `${voltageTrade.trade.inputAmount?.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${voltageTrade.trade.outputAmount?.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
-        inputAmount: voltageTrade.trade.inputAmount?.toSignificant(),
-        outputAmount: voltageTrade.trade.outputAmount?.toSignificant(),
-        inputSymbol: currencies[SwapField.INPUT]?.symbol,
-        outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
-        chainId: 122,
-        onSuccess: createSwapSuccessHandler(
-          currencies[SwapField.INPUT]?.symbol || '',
-          currencies[SwapField.OUTPUT]?.symbol || '',
-          voltageTrade.trade.inputAmount?.toSignificant() || '',
-          voltageTrade.trade.outputAmount?.toSignificant(),
-        ),
-      }
+          title: 'Voltage swap transaction completed',
+          description: `${voltageTrade.trade.inputAmount?.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${voltageTrade.trade.outputAmount?.toSignificant()} ${currencies[SwapField.OUTPUT]?.symbol}`,
+          inputAmount: voltageTrade.trade.inputAmount?.toSignificant(),
+          outputAmount: voltageTrade.trade.outputAmount?.toSignificant(),
+          inputSymbol: currencies[SwapField.INPUT]?.symbol,
+          outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
+          chainId: 122,
+          onSuccess: createSwapSuccessHandler(
+            currencies[SwapField.INPUT]?.symbol || '',
+            currencies[SwapField.OUTPUT]?.symbol || '',
+            voltageTrade.trade.inputAmount?.toSignificant() || '',
+            voltageTrade.trade.outputAmount?.toSignificant(),
+          ),
+        }
       : undefined,
   );
 
@@ -196,26 +196,26 @@ const SwapButton: React.FC = () => {
     pegSwapAddress,
     pegSwapConfig?.request
       ? encodeFunctionData({
-        abi: pegSwapConfig.request.abi,
-        functionName: pegSwapConfig.request.functionName,
-        args: pegSwapConfig.request.args,
-      })
+          abi: pegSwapConfig.request.abi,
+          functionName: pegSwapConfig.request.functionName,
+          args: pegSwapConfig.request.args,
+        })
       : undefined,
     pegSwapConfig?.request?.value || 0n,
     currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && inputAmount
       ? {
-        title: 'Migration transaction completed',
-        description: `${inputAmount.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${currencies[SwapField.OUTPUT]?.symbol}`,
-        inputAmount: inputAmount.toSignificant(),
-        inputSymbol: currencies[SwapField.INPUT]?.symbol,
-        outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
-        chainId: 122,
-        onSuccess: createSwapSuccessHandler(
-          currencies[SwapField.INPUT]?.symbol || '',
-          currencies[SwapField.OUTPUT]?.symbol || '',
-          inputAmount.toSignificant(),
-        ),
-      }
+          title: 'Migration transaction completed',
+          description: `${inputAmount.toSignificant()} ${currencies[SwapField.INPUT]?.symbol} → ${currencies[SwapField.OUTPUT]?.symbol}`,
+          inputAmount: inputAmount.toSignificant(),
+          inputSymbol: currencies[SwapField.INPUT]?.symbol,
+          outputSymbol: currencies[SwapField.OUTPUT]?.symbol,
+          chainId: 122,
+          onSuccess: createSwapSuccessHandler(
+            currencies[SwapField.INPUT]?.symbol || '',
+            currencies[SwapField.OUTPUT]?.symbol || '',
+            inputAmount.toSignificant(),
+          ),
+        }
       : undefined,
   );
 
