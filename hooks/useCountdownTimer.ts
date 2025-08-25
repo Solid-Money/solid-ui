@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 
-export const useCountdownTimer = () => {
+export const useCountdownTimer = (nextRewardTime: number) => {
   const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0); // Set to 12:00:00 AM
+      let difference = 0;
+      if (nextRewardTime === 0) {
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0); // Set to 12:00:00 AM
 
-      const difference = tomorrow.getTime() - now.getTime();
+        difference = tomorrow.getTime() - now.getTime();
+      } else {
+        difference = nextRewardTime * 1000 - Date.now();
+      }
 
       if (difference > 0) {
         const hours = Math.floor(difference / (1000 * 60 * 60));
