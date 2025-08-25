@@ -44,18 +44,14 @@ export default function Register() {
 
   // Detect and save referral code from URL when component mounts
   useEffect(() => {
-    const handleReferralCode = async () => {
-      try {
-        const detectedReferralCode = await detectAndSaveReferralCode();
-        if (detectedReferralCode) {
-          console.log('Referral code detected from URL:', detectedReferralCode);
-        }
-      } catch (error) {
-        console.warn('Error detecting referral code:', error);
+    try {
+      const detectedReferralCode = detectAndSaveReferralCode();
+      if (detectedReferralCode) {
+        console.warn('Referral code detected from URL:', detectedReferralCode);
       }
-    };
-
-    handleReferralCode();
+    } catch (error) {
+      console.warn('Error detecting referral code:', error);
+    }
   }, []);
 
   const {

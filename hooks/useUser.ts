@@ -191,7 +191,7 @@ const useUser = (): UseUserReturn => {
         }
 
         // Get referral code from storage (if any)
-        const referralCode = await getReferralCodeForSignup();
+        const referralCode = getReferralCodeForSignup();
 
         const user = await signUp(
           username,
