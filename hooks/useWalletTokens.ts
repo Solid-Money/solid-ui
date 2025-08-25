@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { useBalance } from 'wagmi';
@@ -9,7 +9,20 @@ import useUser from './useUser';
 
 export const useWalletTokens = () => {
   const { user } = useUser();
-  const { totalUSD, soUSDEthereum, soUSDFuse, ethereumTokens, fuseTokens, tokens, isLoading, refresh } = useBalances();
+  const {
+    totalUSD,
+    soUSDEthereum,
+    soUSDFuse,
+    ethereumTokens,
+    fuseTokens,
+    tokens,
+    isLoading,
+    isRefreshing,
+    isStale,
+    error,
+    refresh,
+    retry
+  } = useBalances();
   const { data: usdcBalance } = useBalance({
     address: user?.safeAddress as Address,
     token: ADDRESSES.ethereum.usdc,
@@ -22,13 +35,21 @@ export const useWalletTokens = () => {
   });
 
   useEffect(() => {
-    refresh();
-  }, [soUSDBalance, usdcBalance, refresh]);
+    if (isStale) {
+      refresh();
+    }
+  }, [soUSDBalance, usdcBalance, isStale, refresh]);
 
-  const hasTokens = ethereumTokens.length > 0 || fuseTokens.length > 0;
+  const hasTokens = useMemo(
+    () => ethereumTokens.length > 0 || fuseTokens.length > 0,
+    [ethereumTokens.length, fuseTokens.length]
+  );
 
-  const uniqueTokens = tokens.filter((token, index, self) =>
-    index === self.findIndex((t) => t.contractTickerSymbol === token.contractTickerSymbol),
+  const uniqueTokens = useMemo(
+    () => tokens.filter((token, index, self) =>
+      index === self.findIndex((t) => t.contractTickerSymbol === token.contractTickerSymbol)
+    ),
+    [tokens]
   );
 
   return {
@@ -39,6 +60,10 @@ export const useWalletTokens = () => {
     fuseTokens,
     uniqueTokens,
     isLoading,
+    isRefreshing,
     hasTokens,
+    error,
+    retry,
+    refresh,
   };
 };

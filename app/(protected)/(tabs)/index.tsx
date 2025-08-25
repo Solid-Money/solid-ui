@@ -44,11 +44,25 @@ export default function Savings() {
   });
 
   const { data: totalAPY } = useTotalAPY();
-  const { isLoading: isLoadingTokens, hasTokens, soUSDEthereum, uniqueTokens } = useWalletTokens();
+  const {
+    isLoading: isLoadingTokens,
+    hasTokens,
+    soUSDEthereum,
+    uniqueTokens,
+    error: tokenError,
+    retry: retryTokens,
+    refresh: refreshTokens
+  } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
   );
+
+  useEffect(() => {
+    if (balance && !isBalanceLoading) {
+      refreshTokens();
+    }
+  }, [balance, isBalanceLoading, refreshTokens]);
 
   const {
     data: userDepositTransactions,
@@ -137,13 +151,27 @@ export default function Savings() {
               Coins
             </Text>
             <View>
-              {isLoadingTokens ? (
-                <WalletInfo text="Loading tokens..." />
-              ) : hasTokens ? (
-                <WalletTabs />
-              ) : (
-                <WalletInfo text="No tokens found" />
-              )}
+              {
+                // TODO: Add error handling
+                // tokenError ? (
+                //   <View className="flex-1 justify-center items-center p-4">
+                //     <WalletInfo text="Failed to load tokens" />
+                //     <Text className="text-sm text-muted-foreground mt-2">{tokenError}</Text>
+                //     <TouchableOpacity
+                //       onPress={retryTokens}
+                //       className="mt-4 px-4 py-2 bg-primary rounded-lg"
+                //     >
+                //       <Text className="text-primary-foreground">Retry</Text>
+                //     </TouchableOpacity>
+                //   </View>
+                // ) : 
+                isLoadingTokens ? (
+                  <WalletInfo text="Loading tokens..." />
+                ) : hasTokens ? (
+                  <WalletTabs />
+                ) : (
+                  <WalletInfo text="No tokens found" />
+                )}
             </View>
           </View>
         </View>

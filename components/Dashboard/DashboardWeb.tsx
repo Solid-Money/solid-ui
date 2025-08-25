@@ -17,14 +17,21 @@ import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 import { DashboardCards } from './DashboardCards';
 import { DashboardCardsNoFunds } from './DashboardCardsNoFunds';
-import { DashboardHeader } from './DashboardHeader';
+import DashboardHeader from './DashboardHeader';
 import { DashboardTokens } from './DashboardTokens';
 
 export function DashboardWeb() {
   const { user } = useUser();
 
   const { data: blockNumber } = useBlockNumber({ watch: true, chainId: mainnet.id });
-  const { totalUSD, isLoading: isTokensLoading, hasTokens } = useWalletTokens();
+  const { 
+    totalUSD, 
+    isLoading: isTokensLoading, 
+    hasTokens, 
+    error: tokenError,
+    retry: retryTokens,
+    isRefreshing 
+  } = useWalletTokens();
   const { data: balance, refetch: refetchBalance } = useFuseVaultBalance(
     user?.safeAddress as Address,
   );
@@ -81,7 +88,15 @@ export function DashboardWeb() {
           ) : (
             <DashboardCardsNoFunds />
           )}
-          {hasTokens && <DashboardTokens isTokensLoading={isTokensLoading} hasTokens={hasTokens} />}
+          {(hasTokens || tokenError) && (
+            <DashboardTokens 
+              isTokensLoading={isTokensLoading} 
+              hasTokens={hasTokens}
+              error={tokenError}
+              onRetry={retryTokens}
+              isRefreshing={isRefreshing}
+            />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

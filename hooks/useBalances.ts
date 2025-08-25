@@ -1,11 +1,11 @@
 import { ADDRESSES } from "@/lib/config";
+import { TokenBalance } from "@/lib/types";
 import { isSoUSDToken } from "@/lib/utils";
 import { publicClient } from "@/lib/wagmi";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { readContract } from "viem/actions";
 import { mainnet } from "viem/chains";
 import useUser from "./useUser";
-import { TokenBalance } from "@/lib/types";
 
 // Blockscout response structure for both Ethereum and Fuse
 interface BlockscoutTokenBalance {
@@ -48,8 +48,11 @@ interface BalanceData {
   fuseTokens: TokenBalance[];
   tokens: TokenBalance[];
   isLoading: boolean;
+  isRefreshing: boolean;
+  isStale: boolean;
   error: string | null;
   refresh: () => void;
+  retry: () => void;
 }
 
 interface BalanceState {
@@ -63,8 +66,16 @@ interface BalanceState {
   tokens: TokenBalance[];
   isLoading: boolean;
   isRefreshing: boolean;
+  isStale: boolean;
   error: string | null;
+  lastFetchTime: number | null;
+  retryCount: number;
 }
+
+const CACHE_DURATION = 30000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+const STALE_TIME = 60000;
 
 // Chain IDs
 const ETHEREUM_CHAIN_ID = 1;
@@ -100,39 +111,75 @@ export const useBalances = (): BalanceData => {
     tokens: [],
     isLoading: false,
     isRefreshing: false,
+    isStale: false,
     error: null,
+    lastFetchTime: null,
+    retryCount: 0,
   });
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const staleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchWithTimeout = async (url: string, timeout = 10000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        headers: { accept: "application/json" },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  };
+
   const fetchBalances = useCallback(
-    async (isLoading = "isLoading") => {
+    async (isLoading = "isLoading", retryAttempt = 0) => {
       if (!user?.safeAddress) {
-        setBalanceData((prev) => ({ ...prev, [isLoading]: false }));
+        setBalanceData((prev) => ({
+          ...prev,
+          [isLoading]: false,
+          error: null,
+          retryCount: 0,
+        }));
         return;
       }
 
-      setBalanceData((prev) => ({ ...prev, [isLoading]: true, error: null }));
+      const now = Date.now();
+      if (
+        balanceData.lastFetchTime &&
+        now - balanceData.lastFetchTime < CACHE_DURATION &&
+        isLoading === "isRefreshing" &&
+        !balanceData.error
+      ) {
+        return;
+      }
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
+      setBalanceData((prev) => ({
+        ...prev,
+        [isLoading]: true,
+        error: null,
+        retryCount: retryAttempt,
+      }));
 
       try {
-        // Make parallel requests to both chains and get soUSD rate
         const [ethereumResponse, fuseResponse, soUSDRate] =
           await Promise.allSettled([
-            // Ethereum via Blockscout
-            fetch(
-              `https://eth.blockscout.com/api/v2/addresses/${user?.safeAddress}/token-balances`,
-              {
-                headers: {
-                  accept: "application/json",
-                },
-              },
+            fetchWithTimeout(
+              `https://eth.blockscout.com/api/v2/addresses/${user?.safeAddress}/token-balances`
             ),
-            // Fuse via Blockscout
-            fetch(
-              `https://explorer.fuse.io/api/v2/addresses/${user?.safeAddress}/token-balances`,
-              {
-                headers: {
-                  accept: "application/json",
-                },
-              },
+            fetchWithTimeout(
+              `https://explorer.fuse.io/api/v2/addresses/${user?.safeAddress}/token-balances`
             ),
             readContract(publicClient(mainnet.id), {
               address: ADDRESSES.ethereum.accountant,
@@ -275,27 +322,95 @@ export const useBalances = (): BalanceData => {
           fuseTokens,
           tokens: allTokens,
           [isLoading]: false,
+          isStale: false,
           error: null,
+          lastFetchTime: Date.now(),
+          retryCount: 0,
         }));
+
+        if (staleTimeoutRef.current) {
+          clearTimeout(staleTimeoutRef.current);
+        }
+        staleTimeoutRef.current = setTimeout(() => {
+          setBalanceData((prev) => ({ ...prev, isStale: true }));
+        }, STALE_TIME);
       } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.name === "AbortError"
+              ? "Request cancelled"
+              : error.message
+            : "Failed to fetch balances";
+
         console.error("Error fetching balances:", error);
-        setBalanceData((prev) => ({
-          ...prev,
-          [isLoading]: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        }));
+
+        if (retryAttempt < MAX_RETRIES && error instanceof Error && error.name !== "AbortError") {
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current);
+          }
+          retryTimeoutRef.current = setTimeout(() => {
+            fetchBalances(isLoading, retryAttempt + 1);
+          }, RETRY_DELAY * Math.pow(2, retryAttempt));
+        } else {
+          setBalanceData((prev) => ({
+            ...prev,
+            [isLoading]: false,
+            error: errorMessage,
+            retryCount: retryAttempt,
+          }));
+        }
       }
     },
-    [user?.safeAddress],
+    [user?.safeAddress, balanceData.lastFetchTime],
   );
 
   const refresh = useCallback(() => {
+    setBalanceData((prev) => ({ ...prev, lastFetchTime: null }));
     fetchBalances("isRefreshing");
+  }, [fetchBalances]);
+
+  const retry = useCallback(() => {
+    setBalanceData((prev) => ({ ...prev, error: null, retryCount: 0 }));
+    fetchBalances("isLoading", 0);
   }, [fetchBalances]);
 
   useEffect(() => {
     fetchBalances();
-  }, [fetchBalances]);
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+      if (staleTimeoutRef.current) {
+        clearTimeout(staleTimeoutRef.current);
+      }
+    };
+  }, [user?.safeAddress]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && balanceData.isStale) {
+        refresh();
+      }
+    };
+
+    const handleOnline = () => {
+      if (balanceData.error) {
+        retry();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [balanceData.isStale, balanceData.error, refresh, retry]);
 
   return {
     totalUSD: balanceData.totalUSD,
@@ -307,7 +422,10 @@ export const useBalances = (): BalanceData => {
     fuseTokens: balanceData.fuseTokens,
     tokens: balanceData.tokens,
     isLoading: balanceData.isLoading,
+    isRefreshing: balanceData.isRefreshing,
+    isStale: balanceData.isStale,
     error: balanceData.error,
     refresh,
+    retry,
   };
 };
