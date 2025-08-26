@@ -171,6 +171,13 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

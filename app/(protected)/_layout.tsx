@@ -41,27 +41,6 @@ export default function ProtectedLayout() {
           headerShown: false,
         }}
       />
-      <Stack.Screen
-        name="settings/index"
-        options={{
-          headerTitle: 'Settings',
-          headerBackTitle: 'Back',
-        }}
-      />
-      <Stack.Screen
-        name="settings/account"
-        options={{
-          headerTitle: 'Account details',
-          headerBackButtonDisplayMode: 'minimal',
-        }}
-      />
-      <Stack.Screen
-        name="settings/email"
-        options={{
-          headerTitle: 'Email',
-          headerBackButtonDisplayMode: 'minimal',
-        }}
-      />
     </Stack>
   );
 }
