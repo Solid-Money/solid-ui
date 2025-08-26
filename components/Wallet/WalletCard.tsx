@@ -24,7 +24,7 @@ const WalletCard = ({ balance, className, tokens }: WalletCardProps) => {
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-2">
           <Text className="text-2xl md:text-3xl font-semibold">${formatNumber(balance)}</Text>
-          <TooltipPopover text="Unstaked soUSD coin balance" />
+          <TooltipPopover text="All coins balance excluding staked soUSD" />
         </View>
         <TooltipPopover
           trigger={
@@ -33,7 +33,7 @@ const WalletCard = ({ balance, className, tokens }: WalletCardProps) => {
             </Pressable>
           }
           content={
-            <Text className="max-w-64">
+            <Text className="max-w-[16.2rem]">
               Displaying top three tokens by balance. Wallet can contain any ERC-20 token in
               Ethereum and Fuse for Swap and Send.
             </Text>

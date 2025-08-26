@@ -47,7 +47,8 @@ export default function Savings() {
   const {
     isLoading: isLoadingTokens,
     hasTokens,
-    soUSDEthereum,
+    totalUSD,
+    soUSDFuse,
     uniqueTokens,
     error: tokenError,
     retry: retryTokens,
@@ -57,6 +58,8 @@ export default function Savings() {
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
   );
+
+  const totalUSDExcludingStaked = totalUSD - soUSDFuse;
 
   useEffect(() => {
     if (balance && !isBalanceLoading) {
@@ -124,7 +127,7 @@ export default function Savings() {
             <View className="flex-row justify-between items-center">
               <View className="flex-row items-center gap-2">
                 <Text className="text-5xl font-semibold">
-                  ${formatNumber(soUSDEthereum + savings)}
+                  ${formatNumber(totalUSDExcludingStaked + savings)}
                 </Text>
                 <TooltipPopover text="Total = Wallet + Savings" />
               </View>
@@ -132,13 +135,13 @@ export default function Savings() {
             </View>
           ) : (
             <DashboardHeaderMobile
-              balance={soUSDEthereum + savings}
+              balance={totalUSDExcludingStaked + savings}
               mode={SavingMode.BALANCE_ONLY}
             />
           )}
           {isScreenMedium ? (
             <View className="md:flex-row gap-4 min-h-44">
-              <WalletCard balance={soUSDEthereum} className="flex-1" tokens={topThreeTokens} />
+              <WalletCard balance={totalUSDExcludingStaked} className="flex-1" tokens={topThreeTokens} />
               <SavingCard savings={savings} className="flex-1" />
             </View>
           ) : (
