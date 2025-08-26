@@ -8,6 +8,7 @@ import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserK
 import { KycMode, type UserInfoFormData, userInfoSchema } from '@/components/UserKyc/types';
 import { createKycLink } from '@/lib/api';
 import { startKycFlow } from '@/lib/utils/kyc';
+import { useKycStore } from '@/store/useKycStore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -15,6 +16,8 @@ import Toast from 'react-native-toast-message';
 export default function UserKycInfo() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { setKycLinkId } = useKycStore();
+
   // redirectUri tells where to resume after KYC.
   const params = useLocalSearchParams<{
     redirectUri?: string;
@@ -67,7 +70,10 @@ export default function UserKycInfo() {
         throw new Error('An error occurred while creating the KYC link');
       }
 
-      startKycFlow({ router, kycLink });
+      // Save KYC link ID to local storage
+      setKycLinkId(kycLink.kycLinkId);
+
+      startKycFlow({ router, kycLink: kycLink.link });
     } catch (error) {
       console.error('KYC link creation failed:', error);
 
@@ -116,6 +122,9 @@ export default function UserKycInfo() {
       endorsements,
     );
 
-    return newKycLink.link;
+    return {
+      kycLinkId: newKycLink.kycLinkId,
+      link: newKycLink.link,
+    };
   }
 }
