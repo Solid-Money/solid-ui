@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
+import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { Controller } from 'react-hook-form';
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -165,7 +165,7 @@ export default function Email() {
               </View>
             )}
 
-            {/* Web buttons - inline with content */}
+            {/* Desktop buttons - inline with content */}
             {isDesktop && (
               <View className="mt-8 gap-3">
                 <Button
