@@ -139,11 +139,9 @@ export function useBatchApproveAndSwap(
 
       // Add swap transaction
       if (swapCalldata) {
-        const calldata = typeof swapCalldata === 'string' ? swapCalldata : String(swapCalldata);
-
         transactions.push({
           to: ALGEBRA_ROUTER,
-          data: calldata,
+          data: swapCalldata,
           value: swapValue,
         });
       }
