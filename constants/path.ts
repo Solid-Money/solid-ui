@@ -42,7 +42,6 @@ export const path: Path = {
   USER_KYC_INFO: '/user-kyc-info',
   KYC: '/kyc',
   BANK_TRANSFER: '/bank-transfer',
-  CARD_ACTIVATE: '/card/activate',
   CARD_TERMS_OF_SERVICE: '/card/bridge_terms_of_service',
   CARD_DETAILS: '/card/details',
   CARD_ACTIVATE_MOBILE: '/card/activate_mobile',
