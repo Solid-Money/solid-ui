@@ -10,6 +10,7 @@ import { useCreateKycLink, useCustomer, useKycLink } from '@/hooks/useCustomer';
 import { createCard } from '@/lib/api';
 import { KycLink, KycStatus, TermsOfServiceStatus } from '@/lib/types';
 import { cn, withRefreshToken } from '@/lib/utils';
+import { Endorsements } from '@/components/BankTransfer/enums';
 
 type Step = {
   title: string;
@@ -138,7 +139,7 @@ export default function ActivateCard() {
           fullName,
           email,
           redirectUri,
-          endorsements: [],
+          endorsements: [Endorsements.CARDS],
         });
       }
 
