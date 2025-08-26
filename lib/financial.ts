@@ -1,43 +1,41 @@
 import { formatUnits } from 'viem';
+import { QueryClient } from '@tanstack/react-query';
 
 import { SavingMode } from './types';
+import { fetchExchangeRate } from '@/hooks/usePreviewDeposit';
 
 export const SECONDS_PER_YEAR = 31_557_600;
 
-export const calculateYield = (
+export const calculateYield = async (
   balance: number,
   apy: number,
   lastTimestamp: number,
   currentTime: number,
-  principal?: number,
   mode: SavingMode = SavingMode.TOTAL,
-): number => {
+  queryClient: QueryClient,
+): Promise<number> => {
   if (balance <= 0 || !isFinite(balance)) return 0;
+  if (mode === SavingMode.BALANCE_ONLY) return balance;
   if (!isFinite(apy) || apy < 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
   if (!lastTimestamp || lastTimestamp <= 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
   if (!currentTime || currentTime <= 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
+
+  const exchangeRate = await fetchExchangeRate(queryClient);
+  const formattedExchangeRate = Number(formatUnits(BigInt(exchangeRate), 6));
+  const calculatedBalance = balance * formattedExchangeRate;
 
   const deltaTime = Math.max(0, currentTime - lastTimestamp);
   if (deltaTime === 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
 
   const timeInYears = deltaTime / SECONDS_PER_YEAR;
 
-  if (principal && principal > 0) {
-    const compoundedValue = principal * Math.pow(1 + apy / 100, timeInYears);
-
-    if (mode === SavingMode.INTEREST_ONLY) {
-      return Math.max(0, compoundedValue - principal);
-    }
-    return compoundedValue;
-  }
-
-  const interestEarned = balance * (apy / 100) * timeInYears;
+  const interestEarned = calculatedBalance * (apy / 100) * timeInYears;
 
   if (mode === SavingMode.INTEREST_ONLY) {
     return Math.max(0, interestEarned);
   }
 
-  return balance + interestEarned;
+  return calculatedBalance + interestEarned;
 };
 
 export const calculateOriginalDepositAmount = (userDepositTransactions: any): number => {

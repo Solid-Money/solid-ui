@@ -13,11 +13,11 @@ import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
+import { useCalculateSavings } from '@/hooks/useFinancial';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
-import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
@@ -74,18 +74,17 @@ export default function Savings() {
     },
   });
 
-  const { originalDepositAmount, firstDepositTimestamp } = useDepositCalculations(
+  const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
     balance,
     lastTimestamp,
   );
 
-  const savings = calculateYield(
+  const { savings } = useCalculateSavings(
     balance ?? 0,
     totalAPY ?? 0,
     firstDepositTimestamp ?? 0,
     Math.floor(Date.now() / 1000),
-    originalDepositAmount,
   );
 
   const topThreeTokens = uniqueTokens.slice(0, 3);

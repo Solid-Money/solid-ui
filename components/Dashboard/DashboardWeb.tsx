@@ -13,12 +13,12 @@ import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
-import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 import { DashboardCards } from './DashboardCards';
 import { DashboardCardsNoFunds } from './DashboardCardsNoFunds';
 import DashboardHeader from './DashboardHeader';
 import { DashboardTokens } from './DashboardTokens';
+import { useCalculateSavings } from '@/hooks/useFinancial';
 
 export function DashboardWeb() {
   const { user } = useUser();
@@ -47,18 +47,17 @@ export function DashboardWeb() {
         address: user?.safeAddress?.toLowerCase() ?? '',
       },
     });
-  const { originalDepositAmount, firstDepositTimestamp } = useDepositCalculations(
+  const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
     balance,
     lastTimestamp,
   );
 
-  const savings = calculateYield(
+  const { savings } = useCalculateSavings(
     balance ?? 0,
     totalAPY ?? 0,
     firstDepositTimestamp ?? 0,
     Math.floor(Date.now() / 1000),
-    originalDepositAmount,
     SavingMode.INTEREST_ONLY,
   );
 
@@ -79,7 +78,6 @@ export function DashboardWeb() {
             balance={balance ?? 0}
             totalAPY={totalAPY ?? 0}
             firstDepositTimestamp={firstDepositTimestamp ?? 0}
-            originalDepositAmount={originalDepositAmount}
             hasTokens={hasTokens}
           />
 

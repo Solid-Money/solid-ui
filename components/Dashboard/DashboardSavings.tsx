@@ -19,7 +19,6 @@ const DashboardSavings = ({
   balance,
   totalAPY,
   firstDepositTimestamp,
-  originalDepositAmount,
   mode = SavingMode.TOTAL,
   tooltipText,
 }: DashboardSavingsProps) => {
@@ -31,7 +30,6 @@ const DashboardSavings = ({
         balance={balance}
         apy={totalAPY ?? 0}
         lastTimestamp={firstDepositTimestamp ?? 0}
-        principal={originalDepositAmount ?? 0}
         mode={mode}
         classNames={{
           wrapper: 'text-foreground',
