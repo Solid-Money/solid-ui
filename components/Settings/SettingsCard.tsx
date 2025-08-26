@@ -35,14 +35,26 @@ const CardContainer = ({ link, onPress, children }: CardContainerProps) => {
     }
   };
 
-  const pressableClass = "active:opacity-70 transition-opacity";
+  const pressableClass = 'active:opacity-70 transition-opacity';
 
   if (isExternalUrl) {
-    return <Pressable onPress={handleExternalPress} className={pressableClass}>{children}</Pressable>;
+    return (
+      <Pressable onPress={handleExternalPress} className={pressableClass}>
+        {children}
+      </Pressable>
+    );
   } else if (link) {
-    return <Link href={link} className={pressableClass}>{children}</Link>;
+    return (
+      <Link href={link} className={pressableClass}>
+        {children}
+      </Link>
+    );
   } else if (onPress) {
-    return <Pressable onPress={onPress} className={pressableClass}>{children}</Pressable>;
+    return (
+      <Pressable onPress={onPress} className={pressableClass}>
+        {children}
+      </Pressable>
+    );
   } else {
     return <View>{children}</View>;
   }
