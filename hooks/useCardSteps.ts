@@ -1,9 +1,10 @@
-import { KycMode } from '@/app/(protected)/(tabs)/user-kyc-info';
 import { path } from '@/constants/path';
 import { KycStatus } from '@/lib/types';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCustomer } from './useCustomer';
+import { KycMode } from '@/components/UserKyc';
+import { Endorsements } from '@/components/BankTransfer/enums';
 
 interface Step {
   id: number;
@@ -30,13 +31,14 @@ export function useCardSteps() {
   const handleProceedToKyc = useCallback(async () => {
     const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
     const redirectUri = `${baseUrl}${path.CARD_ACTIVATE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
-    router.push({
-      pathname: path.USER_KYC_INFO,
-      params: {
-        redirectUri,
-        kycMode: KycMode.CARD,
-      },
-    } as any);
+
+    const params = new URLSearchParams({
+      kycMode: KycMode.BANK_TRANSFER,
+      endorsement: Endorsements.CARDS,
+      redirectUri,
+    }).toString();
+
+    router.push(`/user-kyc-info?${params}`);
   }, [router]);
 
   const handleActivateCard = useCallback(async () => {
@@ -110,8 +112,8 @@ export function useCardSteps() {
 
   // Check if a step's button should be enabled
   const isStepButtonEnabled = (_stepIndex: number) => {
-    return true;
-    // return steps.slice(0, stepIndex).every((step) => step.completed);
+    // return true;
+    return steps.slice(0, _stepIndex).every(step => step.completed);
   };
 
   const toggleStep = (stepId: number) => {
