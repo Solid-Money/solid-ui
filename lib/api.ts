@@ -18,11 +18,12 @@ import {
   BridgeTransaction,
   BridgeTransferResponse,
   CardResponse,
-  CardStatus,
   CardStatusResponse,
+  CustomerFromBridgeResponse,
   Deposit,
   KycLink,
   KycLinkForExistingCustomer,
+  KycLinkFromBridgeResponse,
   LayerZeroTransaction,
   Points,
   TokenPriceUsd,
@@ -235,6 +236,28 @@ export const getKycLink = async (kycLinkId: string): Promise<KycLink> => {
   return response.json();
 };
 
+export const getKycLinkFromBridge = async (
+  kycLinkId: string,
+): Promise<KycLinkFromBridgeResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/kyc-link-from-bridge/${kycLinkId}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+// The backend retrieves the customer by querying the database
 export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
   const jwt = getJWTToken();
 
@@ -245,6 +268,28 @@ export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+// The backend retrieves the customer by calling the Bridge API
+export const getCustomerFromBridge = async (): Promise<CustomerFromBridgeResponse | null> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge-customer/get-customer-from-bridge`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
 
   if (response.status === 404) return null;
 
@@ -336,57 +381,19 @@ export const getCardStatus = async (): Promise<CardStatusResponse> => {
 };
 
 export const getCardDetails = async (): Promise<CardResponse> => {
-  return {
-    id: '123',
-    client_reference_id: '123',
-    customer_id: '123',
-    card_image_url: 'https://www.google.com',
-    status: CardStatus.ACTIVE,
-    status_reason: '123',
-    balances: {
-      available: {
-        amount: '123.12',
-        currency: 'USD',
-      },
-      hold: {
-        amount: '100',
-        currency: 'USD',
-      },
-    },
-    card_details: {
-      last_4: '1234',
-      expiry: '12/2025',
-      bin: '123456',
-    },
-    freezes: [],
-    crypto_account: {
-      address: '0x1234567890',
-      type: 'ERC-20',
-    },
-    funding_instructions: {
-      currency: 'USD',
-      chain: 'ETH',
-      address: '0x1234567890',
-      memo: '123',
-    },
-  };
+  const jwt = getJWTToken();
 
-  // const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/details`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
 
-  // const response = await fetch(
-  // 	`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/details`,
-  // 	{
-  // 		credentials: "include",
-  // 		headers: {
-  // 			...getPlatformHeaders(),
-  // 			...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-  // 		},
-  // 	},
-  // );
+  if (!response.ok) throw response;
 
-  // if (!response.ok) throw response;
-
-  // return response.json();
+  return response.json();
 };
 
 export const fetchInternalTransactions = async (
@@ -528,7 +535,9 @@ export const bridgeDeposit = async (
   return response.json();
 };
 
-export const bridgeDepositTransactions = async (safeAddress: string): Promise<BridgeTransaction[]> => {
+export const bridgeDepositTransactions = async (
+  safeAddress: string,
+): Promise<BridgeTransaction[]> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
@@ -627,9 +636,7 @@ export const verifyGenericOtp = async (otpId: string, otpCode: string, email: st
   return data;
 };
 
-export const createDeposit = async (
-  deposit: Deposit,
-): Promise<{ transactionHash: string }> => {
+export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash: string }> => {
   const jwt = getJWTToken();
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit`, {

@@ -105,8 +105,22 @@ export type TokenPriceUsd = {
 };
 
 export type KycLink = {
+  kycLinkId: string;
   link: string;
   tosLink: string;
+};
+
+export type KycLinkFromBridgeResponse = {
+  id: string;
+  full_name: string;
+  email: string;
+  type: string;
+  kyc_link: string;
+  tos_link: string;
+  kyc_status: string;
+  rejection_reasons: string[];
+  tos_status: string;
+  customer_id: string;
 };
 
 export type KycLinkForExistingCustomer = {
@@ -119,6 +133,20 @@ export type BridgeCustomerResponse = {
   tosStatus: TermsOfServiceStatus;
   kycLinkId: string;
 };
+
+export interface CustomerFromBridgeResponse {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  status: string;
+  type: string;
+  has_accepted_terms_of_service: boolean;
+  rejection_reasons: string[];
+  requirements_due: string[];
+  future_requirements_due: string[];
+  endorsements: BridgeCustomerEndorsement[];
+}
 
 export type BridgeCustomerEndorsement = {
   name: string;
