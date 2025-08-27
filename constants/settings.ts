@@ -31,7 +31,7 @@ const supports: Support[] = [
   },
   {
     title: 'Legal',
-    link: 'https://docs.solid.xyz/privacy-policy',
+    link: 'https://docs.solid.xyz/terms-and-conditions',
   },
 ];
 
