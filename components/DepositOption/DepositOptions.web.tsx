@@ -1,21 +1,18 @@
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
+import { isProduction } from '@/lib/config';
 import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useRouter } from 'expo-router';
 import { CreditCard, Landmark, Wallet } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
 import DepositOption from './DepositOption';
-import { isProduction } from '@/lib/config';
 
 const DepositOptions = () => {
   const activeAccount = useActiveAccount();
   const { connect } = useConnectModal();
   const { setModal } = useDepositStore();
-  const router = useRouter();
   const address = activeAccount?.address;
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -55,10 +52,8 @@ const DepositOptions = () => {
   }, [isWalletOpen, connect, address, setModal]);
 
   const handleBankDepositPress = useCallback(async () => {
-    setModal(DEPOSIT_MODAL.CLOSE);
-
-    router.push(path.BANK_TRANSFER);
-  }, [router, setModal]);
+    setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
+  }, [setModal]);
 
   const DEPOSIT_OPTIONS = [
     {

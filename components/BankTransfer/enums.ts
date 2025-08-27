@@ -10,7 +10,6 @@ export enum BridgeTransferCryptoCurrency {
 }
 
 export enum BridgeTransferMethod {
-  ACH = 'ach',
   ACH_PUSH = 'ach_push',
   WIRE = 'wire',
   SEPA = 'sepa',
@@ -29,7 +28,6 @@ export const CRYPTO_LABEL: Record<BridgeTransferCryptoCurrency, string> = {
 };
 
 export const METHOD_LABEL: Record<BridgeTransferMethod, string> = {
-  [BridgeTransferMethod.ACH]: 'ACH',
   [BridgeTransferMethod.ACH_PUSH]: 'ACH Push',
   [BridgeTransferMethod.WIRE]: 'Wire',
   [BridgeTransferMethod.SEPA]: 'SEPA',
