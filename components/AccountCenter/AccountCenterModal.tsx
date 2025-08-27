@@ -4,16 +4,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
+import { useState } from 'react';
 import { AccountCenter, AccountCenterFooter, AccountCenterTitle, AccountCenterTrigger } from '.';
 
 const AccountCenterModal = () => {
+  const [open, setOpen] = useState(false);
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <AccountCenterTrigger />
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <AccountCenterTrigger onModalOpen={() => setOpen(true)} />
       <DialogContent className="md:gap-8 md:max-w-sm">
         <DialogHeader>
           <DialogTitle>

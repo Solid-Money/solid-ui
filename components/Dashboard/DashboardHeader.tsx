@@ -9,7 +9,6 @@ interface DashboardHeaderProps {
   balance: number;
   totalAPY?: number;
   firstDepositTimestamp?: number;
-  originalDepositAmount?: number;
   mode?: SavingMode;
   hasTokens: boolean;
   tooltipText?: string;
@@ -19,7 +18,6 @@ export default function DashboardHeader({
   balance,
   totalAPY,
   firstDepositTimestamp,
-  originalDepositAmount,
   mode,
   hasTokens,
   tooltipText,
@@ -31,7 +29,6 @@ export default function DashboardHeader({
           balance={balance}
           totalAPY={totalAPY}
           firstDepositTimestamp={firstDepositTimestamp}
-          originalDepositAmount={originalDepositAmount}
           mode={mode}
           tooltipText={tooltipText}
         />

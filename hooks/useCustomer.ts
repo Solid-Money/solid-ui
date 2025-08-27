@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { createKycLink, getCustomer, getKycLink } from '@/lib/api';
+import { createKycLink, getCustomerFromBridge, getKycLink, getKycLinkFromBridge } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 
 const CUSTOMER = 'customer';
@@ -8,7 +8,7 @@ const CUSTOMER = 'customer';
 export const useCustomer = () => {
   return useQuery({
     queryKey: [CUSTOMER],
-    queryFn: () => withRefreshToken(() => getCustomer()),
+    queryFn: () => withRefreshToken(() => getCustomerFromBridge()),
     retry: false,
   });
 };
@@ -17,6 +17,15 @@ export const useKycLink = (kycLinkId?: string) => {
   return useQuery({
     queryKey: [CUSTOMER, 'kycLink', kycLinkId],
     queryFn: () => withRefreshToken(() => getKycLink(kycLinkId!)),
+    enabled: !!kycLinkId,
+    retry: false,
+  });
+};
+
+export const useKycLinkFromBridge = (kycLinkId?: string) => {
+  return useQuery({
+    queryKey: [CUSTOMER, 'kycLinkFromBridge', kycLinkId],
+    queryFn: () => withRefreshToken(() => getKycLinkFromBridge(kycLinkId!)),
     enabled: !!kycLinkId,
     retry: false,
   });

@@ -1,16 +1,20 @@
 import { useRouter } from 'expo-router';
+import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Alert, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useDimension } from '@/hooks/useDimension';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
 import useUser from '@/hooks/useUser';
 
 export default function Email() {
   const { user } = useUser();
   const router = useRouter();
+  const { isDesktop } = useDimension();
 
   const {
     step,
@@ -42,12 +46,38 @@ export default function Email() {
 
   return (
     <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom']}
+      className="bg-black text-foreground flex-1"
+      edges={['right', 'left', 'bottom', 'top']}
     >
       <View className="flex-1">
         <ScrollView className="flex-1">
-          <View className="w-full max-w-7xl mx-auto px-4 py-8">
+          {/* Desktop Navbar */}
+          {isDesktop && <Navbar />}
+
+          {/* Mobile Header */}
+          {!isDesktop && (
+            <View className="flex-row items-center justify-between px-4 py-3">
+              <Pressable onPress={() => router.back()} className="p-2">
+                <ChevronLeft size={24} color="#ffffff" />
+              </Pressable>
+              <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Email</Text>
+            </View>
+          )}
+
+          {/* Desktop Header */}
+          {isDesktop && (
+            <View className="max-w-[512px] mx-auto w-full px-4 pt-8 pb-8">
+              <View className="flex-row items-center justify-between mb-8">
+                <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+                  <ArrowLeft color="white" />
+                </Pressable>
+                <Text className="text-3xl font-semibold text-white">Email</Text>
+                <View className="w-6" />
+              </View>
+            </View>
+          )}
+
+          <View className={`w-full ${isDesktop ? 'max-w-[512px]' : 'max-w-7xl'} mx-auto px-4 py-4`}>
             <Text className="text-sm text-muted-foreground font-medium mb-8">
               {step === 'existing'
                 ? 'Your current email address is used for notifications and wallet recovery.'
@@ -134,37 +164,72 @@ export default function Email() {
                 </View>
               </View>
             )}
+
+            {/* Desktop buttons - inline with content */}
+            {isDesktop && (
+              <View className="mt-8 gap-3">
+                <Button
+                  variant="brand"
+                  className="rounded-2xl h-12 w-auto px-8"
+                  onPress={
+                    step === 'existing'
+                      ? handleChangeEmail
+                      : step === 'email'
+                        ? emailForm.handleSubmit(handleSendOtp)
+                        : otpForm.handleSubmit(handleVerifyOtp)
+                  }
+                  disabled={isFormDisabled()}
+                >
+                  <Text className="text-lg font-semibold">{getButtonText()}</Text>
+                  {isLoading && <ActivityIndicator color="white" />}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="rounded-2xl h-12 w-auto px-8"
+                  onPress={handleBack}
+                  disabled={isLoading}
+                >
+                  <Text className="text-muted-foreground font-semibold">
+                    {step === 'existing' ? 'Back' : step === 'otp' ? 'Back to Email' : 'Cancel'}
+                  </Text>
+                </Button>
+              </View>
+            )}
           </View>
         </ScrollView>
 
-        <View className="px-4 pb-8 gap-3">
-          <Button
-            variant="brand"
-            className="rounded-2xl h-12"
-            onPress={
-              step === 'existing'
-                ? handleChangeEmail
-                : step === 'email'
-                  ? emailForm.handleSubmit(handleSendOtp)
-                  : otpForm.handleSubmit(handleVerifyOtp)
-            }
-            disabled={isFormDisabled()}
-          >
-            <Text className="text-lg font-semibold">{getButtonText()}</Text>
-            {isLoading && <ActivityIndicator color="white" />}
-          </Button>
+        {/* Mobile buttons - at bottom */}
+        {!isDesktop && (
+          <View className="px-4 pb-8 gap-3">
+            <Button
+              variant="brand"
+              className="rounded-2xl h-12"
+              onPress={
+                step === 'existing'
+                  ? handleChangeEmail
+                  : step === 'email'
+                    ? emailForm.handleSubmit(handleSendOtp)
+                    : otpForm.handleSubmit(handleVerifyOtp)
+              }
+              disabled={isFormDisabled()}
+            >
+              <Text className="text-lg font-semibold">{getButtonText()}</Text>
+              {isLoading && <ActivityIndicator color="white" />}
+            </Button>
 
-          <Button
-            variant="outline"
-            className="rounded-2xl h-12"
-            onPress={handleBack}
-            disabled={isLoading}
-          >
-            <Text className="text-muted-foreground font-semibold">
-              {step === 'existing' ? 'Back' : step === 'otp' ? 'Back to Email' : 'Cancel'}
-            </Text>
-          </Button>
-        </View>
+            <Button
+              variant="outline"
+              className="rounded-2xl h-12"
+              onPress={handleBack}
+              disabled={isLoading}
+            >
+              <Text className="text-muted-foreground font-semibold">
+                {step === 'existing' ? 'Back' : step === 'otp' ? 'Back to Email' : 'Cancel'}
+              </Text>
+            </Button>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );

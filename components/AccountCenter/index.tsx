@@ -1,10 +1,12 @@
+import { router } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import UserAvatar from '@/assets/images/user';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress, eclipseUsername } from '@/lib/utils';
 
@@ -22,29 +24,35 @@ const AccountCenter = () => {
   );
 };
 
-const AccountCenterTrigger = (props: any) => {
+const AccountCenterTrigger = ({ onModalOpen }: { onModalOpen?: () => void }) => {
   const { user } = useUser();
 
-  let triggerButton = (
-    <Button size="sm" className="w-full rounded-full animate-pulse" disabled {...props} />
-  );
-  if (user?.safeAddress) {
-    triggerButton = (
-      <Button
-        size="sm"
-        className="flex-row justify-between gap-2 bg-button-secondary rounded-full border-0 min-w-0"
-        {...props}
-      >
-        <UserAvatar />
-        <Text className="hidden md:block text-white font-medium text-sm">
-          {eclipseUsername(user.username)}
-        </Text>
-        <ChevronDown size={14} color="white" />
-      </Button>
-    );
+  const handleAvatarPress = () => {
+    router.push(path.SETTINGS);
+  };
+
+  const handleUsernamePress = () => {
+    onModalOpen?.();
+  };
+
+  if (!user?.safeAddress) {
+    return <Button size="sm" className="w-full rounded-full animate-pulse" disabled />;
   }
 
-  return triggerButton;
+  return (
+    <Pressable
+      onPress={handleUsernamePress}
+      className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-transform"
+    >
+      <Pressable onPress={handleAvatarPress} className="active:scale-95 transition-transform">
+        <UserAvatar />
+      </Pressable>
+      <Text className="hidden md:block text-white font-medium text-sm flex-1 text-center">
+        {eclipseUsername(user.username)}
+      </Text>
+      <ChevronDown size={14} color="white" />
+    </Pressable>
+  );
 };
 
 const AccountCenterTitle = () => {

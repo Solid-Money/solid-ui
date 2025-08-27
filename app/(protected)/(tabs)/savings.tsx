@@ -15,11 +15,11 @@ import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
+import { useCalculateSavings } from '@/hooks/useFinancial';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
-import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,10 +61,18 @@ export default function Savings() {
     },
   });
 
-  const { originalDepositAmount, firstDepositTimestamp } = useDepositCalculations(
+  const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
     balance,
     lastTimestamp,
+  );
+
+  const { savings } = useCalculateSavings(
+    balance ?? 0,
+    totalAPY ?? 0,
+    firstDepositTimestamp ?? 0,
+    Math.floor(Date.now() / 1000),
+    SavingMode.INTEREST_ONLY,
   );
 
   useEffect(() => {
@@ -127,7 +135,6 @@ export default function Savings() {
                       balance={balance ?? 0}
                       apy={totalAPY ?? 0}
                       lastTimestamp={firstDepositTimestamp ?? 0}
-                      principal={originalDepositAmount}
                       classNames={{
                         wrapper: 'text-foreground',
                         decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
@@ -160,7 +167,6 @@ export default function Savings() {
                       balance={balance ?? 0}
                       apy={totalAPY ?? 0}
                       lastTimestamp={firstDepositTimestamp ?? 0}
-                      principal={originalDepositAmount}
                       mode={SavingMode.INTEREST_ONLY}
                       classNames={{
                         decimalSeparator: 'md:text-xl font-medium',
@@ -213,14 +219,7 @@ export default function Savings() {
                   {isBalanceLoading ? (
                     <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
                   ) : (
-                    `$${calculateYield(
-                      originalDepositAmount,
-                      totalAPY ?? 0,
-                      firstDepositTimestamp ?? 0,
-                      Math.floor(Date.now() / 1000),
-                      originalDepositAmount,
-                      SavingMode.INTEREST_ONLY,
-                    ).toFixed(6)}`
+                    `$${savings ? formatNumber(savings, 6) : 0}`
                   )}
                 </Text>
               </View>

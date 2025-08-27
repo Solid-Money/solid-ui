@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { TextStyle, View } from 'react-native';
 import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
@@ -21,7 +22,6 @@ interface SavingCountUpProps {
   balance: number;
   apy: number;
   lastTimestamp: number;
-  principal?: number;
   mode?: SavingMode;
   decimalPlaces?: number;
   classNames?: ClassNames;
@@ -34,20 +34,26 @@ const SavingCountUp = ({
   balance,
   apy,
   lastTimestamp,
-  principal,
   mode = SavingMode.TOTAL,
   decimalPlaces = 6,
   classNames,
   styles,
 }: SavingCountUpProps) => {
   const [liveYield, setLiveYield] = useState<number>(0);
+  const queryClient = useQueryClient();
 
-  const updateYield = useCallback(() => {
+  const updateYield = useCallback(async () => {
     const now = Math.floor(Date.now() / 1000);
-    if (mode === SavingMode.BALANCE_ONLY) return setLiveYield(balance);
-    const calculatedYield = calculateYield(balance, apy, lastTimestamp, now, principal, mode);
+    const calculatedYield = await calculateYield(
+      balance,
+      apy,
+      lastTimestamp,
+      now,
+      mode,
+      queryClient,
+    );
     setLiveYield(calculatedYield);
-  }, [balance, apy, lastTimestamp, principal, mode]);
+  }, [balance, apy, lastTimestamp, mode, queryClient]);
 
   useEffect(() => {
     updateYield();

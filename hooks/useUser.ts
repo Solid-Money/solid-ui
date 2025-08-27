@@ -11,6 +11,7 @@ import { Status, User } from '@/lib/types';
 import { getNonce, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { publicClient, rpcUrls } from '@/lib/wagmi';
+import { useKycStore } from '@/store/useKycStore';
 import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useQueryClient } from '@tanstack/react-query';
@@ -55,6 +56,8 @@ const useUser = (): UseUserReturn => {
     setSignupInfo,
     setLoginInfo,
   } = useUserStore();
+
+  const { clearKycLinkId } = useKycStore();
 
   const user = useMemo(() => users.find((user: User) => user.selected), [users]);
 
@@ -346,28 +349,32 @@ const useUser = (): UseUserReturn => {
 
   const handleLogout = useCallback(() => {
     unselectUser();
+    clearKycLinkId(); // Clear KYC data on logout
     router.replace(path.WELCOME);
-  }, [unselectUser, router]);
+  }, [unselectUser, clearKycLinkId, router]);
 
   const handleSelectUser = useCallback(
     (username: string) => {
       selectUser(username);
+      clearKycLinkId(); // Clear KYC data when switching users
       router.replace(path.HOME);
     },
-    [selectUser, router],
+    [selectUser, clearKycLinkId, router],
   );
 
   const handleRemoveUsers = useCallback(() => {
     removeUsers();
+    clearKycLinkId(); // Clear KYC data when removing all users
     router.replace(path.REGISTER);
-  }, [removeUsers, router]);
+  }, [removeUsers, clearKycLinkId, router]);
 
   const handleSessionExpired = useCallback(() => {
+    clearKycLinkId(); // Clear KYC data when session expires
     router.replace({
       pathname: path.REGISTER,
       params: { session: 'expired' },
     });
-  }, [router]);
+  }, [clearKycLinkId, router]);
 
   useEffect(() => {
     setGlobalLogoutHandler(handleSessionExpired);

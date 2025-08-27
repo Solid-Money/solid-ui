@@ -1,9 +1,14 @@
-import { KycMode } from '@/app/(protected)/(tabs)/user-kyc-info';
+import { Endorsements } from '@/components/BankTransfer/enums';
+import { KycMode } from '@/components/UserKyc';
 import { path } from '@/constants/path';
+import { createCard } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
+import { useKycStore } from '@/store/useKycStore';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useCustomer } from './useCustomer';
+import { useKycLinkFromBridge } from './useCustomer';
+import Toast from 'react-native-toast-message';
 
 interface Step {
   id: number;
@@ -21,38 +26,65 @@ export function useCardSteps() {
   const [isLoading, setIsLoading] = useState(false);
 
   const router = useRouter();
+  const { kycLinkId } = useKycStore();
 
-  // Use TanStack Query for customer data
-  const { data: customer, refetch: refetchCustomer, isRefetching } = useCustomer();
+  console.log('kycLinkId', kycLinkId);
 
-  const kycStatus = customer?.kycStatus || KycStatus.NOT_STARTED;
+  // Get KYC link status if KYC link ID exists
+  const { data: kycLink } = useKycLinkFromBridge(kycLinkId || undefined);
+
+  console.log('kycLink', kycLink);
+
+  // Determine KYC status from multiple sources
+  const kycStatus = useMemo(() => {
+    // If we have a KYC link, check its status first
+    if (kycLink) {
+      // KYC link exists, but we need to determine status based on the link data
+      // This might need adjustment based on what the API returns
+      return kycLink?.kyc_status || KycStatus.UNDER_REVIEW;
+    }
+
+    return KycStatus.NOT_STARTED;
+  }, [kycLink]);
+
+  console.log('kycStatus', kycStatus);
 
   const handleProceedToKyc = useCallback(async () => {
     const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
-    const redirectUri = `${baseUrl}${path.CARD_ACTIVATE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
-    router.push({
-      pathname: path.USER_KYC_INFO,
-      params: {
-        redirectUri,
-        kycMode: KycMode.CARD,
-      },
-    } as any);
+    const redirectUri = `${baseUrl}${path.CARD_ACTIVATE_MOBILE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
+
+    const params = new URLSearchParams({
+      kycMode: KycMode.CARD,
+      endorsement: Endorsements.CARDS,
+      redirectUri,
+    }).toString();
+
+    router.push(`/user-kyc-info?${params}`);
   }, [router]);
 
   const handleActivateCard = useCallback(async () => {
     try {
       setIsLoading(true);
-      // const card = await withRefreshToken(() => createCard());
+      const card = await withRefreshToken(() => createCard());
 
-      // if (!card) throw new Error("Failed to create card");
+      if (!card) throw new Error('Failed to create card');
 
-      // console.log("Card created:", card);
+      console.warn('Card created:', card);
       setCardActivated(true);
 
       // Navigate to card details
       router.replace(path.CARD_DETAILS);
     } catch (error) {
       console.error('Error activating card:', error);
+      // Show error toast
+      Toast.show({
+        type: 'error',
+        text1: 'Error activating card',
+        text2: 'Please try again',
+        props: {
+          badgeText: '',
+        },
+      });
     } finally {
       setIsLoading(false);
     }
@@ -110,8 +142,8 @@ export function useCardSteps() {
 
   // Check if a step's button should be enabled
   const isStepButtonEnabled = (_stepIndex: number) => {
-    return true;
-    // return steps.slice(0, stepIndex).every((step) => step.completed);
+    // return true;
+    return steps.slice(0, _stepIndex).every(step => step.completed);
   };
 
   const toggleStep = (stepId: number) => {
@@ -124,7 +156,5 @@ export function useCardSteps() {
     isStepButtonEnabled,
     toggleStep,
     isLoading,
-    refetchCustomer,
-    isRefetching,
   };
 }

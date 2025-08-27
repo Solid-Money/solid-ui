@@ -1,14 +1,17 @@
 import { Href } from 'expo-router';
+import React from 'react';
 import { Platform } from 'react-native';
 
 interface Account {
   title: string;
   description: string;
+  icon?: React.ReactNode;
   link: Href;
 }
 
 interface Support {
   title: string;
+  icon?: React.ReactNode;
   link: Href;
 }
 
@@ -16,11 +19,7 @@ export const accounts: Account[] = [
   {
     title: 'Account details',
     description: 'Name & email',
-    link: '/settings/account',
-  },
-  {
-    title: 'Wallet recovery',
-    description: 'Secure your account',
+    // description: 'Your profile',
     link: '/settings/account',
   },
 ];
@@ -28,15 +27,11 @@ export const accounts: Account[] = [
 const supports: Support[] = [
   {
     title: 'Help & Support',
-    link: '/settings/account',
+    link: '/settings/help',
   },
   {
     title: 'Legal',
-    link: '/settings/account',
-  },
-  {
-    title: 'Rate us',
-    link: '/settings/account',
+    link: 'https://docs.solid.xyz/terms-and-conditions',
   },
 ];
 
