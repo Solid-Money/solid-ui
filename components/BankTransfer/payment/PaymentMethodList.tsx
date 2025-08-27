@@ -1,4 +1,3 @@
-import { KycMode } from '@/components/UserKyc';
 import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
@@ -8,6 +7,8 @@ import {
   METHOD_LABEL,
 } from '@/components/BankTransfer/enums';
 import { Text } from '@/components/ui/text';
+import { KycMode } from '@/components/UserKyc';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useCustomer } from '@/hooks/useCustomer';
 import {
   createBridgeTransfer,
@@ -15,6 +16,7 @@ import {
   getKycLinkForExistingCustomer,
 } from '@/lib/api';
 import { startKycFlow } from '@/lib/utils/kyc';
+import { useDepositStore } from '@/store/useDepositStore';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -25,20 +27,21 @@ type Props = {
   crypto?: BridgeTransferCryptoCurrency;
   fiatAmount?: string;
   cryptoAmount?: string;
+  isModal?: boolean;
 };
 
 const ALL_METHODS: BridgeTransferMethod[] = [
-  BridgeTransferMethod.ACH,
   BridgeTransferMethod.ACH_PUSH,
   BridgeTransferMethod.WIRE,
   BridgeTransferMethod.SEPA,
   BridgeTransferMethod.SPEI,
 ];
 
-export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
+export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }: Props) {
   const normalizedFiat = (fiat || '') as BridgeTransferFiatCurrency;
   const { data: customer } = useCustomer();
   const [loadingMethod, setLoadingMethod] = useState<BridgeTransferMethod | null>(null);
+  const { setBankTransferData, setModal } = useDepositStore();
 
   let filtered: BridgeTransferMethod[] = ALL_METHODS;
 
@@ -47,7 +50,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
   } else if (normalizedFiat === BridgeTransferFiatCurrency.MXN) {
     filtered = [BridgeTransferMethod.SPEI];
   } else if (normalizedFiat === BridgeTransferFiatCurrency.USD) {
-    filtered = [BridgeTransferMethod.ACH, BridgeTransferMethod.ACH_PUSH, BridgeTransferMethod.WIRE];
+    filtered = [BridgeTransferMethod.ACH_PUSH, BridgeTransferMethod.WIRE];
   }
 
   return (
@@ -73,8 +76,13 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
     try {
       setLoadingMethod(method);
       if (!customer) {
+        // Store the method selection for modal mode before KYC
+        if (isModal) {
+          setBankTransferData({ method });
+        }
+
         const redirectUri = buildResumeRedirectUri({
-          pathname: '/bank-transfer/payment-method',
+          pathname: isModal ? '/' : '/bank-transfer/payment-method',
           params: {
             fiat: normalizedFiat,
             crypto: String(crypto ?? ''),
@@ -125,20 +133,30 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount }: Props) {
       cryptoCurrency: String(crypto ?? ''),
     });
 
-    router.push({
-      pathname: '/bank-transfer/preview',
-      params: {
-        instructions: JSON.stringify(sourceDepositInstructions),
-      },
-    });
+    if (isModal) {
+      setBankTransferData({ instructions: sourceDepositInstructions });
+      setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
+    } else {
+      router.push({
+        pathname: '/bank-transfer/preview',
+        params: {
+          instructions: JSON.stringify(sourceDepositInstructions),
+        },
+      });
+    }
   }
 
   async function startKycFlowForExistingCustomer(
     method: BridgeTransferMethod,
     requiredEndorsement: Endorsements,
   ) {
+    // Store the method selection for modal mode before KYC
+    if (isModal) {
+      setBankTransferData({ method });
+    }
+
     const redirectUrl = buildResumeRedirectUri({
-      pathname: '/bank-transfer/payment-method',
+      pathname: isModal ? '/' : '/bank-transfer/payment-method',
       params: {
         fiat: normalizedFiat,
         crypto: String(crypto ?? ''),

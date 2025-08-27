@@ -1,19 +1,35 @@
+import { mainnet } from 'viem/chains';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { mainnet } from 'viem/chains';
 
+import {
+  BridgeTransferCryptoCurrency,
+  BridgeTransferFiatCurrency,
+} from '@/components/BankTransfer/enums';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { DepositModal, TransactionStatusModal } from '@/lib/types';
-import { DEPOSIT_MODAL } from '@/constants/modals';
+
+interface BankTransferData {
+  fiatAmount?: string;
+  cryptoAmount?: string;
+  fiat?: BridgeTransferFiatCurrency;
+  crypto?: BridgeTransferCryptoCurrency;
+  method?: string;
+  instructions?: any;
+}
 
 interface DepositState {
   currentModal: DepositModal;
   previousModal: DepositModal;
   transaction: TransactionStatusModal;
   srcChainId: number;
+  bankTransfer: BankTransferData;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
+  setBankTransferData: (data: Partial<BankTransferData>) => void;
+  clearBankTransferData: () => void;
   setSrcChainId: (srcChainId: number) => void;
 }
 
@@ -24,6 +40,7 @@ export const useDepositStore = create<DepositState>()(
       previousModal: DEPOSIT_MODAL.CLOSE,
       transaction: {},
       srcChainId: mainnet.id,
+      bankTransfer: {},
 
       setModal: modal =>
         set({
@@ -31,6 +48,8 @@ export const useDepositStore = create<DepositState>()(
           currentModal: modal,
         }),
       setTransaction: transaction => set({ transaction }),
+      setBankTransferData: data => set({ bankTransfer: { ...get().bankTransfer, ...data } }),
+      clearBankTransferData: () => set({ bankTransfer: {} }),
       setSrcChainId: srcChainId => set({ srcChainId }),
     }),
     {
@@ -40,6 +59,7 @@ export const useDepositStore = create<DepositState>()(
       partialize: state => ({
         transaction: state.transaction,
         srcChainId: state.srcChainId,
+        bankTransfer: state.bankTransfer,
       }),
       // Ignore any legacy stored modal fields
       merge: (persisted, current) => {

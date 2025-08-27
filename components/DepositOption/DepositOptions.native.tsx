@@ -1,8 +1,6 @@
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
 import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useRouter } from 'expo-router';
 import { Landmark } from 'lucide-react-native';
 import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
@@ -13,7 +11,6 @@ import DepositOption from './DepositOption';
 const DepositOptions = () => {
   const activeAccount = useActiveAccount();
   const { setModal } = useDepositStore();
-  const router = useRouter();
   const address = activeAccount?.address;
 
   // Navigate to form when wallet is connected
@@ -24,10 +21,8 @@ const DepositOptions = () => {
   }, [address, setModal]);
 
   const handleBankDepositPress = useCallback(async () => {
-    setModal(DEPOSIT_MODAL.CLOSE);
-
-    router.push(path.BANK_TRANSFER);
-  }, [router, setModal]);
+    setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
+  }, [setModal]);
 
   const DEPOSIT_OPTIONS = [
     {

@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
 import AnimatedModal from '@/components/AnimatedModal';
+import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
@@ -13,11 +14,11 @@ import TransactionStatus from '@/components/TransactionStatus';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
 import DepositOptions from './DepositOptions';
-import { path } from '@/constants/path';
 
 interface DepositOptionModalProps {
   buttonText?: string;
@@ -38,6 +39,10 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const isTransactionStatus = currentModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isNetworks = currentModal.name === DEPOSIT_MODAL.OPEN_NETWORKS.name;
   const isEmailGate = currentModal.name === DEPOSIT_MODAL.OPEN_EMAIL_GATE.name;
+  const isBankTransferAmount = currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT.name;
+  const isBankTransferPayment = currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT.name;
+  const isBankTransferPreview = currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW.name;
+  const isBankTransfer = isBankTransferAmount || isBankTransferPayment || isBankTransferPreview;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -90,6 +95,10 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       return <DepositNetworks />;
     }
 
+    if (isBankTransfer) {
+      return <BankTransferModalContent />;
+    }
+
     return <DepositOptions />;
   };
 
@@ -99,11 +108,17 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     if (isFormAndAddress) return 'deposit-form';
     if (isBuyCrypto) return 'buy-crypto';
     if (isNetworks) return 'networks';
+    if (isBankTransferAmount) return 'bank-transfer-amount';
+    if (isBankTransferPayment) return 'bank-transfer-payment';
+    if (isBankTransferPreview) return 'bank-transfer-preview';
     return 'deposit-options';
   };
 
   const getTitle = () => {
     if (isTransactionStatus || isEmailGate) return undefined;
+    if (isBankTransferAmount) return 'Amount to buy';
+    if (isBankTransferPayment) return 'Choose payment method';
+    if (isBankTransferPreview) return 'Transfer Details';
     return 'Deposit';
   };
 
@@ -111,11 +126,21 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     if (isBuyCrypto) {
       return 'w-[470px] h-[80vh] md:h-[85vh]';
     }
+    if (isBankTransfer) {
+      return 'w-[450px] max-h-[85vh]';
+    }
     return '';
   };
 
   const getContainerClassName = () => {
-    if (!isFormAndAddress && !isBuyCrypto && !isTransactionStatus && !isEmailGate && !isNetworks) {
+    if (
+      !isFormAndAddress &&
+      !isBuyCrypto &&
+      !isTransactionStatus &&
+      !isEmailGate &&
+      !isNetworks &&
+      !isBankTransfer
+    ) {
       return 'min-h-[40rem]';
     }
     return '';
@@ -129,8 +154,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
 
     if (value) {
       // Check if user has email when opening deposit modal
-      if (user && !user.email) {
-        setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
+      if (user && false) {
       } else if (address) {
         if (srcChainId) {
           setModal(DEPOSIT_MODAL.OPEN_FORM);
@@ -148,6 +172,12 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const handleBackPress = () => {
     if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
+    } else if (isBankTransferAmount) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isBankTransferPayment) {
+      setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
+    } else if (isBankTransferPreview) {
+      setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
     } else {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
@@ -169,7 +199,14 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       title={getTitle()}
       contentClassName={getContentClassName()}
       containerClassName={getContainerClassName()}
-      showBackButton={isFormAndAddress || isBuyCrypto || isNetworks}
+      showBackButton={
+        isFormAndAddress ||
+        isBuyCrypto ||
+        isNetworks ||
+        isBankTransferAmount ||
+        isBankTransferPayment ||
+        isBankTransferPreview
+      }
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}
       isForward={isForward}
