@@ -1,10 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { useCustomer } from '@/hooks/useCustomer';
-import { createBridgeTransfer } from '@/lib/api';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
@@ -12,7 +10,6 @@ import CryptoDropdown from './CryptoDropdown';
 import { BridgeTransferCryptoCurrency, BridgeTransferFiatCurrency } from './enums';
 import FiatDropdown from './FiatDropdown';
 import { PaymentMethodList } from './payment/PaymentMethodList';
-import Toast from 'react-native-toast-message';
 
 // Modal version of BankTransferAmount
 const BankTransferAmountModal = () => {
@@ -92,50 +89,7 @@ const BankTransferAmountModal = () => {
 
 // Modal version of PaymentMethodList
 const BankTransferPaymentMethodModal = () => {
-  const { bankTransfer, setModal, setBankTransferData } = useDepositStore();
-  const { data: customer } = useCustomer();
-
-  const createInstructions = useCallback(async () => {
-    if (!bankTransfer.method || !bankTransfer.fiat || !bankTransfer.fiatAmount) return;
-
-    try {
-      const instructions = await createBridgeTransfer({
-        amount: String(bankTransfer.fiatAmount ?? ''),
-        sourcePaymentRail: bankTransfer.method as any,
-        fiatCurrency: bankTransfer.fiat as any,
-        cryptoCurrency: String(bankTransfer.crypto ?? ''),
-      });
-
-      setBankTransferData({ instructions });
-      setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
-    } catch (err) {
-      console.error(err);
-
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to create transfer instructions',
-        props: {
-          badgeText: '',
-        },
-      });
-    }
-  }, [bankTransfer, setModal, setBankTransferData]);
-
-  useEffect(() => {
-    // Auto-resume: if user returned from KYC with a chosen method and we now
-    // have a customer, proceed with the instructions creation.
-    if (customer && bankTransfer.method && bankTransfer.fiat && bankTransfer.fiatAmount) {
-      createInstructions();
-    }
-  }, [
-    customer,
-    bankTransfer.method,
-    bankTransfer.fiat,
-    bankTransfer.fiatAmount,
-    bankTransfer.crypto,
-    createInstructions,
-  ]);
+  const { bankTransfer } = useDepositStore();
 
   return (
     <View className="gap-4">
