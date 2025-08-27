@@ -13,7 +13,7 @@ import Navbar from '@/components/Navbar';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { eclipseAddress, cn } from '@/lib/utils';
+import { cn, eclipseAddress } from '@/lib/utils';
 import { Address } from 'viem';
 
 interface Detail {
@@ -125,11 +125,7 @@ export default function Account() {
                       <CopyToClipboard text={user.safeAddress} />
                     ) : null
                   }
-                  customAction={
-                    detail.link ? (
-                      <ChevronRight size={20} color="#ffffff" />
-                    ) : null
-                  }
+                  customAction={detail.link ? <ChevronRight size={20} color="#ffffff" /> : null}
                 />
               ))}
             </View>

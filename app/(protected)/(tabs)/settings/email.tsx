@@ -78,10 +78,12 @@ export default function Email() {
             </View>
           )}
 
-          <View className={cn('w-full mx-auto px-4 py-4', {
-            'max-w-[512px]': isDesktop,
-            'max-w-7xl': !isDesktop,
-          })}>
+          <View
+            className={cn('w-full mx-auto px-4 py-4', {
+              'max-w-[512px]': isDesktop,
+              'max-w-7xl': !isDesktop,
+            })}
+          >
             <Text className="text-sm text-muted-foreground font-medium mb-8">
               {step === 'existing'
                 ? 'Your current email address is used for notifications and wallet recovery.'

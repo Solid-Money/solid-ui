@@ -173,10 +173,12 @@ const SwapParams = () => {
           </View>
         </Pressable>
       </View>
-      <View className={cn('overflow-hidden', {
-        'h-auto': isExpanded,
-        'h-0': !isExpanded,
-      })}>
+      <View
+        className={cn('overflow-hidden', {
+          'h-auto': isExpanded,
+          'h-0': !isExpanded,
+        })}
+      >
         <View className="flex flex-col gap-2.5 bg-card rounded-xl mt-2">
           <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
             <Text className="text-sm text-muted-foreground font-semibold">Route</Text>

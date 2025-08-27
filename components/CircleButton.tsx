@@ -35,7 +35,11 @@ const CircleButton = ({
 
   return (
     <View className="gap-2 items-center">
-      <Button size="icon" className={cn('h-14 w-14 rounded-full', backgroundColor)} onPress={onPress}>
+      <Button
+        size="icon"
+        className={cn('h-14 w-14 rounded-full', backgroundColor)}
+        onPress={onPress}
+      >
         <Icon
           width={width}
           height={height}
