@@ -79,10 +79,33 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
         // Store the method selection for modal mode before KYC
         if (isModal) {
           setBankTransferData({ method });
+
+          const redirectUri = buildResumeRedirectUri({
+            pathname: '/',
+            params: {
+              fiat: normalizedFiat,
+              crypto: String(crypto ?? ''),
+              fiatAmount: String(fiatAmount ?? ''),
+              method,
+            },
+          });
+
+          const endorsement = getEndorsementByMethod(method);
+
+          // Start KYC flow in modal instead of navigating
+          const { setKycData, setModal } = useDepositStore.getState();
+          setKycData({
+            kycMode: KycMode.BANK_TRANSFER,
+            endorsement: endorsement,
+            redirectUri,
+          });
+
+          setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_INFO);
+          return;
         }
 
         const redirectUri = buildResumeRedirectUri({
-          pathname: isModal ? '/' : '/bank-transfer/payment-method',
+          pathname: '/bank-transfer/payment-method',
           params: {
             fiat: normalizedFiat,
             crypto: String(crypto ?? ''),
@@ -153,10 +176,39 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
     // Store the method selection for modal mode before KYC
     if (isModal) {
       setBankTransferData({ method });
+
+      const redirectUrl = buildResumeRedirectUri({
+        pathname: '/',
+        params: {
+          fiat: normalizedFiat,
+          crypto: String(crypto ?? ''),
+          fiatAmount: String(fiatAmount ?? ''),
+          method,
+        },
+      });
+
+      const kycLink = await getKycLinkForExistingCustomer({
+        endorsement: requiredEndorsement,
+        redirectUri: redirectUrl,
+      });
+
+      if (!kycLink) throw new Error('Failed to get KYC link');
+
+      // Start KYC flow in modal instead of navigating
+      const { setKycData, setModal } = useDepositStore.getState();
+      setKycData({
+        kycMode: KycMode.BANK_TRANSFER,
+        endorsement: requiredEndorsement,
+        redirectUri: redirectUrl,
+        kycLink: kycLink.url,
+      });
+
+      setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_FRAME);
+      return;
     }
 
     const redirectUrl = buildResumeRedirectUri({
-      pathname: isModal ? '/' : '/bank-transfer/payment-method',
+      pathname: '/bank-transfer/payment-method',
       params: {
         fiat: normalizedFiat,
         crypto: String(crypto ?? ''),
