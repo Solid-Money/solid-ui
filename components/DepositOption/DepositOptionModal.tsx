@@ -6,6 +6,7 @@ import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/reac
 
 import AnimatedModal from '@/components/AnimatedModal';
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
+import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
@@ -42,7 +43,13 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const isBankTransferAmount = currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT.name;
   const isBankTransferPayment = currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT.name;
   const isBankTransferPreview = currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW.name;
-  const isBankTransfer = isBankTransferAmount || isBankTransferPayment || isBankTransferPreview;
+  const isBankTransferKycInfo =
+    currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_INFO.name;
+  const isBankTransferKycFrame =
+    currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_FRAME.name;
+  const isBankTransferKyc = isBankTransferKycInfo || isBankTransferKycFrame;
+  const isBankTransfer =
+    isBankTransferAmount || isBankTransferPayment || isBankTransferPreview || isBankTransferKyc;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -95,6 +102,10 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       return <DepositNetworks />;
     }
 
+    if (isBankTransferKyc) {
+      return <KycModalContent />;
+    }
+
     if (isBankTransfer) {
       return <BankTransferModalContent />;
     }
@@ -108,6 +119,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     if (isFormAndAddress) return 'deposit-form';
     if (isBuyCrypto) return 'buy-crypto';
     if (isNetworks) return 'networks';
+    if (isBankTransferKycInfo) return 'bank-transfer-kyc-info';
+    if (isBankTransferKycFrame) return 'bank-transfer-kyc-frame';
     if (isBankTransferAmount) return 'bank-transfer-amount';
     if (isBankTransferPayment) return 'bank-transfer-payment';
     if (isBankTransferPreview) return 'bank-transfer-preview';
@@ -116,6 +129,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
 
   const getTitle = () => {
     if (isTransactionStatus || isEmailGate) return undefined;
+    if (isBankTransferKycInfo) return 'Identity Verification';
+    if (isBankTransferKycFrame) return 'Identity Verification';
     if (isBankTransferAmount) return 'Amount to buy';
     if (isBankTransferPayment) return 'Choose payment method';
     if (isBankTransferPreview) return 'Transfer Details';
@@ -125,6 +140,9 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const getContentClassName = () => {
     if (isBuyCrypto) {
       return 'w-[470px] h-[80vh] md:h-[85vh]';
+    }
+    if (isBankTransferKycFrame) {
+      return 'w-[800px] h-[85vh] max-w-[95vw]';
     }
     if (isBankTransfer) {
       return 'w-[450px] max-h-[85vh]';
@@ -172,6 +190,10 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const handleBackPress = () => {
     if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
+    } else if (isBankTransferKycFrame) {
+      setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_INFO);
+    } else if (isBankTransferKycInfo) {
+      setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
     } else if (isBankTransferAmount) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isBankTransferPayment) {
@@ -205,7 +227,9 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
         isNetworks ||
         isBankTransferAmount ||
         isBankTransferPayment ||
-        isBankTransferPreview
+        isBankTransferPreview ||
+        isBankTransferKycInfo ||
+        isBankTransferKycFrame
       }
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}

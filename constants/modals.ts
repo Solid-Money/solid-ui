@@ -39,6 +39,14 @@ export const DEPOSIT_MODAL = {
     name: 'open_bank_transfer_preview',
     number: 8,
   },
+  OPEN_BANK_TRANSFER_KYC_INFO: {
+    name: 'open_bank_transfer_kyc_info',
+    number: 9,
+  },
+  OPEN_BANK_TRANSFER_KYC_FRAME: {
+    name: 'open_bank_transfer_kyc_frame',
+    number: 10,
+  },
 };
 
 export const SEND_MODAL = {

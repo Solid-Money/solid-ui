@@ -20,16 +20,27 @@ interface BankTransferData {
   instructions?: any;
 }
 
+interface KycData {
+  kycMode?: string;
+  endorsement?: string;
+  redirectUri?: string;
+  kycLink?: string;
+  kycLinkId?: string;
+}
+
 interface DepositState {
   currentModal: DepositModal;
   previousModal: DepositModal;
   transaction: TransactionStatusModal;
   srcChainId: number;
   bankTransfer: BankTransferData;
+  kyc: KycData;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
   clearBankTransferData: () => void;
+  setKycData: (data: Partial<KycData>) => void;
+  clearKycData: () => void;
   setSrcChainId: (srcChainId: number) => void;
 }
 
@@ -41,6 +52,7 @@ export const useDepositStore = create<DepositState>()(
       transaction: {},
       srcChainId: mainnet.id,
       bankTransfer: {},
+      kyc: {},
 
       setModal: modal =>
         set({
@@ -50,6 +62,8 @@ export const useDepositStore = create<DepositState>()(
       setTransaction: transaction => set({ transaction }),
       setBankTransferData: data => set({ bankTransfer: { ...get().bankTransfer, ...data } }),
       clearBankTransferData: () => set({ bankTransfer: {} }),
+      setKycData: data => set({ kyc: { ...get().kyc, ...data } }),
+      clearKycData: () => set({ kyc: {} }),
       setSrcChainId: srcChainId => set({ srcChainId }),
     }),
     {
@@ -60,6 +74,7 @@ export const useDepositStore = create<DepositState>()(
         transaction: state.transaction,
         srcChainId: state.srcChainId,
         bankTransfer: state.bankTransfer,
+        kyc: state.kyc,
       }),
       // Ignore any legacy stored modal fields
       merge: (persisted, current) => {
