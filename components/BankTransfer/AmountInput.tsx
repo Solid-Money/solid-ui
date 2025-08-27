@@ -4,10 +4,11 @@ import { TextInput, TextInputProps } from 'react-native';
 
 type AmountInputProps = TextInputProps & {
   className?: string;
+  isModal?: boolean;
 };
 
 const AmountInput = forwardRef<TextInput, AmountInputProps>(function AmountInput(
-  { className, keyboardType = 'decimal-pad', ...rest },
+  { className, keyboardType = 'decimal-pad', isModal = false, ...rest },
   ref,
 ) {
   return (
@@ -16,8 +17,8 @@ const AmountInput = forwardRef<TextInput, AmountInputProps>(function AmountInput
       keyboardType={keyboardType}
       placeholderTextColor={'#9CA3AF'}
       className={cn(
-        'flex-1 text-white text-4xl font-semibold px-0 py-2',
-        'bg-transparent',
+        'flex-1 text-white font-semibold px-0 py-2 bg-transparent',
+        isModal ? 'text-2xl w-0 min-w-0' : 'text-4xl',
         className,
       )}
       {...rest}
