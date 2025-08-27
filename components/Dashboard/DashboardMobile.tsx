@@ -11,12 +11,11 @@ interface DashboardMobileProps {
     balance: number;
     totalAPY: number;
     firstDepositTimestamp: number;
-    originalDepositAmount: number;
   };
 }
 
 export function DashboardMobile({ balanceData }: DashboardMobileProps) {
-  const { balance, totalAPY, firstDepositTimestamp, originalDepositAmount } = balanceData;
+  const { balance, totalAPY, firstDepositTimestamp } = balanceData;
 
   return (
     <SafeAreaView
@@ -30,7 +29,6 @@ export function DashboardMobile({ balanceData }: DashboardMobileProps) {
             balance={balance}
             totalAPY={totalAPY}
             lastTimestamp={firstDepositTimestamp}
-            principal={originalDepositAmount}
           />
           <Image
             source={require('@/assets/images/deposit_banner.png')}

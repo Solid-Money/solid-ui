@@ -9,7 +9,6 @@ interface DashboardHeaderMobileProps {
   balance: number;
   totalAPY?: number;
   lastTimestamp?: number;
-  principal?: number;
   mode?: SavingMode;
 }
 
@@ -17,7 +16,6 @@ const DashboardHeaderMobile = ({
   balance,
   totalAPY,
   lastTimestamp,
-  principal,
   mode,
 }: DashboardHeaderMobileProps) => {
   return (
@@ -28,7 +26,6 @@ const DashboardHeaderMobile = ({
           balance={balance ?? 0}
           apy={totalAPY ?? 0}
           lastTimestamp={lastTimestamp ?? 0}
-          principal={principal}
           mode={mode}
           classNames={{
             wrapper: 'text-foreground',

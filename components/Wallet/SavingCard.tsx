@@ -33,7 +33,7 @@ const SavingCard = ({ savings, className }: SavingCardProps) => {
         <View className="flex-row justify-between items-center">
           <View className="flex-row items-center gap-2">
             <Text className="text-2xl md:text-3xl font-semibold">${formatNumber(savings)}</Text>
-            <TooltipPopover text="Balance + Yield, same as Savings page" />
+            <TooltipPopover text="Balance + Yield of staked soUSD" />
           </View>
           <Image
             source={require('@/assets/images/sousd-4x.png')}

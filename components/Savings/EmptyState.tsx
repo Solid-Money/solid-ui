@@ -34,7 +34,6 @@ export default function SavingsEmptyState() {
                   balance={0}
                   apy={0}
                   lastTimestamp={0}
-                  principal={0}
                   classNames={{
                     wrapper: 'text-foreground',
                     decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
