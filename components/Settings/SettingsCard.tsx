@@ -1,9 +1,10 @@
 import { Href, Link } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
-import { Linking, Platform, Pressable, View } from 'react-native';
 import React from 'react';
+import { Linking, Platform, Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 
 interface SettingsCardProps {
   title: string;
@@ -13,6 +14,9 @@ interface SettingsCardProps {
   onPress?: () => void;
   isDesktop?: boolean;
   customAction?: React.ReactNode;
+  titleStyle?: string;
+  hideIconBackground?: boolean;
+  inlineAction?: React.ReactNode;
 }
 
 interface CardContainerProps {
@@ -68,6 +72,9 @@ const SettingsCard = ({
   onPress,
   isDesktop,
   customAction,
+  titleStyle,
+  hideIconBackground,
+  inlineAction,
 }: SettingsCardProps) => {
   const hasLink = link || onPress;
   const iconContainerSize = isDesktop ? 'w-[50px] h-[50px]' : 'w-[50px] h-[50px]';
@@ -78,19 +85,24 @@ const SettingsCard = ({
 
   return (
     <CardContainer link={link} onPress={onPress}>
-      <View className={`w-full ${padding} flex-row items-center justify-between`}>
-        <View className={`flex-row items-center ${gap} flex-1`}>
+      <View className={cn('w-full flex-row items-center justify-between', padding)}>
+        <View className={cn('flex-row items-center flex-1', gap)}>
           <View
-            className={`${iconContainerSize} bg-[#4d4d4d] rounded-full items-center justify-center`}
+            className={cn(iconContainerSize, 'rounded-full items-center justify-center', {
+              'bg-[#4d4d4d]': !hideIconBackground,
+            })}
           >
             {icon}
           </View>
           <View className="flex-1">
-            <Text className={`font-bold ${textSize} text-white`}>{title}</Text>
+            <Text className={cn('font-bold', textSize, titleStyle || 'text-white')}>{title}</Text>
             {description && (
-              <Text className={`${descTextSize} text-[#acacac] font-medium mt-1`}>
-                {description}
-              </Text>
+              <View className="flex-row items-center mt-1">
+                <Text className={cn(descTextSize, 'text-[#acacac] font-medium')}>
+                  {description}
+                </Text>
+                {inlineAction && <View className="ml-2">{inlineAction}</View>}
+              </View>
             )}
           </View>
         </View>

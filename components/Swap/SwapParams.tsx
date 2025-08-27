@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 import { ALGEBRA_ROUTER } from '@/constants/addresses';
 import { MAX_UINT128 } from '@/constants/max-uint128';
 import { algebraBasePluginAbi, algebraPoolAbi } from '@/generated/wagmi';
@@ -167,12 +168,15 @@ const SwapParams = () => {
               <Text>{`${slidingFee?.toFixed(4)}% fee`}</Text>
             </View>
           )}
-          <View className={`ml-auto ${isExpanded && 'rotate-180'}`}>
+          <View className={cn('ml-auto', { 'rotate-180': isExpanded })}>
             <ChevronDown strokeWidth={2} size={16} className="text-foreground" />
           </View>
         </Pressable>
       </View>
-      <View className={`overflow-hidden ${isExpanded ? 'h-auto' : 'h-0'}`}>
+      <View className={cn('overflow-hidden', {
+        'h-auto': isExpanded,
+        'h-0': !isExpanded,
+      })}>
         <View className="flex flex-col gap-2.5 bg-card rounded-xl mt-2">
           <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
             <Text className="text-sm text-muted-foreground font-semibold">Route</Text>
@@ -244,7 +248,7 @@ const PriceImpact = ({ priceImpact }: { priceImpact: Percent | undefined }) => {
         : 'text-foreground';
 
   return (
-    <Text className={`text-sm ${color}`}>
+    <Text className={cn('text-sm', color)}>
       {priceImpact ? `${priceImpact.multiply(-1).toFixed(2)}%` : '-'}
     </Text>
   );

@@ -189,7 +189,9 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
           name="address"
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              className={`bg-accent rounded-2xl px-5 py-3 text-2xl text-white font-semibold web:focus:outline-none ${errors.address ? 'border border-red-500' : ''}`}
+              className={cn('bg-accent rounded-2xl px-5 py-3 text-2xl text-white font-semibold web:focus:outline-none', {
+                'border border-red-500': errors.address,
+              })}
               value={value}
               placeholder="0x..."
               placeholderTextColor="#666"
