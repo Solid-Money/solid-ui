@@ -363,6 +363,11 @@ export enum BridgeTransactionStatus {
   DEPOSIT_FAILED = 'deposit_failed',
 }
 
+export enum BridgeProvider {
+  LIFI = 'LIFI',
+  STARGATE = 'Stargate',
+}
+
 export interface BridgeTransaction {
   eoaAddress: string;
   srcChainId: number;
@@ -376,6 +381,7 @@ export interface BridgeTransaction {
   bridgeTxHash?: string;
   depositTxHash?: string;
   status: BridgeTransactionStatus;
+  provider: BridgeProvider;
   createdAt: Date;
 }
 
@@ -454,4 +460,9 @@ export interface Points {
       totalPoints: number;
     }[];
   };
+}
+
+export interface BridgeDepositResponse {
+  transactionHash: string;
+  provider?: BridgeProvider;
 }
