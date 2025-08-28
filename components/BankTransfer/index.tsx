@@ -8,6 +8,7 @@ import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
 import CryptoDropdown from './CryptoDropdown';
 import { BridgeTransferCryptoCurrency, BridgeTransferFiatCurrency } from './enums';
+import { ExchangeRateDisplay } from './ExchangeRateDisplay';
 import FiatDropdown from './FiatDropdown';
 
 export default function BankTransferAmount() {
@@ -63,6 +64,14 @@ export default function BankTransferAmount() {
         rightComponent={
           <CryptoDropdown value={crypto} onChange={setCrypto} allowed={allowedCrypto} />
         }
+      />
+
+      <ExchangeRateDisplay
+        rate={rate?.buy_rate}
+        fromCurrency={fiat}
+        toCurrency={crypto}
+        loading={loading}
+        initialLoading={loading && !rate}
       />
 
       <Button

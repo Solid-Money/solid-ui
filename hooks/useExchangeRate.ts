@@ -40,6 +40,7 @@ export const useExchangeRate = (
   const [rate, setRate] = useState<ExchangeRateResponse | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -69,6 +70,7 @@ export const useExchangeRate = (
             });
             setError(null);
             setLoading(false);
+            setInitialLoading(false);
           }
           return;
         }
@@ -81,6 +83,7 @@ export const useExchangeRate = (
         if (isMounted) {
           setRate(response);
           setError(null);
+          setInitialLoading(false);
         }
       } catch (err) {
         if (isMounted) {
@@ -118,5 +121,5 @@ export const useExchangeRate = (
     };
   }, [fromCurrency, toCurrency]);
 
-  return { rate, error, loading };
+  return { rate, error, loading, initialLoading };
 };
