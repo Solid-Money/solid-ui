@@ -141,7 +141,11 @@ export default function Savings() {
           )}
           {isScreenMedium ? (
             <View className="md:flex-row gap-4 min-h-44">
-              <WalletCard balance={totalUSDExcludingStaked} className="flex-1" tokens={topThreeTokens} />
+              <WalletCard
+                balance={totalUSDExcludingStaked}
+                className="flex-1"
+                tokens={topThreeTokens}
+              />
               <SavingCard savings={savings} className="flex-1" />
             </View>
           ) : (

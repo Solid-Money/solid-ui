@@ -9,7 +9,7 @@ export const DEPOSIT_MODAL = {
   },
   OPEN_OPTIONS: {
     name: 'open_options',
-    number: 2
+    number: 2,
   },
   OPEN_NETWORKS: {
     name: 'open_networks',
@@ -27,7 +27,27 @@ export const DEPOSIT_MODAL = {
     name: 'open_transaction_status',
     number: 5,
   },
-}
+  OPEN_BANK_TRANSFER_AMOUNT: {
+    name: 'open_bank_transfer_amount',
+    number: 6,
+  },
+  OPEN_BANK_TRANSFER_PAYMENT: {
+    name: 'open_bank_transfer_payment',
+    number: 7,
+  },
+  OPEN_BANK_TRANSFER_PREVIEW: {
+    name: 'open_bank_transfer_preview',
+    number: 8,
+  },
+  OPEN_BANK_TRANSFER_KYC_INFO: {
+    name: 'open_bank_transfer_kyc_info',
+    number: 9,
+  },
+  OPEN_BANK_TRANSFER_KYC_FRAME: {
+    name: 'open_bank_transfer_kyc_frame',
+    number: 10,
+  },
+};
 
 export const SEND_MODAL = {
   CLOSE: {
@@ -36,13 +56,13 @@ export const SEND_MODAL = {
   },
   OPEN_FORM: {
     name: 'open_form',
-    number: 1
+    number: 1,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
     number: 2,
   },
-}
+};
 
 export const WITHDRAW_MODAL = {
   CLOSE: {
@@ -51,13 +71,28 @@ export const WITHDRAW_MODAL = {
   },
   OPEN_FORM: {
     name: 'open_form',
-    number: 1
+    number: 1,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
     number: 2,
   },
-}
+};
+
+export const STAKE_MODAL = {
+  CLOSE: {
+    name: 'close',
+    number: 0,
+  },
+  OPEN_FORM: {
+    name: 'open_form',
+    number: 1,
+  },
+  OPEN_TRANSACTION_STATUS: {
+    name: 'open_transaction_status',
+    number: 2,
+  },
+};
 
 export const UNSTAKE_MODAL = {
   CLOSE: {
@@ -66,13 +101,13 @@ export const UNSTAKE_MODAL = {
   },
   OPEN_FORM: {
     name: 'open_form',
-    number: 1
+    number: 1,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
     number: 2,
   },
-}
+};
 
 export const SWAP_MODAL = {
   CLOSE: {
@@ -83,4 +118,4 @@ export const SWAP_MODAL = {
     name: 'open_transaction_status',
     number: 1,
   },
-}
+};

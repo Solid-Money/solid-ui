@@ -7,6 +7,7 @@ import { Address, formatUnits } from 'viem';
 import Ping from '@/components/Ping';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import SendModal from '@/components/SendModal/SendModal';
+import StakeModal from '@/components/Stake/StakeModal';
 import {
   Table,
   TableBody,
@@ -52,7 +53,7 @@ const WalletTokenTab = () => {
   };
 
   const columnWidths = useMemo(() => {
-    const COLUMN_WIDTHS = isScreenMedium ? [0.15, 0.15, 0.3, 0.2, 0.2] : [0.3, 0, 0.3, 0, 0.4];
+    const COLUMN_WIDTHS = isScreenMedium ? [0.15, 0.15, 0.2, 0.2, 0.3] : [0.25, 0, 0.25, 0, 0.5];
     const offset = isScreenMedium ? 0 : 32;
 
     return COLUMN_WIDTHS.map(ratio => (width - offset) * ratio);
@@ -171,7 +172,10 @@ const WalletTokenTab = () => {
                         {isSoUSDFuse(token.contractAddress) ? (
                           <UnstakeModal />
                         ) : isSoUSDEthereum(token.contractAddress) ? (
-                          <WithdrawModal />
+                          <>
+                            <WithdrawModal />
+                            <StakeModal />
+                          </>
                         ) : null}
                       </View>
                     </TableCell>

@@ -13,6 +13,7 @@ import { SettingsCard } from '@/components/Settings';
 import { accounts, supports } from '@/constants/settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { cn } from '@/lib/utils';
 
 export default function Settings() {
   const { handleLogout } = useUser();
@@ -63,7 +64,10 @@ export default function Settings() {
           </View>
         )}
         <View
-          className={`w-full ${isDesktop ? 'max-w-[512px]' : 'max-w-7xl'} mx-auto gap-3 px-4 py-4`}
+          className={cn('w-full mx-auto gap-3 px-4 py-4', {
+            'max-w-[512px]': isDesktop,
+            'max-w-7xl': !isDesktop,
+          })}
         >
           {/* Account Details Card */}
           <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">

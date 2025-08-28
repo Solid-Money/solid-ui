@@ -3,6 +3,7 @@ import { SvgProps } from 'react-native-svg';
 
 import { Button } from './ui/button';
 import { Text } from './ui/text';
+import { cn } from '@/lib/utils';
 
 interface CircleButtonProps {
   icon: React.ComponentType<SvgProps>;
@@ -34,7 +35,11 @@ const CircleButton = ({
 
   return (
     <View className="gap-2 items-center">
-      <Button size="icon" className={`h-14 w-14 rounded-full ${backgroundColor}`} onPress={onPress}>
+      <Button
+        size="icon"
+        className={cn('h-14 w-14 rounded-full', backgroundColor)}
+        onPress={onPress}
+      >
         <Icon
           width={width}
           height={height}
