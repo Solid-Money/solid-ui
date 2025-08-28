@@ -54,7 +54,7 @@ export const ADDRESSES: Addresses = {
       ? '0x6E575AE5e1A12e910641183F555Fad62eD1481F2'
       : '0x3e2cD0AeF639CD72Aff864b85acD5c07E2c5e3FA',
     paymasterAddress: '0x6666666666667849c56f2850848ce1c4da65c68b',
-    bridgePaymasterAddress: '0x1C8d847799858a8f4CD3b5dF46D222ae04eC79b1',
+    bridgePaymasterAddress: '0xcE0c6c2a6C99dF88bd127e732EC3bb3E0cB4a507',
     boringQueue: isProduction
       ? '0x5514A3360B460675dB9c9414c3CAd357098FA964'
       : '0x5090eee1a6e568c46178861fddd31e2c33f4d5a4',
@@ -83,5 +83,6 @@ export const USER = {
   sendStorageKey: 'flash_send',
   withdrawStorageKey: 'flash_withdraw',
   unstakeStorageKey: 'flash_unstake',
+  stakeStorageKey: 'flash_stake',
   referralStorageKey: 'flash_referral',
 };
