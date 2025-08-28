@@ -1,6 +1,6 @@
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
-import { getSubOrgIdByUsername, login, signUp, updateSafeAddress } from '@/lib/api';
+import { deleteAccount, getSubOrgIdByUsername, login, signUp, updateSafeAddress } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -38,6 +38,7 @@ interface UseUserReturn {
   handleSelectUser: (username: string) => void;
   handleLogout: () => void;
   handleRemoveUsers: () => void;
+  handleDeleteAccount: () => Promise<void>;
   safeAA: (chain: Chain, subOrganization: string, signWith: string) => Promise<SmartAccountClient>;
   checkBalance: (user: User) => Promise<boolean>;
 }
@@ -344,7 +345,7 @@ const useUser = (): UseUserReturn => {
         email: 'dummy@dummy.com',
       });
       router.replace(path.HOME);
-    } catch (error) {}
+    } catch (error) { }
   }, [router, storeUser]);
 
   const handleLogout = useCallback(() => {
@@ -376,6 +377,23 @@ const useUser = (): UseUserReturn => {
     });
   }, [clearKycLinkId, router]);
 
+  const handleDeleteAccount = useCallback(async () => {
+    try {
+      await withRefreshToken(deleteAccount);
+
+      // Clear all user data
+      removeUsers();
+      clearKycLinkId();
+      queryClient.clear();
+
+      // Navigate to welcome screen
+      router.replace(path.WELCOME);
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      throw error;
+    }
+  }, [removeUsers, clearKycLinkId, queryClient, router]);
+
   useEffect(() => {
     setGlobalLogoutHandler(handleSessionExpired);
   }, [handleSessionExpired]);
@@ -388,6 +406,7 @@ const useUser = (): UseUserReturn => {
     handleSelectUser,
     handleLogout,
     handleRemoveUsers,
+    handleDeleteAccount,
     safeAA,
     checkBalance,
   };

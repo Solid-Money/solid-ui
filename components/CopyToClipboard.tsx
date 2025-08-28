@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Check, Copy } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const CopyToClipboard = ({ text, className }: { text: string; className?: string }) => {
   const [copied, setCopied] = useState(false);
@@ -25,7 +26,7 @@ const CopyToClipboard = ({ text, className }: { text: string; className?: string
       variant="ghost"
       size="icon"
       onPress={handleCopy}
-      className={`transition-all duration-200 hover:bg-primary/10 active:scale-95 ${className}`}
+      className={cn('transition-all duration-200 hover:bg-primary/10 active:scale-95', className)}
     >
       {copied ? (
         <Check size={14} className="text-green-500" />

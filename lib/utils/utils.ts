@@ -30,9 +30,10 @@ export function compactNumberFormat(number: number) {
   }).format(number);
 }
 
-export function formatNumber(number: number, maximumFractionDigits = 6) {
+export function formatNumber(number: number, maximumFractionDigits = 6, minimumFractionDigits = 2) {
   return new Intl.NumberFormat('en-us', {
     maximumFractionDigits,
+    minimumFractionDigits: number >= 1 ? minimumFractionDigits : 0,
   }).format(number);
 }
 

@@ -9,6 +9,7 @@ import LifebuoyIcon from '@/assets/images/lifebuoy';
 import Navbar from '@/components/Navbar';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
+import { cn } from '@/lib/utils';
 
 interface SupportOption {
   title: string;
@@ -76,7 +77,10 @@ export default function Help() {
         )}
 
         <View
-          className={`w-full ${isDesktop ? 'max-w-[512px]' : 'max-w-7xl'} mx-auto gap-3 px-4 py-4`}
+          className={cn('w-full mx-auto gap-3 px-4 py-4', {
+            'max-w-[512px]': isDesktop,
+            'max-w-7xl': !isDesktop,
+          })}
         >
           {/* Support Options */}
           <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">

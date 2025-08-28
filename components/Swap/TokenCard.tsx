@@ -1,6 +1,6 @@
 import { Wallet } from 'lucide-react-native';
 import React, { memo, useCallback, useMemo, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Platform, TextInput, View } from 'react-native';
 import { useBalance } from 'wagmi';
 
 import Max from '@/components/Max';
@@ -131,10 +131,16 @@ const TokenCard: React.FC<TokenCardProps> = ({
         {currency && account && (
           <View className="flex-row items-center gap-2">
             {showBalance && (
-              <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-                <Wallet size={16} />{' '}
-                {isBalanceLoading ? '...' : formatNumber(Number(balanceString))}
-              </Text>
+              <View className="flex-row items-center gap-1.5">
+                <Wallet 
+                  size={16} 
+                  color={Platform.OS === 'web' ? undefined : 'rgb(161, 161, 161)'}
+                  className="text-muted-foreground"
+                />
+                <Text className="text-muted-foreground text-left">
+                  {isBalanceLoading ? '...' : formatNumber(Number(balanceString))}
+                </Text>
+              </View>
             )}
             {!isBalanceLoading && Number(balanceString) > 0 && showMaxButton && handleMaxValue && (
               <Max onPress={handleMaxValue} />

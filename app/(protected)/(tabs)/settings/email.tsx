@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
 import useUser from '@/hooks/useUser';
+import { cn } from '@/lib/utils';
 
 export default function Email() {
   const { user } = useUser();
@@ -77,7 +78,12 @@ export default function Email() {
             </View>
           )}
 
-          <View className={`w-full ${isDesktop ? 'max-w-[512px]' : 'max-w-7xl'} mx-auto px-4 py-4`}>
+          <View
+            className={cn('w-full mx-auto px-4 py-4', {
+              'max-w-[512px]': isDesktop,
+              'max-w-7xl': !isDesktop,
+            })}
+          >
             <Text className="text-sm text-muted-foreground font-medium mb-8">
               {step === 'existing'
                 ? 'Your current email address is used for notifications and wallet recovery.'
