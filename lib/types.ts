@@ -420,6 +420,29 @@ export enum RewardsType {
   DAILY_LOGIN = 'daily_login',
 }
 
+export enum FromCurrency {
+  BTC = 'btc',
+  ETH = 'eth',
+  EUR = 'eur',
+  SOL = 'sol',
+  USD = 'usd',
+}
+
+export enum ToCurrency {
+  BRL = 'brl',
+  BTC = 'btc',
+  ETH = 'eth',
+  EUR = 'eur',
+  SOL = 'sol',
+  USD = 'usd',
+}
+
+export interface ExchangeRateResponse {
+  midmarket_rate: string;
+  buy_rate: string;
+  sell_rate: string;
+}
+
 export interface Points {
   nextRewardTime: number;
   pointsLast24Hours: number;

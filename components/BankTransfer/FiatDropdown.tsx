@@ -14,14 +14,7 @@ type FiatDropdownProps = {
 export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
   const [open, setOpen] = useState(false);
 
-  const items = useMemo(
-    () => [
-      BridgeTransferFiatCurrency.USD,
-      BridgeTransferFiatCurrency.EUR,
-      BridgeTransferFiatCurrency.MXN,
-    ],
-    [],
-  );
+  const items = useMemo(() => [BridgeTransferFiatCurrency.USD, BridgeTransferFiatCurrency.EUR], []);
 
   // const renderFlag = (code: BridgeTransferFiatCurrency) => {
   //   const Icon = getFiatIcon(code);
