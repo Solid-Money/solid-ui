@@ -433,7 +433,6 @@ export enum ToCurrency {
   BTC = 'btc',
   ETH = 'eth',
   EUR = 'eur',
-  MXN = 'mxn',
   SOL = 'sol',
   USD = 'usd',
 }

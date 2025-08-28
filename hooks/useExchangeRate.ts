@@ -75,7 +75,6 @@ export const useExchangeRate = (
 
         // For all other cases, convert using USD as the base currency
         // Example: EUR -> USDT becomes EUR -> USD
-        // Example: MXN -> USDC becomes MXN -> USD
         const from = mapCurrencyToFromCurrency(fromCurrency);
         const to = mapCurrencyToToCurrency(toCurrency);
         const response = await getExchangeRate(from, to);

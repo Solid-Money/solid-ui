@@ -1,7 +1,6 @@
 export enum BridgeTransferFiatCurrency {
   USD = 'usd',
   EUR = 'eur',
-  MXN = 'mxn',
 }
 
 export enum BridgeTransferCryptoCurrency {
@@ -19,7 +18,6 @@ export enum BridgeTransferMethod {
 export const FIAT_LABEL: Record<BridgeTransferFiatCurrency, string> = {
   [BridgeTransferFiatCurrency.USD]: 'USD',
   [BridgeTransferFiatCurrency.EUR]: 'EUR',
-  [BridgeTransferFiatCurrency.MXN]: 'MXN',
 };
 
 export const CRYPTO_LABEL: Record<BridgeTransferCryptoCurrency, string> = {
