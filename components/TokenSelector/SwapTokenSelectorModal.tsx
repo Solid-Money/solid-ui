@@ -5,6 +5,7 @@ import CurrencyLogo from '@/components/CurrencyLogo';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 import { Currency } from '@cryptoalgebra/fuse-sdk';
 import { ChevronDown } from 'lucide-react-native';
 import SwapTokenSelector from './SwapTokenSelector';
@@ -51,7 +52,7 @@ const SwapTokenSelectorModal = ({
     () => (
       <View className="flex flex-row items-center gap-1">
         <CurrencyLogo currency={currentCurrency} size={24} />
-        <Text className="text-sm font-bold text-white flex-1">{buttonText}</Text>
+        <Text className="text-sm font-bold text-white">{buttonText}</Text>
         <ChevronDown className="text-white" />
       </View>
     ),
@@ -61,14 +62,16 @@ const SwapTokenSelectorModal = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          className={`bg-accent h-10 px-3 rounded-full text-white flex items-center ${className}`}
-          disabled={disabled}
-          accessibilityLabel={`Select token. Currently selected: ${buttonText}`}
-          accessibilityHint="Opens token selection dialog"
-        >
-          {buttonContent}
-        </Button>
+        <View className="self-start">
+          <Button
+            className={cn('bg-accent h-10 px-3 rounded-full text-white flex items-center', className)}
+            disabled={disabled}
+            accessibilityLabel={`Select token. Currently selected: ${buttonText}`}
+            accessibilityHint="Opens token selection dialog"
+          >
+            {buttonContent}
+          </Button>
+        </View>
       </DialogTrigger>
       <DialogContent className="md:gap-8 md:max-w-md">
         <View className="gap-2 md:gap-4">

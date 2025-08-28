@@ -31,9 +31,9 @@ const AccountCenterTrigger = ({ onModalOpen }: { onModalOpen?: () => void }) => 
     router.push(path.SETTINGS);
   };
 
-  const handleUsernamePress = () => {
-    onModalOpen?.();
-  };
+  // const handleUsernamePress = () => {
+  //   onModalOpen?.();
+  // };
 
   if (!user?.safeAddress) {
     return <Button size="sm" className="w-full rounded-full animate-pulse" disabled />;
@@ -41,12 +41,10 @@ const AccountCenterTrigger = ({ onModalOpen }: { onModalOpen?: () => void }) => 
 
   return (
     <Pressable
-      onPress={handleUsernamePress}
+      onPress={handleAvatarPress}
       className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-transform"
     >
-      <Pressable onPress={handleAvatarPress} className="active:scale-95 transition-transform">
-        <UserAvatar />
-      </Pressable>
+      <UserAvatar />
       <Text className="hidden md:block text-white font-medium text-sm flex-1 text-center">
         {eclipseUsername(user.username)}
       </Text>
