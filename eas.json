@@ -23,6 +23,12 @@
       "android": {
         "serviceAccountKeyPath": "./ServiceAccountSolid.json",
         "track": "internal"
+      },
+      "ios": {
+        "ascAppId": "6747710981",
+        "appleTeamId": "QC9255BHMY",
+        "sku": "xyz.solid.ios",
+        "name": "Solid - The savings super-app"
       }
     }
   }
