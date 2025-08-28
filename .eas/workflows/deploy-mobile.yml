@@ -24,16 +24,16 @@ jobs:
   #     profile: production
   build_android:
     name: Build Android
-    needs: [get_android_build]
-    if: ${{ !needs.get_android_build.outputs.build_id }}
+    # needs: [get_android_build]
+    # if: ${{ !needs.get_android_build.outputs.build_id }}
     type: build
     params:
       platform: android
       profile: production
   build_ios:
     name: Build iOS
-    needs: [get_ios_build]
-    if: ${{ !needs.get_ios_build.outputs.build_id }}
+    # needs: [get_ios_build]
+    # if: ${{ !needs.get_ios_build.outputs.build_id }}
     type: build
     params:
       platform: ios
