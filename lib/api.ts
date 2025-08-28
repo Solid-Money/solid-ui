@@ -21,11 +21,14 @@ import {
   CardStatusResponse,
   CustomerFromBridgeResponse,
   Deposit,
+  ExchangeRateResponse,
+  FromCurrency,
   KycLink,
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
   LayerZeroTransaction,
   Points,
+  ToCurrency,
   TokenPriceUsd,
   User,
 } from './types';
@@ -657,7 +660,7 @@ export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash
 
 export const deleteAccount = async (): Promise<{ success: boolean; message?: string }> => {
   const jwt = getJWTToken();
-  
+
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/delete-account`,
     {
@@ -667,6 +670,28 @@ export const deleteAccount = async (): Promise<{ success: boolean; message?: str
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getExchangeRate = async (
+  from: FromCurrency,
+  to: ToCurrency,
+): Promise<ExchangeRateResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge-transfers/exchange-rate?from=${from}&to=${to}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
     },
   );
 
