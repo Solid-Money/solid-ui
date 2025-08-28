@@ -62,16 +62,14 @@ const SwapTokenSelectorModal = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <View className="self-start">
-          <Button
-            className={cn('bg-accent h-10 px-3 rounded-full text-white flex items-center', className)}
-            disabled={disabled}
-            accessibilityLabel={`Select token. Currently selected: ${buttonText}`}
-            accessibilityHint="Opens token selection dialog"
-          >
-            {buttonContent}
-          </Button>
-        </View>
+        <Button
+          className={cn('bg-accent h-10 px-3 rounded-full text-white flex items-center', className)}
+          disabled={disabled}
+          accessibilityLabel={`Select token. Currently selected: ${buttonText}`}
+          accessibilityHint="Opens token selection dialog"
+        >
+          {buttonContent}
+        </Button>
       </DialogTrigger>
       <DialogContent className="md:gap-8 md:max-w-md">
         <View className="gap-2 md:gap-4">
