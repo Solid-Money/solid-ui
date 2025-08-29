@@ -172,7 +172,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
 
     if (value) {
       // Check if user has email when opening deposit modal
-      if (user && false) {
+      if (user && !user.email) {
+        setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
       } else if (address) {
         if (srcChainId) {
           setModal(DEPOSIT_MODAL.OPEN_FORM);
