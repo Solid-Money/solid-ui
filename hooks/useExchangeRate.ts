@@ -4,6 +4,7 @@ import {
 } from '@/components/BankTransfer/enums';
 import { getExchangeRate } from '@/lib/api';
 import { ExchangeRateResponse, FromCurrency, ToCurrency } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
 const REFRESH_INTERVAL = 30000; // 30 seconds
@@ -79,8 +80,10 @@ export const useExchangeRate = (
         // Example: EUR -> USDT becomes EUR -> USD
         const from = mapCurrencyToFromCurrency(fromCurrency);
         const to = mapCurrencyToToCurrency(toCurrency);
-        const response = await getExchangeRate(from, to);
-        if (isMounted) {
+
+        const response = await withRefreshToken(async () => getExchangeRate(from, to));
+
+        if (isMounted && response) {
           setRate(response);
           setError(null);
           setInitialLoading(false);
