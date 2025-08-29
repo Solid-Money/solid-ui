@@ -47,8 +47,6 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
 
   if (normalizedFiat === BridgeTransferFiatCurrency.EUR) {
     filtered = [BridgeTransferMethod.SEPA];
-  } else if (normalizedFiat === BridgeTransferFiatCurrency.MXN) {
-    filtered = [BridgeTransferMethod.SPEI];
   } else if (normalizedFiat === BridgeTransferFiatCurrency.USD) {
     filtered = [BridgeTransferMethod.ACH_PUSH, BridgeTransferMethod.WIRE];
   }

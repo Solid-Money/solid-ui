@@ -37,7 +37,7 @@ export const useCountdownTimer = (nextRewardTime: number) => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [nextRewardTime]);
 
   return timeLeft;
 };

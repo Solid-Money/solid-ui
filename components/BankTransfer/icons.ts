@@ -6,11 +6,10 @@ import { BridgeTransferCryptoCurrency, BridgeTransferFiatCurrency } from './enum
 
 export type SvgIcon = ComponentType<SvgProps>;
 
-// Temporary mapping: use USD icon for EUR as well. MXN intentionally left undefined for now.
+// Temporary mapping: use USD icon for EUR as well.
 export const FIAT_ICON_MAP: Partial<Record<BridgeTransferFiatCurrency, SvgIcon>> = {
   [BridgeTransferFiatCurrency.USD]: UsdFlag,
   [BridgeTransferFiatCurrency.EUR]: UsdFlag,
-  [BridgeTransferFiatCurrency.MXN]: UsdFlag,
 };
 
 export const getFiatIcon = (code: BridgeTransferFiatCurrency) => FIAT_ICON_MAP[code];

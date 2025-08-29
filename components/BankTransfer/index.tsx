@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useExchangeRate } from '@/hooks/useExchangeRate';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -7,6 +8,7 @@ import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
 import CryptoDropdown from './CryptoDropdown';
 import { BridgeTransferCryptoCurrency, BridgeTransferFiatCurrency } from './enums';
+import { ExchangeRateDisplay } from './ExchangeRateDisplay';
 import FiatDropdown from './FiatDropdown';
 
 export default function BankTransferAmount() {
@@ -31,11 +33,18 @@ export default function BankTransferAmount() {
     }
   }, [allowedCrypto, crypto]);
 
-  // TODO: Refactor this after getting response from Bridge
-  // TODO: about the exchange rates.
+  const { rate, loading } = useExchangeRate(fiat, crypto);
+
   useEffect(() => {
-    setCryptoAmount(fiatAmount);
-  }, [fiatAmount]);
+    if (!loading && rate) {
+      // Use buy_rate when converting from fiat to crypto
+      const fiatAmountFloat = fiatAmount ? parseFloat(fiatAmount) : 0;
+      const buyRateFloat = rate.buy_rate ? parseFloat(rate.buy_rate) : 0;
+      const newAmount = fiatAmountFloat * buyRateFloat;
+      const newAmountSanitized = Number(newAmount.toFixed(2)).toString();
+      setCryptoAmount(newAmountSanitized);
+    }
+  }, [fiatAmount, rate, loading]);
 
   return (
     <View className="gap-4">
@@ -55,6 +64,14 @@ export default function BankTransferAmount() {
         rightComponent={
           <CryptoDropdown value={crypto} onChange={setCrypto} allowed={allowedCrypto} />
         }
+      />
+
+      <ExchangeRateDisplay
+        rate={rate?.buy_rate}
+        fromCurrency={fiat}
+        toCurrency={crypto}
+        loading={loading}
+        initialLoading={loading && !rate}
       />
 
       <Button
