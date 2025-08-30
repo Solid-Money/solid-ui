@@ -15,6 +15,7 @@ import {
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
   BridgeDeposit,
+  BridgeDepositResponse,
   BridgeTransaction,
   BridgeTransferResponse,
   CardResponse,
@@ -520,7 +521,7 @@ export const createMercuryoTransaction = async (
 
 export const bridgeDeposit = async (
   bridge: BridgeDeposit,
-): Promise<{ transactionHash: string }> => {
+): Promise<BridgeDepositResponse> => {
   const jwt = getJWTToken();
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/deposit`, {

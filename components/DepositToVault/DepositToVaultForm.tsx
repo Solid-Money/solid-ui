@@ -23,9 +23,10 @@ import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
+import { BridgeProvider } from '@/lib/types';
 
 function DepositToVaultForm() {
-  const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
+  const { balance, deposit, depositStatus, depositTransaction, isEthereum } = useDepositFromEOA();
   const { setModal, setTransaction, srcChainId } = useDepositStore();
 
   const isLoading =
@@ -106,11 +107,14 @@ function DepositToVaultForm() {
     if (depositStatus === DepositStatus.SUCCESS) {
       reset(); // Reset form after successful transaction
       setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+      const hash = depositTransaction?.transactionHash;
       if (!hash) return;
 
-      const explorerUrl = isEthereum
-        ? explorerUrls[layerzero.id]?.layerzeroscan
-        : explorerUrls[lifi.id]?.lifiscan;
+      const provider = depositTransaction?.provider;
+      const explorerUrl =
+        isEthereum || (provider && provider !== BridgeProvider.LIFI)
+          ? explorerUrls[layerzero.id]?.layerzeroscan
+          : explorerUrls[lifi.id]?.lifiscan;
 
       Toast.show({
         type: 'success',
@@ -123,7 +127,7 @@ function DepositToVaultForm() {
         },
       });
     }
-  }, [reset, setModal, depositStatus, isEthereum, hash]);
+  }, [reset, setModal, depositStatus, isEthereum, depositTransaction]);
 
   const isFormDisabled = () => {
     return isLoading || !isValid || !watchedAmount;
