@@ -5,35 +5,35 @@ on:
     branches: ['master']
 
 jobs:
-  # fingerprint:
-  #   name: Fingerprint
-  #   type: fingerprint
-  # get_android_build:
-  #   name: Check for existing android build
-  #   needs: [fingerprint]
-  #   type: get-build
-  #   params:
-  #     fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
-  #     profile: production
-  # get_ios_build:
-  #   name: Check for existing ios build
-  #   needs: [fingerprint]
-  #   type: get-build
-  #   params:
-  #     fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
-  #     profile: production
+  fingerprint:
+    name: Fingerprint
+    type: fingerprint
+  get_android_build:
+    name: Check for existing android build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      profile: production
+  get_ios_build:
+    name: Check for existing ios build
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      profile: production
   build_android:
     name: Build Android
-    # needs: [get_android_build]
-    # if: ${{ !needs.get_android_build.outputs.build_id }}
+    needs: [get_android_build]
+    if: ${{ !needs.get_android_build.outputs.build_id }}
     type: build
     params:
       platform: android
       profile: production
   build_ios:
     name: Build iOS
-    # needs: [get_ios_build]
-    # if: ${{ !needs.get_ios_build.outputs.build_id }}
+    needs: [get_ios_build]
+    if: ${{ !needs.get_ios_build.outputs.build_id }}
     type: build
     params:
       platform: ios

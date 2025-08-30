@@ -104,9 +104,11 @@ const BankTransferKycInfoModal = () => {
   }
 
   return (
-    <View className="flex-1 gap-6 py-4">
+    <View className="flex-1 gap-6 pt-4 pb-1">
       <UserInfoHeader kycMode={kycMode} />
-      <UserInfoForm control={control} errors={errors} />
+      <View className="px-1">
+        <UserInfoForm control={control} errors={errors} />
+      </View>
       <UserInfoFooter
         control={control}
         errors={errors}
