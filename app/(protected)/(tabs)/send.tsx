@@ -163,123 +163,121 @@ const SendPage = () => {
       edges={['right', 'left', 'bottom', 'top']}
     >
       {isScreenMedium && <Navbar />}
-      <View className="flex-1 px-4 py-8 md:py-12">
+      <View className="flex-1 gap-2 px-4 py-8 md:py-12 max-w-lg mx-auto">
         {/* Form Fields */}
-        <View className="max-w-md mx-auto w-full gap-2">
-          {/* Header */}
-          <View className="flex-row items-center justify-between mb-8">
-            <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-              <ArrowLeft color="white" />
-            </Pressable>
-            <Text className="text-xl md:text-3xl font-semibold text-center">Send</Text>
-            <View className="w-10" />
-          </View>
-          {/* To Section */}
-          <View className="gap-4 bg-card rounded-xl p-4">
-            <Text className="text-muted-foreground font-medium">To</Text>
-            <View className="flex-row items-center justify-between">
-              <Controller
-                control={control}
-                name="address"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    className={cn(
-                      'flex-1 text-white text-base web:focus:outline-none',
-                      // errors.address && "text-red-400"
-                    )}
-                    placeholder="Enter or select an address..."
-                    placeholderTextColor="#666"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                )}
-              />
-              {/* <ChevronDown size={20} color="#666" /> */}
-            </View>
-          </View>
-
-          {/* Send Section */}
-          <View className="gap-2 bg-card rounded-xl p-4">
-            <Text className="text-muted-foreground font-medium">Send</Text>
-            <View className="flex-row items-center justify-between gap-2">
-              <Pressable
-                className="flex-row items-center gap-3 web:hover:bg-accent rounded-full px-2 h-10"
-                onPress={() => setShowTokenSelector(true)}
-              >
-                {selectedToken ? (
-                  <>
-                    <RenderTokenIcon
-                      tokenIcon={getTokenIcon({
-                        logoUrl: selectedToken.logoUrl,
-                        tokenSymbol: selectedToken.contractTickerSymbol,
-                        size: 24,
-                      })}
-                      size={24}
-                    />
-                    <View>
-                      <Text className="text-sm font-medium">
-                        {selectedToken.contractTickerSymbol}
-                      </Text>
-                      <Text className="text-muted-foreground text-xs">
-                        {formatNumber(
-                          Number(
-                            formatUnits(
-                              BigInt(selectedToken.balance || '0'),
-                              selectedToken.contractDecimals,
-                            ),
-                          ),
-                        )}{' '}
-                        {selectedToken.contractTickerSymbol}
-                      </Text>
-                    </View>
-                    <ChevronDown size={16} color="#666" />
-                  </>
-                ) : (
-                  <>
-                    <View className="w-6 h-6 bg-primary/20 rounded-full" />
-                    <Text className="text-muted-foreground text-sm font-medium">Select token</Text>
-                    <ChevronDown size={16} color="#666" />
-                  </>
-                )}
-              </Pressable>
-
-              <Controller
-                control={control}
-                name="amount"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    className={cn(
-                      'w-full web:focus:outline-none text-white text-4xl font-bold text-right',
-                      // errors.amount && "text-red-400"
-                    )}
-                    placeholder="0"
-                    placeholderTextColor="#666"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    keyboardType="decimal-pad"
-                    style={{ minWidth: 80 }}
-                  />
-                )}
-              />
-            </View>
-          </View>
-
-          {/* Send Button */}
-          <Button
-            variant="brand"
-            className="rounded-xl"
-            size="lg"
-            onPress={handleSubmit(onSubmit)}
-            disabled={!selectedToken || !isValid || isSendLoading}
-          >
-            <Text className="font-semibold">{getSendText()}</Text>
-            {isSendLoading && <ActivityIndicator color="gray" />}
-          </Button>
+        {/* Header */}
+        <View className="flex-row items-center justify-between mb-8">
+          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+            <ArrowLeft color="white" />
+          </Pressable>
+          <Text className="text-xl md:text-3xl font-semibold text-center">Send</Text>
+          <View className="w-10" />
         </View>
+        {/* To Section */}
+        <View className="gap-4 bg-card rounded-xl p-4">
+          <Text className="text-muted-foreground font-medium">To</Text>
+          <View className="flex-row items-center justify-between">
+            <Controller
+              control={control}
+              name="address"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  className={cn(
+                    'flex-1 text-white text-base web:focus:outline-none',
+                    // errors.address && "text-red-400"
+                  )}
+                  placeholder="Enter or select an address..."
+                  placeholderTextColor="#666"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              )}
+            />
+            {/* <ChevronDown size={20} color="#666" /> */}
+          </View>
+        </View>
+
+        {/* Send Section */}
+        <View className="gap-2 bg-card rounded-xl p-4">
+          <Text className="text-muted-foreground font-medium">Send</Text>
+          <View className="flex-row items-center justify-between gap-2">
+            <Pressable
+              className="flex-row items-center gap-3 web:hover:bg-accent rounded-full px-2 h-10"
+              onPress={() => setShowTokenSelector(true)}
+            >
+              {selectedToken ? (
+                <>
+                  <RenderTokenIcon
+                    tokenIcon={getTokenIcon({
+                      logoUrl: selectedToken.logoUrl,
+                      tokenSymbol: selectedToken.contractTickerSymbol,
+                      size: 24,
+                    })}
+                    size={24}
+                  />
+                  <View>
+                    <Text className="text-sm font-medium">
+                      {selectedToken.contractTickerSymbol}
+                    </Text>
+                    <Text className="text-muted-foreground text-xs">
+                      {formatNumber(
+                        Number(
+                          formatUnits(
+                            BigInt(selectedToken.balance || '0'),
+                            selectedToken.contractDecimals,
+                          ),
+                        ),
+                      )}{' '}
+                      {selectedToken.contractTickerSymbol}
+                    </Text>
+                  </View>
+                  <ChevronDown size={16} color="#666" />
+                </>
+              ) : (
+                <>
+                  <View className="w-6 h-6 bg-primary/20 rounded-full" />
+                  <Text className="text-muted-foreground text-sm font-medium">Select token</Text>
+                  <ChevronDown size={16} color="#666" />
+                </>
+              )}
+            </Pressable>
+
+            <Controller
+              control={control}
+              name="amount"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  className={cn(
+                    'w-full web:focus:outline-none text-white text-4xl font-bold text-right',
+                    // errors.amount && "text-red-400"
+                  )}
+                  placeholder="0"
+                  placeholderTextColor="#666"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  keyboardType="decimal-pad"
+                  style={{ minWidth: 80 }}
+                />
+              )}
+            />
+          </View>
+        </View>
+
+        {/* Send Button */}
+        <Button
+          variant="brand"
+          className="rounded-xl"
+          size="lg"
+          onPress={handleSubmit(onSubmit)}
+          disabled={!selectedToken || !isValid || isSendLoading}
+        >
+          <Text className="font-semibold">{getSendText()}</Text>
+          {isSendLoading && <ActivityIndicator color="gray" />}
+        </Button>
 
         {/* Token Selector Modal */}
         <TokenSelectorModal
