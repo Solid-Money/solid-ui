@@ -74,10 +74,4 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     icon: require('@/assets/images/fuse.png'),
     sort: 5,
   },
-  [0]: {
-    name: 'Suggest',
-    icon: require('@/assets/images/question-mark.png'),
-    isComingSoon: true,
-    sort: 6,
-  },
 };

@@ -22,14 +22,14 @@ const DepositNetworks = () => {
         {Object.entries(BRIDGE_TOKENS)
           .sort((a, b) => a[1].sort - b[1].sort)
           .map(([id, network]) => {
-            const isSuggest = Number(id) === 0;
+            const isEthereum = Number(id) === 1;
             const isComingSoon = network.isComingSoon;
 
             return (
               <DepositNetwork
                 key={network.name}
                 name={network.name}
-                description={isSuggest ? 'Contact us on Telegram' : 'Gasless'}
+                description={isEthereum ? 'No fee | Speed 5 mins' : 'No fee | Speed 30 mins'}
                 icon={network.icon}
                 isComingSoon={isComingSoon}
                 onPress={() => handlePress(Number(id))}
