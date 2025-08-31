@@ -25,6 +25,7 @@ const registerSchema = z.object({
     .max(20, 'Username must be less than 20 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Only use letters, numbers, underscores_, or hyphens-.')
     .refine(value => !value.includes(' '), 'Username cannot contain spaces'),
+  inviteCode: z.string().nonempty('Invite code is required'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -60,15 +61,19 @@ export default function Register() {
     formState: { errors, isValid },
     watch,
     reset,
+    setValue,
+    trigger,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     mode: 'onChange',
     defaultValues: {
       username: '',
+      inviteCode: '',
     },
   });
 
   const watchedUsername = watch('username');
+  const watchedInviteCode = watch('inviteCode');
 
   // Reset form after successful signup
   useEffect(() => {
@@ -78,24 +83,27 @@ export default function Register() {
   }, [signupInfo.status, reset]);
 
   const handleSignupForm = (data: RegisterFormData) => {
-    // To let users sign up in native, we need to use a test invite code.
-    // We'll keep this until we remove the invite code functionality or
-    // develop a way to enter the invite code in native.
-    const isAndroidOrIOS = Platform.OS !== 'web';
-    handleSignup(data.username, isAndroidOrIOS ? 'TEST_INVITE_123' : code);
+    handleSignup(data.username, data.inviteCode);
   };
 
   const getSignupButtonText = () => {
     if (signupInfo.status === Status.PENDING) return 'Creating';
-    if (!isValid || !watchedUsername) return 'Enter a username';
+    if (!watchedUsername) return 'Enter a username';
+    if (!watchedInviteCode) return 'Enter an invite code';
+    if (!isValid) return 'Enter valid information';
     return 'Create Account';
   };
 
   const getSignupErrorText = useMemo(() => {
     if (errors.username) return errors.username.message;
+    return '';
+  }, [errors.username]);
+
+  const getInviteCodeErrorText = useMemo(() => {
+    if (errors.inviteCode) return errors.inviteCode.message;
     if (signupInfo.status === Status.ERROR) return signupInfo.message || 'Error creating account';
     return '';
-  }, [errors.username, signupInfo.status, signupInfo.message]);
+  }, [errors.inviteCode, signupInfo.status, signupInfo.message]);
 
   const isSignupDisabled = () => {
     return signupInfo.status === Status.PENDING || !isValid || !watchedUsername;
@@ -113,6 +121,13 @@ export default function Register() {
       });
     }
   }, [session]);
+
+  useEffect(() => {
+    if (code) {
+      setValue('inviteCode', code);
+      trigger('inviteCode');
+    }
+  }, [code, setValue, trigger]);
 
   // TODO: Add recovery flow
   // const handleRecoverySuccess = (organizationId: string, userId: string) => {
@@ -160,7 +175,7 @@ export default function Register() {
           </View>
 
           <View className="w-full flex-col gap-8">
-            <View className={cn('flex-col gap-5', getSignupErrorText && 'gap-2')}>
+            <View className="gap-2">
               <Controller
                 control={control}
                 name="username"
@@ -182,6 +197,29 @@ export default function Register() {
                 <View className="flex-row items-center gap-2">
                   <InfoError />
                   <Text className="text-sm text-red-400">{getSignupErrorText}</Text>
+                </View>
+              ) : null}
+              <Controller
+                control={control}
+                name="inviteCode"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    id="inviteCode"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    placeholder="Invite Code"
+                    className={cn(
+                      'h-14 px-6 rounded-xl border text-lg text-foreground font-semibold placeholder:text-muted-foreground',
+                      errors.inviteCode ? 'border-red-500' : 'border-border',
+                    )}
+                  />
+                )}
+              />
+              {getInviteCodeErrorText ? (
+                <View className="flex-row items-center gap-2">
+                  <InfoError />
+                  <Text className="text-sm text-red-400">{getInviteCodeErrorText}</Text>
                 </View>
               ) : null}
               <Button
