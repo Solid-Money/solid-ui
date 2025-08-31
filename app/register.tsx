@@ -127,7 +127,7 @@ export default function Register() {
       setValue('inviteCode', code);
       trigger('inviteCode');
     }
-  }, [code]);
+  }, [code, setValue, trigger]);
 
   // TODO: Add recovery flow
   // const handleRecoverySuccess = (organizationId: string, userId: string) => {

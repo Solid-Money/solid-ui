@@ -24,7 +24,7 @@ const AccountCenter = () => {
   );
 };
 
-const AccountCenterTrigger = ({ onModalOpen }: { onModalOpen?: () => void }) => {
+const AccountCenterTrigger = () => {
   const { user } = useUser();
 
   const handleAvatarPress = () => {
