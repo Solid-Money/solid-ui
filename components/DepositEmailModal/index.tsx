@@ -53,9 +53,12 @@ const DepositEmailModal: React.FC = () => {
         <Text className="text-2xl font-bold text-center">
           {currentStep === 'email' ? 'Email required' : 'Verify your email'}
         </Text>
-        <Text className={cn("text-muted-foreground text-center leading-5",
-          currentStep === 'email' ? 'max-w-sm' : 'max-w-xs'
-        )}>
+        <Text
+          className={cn(
+            'text-muted-foreground text-center leading-5',
+            currentStep === 'email' ? 'max-w-sm' : 'max-w-xs',
+          )}
+        >
           {currentStep === 'email'
             ? 'For your security, we require a verified email address before you can make deposits.'
             : `Enter the 6-digit verification code sent to your email address:\n${emailValue}`}
