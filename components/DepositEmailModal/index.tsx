@@ -123,7 +123,6 @@ const DepositEmailModal: React.FC = () => {
               name="otpCode"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  placeholder="123456"
                   value={value || ''}
                   onChangeText={onChange}
                   onBlur={onBlur}
