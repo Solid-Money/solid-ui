@@ -1,5 +1,4 @@
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { isProduction } from '@/lib/config';
 import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
 import { CreditCard, Landmark, Wallet } from 'lucide-react-native';
@@ -73,7 +72,7 @@ const DepositOptions = () => {
       text: 'Bank Deposit',
       icon: <Landmark color="white" size={26} />,
       onPress: handleBankDepositPress,
-      isComingSoon: isProduction,
+      isComingSoon: false,
     },
   ];
 
