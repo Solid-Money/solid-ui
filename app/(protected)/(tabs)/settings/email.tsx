@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { Controller } from 'react-hook-form';
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ export default function Email() {
   const { user } = useUser();
   const router = useRouter();
   const { isDesktop } = useDimension();
+  const insets = useSafeAreaInsets();
 
   const {
     step,
@@ -207,7 +208,10 @@ export default function Email() {
 
         {/* Mobile buttons - at bottom */}
         {!isDesktop && (
-          <View className="px-4 pb-8 gap-3">
+          <View
+            className="px-4 pt-4 gap-3 bg-black"
+            style={{ paddingBottom: insets.bottom + 80 }} // Tab bar height + padding
+          >
             <Button
               variant="brand"
               className="rounded-2xl h-12"

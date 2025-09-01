@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 
+import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useTotalAPY } from '@/hooks/useAnalytics';
-import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 const HomeBannerDeposit = () => {
   const { data: totalAPY, isLoading: isTotalAPYLoading } = useTotalAPY();
@@ -13,11 +14,12 @@ const HomeBannerDeposit = () => {
     <LinearGradient
       colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
       style={{
-        borderRadius: 20,
-        padding: 20,
+        borderRadius: 16,
+        padding: 16,
+        height: 90,
       }}
     >
-      <View className="relative flex-row justify-end gap-4">
+      <View className="relative flex-row justify-end items-center h-full">
         <Image
           source={require('@/assets/images/solid-purple-large.png')}
           contentFit="contain"
@@ -29,12 +31,18 @@ const HomeBannerDeposit = () => {
             left: -40,
           }}
         />
-        <Text className="font-semibold max-w-52">
+        <Text className="font-semibold max-w-52 text-sm leading-tight">
           Deposit your stablecoins and earn{' '}
           {isTotalAPYLoading ? (
             <Skeleton className="w-14 h-4 bg-purple/50" />
           ) : (
-            <Text className="text-brand font-bold underline">{totalAPY?.toFixed(2)}%</Text>
+            <Text
+              className={cn('text-brand font-bold', {
+                underline: Platform.OS === 'web',
+              })}
+            >
+              {totalAPY?.toFixed(2)}%
+            </Text>
           )}{' '}
           per year
         </Text>

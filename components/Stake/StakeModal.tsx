@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 
-import AnimatedModal from '@/components/AnimatedModal';
+import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
 import { STAKE_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
@@ -55,7 +55,7 @@ const StakeModal = () => {
   };
 
   return (
-    <AnimatedModal
+    <ResponsiveModal
       currentModal={currentModal}
       previousModal={previousModal}
       isOpen={!isClose}
@@ -66,7 +66,7 @@ const StakeModal = () => {
       contentKey={getContentKey()}
     >
       {getContent()}
-    </AnimatedModal>
+    </ResponsiveModal>
   );
 };
 

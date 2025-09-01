@@ -3,7 +3,14 @@ import { Image } from 'expo-image';
 import { Fuel, Wallet } from 'lucide-react-native';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  Platform,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
 import { formatUnits } from 'viem';
 import { z } from 'zod';
@@ -15,14 +22,14 @@ import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useTotalAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
-import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
@@ -130,89 +137,95 @@ function DepositToVaultForm() {
   };
 
   return (
-    <View className="gap-4">
-      <View className="gap-2">
-        <Text className="text-muted-foreground">From wallet</Text>
-        <ConnectedWalletDropdown />
-      </View>
-      <View className="gap-2">
-        <Text className="text-muted-foreground">Deposit amount</Text>
-        <View className="px-5 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
-          <Controller
-            control={control}
-            name="amount"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                keyboardType="decimal-pad"
-                className="w-full text-2xl text-white font-semibold web:focus:outline-none"
-                value={value.toString()}
-                placeholder="0.0"
-                placeholderTextColor="#666"
-                onChangeText={onChange}
-                onBlur={onBlur}
-              />
-            )}
-          />
-          <View className="flex-row items-center gap-2">
-            <Image
-              source={require('@/assets/images/usdc.png')}
-              alt="USDC"
-              style={{ width: 32, height: 32 }}
+    <TouchableWithoutFeedback onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
+      <View className="gap-4">
+        <View className="gap-2">
+          <Text className="text-muted-foreground">From wallet</Text>
+          <ConnectedWalletDropdown />
+        </View>
+        <View className="gap-2">
+          <Text className="text-muted-foreground">Deposit amount</Text>
+          <View className="pl-5 pr-8 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
+            <Controller
+              control={control}
+              name="amount"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  keyboardType="decimal-pad"
+                  className="flex-1 text-2xl text-white font-semibold web:focus:outline-none"
+                  value={value.toString()}
+                  placeholder="0.0"
+                  placeholderTextColor="#666"
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  returnKeyType="done"
+                  onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
+                />
+              )}
             />
-            <Text className="font-semibold text-white text-lg">
-              {BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.name}
+            <View className="flex-row items-center gap-2 flex-shrink-0">
+              <Image
+                source={require('@/assets/images/usdc.png')}
+                alt="USDC"
+                style={{ width: 32, height: 32 }}
+              />
+              <Text className="font-semibold text-white text-lg">
+                {BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.name}
+              </Text>
+            </View>
+          </View>
+          <View className="flex-row items-center gap-1.5">
+            <Wallet color="gray" size={16} />
+            <Text className="text-muted-foreground">
+              {formatNumber(Number(formattedBalance))} USDC
             </Text>
+            <Max
+              onPress={() => {
+                setValue('amount', formattedBalance);
+                trigger('amount');
+              }}
+            />
           </View>
         </View>
-        <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-          <Wallet size={16} /> {formatNumber(Number(formattedBalance))} USDC
-          <Max
-            onPress={() => {
-              setValue('amount', formattedBalance);
-              trigger('amount');
-            }}
-          />
-        </Text>
-      </View>
-      <TokenDetails>
-        <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
-          <Text className="text-lg opacity-40 md:w-40">You will receive</Text>
-          <View className="flex-row items-center gap-2">
-            <Image
-              source={require('@/assets/images/sousd-4x.png')}
-              style={{ width: 34, height: 34 }}
-              contentFit="contain"
-            />
-            <View className="flex-row items-baseline gap-2">
-              <Text className="text-2xl font-semibold">
-                {isPreviewDepositLoading ? (
-                  <Skeleton className="w-20 h-8" />
-                ) : (
-                  parseFloat(amountOut.toFixed(3)) || 0
-                )}
-              </Text>
-              <Text>soUSD</Text>
-            </View>
-            {/* <Text className="text-lg opacity-40 text-right">
+        <TokenDetails>
+          <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
+            <Text className="text-lg opacity-40 md:w-40">You will receive</Text>
+            <View className="flex-row items-center gap-2">
+              <Image
+                source={require('@/assets/images/sousd-4x.png')}
+                style={{ width: 34, height: 34 }}
+                contentFit="contain"
+              />
+              <View className="flex-row items-baseline gap-2">
+                <Text className="text-2xl font-semibold">
+                  {isPreviewDepositLoading ? (
+                    <Skeleton className="w-20 h-8" />
+                  ) : (
+                    parseFloat(amountOut.toFixed(3)) || 0
+                  )}
+                </Text>
+                <Text>soUSD</Text>
+              </View>
+              {/* <Text className="text-lg opacity-40 text-right">
                       {`(${compactNumberFormat(costInUsd)} USDC in fee)`}
                     </Text> */}
+            </View>
           </View>
-        </View>
-        <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
-          <Text className="text-lg opacity-40 md:w-40">Exchange rate</Text>
-          <View className="flex-row items-baseline gap-2">
-            <Text className="text-2xl font-semibold">
-              {exchangeRate ? formatUnits(exchangeRate, 6) : <Skeleton className="w-20 h-8" />}
-            </Text>
+          <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
+            <Text className="text-lg opacity-40 md:w-40">Exchange rate</Text>
+            <View className="flex-row items-baseline gap-2">
+              <Text className="text-2xl font-semibold">
+                {exchangeRate ? formatUnits(exchangeRate, 6) : <Skeleton className="w-20 h-8" />}
+              </Text>
+            </View>
           </View>
-        </View>
-        <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
-          <Text className="text-lg opacity-40 md:w-40">APY</Text>
-          <View className="flex-row items-baseline gap-2">
-            <Text className="text-2xl font-semibold text-[#94F27F]">
-              {totalAPY ? `${totalAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
-            </Text>
-            {/* <Text className="text-base opacity-40">
+          <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
+            <Text className="text-lg opacity-40 md:w-40">APY</Text>
+            <View className="flex-row items-baseline gap-2">
+              <Text className="text-2xl font-semibold text-[#94F27F]">
+                {totalAPY ? `${totalAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
+              </Text>
+              {/* <Text className="text-base opacity-40">
                   {totalAPY ? (
                     `Earn ~${compactNumberFormat(
                       Number(watchedAmount) * (totalAPY / 100)
@@ -221,28 +234,29 @@ function DepositToVaultForm() {
                     <Skeleton className="w-20 h-6" />
                   )}
                 </Text> */}
+            </View>
           </View>
+        </TokenDetails>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-1">
+            <Fuel color="gray" size={18} />
+            <Text className="text-base text-muted-foreground">Fee</Text>
+          </View>
+          <Text className="text-base text-muted-foreground">Gasless</Text>
         </View>
-      </TokenDetails>
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-1">
-          <Fuel color="gray" size={18} />
-          <Text className="text-base text-muted-foreground">Fee</Text>
-        </View>
-        <Text className="text-base text-muted-foreground">Gasless</Text>
+        <CheckConnectionWrapper props={{ size: 'xl' }}>
+          <Button
+            variant="brand"
+            className="rounded-2xl h-12"
+            onPress={handleSubmit(onSubmit)}
+            disabled={isFormDisabled()}
+          >
+            <Text className="text-lg font-semibold">{getButtonText()?.slice(0, 30)}</Text>
+            {isLoading && <ActivityIndicator color="gray" />}
+          </Button>
+        </CheckConnectionWrapper>
       </View>
-      <CheckConnectionWrapper props={{ size: 'xl' }}>
-        <Button
-          variant="brand"
-          className="rounded-2xl h-12"
-          onPress={handleSubmit(onSubmit)}
-          disabled={isFormDisabled()}
-        >
-          <Text className="text-lg font-semibold">{getButtonText()?.slice(0, 30)}</Text>
-          {isLoading && <ActivityIndicator color="gray" />}
-        </Button>
-      </CheckConnectionWrapper>
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
