@@ -23,6 +23,7 @@ import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
+import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
@@ -72,6 +73,7 @@ function DepositToVaultForm() {
   });
 
   const watchedAmount = watch('amount');
+  const isSponsor = Number(watchedAmount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
   const {
     amountOut,
     isLoading: isPreviewDepositLoading,
@@ -227,9 +229,11 @@ function DepositToVaultForm() {
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-1">
           <Fuel color="gray" size={18} />
-          <Text className="text-base text-muted-foreground">Fee</Text>
+          <Text className="text-base text-muted-foreground">
+            Gasless
+            {isSponsor ? '' : ` for minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} USDC deposit`}
+          </Text>
         </View>
-        <Text className="text-base text-muted-foreground">Gasless</Text>
       </View>
       <CheckConnectionWrapper props={{ size: 'xl' }}>
         <Button
