@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
 
-import AnimatedModal from '@/components/AnimatedModal';
+import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
 import { WITHDRAW_MODAL } from '@/constants/modals';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -55,7 +55,7 @@ const WithdrawModal = () => {
   };
 
   return (
-    <AnimatedModal
+    <ResponsiveModal
       currentModal={currentModal}
       previousModal={previousModal}
       isOpen={!isClose}
@@ -66,7 +66,7 @@ const WithdrawModal = () => {
       contentKey={getContentKey()}
     >
       {getContent()}
-    </AnimatedModal>
+    </ResponsiveModal>
   );
 };
 

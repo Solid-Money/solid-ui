@@ -1,10 +1,10 @@
-import { Platform, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 
 import { path } from '@/constants/path';
 import CircleButton from '@/components/CircleButton';
-import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import ResponsiveDepositOptionModal from '@/components/DepositOption/ResponsiveDepositOptionModal';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -29,11 +29,7 @@ const DashboardHeaderButtonsMobile = () => {
   const router = useRouter();
   return (
     <View className="flex-row justify-between gap-8 items-center mx-auto">
-      {Platform.OS === 'web' ? (
-        <DepositOptionModal trigger={<DepositButton />} />
-      ) : (
-        <DepositButton onPress={() => router.push(path.DEPOSIT)} />
-      )}
+      <ResponsiveDepositOptionModal trigger={<DepositButton />} />
 
       <CircleButton
         icon={HomeSend}

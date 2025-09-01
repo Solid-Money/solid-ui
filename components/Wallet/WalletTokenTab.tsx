@@ -59,6 +59,73 @@ const WalletTokenTab = () => {
     return COLUMN_WIDTHS.map(ratio => (width - offset) * ratio);
   }, [width, isScreenMedium]);
 
+  // Use card-based design for mobile, table for desktop
+  if (!isScreenMedium) {
+    return (
+      <View className="flex-1">
+        <FlashList
+          data={allTokens}
+          estimatedItemSize={72}
+          contentContainerStyle={{
+            paddingBottom: insets.bottom,
+          }}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item: token }) => {
+            const balance = Number(
+              formatUnits(BigInt(token.balance || '0'), token.contractDecimals),
+            );
+            const balanceUSD = balance * (token.quoteRate || 0);
+
+            const tokenIcon = getTokenIcon({
+              logoUrl: token.logoUrl,
+              tokenSymbol: token.contractTickerSymbol,
+              size: 40,
+            });
+
+            return (
+              <View className="flex-row items-center justify-between p-4 py-5 bg-[#1C1C1C] rounded-[20px] mb-2">
+                <View className="flex-row items-center gap-3">
+                  <RenderTokenIcon tokenIcon={tokenIcon} size={40} />
+                  <View>
+                    <Text className="font-bold text-lg">
+                      {token.contractTickerSymbol || 'Unknown'}
+                    </Text>
+                    <Text className="text-sm font-medium text-muted-foreground">
+                      {compactNumberFormat(balance)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="flex-row items-center gap-3">
+                  <Text className="font-bold text-lg">${compactNumberFormat(balanceUSD)}</Text>
+
+                  <View className="flex-row items-center gap-2">
+                    <SendModal
+                      tokenAddress={token.contractAddress as Address}
+                      tokenDecimals={token.contractDecimals}
+                      tokenIcon={tokenIcon}
+                      tokenSymbol={token.contractTickerSymbol || 'Unknown'}
+                      chainId={token.chainId}
+                    />
+                    {isSoUSDFuse(token.contractAddress) ? (
+                      <UnstakeModal />
+                    ) : isSoUSDEthereum(token.contractAddress) ? (
+                      <>
+                        <WithdrawModal />
+                        <StakeModal />
+                      </>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+            );
+          }}
+        />
+      </View>
+    );
+  }
+
+  // Desktop table implementation
   return (
     <>
       <View className="flex-1" onLayout={handleLayout} />

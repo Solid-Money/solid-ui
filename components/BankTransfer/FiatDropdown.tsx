@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Text } from '@/components/ui/text';
 import { ChevronDown } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -22,8 +22,12 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
   // };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Select currency"
+      contentClassName="md:max-w-sm"
+      trigger={
         <Button
           className="bg-[#4D4D4D] h-12 px-4 rounded-full text-white"
           onPress={() => setOpen(true)}
@@ -37,29 +41,27 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
             <ChevronDown className="text-white" />
           </View>
         </Button>
-      </DialogTrigger>
-      <DialogContent className="md:max-w-sm">
-        <DialogTitle>Select currency</DialogTitle>
-        <View className="gap-2">
-          {items.map(item => (
-            <Button
-              key={item}
-              variant={item === value ? 'secondary' : 'ghost'}
-              className="h-12 rounded-xl justify-start"
-              onPress={() => {
-                onChange(item);
-                setOpen(false);
-              }}
-            >
-              <View className="flex-row items-center gap-2">
-                {/* TODO: Uncomment below when flag icons are ready */}
-                {/* {renderFlag(item)} */}
-                <Text className="text-base font-semibold">{FIAT_LABEL[item]}</Text>
-              </View>
-            </Button>
-          ))}
-        </View>
-      </DialogContent>
-    </Dialog>
+      }
+    >
+      <View className="gap-2">
+        {items.map(item => (
+          <Button
+            key={item}
+            variant={item === value ? 'secondary' : 'ghost'}
+            className="h-12 rounded-xl justify-start"
+            onPress={() => {
+              onChange(item);
+              setOpen(false);
+            }}
+          >
+            <View className="flex-row items-center gap-2">
+              {/* TODO: Uncomment below when flag icons are ready */}
+              {/* {renderFlag(item)} */}
+              <Text className="text-base font-semibold">{FIAT_LABEL[item]}</Text>
+            </View>
+          </Button>
+        ))}
+      </View>
+    </ResponsiveDialog>
   );
 }

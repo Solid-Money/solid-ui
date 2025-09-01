@@ -7,7 +7,7 @@ export const useDimension = () => {
   const { width } = useWindowDimensions();
 
   const isScreenMedium = useMemo(() => {
-    return width >= SCREEN_MEDIUM_WIDTH;
+    return (width || 0) >= SCREEN_MEDIUM_WIDTH;
   }, [width]);
 
   const isDesktop = useMemo(() => {

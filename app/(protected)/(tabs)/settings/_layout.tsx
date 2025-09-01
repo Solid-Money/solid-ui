@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
-import { Platform, TouchableOpacity } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 export default function SettingsLayout() {
   return (
@@ -30,7 +30,7 @@ export default function SettingsLayout() {
         options={{
           title: 'Account details',
           headerBackButtonDisplayMode: 'minimal',
-          headerShown: Platform.OS !== 'web',
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -38,7 +38,7 @@ export default function SettingsLayout() {
         options={{
           title: 'Email',
           headerBackButtonDisplayMode: 'minimal',
-          headerShown: Platform.OS !== 'web',
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -46,7 +46,7 @@ export default function SettingsLayout() {
         options={{
           title: 'Help & Support',
           headerBackButtonDisplayMode: 'minimal',
-          headerShown: Platform.OS !== 'web',
+          headerShown: false,
         }}
       />
     </Stack>

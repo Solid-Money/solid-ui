@@ -5,6 +5,17 @@ import '@/global.css';
 import { infoClient } from '@/graphql/clients';
 import { config } from '@/lib/wagmi';
 import { ApolloProvider } from '@apollo/client';
+import {
+  MonaSans_200ExtraLight,
+  MonaSans_300Light,
+  MonaSans_400Regular,
+  MonaSans_500Medium,
+  MonaSans_600SemiBold,
+  MonaSans_700Bold,
+  MonaSans_800ExtraBold,
+  MonaSans_900Black,
+  useFonts,
+} from '@expo-google-fonts/mona-sans';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PortalHost } from '@rn-primitives/portal';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -20,17 +31,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { ThirdwebProvider } from 'thirdweb/react';
 import { WagmiProvider } from 'wagmi';
-import {
-  MonaSans_200ExtraLight,
-  MonaSans_300Light,
-  MonaSans_400Regular,
-  MonaSans_500Medium,
-  MonaSans_600SemiBold,
-  MonaSans_700Bold,
-  MonaSans_800ExtraBold,
-  MonaSans_900Black,
-  useFonts,
-} from '@expo-google-fonts/mona-sans';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -190,22 +190,17 @@ export default function RootLayout() {
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={infoClient}>
-                {Platform.OS === 'web' ? (
-                  <>
-                    <Head>
-                      <title>Solid</title>
-                    </Head>
+                <GestureHandlerRootView>
+                  <BottomSheetModalProvider>
+                    {Platform.OS === 'web' && (
+                      <Head>
+                        <title>Solid - The Savings Super-App</title>
+                      </Head>
+                    )}
                     <AppContent />
                     <PortalHost />
-                  </>
-                ) : (
-                  <GestureHandlerRootView>
-                    <BottomSheetModalProvider>
-                      <AppContent />
-                      <PortalHost />
-                    </BottomSheetModalProvider>
-                  </GestureHandlerRootView>
-                )}
+                  </BottomSheetModalProvider>
+                </GestureHandlerRootView>
               </ApolloProvider>
             </QueryClientProvider>
           </WagmiProvider>

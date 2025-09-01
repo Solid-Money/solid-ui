@@ -3,7 +3,7 @@ import { Address } from 'abitype';
 import { ArrowUpRight, Fuel, Wallet } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Platform, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { formatUnits, isAddress } from 'viem';
 import { useReadContract } from 'wagmi';
@@ -133,13 +133,13 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
   };
 
   return (
-    <View className="gap-8">
-      <View className="gap-3">
+    <View className="gap-4">
+      <View className="gap-2">
         <Text className="opacity-60">Send amount</Text>
 
         <View
           className={cn(
-            'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
+            'flex-row items-center justify-between w-full bg-accent rounded-2xl pl-5 pr-5 web:pr-6 py-3',
             errors.amount && 'border border-red-500',
           )}
         >
@@ -149,40 +149,44 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="w-full text-2xl text-white font-semibold web:focus:outline-none"
+                className="flex-1 text-2xl text-white font-semibold web:focus:outline-none"
                 value={value.toString()}
                 placeholder="0.0"
                 placeholderTextColor="#666"
                 onChangeText={onChange}
                 onBlur={onBlur}
+                returnKeyType="next"
+                onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
               />
             )}
           />
-          <View className="flex-row items-center gap-2">
-            <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
-            <Text className="font-semibold text-white text-lg">{tokenSymbol}</Text>
+          <View className="flex-row items-center gap-1.5 flex-shrink-0">
+            <RenderTokenIcon tokenIcon={tokenIcon} size={24} />
+            <Text className="font-semibold text-white text-base native:text-sm">{tokenSymbol}</Text>
           </View>
         </View>
 
-        <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-          <Wallet size={16} />{' '}
-          {isPending ? (
-            <Skeleton className="w-16 h-4 rounded-md" />
-          ) : balance ? (
-            `${formatUnits(balance, tokenDecimals)} ${tokenSymbol}`
-          ) : (
-            `0 ${tokenSymbol}`
-          )}
+        <View className="flex-row items-center gap-1.5 text-muted-foreground">
+          <Wallet size={16} color="gray" />
+          <Text className="text-muted-foreground sm:text-sm">
+            {isPending ? (
+              <Skeleton className="w-16 h-4 rounded-md" />
+            ) : balance ? (
+              `${formatUnits(balance, tokenDecimals)} ${tokenSymbol}`
+            ) : (
+              `0 ${tokenSymbol}`
+            )}
+          </Text>
           <Max
             onPress={() => {
               setValue('amount', formatUnits(balance ?? 0n, tokenDecimals));
               trigger('amount');
             }}
           />
-        </Text>
+        </View>
       </View>
 
-      <View className="gap-3">
+      <View className="gap-2">
         <Text className="opacity-60">To wallet</Text>
         <Controller
           control={control}
@@ -190,7 +194,7 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
               className={cn(
-                'bg-accent rounded-2xl px-5 py-3 text-2xl text-white font-semibold web:focus:outline-none',
+                'bg-accent rounded-2xl px-5 py-3 text-lg text-white font-semibold web:focus:outline-none',
                 {
                   'border border-red-500': errors.address,
                 },
@@ -200,6 +204,8 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
               placeholderTextColor="#666"
               onChangeText={onChange}
               onBlur={onBlur}
+              returnKeyType="done"
+              onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
             />
           )}
         />
@@ -225,7 +231,7 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
 
       <Button
         variant="brand"
-        className="rounded-2xl h-12 mt-24"
+        className="rounded-2xl h-12 mt-8"
         onPress={handleSubmit(onSubmit)}
         disabled={isFormDisabled()}
       >
