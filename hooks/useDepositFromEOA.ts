@@ -19,6 +19,7 @@ import { getChain } from '@/lib/thirdweb';
 import { withRefreshToken } from '@/lib/utils';
 import { bridgeDeposit, createDeposit } from '@/lib/api';
 import { useDepositStore } from '@/store/useDepositStore';
+import { BridgeDepositResponse } from '@/lib/types';
 
 export enum DepositStatus {
   IDLE = 'idle',
@@ -34,7 +35,7 @@ type DepositResult = {
   deposit: (amount: string) => Promise<void>;
   depositStatus: DepositStatus;
   error: string | null;
-  hash: Address | undefined;
+  depositTransaction: BridgeDepositResponse | undefined;
   isEthereum: boolean;
 };
 
@@ -45,7 +46,7 @@ const useDepositFromEOA = (): DepositResult => {
   const chainId = useChainId();
   const [depositStatus, setDepositStatus] = useState<DepositStatus>(DepositStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
-  const [hash, setHash] = useState<Address | undefined>();
+  const [depositTransaction, setDepositTransaction] = useState<BridgeDepositResponse | undefined>();
   const eoaAddress = account?.address;
   const { updateUser } = useUserStore();
   const { srcChainId } = useDepositStore();
@@ -154,7 +155,6 @@ const useDepositFromEOA = (): DepositResult => {
         address: eoaAddress,
       });
 
-      let txHash: Address | undefined;
       if (isEthereum) {
         setDepositStatus(DepositStatus.DEPOSITING);
         const transaction = await withRefreshToken(() =>
@@ -169,7 +169,7 @@ const useDepositFromEOA = (): DepositResult => {
             },
           }),
         );
-        txHash = transaction?.transactionHash;
+        setDepositTransaction(transaction);
       } else {
         setDepositStatus(DepositStatus.BRIDGING);
         const transaction = await withRefreshToken(() =>
@@ -185,10 +185,9 @@ const useDepositFromEOA = (): DepositResult => {
             },
           }),
         );
-        txHash = transaction?.transactionHash;
+        setDepositTransaction(transaction);
       }
 
-      setHash(txHash);
       updateUser({
         ...user,
         isDeposited: true,
@@ -211,7 +210,7 @@ const useDepositFromEOA = (): DepositResult => {
     deposit,
     depositStatus,
     error,
-    hash,
+    depositTransaction,
     isEthereum,
   };
 };

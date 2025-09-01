@@ -17,6 +17,7 @@ import {
 import {
   BlockscoutTransaction,
   BlockscoutTransactions,
+  BridgeProvider,
   BridgeTransaction,
   BridgeTransactionStatus,
   LayerZeroTransactionStatus,
@@ -129,6 +130,11 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
         ? LayerZeroTransactionStatus.FAILED
         : LayerZeroTransactionStatus.INFLIGHT;
 
+  const explorerUrl =
+    (!transaction.provider || transaction.provider === BridgeProvider.LIFI)
+      ? explorerUrls[lifi.id].lifiscan
+      : explorerUrls[layerzero.id].layerzeroscan;
+
   return {
     title: 'Bridge USDC to Ethereum',
     shortTitle: 'Bridge USDC',
@@ -137,7 +143,7 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
     symbol: 'USDC',
     status,
     hash: transaction.bridgeTxHash,
-    url: `${explorerUrls[lifi.id].lifiscan}/tx/${transaction.bridgeTxHash}`,
+    url: `${explorerUrl}/tx/${transaction.bridgeTxHash}`,
     type: TransactionType.BRIDGE,
   };
 };
