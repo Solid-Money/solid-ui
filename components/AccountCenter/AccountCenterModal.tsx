@@ -1,31 +1,24 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { useState } from 'react';
+import { View } from 'react-native';
 import { AccountCenter, AccountCenterFooter, AccountCenterTitle, AccountCenterTrigger } from '.';
 
 const AccountCenterModal = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <AccountCenterTrigger onModalOpen={() => setOpen(true)} />
-      <DialogContent className="md:gap-8 md:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>
-            <AccountCenterTitle />
-          </DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={setOpen}
+      contentClassName="md:gap-8 md:max-w-sm"
+      trigger={<AccountCenterTrigger onModalOpen={() => setOpen(true)} />}
+    >
+      <View className="gap-6">
+        <AccountCenterTitle />
         <AccountCenter />
-        <DialogFooter>
-          <AccountCenterFooter />
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <AccountCenterFooter />
+      </View>
+    </ResponsiveDialog>
   );
 };
 

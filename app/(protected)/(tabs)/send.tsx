@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address, formatUnits, isAddress } from 'viem';
 import { z } from 'zod';
@@ -14,6 +14,7 @@ import TokenSelectorModal from '@/components/SendModal/TokenSelectorModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
+import { useDimension } from '@/hooks/useDimension';
 import useSend from '@/hooks/useSend';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -22,7 +23,6 @@ import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 import Toast from 'react-native-toast-message';
-import { useDimension } from '@/hooks/useDimension';
 
 interface TokenBalance {
   contractTickerSymbol: string;
@@ -87,8 +87,8 @@ const SendPage = () => {
     formState: { errors, isValid },
     reset,
   } = useForm({
-    resolver: zodResolver(sendSchema) as any,
-    mode: 'onChange',
+    resolver: zodResolver(sendSchema),
+    mode: Platform.OS === 'web' ? 'onChange' : undefined,
     defaultValues: {
       amount: '',
       address: '',
@@ -136,7 +136,12 @@ const SendPage = () => {
         amount: Number(data.amount),
         address: data.address,
       });
-      setModal(SEND_MODAL.OPEN_TRANSACTION_STATUS);
+      if (Platform.OS === 'web') {
+        setModal(SEND_MODAL.OPEN_TRANSACTION_STATUS);
+      } else {
+        // TODO: handle transaction status on mobile
+        // setModal(SEND_MODAL.OPEN_TRANSACTION_STATUS);
+      }
       Toast.show({
         type: 'success',
         text1: 'Send transaction completed',
@@ -194,6 +199,8 @@ const SendPage = () => {
                     onBlur={onBlur}
                     autoCapitalize="none"
                     autoCorrect={false}
+                    returnKeyType="next"
+                    onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
                   />
                 )}
               />
@@ -252,7 +259,7 @@ const SendPage = () => {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     className={cn(
-                      'w-full web:focus:outline-none text-white text-4xl font-bold text-right',
+                      'flex-1 web:focus:outline-none text-white text-4xl font-bold text-right',
                       // errors.amount && "text-red-400"
                     )}
                     placeholder="0"
@@ -262,6 +269,8 @@ const SendPage = () => {
                     onBlur={onBlur}
                     keyboardType="decimal-pad"
                     style={{ minWidth: 80 }}
+                    returnKeyType="done"
+                  // onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
                   />
                 )}
               />
@@ -280,16 +289,22 @@ const SendPage = () => {
             {isSendLoading && <ActivityIndicator color="gray" />}
           </Button>
         </View>
-
-        {/* Token Selector Modal */}
-        <TokenSelectorModal
-          isOpen={showTokenSelector}
-          onClose={() => setShowTokenSelector(false)}
-          tokens={allTokens}
-          onSelectToken={setSelectedToken}
-          selectedToken={selectedToken}
-        />
       </View>
+
+      {/* Token Selector Modal */}
+      <TokenSelectorModal
+        isOpen={showTokenSelector}
+        onClose={() => {
+          setShowTokenSelector(false);
+          Keyboard.dismiss(); // Dismiss keyboard when closing modal
+        }}
+        tokens={allTokens}
+        onSelectToken={(token) => {
+          setSelectedToken(token);
+          Keyboard.dismiss(); // Dismiss keyboard when selecting token
+        }}
+        selectedToken={selectedToken}
+      />
     </SafeAreaView>
   );
 };

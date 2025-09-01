@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 
-import AnimatedModal from '@/components/AnimatedModal';
+import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
 import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
@@ -59,7 +59,7 @@ const SwapModal = () => {
   };
 
   return (
-    <AnimatedModal
+    <ResponsiveModal
       currentModal={currentModal}
       previousModal={previousModal}
       isOpen={!isClose}
@@ -68,13 +68,13 @@ const SwapModal = () => {
           setModal(SWAP_MODAL.CLOSE);
         }
       }}
-      trigger={null}
+      trigger={<></>}
       title={getTitle()}
       titleClassName="justify-center"
       contentKey={getContentKey()}
     >
       {getContent()}
-    </AnimatedModal>
+    </ResponsiveModal>
   );
 };
 

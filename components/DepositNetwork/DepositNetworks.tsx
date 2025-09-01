@@ -15,10 +15,10 @@ const DepositNetworks = () => {
   };
 
   return (
-    <View className="gap-y-4">
+    <View className="gap-y-2">
       <Text className="text-muted-foreground font-medium">Choose a network</Text>
 
-      <View className="gap-y-2.5">
+      <View className="gap-y-1.5">
         {Object.entries(BRIDGE_TOKENS)
           .sort((a, b) => a[1].sort - b[1].sort)
           .map(([id, network]) => {

@@ -132,8 +132,8 @@ const TokenCard: React.FC<TokenCardProps> = ({
           <View className="flex-row items-center gap-2">
             {showBalance && (
               <View className="flex-row items-center gap-1.5">
-                <Wallet 
-                  size={16} 
+                <Wallet
+                  size={16}
                   color={Platform.OS === 'web' ? undefined : 'rgb(161, 161, 161)'}
                   className="text-muted-foreground"
                 />

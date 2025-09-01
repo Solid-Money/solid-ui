@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { buttonVariants } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Text } from '@/components/ui/text';
 import { TOKEN_MAP } from '@/constants/tokens';
 import TokenSelectorFooter from './Footer';
@@ -16,23 +16,25 @@ const DepositAddressModal = ({
   setOpen: (open: boolean) => void;
 }) => {
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Deposit address"
+      contentClassName="md:gap-8 md:max-w-sm"
+      trigger={
         <View className={buttonVariants({ variant: 'brand', className: 'h-12 rounded-xl' })}>
           <View className="flex-row items-center gap-2">
             <Plus color="black" />
             <Text className="text-primary-foreground font-bold hidden md:block">Add funds</Text>
           </View>
         </View>
-      </DialogTrigger>
-      <DialogContent className="md:gap-8 md:max-w-sm">
-        <View className="gap-2 md:gap-4">
-          <DialogTitle>Deposit address</DialogTitle>
-          <TokenSelectorDeposit />
-        </View>
-        <TokenSelectorFooter selectedToken={TOKEN_MAP[1][0]} />
-      </DialogContent>
-    </Dialog>
+      }
+    >
+      <View className="gap-2 md:gap-4">
+        <TokenSelectorDeposit />
+      </View>
+      <TokenSelectorFooter selectedToken={TOKEN_MAP[1][0]} />
+    </ResponsiveDialog>
   );
 };
 

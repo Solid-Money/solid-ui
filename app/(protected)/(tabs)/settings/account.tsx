@@ -76,20 +76,8 @@ export default function Account() {
           {/* Desktop Navbar */}
           {isDesktop && <Navbar />}
 
-          {/* Mobile Header */}
-          {!isDesktop && (
-            <View className="flex-row items-center justify-between px-4 py-3">
-              <Pressable onPress={() => router.back()} className="p-2">
-                <ChevronLeft size={24} color="#ffffff" />
-              </Pressable>
-              <Text className="text-white text-xl font-bold flex-1 text-center mr-10">
-                Account details
-              </Text>
-            </View>
-          )}
-
-          {/* Desktop Header */}
-          {isDesktop && (
+          {/* Header */}
+          {isDesktop ? (
             <View className="max-w-[512px] mx-auto w-full px-4 pt-8 pb-8">
               <View className="flex-row items-center justify-between mb-8">
                 <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
@@ -98,6 +86,15 @@ export default function Account() {
                 <Text className="text-3xl font-semibold text-white">Account details</Text>
                 <View className="w-6" />
               </View>
+            </View>
+          ) : (
+            <View className="flex-row items-center justify-between px-4 py-3">
+              <Pressable onPress={() => router.back()} className="p-2">
+                <ChevronLeft size={24} color="#ffffff" />
+              </Pressable>
+              <Text className="text-white text-xl font-bold flex-1 text-center mr-10">
+                Account details
+              </Text>
             </View>
           )}
 
