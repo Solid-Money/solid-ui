@@ -58,7 +58,7 @@ export default function Account() {
     setIsDeleting(true);
     try {
       await handleDeleteAccount();
-    } catch (error) {
+    } catch (_error) {
       Alert.alert('Error', 'Failed to delete account. Please try again.');
     } finally {
       setIsDeleting(false);

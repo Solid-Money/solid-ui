@@ -29,11 +29,7 @@ const Navbar = () => {
           />
         </Link>
         {isScreenMedium && <NavMenu />}
-        {Platform.OS === 'web' && (
-          <View className="md:w-32">
-            <AccountCenterModal />
-          </View>
-        )}
+        {Platform.OS === 'web' && <AccountCenterModal />}
       </View>
     </SafeAreaView>
   );

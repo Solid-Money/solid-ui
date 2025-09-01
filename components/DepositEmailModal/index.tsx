@@ -1,12 +1,13 @@
-import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { Image } from 'expo-image';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import { Image } from 'expo-image';
+import { Controller } from 'react-hook-form';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
+import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositEmailModal: React.FC = () => {
@@ -53,7 +54,12 @@ const DepositEmailModal: React.FC = () => {
         <Text className="text-xl font-bold text-center">
           {currentStep === 'email' ? 'Email required' : 'Verify your email'}
         </Text>
-        <Text className="text-muted-foreground text-center leading-5 text-sm max-w-xs">
+        <Text
+          className={cn(
+            'text-muted-foreground text-center leading-5 text-sm',
+            currentStep === 'email' ? 'max-w-sm' : 'max-w-xs',
+          )}
+        >
           {currentStep === 'email'
             ? 'For your security, we require a verified email address before you can make deposits.'
             : `Enter the 6-digit verification code sent to your email address:\n${emailValue}`}

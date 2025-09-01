@@ -168,7 +168,7 @@ const SendPage = () => {
       edges={['right', 'left', 'bottom', 'top']}
     >
       {isScreenMedium && <Navbar />}
-      <View className="flex-1 px-4 py-8 md:py-12">
+      <View className="flex-1 gap-2 px-4 py-8 md:py-12 max-w-lg mx-auto">
         {/* Form Fields */}
         <View className="max-w-md mx-auto w-full gap-2">
           {/* Header */}
@@ -270,7 +270,7 @@ const SendPage = () => {
                     keyboardType="decimal-pad"
                     style={{ minWidth: 80 }}
                     returnKeyType="done"
-                  // onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
+                    // onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
                   />
                 )}
               />
@@ -299,7 +299,7 @@ const SendPage = () => {
           Keyboard.dismiss(); // Dismiss keyboard when closing modal
         }}
         tokens={allTokens}
-        onSelectToken={(token) => {
+        onSelectToken={token => {
           setSelectedToken(token);
           Keyboard.dismiss(); // Dismiss keyboard when selecting token
         }}

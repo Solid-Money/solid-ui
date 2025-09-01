@@ -11,7 +11,7 @@ const AccountCenterModal = () => {
       open={open}
       onOpenChange={setOpen}
       contentClassName="md:gap-8 md:max-w-sm"
-      trigger={<AccountCenterTrigger onModalOpen={() => setOpen(true)} />}
+      trigger={<AccountCenterTrigger />}
     >
       <View className="gap-6">
         <AccountCenterTitle />

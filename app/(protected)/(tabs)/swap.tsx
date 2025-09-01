@@ -24,7 +24,7 @@ export default function SwapPage() {
       <ScrollView className="flex-1">
         {isScreenMedium && <Navbar />}
 
-        <View className="flex-1 gap-10 px-4 py-8 w-full max-w-lg mx-auto">
+        <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
           <View className="flex-row items-center justify-between">
             <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
               <ArrowLeft color="white" />

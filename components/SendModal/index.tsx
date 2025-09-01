@@ -217,14 +217,15 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
           <Text className="text-base text-muted-foreground">Fee</Text>
         </View>
         <Text className="text-base text-muted-foreground">
-          {`~ $${loading
-            ? '...'
-            : !costInUsd
-              ? '0'
-              : costInUsd < 0.01
-                ? '<0.01'
-                : formatNumber(costInUsd, 2)
-            } USD in fee`}
+          {`~ $${
+            loading
+              ? '...'
+              : !costInUsd
+                ? '0'
+                : costInUsd < 0.01
+                  ? '<0.01'
+                  : formatNumber(costInUsd, 2)
+          } USD in fee`}
         </Text>
       </View>
 

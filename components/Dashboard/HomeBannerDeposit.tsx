@@ -36,9 +36,13 @@ const HomeBannerDeposit = () => {
           {isTotalAPYLoading ? (
             <Skeleton className="w-14 h-4 bg-purple/50" />
           ) : (
-            <Text className={cn("text-brand font-bold", {
-              underline: Platform.OS === 'web',
-            })}>{totalAPY?.toFixed(2)}%</Text>
+            <Text
+              className={cn('text-brand font-bold', {
+                underline: Platform.OS === 'web',
+              })}
+            >
+              {totalAPY?.toFixed(2)}%
+            </Text>
           )}{' '}
           per year
         </Text>
