@@ -28,7 +28,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { Chain, createWalletClient, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
-import { fetchIsDeposited } from './useAnalytics';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -329,7 +328,13 @@ const useUser = (): UseUserReturn => {
       router.replace(path.HOME);
     } catch (error: any) {
       console.error(error);
-      setLoginInfo({ status: Status.ERROR });
+      const errorMessage = error?.message || 'Network request timed out';
+      setLoginInfo({ status: Status.ERROR, message: errorMessage });
+
+      // Reset to IDLE after showing error for 3 seconds
+      setTimeout(() => {
+        setLoginInfo({ status: Status.IDLE, message: '' });
+      }, 3000);
     }
   }, [checkBalance, setLoginInfo, storeUser, router, safeAA]);
 

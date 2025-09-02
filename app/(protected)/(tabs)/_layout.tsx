@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { ArrowUpDown, CreditCard, Leaf, Plus, Send, Star, Wallet } from 'lucide-react-native';
+import { ArrowUpDown, CreditCard, Leaf, Plus, Send, Star } from 'lucide-react-native';
 import React from 'react';
 import { Platform } from 'react-native';
 
@@ -130,21 +130,6 @@ export default function TabLayout() {
         options={{
           title: 'Earn',
           tabBarIcon: ({ color }) => <Leaf size={28} color={color} />,
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="buy-crypto/index"
-        options={{
-          title: 'Buy Crypto',
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="wallet"
-        options={{
-          title: 'Wallet',
-          tabBarIcon: ({ color }) => <Wallet size={28} color={color} />,
           href: null,
         }}
       />
