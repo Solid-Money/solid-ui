@@ -7,6 +7,7 @@ import {
   parseAbiParameters,
   parseSignature,
   parseUnits,
+  Signature,
   verifyTypedData,
 } from 'viem';
 import { mainnet } from 'viem/chains';
@@ -19,12 +20,13 @@ import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { useUserStore } from '@/store/useUserStore';
 import useUser from './useUser';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, getUsdcAddress } from '@/constants/bridge';
 import { getChain } from '@/lib/thirdweb';
 import { withRefreshToken } from '@/lib/utils';
-import { bridgeDeposit, createDeposit } from '@/lib/api';
+import { bridgeDeposit, bridgeTransaction, createDeposit, getLifiQuote } from '@/lib/api';
 import { useDepositStore } from '@/store/useDepositStore';
 import { publicClient } from '@/lib/wagmi';
+import { checkAndSetAllowance, sendTransaction } from '@/lib/utils/contract';
 
 export enum DepositStatus {
   IDLE = 'idle',
@@ -161,26 +163,29 @@ const useDepositFromEOA = (): DepositResult => {
         deadline: deadline,
       };
 
-      const signature = await account?.signTypedData({
-        domain,
-        types,
-        primaryType: 'Permit',
-        message,
-      });
-
-      const signatureData = parseSignature(signature);
-
-      await verifyTypedData({
-        domain,
-        types,
-        primaryType: 'Permit',
-        message,
-        signature,
-        address: eoaAddress,
-      });
+      let signatureData: Signature;
+      if (isSponsor || isEthereum) {
+        const signature = await account?.signTypedData({
+          domain,
+          types,
+          primaryType: 'Permit',
+          message,
+        });
+  
+        signatureData = parseSignature(signature);
+  
+        await verifyTypedData({
+          domain,
+          types,
+          primaryType: 'Permit',
+          message,
+          signature,
+          address: eoaAddress,
+        });
+      }
 
       let txHash: Address | undefined;
-      let transaction: { transactionHash: Address } | undefined;
+      let transaction: { transactionHash: Address } | undefined = { transactionHash: '' };
       if (isEthereum) {
         setDepositStatus(DepositStatus.DEPOSITING);
         if (isSponsor) {
@@ -205,9 +210,9 @@ const useDepositFromEOA = (): DepositResult => {
               amountWei,
               0n,
               deadline,
-              Number(signatureData.v),
-              signatureData.r,
-              signatureData.s,
+              Number(signatureData!.v),
+              signatureData!.r,
+              signatureData!.s,
               user.safeAddress,
               encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
               ADDRESSES.ethereum.nativeFeeToken,
@@ -227,20 +232,53 @@ const useDepositFromEOA = (): DepositResult => {
           });
         }
       } else {
-        setDepositStatus(DepositStatus.BRIDGING);
-        transaction = await withRefreshToken(() =>
-          bridgeDeposit({
-            eoaAddress,
+        if (isSponsor) {
+          setDepositStatus(DepositStatus.BRIDGING);
+          transaction = await withRefreshToken(() =>
+            bridgeDeposit({
+              eoaAddress,
+              srcChainId,
+              amount,
+              permitSignature: {
+                v: Number(signatureData.v),
+                r: signatureData.r,
+                s: signatureData.s,
+                deadline: Number(deadline),
+              },
+            }),
+          );
+        } else {
+          const fromToken = getUsdcAddress(srcChainId);
+          const quote = await getLifiQuote({
+            fromAddress: eoaAddress,
+            fromChain: srcChainId,
+            fromAmount: amountWei,
+            fromToken,
+            toAddress: eoaAddress,
+          });
+
+          await checkAndSetAllowance(
             srcChainId,
-            amount,
-            permitSignature: {
-              v: Number(signatureData.v),
-              r: signatureData.r,
-              s: signatureData.s,
-              deadline: Number(deadline),
-            },
-          }),
-        );
+            eoaAddress,
+            quote.estimate.approvalAddress,
+            BigInt(quote.estimate.fromAmount),
+          );
+
+          setDepositStatus(DepositStatus.BRIDGING);
+          transaction.transactionHash = await sendTransaction(srcChainId, quote.transactionRequest);
+
+          await withRefreshToken(() =>
+            bridgeTransaction({
+              eoaAddress,
+              srcChainId,
+              amount,
+              fromAmount: quote.estimate.fromAmount,
+              toAmount: quote.estimate.toAmount,
+              toAmountMin: quote.estimate.toAmountMin,
+              bridgeTxHash: transaction?.transactionHash as Address,
+            }),
+          );
+        }
       }
 
       txHash = transaction?.transactionHash;

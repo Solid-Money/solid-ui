@@ -24,6 +24,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
+import TooltipPopover from '@/components/Tooltip';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
@@ -178,7 +179,18 @@ function DepositToVaultForm() {
       </View>
       <TokenDetails>
         <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
-          <Text className="text-lg opacity-40 md:w-40">You will receive</Text>
+          <View className="flex-row items-center gap-2 md:w-40">
+            <Text className="text-lg opacity-40">You will receive</Text>
+            {!isSponsor && !isEthereum && (
+              <TooltipPopover
+                content={
+                  <Text className="max-w-52">
+                    Bridge gas fee may significantly reduce received amount
+                  </Text>
+                }
+              />
+            )}
+          </View>
           <View className="flex-row items-center gap-2">
             <Image
               source={require('@/assets/images/sousd-4x.png')}

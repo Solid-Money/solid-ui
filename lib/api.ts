@@ -9,6 +9,7 @@ import {
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
+  EXPO_PUBLIC_LIFI_API_URL,
 } from './config';
 import {
   BlockscoutTransactions,
@@ -16,6 +17,7 @@ import {
   BridgeCustomerResponse,
   BridgeDeposit,
   BridgeTransaction,
+  BridgeTransactionRequest,
   BridgeTransferResponse,
   CardResponse,
   CardStatusResponse,
@@ -23,10 +25,12 @@ import {
   Deposit,
   ExchangeRateResponse,
   FromCurrency,
+  GetLifiQuoteParams,
   KycLink,
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
   LayerZeroTransaction,
+  LifiQuoteResponse,
   Points,
   ToCurrency,
   TokenPriceUsd,
@@ -699,4 +703,52 @@ export const getExchangeRate = async (
   if (!response.ok) throw response;
 
   return response.json();
+};
+
+export const getLifiQuote = async ({
+  fromAddress,
+  fromChain,
+  toChain = 1,
+  fromAmount,
+  fromToken = 'USDC',
+  toAddress,
+  toToken = 'USDC',
+}: GetLifiQuoteParams): Promise<LifiQuoteResponse> => {
+  const response = await axios.get<LifiQuoteResponse>(
+    `${EXPO_PUBLIC_LIFI_API_URL}/quote`,
+    {
+      params: {
+        fromAddress,
+        fromChain,
+        toChain,
+        fromAmount,
+        fromToken,
+        toAddress,
+        toToken,
+      },
+    },
+  );
+
+  return response?.data;
+};
+
+export const bridgeTransaction = async (
+  bridge: BridgeTransactionRequest,
+): Promise<Response> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/transactions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(bridge),
+  });
+
+  if (!response.ok) throw response;
+
+  return response;
 };
