@@ -71,29 +71,37 @@ const Transaction = ({
   return (
     <View
       className={cn(
-        'flex-row items-center justify-between bg-card border-b border-border/40 p-4 md:px-6',
+        'flex-row items-center justify-between p-4 md:px-6',
+        'border-b border-border/40',
         classNames?.container,
       )}
     >
-      <View className="flex-row items-center gap-2 md:gap-4">
+      <View className="flex-row items-center gap-2 md:gap-4 flex-1 mr-2">
         <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
-        <View>
-          <Text className="hidden md:block text-lg font-medium">{title}</Text>
-          <Text className="block md:hidden text-lg font-medium">{shortTitle || title}</Text>
-          <Text className="text-sm text-muted-foreground">
+        <View className="flex-1">
+          <Text className="hidden md:block text-lg font-medium" numberOfLines={1}>
+            {title}
+          </Text>
+          <Text className="block md:hidden text-lg font-medium" numberOfLines={1}>
+            {shortTitle || title}
+          </Text>
+          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
             {new Date(Number(timestamp) * 1000).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
+            })}
+            {', '}
+            {new Date(Number(timestamp) * 1000).toLocaleTimeString('en-US', {
               hour: 'numeric',
-              minute: 'numeric',
+              minute: '2-digit',
               hour12: true,
             })}
           </Text>
         </View>
       </View>
-      <View className="flex-row items-center gap-2 md:gap-4">
-        <Text className="text-lg font-medium">${formatNumber(amount)}</Text>
+      <View className="flex-row items-center gap-2 md:gap-4 flex-shrink-0">
+        <Text className="text-lg font-medium text-right">${formatNumber(amount)}</Text>
         {isScreenMedium && (
           <View className={cn('w-20 h-8 rounded-twice items-center justify-center', statusBgColor)}>
             <Text className={cn('text-sm font-bold', statusTextColor)}>{statusText}</Text>

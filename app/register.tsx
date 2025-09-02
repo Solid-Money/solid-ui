@@ -32,16 +32,17 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function Register() {
   const { handleSignup, handleLogin, handleDummyLogin } = useUser();
-  const { signupInfo, loginInfo, setSignupInfo } = useUserStore();
+  const { signupInfo, loginInfo, setSignupInfo, setLoginInfo } = useUserStore();
   const { code } = useLocalSearchParams<{ code: string }>();
   const { session } = useLocalSearchParams<{ session: string }>();
   // TODO: Add recovery flow
   // const [showRecoveryFlow, setShowRecoveryFlow] = useState(false);
 
-  // Reset signup info state when component mounts
+  // Reset signup and login info state when component mounts
   useEffect(() => {
     setSignupInfo({ status: Status.IDLE, message: '' });
-  }, [setSignupInfo]);
+    setLoginInfo({ status: Status.IDLE, message: '' });
+  }, [setSignupInfo, setLoginInfo]);
 
   // Detect and save referral code from URL when component mounts
   useEffect(() => {

@@ -780,7 +780,7 @@ const SwapTokenSelector = ({
               index,
             })}
             contentContainerStyle={{
-              paddingBottom: 20,
+              paddingBottom: 100,
               paddingHorizontal: 2,
             }}
           />

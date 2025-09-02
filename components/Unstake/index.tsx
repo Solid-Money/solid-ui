@@ -113,9 +113,10 @@ const Unstake = () => {
 
         <View
           className={cn(
-            'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
+            'w-full bg-accent rounded-2xl px-5 py-3',
             bridgeErrors.amount && 'border border-red-500',
           )}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
         >
           <Controller
             control={bridgeControl}
@@ -123,7 +124,7 @@ const Unstake = () => {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="w-full text-2xl text-white font-semibold web:focus:outline-none"
+                className="text-2xl text-white font-semibold web:focus:outline-none"
                 value={value.toString()}
                 placeholder="0.0"
                 placeholderTextColor="#666"
@@ -138,26 +139,30 @@ const Unstake = () => {
               alt="SoUSD"
               style={{ width: 34, height: 34 }}
             />
-            <Text className="font-semibold text-white text-lg">SoUSD</Text>
+            <Text className="font-semibold text-white text-lg native:text-sm web:text-base">
+              SoUSD
+            </Text>
           </View>
         </View>
 
-        <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
-          <Wallet size={16} />{' '}
-          {isFuseBalanceLoading ? (
-            <Skeleton className="w-16 h-4 rounded-md" />
-          ) : fuseBalance ? (
-            `${formatNumber(fuseBalance)} SoUSD`
-          ) : (
-            '0 SoUSD'
-          )}
+        <View className="flex-row items-center gap-1.5">
+          <Wallet size={16} color="#666" />
+          <Text className="text-muted-foreground text-sm">
+            {isFuseBalanceLoading ? (
+              <Skeleton className="w-16 h-4 rounded-md" />
+            ) : fuseBalance ? (
+              `${formatNumber(fuseBalance)} SoUSD`
+            ) : (
+              '0 SoUSD'
+            )}
+          </Text>
           <Max
             onPress={() => {
               setValue('amount', fuseBalance?.toString() ?? '0');
               trigger('amount');
             }}
           />
-        </Text>
+        </View>
       </View>
 
       <View className="flex-row gap-2">
