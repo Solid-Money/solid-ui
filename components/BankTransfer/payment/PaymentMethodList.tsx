@@ -19,8 +19,9 @@ import { startKycFlow } from '@/lib/utils/kyc';
 import { useDepositStore } from '@/store/useDepositStore';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { PaymentMethodTile } from './PaymentMethodTile';
+import Toast from 'react-native-toast-message';
 
 type Props = {
   fiat?: BridgeTransferFiatCurrency;
@@ -39,7 +40,7 @@ const ALL_METHODS: BridgeTransferMethod[] = [
 
 export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }: Props) {
   const normalizedFiat = (fiat || '') as BridgeTransferFiatCurrency;
-  const { data: customer } = useCustomer();
+  const { data: customer, isLoading: isLoadingCustomer } = useCustomer();
   const [loadingMethod, setLoadingMethod] = useState<BridgeTransferMethod | null>(null);
   const { setBankTransferData, setModal } = useDepositStore();
 
@@ -49,6 +50,15 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
     filtered = [BridgeTransferMethod.SEPA];
   } else if (normalizedFiat === BridgeTransferFiatCurrency.USD) {
     filtered = [BridgeTransferMethod.ACH_PUSH, BridgeTransferMethod.WIRE];
+  }
+
+  if (isLoadingCustomer) {
+    return (
+      <View className="items-center justify-center py-10 gap-3">
+        <ActivityIndicator size="large" color="gray" />
+        <Text className="text-muted-foreground">Loading payment methods...</Text>
+      </View>
+    );
   }
 
   return (
@@ -143,6 +153,15 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
       console.error('createBridgeTransfer failed', err);
     } finally {
       setLoadingMethod(null);
+
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'An error occurred while creating the bridge transfer',
+        props: {
+          badgeText: '',
+        },
+      });
     }
   }
 
