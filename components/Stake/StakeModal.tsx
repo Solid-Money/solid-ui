@@ -6,12 +6,12 @@ import TransactionStatus from '@/components/TransactionStatus';
 import { STAKE_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { useWithdrawStore } from '@/store/useWithdrawStore';
+import { useStakeStore } from '@/store/useStakeStore';
 import { Stake, StakeTrigger } from '.';
 
 const StakeModal = () => {
   const router = useRouter();
-  const { currentModal, previousModal, setModal, transaction } = useWithdrawStore();
+  const { currentModal, previousModal, setModal, transaction } = useStakeStore();
 
   const isTransactionStatus = currentModal.name === STAKE_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isClose = currentModal.name === STAKE_MODAL.CLOSE.name;
