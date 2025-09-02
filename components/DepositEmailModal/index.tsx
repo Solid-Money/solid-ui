@@ -1,13 +1,14 @@
-import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
+import { Controller } from 'react-hook-form';
+import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
-import { useDepositStore } from '@/store/useDepositStore';
 import { cn } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositEmailModal: React.FC = () => {
   const { setModal } = useDepositStore();
@@ -40,22 +41,22 @@ const DepositEmailModal: React.FC = () => {
   const currentStep = step === 'existing' ? 'email' : step;
 
   return (
-    <View className="flex-1 gap-8 py-2">
+    <View className="flex-1 gap-4 py-2">
       <View className="items-center">
         <Image
           source={require('@/assets/images/email.png')}
-          style={{ width: 100, height: 100 }}
+          style={{ width: 60, height: 60 }}
           contentFit="contain"
         />
       </View>
 
       <View className="items-center gap-2">
-        <Text className="text-2xl font-bold text-center">
+        <Text className="text-xl font-bold text-center">
           {currentStep === 'email' ? 'Email required' : 'Verify your email'}
         </Text>
         <Text
           className={cn(
-            'text-muted-foreground text-center leading-5',
+            'text-muted-foreground text-center leading-5 text-sm',
             currentStep === 'email' ? 'max-w-sm' : 'max-w-xs',
           )}
         >
@@ -67,14 +68,14 @@ const DepositEmailModal: React.FC = () => {
 
       {currentStep === 'email' && (
         <View className="flex-row gap-2 border border-yellow-300 rounded-2xl p-2.5">
-          <View>
+          <View className="flex-shrink-0">
             <Image
               source={require('@/assets/images/exclamation-warning.png')}
               style={{ width: 20, height: 20 }}
               contentFit="contain"
             />
           </View>
-          <Text className="text-yellow-400 font-bold text-sm">
+          <Text className="text-yellow-400 font-bold text-xs flex-1">
             This email will be used for account recovery if you lose access to your passkey.
           </Text>
         </View>
@@ -93,19 +94,22 @@ const DepositEmailModal: React.FC = () => {
             <Controller
               control={emailForm.control}
               name="email"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  placeholder="email@example.com"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
-                  placeholderTextColor="#666"
-                />
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const InputComponent = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
+                return (
+                  <InputComponent
+                    placeholder="email@example.com"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
+                    placeholderTextColor="#666"
+                  />
+                );
+              }}
             />
           </View>
         ) : (
@@ -124,22 +128,26 @@ const DepositEmailModal: React.FC = () => {
               key="otp-input"
               control={otpForm.control}
               name="otpCode"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  value={value || ''}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  keyboardType="numeric"
-                  maxLength={6}
-                  className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
-                  placeholderTextColor="#666"
-                />
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const InputComponent = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
+                return (
+                  <InputComponent
+                    placeholder="123456"
+                    value={value || ''}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    keyboardType="numeric"
+                    maxLength={6}
+                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
+                    placeholderTextColor="#666"
+                  />
+                );
+              }}
             />
           </View>
         )}
 
-        <View className="gap-3">
+        <View className="gap-3 mt-4">
           <Button
             onPress={
               currentStep === 'email'

@@ -27,11 +27,8 @@ const BankTransferAmountModal = () => {
   );
 
   const allowedCrypto = useMemo(() => {
-    if (fiat === BridgeTransferFiatCurrency.EUR) {
-      return [BridgeTransferCryptoCurrency.USDC];
-    }
-    return [BridgeTransferCryptoCurrency.USDC, BridgeTransferCryptoCurrency.USDT];
-  }, [fiat]);
+    return [BridgeTransferCryptoCurrency.USDC];
+  }, []);
 
   // Ensure crypto selection is valid when fiat changes
   useEffect(() => {

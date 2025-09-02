@@ -1,8 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
-import { useQuery } from '@tanstack/react-query';
 
 import Transaction from '@/components/Transaction';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +14,6 @@ import {
   useSendTransactions,
 } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
-import { cn } from '@/lib/utils';
 import { ActivityTab, LayerZeroTransactionStatus } from '@/lib/types';
 
 type ActivityTransactionsProps = {
@@ -75,10 +74,9 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
     isBridgeDepositTransactionsLoading;
 
   const getTransactionClassName = (totalTransactions: number, index: number) => {
-    const classNames = [];
-    if (index === 0) classNames.push('rounded-t-twice');
-    if (index === totalTransactions - 1) classNames.push('rounded-b-twice border-0');
-    return cn(...classNames);
+    // Remove bottom border for last item only
+    if (index === totalTransactions - 1) return 'border-b-0';
+    return '';
   };
 
   useEffect(() => {
@@ -106,15 +104,17 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
       {isLoading ? (
         <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
       ) : filteredTransactions?.length ? (
-        filteredTransactions.map((transaction, index) => (
-          <Transaction
-            key={transaction.timestamp}
-            {...transaction}
-            classNames={{
-              container: getTransactionClassName(filteredTransactions.length, index),
-            }}
-          />
-        ))
+        <View className="bg-card rounded-xl md:rounded-twice overflow-hidden">
+          {filteredTransactions.map((transaction, index) => (
+            <Transaction
+              key={`${transaction.timestamp}-${index}`}
+              {...transaction}
+              classNames={{
+                container: getTransactionClassName(filteredTransactions.length, index),
+              }}
+            />
+          ))}
+        </View>
       ) : (
         <Text className="text-muted-foreground">No transactions found</Text>
       )}

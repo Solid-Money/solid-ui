@@ -2,7 +2,7 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 import { Address } from 'viem';
 
-import AnimatedModal from '@/components/AnimatedModal';
+import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
 import { SEND_MODAL } from '@/constants/modals';
 import { TokenIcon } from '@/lib/types';
@@ -89,7 +89,7 @@ const SendModal = ({
   };
 
   return (
-    <AnimatedModal
+    <ResponsiveModal
       currentModal={currentModal}
       previousModal={previousModal}
       isOpen={!isClose && isCurrentTokenAddress}
@@ -100,7 +100,7 @@ const SendModal = ({
       contentKey={getContentKey()}
     >
       {getContent()}
-    </AnimatedModal>
+    </ResponsiveModal>
   );
 };
 
