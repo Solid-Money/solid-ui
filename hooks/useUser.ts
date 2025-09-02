@@ -28,6 +28,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Chain, createWalletClient, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
+import { fetchIsDeposited } from './useAnalytics';
 
 interface UseUserReturn {
   user: User | undefined;

@@ -1,8 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
-import { useQuery } from '@tanstack/react-query';
 
 import Transaction from '@/components/Transaction';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +14,6 @@ import {
   useSendTransactions,
 } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
-import { cn } from '@/lib/utils';
 import { ActivityTab, LayerZeroTransactionStatus } from '@/lib/types';
 
 type ActivityTransactionsProps = {
