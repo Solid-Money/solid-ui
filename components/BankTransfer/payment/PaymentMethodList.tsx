@@ -151,8 +151,6 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
       await createTransfer(method);
     } catch (err) {
       console.error('createBridgeTransfer failed', err);
-    } finally {
-      setLoadingMethod(null);
 
       Toast.show({
         type: 'error',
@@ -162,6 +160,8 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
           badgeText: '',
         },
       });
+    } finally {
+      setLoadingMethod(null);
     }
   }
 
