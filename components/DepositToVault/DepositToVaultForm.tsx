@@ -23,8 +23,6 @@ import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
-import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import TooltipPopover from '@/components/Tooltip';
 
