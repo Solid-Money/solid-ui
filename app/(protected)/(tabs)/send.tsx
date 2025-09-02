@@ -168,7 +168,7 @@ const SendPage = () => {
       edges={['right', 'left', 'bottom', 'top']}
     >
       {isScreenMedium && <Navbar />}
-      <View className="flex-1 gap-2 px-4 py-8 md:py-12 max-w-lg mx-auto">
+      <View className="flex-1 px-4 py-8 md:py-12">
         {/* Form Fields */}
         <View className="max-w-md mx-auto w-full gap-2">
           {/* Header */}
@@ -200,6 +200,7 @@ const SendPage = () => {
                     autoCapitalize="none"
                     autoCorrect={false}
                     returnKeyType="next"
+                    style={{ textAlign: 'left' }}
                     onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
                   />
                 )}

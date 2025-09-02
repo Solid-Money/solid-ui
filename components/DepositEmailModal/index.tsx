@@ -1,7 +1,7 @@
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -94,27 +94,30 @@ const DepositEmailModal: React.FC = () => {
             <Controller
               control={emailForm.control}
               name="email"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <BottomSheetTextInput
-                  placeholder="email@example.com"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  style={{
-                    height: 56,
-                    paddingHorizontal: 24,
-                    backgroundColor: '#1f2937',
-                    borderRadius: 12,
-                    fontSize: 18,
-                    color: 'white',
-                    fontWeight: '600',
-                  }}
-                  placeholderTextColor="#666"
-                />
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const InputComponent = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
+                return (
+                  <InputComponent
+                    placeholder="email@example.com"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    style={{
+                      height: 56,
+                      paddingHorizontal: 24,
+                      backgroundColor: '#1f2937',
+                      borderRadius: 12,
+                      fontSize: 18,
+                      color: 'white',
+                      fontWeight: '600',
+                    }}
+                    placeholderTextColor="#666"
+                  />
+                );
+              }}
             />
           </View>
         ) : (
@@ -133,26 +136,29 @@ const DepositEmailModal: React.FC = () => {
               key="otp-input"
               control={otpForm.control}
               name="otpCode"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <BottomSheetTextInput
-                  placeholder="123456"
-                  value={value || ''}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  keyboardType="numeric"
-                  maxLength={6}
-                  style={{
-                    height: 56,
-                    paddingHorizontal: 24,
-                    backgroundColor: '#1f2937',
-                    borderRadius: 12,
-                    fontSize: 18,
-                    color: 'white',
-                    fontWeight: '600',
-                  }}
-                  placeholderTextColor="#666"
-                />
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const InputComponent = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
+                return (
+                  <InputComponent
+                    placeholder="123456"
+                    value={value || ''}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    keyboardType="numeric"
+                    maxLength={6}
+                    style={{
+                      height: 56,
+                      paddingHorizontal: 24,
+                      backgroundColor: '#1f2937',
+                      borderRadius: 12,
+                      fontSize: 18,
+                      color: 'white',
+                      fontWeight: '600',
+                    }}
+                    placeholderTextColor="#666"
+                  />
+                );
+              }}
             />
           </View>
         )}

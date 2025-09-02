@@ -3,14 +3,7 @@ import { Image } from 'expo-image';
 import { Fuel, Wallet } from 'lucide-react-native';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import {
-  ActivityIndicator,
-  Keyboard,
-  Platform,
-  TextInput,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { formatUnits } from 'viem';
 import { z } from 'zod';
@@ -137,7 +130,7 @@ function DepositToVaultForm() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
+    <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
           <Text className="text-muted-foreground">From wallet</Text>
@@ -256,7 +249,7 @@ function DepositToVaultForm() {
           </Button>
         </CheckConnectionWrapper>
       </View>
-    </TouchableWithoutFeedback>
+    </Pressable>
   );
 }
 
