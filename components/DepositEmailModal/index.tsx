@@ -105,15 +105,7 @@ const DepositEmailModal: React.FC = () => {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoComplete="email"
-                    style={{
-                      height: 56,
-                      paddingHorizontal: 24,
-                      backgroundColor: '#1f2937',
-                      borderRadius: 12,
-                      fontSize: 18,
-                      color: 'white',
-                      fontWeight: '600',
-                    }}
+                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
                     placeholderTextColor="#666"
                   />
                 );
@@ -146,15 +138,7 @@ const DepositEmailModal: React.FC = () => {
                     onBlur={onBlur}
                     keyboardType="numeric"
                     maxLength={6}
-                    style={{
-                      height: 56,
-                      paddingHorizontal: 24,
-                      backgroundColor: '#1f2937',
-                      borderRadius: 12,
-                      fontSize: 18,
-                      color: 'white',
-                      fontWeight: '600',
-                    }}
+                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
                     placeholderTextColor="#666"
                   />
                 );
