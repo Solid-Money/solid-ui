@@ -23,6 +23,8 @@ import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
+import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
+import TooltipPopover from '@/components/Tooltip';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
@@ -72,6 +74,7 @@ function DepositToVaultForm() {
   });
 
   const watchedAmount = watch('amount');
+  const isSponsor = Number(watchedAmount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
   const {
     amountOut,
     isLoading: isPreviewDepositLoading,
@@ -182,7 +185,18 @@ function DepositToVaultForm() {
         </View>
         <TokenDetails>
           <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
-            <Text className="text-lg opacity-40 md:w-40">You will receive</Text>
+            <View className="flex-row items-center gap-2 md:w-40">
+              <Text className="text-lg opacity-40">You will receive</Text>
+              {!isSponsor && !isEthereum && (
+                <TooltipPopover
+                  content={
+                    <Text className="max-w-52">
+                      Bridge gas fee may significantly reduce received amount
+                    </Text>
+                  }
+                />
+              )}
+            </View>
             <View className="flex-row items-center gap-2">
               <Image
                 source={require('@/assets/images/sousd-4x.png')}
@@ -233,9 +247,11 @@ function DepositToVaultForm() {
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-1">
             <Fuel color="gray" size={18} />
-            <Text className="text-base text-muted-foreground">Fee</Text>
+            <Text className="text-base text-muted-foreground">
+              Gasless
+              {isSponsor ? '' : ` for minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} USDC deposit`}
+            </Text>
           </View>
-          <Text className="text-base text-muted-foreground">Gasless</Text>
         </View>
         <CheckConnectionWrapper props={{ size: 'xl' }}>
           <Button

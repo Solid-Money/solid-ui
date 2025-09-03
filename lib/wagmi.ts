@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { Chain, createPublicClient } from 'viem';
 import { createConfig, http } from 'wagmi';
 import { arbitrum, base, fuse, mainnet, polygon } from 'wagmi/chains';
+import { getWalletClient } from 'wagmi/actions';
 
 import { EXPO_PUBLIC_ALCHEMY_API_KEY } from './config';
 
@@ -35,6 +36,10 @@ export const publicClient = (chainId: number) =>
     chain: chains.find(chain => chain.id === chainId),
     transport: http(rpcUrls[chainId]),
   });
+
+export const getWallet = (chainId: number) => {
+  return getWalletClient(config, { chainId });
+};
 
 export const config = createConfig({
   chains,
