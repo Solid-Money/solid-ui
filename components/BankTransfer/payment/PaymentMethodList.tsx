@@ -20,8 +20,8 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { PaymentMethodTile } from './PaymentMethodTile';
 import Toast from 'react-native-toast-message';
+import { PaymentMethodTile } from './PaymentMethodTile';
 
 type Props = {
   fiat?: BridgeTransferFiatCurrency;
@@ -246,8 +246,11 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
 
   function buildResumeRedirectUri(resume: { pathname: string; params: Record<string, string> }) {
     const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
-    const search = new URLSearchParams(resume.params).toString();
-    const uri = `${baseUrl}${resume.pathname}${search ? `?${search}` : ''}`;
+    const paramString = Object.entries(resume.params)
+      .map(([key, value]) => `${key}:${value}`)
+      .join(',');
+    const uri = `${baseUrl}${resume.pathname}?resumeParams=${paramString}`;
+
     return encodeURIComponent(uri);
   }
 
