@@ -15,7 +15,10 @@
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "SENTRY_AUTH_TOKEN": "SENTRY_AUTH_TOKEN"
+      }
     }
   },
   "submit": {
