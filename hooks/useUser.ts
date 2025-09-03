@@ -301,6 +301,11 @@ const useUser = (): UseUserReturn => {
       const user = await login(stamp);
 
       const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
+
+      if (!user.safeAddress) {
+        await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address));
+      }
+
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
         username: user.username,
@@ -351,7 +356,7 @@ const useUser = (): UseUserReturn => {
         email: 'dummy@dummy.com',
       });
       router.replace(path.HOME);
-    } catch (error) { }
+    } catch (error) {}
   }, [router, storeUser]);
 
   const handleLogout = useCallback(() => {

@@ -18,6 +18,7 @@ import {
 } from '@expo-google-fonts/mona-sans';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PortalHost } from '@rn-primitives/portal';
+import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
@@ -31,6 +32,97 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { ThirdwebProvider } from 'thirdweb/react';
 import { WagmiProvider } from 'wagmi';
+
+Sentry.init({
+  dsn: 'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952',
+
+  // Only enable Sentry in production
+  enabled: process.env.EXPO_PUBLIC_ENVIRONMENT === 'production',
+
+  // Set environment from env variable
+  environment: process.env.EXPO_PUBLIC_ENVIRONMENT || 'development',
+
+  // Debug logs only in non-production environments
+  debug: process.env.EXPO_PUBLIC_ENVIRONMENT !== 'production',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Performance Monitoring
+  tracesSampleRate: 0.2, // Capture 20% of transactions for performance monitoring
+  profilesSampleRate: 0.2, // Profile 20% of sampled transactions
+
+  // Release Health
+  enableAutoSessionTracking: true, // Track user sessions
+  sessionTrackingIntervalMillis: 30000, // 30 seconds
+
+  // Error Filtering
+  ignoreErrors: [
+    // Network errors that are usually not actionable
+    'Network request failed',
+    'NetworkError',
+    'Failed to fetch',
+    // User canceled actions
+    'AbortError',
+    // Common React Native warnings in dev
+    'Non-serializable values were found in the navigation state',
+  ],
+
+  // Breadcrumbs
+  maxBreadcrumbs: 100, // Better debugging context
+  beforeBreadcrumb(breadcrumb) {
+    // Filter out noisy breadcrumbs
+    if (breadcrumb.category === 'console' && breadcrumb.level === 'debug') {
+      return null; // Don't record debug console logs
+    }
+    return breadcrumb;
+  },
+
+  // Sample events before sending
+  beforeSend(event, hint) {
+    // Filter out events from development if they somehow get through
+    if (event.environment !== 'production') {
+      return null;
+    }
+
+    // Sanitize sensitive data
+    if (event.request?.cookies) {
+      delete event.request.cookies;
+    }
+
+    return event;
+  },
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+
+  // Integrations
+  integrations: [
+    Sentry.mobileReplayIntegration({
+      maskAllText: false, // Set to true if you want to mask sensitive text
+      maskAllImages: false, // Set to true to mask images
+    }),
+    Sentry.feedbackIntegration(),
+    Sentry.reactNativeTracingIntegration(),
+    Sentry.reactNavigationIntegration(),
+  ],
+
+  // Attachments
+  attachScreenshot: true, // Attach screenshots to errors
+  attachViewHierarchy: true, // Attach view hierarchy for debugging
+
+  // Network tracking
+  tracePropagationTargets: [
+    /^https:\/\/gateway\.thegraph\.com/,
+    /^https:\/\/api\.turnkey\.com/,
+    /^https:\/\/.*\.solid\.xyz/,
+  ],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -66,7 +158,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
   const [loaded, error] = useFonts({
@@ -209,4 +301,4 @@ export default function RootLayout() {
       </TurnkeyProvider>
     </SafeAreaProvider>
   );
-}
+});

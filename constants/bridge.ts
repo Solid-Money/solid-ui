@@ -75,3 +75,11 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     sort: 5,
   },
 };
+
+export const getUsdcAddress = (chainId: number) => {
+  const usdcAddress = BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address;
+  if (!usdcAddress) {
+    throw new Error(`USDC address not found for chain ${chainId}`);
+  }
+  return usdcAddress;
+};

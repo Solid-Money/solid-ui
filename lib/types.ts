@@ -6,7 +6,7 @@ import {
   UNSTAKE_MODAL,
   WITHDRAW_MODAL,
 } from '@/constants/modals';
-import { Address } from 'viem';
+import { Address, Hex } from 'viem';
 
 export enum Status {
   IDLE = 'idle',
@@ -339,6 +339,16 @@ export type BridgeDeposit = {
   };
 };
 
+export type BridgeTransactionRequest = {
+  eoaAddress: Address;
+  srcChainId: number;
+  amount: string;
+  toAmount?: string;
+  fromAmount?: string;
+  toAmountMin?: string;
+  bridgeTxHash: Address;
+};
+
 export type Deposit = {
   eoaAddress: Address;
   amount: string;
@@ -453,5 +463,53 @@ export interface Points {
       count: number;
       totalPoints: number;
     }[];
+  };
+}
+
+export interface GetLifiQuoteParams {
+  fromAddress: string;
+  fromChain: number;
+  fromToken?: string;
+  fromAmount: bigint;
+  toAddress: string;
+  toChain?: number;
+  toToken?: string;
+}
+
+export interface LifiQuoteResponse {
+  id: string;
+  type: string;
+  tool: string;
+  action: {
+    fromToken: {
+      address: string;
+      chainId: number;
+      decimals: number;
+      symbol: string;
+    };
+    toToken: {
+      address: string;
+      chainId: number;
+      decimals: number;
+      symbol: string;
+    };
+    fromAmount: string;
+    toAmount: string;
+  };
+  estimate: {
+    approvalAddress: string;
+    fromAmount: string;
+    toAmount: string;
+    toAmountMin: string;
+    feeCosts: any[];
+    gasCosts: any[];
+  };
+  transactionRequest: {
+    from: string;
+    to: string;
+    data: Hex;
+    value: bigint;
+    gasLimit: bigint;
+    gasPrice: bigint;
   };
 }
