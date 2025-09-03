@@ -2,7 +2,7 @@ import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { ADDRESSES } from '@/lib/config';
-import { executeTransactions } from '@/lib/execute';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status } from '@/lib/types';
 import { Address } from 'abitype';
 import { useState } from 'react';
@@ -93,6 +93,10 @@ const useBridgeToFuse = (): BridgeResult => {
         'Stake failed',
         mainnet,
       );
+
+      if (transaction === USER_CANCELLED_TRANSACTION) {
+        throw new Error('User cancelled transaction');
+      }
 
       setBridgeStatus(Status.SUCCESS);
       return transaction;

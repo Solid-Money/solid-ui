@@ -4,7 +4,7 @@ import { TransactionReceipt } from 'viem';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 
 import ERC20_ABI from '@/lib/abis/ERC20';
-import { executeTransactions } from '@/lib/execute';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status } from '@/lib/types';
 import { getChain } from '@/lib/wagmi';
 import useUser from './useUser';
@@ -63,6 +63,10 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
         'Send failed',
         chain,
       );
+
+      if (transaction === USER_CANCELLED_TRANSACTION) {
+        throw new Error('User cancelled transaction');
+      }
 
       setSendStatus(Status.SUCCESS);
       return transaction;
