@@ -80,7 +80,7 @@ Sentry.init({
   },
 
   // Sample events before sending
-  beforeSend(event, hint) {
+  beforeSend(event) {
     // Filter out events from development if they somehow get through
     if (event.environment !== 'production') {
       return null;
@@ -115,8 +115,7 @@ Sentry.init({
 
   // Network tracking
   tracePropagationTargets: [
-    /^https:\/\/gateway\.thegraph\.com/,
-    /^https:\/\/api\.turnkey\.com/,
+    // Only trace requests to your own backend
     /^https:\/\/.*\.solid\.xyz/,
   ],
 
