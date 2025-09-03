@@ -141,14 +141,14 @@ function DepositToVaultForm() {
         </View>
         <View className="gap-2">
           <Text className="text-muted-foreground">Deposit amount</Text>
-          <View className="pl-5 pr-8 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
+          <View className="px-5 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
             <Controller
               control={control}
               name="amount"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
                   keyboardType="decimal-pad"
-                  className="flex-1 text-2xl text-white font-semibold web:focus:outline-none"
+                  className="w-full text-2xl text-white font-semibold web:focus:outline-none"
                   value={value.toString()}
                   placeholder="0.0"
                   placeholderTextColor="#666"
@@ -247,9 +247,9 @@ function DepositToVaultForm() {
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-1">
             <Fuel color="gray" size={18} />
-            <Text className="text-base text-muted-foreground">
-              Gasless
-              {isSponsor ? '' : ` for minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} USDC deposit`}
+            <Text className="text-base text-muted-foreground max-w-xs">
+              Gasless deposit
+              {isSponsor ? '' : ` - Please deposit above $${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} so we can cover your fees`}
             </Text>
           </View>
         </View>

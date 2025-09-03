@@ -139,7 +139,7 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
 
         <View
           className={cn(
-            'flex-row items-center justify-between w-full bg-accent rounded-2xl pl-5 pr-5 web:pr-6 py-3',
+            'flex-row items-center justify-between w-full bg-accent rounded-2xl px-5 py-3 gap-2',
             errors.amount && 'border border-red-500',
           )}
         >
@@ -149,7 +149,7 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="flex-1 text-2xl text-white font-semibold web:focus:outline-none"
+                className="w-full text-2xl text-white font-semibold web:focus:outline-none"
                 value={value.toString()}
                 placeholder="0.0"
                 placeholderTextColor="#666"
