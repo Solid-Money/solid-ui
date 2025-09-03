@@ -163,15 +163,7 @@ export default function Register() {
           <View className="flex-col gap-2">
             <Text className="text-3xl font-semibold">Welcome!</Text>
             <Text className="text-muted-foreground">
-              Invite-only access.{' '}
-              <Link
-                href="https://www.solid.xyz"
-                target="_blank"
-                className="underline hover:opacity-70"
-              >
-                Join the waitlist
-              </Link>{' '}
-              if you haven&apos;t already.
+              Invite-only access. Please use a referral from a friend to access the app
             </Text>
           </View>
 
