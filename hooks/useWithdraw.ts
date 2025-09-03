@@ -1,7 +1,7 @@
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { ADDRESSES } from '@/lib/config';
-import { executeTransactions } from '@/lib/execute';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status } from '@/lib/types';
 import { Address } from 'abitype';
 import { useState } from 'react';
@@ -77,6 +77,10 @@ const useWithdraw = (): WithdrawResult => {
         'Withdraw failed',
         mainnet,
       );
+
+      if (transaction === USER_CANCELLED_TRANSACTION) {
+        throw new Error('User cancelled transaction');
+      }
 
       setWithdrawStatus(Status.SUCCESS);
       return transaction;
