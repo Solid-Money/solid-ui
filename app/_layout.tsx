@@ -80,7 +80,7 @@ Sentry.init({
   },
 
   // Sample events before sending
-  beforeSend(event, hint) {
+  beforeSend(event) {
     // Filter out events from development if they somehow get through
     if (event.environment !== 'production') {
       return null;
@@ -125,7 +125,7 @@ Sentry.init({
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary
+  ErrorBoundary,
 } from 'expo-router';
 
 if (Platform.OS !== 'web') {
