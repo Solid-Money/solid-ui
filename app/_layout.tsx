@@ -115,8 +115,7 @@ Sentry.init({
 
   // Network tracking
   tracePropagationTargets: [
-    /^https:\/\/gateway\.thegraph\.com/,
-    /^https:\/\/api\.turnkey\.com/,
+    // Only trace requests to your own backend
     /^https:\/\/.*\.solid\.xyz/,
   ],
 
@@ -126,7 +125,7 @@ Sentry.init({
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from 'expo-router';
 
 if (Platform.OS !== 'web') {
