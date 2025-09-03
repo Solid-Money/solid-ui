@@ -40,6 +40,7 @@
     "@rn-primitives/tabs": "^1.2.0",
     "@rn-primitives/tooltip": "^1.2.0",
     "@rn-primitives/types": "^1.1.0",
+    "@sentry/react-native": "^7.0.0",
     "@shopify/flash-list": "1.7.6",
     "@tanstack/react-query": "^5.83.0",
     "@thirdweb-dev/react-native-adapter": "^1.5.4",
