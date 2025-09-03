@@ -124,7 +124,7 @@ const Unstake = () => {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="text-2xl text-white font-semibold web:focus:outline-none"
+                className="w-full text-2xl text-white font-semibold web:focus:outline-none"
                 value={value.toString()}
                 placeholder="0.0"
                 placeholderTextColor="#666"
