@@ -43,7 +43,7 @@ const TransactionStatus = ({
       </View>
 
       <View className="gap-4">
-        <View className="flex-row justify-between gap-2 bg-accent rounded-2xl p-4">
+        <View className="flex-row justify-between items-center gap-2 bg-accent rounded-2xl p-4">
           <View className="flex-row items-center gap-2">
             <RenderTokenIcon tokenIcon={icon} size={40} />
             <View>
