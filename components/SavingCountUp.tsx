@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { TextStyle, View } from 'react-native';
-import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
+import { TextStyle } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
+import CountUp from '@/components/CountUp';
 
 type ClassNames = {
   wrapper?: string;
@@ -28,13 +26,11 @@ interface SavingCountUpProps {
   styles?: Styles;
 }
 
-const DURATION = 500;
-
 const SavingCountUp = ({
   balance,
   apy,
   lastTimestamp,
-  mode = SavingMode.TOTAL,
+  mode = SavingMode.TOTAL_USD,
   decimalPlaces = 6,
   classNames,
   styles,
@@ -61,27 +57,13 @@ const SavingCountUp = ({
     return () => clearInterval(interval);
   }, [updateYield]);
 
-  const safeYield = isFinite(liveYield) && liveYield >= 0 ? liveYield : 0;
-  const wholeNumber = Math.floor(safeYield);
-  const decimalString = safeYield.toFixed(decimalPlaces);
-  const decimalPart = Number(decimalString.split('.')[1] || '0');
-
   return (
-    <View className={cn('flex-row items-baseline', classNames?.wrapper)}>
-      <AnimatedRollingNumber
-        value={wholeNumber}
-        textStyle={styles?.wholeText}
-        spinningAnimationConfig={{ duration: DURATION }}
-        useGrouping
-      />
-      <Text className={classNames?.decimalSeparator}>.</Text>
-      <AnimatedRollingNumber
-        value={decimalPart}
-        formattedText={decimalPart.toString().padStart(decimalPlaces, '0')}
-        textStyle={styles?.decimalText}
-        spinningAnimationConfig={{ duration: DURATION }}
-      />
-    </View>
+    <CountUp
+      count={liveYield}
+      decimalPlaces={decimalPlaces}
+      classNames={classNames}
+      styles={styles}
+    />
   );
 };
 

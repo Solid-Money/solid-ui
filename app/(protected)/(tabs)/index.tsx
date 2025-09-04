@@ -1,3 +1,4 @@
+import CountUp from '@/components/CountUp';
 import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
@@ -19,7 +20,7 @@ import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { fontSize } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 import React, { useEffect } from 'react';
 import { ScrollView, TouchableOpacity, View } from 'react-native';
@@ -126,9 +127,32 @@ export default function Savings() {
           {isScreenMedium ? (
             <View className="flex-row justify-between items-center">
               <View className="flex-row items-center gap-2">
-                <Text className="text-5xl font-semibold">
-                  ${formatNumber(totalUSDExcludingStaked + savings)}
-                </Text>
+                <View className="flex-row items-center">
+                  <Text className="text-5xl font-semibold">$</Text>
+                  <CountUp
+                    count={totalUSDExcludingStaked + savings}
+                    isTrailingZero={false}
+                    classNames={{
+                      wrapper: 'text-foreground',
+                      decimalSeparator: 'text-5xl font-semibold',
+                    }}
+                    styles={{
+                      wholeText: {
+                        fontSize: fontSize(3),
+                        fontWeight: 'semibold',
+                        fontFamily: 'MonaSans_600SemiBold',
+                        color: '#ffffff',
+                        marginRight: -1,
+                      },
+                      decimalText: {
+                        fontSize: fontSize(3),
+                        fontWeight: 'semibold',
+                        fontFamily: 'MonaSans_600SemiBold',
+                        color: '#ffffff',
+                      },
+                    }}
+                  />
+                </View>
                 <TooltipPopover text="Total = Wallet + Savings" />
               </View>
               <DashboardHeaderButtons hasTokens={hasTokens} />
@@ -146,7 +170,7 @@ export default function Savings() {
                 className="flex-1"
                 tokens={topThreeTokens}
               />
-              <SavingCard savings={savings} className="flex-1" />
+              <SavingCard className="flex-1" />
             </View>
           ) : (
             <HomeBanners />

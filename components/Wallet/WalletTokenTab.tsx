@@ -1,8 +1,10 @@
 import { FlashList } from '@shopify/flash-list';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Address, formatUnits } from 'viem';
+import { mainnet } from 'viem/chains';
+import { useBlockNumber } from 'wagmi';
 
 import Ping from '@/components/Ping';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -22,12 +24,52 @@ import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { useDimension } from '@/hooks/useDimension';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { cn, compactNumberFormat, formatNumber, isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
+import {
+  cn,
+  compactNumberFormat,
+  fontSize,
+  formatNumber,
+  isSoUSDEthereum,
+  isSoUSDFuse,
+} from '@/lib/utils';
+import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
+import { useFuseVaultBalance } from '@/hooks/useVault';
+import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { ADDRESSES } from '@/lib/config';
+import { useDepositCalculations } from '@/hooks/useDepositCalculations';
+import useUser from '@/hooks/useUser';
+import SavingCountUp from '@/components/SavingCountUp';
+import { SavingMode } from '@/lib/types';
 
 const WalletTokenTab = () => {
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
   const { isScreenMedium } = useDimension();
+  const { user } = useUser();
+  const { data: totalAPY } = useTotalAPY();
+
+  const { data: blockNumber } = useBlockNumber({
+    watch: true,
+    chainId: mainnet.id,
+  });
+  const { data: userDepositTransactions, refetch: refetchTransactions } =
+    useGetUserTransactionsQuery({
+      variables: {
+        address: user?.safeAddress?.toLowerCase() ?? '',
+      },
+    });
+  const { data: balance, refetch: refetchBalance } = useFuseVaultBalance(
+    user?.safeAddress as Address,
+  );
+  const { data: lastTimestamp } = useLatestTokenTransfer(
+    user?.safeAddress ?? '',
+    ADDRESSES.fuse.vault,
+  );
+  const { firstDepositTimestamp } = useDepositCalculations(
+    userDepositTransactions,
+    balance,
+    lastTimestamp,
+  );
 
   const { ethereumTokens, fuseTokens } = useWalletTokens();
 
@@ -58,6 +100,11 @@ const WalletTokenTab = () => {
 
     return COLUMN_WIDTHS.map(ratio => (width - offset) * ratio);
   }, [width, isScreenMedium]);
+
+  useEffect(() => {
+    refetchBalance();
+    refetchTransactions();
+  }, [blockNumber, refetchBalance, refetchTransactions]);
 
   // Use card-based design for mobile, table for desktop
   if (!isScreenMedium) {
@@ -90,15 +137,68 @@ const WalletTokenTab = () => {
                     <Text className="font-bold text-lg">
                       {token.contractTickerSymbol || 'Unknown'}
                     </Text>
-                    <Text className="text-sm font-medium text-muted-foreground">
-                      {compactNumberFormat(balance)}
-                    </Text>
                   </View>
                 </View>
 
                 <View className="flex-row items-center gap-3">
-                  <Text className="font-bold text-lg">${compactNumberFormat(balanceUSD)}</Text>
-
+                  {isSoUSDFuse(token.contractAddress) ? (
+                    <View>
+                      <SavingCountUp
+                        balance={balance ?? 0}
+                        apy={totalAPY ?? 0}
+                        lastTimestamp={firstDepositTimestamp ?? 0}
+                        mode={SavingMode.TOTAL}
+                        styles={{
+                          wholeText: {
+                            fontSize: fontSize(1),
+                            fontWeight: 'bold',
+                            fontFamily: 'MonaSans_700Bold',
+                            color: '#ffffff',
+                          },
+                          decimalText: {
+                            fontSize: fontSize(1),
+                            fontWeight: 'bold',
+                            fontFamily: 'MonaSans_700Bold',
+                            color: '#ffffff',
+                          },
+                        }}
+                      />
+                      <View className="flex-row items-center">
+                        <Text className="text-sm text-muted-foreground">$</Text>
+                        <SavingCountUp
+                          balance={balance ?? 0}
+                          apy={totalAPY ?? 0}
+                          lastTimestamp={firstDepositTimestamp ?? 0}
+                          decimalPlaces={2}
+                          classNames={{
+                            wrapper: 'text-muted-foreground',
+                            decimalSeparator: 'text-sm text-muted-foreground',
+                          }}
+                          styles={{
+                            wholeText: {
+                              fontSize: fontSize(0.875),
+                              fontWeight: 'normal',
+                              fontFamily: 'MonaSans_400Regular',
+                              color: '#A1A1A1',
+                            },
+                            decimalText: {
+                              fontSize: fontSize(0.875),
+                              fontWeight: 'normal',
+                              fontFamily: 'MonaSans_400Regular',
+                              color: '#A1A1A1',
+                            },
+                          }}
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    <View>
+                      <Text className="font-bold">{compactNumberFormat(balance)}</Text>
+                      <Text className="text-sm font-medium text-muted-foreground">
+                        ${compactNumberFormat(balanceUSD)}
+                      </Text>
+                    </View>
+                  )}
                   <View className="flex-row items-center gap-2">
                     <SendModal
                       tokenAddress={token.contractAddress as Address}
@@ -197,9 +297,6 @@ const WalletTokenTab = () => {
                           <Text className="font-bold">
                             {token.contractTickerSymbol || 'Unknown'}
                           </Text>
-                          <Text className="text-sm text-muted-foreground">
-                            ${format(balanceUSD)} {isScreenMedium ? token.contractTickerSymbol : ''}
-                          </Text>
                         </View>
                       </View>
                     </TableCell>
@@ -215,9 +312,68 @@ const WalletTokenTab = () => {
                       ) : null}
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
-                      <View className="items-end md:items-start">
-                        <Text className="font-bold">{format(balance)}</Text>
-                      </View>
+                      {isSoUSDFuse(token.contractAddress) ? (
+                        <View>
+                          <View className="flex-row items-center gap-1">
+                            <SavingCountUp
+                              balance={balance ?? 0}
+                              apy={totalAPY ?? 0}
+                              lastTimestamp={firstDepositTimestamp ?? 0}
+                              mode={SavingMode.TOTAL}
+                              styles={{
+                                wholeText: {
+                                  fontSize: fontSize(1),
+                                  fontWeight: 'bold',
+                                  fontFamily: 'MonaSans_700Bold',
+                                  color: '#ffffff',
+                                },
+                                decimalText: {
+                                  fontSize: fontSize(1),
+                                  fontWeight: 'bold',
+                                  fontFamily: 'MonaSans_700Bold',
+                                  color: '#ffffff',
+                                },
+                              }}
+                            />
+                            <Text className="font-bold">{token.contractTickerSymbol}</Text>
+                          </View>
+                          <View className="flex-row items-center">
+                            <Text className="text-sm text-muted-foreground">$</Text>
+                            <SavingCountUp
+                              balance={balance ?? 0}
+                              apy={totalAPY ?? 0}
+                              lastTimestamp={firstDepositTimestamp ?? 0}
+                              classNames={{
+                                wrapper: 'text-muted-foreground',
+                                decimalSeparator: 'text-sm text-muted-foreground',
+                              }}
+                              styles={{
+                                wholeText: {
+                                  fontSize: fontSize(0.875),
+                                  fontWeight: 'normal',
+                                  fontFamily: 'MonaSans_400Regular',
+                                  color: '#A1A1A1',
+                                },
+                                decimalText: {
+                                  fontSize: fontSize(0.875),
+                                  fontWeight: 'normal',
+                                  fontFamily: 'MonaSans_400Regular',
+                                  color: '#A1A1A1',
+                                },
+                              }}
+                            />
+                          </View>
+                        </View>
+                      ) : (
+                        <View className="items-end md:items-start">
+                          <Text className="font-bold">
+                            {format(balance)} {isScreenMedium ? token.contractTickerSymbol : ''}
+                          </Text>
+                          <Text className="text-sm text-muted-foreground">
+                            ${format(balanceUSD)}
+                          </Text>
+                        </View>
+                      )}
                     </TableCell>
                     <TableCell
                       className="hidden md:block md:p-6"

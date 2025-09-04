@@ -323,6 +323,7 @@ export type Explorers = {
 
 export enum SavingMode {
   TOTAL = 'total',
+  TOTAL_USD = 'total-usd',
   INTEREST_ONLY = 'interest-only',
   BALANCE_ONLY = 'balance-only',
 }

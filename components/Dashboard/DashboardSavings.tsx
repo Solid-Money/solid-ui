@@ -19,7 +19,7 @@ const DashboardSavings = ({
   balance,
   totalAPY,
   firstDepositTimestamp,
-  mode = SavingMode.TOTAL,
+  mode = SavingMode.TOTAL_USD,
   tooltipText,
 }: DashboardSavingsProps) => {
   const { isScreenMedium } = useDimension();
