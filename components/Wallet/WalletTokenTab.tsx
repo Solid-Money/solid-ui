@@ -90,14 +90,16 @@ const WalletTokenTab = () => {
                     <Text className="font-bold text-lg">
                       {token.contractTickerSymbol || 'Unknown'}
                     </Text>
-                    <Text className="text-sm font-medium text-muted-foreground">
-                      {compactNumberFormat(balance)}
-                    </Text>
                   </View>
                 </View>
 
                 <View className="flex-row items-center gap-3">
-                  <Text className="font-bold text-lg">${compactNumberFormat(balanceUSD)}</Text>
+                  <View>
+                    <Text className="font-bold text-lg">
+                      {compactNumberFormat(balance)}
+                    </Text>
+                    <Text className="text-sm font-medium text-muted-foreground">${compactNumberFormat(balanceUSD)}</Text>
+                  </View>
 
                   <View className="flex-row items-center gap-2">
                     <SendModal
@@ -197,9 +199,6 @@ const WalletTokenTab = () => {
                           <Text className="font-bold">
                             {token.contractTickerSymbol || 'Unknown'}
                           </Text>
-                          <Text className="text-sm text-muted-foreground">
-                            ${format(balanceUSD)} {isScreenMedium ? token.contractTickerSymbol : ''}
-                          </Text>
                         </View>
                       </View>
                     </TableCell>
@@ -216,7 +215,10 @@ const WalletTokenTab = () => {
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
                       <View className="items-end md:items-start">
-                        <Text className="font-bold">{format(balance)}</Text>
+                        <Text className="font-bold">
+                          {format(balance)} {isScreenMedium ? token.contractTickerSymbol : ''}
+                        </Text>
+                        <Text className="text-sm text-muted-foreground">${format(balanceUSD)}</Text>
                       </View>
                     </TableCell>
                     <TableCell

@@ -249,7 +249,9 @@ function DepositToVaultForm() {
             <Fuel color="gray" size={18} />
             <Text className="text-base text-muted-foreground max-w-xs">
               Gasless deposit
-              {isSponsor ? '' : ` - Please deposit above $${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} so we can cover your fees`}
+              {isSponsor
+                ? ''
+                : ` - Please deposit above $${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} so we can cover your fees`}
             </Text>
           </View>
         </View>
