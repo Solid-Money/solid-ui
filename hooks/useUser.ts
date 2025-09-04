@@ -14,6 +14,7 @@ import { publicClient, rpcUrls } from '@/lib/wagmi';
 import { useKycStore } from '@/store/useKycStore';
 import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
+import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { TurnkeyClient } from '@turnkey/http';
 import { PasskeyStamper } from '@turnkey/react-native-passkey-stamper';
@@ -129,6 +130,11 @@ const useUser = (): UseUserReturn => {
         return isDeposited;
       } catch (error) {
         console.error('Error fetching tokens:', error);
+        Sentry.captureException(new Error('Error fetching tokens'), {
+          extra: {
+            error,
+          },
+        });
         return false;
       }
     },
@@ -191,6 +197,11 @@ const useUser = (): UseUserReturn => {
         }
 
         if (!challenge || !attestation) {
+          Sentry.captureException(new Error('Error creating passkey'), {
+            extra: {
+              error,
+            },
+          });
           throw new Error('Error creating passkey');
         }
 
@@ -228,6 +239,7 @@ const useUser = (): UseUserReturn => {
             updateSafeAddress(smartAccountClient.account.address),
           );
           if (!resp) {
+            Sentry.captureException(new Error('Error updating safe address on signup'));
             throw new Error('Error updating safe address');
           }
 
@@ -237,6 +249,11 @@ const useUser = (): UseUserReturn => {
             await fetchPoints();
           } catch (error) {
             console.warn('Failed to fetch points:', error);
+            Sentry.captureException(new Error('Error fetching points on signup'), {
+              extra: {
+                error,
+              },
+            });
             // Don't fail signup if points fetch fails
           }
 
@@ -249,6 +266,7 @@ const useUser = (): UseUserReturn => {
             router.replace(path.NOTIFICATIONS);
           }
         } else {
+          Sentry.captureException(new Error('Error while verifying passkey registration'));
           throw new Error('Error while verifying passkey registration');
         }
       } catch (error: any) {
@@ -258,6 +276,12 @@ const useUser = (): UseUserReturn => {
         } else if ((await error?.text?.())?.toLowerCase()?.includes('invite')) {
           message = 'Invalid invite code';
         }
+        Sentry.captureException(new Error('Error signing up'), {
+          extra: {
+            error,
+            message,
+          },
+        });
 
         setSignupInfo({ status: Status.ERROR, message });
         console.error(error);
@@ -302,10 +326,6 @@ const useUser = (): UseUserReturn => {
 
       const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
 
-      if (!user.safeAddress) {
-        await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address));
-      }
-
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
         username: user.username,
@@ -319,6 +339,18 @@ const useUser = (): UseUserReturn => {
       };
       storeUser(selectedUser);
       await checkBalance(selectedUser);
+      try {
+        if (!user.safeAddress) {
+          await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address));
+        }
+      } catch (error) {
+        console.error('Error updating safe address:', error);
+        Sentry.captureException(new Error('Error updating safe address'), {
+          extra: {
+            error,
+          },
+        });
+      }
 
       // Fetch points after successful login
       try {
@@ -326,6 +358,11 @@ const useUser = (): UseUserReturn => {
         await fetchPoints();
       } catch (error) {
         console.warn('Failed to fetch points:', error);
+        Sentry.captureException(new Error('Error fetching points'), {
+          extra: {
+            error,
+          },
+        });
         // Don't fail login if points fetch fails
       }
 
@@ -333,6 +370,11 @@ const useUser = (): UseUserReturn => {
 
       router.replace(path.HOME);
     } catch (error: any) {
+      Sentry.captureException(new Error('Error logging in'), {
+        extra: {
+          error,
+        },
+      });
       console.error(error);
       const errorMessage = error?.message || 'Network request timed out';
       setLoginInfo({ status: Status.ERROR, message: errorMessage });
@@ -356,7 +398,7 @@ const useUser = (): UseUserReturn => {
         email: 'dummy@dummy.com',
       });
       router.replace(path.HOME);
-    } catch (error) {}
+    } catch (error) { }
   }, [router, storeUser]);
 
   const handleLogout = useCallback(() => {

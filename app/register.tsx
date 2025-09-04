@@ -259,7 +259,7 @@ export default function Register() {
             </Button> */}
 
             {/* TODO: Remove when passkey works */}
-            {Platform.OS !== 'web' && (
+            {Platform.OS !== 'web' && __DEV__ && (
               <Button onPress={handleDummyLogin} variant="outline" className="rounded-xl h-14">
                 <Text className="text-lg font-semibold">Dummy Login</Text>
               </Button>
