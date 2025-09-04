@@ -11,19 +11,23 @@ export const usePreviewDeposit = (amount: string) => {
     queryKey: [Accountant, 'previewDeposit'],
     queryFn: () => fetchExchangeRate(queryClient),
     enabled: !!amount,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
   const amountOut = (Number(amount) * 10 ** 6) / Number(exchangeRate);
   return { amountOut, isLoading, exchangeRate };
 };
 
 export const fetchExchangeRate = async (queryClient: QueryClient) => {
-  const exchangeRate = await queryClient.fetchQuery(
-    readContractQueryOptions(config, {
+  const exchangeRate = await queryClient.fetchQuery({
+    ...readContractQueryOptions(config, {
       abi: Accountant,
       address: ADDRESSES.ethereum.accountant,
       functionName: 'getRate',
       chainId: 1,
     }),
-  );
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
   return exchangeRate;
 };
