@@ -30,7 +30,7 @@ const SavingCountUp = ({
   balance,
   apy,
   lastTimestamp,
-  mode = SavingMode.TOTAL,
+  mode = SavingMode.TOTAL_USD,
   decimalPlaces = 6,
   classNames,
   styles,
