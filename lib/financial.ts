@@ -11,7 +11,7 @@ export const calculateYield = async (
   apy: number,
   lastTimestamp: number,
   currentTime: number,
-  mode: SavingMode = SavingMode.TOTAL,
+  mode: SavingMode = SavingMode.TOTAL_USD,
   queryClient: QueryClient,
 ): Promise<number> => {
   if (balance <= 0 || !isFinite(balance)) return 0;
@@ -22,20 +22,25 @@ export const calculateYield = async (
 
   const exchangeRate = await fetchExchangeRate(queryClient);
   const formattedExchangeRate = Number(formatUnits(BigInt(exchangeRate), 6));
-  const calculatedBalance = balance * formattedExchangeRate;
+  const balanceUSD = balance * formattedExchangeRate;
 
   const deltaTime = Math.max(0, currentTime - lastTimestamp);
   if (deltaTime === 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
 
   const timeInYears = deltaTime / SECONDS_PER_YEAR;
 
-  const interestEarned = calculatedBalance * (apy / 100) * timeInYears;
+  const interestEarned = balance * (apy / 100) * timeInYears;
+  const interestEarnedUSD = balanceUSD * (apy / 100) * timeInYears;
 
   if (mode === SavingMode.INTEREST_ONLY) {
-    return Math.max(0, interestEarned);
+    return Math.max(0, interestEarnedUSD);
   }
 
-  return calculatedBalance + interestEarned;
+  if(mode === SavingMode.TOTAL) {
+    return balance + interestEarned;
+  }
+
+  return balanceUSD + interestEarnedUSD;
 };
 
 export const calculateOriginalDepositAmount = (userDepositTransactions: any): number => {

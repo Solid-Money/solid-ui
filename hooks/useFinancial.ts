@@ -9,7 +9,7 @@ export const useCalculateSavings = (
   apy: number,
   lastTimestamp: number,
   currentTime: number,
-  mode: SavingMode = SavingMode.TOTAL,
+  mode: SavingMode = SavingMode.TOTAL_USD,
 ) => {
   const [savings, setSavings] = useState(0);
   const queryClient = useQueryClient();
