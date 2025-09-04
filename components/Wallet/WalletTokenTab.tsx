@@ -24,7 +24,14 @@ import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { useDimension } from '@/hooks/useDimension';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { cn, compactNumberFormat, fontSize, formatNumber, isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
+import {
+  cn,
+  compactNumberFormat,
+  fontSize,
+  formatNumber,
+  isSoUSDEthereum,
+  isSoUSDFuse,
+} from '@/lib/utils';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
@@ -186,10 +193,10 @@ const WalletTokenTab = () => {
                     </View>
                   ) : (
                     <View>
-                      <Text className="font-bold">
-                        {compactNumberFormat(balance)}
+                      <Text className="font-bold">{compactNumberFormat(balance)}</Text>
+                      <Text className="text-sm font-medium text-muted-foreground">
+                        ${compactNumberFormat(balanceUSD)}
                       </Text>
-                      <Text className="text-sm font-medium text-muted-foreground">${compactNumberFormat(balanceUSD)}</Text>
                     </View>
                   )}
                   <View className="flex-row items-center gap-2">
@@ -328,9 +335,7 @@ const WalletTokenTab = () => {
                                 },
                               }}
                             />
-                            <Text className="font-bold">
-                              {token.contractTickerSymbol}
-                            </Text>
+                            <Text className="font-bold">{token.contractTickerSymbol}</Text>
                           </View>
                           <View className="flex-row items-center">
                             <Text className="text-sm text-muted-foreground">$</Text>
@@ -364,7 +369,9 @@ const WalletTokenTab = () => {
                           <Text className="font-bold">
                             {format(balance)} {isScreenMedium ? token.contractTickerSymbol : ''}
                           </Text>
-                          <Text className="text-sm text-muted-foreground">${format(balanceUSD)}</Text>
+                          <Text className="text-sm text-muted-foreground">
+                            ${format(balanceUSD)}
+                          </Text>
                         </View>
                       )}
                     </TableCell>
