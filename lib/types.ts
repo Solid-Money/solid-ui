@@ -275,15 +275,20 @@ export enum TransactionType {
   WITHDRAW = 'withdraw',
   SEND = 'send',
   BRIDGE = 'bridge',
+  BANK_TRANSFER = 'bank_transfer',
 }
+
+export type TransactionStatus = LayerZeroTransactionStatus | BankTransferStatus;
 
 export type Transaction = {
   title: string;
   timestamp: string;
   amount: number;
-  status: LayerZeroTransactionStatus;
+  status: TransactionStatus;
   hash?: string;
   type: TransactionType;
+  symbol?: string;
+  sourceDepositInstructions?: SourceDepositInstructions;
 };
 
 export type Faq = {
@@ -372,6 +377,39 @@ export enum BridgeTransactionStatus {
   DEPOSIT_COMPLETED = 'deposit_completed',
   DEPOSIT_FAILED = 'deposit_failed',
 }
+
+export enum BankTransferStatus {
+  AWAITING_FUNDS = 'awaiting_funds',
+  FUNDS_RECEIVED = 'funds_received',
+  PAYMENT_PROCESSED = 'payment_processed',
+}
+
+export type BankTransferPaymentRail = 'ach_push' | 'wire' | 'sepa' | 'spei';
+
+export interface BankTransferListItemDto {
+  id: string;
+  amount: string; // decimal string
+  currency: string; // e.g., "usd", "eur"
+  payment_rail: BankTransferPaymentRail;
+  state: BankTransferStatus;
+  created_at: string; // ISO string
+  updated_at?: string; // ISO string
+  url?: string;
+}
+
+export type GetBankTransfersResponseDto = BankTransferListItemDto[];
+
+// Normalized bank transfer item used by the Activity feed (frontend)
+export type BankTransferActivityItem = {
+  id: string;
+  amount: number;
+  currency: string;
+  method: BankTransferPaymentRail;
+  status: BankTransferStatus;
+  timestamp: number; // unix seconds
+  url?: string;
+  sourceDepositInstructions?: SourceDepositInstructions;
+};
 
 export interface BridgeTransaction {
   eoaAddress: string;
