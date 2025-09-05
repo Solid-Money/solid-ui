@@ -132,7 +132,11 @@ const ResponsiveModal = ({
             >
               {title && (
                 <DialogHeader
-                  className={cn('flex-row justify-between items-center gap-2', titleClassName)}
+                  className={cn(
+                    'flex-row items-center gap-2',
+                    showBackButton ? 'justify-between' : 'justify-center',
+                    titleClassName,
+                  )}
                 >
                   {showBackButton && onBackPress && (
                     <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
@@ -205,7 +209,11 @@ const ResponsiveModal = ({
           <View className={cn('gap-6', containerClassName)}>
             {title && (
               <View
-                className={cn('flex-row justify-between items-center gap-2 pb-2', titleClassName)}
+                className={cn(
+                  'flex-row items-center gap-2 pb-2',
+                  showBackButton ? 'justify-between' : 'justify-center',
+                  titleClassName,
+                )}
               >
                 {showBackButton && onBackPress && (
                   <Button

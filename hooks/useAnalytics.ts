@@ -13,8 +13,11 @@ import {
   fetchLayerZeroBridgeTransactions,
   fetchTokenTransfer,
   fetchTotalAPY,
+  getBankTransfers,
 } from '@/lib/api';
 import {
+  BankTransferActivityItem,
+  BankTransferStatus,
   BlockscoutTransaction,
   BlockscoutTransactions,
   BridgeTransaction,
@@ -23,6 +26,8 @@ import {
   Transaction,
   TransactionType,
 } from '@/lib/types';
+import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
+import { withRefreshToken } from '@/lib/utils';
 
 const ANALYTICS = 'analytics';
 
@@ -118,6 +123,28 @@ export const useBridgeDepositTransactions = (safeAddress: string) => {
   });
 };
 
+export const useBankTransferTransactions = () => {
+  return useQuery({
+    queryKey: [ANALYTICS, 'bankTransferTransactions'],
+    queryFn: async () => {
+      const data = (await withRefreshToken(() => getBankTransfers())) ?? [];
+
+      const items: BankTransferActivityItem[] = data.map((it: BridgeApiTransfer) => ({
+        id: it.id,
+        amount: Number(it.amount || '0'),
+        currency: String(it.currency || 'usd').toUpperCase(),
+        method: it.source?.payment_rail as any,
+        status: (it.state as string).toLowerCase() as BankTransferStatus,
+        timestamp: Math.floor(new Date(it.created_at).getTime() / 1000),
+        url: undefined,
+        sourceDepositInstructions: it.source_deposit_instructions,
+      }));
+      return items;
+    },
+    enabled: true,
+  });
+};
+
 const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
   const isBridgeCompleted = transaction.status === BridgeTransactionStatus.BRIDGE_COMPLETED;
   const isBridgeFailed = transaction.status === BridgeTransactionStatus.BRIDGE_FAILED;
@@ -146,11 +173,12 @@ export const formatTransactions = async (
   transactions: GetUserTransactionsQuery | undefined,
   sendTransactions:
     | {
-      fuse: BlockscoutTransaction[];
-      ethereum: BlockscoutTransaction[];
-    }
+        fuse: BlockscoutTransaction[];
+        ethereum: BlockscoutTransaction[];
+      }
     | undefined,
   bridgeDepositTransactions: BridgeTransaction[] | undefined,
+  bankTransfers: BankTransferActivityItem[] | undefined,
 ): Promise<Transaction[]> => {
   const depositTransactionPromises = transactions?.deposits?.map(async internalTransaction => {
     const hash = internalTransaction.transactionHash;
@@ -279,12 +307,28 @@ export const formatTransactions = async (
     return constructBridgeDepositTransaction(transaction);
   });
 
+  const bankTransferTransactionPromises =
+    bankTransfers?.map(async t => {
+      return {
+        title: 'Bank transfer',
+        shortTitle: 'Bank transfer',
+        timestamp: t.timestamp.toString(),
+        amount: t.amount,
+        symbol: t.currency,
+        status: t.status,
+        type: TransactionType.BANK_TRANSFER,
+        url: t.url,
+        sourceDepositInstructions: t.sourceDepositInstructions,
+      };
+    }) || [];
+
   const formattedTransactions = await Promise.all([
     ...(depositTransactionPromises || []),
     ...(bridgeTransactionPromises || []),
     ...(withdrawTransactionPromises || []),
     ...(sendTransactionPromises || []),
     ...(bridgeDepositTransactionPromises || []),
+    ...bankTransferTransactionPromises,
   ]);
 
   // Sort by timestamp (newest first)

@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { TransactionType } from '@/lib/types';
 import {
   pressTransactionCredenzaContent,
   TransactionCancelContent,
@@ -18,12 +19,16 @@ type TransactionDropdownProps = {
   url?: string;
   showCancelButton?: boolean;
   onCancelWithdraw?: () => void;
+  type?: TransactionType;
+  onPress?: () => void;
 };
 
 const TransactionDropdown = ({
   url,
   showCancelButton,
   onCancelWithdraw,
+  type,
+  onPress,
 }: TransactionDropdownProps) => {
   const insets = useSafeAreaInsets();
   const contentInsets = {
@@ -41,9 +46,17 @@ const TransactionDropdown = ({
       <DropdownMenuContent insets={contentInsets} className="w-38 bg-card border-none rounded-xl">
         <DropdownMenuItem
           className="h-10 web:cursor-pointer rounded-lg"
-          onPress={() => pressTransactionCredenzaContent(url)}
+          onPress={() => {
+            if (type === TransactionType.BANK_TRANSFER && onPress) {
+              onPress();
+            } else if (url) {
+              pressTransactionCredenzaContent(url);
+            }
+          }}
         >
-          <TransactionCredenzaContent />
+          <TransactionCredenzaContent
+            text={type === TransactionType.BANK_TRANSFER ? 'View details' : 'View transaction'}
+          />
         </DropdownMenuItem>
         {showCancelButton && (
           <DropdownMenuItem

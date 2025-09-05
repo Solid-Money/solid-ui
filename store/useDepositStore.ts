@@ -9,7 +9,7 @@ import {
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
-import { DepositModal, TransactionStatusModal } from '@/lib/types';
+import { DepositModal, SourceDepositInstructions, TransactionStatusModal } from '@/lib/types';
 
 interface BankTransferData {
   fiatAmount?: string;
@@ -17,7 +17,11 @@ interface BankTransferData {
   fiat?: BridgeTransferFiatCurrency;
   crypto?: BridgeTransferCryptoCurrency;
   method?: string;
-  instructions?: any;
+  instructions?: SourceDepositInstructions;
+
+  // Used to determine if the bank transfer data is coming from the activity feed
+  // If so, the bank transfer preview will not show the back button
+  fromActivity?: boolean;
 }
 
 interface KycData {

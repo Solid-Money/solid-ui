@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { fuse } from 'viem/chains';
 
 import { explorerUrls } from '@/constants/explorers';
+import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { useUserStore } from '@/store/useUserStore';
 import {
   EXPO_PUBLIC_ALCHEMY_API_KEY,
@@ -714,41 +715,58 @@ export const getLifiQuote = async ({
   toAddress,
   toToken = 'USDC',
 }: GetLifiQuoteParams): Promise<LifiQuoteResponse> => {
-  const response = await axios.get<LifiQuoteResponse>(
-    `${EXPO_PUBLIC_LIFI_API_URL}/quote`,
-    {
-      params: {
-        fromAddress,
-        fromChain,
-        toChain,
-        fromAmount,
-        fromToken,
-        toAddress,
-        toToken,
-      },
+  const response = await axios.get<LifiQuoteResponse>(`${EXPO_PUBLIC_LIFI_API_URL}/quote`, {
+    params: {
+      fromAddress,
+      fromChain,
+      toChain,
+      fromAmount,
+      fromToken,
+      toAddress,
+      toToken,
     },
-  );
+  });
 
   return response?.data;
 };
 
-export const bridgeTransaction = async (
-  bridge: BridgeTransactionRequest,
-): Promise<Response> => {
+export const bridgeTransaction = async (bridge: BridgeTransactionRequest): Promise<Response> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/transactions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getPlatformHeaders(),
-      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge/transactions`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(bridge),
     },
-    credentials: 'include',
-    body: JSON.stringify(bridge),
-  });
+  );
 
   if (!response.ok) throw response;
 
   return response;
+};
+
+export const getBankTransfers = async (): Promise<BridgeApiTransfer[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge-transfers/transactions`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };

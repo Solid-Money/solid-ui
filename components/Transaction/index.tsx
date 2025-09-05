@@ -1,11 +1,16 @@
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { LayerZeroTransactionStatus, TransactionType } from '@/lib/types';
+import {
+  BankTransferStatus,
+  LayerZeroTransactionStatus,
+  TransactionStatus,
+  TransactionType,
+} from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import TransactionDrawer from './TransactionDrawer';
 import TransactionDropdown from './TransactionDropdown';
@@ -19,7 +24,7 @@ interface TransactionProps {
   shortTitle?: string;
   timestamp: string;
   amount: number;
-  status: LayerZeroTransactionStatus;
+  status: TransactionStatus;
   hash?: string;
   type: TransactionType;
   classNames?: TransactionClassNames;
@@ -27,6 +32,7 @@ interface TransactionProps {
   url?: string;
   logoUrl?: string;
   requestId?: `0x${string}`;
+  onPress?: () => void;
 }
 
 const Transaction = ({
@@ -40,18 +46,27 @@ const Transaction = ({
   url,
   logoUrl,
   requestId,
+  onPress,
+  type,
 }: TransactionProps) => {
   const { isScreenMedium } = useDimension();
-  const isSuccess = status === LayerZeroTransactionStatus.DELIVERED;
+
+  const isSuccess =
+    status === LayerZeroTransactionStatus.DELIVERED ||
+    status === BankTransferStatus.PAYMENT_PROCESSED;
+
   const isPending =
     status === LayerZeroTransactionStatus.INFLIGHT ||
-    status === LayerZeroTransactionStatus.CONFIRMING;
+    status === LayerZeroTransactionStatus.CONFIRMING ||
+    status === BankTransferStatus.AWAITING_FUNDS ||
+    status === BankTransferStatus.FUNDS_RECEIVED;
 
   const statusBgColor = isSuccess
     ? 'bg-brand/10'
     : isPending
       ? 'bg-yellow-400/10'
       : 'bg-red-400/10';
+
   const statusTextColor = isSuccess ? 'text-brand' : isPending ? 'text-yellow-400' : 'text-red-400';
   const statusText = isSuccess ? 'Success' : isPending ? 'Pending' : 'Failed';
 
@@ -69,7 +84,8 @@ const Transaction = ({
   };
 
   return (
-    <View
+    <Pressable
+      onPress={onPress}
       className={cn(
         'flex-row items-center justify-between p-4 md:px-6',
         'border-b border-border/40',
@@ -112,16 +128,20 @@ const Transaction = ({
             url={url}
             showCancelButton={status === LayerZeroTransactionStatus.INFLIGHT && !!requestId}
             onCancelWithdraw={handleCancelWithdraw}
+            type={type}
+            onPress={onPress}
           />
         ) : (
           <TransactionDrawer
             url={url}
             showCancelButton={status === LayerZeroTransactionStatus.INFLIGHT && !!requestId}
             onCancelWithdraw={handleCancelWithdraw}
+            type={type}
+            onPress={onPress}
           />
         )}
       </View>
-    </View>
+    </Pressable>
   );
 };
 
