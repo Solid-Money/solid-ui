@@ -47,6 +47,7 @@ const Transaction = ({
   logoUrl,
   requestId,
   onPress,
+  type,
 }: TransactionProps) => {
   const { isScreenMedium } = useDimension();
 
@@ -127,12 +128,16 @@ const Transaction = ({
             url={url}
             showCancelButton={status === LayerZeroTransactionStatus.INFLIGHT && !!requestId}
             onCancelWithdraw={handleCancelWithdraw}
+            type={type}
+            onPress={onPress}
           />
         ) : (
           <TransactionDrawer
             url={url}
             showCancelButton={status === LayerZeroTransactionStatus.INFLIGHT && !!requestId}
             onCancelWithdraw={handleCancelWithdraw}
+            type={type}
+            onPress={onPress}
           />
         )}
       </View>

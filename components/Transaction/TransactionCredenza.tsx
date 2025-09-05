@@ -16,11 +16,17 @@ const TransactionCredenzaTrigger = ({ onPress }: TransactionCredenzaTriggerProps
   );
 };
 
-const TransactionCredenzaContent = () => {
+interface TransactionCredenzaContentProps {
+  text?: string;
+}
+
+const TransactionCredenzaContent = ({
+  text = 'View transaction',
+}: TransactionCredenzaContentProps) => {
   return (
     <>
       <ArrowUpRight color="white" />
-      <Text>View transaction</Text>
+      <Text>{text}</Text>
     </>
   );
 };
