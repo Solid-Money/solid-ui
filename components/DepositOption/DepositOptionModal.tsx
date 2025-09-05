@@ -4,13 +4,13 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
-import ResponsiveModal from '@/components/ResponsiveModal';
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
 import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import { DepositToVaultForm } from '@/components/DepositToVault';
+import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -28,7 +28,8 @@ interface DepositOptionModalProps {
 
 const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOptionModalProps) => {
   const { user } = useUser();
-  const { currentModal, previousModal, transaction, setModal, srcChainId } = useDepositStore();
+  const { currentModal, previousModal, transaction, setModal, srcChainId, bankTransfer } =
+    useDepositStore();
   const activeAccount = useActiveAccount();
   const status = useActiveWalletConnectionStatus();
   const address = activeAccount?.address;
@@ -228,7 +229,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
         isNetworks ||
         isBankTransferAmount ||
         isBankTransferPayment ||
-        isBankTransferPreview ||
+        (isBankTransferPreview && !bankTransfer.fromActivity) ||
         isBankTransferKycInfo ||
         isBankTransferKycFrame
       }

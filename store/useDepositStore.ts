@@ -18,6 +18,10 @@ interface BankTransferData {
   crypto?: BridgeTransferCryptoCurrency;
   method?: string;
   instructions?: SourceDepositInstructions;
+
+  // Used to determine if the bank transfer data is coming from the activity feed
+  // If so, the bank transfer preview will not show the back button
+  fromActivity?: boolean;
 }
 
 interface KycData {

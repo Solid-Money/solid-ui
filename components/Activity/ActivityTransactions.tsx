@@ -7,14 +7,22 @@ import { useBlockNumber } from 'wagmi';
 import Transaction from '@/components/Transaction';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import {
   formatTransactions,
+  useBankTransferTransactions,
   useBridgeDepositTransactions,
   useSendTransactions,
 } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
-import { ActivityTab, LayerZeroTransactionStatus } from '@/lib/types';
+import {
+  ActivityTab,
+  BankTransferStatus,
+  LayerZeroTransactionStatus,
+  TransactionType,
+} from '@/lib/types';
+import { useDepositStore } from '@/store/useDepositStore';
 
 type ActivityTransactionsProps = {
   tab?: ActivityTab;
@@ -22,6 +30,7 @@ type ActivityTransactionsProps = {
 
 export default function ActivityTransactions({ tab = ActivityTab.ALL }: ActivityTransactionsProps) {
   const { user } = useUser();
+  const { setModal, setBankTransferData } = useDepositStore();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -51,6 +60,12 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
   } = useBridgeDepositTransactions(user?.safeAddress ?? '');
 
   const {
+    data: bankTransferTransactions,
+    isLoading: isBankTransfersLoading,
+    refetch: refetchBankTransfers,
+  } = useBankTransferTransactions();
+
+  const {
     data: transactions,
     isLoading: isFormattingTransactions,
     refetch: refetchFormattedTransactions,
@@ -62,16 +77,23 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
       sendTransactions?.fuse?.length,
       sendTransactions?.ethereum?.length,
       bridgeDepositTransactions?.length,
+      bankTransferTransactions?.length,
     ],
     queryFn: () =>
-      formatTransactions(userDepositTransactions, sendTransactions, bridgeDepositTransactions),
+      formatTransactions(
+        userDepositTransactions,
+        sendTransactions,
+        bridgeDepositTransactions,
+        bankTransferTransactions,
+      ),
   });
 
   const isLoading =
     isTransactionsLoading ||
     isFormattingTransactions ||
     isSendTransactionsLoading ||
-    isBridgeDepositTransactionsLoading;
+    isBridgeDepositTransactionsLoading ||
+    isBankTransfersLoading;
 
   const getTransactionClassName = (totalTransactions: number, index: number) => {
     // Remove bottom border for last item only
@@ -84,18 +106,25 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
     refetchFormattedTransactions();
     refetchSendTransactions();
     refetchBridgeDepositTransactions();
+    refetchBankTransfers();
   }, [
     blockNumber,
     refetchTransactions,
     refetchFormattedTransactions,
     refetchSendTransactions,
     refetchBridgeDepositTransactions,
+    refetchBankTransfers,
   ]);
 
   const filteredTransactions = transactions?.filter(transaction => {
     if (tab === ActivityTab.ALL) return true;
-    if (tab === ActivityTab.PROGRESS)
-      return transaction.status === LayerZeroTransactionStatus.INFLIGHT;
+    if (tab === ActivityTab.PROGRESS) {
+      return (
+        transaction.status === LayerZeroTransactionStatus.INFLIGHT ||
+        transaction.status === BankTransferStatus.AWAITING_FUNDS ||
+        transaction.status === BankTransferStatus.FUNDS_RECEIVED
+      );
+    }
     return false;
   });
 
@@ -109,6 +138,15 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
             <Transaction
               key={`${transaction.timestamp}-${index}`}
               {...transaction}
+              onPress={() => {
+                if (transaction.type === TransactionType.BANK_TRANSFER) {
+                  setBankTransferData({
+                    instructions: transaction.sourceDepositInstructions,
+                    fromActivity: true,
+                  });
+                  setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
+                }
+              }}
               classNames={{
                 container: getTransactionClassName(filteredTransactions.length, index),
               }}
