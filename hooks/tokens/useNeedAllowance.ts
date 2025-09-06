@@ -16,9 +16,6 @@ export function useNeedAllowance(
     abi: erc20Abi,
     functionName: 'allowance',
     args: [account, spender] as [Address, Address],
-    query: {
-      enabled: !!user && !!account && !!spender && !!currency?.wrapped.address && !!spender,
-    },
   });
 
   if (!user) {

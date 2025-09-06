@@ -121,8 +121,8 @@ export function useSwapCallback(
     if (swapCalldata && account) {
       findBestCall().catch((error) => {
         console.warn('Unhandled error in findBestCall:', error);
-        console.log('Using the first call');
         if (swapCalldata.length > 0) {
+          console.log('Using the first call');
           setBestCall(swapCalldata[0]);
         }
       });
