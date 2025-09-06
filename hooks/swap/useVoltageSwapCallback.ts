@@ -91,5 +91,5 @@ export function useVoltageSwapCallback(
       isSuccess,
       needAllowance,
     };
-  }, [trade, swapCallback, isLoading, isSuccess, isSendingSwap]);
+  }, [trade, swapCallback, isLoading, isSuccess, isSendingSwap, needAllowance, approvalConfig]);
 }
