@@ -5,7 +5,6 @@ import { Text } from '@/components/ui/text';
 import { SWAP_MODAL } from '@/constants/modals';
 import { useSimulatePegSwapSwap } from '@/generated/wagmi';
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
-import { useSwapCallArguments } from '@/hooks/swap/useSwapCallArguments';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import {
   useBatchApproveAndPegSwap,
@@ -97,13 +96,6 @@ const SwapButton: React.FC = () => {
   const routeNotFound = trade?.swaps.length === 0;
   const isLoadingRoute = TradeState.LOADING === tradeState.state;
 
-  // Get swap call arguments for batch operations
-  const swapCalldata = useSwapCallArguments(trade, allowedSlippage);
-  const swapValue = useMemo(() => {
-    if (!swapCalldata || swapCalldata.length === 0) return 0n;
-    return BigInt(swapCalldata[0]?.value || 0);
-  }, [swapCalldata]);
-
   // Get peg swap calldata for batch operations
   const inputAmount = useMemo(
     () => tryParseAmount(typedValue, currencies[SwapField.INPUT]),
@@ -132,7 +124,6 @@ const SwapButton: React.FC = () => {
   } = useBatchApproveAndSwap(
     trade,
     allowedSlippage,
-    swapValue,
     currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && trade
       ? (() => {
           const successInfo = {

@@ -83,7 +83,6 @@ export function useApprove(
 export function useBatchApproveAndSwap(
   trade: Trade<Currency, Currency, TradeType> | undefined,
   allowedSlippage: Percent,
-  swapValue = 0n,
   successInfo?: TransactionSuccessInfo,
 ) {
   const { user, safeAA } = useUser();
@@ -170,7 +169,6 @@ export function useBatchApproveAndSwap(
     user?.suborgId,
     user?.signWith,
     account,
-    swapValue,
     needAllowance,
     approveConfig,
     safeAA,
