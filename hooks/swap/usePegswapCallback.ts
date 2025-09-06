@@ -26,7 +26,7 @@ import { ApprovalState } from '@/lib/types/approve-state';
 import { Address, encodeFunctionData, formatUnits } from 'viem';
 import { fuse } from 'viem/chains';
 import { useApproveCallbackFromPegSwap } from '../useApprove';
-import { useTransactionAwait } from '../useTransactionAwait';
+import { TransactionSuccessInfo, useTransactionAwait } from '../useTransactionAwait';
 import useUser from '../useUser';
 
 export enum PegSwapType {
@@ -132,10 +132,12 @@ export default function usePegSwapCallback(
   inputCurrency: Currency | undefined,
   outputCurrency: Currency | undefined,
   typedValue: string | undefined,
+  successInfo?: TransactionSuccessInfo,
 ): {
   pegSwapType: PegSwapType;
   pegSwapAddress?: Address;
   callback?: undefined | (() => void);
+  needAllowance?: boolean;
   inputError?: string;
   isLoading?: boolean;
   isSuccess?: boolean;
@@ -159,7 +161,7 @@ export default function usePegSwapCallback(
     [inputCurrency, typedValue],
   );
 
-  const { approvalState } = useApproveCallbackFromPegSwap(inputAmount, pegSwapAddress);
+  const { approvalState, needAllowance, approvalConfig } = useApproveCallbackFromPegSwap(inputAmount, pegSwapAddress);
 
   const { data: swapConfig, refetch: refetchSwapConfig } = useSimulatePegSwapSwap({
     address: pegSwapAddress,
@@ -185,17 +187,29 @@ export default function usePegSwapCallback(
       setIsSendingSwap(true);
       const smartAccountClient = await safeAA(fuse, user?.suborgId, user?.signWith);
 
-      const transactions = [
-        {
-          to: swapConfig?.request.address,
+      const transactions = [];
+
+      if (needAllowance && approvalConfig) {
+        transactions.push({
+          to: approvalConfig.request.address,
           data: encodeFunctionData({
-            abi: swapConfig!.request.abi,
-            functionName: swapConfig!.request.functionName,
-            args: swapConfig!.request.args,
+            abi: approvalConfig.request.abi,
+            functionName: approvalConfig.request.functionName,
+            args: approvalConfig.request.args,
           }),
-          value: swapConfig?.request.value,
-        },
-      ];
+        });
+      }
+
+      transactions.push({
+        to: swapConfig?.request.address,
+        data: encodeFunctionData({
+          abi: swapConfig!.request.abi,
+          functionName: swapConfig!.request.functionName,
+          args: swapConfig!.request.args,
+        }),
+        value: swapConfig?.request.value,
+      });
+
       const result = await executeTransactions(
         smartAccountClient,
         transactions,
@@ -216,7 +230,7 @@ export default function usePegSwapCallback(
     }
   }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA]);
 
-  const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash);
+  const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
 
   const { data: inputCurrencyBalance } = useBalance({
     address: account,
@@ -244,6 +258,7 @@ export default function usePegSwapCallback(
 
     return {
       pegSwapType: PegSwapType.SWAP,
+      needAllowance,
       pegSwapAddress,
       callback: swapCallback,
       inputError: error,
@@ -253,6 +268,7 @@ export default function usePegSwapCallback(
   }, [
     inputCurrency,
     outputCurrency,
+    needAllowance,
     pegSwapAddress,
     inputAmount,
     inputCurrencyBalance,

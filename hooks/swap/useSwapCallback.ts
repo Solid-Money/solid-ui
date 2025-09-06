@@ -8,7 +8,8 @@ import { SwapCallbackState } from '@/lib/types/swap-state';
 import { publicClient } from '@/lib/wagmi';
 import { encodeFunctionData, getContract } from 'viem';
 import { fuse } from 'viem/chains';
-import { useTransactionAwait } from '../useTransactionAwait';
+import { useApproveCallbackFromTrade } from '../useApprove';
+import { TransactionSuccessInfo, useTransactionAwait } from '../useTransactionAwait';
 import useUser from '../useUser';
 import { useSwapCallArguments } from './useSwapCallArguments';
 
@@ -31,9 +32,11 @@ interface FailedCall extends SwapCallEstimate {
 
 export function useSwapCallback(
   trade: Trade<Currency, Currency, TradeType> | undefined,
-  allowedSlippage: Percent
+  allowedSlippage: Percent,
+  successInfo?: TransactionSuccessInfo,
 ) {
   const { user, safeAA } = useUser();
+  const { approvalConfig, needAllowance } = useApproveCallbackFromTrade(trade, allowedSlippage);
   const account = user?.safeAddress;
 
   const [bestCall, setBestCall] = useState<SuccessfulCall | SwapCallEstimate | undefined>(undefined);
@@ -142,17 +145,30 @@ export function useSwapCallback(
     try {
       setIsSendingSwap(true);
       const smartAccountClient = await safeAA(fuse, user?.suborgId, user?.signWith);
-      const transactions = [
-        {
-          to: swapConfig?.request.address,
+      const transactions = [];
+
+      // Add approve transaction if needed
+      if (needAllowance && approvalConfig) {
+        transactions.push({
+          to: approvalConfig.request.address,
           data: encodeFunctionData({
-            abi: swapConfig!.request.abi,
-            functionName: swapConfig!.request.functionName,
-            args: swapConfig?.request.args as readonly [readonly `0x${string}`[]],
+            abi: approvalConfig.request.abi,
+            functionName: approvalConfig.request.functionName,
+            args: approvalConfig.request.args,
           }),
-          value: swapConfig?.request.value,
-        },
-      ];
+        });
+      }
+
+      transactions.push({
+        to: swapConfig?.request.address,
+        data: encodeFunctionData({
+          abi: swapConfig!.request.abi,
+          functionName: swapConfig!.request.functionName,
+          args: swapConfig?.request.args as readonly [readonly `0x${string}`[]],
+        }),
+        value: swapConfig?.request.value,
+      });
+
       const result = await executeTransactions(
         smartAccountClient,
         transactions,
@@ -173,7 +189,7 @@ export function useSwapCallback(
     }
   }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA]);
 
-  const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash);
+  const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
 
   return useMemo(() => {
     if (!trade)
@@ -184,6 +200,7 @@ export function useSwapCallback(
         isLoading: false,
         isSuccess: false,
         swapConfig: swapConfig,
+        needAllowance,
       };
 
     return {
@@ -193,6 +210,7 @@ export function useSwapCallback(
       isLoading: isSendingSwap || isLoading,
       isSuccess,
       swapConfig: swapConfig,
+      needAllowance,
     };
   }, [trade, swapCalldata, swapCallback, swapConfig, isLoading, isSuccess, isSendingSwap]);
 }
