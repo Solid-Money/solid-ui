@@ -71,7 +71,7 @@ export function useAllTokens(showNativeToken = true) {
       token => !tokensBlackList.includes(token.id as Address),
     )) {
       tokens.set(token.id.toLowerCase() as Address, {
-        address: token.id as Address,
+        address: token.id.toLowerCase() as Address,
         symbol: token.symbol,
         name: token.name,
         decimals: token.decimals,

@@ -2,6 +2,7 @@ import { Address } from 'abitype';
 import { useState } from 'react';
 import { TransactionReceipt } from 'viem';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
+import * as Sentry from '@sentry/react-native';
 
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -72,6 +73,19 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
       return transaction;
     } catch (error) {
       console.error(error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'send_transaction_error',
+          chainId: chainId.toString(),
+          userId: user?.id,
+        },
+        extra: {
+          tokenAddress,
+          amount,
+          to,
+          tokenDecimals,
+        },
+      });
       setSendStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;

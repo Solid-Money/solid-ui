@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { useEffect, useState } from 'react';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import {
@@ -117,20 +118,115 @@ const useDepositFromEOA = (): DepositResult => {
 
   const deposit = async (amount: string) => {
     try {
-      if (!eoaAddress) throw new Error('EOA not connected');
-      if (nonce === undefined) throw new Error('Could not get nonce');
-      if (!tokenName) throw new Error('Could not get token name');
-      if (!user?.safeAddress) throw new Error('User safe address not found');
+      if (!eoaAddress) {
+        const error = new Error('EOA not connected');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'deposit_from_eoa',
+            step: 'validation',
+            reason: 'no_eoa_address',
+          },
+          extra: { amount, srcChainId, isEthereum },
+        });
+        throw error;
+      }
+      
+      if (nonce === undefined) {
+        const error = new Error('Could not get nonce');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'deposit_from_eoa',
+            step: 'validation',
+            reason: 'no_nonce',
+          },
+          extra: { amount, eoaAddress, srcChainId, isEthereum },
+        });
+        throw error;
+      }
+      
+      if (!tokenName) {
+        const error = new Error('Could not get token name');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'deposit_from_eoa',
+            step: 'validation',
+            reason: 'no_token_name',
+          },
+          extra: { amount, eoaAddress, srcChainId, isEthereum },
+        });
+        throw error;
+      }
+      
+      if (!user?.safeAddress) {
+        const error = new Error('User safe address not found');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'deposit_from_eoa',
+            step: 'validation',
+            reason: 'no_safe_address',
+          },
+          extra: { amount, eoaAddress, srcChainId, isEthereum, hasUser: !!user },
+        });
+        throw error;
+      }
 
       const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
-      if (!isSponsor && isEthereum && fee === undefined) throw new Error('Could not get fee');
+      if (!isSponsor && isEthereum && fee === undefined) {
+        const error = new Error('Could not get fee');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'deposit_from_eoa',
+            step: 'validation',
+            reason: 'no_fee',
+          },
+          extra: { amount, eoaAddress, srcChainId, isEthereum, isSponsor },
+        });
+        throw error;
+      }
 
       setDepositStatus(DepositStatus.PENDING);
       setError(null);
 
+      Sentry.addBreadcrumb({
+        message: 'Starting deposit from EOA',
+        category: 'deposit',
+        data: {
+          amount,
+          eoaAddress,
+          safeAddress: user.safeAddress,
+          srcChainId,
+          isEthereum,
+          isSponsor,
+        },
+      });
+
       if (chainId !== srcChainId) {
         const chain = getChain(srcChainId);
-        if (!chain) throw new Error('Chain not found');
+        if (!chain) {
+          const error = new Error('Chain not found');
+          Sentry.captureException(error, {
+            tags: {
+              operation: 'deposit_from_eoa',
+              step: 'chain_switch',
+            },
+            extra: {
+              amount,
+              currentChainId: chainId,
+              targetChainId: srcChainId,
+              eoaAddress,
+            },
+          });
+          throw error;
+        }
+
+        Sentry.addBreadcrumb({
+          message: 'Switching chain for deposit',
+          category: 'deposit',
+          data: {
+            from: chainId,
+            to: srcChainId,
+          },
+        });
 
         await wallet?.switchChain(chain);
       }
@@ -189,6 +285,12 @@ const useDepositFromEOA = (): DepositResult => {
       if (isEthereum) {
         setDepositStatus(DepositStatus.DEPOSITING);
         if (isSponsor) {
+          Sentry.addBreadcrumb({
+            message: 'Creating sponsored deposit on Ethereum',
+            category: 'deposit',
+            data: { amount, eoaAddress, isEthereum: true, isSponsor: true },
+          });
+          
           transaction = await withRefreshToken(() =>
             createDeposit({
               eoaAddress,
@@ -202,6 +304,12 @@ const useDepositFromEOA = (): DepositResult => {
             }),
           );
         } else {
+          Sentry.addBreadcrumb({
+            message: 'Executing direct deposit and bridge on Ethereum',
+            category: 'deposit',
+            data: { amount, eoaAddress, fee: fee?.toString(), isEthereum: true, isSponsor: false },
+          });
+          
           const callData = encodeFunctionData({
             abi: ETHEREUM_TELLER_ABI,
             functionName: 'depositAndBridgeWithPermit',
@@ -234,6 +342,13 @@ const useDepositFromEOA = (): DepositResult => {
       } else {
         if (isSponsor) {
           setDepositStatus(DepositStatus.BRIDGING);
+          
+          Sentry.addBreadcrumb({
+            message: 'Creating sponsored bridge deposit',
+            category: 'deposit',
+            data: { amount, eoaAddress, srcChainId, isEthereum: false, isSponsor: true },
+          });
+          
           transaction = await withRefreshToken(() =>
             bridgeDeposit({
               eoaAddress,
@@ -248,6 +363,12 @@ const useDepositFromEOA = (): DepositResult => {
             }),
           );
         } else {
+          Sentry.addBreadcrumb({
+            message: 'Getting LiFi quote for bridge transaction',
+            category: 'deposit',
+            data: { amount, eoaAddress, srcChainId, isEthereum: false, isSponsor: false },
+          });
+          
           const fromToken = getUsdcAddress(srcChainId);
           const quote = await getLifiQuote({
             fromAddress: eoaAddress,
@@ -255,6 +376,16 @@ const useDepositFromEOA = (): DepositResult => {
             fromAmount: amountWei,
             fromToken,
             toAddress: eoaAddress,
+          });
+
+          Sentry.addBreadcrumb({
+            message: 'Setting allowance for bridge transaction',
+            category: 'deposit',
+            data: {
+              srcChainId,
+              approvalAddress: quote.estimate.approvalAddress,
+              fromAmount: quote.estimate.fromAmount,
+            },
           });
 
           await checkAndSetAllowance(
@@ -266,6 +397,16 @@ const useDepositFromEOA = (): DepositResult => {
 
           setDepositStatus(DepositStatus.BRIDGING);
           transaction.transactionHash = await sendTransaction(srcChainId, quote.transactionRequest);
+
+          Sentry.addBreadcrumb({
+            message: 'Recording bridge transaction',
+            category: 'deposit',
+            data: {
+              bridgeTxHash: transaction?.transactionHash,
+              fromAmount: quote.estimate.fromAmount,
+              toAmount: quote.estimate.toAmount,
+            },
+          });
 
           await withRefreshToken(() =>
             bridgeTransaction({
@@ -287,9 +428,49 @@ const useDepositFromEOA = (): DepositResult => {
         ...user,
         isDeposited: true,
       });
+      
+      Sentry.addBreadcrumb({
+        message: 'Deposit from EOA completed successfully',
+        category: 'deposit',
+        data: {
+          amount,
+          transactionHash: txHash,
+          eoaAddress,
+          safeAddress: user.safeAddress,
+          srcChainId,
+          isEthereum,
+          isSponsor,
+        },
+      });
+      
       setDepositStatus(DepositStatus.SUCCESS);
     } catch (error) {
       console.error(error);
+      
+      Sentry.captureException(error, {
+        tags: {
+          operation: 'deposit_from_eoa',
+          step: 'execution',
+        },
+        extra: {
+          amount,
+          eoaAddress,
+          safeAddress: user?.safeAddress,
+          srcChainId,
+          isEthereum,
+          chainId,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          depositStatus,
+          nonce,
+          tokenName,
+          fee: fee?.toString(),
+        },
+        user: {
+          id: user?.suborgId,
+          address: user?.safeAddress,
+        },
+      });
+      
       setDepositStatus(DepositStatus.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;

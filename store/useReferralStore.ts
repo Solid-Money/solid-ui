@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import * as Sentry from '@sentry/react-native';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
@@ -48,6 +49,12 @@ export const useReferralStore = create<ReferralState>()(
           }
         } catch (error) {
           console.warn('Failed to detect and save referral code:', error);
+          Sentry.captureException(error, {
+            tags: {
+              type: 'referral_code_detection_error',
+            },
+            level: 'warning',
+          });
         }
 
         return null;
@@ -67,6 +74,12 @@ export const useReferralStore = create<ReferralState>()(
             }
           } catch (error) {
             console.warn('Failed to extract referral code from URL:', error);
+            Sentry.captureException(error, {
+              tags: {
+                type: 'referral_code_url_extraction_error',
+              },
+              level: 'warning',
+            });
           }
         }
 

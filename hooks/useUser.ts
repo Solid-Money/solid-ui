@@ -105,13 +105,28 @@ const useUser = (): UseUserReturn => {
       },
     });
 
+    const bundlerClient = pimlicoClient(chain.id);
+
     return createSmartAccountClient({
       account: safeAccount,
       chain: chain,
-      paymaster: pimlicoClient(chain.id),
+      paymaster: bundlerClient,
       userOperation: {
-        estimateFeesPerGas: async () =>
-          (await pimlicoClient(chain.id).getUserOperationGasPrice()).fast,
+        estimateFeesPerGas: async () => {
+          try {
+            const gasPrice = await bundlerClient.getUserOperationGasPrice();
+            return gasPrice.fast;
+          } catch (error) {
+            console.error('Failed to get gas price:', error);
+            Sentry.captureException(error, {
+              tags: {
+                type: 'gas_price_estimation_error',
+                chainId: chain.id,
+              },
+            });
+            throw error;
+          }
+        },
       },
       bundlerTransport: http(USER.pimlicoUrl(chain.id)),
     });
@@ -130,6 +145,12 @@ const useUser = (): UseUserReturn => {
         return isDeposited;
       } catch (error) {
         console.error('Error fetching tokens:', error);
+        Sentry.captureException(error, {
+          tags: {
+            type: 'token_fetch_error',
+            safeAddress: user.safeAddress,
+          },
+        });
         Sentry.captureException(new Error('Error fetching tokens'), {
           extra: {
             error,
@@ -148,7 +169,16 @@ const useUser = (): UseUserReturn => {
         const subOrgId = await getSubOrgIdByUsername(username);
 
         if (subOrgId.organizationId) {
-          throw new Error('Username already exists');
+          const error = new Error('Username already exists');
+          Sentry.captureException(error, {
+            tags: {
+              type: 'signup_username_exists',
+            },
+            extra: {
+              username,
+            },
+          });
+          throw error;
         }
 
         const passkeyName = username;
@@ -197,12 +227,17 @@ const useUser = (): UseUserReturn => {
         }
 
         if (!challenge || !attestation) {
-          Sentry.captureException(new Error('Error creating passkey'), {
+          const error = new Error('Error creating passkey');
+          Sentry.captureException(error, {
+            tags: {
+              type: 'passkey_creation_error',
+            },
             extra: {
-              error,
+              username,
+              inviteCode,
             },
           });
-          throw new Error('Error creating passkey');
+          throw error;
         }
 
         // Get referral code from storage (if any)
@@ -240,7 +275,17 @@ const useUser = (): UseUserReturn => {
           );
           if (!resp) {
             Sentry.captureException(new Error('Error updating safe address on signup'));
-            throw new Error('Error updating safe address');
+            const error = new Error('Error updating safe address');
+            Sentry.captureException(error, {
+              tags: {
+                type: 'safe_address_update_error',
+              },
+              extra: {
+                username,
+                safeAddress: safeAccount.address,
+              },
+            });
+            throw error;
           }
 
           // Fetch points after successful signup
@@ -249,6 +294,13 @@ const useUser = (): UseUserReturn => {
             await fetchPoints();
           } catch (error) {
             console.warn('Failed to fetch points:', error);
+            Sentry.captureException(error, {
+              tags: {
+                type: 'points_fetch_error_signup',
+                userId: user?.id,
+              },
+              level: 'warning',
+            });
             Sentry.captureException(new Error('Error fetching points on signup'), {
               extra: {
                 error,
@@ -267,7 +319,16 @@ const useUser = (): UseUserReturn => {
           }
         } else {
           Sentry.captureException(new Error('Error while verifying passkey registration'));
-          throw new Error('Error while verifying passkey registration');
+          const error = new Error('Error while verifying passkey registration');
+          Sentry.captureException(error, {
+            tags: {
+              type: 'passkey_verification_error',
+            },
+            extra: {
+              username,
+            },
+          });
+          throw error;
         }
       } catch (error: any) {
         let message = '';
@@ -398,7 +459,14 @@ const useUser = (): UseUserReturn => {
         email: 'dummy@dummy.com',
       });
       router.replace(path.HOME);
-    } catch (error) { }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: {
+          type: 'dummy_login_error',
+        },
+        level: 'warning',
+      });
+    }
   }, [router, storeUser]);
 
   const handleLogout = useCallback(() => {
