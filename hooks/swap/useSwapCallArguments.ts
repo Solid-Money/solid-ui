@@ -39,7 +39,7 @@ export function useSwapCallArguments(
 
     return swapMethods.map(({ calldata, value }) => {
       return {
-        calldata,
+        calldata: calldata[0],
         value,
       };
     });

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { algebraRouterConfig, useSimulateAlgebraRouterMulticall } from '@/generated/wagmi';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+
 import { SwapCallbackState } from '@/lib/types/swap-state';
 import { publicClient } from '@/lib/wagmi';
 import { encodeFunctionData, getContract } from 'viem';
@@ -30,15 +31,12 @@ interface FailedCall extends SwapCallEstimate {
 
 export function useSwapCallback(
   trade: Trade<Currency, Currency, TradeType> | undefined,
-  allowedSlippage: Percent,
-  // approvalState: ApprovalStateType
+  allowedSlippage: Percent
 ) {
   const { user, safeAA } = useUser();
   const account = user?.safeAddress;
 
-  const [bestCall, setBestCall] = useState<SuccessfulCall | SwapCallEstimate | undefined>(
-    undefined,
-  );
+  const [bestCall, setBestCall] = useState<SuccessfulCall | SwapCallEstimate | undefined>(undefined);
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
 
@@ -46,9 +44,8 @@ export function useSwapCallback(
 
   useEffect(() => {
     async function findBestCall() {
-      if (!swapCalldata || !account) {
-        return;
-      }
+      if (!swapCalldata || !account) return;
+
       setBestCall(undefined);
 
       const algebraRouter = getContract({
@@ -56,71 +53,65 @@ export function useSwapCallback(
         client: publicClient(fuse.id),
       });
 
-      try {
-        const calls: (SuccessfulCall | FailedCall | SwapCallEstimate)[] = await Promise.all(
-          swapCalldata.map(({ calldata, value: _value }) => {
-            const value = BigInt(_value);
+      const calls: (SuccessfulCall | FailedCall | SwapCallEstimate)[] = await Promise.all(
+        swapCalldata.map(({ calldata, value: _value }) => {
+          const value = BigInt(_value);
 
-            return algebraRouter.estimateGas
-              .multicall([calldata], {
-                account,
-                value,
-              })
-              .then((gasEstimate) => ({
-                calldata,
-                value,
-                gasEstimate,
-              }))
-              .catch((gasError) => {
-                return algebraRouter.simulate
-                  .multicall([calldata], {
-                    account,
-                    value,
-                  })
-                  .then(() => ({
+          return algebraRouter.estimateGas
+            .multicall([calldata], {
+              account,
+              value,
+            })
+            .then((gasEstimate) => ({
+              calldata,
+              value,
+              gasEstimate,
+            }))
+            .catch((gasError) => {
+              return algebraRouter.simulate
+                .multicall([calldata], {
+                  account,
+                  value,
+                })
+                .then(() => ({
+                  calldata,
+                  value,
+                  error: new Error(
+                    `Unexpected issue with estimating the gas. Please try again. ${gasError}`
+                  ),
+                }))
+                .catch((callError) => {
+                  console.warn('Swap simulation failed:', callError);
+                  return {
                     calldata,
                     value,
-                    error: new Error(
-                      `Unexpected issue with estimating the gas. Please try again. ${gasError}`
-                    ),
-                  }))
-                  .catch((callError) => {
-                    console.warn('Swap simulation failed:', callError);
-                    return {
-                      calldata,
-                      value,
-                      error: new Error('Swap simulation failed'),
-                    }
-                  });
-              });
-          })
-        );
+                    error: new Error('Swap simulation failed'),
+                  }
+                });
+            });
+        })
+      );
 
-        let bestCallOption: SuccessfulCall | SwapCallEstimate | undefined = calls.find(
-          (el, ix, list): el is SuccessfulCall =>
-            'gasEstimate' in el && (ix === list.length - 1 || 'gasEstimate' in list[ix + 1]),
-        );
+      let bestCallOption: SuccessfulCall | SwapCallEstimate | undefined = calls.find(
+        (el, ix, list): el is SuccessfulCall =>
+          'gasEstimate' in el && (ix === list.length - 1 || 'gasEstimate' in list[ix + 1])
+      );
 
-        if (!bestCallOption) {
-          const errorCalls = calls.filter((call): call is FailedCall => 'error' in call);
-          if (errorCalls.length > 0) {
-            console.warn('All swap calls failed:', errorCalls[errorCalls.length - 1].error);
-            // Don't throw, just return without setting bestCall
-            return;
-          }
-          const firstNoErrorCall = calls.find((call): call is SwapCallEstimate => !('error' in call));
-          if (!firstNoErrorCall) {
-            console.warn('Could not estimate gas for the swap - no valid calls found');
-            return;
-          }
-          bestCallOption = firstNoErrorCall;
+      if (!bestCallOption) {
+        const errorCalls = calls.filter((call): call is FailedCall => 'error' in call);
+        if (errorCalls.length > 0) {
+          console.warn('All swap calls failed:', errorCalls[errorCalls.length - 1].error);
+          throw errorCalls[errorCalls.length - 1].error;
         }
-
-        setBestCall(bestCallOption);
-      } catch (error) {
-        console.warn('Error in findBestCall:', error);
-        setBestCall(undefined);
+        const firstNoErrorCall = calls.find((call): call is SwapCallEstimate => !('error' in call));
+        if (!firstNoErrorCall) {
+          console.warn('Could not estimate gas for the swap - no valid calls found');
+          throw new Error('Unexpected error. Could not estimate gas for the swap.');
+        }
+        bestCallOption = firstNoErrorCall;
       }
+
+      setBestCall(bestCallOption);
     }
 
     if (swapCalldata && account) {
@@ -177,7 +168,7 @@ export function useSwapCallback(
       return result;
     } catch (error) {
       console.error('Swap failed', error);
-    }  finally {
+    } finally {
       setIsSendingSwap(false);
     }
   }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA]);
@@ -192,6 +183,7 @@ export function useSwapCallback(
         error: 'No trade was found',
         isLoading: false,
         isSuccess: false,
+        swapConfig: swapConfig,
       };
 
     return {
@@ -200,6 +192,7 @@ export function useSwapCallback(
       error: null,
       isLoading: isSendingSwap || isLoading,
       isSuccess,
+      swapConfig: swapConfig,
     };
   }, [trade, swapCalldata, swapCallback, swapConfig, isLoading, isSuccess, isSendingSwap]);
 }

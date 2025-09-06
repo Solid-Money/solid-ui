@@ -11,6 +11,7 @@ import { computeSlippageAdjustedAmounts } from '@/lib/utils/swap/prices';
 import { Address, encodeFunctionData, erc20Abi } from 'viem';
 import { fuse } from 'viem/chains';
 import { useSimulateContract } from 'wagmi';
+import { useSwapCallback } from './swap/useSwapCallback';
 import { TransactionSuccessInfo, useTransactionAwait } from './useTransactionAwait';
 import useUser from './useUser';
 
@@ -82,7 +83,6 @@ export function useApprove(
 export function useBatchApproveAndSwap(
   trade: Trade<Currency, Currency, TradeType> | undefined,
   allowedSlippage: Percent,
-  swapCalldata: string | undefined,
   swapValue = 0n,
   successInfo?: TransactionSuccessInfo,
 ) {
@@ -99,6 +99,9 @@ export function useBatchApproveAndSwap(
 
   const token = amountToApprove?.currency?.isToken ? amountToApprove.currency : undefined;
   const needAllowance = useNeedAllowance(token, amountToApprove, ALGEBRA_ROUTER);
+  const {
+    swapConfig
+  } = useSwapCallback(trade, allowedSlippage);
 
   const { data: approveConfig } = useSimulateContract({
     address: amountToApprove ? (amountToApprove.currency.wrapped.address as Address) : undefined,
@@ -115,13 +118,12 @@ export function useBatchApproveAndSwap(
   const [isSendingBatch, setIsSendingBatch] = useState(false);
 
   const batchCallback = useCallback(async () => {
-    if (!user?.suborgId || !user?.signWith || !account || !swapCalldata) {
+    if (!user?.suborgId || !user?.signWith || !account || !swapConfig) {
       return;
     }
 
     try {
       setIsSendingBatch(true);
-      const smartAccountClient = await safeAA(fuse, user?.suborgId, user?.signWith);
 
       const transactions = [];
 
@@ -138,14 +140,19 @@ export function useBatchApproveAndSwap(
       }
 
       // Add swap transaction
-      if (swapCalldata) {
+      if (swapConfig) {
         transactions.push({
-          to: ALGEBRA_ROUTER,
-          data: swapCalldata,
-          value: swapValue,
+          to: swapConfig?.request.address,
+          data: encodeFunctionData({
+            abi: swapConfig!.request.abi,
+            functionName: swapConfig!.request.functionName,
+            args: swapConfig?.request.args as readonly [readonly `0x${string}`[]],
+          }),
+          value: swapConfig?.request.value,
         });
       }
 
+      const smartAccountClient = await safeAA(fuse, user?.suborgId, user?.signWith);
       const result = await executeTransactions(
         smartAccountClient,
         transactions,
@@ -163,7 +170,6 @@ export function useBatchApproveAndSwap(
     user?.suborgId,
     user?.signWith,
     account,
-    swapCalldata,
     swapValue,
     needAllowance,
     approveConfig,
@@ -177,6 +183,7 @@ export function useBatchApproveAndSwap(
     isLoading: isSendingBatch || isLoading,
     isSuccess,
     needAllowance,
+    swapConfig,
   };
 }
 

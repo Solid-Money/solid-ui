@@ -6,8 +6,6 @@ import { SWAP_MODAL } from '@/constants/modals';
 import { useSimulatePegSwapSwap } from '@/generated/wagmi';
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
 import { useSwapCallArguments } from '@/hooks/swap/useSwapCallArguments';
-import { useSwapCallback } from '@/hooks/swap/useSwapCallback';
-import { useVoltageSwapCallback } from '@/hooks/swap/useVoltageSwapCallback';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import {
   useBatchApproveAndPegSwap,
@@ -53,7 +51,6 @@ const SwapButton: React.FC = () => {
   const {
     pegSwapType,
     pegSwapAddress,
-    // callback: onPegSwap,
     inputError: pegSwapInputError,
     isLoading: isPegSwapLoading,
   } = usePegSwapCallback(currencies[SwapField.INPUT], currencies[SwapField.OUTPUT], typedValue);
@@ -135,7 +132,6 @@ const SwapButton: React.FC = () => {
   } = useBatchApproveAndSwap(
     trade,
     allowedSlippage,
-    swapCalldata?.[0]?.calldata,
     swapValue,
     currencies[SwapField.INPUT] && currencies[SwapField.OUTPUT] && trade
       ? (() => {
@@ -239,22 +235,6 @@ const SwapButton: React.FC = () => {
     needSwapAllowance,
   ]);
 
-  const {
-    // callback: swapCallback,
-    error: swapCallbackError,
-    isLoading: isSwapLoading,
-  } = useSwapCallback(
-    trade,
-    allowedSlippage,
-    // approvalState
-  );
-
-  const { error: voltageSwapCallbackError, isLoading: isVoltageSwapLoading } =
-    useVoltageSwapCallback(
-      isVoltageTrade ? voltageTrade.trade : undefined,
-      // voltageApprovalState
-    );
-
   const handleSwap = useCallback(async () => {
     try {
       if (isVoltageTrade) {
@@ -264,7 +244,7 @@ const SwapButton: React.FC = () => {
         if (!batchSwapCallback) return;
         await batchSwapCallback();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Swap transaction failed:', error);
       return new Error(`Swap Failed ${error}`);
     }
@@ -274,7 +254,7 @@ const SwapButton: React.FC = () => {
     try {
       if (!batchPegSwapCallback) return;
       await batchPegSwapCallback();
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Peg swap transaction failed:', error);
       return new Error(`Peg Swap Failed ${error}`);
     }
@@ -368,20 +348,13 @@ const SwapButton: React.FC = () => {
   }
 
   const isAnyLoading =
-    isSwapLoading ||
-    isVoltageSwapLoading ||
-    isWrapLoading ||
-    isPegSwapLoading ||
-    isBatchSwapLoading ||
-    isBatchVoltageSwapLoading;
+    isWrapLoading || isPegSwapLoading || isBatchSwapLoading || isBatchVoltageSwapLoading;
 
   const isButtonDisabled =
     !isValid ||
     priceImpactTooHigh ||
-    !!swapCallbackError ||
-    isSwapLoading ||
     isVoltageTradeLoading ||
-    (isVoltageTrade && (!!voltageSwapCallbackError || isVoltageSwapLoading)) ||
+    (isVoltageTrade && isBatchVoltageSwapLoading) ||
     isBatchSwapLoading ||
     isBatchVoltageSwapLoading;
 
