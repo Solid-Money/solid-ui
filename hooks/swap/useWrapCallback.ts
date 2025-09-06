@@ -1,6 +1,7 @@
 import { Currency, tryParseAmount, WNATIVE } from '@cryptoalgebra/fuse-sdk';
 import { useCallback, useMemo, useState } from 'react';
 import { useBalance } from 'wagmi';
+import * as Sentry from '@sentry/react-native';
 
 import { WNATIVE_EXTENDED } from '@/constants/routing';
 import {
@@ -132,6 +133,18 @@ export default function useWrapCallback(
       return result;
     } catch (error) {
       console.error('Wrap failed', error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'wrap_execution_failed',
+          account,
+        },
+        extra: {
+          inputAmount: inputAmount?.toSignificant(),
+          inputCurrency: inputCurrency?.symbol,
+          outputCurrency: outputCurrency?.symbol,
+          wrapConfig,
+        },
+      });
     } finally {
       setIsSendingWrap(false);
     }
@@ -175,6 +188,18 @@ export default function useWrapCallback(
       return result;
     } catch (error) {
       console.error('Unwrap failed', error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'unwrap_execution_failed',
+          account,
+        },
+        extra: {
+          inputAmount: inputAmount?.toSignificant(),
+          inputCurrency: inputCurrency?.symbol,
+          outputCurrency: outputCurrency?.symbol,
+          unwrapConfig,
+        },
+      });
     } finally {
       setIsSendingUnwrap(false);
     }

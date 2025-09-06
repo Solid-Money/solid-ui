@@ -1,4 +1,5 @@
 import { Currency, Percent, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
+import * as Sentry from '@sentry/react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { algebraRouterConfig, useSimulateAlgebraRouterMulticall } from '@/generated/wagmi';
@@ -85,6 +86,22 @@ export function useSwapCallback(
                 }))
                 .catch((callError) => {
                   console.warn('Swap simulation failed:', callError);
+                  Sentry.captureException(callError, {
+                    tags: {
+                      type: 'swap_simulation_failed',
+                      account,
+                      value: value.toString(),
+                    },
+                    extra: {
+                      calldata,
+                      trade: trade ? {
+                      inputAmount: trade.inputAmount?.toSignificant(),
+                      outputAmount: trade.outputAmount?.toSignificant(),
+                      tradeType: trade.tradeType,
+                    } : undefined,
+                      allowedSlippage: allowedSlippage?.toSignificant(2),
+                    },
+                  });
                   return {
                     calldata,
                     value,
@@ -104,12 +121,41 @@ export function useSwapCallback(
         const errorCalls = calls.filter((call): call is FailedCall => 'error' in call);
         if (errorCalls.length > 0) {
           console.warn('All swap calls failed:', errorCalls[errorCalls.length - 1].error);
+          Sentry.captureException(errorCalls[errorCalls.length - 1].error, {
+            tags: {
+              type: 'all_swap_calls_failed',
+              account,
+            },
+            extra: {
+              errorCalls: errorCalls.map(e => ({ error: e.error.message, value: e.value.toString() })),
+              trade: trade ? {
+            inputAmount: trade.inputAmount?.toSignificant(),
+            outputAmount: trade.outputAmount?.toSignificant(),
+            tradeType: trade.tradeType,
+          } : undefined,
+            },
+          });
           throw errorCalls[errorCalls.length - 1].error;
         }
         const firstNoErrorCall = calls.find((call): call is SwapCallEstimate => !('error' in call));
         if (!firstNoErrorCall) {
           console.warn('Could not estimate gas for the swap - no valid calls found');
-          throw new Error('Unexpected error. Could not estimate gas for the swap.');
+          const error = new Error('Unexpected error. Could not estimate gas for the swap.');
+          Sentry.captureException(error, {
+            tags: {
+              type: 'no_valid_swap_calls',
+              account,
+            },
+            extra: {
+              trade: trade ? {
+            inputAmount: trade.inputAmount?.toSignificant(),
+            outputAmount: trade.outputAmount?.toSignificant(),
+            tradeType: trade.tradeType,
+          } : undefined,
+              callsCount: calls.length,
+            },
+          });
+          throw error;
         }
         bestCallOption = firstNoErrorCall;
       }
@@ -121,8 +167,22 @@ export function useSwapCallback(
     if (swapCalldata && account) {
       findBestCall().catch((error) => {
         console.warn('Unhandled error in findBestCall:', error);
-        console.log('Using the first call');
+        Sentry.captureException(error, {
+          tags: {
+            type: 'find_best_call_error',
+            account,
+          },
+          extra: {
+            swapCalldataLength: swapCalldata.length,
+            trade: trade ? {
+            inputAmount: trade.inputAmount?.toSignificant(),
+            outputAmount: trade.outputAmount?.toSignificant(),
+            tradeType: trade.tradeType,
+          } : undefined,
+          },
+        });
         if (swapCalldata.length > 0) {
+          console.log('Using the first call');
           setBestCall(swapCalldata[0]);
         }
       });
@@ -189,6 +249,23 @@ export function useSwapCallback(
       return result;
     } catch (error) {
       console.error('Swap failed', error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'swap_execution_failed',
+          account,
+          needAllowance: String(needAllowance),
+        },
+        extra: {
+          trade: trade ? {
+            inputAmount: trade.inputAmount?.toSignificant(),
+            outputAmount: trade.outputAmount?.toSignificant(),
+            tradeType: trade.tradeType,
+          } : undefined,
+          allowedSlippage: allowedSlippage?.toSignificant(2),
+          bestCall,
+          swapConfig,
+        },
+      });
     } finally {
       setIsSendingSwap(false);
     }
