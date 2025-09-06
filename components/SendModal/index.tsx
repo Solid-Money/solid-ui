@@ -8,6 +8,7 @@ import Toast from 'react-native-toast-message';
 import { formatUnits, isAddress } from 'viem';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
+import * as Sentry from '@sentry/react-native';
 
 import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -121,6 +122,20 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
         },
       });
     } catch (_error) {
+      console.error('Send transaction failed:', _error);
+      Sentry.captureException(_error, {
+        tags: {
+          type: 'send_modal_error',
+          chainId: chainId.toString(),
+          tokenSymbol,
+        },
+        extra: {
+          tokenAddress,
+          amount: formValues.amount,
+          to: formValues.to,
+          userAddress: user?.safeAddress,
+        },
+      });
       Toast.show({
         type: 'error',
         text1: 'Error while sending',

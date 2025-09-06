@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import axios, { AxiosRequestHeaders } from 'axios';
 import { Platform } from 'react-native';
 import { fuse } from 'viem/chains';
@@ -82,11 +83,41 @@ axios.interceptors.request.use(config => {
       config.headers['Authorization'] = `Bearer ${jwtToken}`;
     } else {
       console.error('No JWT token found');
+      Sentry.captureMessage('No JWT token found', {
+        level: 'warning',
+        tags: {
+          type: 'auth_token_missing',
+        },
+      });
     }
   }
 
   return config;
 });
+
+// Set up axios response interceptor to handle errors
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url;
+    const method = error.config?.method;
+
+    Sentry.captureException(error, {
+      tags: {
+        type: 'api_error',
+        status: status?.toString(),
+        method: method?.toUpperCase(),
+      },
+      extra: {
+        url,
+        responseData: error.response?.data,
+      },
+    });
+
+    return Promise.reject(error);
+  }
+);
 
 export const refreshToken = async () => {
   const refreshTokenValue = getRefreshToken();

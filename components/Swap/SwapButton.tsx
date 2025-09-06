@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from 'react';
 import * as Sentry from '@sentry/react-native';
+import React, { useCallback, useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -87,12 +87,6 @@ const SwapButton: React.FC = () => {
     () => tryParseAmount(typedValue, currencies[SwapField.INPUT]),
     [currencies, typedValue],
   );
-  const inputCurrencyAddress = currencies[SwapField.INPUT]?.isToken
-    ? currencies[SwapField.INPUT]?.wrapped?.address
-    : undefined;
-  const outputCurrencyAddress = currencies[SwapField.OUTPUT]?.isToken
-    ? currencies[SwapField.OUTPUT]?.wrapped?.address
-    : undefined;
 
   const {
     callback: swapCallback,
@@ -241,7 +235,16 @@ const SwapButton: React.FC = () => {
       });
       return new Error(`Swap Failed ${error}`);
     }
-  }, [swapCallback, voltageSwapCallback, isVoltageTrade, currencies, trade, allowedSlippage, priceImpactSeverity, needsApproval]);
+  }, [
+    swapCallback,
+    voltageSwapCallback,
+    isVoltageTrade,
+    currencies,
+    trade,
+    allowedSlippage,
+    priceImpactSeverity,
+    needsApproval,
+  ]);
 
   const handlePegSwap = useCallback(async () => {
     try {

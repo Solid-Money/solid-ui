@@ -6,6 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Image, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
+import * as Sentry from '@sentry/react-native';
 
 import Max from '@/components/Max';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -95,6 +96,18 @@ const Withdraw = () => {
         },
       });
     } catch (_error) {
+      console.error('Withdraw transaction failed:', _error);
+      Sentry.captureException(_error, {
+        tags: {
+          type: 'withdraw_modal_error',
+          userId: user?.id,
+        },
+        extra: {
+          amount: withdrawFormValues.amount,
+          ethereumBalance,
+          userAddress: user?.safeAddress,
+        },
+      });
       Toast.show({
         type: 'error',
         text1: 'Error while withdrawing',

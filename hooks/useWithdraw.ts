@@ -9,6 +9,7 @@ import { maxUint256, TransactionReceipt } from 'viem';
 import { mainnet } from 'viem/chains';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 import { useReadContract } from 'wagmi';
+import * as Sentry from '@sentry/react-native';
 import useUser from './useUser';
 
 type WithdrawResult = {
@@ -86,6 +87,18 @@ const useWithdraw = (): WithdrawResult => {
       return transaction;
     } catch (error) {
       console.error(error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'withdraw_error',
+          userId: user?.id,
+        },
+        extra: {
+          amount,
+          allowance: allowance?.toString(),
+          needsApproval: needsApproval,
+          userAddress: user?.safeAddress,
+        },
+      });
       setWithdrawStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;

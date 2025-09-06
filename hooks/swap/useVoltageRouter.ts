@@ -1,5 +1,6 @@
 import { Currency, CurrencyAmount, Percent, TradeType } from '@voltage-finance/sdk-core';
 import { useEffect, useMemo, useState } from 'react';
+import * as Sentry from '@sentry/react-native';
 
 import { VOLTAGE_FINANCE_API_ROUTER } from '@/constants/routing';
 import { WFUSE_TOKEN } from '@/constants/tokens';
@@ -94,7 +95,20 @@ export function useVoltageRouter(
             setQuoteLoading(false);
           }
         })
-        .catch(() => {
+        .catch((error) => {
+          console.error('Failed to get Voltage trade quote:', error);
+          Sentry.captureException(error, {
+            tags: {
+              type: 'voltage_quote_error',
+            },
+            extra: {
+              inputToken: inputToken?.symbol,
+              outputToken: outputToken?.symbol,
+              amount: amount?.toSignificant(),
+              isExactIn,
+              slippage: slippage?.toSignificant(2),
+            },
+          });
           setQuote(null);
           setQuoteLoading(false);
         });
