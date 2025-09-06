@@ -279,5 +279,7 @@ export default function usePegSwapCallback(
     isLoading,
     isSuccess,
     isSendingSwap,
+    approvalConfig,
+    approvalState,
   ]);
 }
