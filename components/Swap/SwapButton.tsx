@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
+import * as Sentry from '@sentry/react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -201,6 +202,20 @@ const SwapButton: React.FC = () => {
 
   const handleSwap = useCallback(async () => {
     try {
+      Sentry.addBreadcrumb({
+        message: 'Swap initiated',
+        category: 'swap',
+        level: 'info',
+        data: {
+          isVoltageTrade,
+          inputCurrency: currencies[SwapField.INPUT]?.symbol,
+          outputCurrency: currencies[SwapField.OUTPUT]?.symbol,
+          inputAmount: trade?.inputAmount?.toSignificant(),
+          outputAmount: trade?.outputAmount?.toSignificant(),
+          allowedSlippage: allowedSlippage?.toSignificant(2),
+        },
+      });
+
       if (isVoltageTrade) {
         if (!voltageSwapCallback) return;
         await voltageSwapCallback();
@@ -210,19 +225,57 @@ const SwapButton: React.FC = () => {
       }
     } catch (error: any) {
       console.error('❌ Swap transaction failed:', error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'swap_button_error',
+          isVoltageTrade: String(isVoltageTrade),
+        },
+        extra: {
+          inputCurrency: currencies[SwapField.INPUT]?.symbol,
+          outputCurrency: currencies[SwapField.OUTPUT]?.symbol,
+          inputAmount: trade?.inputAmount?.toSignificant(),
+          outputAmount: trade?.outputAmount?.toSignificant(),
+          priceImpactSeverity,
+          needsApproval,
+        },
+      });
       return new Error(`Swap Failed ${error}`);
     }
-  }, [swapCallback, voltageSwapCallback, isVoltageTrade]);
+  }, [swapCallback, voltageSwapCallback, isVoltageTrade, currencies, trade, allowedSlippage, priceImpactSeverity, needsApproval]);
 
   const handlePegSwap = useCallback(async () => {
     try {
+      Sentry.addBreadcrumb({
+        message: 'Peg swap initiated',
+        category: 'swap',
+        level: 'info',
+        data: {
+          pegSwapType,
+          inputCurrency: currencies[SwapField.INPUT]?.symbol,
+          outputCurrency: currencies[SwapField.OUTPUT]?.symbol,
+          inputAmount: inputAmount?.toSignificant(),
+        },
+      });
+
       if (!pegSwapCallback) return;
       await pegSwapCallback();
     } catch (error: any) {
       console.error('❌ Peg swap transaction failed:', error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'peg_swap_button_error',
+          pegSwapType: String(pegSwapType),
+        },
+        extra: {
+          inputCurrency: currencies[SwapField.INPUT]?.symbol,
+          outputCurrency: currencies[SwapField.OUTPUT]?.symbol,
+          inputAmount: inputAmount?.toSignificant(),
+          needPegSwapAllowance,
+        },
+      });
       return new Error(`Peg Swap Failed ${error}`);
     }
-  }, [pegSwapCallback]);
+  }, [pegSwapCallback, pegSwapType, currencies, inputAmount, needPegSwapAllowance]);
 
   const isValid = !swapInputError;
 
@@ -260,20 +313,47 @@ const SwapButton: React.FC = () => {
 
   if (showWrap) {
     const handleWrap = async () => {
-      if (onWrap) {
-        setTransaction({
-          amount: Number(typedValue || '0'),
-          address: currencies[SwapField.INPUT]?.wrapped.address,
-          inputCurrencySymbol: currencies[SwapField.INPUT]?.symbol,
-          outputCurrencySymbol: currencies[SwapField.OUTPUT]?.symbol,
+      try {
+        Sentry.addBreadcrumb({
+          message: 'Wrap/Unwrap initiated',
+          category: 'swap',
+          level: 'info',
+          data: {
+            wrapType,
+            inputCurrency: currencies[SwapField.INPUT]?.symbol,
+            outputCurrency: currencies[SwapField.OUTPUT]?.symbol,
+            amount: typedValue,
+          },
         });
 
-        const result = await onWrap();
+        if (onWrap) {
+          setTransaction({
+            amount: Number(typedValue || '0'),
+            address: currencies[SwapField.INPUT]?.wrapped.address,
+            inputCurrencySymbol: currencies[SwapField.INPUT]?.symbol,
+            outputCurrencySymbol: currencies[SwapField.OUTPUT]?.symbol,
+          });
 
-        if (result !== undefined) {
-          setModal(SWAP_MODAL.OPEN_TRANSACTION_STATUS);
-          resetForm();
+          const result = await onWrap();
+
+          if (result !== undefined) {
+            setModal(SWAP_MODAL.OPEN_TRANSACTION_STATUS);
+            resetForm();
+          }
         }
+      } catch (error: any) {
+        console.error('❌ Wrap/Unwrap failed:', error);
+        Sentry.captureException(error, {
+          tags: {
+            type: 'wrap_button_error',
+            wrapType: String(wrapType),
+          },
+          extra: {
+            inputCurrency: currencies[SwapField.INPUT]?.symbol,
+            outputCurrency: currencies[SwapField.OUTPUT]?.symbol,
+            amount: typedValue,
+          },
+        });
       }
     };
 
