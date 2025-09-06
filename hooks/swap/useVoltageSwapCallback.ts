@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import * as Sentry from '@sentry/react-native';
 
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { SwapCallbackState } from '@/lib/types/swap-state';
@@ -65,6 +66,20 @@ export function useVoltageSwapCallback(
       return result;
     } catch (error) {
       console.error('Voltage swap failed', error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'voltage_swap_execution_failed',
+          account,
+        },
+        extra: {
+          inputAmount: trade?.inputAmount?.toSignificant(),
+          outputAmount: trade?.outputAmount?.toSignificant(),
+          allowedSlippage: allowedSlippage?.toSignificant(2),
+          needAllowance,
+          to: trade?.to,
+          value: trade?.value?.quotient.toString(),
+        },
+      });
     } finally {
       setIsSendingSwap(false);
     }

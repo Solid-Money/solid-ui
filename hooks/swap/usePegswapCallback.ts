@@ -2,6 +2,7 @@ import { Currency, Token, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
 import JSBI from 'jsbi';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBalance } from 'wagmi';
+import * as Sentry from '@sentry/react-native';
 
 import {
   BNB,
@@ -225,6 +226,20 @@ export default function usePegSwapCallback(
       return result;
     } catch (error) {
       console.error('Peg swap failed', error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'peg_swap_execution_failed',
+          account,
+          pegSwapAddress: pegSwapAddress?.toString(),
+        },
+        extra: {
+          inputAmount: inputAmount?.toSignificant(),
+          inputCurrency: inputCurrency?.symbol,
+          outputCurrency: outputCurrency?.symbol,
+          needAllowance,
+          swapConfig,
+        },
+      });
     } finally {
       setIsSendingSwap(false);
     }
