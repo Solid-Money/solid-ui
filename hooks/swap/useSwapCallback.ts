@@ -117,11 +117,10 @@ export function useSwapCallback(
       setBestCall(bestCallOption);
     }
 
-    if (swapCalldata && account) {
-      findBestCall().catch((error) => {
-        console.warn('Unhandled error in findBestCall:', error);
-        setBestCall(undefined);
-      });
+    // For Safe wallets, always skip the simulation and use first call
+    if (swapCalldata && swapCalldata.length > 0) {
+      console.log('Using first call for Safe wallet, skipping simulation');
+      setBestCall(swapCalldata[0]);
     }
   }, [swapCalldata, account]);
 
@@ -134,7 +133,7 @@ export function useSwapCallback(
         : undefined,
     chainId: fuse.id,
     query: {
-      enabled: Boolean(bestCall),
+      enabled: Boolean(bestCall) && !needAllowance, // Don't simulate if approval is needed
     },
   });
 
@@ -159,6 +158,7 @@ export function useSwapCallback(
         });
       }
 
+      // Add swap transaction
       transactions.push({
         to: swapConfig?.request.address,
         data: encodeFunctionData({
@@ -187,7 +187,7 @@ export function useSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA]);
+  }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA, needAllowance, approvalConfig]);
 
   const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
 
@@ -212,5 +212,5 @@ export function useSwapCallback(
       swapConfig: swapConfig,
       needAllowance,
     };
-  }, [trade, swapCalldata, swapCallback, swapConfig, isLoading, isSuccess, isSendingSwap]);
+  }, [trade, swapCalldata, swapCallback, swapConfig, isLoading, isSuccess, isSendingSwap, needAllowance, approvalConfig]);
 }
