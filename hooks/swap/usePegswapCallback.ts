@@ -168,9 +168,6 @@ export default function usePegSwapCallback(
         ? [BigInt(inputAmount.quotient.toString()), inputCurrencyAddress, outputCurrencyAddress]
         : undefined,
     chainId: fuse.id,
-    query: {
-      enabled: approvalState === ApprovalState.APPROVED,
-    },
   });
 
   useEffect(() => {
