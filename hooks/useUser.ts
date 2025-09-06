@@ -105,10 +105,12 @@ const useUser = (): UseUserReturn => {
       },
     });
 
+    const bundlerClient = pimlicoClient(chain.id);
+
     return createSmartAccountClient({
       account: safeAccount,
       chain: chain,
-      paymaster: pimlicoClient(chain.id),
+      paymaster: bundlerClient,
       userOperation: {
         estimateFeesPerGas: async () => {
           try {
