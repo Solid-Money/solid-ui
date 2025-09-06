@@ -1,6 +1,6 @@
+import * as Sentry from '@sentry/react-native';
 import { Currency, CurrencyAmount, Percent, TradeType } from '@voltage-finance/sdk-core';
 import { useEffect, useMemo, useState } from 'react';
-import * as Sentry from '@sentry/react-native';
 
 import { VOLTAGE_FINANCE_API_ROUTER } from '@/constants/routing';
 import { WFUSE_TOKEN } from '@/constants/tokens';
@@ -102,11 +102,11 @@ export function useVoltageRouter(
               type: 'voltage_quote_error',
             },
             extra: {
-              inputToken: inputToken?.symbol,
-              outputToken: outputToken?.symbol,
-              amount: amount?.toSignificant(),
+              inputToken,
+              outputToken,
+              amount,
               isExactIn,
-              slippage: slippage?.toSignificant(2),
+              slippage,
             },
           });
           setQuote(null);
