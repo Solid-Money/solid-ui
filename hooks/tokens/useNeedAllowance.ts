@@ -6,7 +6,7 @@ import { useReadContract } from 'wagmi';
 export function useNeedAllowance(
   currency: Currency | null | undefined,
   amount: CurrencyAmount<Currency> | undefined,
-  spender: Address,
+  spender: Address | undefined,
 ) {
   const { user } = useUser();
   const account = user?.safeAddress;
@@ -17,7 +17,7 @@ export function useNeedAllowance(
     functionName: 'allowance',
     args: [account, spender] as [Address, Address],
     query: {
-      enabled: !!user && !!account && !!spender && !!currency?.wrapped.address,
+      enabled: !!user && !!account && !!spender && !!currency?.wrapped.address && !!spender,
     },
   });
 
