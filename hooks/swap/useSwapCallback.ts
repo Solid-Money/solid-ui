@@ -118,9 +118,14 @@ export function useSwapCallback(
     }
 
     // For Safe wallets, always skip the simulation and use first call
-    if (swapCalldata && swapCalldata.length > 0) {
-      console.log('Using first call for Safe wallet, skipping simulation');
-      setBestCall(swapCalldata[0]);
+    if (swapCalldata && account) {
+      findBestCall().catch((error) => {
+        console.warn('Unhandled error in findBestCall:', error);
+        console.log('Using the first call');
+        if (swapCalldata.length > 0) {
+          setBestCall(swapCalldata[0]);
+        }
+      });
     }
   }, [swapCalldata, account]);
 
@@ -187,7 +192,7 @@ export function useSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA, needAllowance, approvalConfig]);
+  }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA, needAllowance, approvalConfig, bestCall]);
 
   const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
 
