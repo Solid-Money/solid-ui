@@ -133,7 +133,7 @@ export function useSwapCallback(
         : undefined,
     chainId: fuse.id,
     query: {
-      enabled: Boolean(bestCall) && !needAllowance, // Don't simulate if approval is needed
+      enabled: Boolean(bestCall),
     },
   });
 
