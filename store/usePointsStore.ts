@@ -5,6 +5,7 @@ import { withRefreshToken } from '@/lib/utils';
 import { produce } from 'immer';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import * as Sentry from '@sentry/react-native';
 
 interface PointsState {
   points: Points;
@@ -54,6 +55,15 @@ export const usePointsStore = create<PointsState>()(
             }),
           );
         } catch (error: any) {
+          console.error('Failed to fetch points:', error);
+          Sentry.captureException(error, {
+            tags: {
+              type: 'points_fetch_store_error',
+            },
+            extra: {
+              errorMessage: error.message,
+            },
+          });
           set(
             produce(state => {
               state.error = error.message || 'Failed to fetch points';

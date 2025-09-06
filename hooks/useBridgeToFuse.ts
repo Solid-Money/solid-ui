@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
@@ -44,13 +45,35 @@ const useBridgeToFuse = (): BridgeResult => {
   const bridge = async (amount: string) => {
     try {
       if (!user) {
-        throw new Error('User is not selected');
+        const error = new Error('User is not selected');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'bridge_to_fuse',
+            step: 'validation',
+          },
+          extra: {
+            amount,
+            hasUser: !!user,
+          },
+        });
+        throw error;
       }
 
       setBridgeStatus(Status.PENDING);
       setError(null);
 
       const amountWei = parseUnits(amount, 6);
+
+      Sentry.addBreadcrumb({
+        message: 'Starting bridge to Fuse transaction',
+        category: 'bridge',
+        data: {
+          amount,
+          amountWei: amountWei.toString(),
+          userAddress: user.safeAddress,
+          chainId: mainnet.id,
+        },
+      });
 
       const callData = encodeFunctionData({
         abi: ETHEREUM_TELLER_ABI,
@@ -95,13 +118,58 @@ const useBridgeToFuse = (): BridgeResult => {
       );
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
-        throw new Error('User cancelled transaction');
+        const error = new Error('User cancelled transaction');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'bridge_to_fuse',
+            step: 'execution',
+            reason: 'user_cancelled',
+          },
+          extra: {
+            amount,
+            userAddress: user.safeAddress,
+            chainId: mainnet.id,
+            fee: fee?.toString(),
+          },
+        });
+        throw error;
       }
+
+      Sentry.addBreadcrumb({
+        message: 'Bridge to Fuse transaction successful',
+        category: 'bridge',
+        data: {
+          amount,
+          transactionHash: transaction.transactionHash,
+          userAddress: user.safeAddress,
+          chainId: mainnet.id,
+        },
+      });
 
       setBridgeStatus(Status.SUCCESS);
       return transaction;
     } catch (error) {
       console.error(error);
+      
+      Sentry.captureException(error, {
+        tags: {
+          operation: 'bridge_to_fuse',
+          step: 'execution',
+        },
+        extra: {
+          amount,
+          userAddress: user?.safeAddress,
+          chainId: mainnet.id,
+          fee: fee?.toString(),
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          bridgeStatus,
+        },
+        user: {
+          id: user?.suborgId,
+          address: user?.safeAddress,
+        },
+      });
+      
       setBridgeStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;

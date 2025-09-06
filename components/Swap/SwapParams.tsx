@@ -1,6 +1,4 @@
-import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
 import { ALGEBRA_ROUTER } from '@/constants/addresses';
 import { MAX_UINT128 } from '@/constants/max-uint128';
 import { algebraBasePluginAbi, algebraPoolAbi } from '@/generated/wagmi';
@@ -11,6 +9,7 @@ import { ChevronDown } from '@/lib/icons/ChevronDown';
 import { ChevronRight } from '@/lib/icons/ChevronRight';
 import { SwapField } from '@/lib/types/swap-field';
 import { TradeState } from '@/lib/types/trade-state';
+import { cn } from '@/lib/utils';
 import {
   computeRealizedLPFeePercent,
   computeSlippageAdjustedAmounts,
@@ -27,8 +26,10 @@ import {
   TradeType,
   unwrappedToken,
 } from '@cryptoalgebra/fuse-sdk';
+import * as Sentry from '@sentry/react-native';
 import { ZapIcon } from 'lucide-react-native';
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Address, getContract } from 'viem';
 import { fuse } from 'viem/chains';
 
@@ -111,6 +112,23 @@ const SwapParams = () => {
               )
               .then(v => v.result as [string, number, number]);
           } catch (_error) {
+            console.warn('Failed to get beforeSwap data:', _error);
+            const address = computePoolAddress({
+              tokenA: pool.token0,
+              tokenB: pool.token1,
+            }) as Address;
+            Sentry.captureException(_error, {
+              tags: {
+                type: 'before_swap_data_error',
+              },
+              extra: {
+                poolAddress: address,
+                tokenIn: pool?.token0.symbol,
+                tokenOut: pool?.token1.symbol,
+                tradeType: trade?.tradeType,
+              },
+              level: 'warning',
+            });
             beforeSwap = ['', 0, 0];
           }
           const [, overrideFee, pluginFee] = beforeSwap || ['', 0, 0];

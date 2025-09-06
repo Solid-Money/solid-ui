@@ -1,20 +1,23 @@
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { createPimlicoClient } from 'permissionless/clients/pimlico';
 import { Address, encodeFunctionData, getAddress } from 'viem';
-import { entryPoint06Address } from 'viem/account-abstraction';
+import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { http } from 'wagmi';
 import { ADDRESSES, USER } from './config';
+import { getChain } from './wagmi';
 
-export const pimlicoClient = (chainId: number) =>
-  createPimlicoClient({
-    chain: mainnet,
+export const pimlicoClient = (chainId: number) => {
+  const chain = getChain(chainId);
+  return createPimlicoClient({
+    chain,
     transport: http(USER.pimlicoUrl(chainId)),
     entryPoint: {
-      address: entryPoint06Address,
+      address: entryPoint07Address,
       version: '0.7',
     },
   });
+};
 
 export const addPaymasterTransaction = async (
   transactions: {

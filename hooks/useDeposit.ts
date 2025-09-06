@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { useEffect, useState } from 'react';
 import {
   type Address,
@@ -75,13 +76,36 @@ const useDeposit = (): DepositResult => {
   const approve = async (amount: string) => {
     try {
       if (!user?.passkey) {
-        throw new Error('Passkey not found');
+        const error = new Error('Passkey not found');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'deposit_approve',
+            step: 'validation',
+          },
+          extra: {
+            amount,
+            hasUser: !!user,
+            hasPasskey: !!user?.passkey,
+          },
+        });
+        throw error;
       }
 
       setApproveStatus(Status.PENDING);
       setError(null);
 
       const amountWei = parseUnits(amount, 6);
+
+      Sentry.addBreadcrumb({
+        message: 'Starting approval for deposit',
+        category: 'deposit',
+        data: {
+          amount,
+          amountWei: amountWei.toString(),
+          userAddress: user.safeAddress,
+          spender: ADDRESSES.ethereum.vault,
+        },
+      });
 
       const approveTransaction = {
         to: ADDRESSES.ethereum.usdc,
@@ -104,9 +128,38 @@ const useDeposit = (): DepositResult => {
       );
 
       await refetchAllowance();
+      
+      Sentry.addBreadcrumb({
+        message: 'Approval transaction completed successfully',
+        category: 'deposit',
+        data: {
+          amount,
+          userAddress: user.safeAddress,
+          spender: ADDRESSES.ethereum.vault,
+        },
+      });
+      
       setApproveStatus(Status.SUCCESS);
     } catch (error) {
       console.error(error);
+      
+      Sentry.captureException(error, {
+        tags: {
+          operation: 'deposit_approve',
+          step: 'execution',
+        },
+        extra: {
+          amount,
+          userAddress: user?.safeAddress,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          approveStatus,
+        },
+        user: {
+          id: user?.suborgId,
+          address: user?.safeAddress,
+        },
+      });
+      
       setApproveStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
     }
@@ -115,13 +168,36 @@ const useDeposit = (): DepositResult => {
   const deposit = async (amount: string) => {
     try {
       if (!user?.passkey) {
-        throw new Error('Passkey not found');
+        const error = new Error('Passkey not found');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'deposit',
+            step: 'validation',
+          },
+          extra: {
+            amount,
+            hasUser: !!user,
+            hasPasskey: !!user?.passkey,
+          },
+        });
+        throw error;
       }
 
       setDepositStatus(Status.PENDING);
       setError(null);
 
       const amountWei = parseUnits(amount, 6);
+
+      Sentry.addBreadcrumb({
+        message: 'Starting deposit transaction',
+        category: 'deposit',
+        data: {
+          amount,
+          amountWei: amountWei.toString(),
+          userAddress: user.safeAddress,
+          fee: fee?.toString(),
+        },
+      });
 
       const callData = encodeFunctionData({
         abi: ETHEREUM_TELLER_ABI,
@@ -172,10 +248,43 @@ const useDeposit = (): DepositResult => {
         ...user,
         isDeposited: true,
       });
+      
+      Sentry.addBreadcrumb({
+        message: 'Deposit transaction completed successfully',
+        category: 'deposit',
+        data: {
+          amount,
+          transactionHash: transaction.transactionHash,
+          userAddress: user.safeAddress,
+          fee: fee?.toString(),
+        },
+      });
+      
       setDepositStatus(Status.SUCCESS);
       return transaction;
     } catch (error) {
       console.error(error);
+      
+      Sentry.captureException(error, {
+        tags: {
+          operation: 'deposit',
+          step: 'execution',
+        },
+        extra: {
+          amount,
+          userAddress: user?.safeAddress,
+          fee: fee?.toString(),
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          depositStatus,
+          allowance: allowance?.toString(),
+          balance: balance?.toString(),
+        },
+        user: {
+          id: user?.suborgId,
+          address: user?.safeAddress,
+        },
+      });
+      
       setDepositStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;
