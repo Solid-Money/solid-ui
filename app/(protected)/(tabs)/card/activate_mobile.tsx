@@ -1,13 +1,16 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AnimatedStepContent } from '@/components/Card/AnimatedStepContent';
 import { StepIndicator } from '@/components/Card/StepIndicator';
+import Navbar from '@/components/Navbar';
 import { Text } from '@/components/ui/text';
 import { useCardSteps } from '@/hooks/useCardSteps';
+import { useDimension } from '@/hooks/useDimension';
 import { KycStatus } from '@/lib/types';
+import { ArrowLeft } from 'lucide-react-native';
 
 export default function ActivateMobile() {
   const { kycLink: _kycLink, kycStatus: _kycStatus } = useLocalSearchParams<{
@@ -17,45 +20,62 @@ export default function ActivateMobile() {
 
   const { steps, activeStepId, isStepButtonEnabled, toggleStep } = useCardSteps();
 
+  const { isScreenMedium } = useDimension();
+  const router = useRouter();
+
   return (
     <View className="flex-1 bg-background">
-      {/* Card */}
-      <Image
-        source={require('@/assets/images/card_details.png')}
-        alt="Solid Card"
-        style={{ width: '100%', height: 200 }}
-        contentFit="cover"
-      />
+      {isScreenMedium && <Navbar />}
 
-      {/* Card issuance status */}
-      <View className="flex-1 px-6 mt-8">
-        <Text className="text-lg font-medium text-white/70 mb-4">Card issuance status</Text>
+      <View className="w-full max-w-lg mx-auto pt-8">
+        <View className="flex-row items-center justify-between">
+          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+            <ArrowLeft color="white" />
+          </Pressable>
+          <Text className="text-white text-xl md:text-2xl font-semibold text-center">
+            Solid card
+          </Text>
+          <View className="w-10" />
+        </View>
+        <View className="items-center justify-center mt-8">
+          <Image
+            source={require('@/assets/images/activate_card_steps.png')}
+            alt="Solid Card"
+            style={{ width: '100%', aspectRatio: isScreenMedium ? 512 / 305 : 345 / 207 }}
+            contentFit="contain"
+          />
+        </View>
 
-        <View className="bg-[#333331] rounded-xl p-6">
-          {steps.map((step, index) => (
-            <View
-              key={step.id}
-              className={`flex-row items-start space-x-4 ${index < steps.length - 1 ? 'mb-4' : ''}`}
-            >
-              <StepIndicator
-                stepId={step.id}
-                completed={step.completed}
-                onPress={() => toggleStep(step.id)}
-              />
+        {/* Card issuance status */}
+        <View className="flex-1 mt-8">
+          <Text className="text-lg font-medium text-white/70 mb-4">Card issuance status</Text>
 
-              <View className="flex-1 ml-4 mt-1">
-                <Pressable onPress={() => toggleStep(step.id)}>
-                  <Text className="text-lg font-semibold text-white mb-1">{step.title}</Text>
-                </Pressable>
-
-                <AnimatedStepContent
-                  step={step}
-                  isActive={activeStepId === step.id}
-                  isButtonEnabled={isStepButtonEnabled(index)}
+          <View className="bg-[#333331] rounded-xl p-6">
+            {steps.map((step, index) => (
+              <View
+                key={step.id}
+                className={`flex-row items-start space-x-4 ${index < steps.length - 1 ? 'mb-4' : ''}`}
+              >
+                <StepIndicator
+                  stepId={step.id}
+                  completed={step.completed}
+                  onPress={() => toggleStep(step.id)}
                 />
+
+                <View className="flex-1 ml-4 mt-1">
+                  <Pressable onPress={() => toggleStep(step.id)}>
+                    <Text className="text-lg font-semibold text-white mb-1">{step.title}</Text>
+                  </Pressable>
+
+                  <AnimatedStepContent
+                    step={step}
+                    isActive={activeStepId === step.id}
+                    isButtonEnabled={isStepButtonEnabled(index)}
+                  />
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
       </View>
     </View>
