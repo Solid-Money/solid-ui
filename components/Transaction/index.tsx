@@ -5,12 +5,7 @@ import { Text } from '@/components/ui/text';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
-import {
-  BankTransferStatus,
-  LayerZeroTransactionStatus,
-  TransactionStatus,
-  TransactionType,
-} from '@/lib/types';
+import { TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import TransactionDrawer from './TransactionDrawer';
 import TransactionDropdown from './TransactionDropdown';
@@ -51,15 +46,8 @@ const Transaction = ({
 }: TransactionProps) => {
   const { isScreenMedium } = useDimension();
 
-  const isSuccess =
-    status === LayerZeroTransactionStatus.DELIVERED ||
-    status === BankTransferStatus.PAYMENT_PROCESSED;
-
-  const isPending =
-    status === LayerZeroTransactionStatus.INFLIGHT ||
-    status === LayerZeroTransactionStatus.CONFIRMING ||
-    status === BankTransferStatus.AWAITING_FUNDS ||
-    status === BankTransferStatus.FUNDS_RECEIVED;
+  const isSuccess = status === TransactionStatus.SUCCESS;
+  const isPending = status === TransactionStatus.PENDING;
 
   const statusBgColor = isSuccess
     ? 'bg-brand/10'
@@ -126,7 +114,7 @@ const Transaction = ({
         {Platform.OS === 'web' ? (
           <TransactionDropdown
             url={url}
-            showCancelButton={status === LayerZeroTransactionStatus.INFLIGHT && !!requestId}
+            showCancelButton={status === TransactionStatus.PENDING && !!requestId}
             onCancelWithdraw={handleCancelWithdraw}
             type={type}
             onPress={onPress}
@@ -134,7 +122,7 @@ const Transaction = ({
         ) : (
           <TransactionDrawer
             url={url}
-            showCancelButton={status === LayerZeroTransactionStatus.INFLIGHT && !!requestId}
+            showCancelButton={status === TransactionStatus.PENDING && !!requestId}
             onCancelWithdraw={handleCancelWithdraw}
             type={type}
             onPress={onPress}

@@ -278,7 +278,11 @@ export enum TransactionType {
   BANK_TRANSFER = 'bank_transfer',
 }
 
-export type TransactionStatus = LayerZeroTransactionStatus | BankTransferStatus;
+export enum TransactionStatus {
+  PENDING = 'pending',
+  SUCCESS = 'success',
+  FAILED = 'failed',
+}
 
 export type Transaction = {
   title: string;

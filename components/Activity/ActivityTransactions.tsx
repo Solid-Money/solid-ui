@@ -16,12 +16,7 @@ import {
   useSendTransactions,
 } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
-import {
-  ActivityTab,
-  BankTransferStatus,
-  LayerZeroTransactionStatus,
-  TransactionType,
-} from '@/lib/types';
+import { ActivityTab, TransactionStatus, TransactionType } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
 type ActivityTransactionsProps = {
@@ -119,11 +114,7 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
   const filteredTransactions = transactions?.filter(transaction => {
     if (tab === ActivityTab.ALL) return true;
     if (tab === ActivityTab.PROGRESS) {
-      return (
-        transaction.status === LayerZeroTransactionStatus.INFLIGHT ||
-        transaction.status === BankTransferStatus.AWAITING_FUNDS ||
-        transaction.status === BankTransferStatus.FUNDS_RECEIVED
-      );
+      return transaction.status === TransactionStatus.PENDING;
     }
     return false;
   });

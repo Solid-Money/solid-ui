@@ -24,12 +24,35 @@ import {
   BridgeTransactionStatus,
   LayerZeroTransactionStatus,
   Transaction,
+  TransactionStatus,
   TransactionType,
 } from '@/lib/types';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
 
 const ANALYTICS = 'analytics';
+
+const mapToTransactionStatus = (
+  status: LayerZeroTransactionStatus | BankTransferStatus,
+): TransactionStatus => {
+  if (
+    status === LayerZeroTransactionStatus.DELIVERED ||
+    status === BankTransferStatus.PAYMENT_PROCESSED
+  ) {
+    return TransactionStatus.SUCCESS;
+  }
+
+  if (
+    status === LayerZeroTransactionStatus.INFLIGHT ||
+    status === LayerZeroTransactionStatus.CONFIRMING ||
+    status === BankTransferStatus.AWAITING_FUNDS ||
+    status === BankTransferStatus.FUNDS_RECEIVED
+  ) {
+    return TransactionStatus.PENDING;
+  }
+
+  return TransactionStatus.FAILED;
+};
 
 export const useTotalAPY = () => {
   return useQuery({
@@ -94,7 +117,7 @@ export const useSendTransactions = (address: string) => {
 
 const constructSendTransaction = (
   transfer: BlockscoutTransaction,
-  status: LayerZeroTransactionStatus,
+  rawStatus: LayerZeroTransactionStatus,
   explorerUrl?: string,
 ) => {
   const hash = transfer.transaction_hash;
@@ -105,7 +128,7 @@ const constructSendTransaction = (
     timestamp: (new Date(transfer.timestamp).getTime() / 1000).toString(),
     amount: Number(formatUnits(BigInt(transfer.total.value), Number(transfer.total.decimals))),
     symbol,
-    status,
+    status: mapToTransactionStatus(rawStatus),
     hash,
     url: `${explorerUrl}/tx/${hash}`,
     type: TransactionType.SEND,
@@ -149,12 +172,15 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
   const isBridgeCompleted = transaction.status === BridgeTransactionStatus.BRIDGE_COMPLETED;
   const isBridgeFailed = transaction.status === BridgeTransactionStatus.BRIDGE_FAILED;
   const isDeposit = transaction.status.includes('deposit');
-  const status =
+
+  const rawStatus =
     isBridgeCompleted || isDeposit
       ? LayerZeroTransactionStatus.DELIVERED
       : isBridgeFailed
         ? LayerZeroTransactionStatus.FAILED
         : LayerZeroTransactionStatus.INFLIGHT;
+
+  const status = mapToTransactionStatus(rawStatus);
 
   return {
     title: 'Bridge USDC to Ethereum',
@@ -185,7 +211,9 @@ export const formatTransactions = async (
     try {
       const lzTransactions = await fetchLayerZeroBridgeTransactions(hash);
 
-      const status = lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
+      const rawStatus =
+        lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
+      const status = mapToTransactionStatus(rawStatus);
 
       return {
         title: 'Staked USDC',
@@ -204,10 +232,11 @@ export const formatTransactions = async (
         timestamp: internalTransaction.depositTimestamp,
         amount: Number(formatUnits(BigInt(internalTransaction.depositAmount), 6)),
         symbol: 'soUsd',
-        status:
+        status: mapToTransactionStatus(
           error.response.status === 404
             ? LayerZeroTransactionStatus.INFLIGHT
             : LayerZeroTransactionStatus.FAILED,
+        ),
         hash,
         url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
         type: TransactionType.DEPOSIT,
@@ -220,7 +249,9 @@ export const formatTransactions = async (
     try {
       const lzTransactions = await fetchLayerZeroBridgeTransactions(hash);
 
-      const status = lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
+      const rawStatus =
+        lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
+      const status = mapToTransactionStatus(rawStatus);
 
       return {
         title: 'Unstake soUSD',
@@ -239,10 +270,11 @@ export const formatTransactions = async (
         timestamp: internalTransaction.blockTimestamp,
         amount: Number(formatUnits(BigInt(internalTransaction.shareAmount), 6)),
         symbol: 'soUSD',
-        status:
+        status: mapToTransactionStatus(
           error.response.status === 404
             ? LayerZeroTransactionStatus.INFLIGHT
             : LayerZeroTransactionStatus.FAILED,
+        ),
         hash,
         url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
         type: TransactionType.UNSTAKE,
@@ -261,12 +293,13 @@ export const formatTransactions = async (
       timestamp: internalTransaction.creationTime,
       amount: Number(formatUnits(BigInt(internalTransaction.amountOfAssets), 6)),
       symbol: 'soUSD',
-      status:
+      status: mapToTransactionStatus(
         internalTransaction.requestStatus === 'SOLVED'
           ? LayerZeroTransactionStatus.DELIVERED
           : internalTransaction.requestStatus === 'CANCELLED'
             ? LayerZeroTransactionStatus.FAILED
             : LayerZeroTransactionStatus.INFLIGHT,
+      ),
       hash,
       url: `${explorerUrls[mainnet.id].etherscan}/tx/${hash}`,
       type: TransactionType.WITHDRAW,
@@ -315,7 +348,7 @@ export const formatTransactions = async (
         timestamp: t.timestamp.toString(),
         amount: t.amount,
         symbol: t.currency,
-        status: t.status,
+        status: mapToTransactionStatus(t.status),
         type: TransactionType.BANK_TRANSFER,
         url: t.url,
         sourceDepositInstructions: t.sourceDepositInstructions,
