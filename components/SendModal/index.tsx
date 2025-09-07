@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { ArrowUpRight, Fuel, Wallet } from 'lucide-react-native';
 import { useMemo } from 'react';
@@ -8,7 +9,6 @@ import Toast from 'react-native-toast-message';
 import { formatUnits, isAddress } from 'viem';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
-import * as Sentry from '@sentry/react-native';
 
 import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -131,8 +131,8 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
         },
         extra: {
           tokenAddress,
-          amount: formValues.amount,
-          to: formValues.to,
+          amount: data.amount,
+          to: data.address,
           userAddress: user?.safeAddress,
         },
       });
