@@ -32,6 +32,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { ThirdwebProvider } from 'thirdweb/react';
 import { WagmiProvider } from 'wagmi';
+import Intercom from '@/components/Intercom';
 
 Sentry.init({
   dsn: 'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952',
@@ -288,17 +289,19 @@ export default Sentry.wrap(function RootLayout() {
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={infoClient}>
-                <GestureHandlerRootView>
-                  <BottomSheetModalProvider>
-                    {Platform.OS === 'web' && (
-                      <Head>
-                        <title>Solid - The Savings Super-App</title>
-                      </Head>
-                    )}
-                    <AppContent />
-                    <PortalHost />
-                  </BottomSheetModalProvider>
-                </GestureHandlerRootView>
+                <Intercom>
+                  <GestureHandlerRootView>
+                    <BottomSheetModalProvider>
+                      {Platform.OS === 'web' && (
+                        <Head>
+                          <title>Solid - The Savings Super-App</title>
+                        </Head>
+                      )}
+                      <AppContent />
+                      <PortalHost />
+                    </BottomSheetModalProvider>
+                  </GestureHandlerRootView>
+                </Intercom>
               </ApolloProvider>
             </QueryClientProvider>
           </WagmiProvider>

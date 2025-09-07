@@ -30,6 +30,7 @@ import { Chain, createWalletClient, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
+import { useIntercom } from 'react-use-intercom';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -47,6 +48,7 @@ interface UseUserReturn {
 const useUser = (): UseUserReturn => {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { shutdown, boot } = useIntercom();
 
   const {
     users,
@@ -472,6 +474,8 @@ const useUser = (): UseUserReturn => {
   const handleLogout = useCallback(() => {
     unselectUser();
     clearKycLinkId(); // Clear KYC data on logout
+    shutdown();
+    boot();
     router.replace(path.WELCOME);
   }, [unselectUser, clearKycLinkId, router]);
 
