@@ -8,7 +8,7 @@ import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import { useUSDCValue } from '@/hooks/useUSDCValue';
 import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
 import { useDerivedSwapInfo, useSwapActionHandlers, useSwapState } from '@/store/swapStore';
-import { Currency, CurrencyAmount, maxAmountSpend, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+import { Currency, CurrencyAmount, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
 import TokenCard from './TokenCard';
 
 const SwapPair: React.FC = () => {
@@ -123,9 +123,14 @@ const SwapPair: React.FC = () => {
     [showWrap, showPegSwap, parsedAmount, parsedAmountA, parsedAmountB],
   );
 
-  const maxInputAmount: CurrencyAmount<Currency> | undefined = maxAmountSpend(
-    currencyBalances[SwapField.INPUT],
-  );
+  const maxInputAmount: CurrencyAmount<Currency> | undefined = useMemo(() => {
+    const balance = currencyBalances[SwapField.INPUT];
+    if (!balance) return undefined;
+
+    // For AA wallets with paymaster, no gas reservation needed at all!
+    // Use the full balance for both native tokens and ERC20 tokens
+    return balance;
+  }, [currencyBalances]);
   const showMaxButton = Boolean(
     maxInputAmount?.greaterThan(0) && !parsedAmounts[SwapField.INPUT]?.equalTo(maxInputAmount),
   );
