@@ -1,7 +1,11 @@
+import Navbar from '@/components/Navbar';
+import { Text } from '@/components/ui/text';
+import { useDimension } from '@/hooks/useDimension';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowLeft } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { z } from 'zod';
 
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
@@ -17,6 +21,7 @@ export default function UserKycInfo() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { setKycLinkId } = useKycStore();
+  const { isScreenMedium } = useDimension();
 
   // redirectUri tells where to resume after KYC.
   const params = useLocalSearchParams<{
@@ -91,20 +96,33 @@ export default function UserKycInfo() {
   };
 
   return (
-    <View className="flex-1 bg-[#262624] px-6 pt-4">
-      <View className="w-full flex-1 web:max-w-3xl web:mx-auto justify-evenly">
-        <UserInfoHeader kycMode={kycMode as any} />
+    <View className="flex-1 bg-[#262624]">
+      {isScreenMedium && <Navbar />}
+      <View className="flex-1 w-full max-w-lg mx-auto pt-8 px-6">
+        <View className="flex-row items-center justify-between">
+          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+            <ArrowLeft color="white" />
+          </Pressable>
+          <Text className="text-white text-xl md:text-2xl font-semibold text-center">
+            Identity verification
+          </Text>
+          <View className="w-10" />
+        </View>
 
-        <UserInfoForm control={control} errors={errors} />
+        <View className="flex-1 mt-8 justify-evenly">
+          <UserInfoHeader kycMode={kycMode as any} />
 
-        <UserInfoFooter
-          control={control}
-          errors={errors}
-          onContinue={handleSubmit(onSubmit)}
-          isValid={isValid}
-          isLoading={isLoading}
-          kycMode={kycMode as KycMode}
-        />
+          <UserInfoForm control={control} errors={errors} />
+
+          <UserInfoFooter
+            control={control}
+            errors={errors}
+            onContinue={handleSubmit(onSubmit)}
+            isValid={isValid}
+            isLoading={isLoading}
+            kycMode={kycMode as KycMode}
+          />
+        </View>
       </View>
     </View>
   );
