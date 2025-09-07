@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
+import { useCallback, useMemo, useState } from 'react';
 
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { SwapCallbackState } from '@/lib/types/swap-state';
@@ -21,18 +21,9 @@ export function useVoltageSwapCallback(
   const { needAllowance, approvalConfig } =
     useApproveCallbackFromVoltageTrade(trade, allowedSlippage);
     
-  // For token inputs, we ALWAYS need approval - override the hook if it's wrong
+  // For token inputs, check if we need approval
   const isTokenInput = trade?.inputAmount?.currency?.isToken;
-  const actualNeedAllowance = isTokenInput ? true : needAllowance;
   
-  console.log('🔍 Voltage Approval Analysis:', {
-    isTokenInput,
-    originalNeedAllowance: needAllowance,
-    actualNeedAllowance,
-    hasApprovalConfig: !!approvalConfig,
-    tokenSymbol: isTokenInput ? trade?.inputAmount?.currency?.symbol : 'N/A',
-    tokenAddress: isTokenInput ? trade?.inputAmount?.currency?.address : 'N/A',
-  });
   const account = user?.safeAddress;
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
@@ -47,14 +38,8 @@ export function useVoltageSwapCallback(
 
       const transactions = [];
 
-      if (actualNeedAllowance && approvalConfig) {
-        console.log('🔍 Voltage Approval Debug:', {
-          tokenToApprove: approvalConfig.request.address,
-          spenderBeingApproved: approvalConfig.request.args?.[0],
-          voltageAllowanceTarget: trade?.allowanceTarget,
-          voltageTransactionTarget: trade?.to,
-          isCorrect: approvalConfig.request.args?.[0] === trade?.allowanceTarget,
-        });
+
+      if (needAllowance && approvalConfig) {
 
         Sentry.addBreadcrumb({
           message: 'Adding Voltage approval transaction',
@@ -62,9 +47,8 @@ export function useVoltageSwapCallback(
           level: 'debug',
           data: {
             tokenAddress: approvalConfig.request.address,
-            originalNeedAllowance: needAllowance,
-          actualNeedAllowance,
-          spender: approvalConfig.request.args?.[0],
+            needAllowance,
+            spender: approvalConfig.request.args?.[0],
             allowanceTarget: trade?.allowanceTarget,
             transactionTarget: trade?.to,
           },
@@ -89,7 +73,7 @@ export function useVoltageSwapCallback(
       const result = await executeTransactions(
         smartAccountClient,
         transactions,
-        'Send failed',
+        'Voltage swap failed',
         fuse,
       );
 

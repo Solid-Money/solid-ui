@@ -250,6 +250,7 @@ export default function usePegSwapCallback(
   const { data: inputCurrencyBalance } = useBalance({
     address: account,
     token: inputCurrencyAddress,
+    chainId: fuse.id,
     query: {
       enabled: true,
     },
