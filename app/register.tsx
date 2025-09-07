@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
-import { Link, useLocalSearchParams } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Platform, TextInput, View } from 'react-native';
@@ -15,6 +15,7 @@ import { Status } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { detectAndSaveReferralCode } from '@/lib/utils/referral';
 import { useUserStore } from '@/store/useUserStore';
+import { path } from '@/constants/path';
 
 import InfoError from '@/assets/images/info-error';
 
@@ -25,16 +26,16 @@ const registerSchema = z.object({
     .max(20, 'Username must be less than 20 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Only use letters, numbers, underscores_, or hyphens-.')
     .refine(value => !value.includes(' '), 'Username cannot contain spaces'),
-  inviteCode: z.string().nonempty('Invite code is required'),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function Register() {
-  const { handleSignup, handleLogin, handleDummyLogin } = useUser();
-  const { signupInfo, loginInfo, setSignupInfo, setLoginInfo } = useUserStore();
+  const { handleLogin, handleDummyLogin } = useUser();
+  const { signupInfo, loginInfo, setSignupInfo, setLoginInfo, setSignupUser } = useUserStore();
   const { code } = useLocalSearchParams<{ code: string }>();
   const { session } = useLocalSearchParams<{ session: string }>();
+  const router = useRouter();
   // TODO: Add recovery flow
   // const [showRecoveryFlow, setShowRecoveryFlow] = useState(false);
 
@@ -62,19 +63,15 @@ export default function Register() {
     formState: { errors, isValid },
     watch,
     reset,
-    setValue,
-    trigger,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     mode: 'onChange',
     defaultValues: {
       username: '',
-      inviteCode: '',
     },
   });
 
   const watchedUsername = watch('username');
-  const watchedInviteCode = watch('inviteCode');
 
   // Reset form after successful signup
   useEffect(() => {
@@ -84,27 +81,22 @@ export default function Register() {
   }, [signupInfo.status, reset]);
 
   const handleSignupForm = (data: RegisterFormData) => {
-    handleSignup(data.username, data.inviteCode);
+    setSignupUser({ username: data.username, inviteCode: code });
+    router.push(path.INVITE);
   };
 
   const getSignupButtonText = () => {
-    if (signupInfo.status === Status.PENDING) return 'Creating';
+    if (signupInfo.status === Status.PENDING) return 'Redirecting';
     if (!watchedUsername) return 'Enter a username';
-    if (!watchedInviteCode) return 'Enter an invite code';
     if (!isValid) return 'Enter valid information';
-    return 'Create Account';
+    return 'Continue';
   };
 
   const getSignupErrorText = useMemo(() => {
     if (errors.username) return errors.username.message;
-    return '';
-  }, [errors.username]);
-
-  const getInviteCodeErrorText = useMemo(() => {
-    if (errors.inviteCode) return errors.inviteCode.message;
     if (signupInfo.status === Status.ERROR) return signupInfo.message || 'Error creating account';
     return '';
-  }, [errors.inviteCode, signupInfo.status, signupInfo.message]);
+  }, [errors.username, signupInfo.status, signupInfo.message]);
 
   const isSignupDisabled = () => {
     return signupInfo.status === Status.PENDING || !isValid || !watchedUsername;
@@ -122,13 +114,6 @@ export default function Register() {
       });
     }
   }, [session]);
-
-  useEffect(() => {
-    if (code) {
-      setValue('inviteCode', code);
-      trigger('inviteCode');
-    }
-  }, [code, setValue, trigger]);
 
   // TODO: Add recovery flow
   // const handleRecoverySuccess = (organizationId: string, userId: string) => {
@@ -190,29 +175,6 @@ export default function Register() {
                 <View className="flex-row items-center gap-2">
                   <InfoError />
                   <Text className="text-sm text-red-400">{getSignupErrorText}</Text>
-                </View>
-              ) : null}
-              <Controller
-                control={control}
-                name="inviteCode"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    id="inviteCode"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    placeholder="Invite Code"
-                    className={cn(
-                      'h-14 px-6 rounded-xl border text-lg text-foreground font-semibold placeholder:text-muted-foreground',
-                      errors.inviteCode ? 'border-red-500' : 'border-border',
-                    )}
-                  />
-                )}
-              />
-              {getInviteCodeErrorText ? (
-                <View className="flex-row items-center gap-2">
-                  <InfoError />
-                  <Text className="text-sm text-red-400">{getInviteCodeErrorText}</Text>
                 </View>
               ) : null}
               <Button

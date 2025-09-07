@@ -514,3 +514,8 @@ export interface LifiQuoteResponse {
     gasPrice: bigint;
   };
 }
+
+export interface SignupUser {
+  username: string;
+  inviteCode?: string;
+}
