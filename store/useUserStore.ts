@@ -4,12 +4,13 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
-import { Status, StatusInfo, User } from '@/lib/types';
+import { Status, StatusInfo, User, SignupUser } from '@/lib/types';
 
 interface UserState {
   users: User[];
   signupInfo: StatusInfo;
   loginInfo: StatusInfo;
+  signupUser: SignupUser;
   storeUser: (user: User) => void;
   updateUser: (user: User) => void;
   selectUser: (username: string) => void;
@@ -17,6 +18,7 @@ interface UserState {
   removeUsers: () => void;
   setSignupInfo: (info: StatusInfo) => void;
   setLoginInfo: (info: StatusInfo) => void;
+  setSignupUser: (user: SignupUser) => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -25,6 +27,7 @@ export const useUserStore = create<UserState>()(
       users: [],
       signupInfo: { status: Status.IDLE, message: '' },
       loginInfo: { status: Status.IDLE, message: '' },
+      signupUser: { username: '' },
 
       storeUser: (user: User) => {
         set(
@@ -81,6 +84,8 @@ export const useUserStore = create<UserState>()(
 
       setSignupInfo: info => set({ signupInfo: info }),
       setLoginInfo: info => set({ loginInfo: info }),
+
+      setSignupUser: user => set({ signupUser: user }),
     }),
     {
       name: USER.storageKey,

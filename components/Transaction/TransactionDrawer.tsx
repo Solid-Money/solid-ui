@@ -3,6 +3,8 @@ import React, { useCallback, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { TransactionType } from '@/lib/types';
+
 import {
   pressTransactionCredenzaContent,
   TransactionCancelContent,
@@ -14,9 +16,17 @@ interface TransactionDrawerProps {
   url?: string;
   showCancelButton?: boolean;
   onCancelWithdraw?: () => void;
+  type?: TransactionType;
+  onPress?: () => void;
 }
 
-const TransactionDrawer = ({ url, showCancelButton, onCancelWithdraw }: TransactionDrawerProps) => {
+const TransactionDrawer = ({
+  url,
+  showCancelButton,
+  onCancelWithdraw,
+  type,
+  onPress,
+}: TransactionDrawerProps) => {
   const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
@@ -44,9 +54,17 @@ const TransactionDrawer = ({ url, showCancelButton, onCancelWithdraw }: Transact
         >
           <Pressable
             className="w-full flex-row items-center gap-2 bg-card p-4 rounded-xl"
-            onPress={() => pressTransactionCredenzaContent(url)}
+            onPress={() => {
+              if (type === TransactionType.BANK_TRANSFER && onPress) {
+                onPress();
+              } else if (url) {
+                pressTransactionCredenzaContent(url);
+              }
+            }}
           >
-            <TransactionCredenzaContent />
+            <TransactionCredenzaContent
+              text={type === TransactionType.BANK_TRANSFER ? 'View details' : 'View transaction'}
+            />
           </Pressable>
           {showCancelButton && (
             <Pressable

@@ -6,7 +6,7 @@ import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 
 import { SwapCallbackState } from '@/lib/types/swap-state';
 import { Currency, Percent, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
-import { Address, encodeFunctionData } from 'viem';
+import { Address, encodeFunctionData, erc20Abi } from 'viem';
 import { fuse } from 'viem/chains';
 import { useApproveCallbackFromTrade } from '../useApprove';
 import { TransactionSuccessInfo, useTransactionAwait } from '../useTransactionAwait';
@@ -62,12 +62,6 @@ export function useSwapCallback(
 
         const value = BigInt(_value);
 
-        console.log(`📦 Preparing swap for AA wallet (no simulation):`, {
-          router: algebraRouterConfig.address,
-          account,
-          value: value.toString(),
-          calldataPreview: calldata?.slice(0, 100),
-        });
 
         // Set the best call without simulation
         // The AA infrastructure will handle the actual gas estimation
@@ -96,27 +90,8 @@ export function useSwapCallback(
   // Get approval info
   const { approvalConfig, needAllowance } = useApproveCallbackFromTrade(trade, allowedSlippage);
 
-  // For token inputs, we ALWAYS need approval - override the hook if it's wrong
+  // For token inputs, check if we need approval
   const isTokenInput = trade?.inputAmount.currency.isToken;
-  const actualNeedAllowance = isTokenInput ? true : needAllowance;
-
-  console.log('🔍 Approval Analysis:', {
-    isTokenInput,
-    originalNeedAllowance: needAllowance,
-    actualNeedAllowance,
-    hasApprovalConfig: !!approvalConfig,
-    tokenSymbol: isTokenInput ? trade.inputAmount.currency.symbol : 'N/A',
-    tokenAddress: isTokenInput ? trade.inputAmount.currency.address : 'N/A',
-  });
-
-  // If we need approval but don't have config, this is a critical error
-  if (actualNeedAllowance && !approvalConfig) {
-    console.error('❌ CRITICAL: Need approval but no approval config generated!', {
-      token: trade?.inputAmount.currency?.isToken ? trade?.inputAmount.currency.address : 'NATIVE',
-      symbol: trade?.inputAmount.currency.symbol,
-      amount: trade?.inputAmount.toSignificant(),
-    });
-  }
 
   // Get the actual router address from swap config to ensure approval spender matches
   const actualRouterAddress = (algebraRouterConfig.address) as Address;
@@ -124,11 +99,6 @@ export function useSwapCallback(
   const swapConfig = useMemo(() => {
     if (!bestCall) return undefined;
 
-    console.log('🔧 Preparing swap config for AA wallet:', {
-      hasApproval: needAllowance,
-      routerAddress: actualRouterAddress,
-      value: bestCall.value.toString(),
-    });
 
     return {
       request: {
@@ -144,81 +114,65 @@ export function useSwapCallback(
 
   const swapCallback = useCallback(async () => {
     if (!trade || !swapConfig || !account || !user?.suborgId || !user?.signWith) {
-      console.warn('Missing required data for swap:', {
-        hasTrade: !!trade,
-        hasSwapConfig: !!swapConfig,
-        hasAccount: !!account,
-        hasUser: !!user,
-      });
       return;
     }
 
     try {
       setIsSendingSwap(true);
 
-
       const transactions = [];
 
-      // Debug swap details before execution
-      console.log('🔍 Pre-execution debug:', {
-        inputToken: {
-          symbol: trade.inputAmount.currency.symbol,
-          address: trade.inputAmount.currency.isToken ? trade.inputAmount.currency.address : 'NATIVE',
-          amount: trade.inputAmount.toSignificant(),
-        },
-        outputToken: {
-          symbol: trade.outputAmount.currency.symbol,
-          address: trade.outputAmount.currency.isToken ? trade.outputAmount.currency.address : 'NATIVE',
-        },
-        needAllowance,
-        actualNeedAllowance,
-        hasApprovalConfig: !!approvalConfig,
-        router: swapConfig.request.address,
-        slippage: allowedSlippage?.toSignificant(2),
-      });
+      // Add approval transaction if needed
+      if (needAllowance || (isTokenInput && !approvalConfig)) {
+        if (approvalConfig) {
 
-      // Add approval transaction if needed (using actualNeedAllowance for safety)
-      if (actualNeedAllowance && approvalConfig) {
-        console.log('🔐 Adding approval transaction for AA wallet:', {
-          token: approvalConfig.request.address,
-          spender: approvalConfig.request.args?.[0],
-          amount: approvalConfig.request.args?.[1]?.toString(),
-        });
+          Sentry.addBreadcrumb({
+            message: 'Adding approval transaction',
+            category: 'swap',
+            level: 'debug',
+            data: {
+              tokenAddress: approvalConfig.request.address,
+              spender: approvalConfig.request.args?.[0],
+              amount: approvalConfig.request.args?.[1]?.toString(),
+            },
+          });
 
-        Sentry.addBreadcrumb({
-          message: 'Adding approval transaction',
-          category: 'swap',
-          level: 'debug',
-          data: {
-            tokenAddress: approvalConfig.request.address,
-            spender: approvalConfig.request.args?.[0],
-            amount: approvalConfig.request.args?.[1]?.toString(),
-          },
-        });
+          transactions.push({
+            to: approvalConfig.request.address,
+            data: encodeFunctionData({
+              abi: approvalConfig.request.abi,
+              functionName: approvalConfig.request.functionName,
+              args: approvalConfig.request.args,
+            }),
+            value: 0n,
+          });
+        } else if (trade.inputAmount.currency.isToken) {
+          // Generate a fallback approval transaction
 
-        transactions.push({
-          to: approvalConfig.request.address,
-          data: encodeFunctionData({
-            abi: approvalConfig.request.abi,
-            functionName: approvalConfig.request.functionName,
-            args: approvalConfig.request.args,
-          }),
-          value: 0n,
-        });
-      } else if (trade.inputAmount.currency.isToken) {
-        // This is a critical check - if we need a token but have no approval, the swap will fail
-        console.warn('⚠️ Token swap attempted without approval:', {
-          token: trade.inputAmount.currency.address,
-          symbol: trade.inputAmount.currency.symbol,
-          amount: trade.inputAmount.toSignificant(),
-          originalNeedAllowance: needAllowance,
-          actualNeedAllowance,
-          hasApprovalConfig: !!approvalConfig,
-        });
+          // Create max approval transaction as fallback
+          const maxApproval = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+          transactions.push({
+            to: trade.inputAmount.currency.address as Address,
+            data: encodeFunctionData({
+              abi: erc20Abi,
+              functionName: 'approve',
+              args: [actualRouterAddress, BigInt(maxApproval)],
+            }),
+            value: 0n,
+          });
+
+          Sentry.addBreadcrumb({
+            message: 'Adding fallback approval transaction',
+            category: 'swap',
+            level: 'warning',
+            data: {
+              tokenAddress: trade.inputAmount.currency.address,
+              spender: actualRouterAddress,
+              amount: 'MAX',
+            },
+          });
+        }
       }
-
-      // Add swap transaction
-      console.log('Adding swap transaction for AA wallet');
 
       Sentry.addBreadcrumb({
         message: 'Adding swap transaction',
@@ -232,6 +186,7 @@ export function useSwapCallback(
         },
       });
 
+      // Add swap transaction
       transactions.push({
         to: swapConfig.request.address,
         data: encodeFunctionData({
@@ -246,12 +201,6 @@ export function useSwapCallback(
         throw new Error('No transactions to execute - this indicates a configuration issue');
       }
 
-      console.log(`📤 Executing ${transactions.length} transaction(s) through AA wallet:`, {
-        transactionTypes: transactions.map((_, i) => i === 0 && actualNeedAllowance ? 'approval' : 'swap'),
-        inputAmount: trade.inputAmount.toSignificant(),
-        outputAmount: trade.outputAmount.toSignificant(),
-      });
-
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
       const result = await executeTransactions(
@@ -265,27 +214,31 @@ export function useSwapCallback(
         return;
       }
 
-      if (result?.length > 0) {
-        console.log('✅ Swap transactions sent:', result);
+      Sentry.addBreadcrumb({
+        message: 'Swap executed successfully',
+        category: 'swap',
+        level: 'info',
+        data: {
+          txHashes: result,
+          transactionCount: transactions.length,
+        },
+      });
 
-        Sentry.addBreadcrumb({
-          message: 'Swap executed successfully',
-          category: 'swap',
-          level: 'info',
-          data: {
-            txHashes: result,
-            transactionCount: transactions.length,
-          },
-        });
-
-        // Transaction successful - AA wallet handles receipt tracking
-        setSwapData(result);
-      }
+      // Transaction successful - AA wallet handles receipt tracking
+      setSwapData(result);
     } catch (error: any) {
       console.error('Swap execution failed:', error);
 
-      if (error?.message?.includes(USER_CANCELLED_TRANSACTION)) {
-        console.log('User cancelled the transaction');
+      // Check if the error is the USER_CANCELLED_TRANSACTION symbol itself
+      if (error === USER_CANCELLED_TRANSACTION) {
+        return;
+      }
+
+      // Also check for user cancellation in error messages
+      const errorMessage = error?.message?.toLowerCase() || '';
+      if (errorMessage.includes('user cancelled') ||
+        errorMessage.includes('user denied') ||
+        errorMessage.includes('user rejected')) {
         return;
       }
 
@@ -311,7 +264,7 @@ export function useSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [trade, swapConfig, approvalConfig, actualNeedAllowance, account, user, safeAA]);
+  }, [trade, swapConfig, approvalConfig, needAllowance, isTokenInput, account, user, safeAA, allowedSlippage]);
 
   const { isLoading } = useTransactionAwait(swapData?.transactionHash, successInfo);
 
@@ -322,7 +275,7 @@ export function useSwapCallback(
         callback: undefined,
         error: 'Missing trade or configuration',
         isLoading: false,
-        needAllowance: actualNeedAllowance,
+        needAllowance,
       };
     }
 
@@ -331,7 +284,7 @@ export function useSwapCallback(
       callback: swapCallback,
       error: undefined,
       isLoading: isSendingSwap || isLoading,
-      needAllowance: actualNeedAllowance,
+      needAllowance,
     };
-  }, [trade, swapConfig, swapCallback, swapData, isSendingSwap]);
+  }, [trade, swapConfig, swapCallback, swapData, isSendingSwap, needAllowance]);
 }
