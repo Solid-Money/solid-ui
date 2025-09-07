@@ -26,6 +26,7 @@ type Path = {
   PASSKEY_NOT_SUPPORTED: Href;
   POINTS: Href;
   REFERRAL: Href;
+  INVITE: Href;
 };
 
 export const path: Path = {
@@ -53,4 +54,5 @@ export const path: Path = {
   PASSKEY_NOT_SUPPORTED: '/passkey-not-supported',
   POINTS: '/points',
   REFERRAL: '/referral',
+  INVITE: '/invite',
 };
