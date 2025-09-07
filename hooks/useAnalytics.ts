@@ -13,18 +13,46 @@ import {
   fetchLayerZeroBridgeTransactions,
   fetchTokenTransfer,
   fetchTotalAPY,
+  getBankTransfers,
 } from '@/lib/api';
 import {
+  BankTransferActivityItem,
+  BankTransferStatus,
   BlockscoutTransaction,
   BlockscoutTransactions,
   BridgeTransaction,
   BridgeTransactionStatus,
   LayerZeroTransactionStatus,
   Transaction,
+  TransactionStatus,
   TransactionType,
 } from '@/lib/types';
+import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
+import { withRefreshToken } from '@/lib/utils';
 
 const ANALYTICS = 'analytics';
+
+const mapToTransactionStatus = (
+  status: LayerZeroTransactionStatus | BankTransferStatus,
+): TransactionStatus => {
+  if (
+    status === LayerZeroTransactionStatus.DELIVERED ||
+    status === BankTransferStatus.PAYMENT_PROCESSED
+  ) {
+    return TransactionStatus.SUCCESS;
+  }
+
+  if (
+    status === LayerZeroTransactionStatus.INFLIGHT ||
+    status === LayerZeroTransactionStatus.CONFIRMING ||
+    status === BankTransferStatus.AWAITING_FUNDS ||
+    status === BankTransferStatus.FUNDS_RECEIVED
+  ) {
+    return TransactionStatus.PENDING;
+  }
+
+  return TransactionStatus.FAILED;
+};
 
 export const useTotalAPY = () => {
   return useQuery({
@@ -89,7 +117,7 @@ export const useSendTransactions = (address: string) => {
 
 const constructSendTransaction = (
   transfer: BlockscoutTransaction,
-  status: LayerZeroTransactionStatus,
+  rawStatus: LayerZeroTransactionStatus,
   explorerUrl?: string,
 ) => {
   const hash = transfer.transaction_hash;
@@ -100,7 +128,7 @@ const constructSendTransaction = (
     timestamp: (new Date(transfer.timestamp).getTime() / 1000).toString(),
     amount: Number(formatUnits(BigInt(transfer.total.value), Number(transfer.total.decimals))),
     symbol,
-    status,
+    status: mapToTransactionStatus(rawStatus),
     hash,
     url: `${explorerUrl}/tx/${hash}`,
     type: TransactionType.SEND,
@@ -118,16 +146,41 @@ export const useBridgeDepositTransactions = (safeAddress: string) => {
   });
 };
 
+export const useBankTransferTransactions = () => {
+  return useQuery({
+    queryKey: [ANALYTICS, 'bankTransferTransactions'],
+    queryFn: async () => {
+      const data = (await withRefreshToken(() => getBankTransfers())) ?? [];
+
+      const items: BankTransferActivityItem[] = data.map((it: BridgeApiTransfer) => ({
+        id: it.id,
+        amount: Number(it.amount || '0'),
+        currency: String(it.currency || 'usd').toUpperCase(),
+        method: it.source?.payment_rail as any,
+        status: (it.state as string).toLowerCase() as BankTransferStatus,
+        timestamp: Math.floor(new Date(it.created_at).getTime() / 1000),
+        url: undefined,
+        sourceDepositInstructions: it.source_deposit_instructions,
+      }));
+      return items;
+    },
+    enabled: true,
+  });
+};
+
 const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
   const isBridgeCompleted = transaction.status === BridgeTransactionStatus.BRIDGE_COMPLETED;
   const isBridgeFailed = transaction.status === BridgeTransactionStatus.BRIDGE_FAILED;
   const isDeposit = transaction.status.includes('deposit');
-  const status =
+
+  const rawStatus =
     isBridgeCompleted || isDeposit
       ? LayerZeroTransactionStatus.DELIVERED
       : isBridgeFailed
         ? LayerZeroTransactionStatus.FAILED
         : LayerZeroTransactionStatus.INFLIGHT;
+
+  const status = mapToTransactionStatus(rawStatus);
 
   return {
     title: 'Bridge USDC to Ethereum',
@@ -146,18 +199,21 @@ export const formatTransactions = async (
   transactions: GetUserTransactionsQuery | undefined,
   sendTransactions:
     | {
-      fuse: BlockscoutTransaction[];
-      ethereum: BlockscoutTransaction[];
-    }
+        fuse: BlockscoutTransaction[];
+        ethereum: BlockscoutTransaction[];
+      }
     | undefined,
   bridgeDepositTransactions: BridgeTransaction[] | undefined,
+  bankTransfers: BankTransferActivityItem[] | undefined,
 ): Promise<Transaction[]> => {
   const depositTransactionPromises = transactions?.deposits?.map(async internalTransaction => {
     const hash = internalTransaction.transactionHash;
     try {
       const lzTransactions = await fetchLayerZeroBridgeTransactions(hash);
 
-      const status = lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
+      const rawStatus =
+        lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
+      const status = mapToTransactionStatus(rawStatus);
 
       return {
         title: 'Staked USDC',
@@ -176,10 +232,11 @@ export const formatTransactions = async (
         timestamp: internalTransaction.depositTimestamp,
         amount: Number(formatUnits(BigInt(internalTransaction.depositAmount), 6)),
         symbol: 'soUsd',
-        status:
+        status: mapToTransactionStatus(
           error.response.status === 404
             ? LayerZeroTransactionStatus.INFLIGHT
             : LayerZeroTransactionStatus.FAILED,
+        ),
         hash,
         url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
         type: TransactionType.DEPOSIT,
@@ -192,7 +249,9 @@ export const formatTransactions = async (
     try {
       const lzTransactions = await fetchLayerZeroBridgeTransactions(hash);
 
-      const status = lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
+      const rawStatus =
+        lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
+      const status = mapToTransactionStatus(rawStatus);
 
       return {
         title: 'Unstake soUSD',
@@ -211,10 +270,11 @@ export const formatTransactions = async (
         timestamp: internalTransaction.blockTimestamp,
         amount: Number(formatUnits(BigInt(internalTransaction.shareAmount), 6)),
         symbol: 'soUSD',
-        status:
+        status: mapToTransactionStatus(
           error.response.status === 404
             ? LayerZeroTransactionStatus.INFLIGHT
             : LayerZeroTransactionStatus.FAILED,
+        ),
         hash,
         url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
         type: TransactionType.UNSTAKE,
@@ -233,12 +293,13 @@ export const formatTransactions = async (
       timestamp: internalTransaction.creationTime,
       amount: Number(formatUnits(BigInt(internalTransaction.amountOfAssets), 6)),
       symbol: 'soUSD',
-      status:
+      status: mapToTransactionStatus(
         internalTransaction.requestStatus === 'SOLVED'
           ? LayerZeroTransactionStatus.DELIVERED
           : internalTransaction.requestStatus === 'CANCELLED'
             ? LayerZeroTransactionStatus.FAILED
             : LayerZeroTransactionStatus.INFLIGHT,
+      ),
       hash,
       url: `${explorerUrls[mainnet.id].etherscan}/tx/${hash}`,
       type: TransactionType.WITHDRAW,
@@ -279,12 +340,28 @@ export const formatTransactions = async (
     return constructBridgeDepositTransaction(transaction);
   });
 
+  const bankTransferTransactionPromises =
+    bankTransfers?.map(async t => {
+      return {
+        title: 'Bank transfer',
+        shortTitle: 'Bank transfer',
+        timestamp: t.timestamp.toString(),
+        amount: t.amount,
+        symbol: t.currency,
+        status: mapToTransactionStatus(t.status),
+        type: TransactionType.BANK_TRANSFER,
+        url: t.url,
+        sourceDepositInstructions: t.sourceDepositInstructions,
+      };
+    }) || [];
+
   const formattedTransactions = await Promise.all([
     ...(depositTransactionPromises || []),
     ...(bridgeTransactionPromises || []),
     ...(withdrawTransactionPromises || []),
     ...(sendTransactionPromises || []),
     ...(bridgeDepositTransactionPromises || []),
+    ...bankTransferTransactionPromises,
   ]);
 
   // Sort by timestamp (newest first)
