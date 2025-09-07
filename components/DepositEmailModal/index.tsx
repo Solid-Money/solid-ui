@@ -26,7 +26,6 @@ const DepositEmailModal: React.FC = () => {
     isFormDisabled,
     rateLimitError,
     emailValue,
-    isSkip,
     setIsSkip,
   } = useEmailManagement(() => {
     // On success, proceed to deposit options
@@ -41,22 +40,22 @@ const DepositEmailModal: React.FC = () => {
   const currentStep = step === 'existing' ? 'email' : step;
 
   return (
-    <View className="flex-1 gap-4 py-2">
+    <View className="flex-1 gap-4">
       <View className="items-center">
         <Image
           source={require('@/assets/images/email.png')}
-          style={{ width: 60, height: 60 }}
+          style={{ width: 144, height: 144 }}
           contentFit="contain"
         />
       </View>
 
-      <View className="items-center gap-2">
-        <Text className="text-xl font-bold text-center">
+      <View className="items-center gap-2 mt-4">
+        <Text className="text-2xl font-bold text-center">
           {currentStep === 'email' ? 'Email required' : 'Verify your email'}
         </Text>
         <Text
           className={cn(
-            'text-muted-foreground text-center leading-5 text-sm',
+            'text-muted-foreground text-center font-medium',
             currentStep === 'email' ? 'max-w-sm' : 'max-w-xs',
           )}
         >
@@ -67,18 +66,9 @@ const DepositEmailModal: React.FC = () => {
       </View>
 
       {currentStep === 'email' && (
-        <View className="flex-row gap-2 border border-yellow-300 rounded-2xl p-2.5">
-          <View className="flex-shrink-0">
-            <Image
-              source={require('@/assets/images/exclamation-warning.png')}
-              style={{ width: 20, height: 20 }}
-              contentFit="contain"
-            />
-          </View>
-          <Text className="text-yellow-400 font-bold text-xs flex-1">
-            This email will be used for account recovery if you lose access to your passkey.
-          </Text>
-        </View>
+        <Text className="text-muted-foreground text-center font-medium max-w-[23rem]">
+          This email will be used for account recovery if you lose access to your passkey.
+        </Text>
       )}
 
       {rateLimitError && (
@@ -87,7 +77,7 @@ const DepositEmailModal: React.FC = () => {
         </View>
       )}
 
-      <View className="gap-4">
+      <View className="gap-4 mt-6">
         {currentStep === 'email' ? (
           <View className="gap-2">
             <Text className="font-medium text-muted-foreground">Email Address</Text>
@@ -98,7 +88,6 @@ const DepositEmailModal: React.FC = () => {
                 const InputComponent = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
                 return (
                   <InputComponent
-                    placeholder="email@example.com"
                     value={value}
                     onChangeText={onChange}
                     onBlur={onBlur}
@@ -147,7 +136,7 @@ const DepositEmailModal: React.FC = () => {
           </View>
         )}
 
-        <View className="gap-3 mt-4">
+        <View className="gap-3">
           <Button
             onPress={
               currentStep === 'email'
@@ -173,11 +162,9 @@ const DepositEmailModal: React.FC = () => {
             </Button>
           )}
 
-          {isSkip && (
-            <Button onPress={handleSkip} variant="outline" className="rounded-2xl h-14 border-0">
-              <Text className="text-lg font-semibold">Skip for now</Text>
-            </Button>
-          )}
+          <Button onPress={handleSkip} variant="ghost" className="rounded-2xl h-14 border-0">
+            <Text className="text-lg font-semibold">Skip</Text>
+          </Button>
         </View>
       </View>
     </View>
