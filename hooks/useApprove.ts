@@ -84,6 +84,7 @@ export function useApprove(
 export function useApproveCallbackFromTrade(
   trade: Trade<Currency, Currency, TradeType> | undefined,
   allowedSlippage: Percent,
+  customSpender?: Address,
 ) {
   const amountToApprove = useMemo(
     () =>
@@ -92,7 +93,11 @@ export function useApproveCallbackFromTrade(
         : undefined,
     [trade, allowedSlippage],
   );
-  return useApprove(amountToApprove, ALGEBRA_ROUTER);
+  
+  // Use custom spender if provided, otherwise default to ALGEBRA_ROUTER
+  const spender = customSpender || ALGEBRA_ROUTER;
+  
+  return useApprove(amountToApprove, spender);
 }
 
 export function useApproveCallbackFromVoltageTrade(
@@ -106,7 +111,10 @@ export function useApproveCallbackFromVoltageTrade(
         : undefined,
     [trade, allowedSlippage],
   );
-  return useApprove(amountToApprove, trade?.to as Address);
+  // Use allowanceTarget from Voltage API, which is the contract that needs approval
+  // This is different from 'to' which is the transaction target
+  const spender = (trade?.allowanceTarget || trade?.to) as Address;
+  return useApprove(amountToApprove, spender);
 }
 
 export function useApproveCallbackFromPegSwap(

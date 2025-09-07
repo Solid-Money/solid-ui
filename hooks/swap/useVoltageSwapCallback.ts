@@ -20,6 +20,19 @@ export function useVoltageSwapCallback(
   const { user, safeAA } = useUser();
   const { needAllowance, approvalConfig } =
     useApproveCallbackFromVoltageTrade(trade, allowedSlippage);
+    
+  // For token inputs, we ALWAYS need approval - override the hook if it's wrong
+  const isTokenInput = trade?.inputAmount?.currency?.isToken;
+  const actualNeedAllowance = isTokenInput ? true : needAllowance;
+  
+  console.log('🔍 Voltage Approval Analysis:', {
+    isTokenInput,
+    originalNeedAllowance: needAllowance,
+    actualNeedAllowance,
+    hasApprovalConfig: !!approvalConfig,
+    tokenSymbol: isTokenInput ? trade?.inputAmount?.currency?.symbol : 'N/A',
+    tokenAddress: isTokenInput ? trade?.inputAmount?.currency?.address : 'N/A',
+  });
   const account = user?.safeAddress;
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
@@ -34,7 +47,29 @@ export function useVoltageSwapCallback(
 
       const transactions = [];
 
-      if (needAllowance && approvalConfig) {
+      if (actualNeedAllowance && approvalConfig) {
+        console.log('🔍 Voltage Approval Debug:', {
+          tokenToApprove: approvalConfig.request.address,
+          spenderBeingApproved: approvalConfig.request.args?.[0],
+          voltageAllowanceTarget: trade?.allowanceTarget,
+          voltageTransactionTarget: trade?.to,
+          isCorrect: approvalConfig.request.args?.[0] === trade?.allowanceTarget,
+        });
+
+        Sentry.addBreadcrumb({
+          message: 'Adding Voltage approval transaction',
+          category: 'swap',
+          level: 'debug',
+          data: {
+            tokenAddress: approvalConfig.request.address,
+            originalNeedAllowance: needAllowance,
+          actualNeedAllowance,
+          spender: approvalConfig.request.args?.[0],
+            allowanceTarget: trade?.allowanceTarget,
+            transactionTarget: trade?.to,
+          },
+        });
+
         transactions.push({
           to: approvalConfig.request.address,
           data: encodeFunctionData({
