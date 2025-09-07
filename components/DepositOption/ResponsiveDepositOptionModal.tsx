@@ -150,6 +150,9 @@ const ResponsiveDepositOptionModal = ({
     if (isBankTransfer) {
       return 'w-[450px] max-h-[85vh]';
     }
+    if (isEmailGate) {
+      return 'pb-4 md:pb-4';
+    }
     return '';
   };
 
