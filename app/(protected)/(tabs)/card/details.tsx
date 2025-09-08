@@ -27,7 +27,10 @@ export default function CardDetails() {
 
       <View className="flex-1 max-w-lg mx-auto pt-8">
         <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            className="web:hover:opacity-70"
+          >
             <ArrowLeft color="white" />
           </Pressable>
           <Text className="text-white text-xl md:text-2xl font-semibold text-center">Card</Text>
