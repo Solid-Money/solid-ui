@@ -1,79 +1,74 @@
 import { Image } from 'expo-image';
-import { Plus } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import Loading from '@/components/Loading';
-import { Button } from '@/components/ui/button';
+import Navbar from '@/components/Navbar';
 import { Text } from '@/components/ui/text';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import { useDimension } from '@/hooks/useDimension';
 
 export default function CardDetails() {
   const { data: cardDetails, isLoading } = useCardDetails();
+  const { isScreenMedium } = useDimension();
+  const router = useRouter();
 
   const availableBalance = cardDetails?.balances.available;
-  const currency = availableBalance?.currency || '?';
-  const availableAmount = availableBalance?.amount || '0';
+  const availableAmount = Number(availableBalance?.amount || '0').toString();
 
   if (isLoading) return <Loading />;
 
   return (
-    <View className="flex-1 bg-background p-6">
-      {/* Balance Information */}
-      <View className="items-center mt-10 mb-6">
-        <View className="flex-row items-baseline">
-          <Text className="text-xl font-semibold">{currency}</Text>
-          <Text className="text-[50px] font-semibold">{availableAmount}</Text>
+    <View className="flex-1 bg-background">
+      {isScreenMedium && <Navbar />}
+
+      <View className="flex-1 max-w-lg mx-auto pt-8">
+        <View className="flex-row items-center justify-between">
+          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+            <ArrowLeft color="white" />
+          </Pressable>
+          <Text className="text-white text-xl md:text-2xl font-semibold text-center">Card</Text>
+          <View className="w-10" />
         </View>
-        <Text className="text-base opacity-70 mt-2">Spendable balance</Text>
-      </View>
 
-      <Button className="rounded-3xl h-10 w-auto self-center mb-6">
-        <View className="flex-row">
-          <Plus color="black" />
-          <Text className="font-bold text-base ml-2">Add funds</Text>
-        </View>
-      </Button>
+        {/* Balance Information */}
+        <View className="flex-1">
+          <View className="items-center mt-10">
+            <Text className="text-[50px] font-semibold">${availableAmount}</Text>
+            <Text className="text-base opacity-70">Spendable balance</Text>
+          </View>
 
-      <View className="items-center mb-8">
-        <Image
-          source={require('@/assets/images/card.png')}
-          alt="Solid Card"
-          style={{ width: '30%', aspectRatio: 4 / 3 }}
-          contentFit="contain"
-        />
-      </View>
-
-      {/* Circular Action Buttons */}
-      <View className="flex-row justify-around items-center w-1/4 self-center">
-        <View className="items-center">
-          <Button className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200">
+          <View className="items-center my-12">
             <Image
-              source={require('@/assets/images/settings.png')}
-              style={{ width: 34, height: 34 }}
+              source={require('@/assets/images/card_details.png')}
+              alt="Solid Card"
+              style={{ width: '80%', aspectRatio: 414 / 693 }}
+              contentFit="contain"
             />
-          </Button>
-          <Text className="text-xs mt-2 text-muted-foreground">Settings</Text>
-        </View>
+          </View>
 
-        <View className="items-center">
-          <Button className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200">
-            <Image
-              source={require('@/assets/images/limit.png')}
-              style={{ width: 34, height: 34 }}
+          {/* Circular Action Buttons */}
+          <View className="flex-row justify-around items-center space-x-12">
+            <CircularActionButton
+              icon={require('@/assets/images/card_actions_fund.png')}
+              label="Fund"
             />
-          </Button>
-          <Text className="text-xs mt-2 text-muted-foreground">Limit</Text>
-        </View>
-
-        <View className="items-center">
-          <Button className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200">
-            <Image
-              source={require('@/assets/images/freeze.png')}
-              style={{ width: 28, height: 28 }}
+            <CircularActionButton
+              icon={require('@/assets/images/card_actions_settings.png')}
+              label="Settings"
             />
-          </Button>
-          <Text className="text-xs mt-2 text-muted-foreground">Freeze</Text>
+            <CircularActionButton
+              icon={require('@/assets/images/card_actions_limit.png')}
+              label="Limit"
+            />
+            <CircularActionButton
+              icon={require('@/assets/images/card_actions_freeze.png')}
+              label="Freeze"
+            />
+          </View>
         </View>
       </View>
     </View>
