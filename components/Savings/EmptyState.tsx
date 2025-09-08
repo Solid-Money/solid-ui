@@ -14,6 +14,7 @@ import { fontSize } from '@/lib/utils';
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
+import ExtraYield from '@/components/Savings/ExtraYield';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
@@ -21,7 +22,7 @@ export default function SavingsEmptyState() {
   const renderContent = () => (
     <>
       {isScreenMedium && <Navbar />}
-      <View className="w-full max-w-7xl mx-auto gap-8 md:gap-16 px-4 py-8">
+      <View className="w-full max-w-7xl mx-auto gap-8 px-4 py-8">
         {isScreenMedium ? (
           <View className="md:flex-row justify-between md:items-center gap-y-4">
             <View className="flex-row items-center">
@@ -87,7 +88,8 @@ export default function SavingsEmptyState() {
           )}
         </LinearGradient>
         {!isScreenMedium && <DepositOptionModal />}
-        <FAQs faqs={faqs} />
+        <ExtraYield />
+        <FAQs faqs={faqs} className="md:mt-16" />
       </View>
     </>
   );
