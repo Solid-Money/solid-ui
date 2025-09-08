@@ -19,6 +19,8 @@ export const EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ?? '100';
 export const EXPO_PUBLIC_LIFI_API_URL =
   process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
+export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_ID ?? '';
+
 
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 

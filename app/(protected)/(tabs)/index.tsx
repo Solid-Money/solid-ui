@@ -28,6 +28,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
+import { useIntercom } from 'react-use-intercom';
 
 export default function Savings() {
   const { user } = useUser();
@@ -38,6 +39,7 @@ export default function Savings() {
     refetch: refetchBalance,
   } = useFuseVaultBalance(user?.safeAddress as Address);
   const { updateUser } = useUserStore();
+  const { update } = useIntercom();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -106,6 +108,16 @@ export default function Savings() {
       updateUser({ ...user, isDeposited });
     }
   }, [isDeposited, user, updateUser]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    update({
+      userId: user.userId,
+      name: user.username,
+      email: user.email,
+    });
+  }, [user, update]);
 
   if (isBalanceLoading || isTransactionsLoading) {
     return <Loading />;
