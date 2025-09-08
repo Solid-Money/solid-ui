@@ -7,8 +7,8 @@ import { withRefreshToken } from '@/lib/utils';
 import { useKycStore } from '@/store/useKycStore';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useKycLinkFromBridge } from './useCustomer';
 import Toast from 'react-native-toast-message';
+import { useKycLinkFromBridge } from './useCustomer';
 
 interface Step {
   id: number;
@@ -23,7 +23,7 @@ interface Step {
 export function useCardSteps() {
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [cardActivated, setCardActivated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [activatingCard, setActivatingCard] = useState(false);
 
   const router = useRouter();
   const { kycLinkId } = useKycStore();
@@ -64,7 +64,7 @@ export function useCardSteps() {
 
   const handleActivateCard = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setActivatingCard(true);
       const card = await withRefreshToken(() => createCard());
 
       if (!card) throw new Error('Failed to create card');
@@ -86,7 +86,7 @@ export function useCardSteps() {
         },
       });
     } finally {
-      setIsLoading(false);
+      setActivatingCard(false);
     }
   }, [router]);
 
@@ -155,6 +155,6 @@ export function useCardSteps() {
     activeStepId,
     isStepButtonEnabled,
     toggleStep,
-    isLoading,
+    activatingCard,
   };
 }
