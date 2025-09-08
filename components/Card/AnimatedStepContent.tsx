@@ -16,9 +16,15 @@ interface AnimatedStepContentProps {
   step: Step;
   isActive: boolean;
   isButtonEnabled: boolean;
+  activatingCard?: boolean;
 }
 
-export function AnimatedStepContent({ step, isActive, isButtonEnabled }: AnimatedStepContentProps) {
+export function AnimatedStepContent({
+  step,
+  isActive,
+  isButtonEnabled,
+  activatingCard,
+}: AnimatedStepContentProps) {
   const height = useSharedValue(0);
   const opacity = useSharedValue(0);
 
@@ -50,14 +56,14 @@ export function AnimatedStepContent({ step, isActive, isButtonEnabled }: Animate
             isButtonEnabled ? 'bg-[#94F27F]' : 'bg-gray-500 opacity-50'
           }`}
           onPress={isButtonEnabled ? step.onPress : undefined}
-          disabled={!isButtonEnabled}
+          disabled={!isButtonEnabled || activatingCard}
         >
           <Text
             className={`font-semibold text-base ${
               isButtonEnabled ? 'text-black' : 'text-gray-300'
             }`}
           >
-            {step.buttonText}
+            {activatingCard ? 'Activating...' : step.buttonText}
           </Text>
         </Button>
       )}

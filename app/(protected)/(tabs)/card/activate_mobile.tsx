@@ -18,7 +18,7 @@ export default function ActivateMobile() {
     kycStatus?: KycStatus;
   }>();
 
-  const { steps, activeStepId, isStepButtonEnabled, toggleStep } = useCardSteps();
+  const { steps, activeStepId, isStepButtonEnabled, toggleStep, activatingCard } = useCardSteps();
 
   const { isScreenMedium } = useDimension();
   const router = useRouter();
@@ -71,6 +71,7 @@ export default function ActivateMobile() {
                     step={step}
                     isActive={activeStepId === step.id}
                     isButtonEnabled={isStepButtonEnabled(index)}
+                    activatingCard={activatingCard}
                   />
                 </View>
               </View>
