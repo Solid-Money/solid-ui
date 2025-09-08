@@ -51,7 +51,8 @@ export default function Invite() {
   const handlePasteInviteCode = async () => {
     try {
       const text = await Clipboard.getStringAsync();
-      setValue('inviteCode', text || signupUser.inviteCode || '');
+      const code = (`${watchedInviteCode}${text}`).trim();
+      setValue('inviteCode', code);
       trigger('inviteCode');
     } catch (error) {
       console.error('Error pasting invite code:', error);
@@ -82,6 +83,13 @@ export default function Invite() {
   const handleBack = () => {
     router.push(path.REGISTER);
   };
+
+  useEffect(() => {
+    if (signupUser.inviteCode) {
+      setValue('inviteCode', signupUser.inviteCode);
+      trigger('inviteCode');
+    }
+  }, [signupUser.inviteCode, setValue, trigger]);
 
   useEffect(() => {
     setSignupInfo({ status: Status.IDLE, message: '' });
