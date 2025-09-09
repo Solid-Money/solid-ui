@@ -25,6 +25,8 @@ import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import TooltipPopover from '@/components/Tooltip';
+import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
@@ -96,17 +98,38 @@ function DepositToVaultForm() {
 
   const onSubmit = async (data: DepositFormData) => {
     try {
+      track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
+        amount: data.amount,
+        chain_id: srcChainId,
+        is_ethereum: isEthereum,
+        is_sponsor: isSponsor,
+        expected_output: amountOut,
+        exchange_rate: exchangeRate,
+      });
+
       await deposit(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
       });
-    } catch (_error) {
+    } catch (error) {
+      track(TRACKING_EVENTS.DEPOSIT_FAILED, {
+        amount: data.amount,
+        chain_id: srcChainId,
+        is_ethereum: isEthereum,
+        error: String(error),
+      });
       // handled by hook
     }
   };
 
   useEffect(() => {
     if (depositStatus === DepositStatus.SUCCESS) {
+      track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
+        chain_id: srcChainId,
+        is_ethereum: isEthereum,
+        hash: hash,
+      });
+
       reset(); // Reset form after successful transaction
       setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
       if (!hash) return;
@@ -126,7 +149,7 @@ function DepositToVaultForm() {
         },
       });
     }
-  }, [reset, setModal, depositStatus, isEthereum, hash]);
+  }, [reset, setModal, depositStatus, isEthereum, hash, srcChainId]);
 
   const isFormDisabled = () => {
     return isLoading || !isValid || !watchedAmount;

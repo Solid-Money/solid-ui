@@ -23,6 +23,8 @@ import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 import Toast from 'react-native-toast-message';
+import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 interface TokenBalance {
   contractTickerSymbol: string;
@@ -131,11 +133,28 @@ const SendPage = () => {
     if (!selectedToken) return;
 
     try {
+      track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_INITIATED, {
+        token_symbol: selectedToken.contractTickerSymbol,
+        token_address: selectedToken.contractAddress,
+        chain_id: selectedToken.chainId,
+        amount: data.amount.toString(),
+        to_address: data.address,
+        source: 'send_page',
+      });
+
       const transaction = await send(data.amount.toString(), data.address as Address);
       setTransaction({
         amount: Number(data.amount),
         address: data.address,
       });
+
+      track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_COMPLETED, {
+        token_symbol: selectedToken.contractTickerSymbol,
+        amount: data.amount.toString(),
+        transaction_hash: transaction.transactionHash,
+        source: 'send_page',
+      });
+
       if (Platform.OS === 'web') {
         setModal(SEND_MODAL.OPEN_TRANSACTION_STATUS);
       } else {
@@ -159,6 +178,12 @@ const SendPage = () => {
       reset();
     } catch (error) {
       console.error('Send failed:', error);
+      track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_FAILED, {
+        token_symbol: selectedToken?.contractTickerSymbol,
+        amount: data.amount.toString(),
+        error: String(error),
+        source: 'send_page',
+      });
     }
   };
 
@@ -215,7 +240,13 @@ const SendPage = () => {
             <View className="flex-row items-center justify-between gap-2">
               <Pressable
                 className="flex-row items-center gap-3 web:hover:bg-accent rounded-full px-2 h-10"
-                onPress={() => setShowTokenSelector(true)}
+                onPress={() => {
+                  track(TRACKING_EVENTS.SEND_PAGE_TOKEN_SELECTOR_OPENED, {
+                    source: 'send_page',
+                    current_token: selectedToken?.contractTickerSymbol || null,
+                  });
+                  setShowTokenSelector(true);
+                }}
               >
                 {selectedToken ? (
                   <>
@@ -301,6 +332,13 @@ const SendPage = () => {
         }}
         tokens={allTokens}
         onSelectToken={token => {
+          track(TRACKING_EVENTS.SEND_PAGE_TOKEN_SELECTED, {
+            token_symbol: token.contractTickerSymbol,
+            token_address: token.contractAddress,
+            chain_id: token.chainId,
+            balance: token.balance,
+            source: 'send_page',
+          });
           setSelectedToken(token);
           Keyboard.dismiss(); // Dismiss keyboard when selecting token
         }}

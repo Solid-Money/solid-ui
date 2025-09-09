@@ -135,6 +135,10 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
           to: data.address,
           userAddress: user?.safeAddress,
         },
+        user: {
+          id: user?.userId,
+          address: user?.safeAddress,
+        },
       });
       Toast.show({
         type: 'error',

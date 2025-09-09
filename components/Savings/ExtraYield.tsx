@@ -39,9 +39,7 @@ const ExtraYield = () => {
         <View>
           <Text className="text-2xl font-bold">Get extra 3% for your early support!</Text>
           <View className="flex-row items-center gap-1">
-            <Text className="text-muted-foreground font-medium">
-              Get +3% APY for 2 months.
-            </Text>
+            <Text className="text-muted-foreground font-medium">Get +3% APY for 2 months.</Text>
             <TooltipPopover text="Deposit $100+ and earn an extra 3% APY for 2 months." />
           </View>
         </View>
