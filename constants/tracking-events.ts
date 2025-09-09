@@ -85,6 +85,14 @@ export const TRACKING_EVENTS = {
 
   // User Registration Events
   SIGNUP_STARTED: 'signup_started',
+  SIGNUP_COMPLETED: 'signup_completed',
+  SIGNUP_FAILED: 'signup_failed',
+  LOGGED_IN: 'logged_in',
+  LOGIN_FAILED: 'login_failed',
+  LOGGED_OUT: 'logged_out',
+  WELCOME_USER: 'welcome_user',
+  FORGOT_ALL_USERS: 'forgot_all_users',
+  DELETE_ACCOUNT: 'delete_account',
 
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',

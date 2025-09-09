@@ -31,6 +31,8 @@ import { Chain, createWalletClient, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -342,6 +344,10 @@ const useUser = (): UseUserReturn => {
           });
           throw error;
         }
+        track(TRACKING_EVENTS.SIGNUP_COMPLETED, {
+          username,
+          invite_code: inviteCode,
+        });
       } catch (error: any) {
         let message = '';
         if (error?.status === 409 || error.message?.includes('Username already exists')) {
@@ -354,6 +360,11 @@ const useUser = (): UseUserReturn => {
             error,
             message,
           },
+        });
+        track(TRACKING_EVENTS.SIGNUP_FAILED, {
+          username,
+          invite_code: inviteCode,
+          error: error.message,
         });
 
         setSignupInfo({ status: Status.ERROR, message });
@@ -440,6 +451,9 @@ const useUser = (): UseUserReturn => {
       }
 
       setLoginInfo({ status: Status.SUCCESS });
+      track(TRACKING_EVENTS.LOGGED_IN, {
+        username: user.username,
+      });
 
       router.replace(path.HOME);
     } catch (error: any) {
@@ -447,6 +461,10 @@ const useUser = (): UseUserReturn => {
         extra: {
           error,
         },
+      });
+      track(TRACKING_EVENTS.LOGIN_FAILED, {
+        username: user?.username,
+        error: error.message,
       });
       console.error(error);
       const errorMessage = error?.message || 'Network request timed out';
@@ -482,23 +500,32 @@ const useUser = (): UseUserReturn => {
   }, [router, storeUser]);
 
   const handleLogout = useCallback(() => {
+    track(TRACKING_EVENTS.LOGGED_OUT, {
+      username: user?.username,
+    });
     unselectUser();
     clearKycLinkId(); // Clear KYC data on logout
     shutdown();
     boot();
     router.replace(path.WELCOME);
-  }, [unselectUser, clearKycLinkId, router]);
+  }, [unselectUser, clearKycLinkId, router, user]);
 
   const handleSelectUser = useCallback(
     (username: string) => {
       selectUser(username);
       clearKycLinkId(); // Clear KYC data when switching users
+      track(TRACKING_EVENTS.WELCOME_USER, {
+        username: username,
+      });
       router.replace(path.HOME);
     },
     [selectUser, clearKycLinkId, router],
   );
 
   const handleRemoveUsers = useCallback(() => {
+    track(TRACKING_EVENTS.FORGOT_ALL_USERS, {
+      usernames: users.map((user: User) => user.username),
+    });
     removeUsers();
     clearKycLinkId(); // Clear KYC data when removing all users
     router.replace(path.REGISTER);
@@ -516,6 +543,10 @@ const useUser = (): UseUserReturn => {
     try {
       await withRefreshToken(deleteAccount);
 
+      track(TRACKING_EVENTS.DELETE_ACCOUNT, {
+        usernames: users.map((user: User) => user.username),
+      });
+
       // Clear all user data
       removeUsers();
       clearKycLinkId();
@@ -527,7 +558,7 @@ const useUser = (): UseUserReturn => {
       console.error('Error deleting account:', error);
       throw error;
     }
-  }, [removeUsers, clearKycLinkId, queryClient, router]);
+  }, [removeUsers, clearKycLinkId, queryClient, router, user]);
 
   useEffect(() => {
     setGlobalLogoutHandler(handleSessionExpired);
