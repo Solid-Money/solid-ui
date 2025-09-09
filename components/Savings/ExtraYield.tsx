@@ -1,14 +1,13 @@
-import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
 import { Plus } from 'lucide-react-native';
+import { View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
-import TooltipPopover from '@/components/Tooltip';
-import { useTotalAPY } from '@/hooks/useAnalytics';
-import { Skeleton } from '@/components/ui/skeleton';
 import { DepositOptionModal } from '@/components/DepositOption';
+import TooltipPopover from '@/components/Tooltip';
 import { buttonVariants } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { useTotalAPY } from '@/hooks/useAnalytics';
 
 const ExtraYield = () => {
   const { data: totalAPY } = useTotalAPY();
@@ -39,23 +38,19 @@ const ExtraYield = () => {
         />
         <View>
           <Text className="text-2xl font-bold">Get extra 3% for your early support!</Text>
-          <Text className="text-muted-foreground font-medium">
-            Get +3% APY for 2 months.{' '}
-            <Link
-              href="https://docs.solid.xyz"
-              target="_blank"
-              className="font-bold hover:opacity-70"
-            >
-              {'Read more >'}
-            </Link>
-          </Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-muted-foreground font-medium">
+              Get +3% APY for 2 months.
+            </Text>
+            <TooltipPopover text="Deposit $100+ and earn an extra 3% APY for 2 months." />
+          </View>
         </View>
       </View>
 
       <View>
         <View className="flex-row items-center gap-1">
           <Text className="text-lg text-muted-foreground font-medium">Pool cap</Text>
-          <TooltipPopover text="Pool cap" />
+          <TooltipPopover text="The maximum amount that can be deposited into this Solid vault. Once the cap is reached, it may be raised to allow more deposits." />
         </View>
         <Text className="text-2xl font-semibold">1M$</Text>
       </View>
@@ -63,7 +58,7 @@ const ExtraYield = () => {
       <View>
         <View className="flex-row items-center gap-1">
           <Text className="text-lg text-muted-foreground font-medium">Pool APY</Text>
-          <TooltipPopover text="Pool APY" />
+          <TooltipPopover text="Annual Percentage Yield (APY): the projected yearly return on your funds, shown as a percentage." />
         </View>
         <Text className="text-2xl font-semibold">
           {totalAPY ? `${totalAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
