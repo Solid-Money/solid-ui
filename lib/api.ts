@@ -98,8 +98,8 @@ axios.interceptors.request.use(config => {
 
 // Set up axios response interceptor to handle errors
 axios.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  response => response,
+  error => {
     const status = error.response?.status;
     const url = error.config?.url;
     const method = error.config?.method;
@@ -117,7 +117,7 @@ axios.interceptors.response.use(
     });
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export const refreshToken = async () => {
@@ -796,6 +796,42 @@ export const getBankTransfers = async (): Promise<BridgeApiTransfer[]> => {
       credentials: 'include',
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const freezeCard = async (): Promise<{ message: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/freeze`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const unfreezeCard = async (): Promise<{ message: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/unfreeze`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 
