@@ -23,7 +23,7 @@ import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 import Toast from 'react-native-toast-message';
-import { track } from '@/lib/firebase';
+import { track } from '@/lib/analytics';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 interface TokenBalance {

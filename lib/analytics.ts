@@ -1,5 +1,5 @@
-import { initFirebase, trackFirebaseEvent, trackFirebaseIdentity, trackFirebaseScreen } from '@/lib/firebase';
 import { initAmplitude, trackAmplitudeEvent, trackAmplitudeIdentity, trackAmplitudeScreen } from '@/lib/amplitude';
+import { initFirebase, trackFirebaseEvent, trackFirebaseIdentity, trackFirebaseScreen } from '@/lib/firebase';
 
 export const initAnalytics = () => {
   initAmplitude();

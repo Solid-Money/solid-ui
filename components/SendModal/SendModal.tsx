@@ -1,16 +1,16 @@
-import React from 'react';
 import { useRouter } from 'expo-router';
+import React from 'react';
 import { Address } from 'viem';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
 import { SEND_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { TokenIcon } from '@/lib/types';
 import { useSendStore } from '@/store/useSendStore';
 import { Send, SendTrigger } from '.';
-import { path } from '@/constants/path';
-import { track } from '@/lib/firebase';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 type SendModalProps = {
   tokenAddress: Address;

@@ -1,15 +1,15 @@
-import React from 'react';
 import { useRouter } from 'expo-router';
+import React from 'react';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
 import { WITHDRAW_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useWithdrawStore } from '@/store/useWithdrawStore';
 import { Withdraw, WithdrawTrigger } from '.';
-import { path } from '@/constants/path';
-import { track } from '@/lib/firebase';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 const WithdrawModal = () => {
   const router = useRouter();

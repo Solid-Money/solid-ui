@@ -9,7 +9,9 @@ import {
 import { Text } from '@/components/ui/text';
 import { KycMode } from '@/components/UserKyc';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer } from '@/hooks/useCustomer';
+import { track } from '@/lib/analytics';
 import {
   createBridgeTransfer,
   getCustomerEndorsements,
@@ -22,8 +24,6 @@ import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { PaymentMethodTile } from './PaymentMethodTile';
-import { track } from '@/lib/firebase';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 type Props = {
   fiat?: BridgeTransferFiatCurrency;
