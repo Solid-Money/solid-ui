@@ -5,10 +5,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_APP_ID, EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN, EXPO_PUBLIC_FIREBASE_DATABASE_URL, EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID, EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, EXPO_PUBLIC_FIREBASE_PROJECT_ID, EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET } from '@/lib/config';
 
+export enum FirebaseEvent {
+  SCREEN_VIEW = 'screen_view',
+}
+
 const isApp = getApps().length > 0;
 const app = getApps()[0];
 
-export const init = async () => {
+export const initFirebase = async () => {
   if (Platform.OS !== 'web' || isApp) return;
 
   try {
@@ -30,7 +34,7 @@ export const init = async () => {
   }
 };
 
-export const track = async (event: string, params: Record<string, any>) => {
+export const trackFirebaseEvent = async (event: string, params: Record<string, any>) => {
   try {
     await logEvent(getAnalytics(app), event, params);
   } catch (error) {
@@ -38,9 +42,9 @@ export const track = async (event: string, params: Record<string, any>) => {
   }
 }
 
-export const trackScreen = async (pathname: string, params: Record<string, any>) => {
+export const trackFirebaseScreen = async (pathname: string, params: Record<string, any>) => {
   try {
-    await logEvent(getAnalytics(app), 'screen_view', {
+    await logEvent(getAnalytics(app), FirebaseEvent.SCREEN_VIEW, {
       firebase_screen: pathname,
       firebase_screen_class: pathname,
       params: JSON.stringify(params),
@@ -50,7 +54,7 @@ export const trackScreen = async (pathname: string, params: Record<string, any>)
   }
 }
 
-export const trackIdentity = async (id: string, params: Record<string, any>) => {
+export const trackFirebaseIdentity = async (id: string, params: Record<string, any>) => {
   try {
     await setUserId(getAnalytics(app), id);
     await setUserProperties(getAnalytics(app), params);

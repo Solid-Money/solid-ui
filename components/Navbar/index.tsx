@@ -4,10 +4,10 @@ import { Platform, SafeAreaView, View } from 'react-native';
 
 import AccountCenterModal from '@/components/AccountCenter/AccountCenterModal';
 import { path } from '@/constants/path';
-import { NavMenu } from './NavMenu';
-import { useDimension } from '@/hooks/useDimension';
-import { track } from '@/lib/firebase';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useDimension } from '@/hooks/useDimension';
+import { track } from '@/lib/analytics';
+import { NavMenu } from './NavMenu';
 
 const Navbar = () => {
   const { isScreenMedium } = useDimension();

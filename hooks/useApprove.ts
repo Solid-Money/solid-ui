@@ -3,11 +3,11 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { ALGEBRA_ROUTER, PEG_SWAP } from '@/constants/addresses';
 import { MarketData } from '@/constants/lend';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import { useNeedAllowance } from '@/hooks/tokens/useNeedAllowance';
+import { track } from '@/lib/analytics';
 import { executeTransactions } from '@/lib/execute';
-import { track } from '@/lib/firebase';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { ApprovalState, ApprovalStateType } from '@/lib/types/approve-state';
 import { computeSlippageAdjustedAmounts } from '@/lib/utils/swap/prices';
 import { Address, encodeFunctionData, erc20Abi } from 'viem';

@@ -3,7 +3,7 @@ import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
 import '@/global.css';
 import { infoClient } from '@/graphql/clients';
-import { init, trackScreen } from '@/lib/firebase';
+import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
 import { ApolloProvider } from '@apollo/client';
 import {
@@ -182,7 +182,7 @@ export default Sentry.wrap(function RootLayout() {
         // await Font.loadAsync(Entypo.font);
 
         // Simulate loading time - replace with actual async operations
-        await init();
+        await initAnalytics();
         Appearance.setColorScheme('dark');
         await new Promise(resolve => setTimeout(resolve, 2000));
 

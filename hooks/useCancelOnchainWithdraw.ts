@@ -1,8 +1,8 @@
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
+import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { track } from '@/lib/firebase';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { Status } from '@/lib/types';
 import { useState } from 'react';
 import { TransactionReceipt } from 'viem';

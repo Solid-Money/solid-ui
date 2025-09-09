@@ -12,7 +12,7 @@ import useUser from '@/hooks/useUser';
 import { isPasskeySupported } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
-import { trackIdentity } from '@/lib/firebase';
+import { trackIdentity } from '@/lib/analytics';
 
 export default function ProtectedLayout() {
   const { user } = useUser();
