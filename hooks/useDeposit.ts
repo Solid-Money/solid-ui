@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/react-native';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   type Address,
   encodeAbiParameters,
@@ -9,56 +9,26 @@ import {
   TransactionReceipt,
 } from 'viem';
 import { mainnet } from 'viem/chains';
-import { useBlockNumber, useReadContract } from 'wagmi';
+import { useReadContract } from 'wagmi';
 
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { ADDRESSES } from '@/lib/config';
-import { executeTransactions } from '@/lib/execute';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status } from '@/lib/types';
-import { useUserStore } from '@/store/useUserStore';
 import useUser from './useUser';
 
 type DepositResult = {
-  allowance: bigint | undefined;
-  balance: bigint | undefined;
-  approve: (amount: string) => Promise<void>;
   deposit: (amount: string) => Promise<TransactionReceipt>;
-  approveStatus: Status;
   depositStatus: Status;
   error: string | null;
 };
 
 const useDeposit = (): DepositResult => {
   const { user, safeAA } = useUser();
-  const { updateUser } = useUserStore();
-  const [approveStatus, setApproveStatus] = useState<Status>(Status.IDLE);
   const [depositStatus, setDepositStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
-  const { data: blockNumber } = useBlockNumber({ watch: true });
-
-  const { data: balance, refetch: refetchBalance } = useReadContract({
-    abi: ERC20_ABI,
-    address: ADDRESSES.ethereum.usdc,
-    functionName: 'balanceOf',
-    args: [user?.safeAddress as Address],
-    chainId: mainnet.id,
-    query: {
-      enabled: !!user?.safeAddress,
-    },
-  });
-
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    abi: ERC20_ABI,
-    address: ADDRESSES.ethereum.usdc,
-    functionName: 'allowance',
-    args: [user?.safeAddress as Address, ADDRESSES.ethereum.vault],
-    chainId: mainnet.id,
-    query: {
-      enabled: !!user?.safeAddress,
-    },
-  });
 
   const { data: fee } = useReadContract({
     abi: ETHEREUM_TELLER_ABI,
@@ -73,111 +43,18 @@ const useDeposit = (): DepositResult => {
     chainId: mainnet.id,
   });
 
-  const approve = async (amount: string) => {
-    try {
-      if (!user?.passkey) {
-        const error = new Error('Passkey not found');
-        Sentry.captureException(error, {
-          tags: {
-            operation: 'deposit_approve',
-            step: 'validation',
-          },
-          extra: {
-            amount,
-            hasUser: !!user,
-            hasPasskey: !!user?.passkey,
-          },
-        });
-        throw error;
-      }
-
-      setApproveStatus(Status.PENDING);
-      setError(null);
-
-      const amountWei = parseUnits(amount, 6);
-
-      Sentry.addBreadcrumb({
-        message: 'Starting approval for deposit',
-        category: 'deposit',
-        data: {
-          amount,
-          amountWei: amountWei.toString(),
-          userAddress: user.safeAddress,
-          spender: ADDRESSES.ethereum.vault,
-        },
-      });
-
-      const approveTransaction = {
-        to: ADDRESSES.ethereum.usdc,
-        data: encodeFunctionData({
-          abi: ERC20_ABI,
-          functionName: 'approve',
-          args: [ADDRESSES.ethereum.vault, amountWei],
-        }),
-        value: 0n,
-      };
-
-      const smartAccountClient = await safeAA(user.passkey, mainnet);
-
-      await executeTransactions(
-        smartAccountClient,
-        user.passkey,
-        [approveTransaction],
-        'Approval failed',
-        mainnet,
-      );
-
-      await refetchAllowance();
-      
-      Sentry.addBreadcrumb({
-        message: 'Approval transaction completed successfully',
-        category: 'deposit',
-        data: {
-          amount,
-          userAddress: user.safeAddress,
-          spender: ADDRESSES.ethereum.vault,
-        },
-      });
-      
-      setApproveStatus(Status.SUCCESS);
-    } catch (error) {
-      console.error(error);
-      
-      Sentry.captureException(error, {
-        tags: {
-          operation: 'deposit_approve',
-          step: 'execution',
-        },
-        extra: {
-          amount,
-          userAddress: user?.safeAddress,
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
-          approveStatus,
-        },
-        user: {
-          id: user?.suborgId,
-          address: user?.safeAddress,
-        },
-      });
-      
-      setApproveStatus(Status.ERROR);
-      setError(error instanceof Error ? error.message : 'Unknown error');
-    }
-  };
-
   const deposit = async (amount: string) => {
     try {
-      if (!user?.passkey) {
-        const error = new Error('Passkey not found');
+      if (!user) {
+        const error = new Error('User is not selected');
         Sentry.captureException(error, {
           tags: {
-            operation: 'deposit',
+            operation: 'deposit_from_safe',
             step: 'validation',
           },
           extra: {
             amount,
             hasUser: !!user,
-            hasPasskey: !!user?.passkey,
           },
         });
         throw error;
@@ -189,13 +66,13 @@ const useDeposit = (): DepositResult => {
       const amountWei = parseUnits(amount, 6);
 
       Sentry.addBreadcrumb({
-        message: 'Starting deposit transaction',
+        message: 'Starting deposit from Safe transaction',
         category: 'deposit',
         data: {
           amount,
           amountWei: amountWei.toString(),
           userAddress: user.safeAddress,
-          fee: fee?.toString(),
+          chainId: mainnet.id,
         },
       });
 
@@ -205,9 +82,9 @@ const useDeposit = (): DepositResult => {
         args: [
           ADDRESSES.ethereum.usdc,
           amountWei,
-          BigInt(0),
+          0n,
           user.safeAddress,
-          encodeAbiParameters(parseAbiParameters('uint32'), [30138]),
+          encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
           ADDRESSES.ethereum.nativeFeeToken,
           fee ? fee : 0n,
         ],
@@ -228,82 +105,81 @@ const useDeposit = (): DepositResult => {
           data: encodeFunctionData({
             abi: BridgePayamster_ABI,
             functionName: 'callWithValue',
-            args: [ADDRESSES.ethereum.teller, callData, fee ? fee : 0n],
+            args: [ADDRESSES.ethereum.teller, '0xcab716e8', callData, fee ? fee : 0n],
           }),
           value: 0n,
         },
       ];
 
-      const smartAccountClient = await safeAA(user.passkey, mainnet);
+      const smartAccountClient = await safeAA(mainnet, user.suborgId, user.signWith);
 
       const transaction = await executeTransactions(
         smartAccountClient,
-        user.passkey,
         transactions,
         'Deposit failed',
         mainnet,
       );
 
-      updateUser({
-        ...user,
-        isDeposited: true,
-      });
-      
+      if (transaction === USER_CANCELLED_TRANSACTION) {
+        const error = new Error('User cancelled transaction');
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'deposit_from_safe',
+            step: 'execution',
+            reason: 'user_cancelled',
+          },
+          extra: {
+            amount,
+            userAddress: user.safeAddress,
+            chainId: mainnet.id,
+            fee: fee?.toString(),
+          },
+        });
+        throw error;
+      }
+
       Sentry.addBreadcrumb({
-        message: 'Deposit transaction completed successfully',
-        category: 'deposit',
+        message: 'Deposit from Safe transaction successful',
+        category: 'deposit_from_safe',
         data: {
           amount,
           transactionHash: transaction.transactionHash,
           userAddress: user.safeAddress,
-          fee: fee?.toString(),
+          chainId: mainnet.id,
         },
       });
-      
+
       setDepositStatus(Status.SUCCESS);
       return transaction;
     } catch (error) {
       console.error(error);
-      
+
       Sentry.captureException(error, {
         tags: {
-          operation: 'deposit',
+          operation: 'deposit_from_safe',
           step: 'execution',
         },
         extra: {
           amount,
           userAddress: user?.safeAddress,
+          chainId: mainnet.id,
           fee: fee?.toString(),
           errorMessage: error instanceof Error ? error.message : 'Unknown error',
           depositStatus,
-          allowance: allowance?.toString(),
-          balance: balance?.toString(),
         },
         user: {
           id: user?.suborgId,
           address: user?.safeAddress,
         },
       });
-      
+
       setDepositStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   };
 
-  useEffect(() => {
-    refetchBalance();
-  }, [blockNumber]);
-
-  return {
-    allowance,
-    balance,
-    approve,
-    deposit,
-    approveStatus,
-    depositStatus,
-    error,
-  };
+  return { deposit, depositStatus, error };
 };
 
 export default useDeposit;
