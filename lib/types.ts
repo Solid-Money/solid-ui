@@ -564,3 +564,9 @@ export interface SignupUser {
   username: string;
   inviteCode?: string;
 }
+
+export enum PromiseStatus {
+  PENDING = 'pending',
+  FULFILLED = 'fulfilled',
+  REJECTED = 'rejected',
+}

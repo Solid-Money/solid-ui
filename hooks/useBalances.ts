@@ -1,5 +1,5 @@
 import { ADDRESSES } from '@/lib/config';
-import { TokenBalance } from '@/lib/types';
+import { PromiseStatus, TokenBalance } from '@/lib/types';
 import { isSoUSDToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { useQuery } from '@tanstack/react-query';
@@ -96,7 +96,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   let rate = 0;
 
   // Process soUSD rate
-  if (soUSDRate.status === 'fulfilled') {
+  if (soUSDRate.status === PromiseStatus.FULFILLED) {
     rate = Number(soUSDRate.value) / Math.pow(10, 6);
   } else {
     console.warn('Failed to fetch soUSD rate:', soUSDRate.reason);
@@ -127,24 +127,24 @@ const fetchTokenBalances = async (safeAddress: string) => {
   };
 
   // Process Ethereum response (Blockscout)
-  if (ethereumResponse.status === 'fulfilled' && ethereumResponse.value.ok) {
+  if (ethereumResponse.status === PromiseStatus.FULFILLED && ethereumResponse.value.ok) {
     const ethereumData: BlockscoutResponse = await ethereumResponse.value.json();
     // Filter out NFTs and only include ERC-20 tokens
     ethereumTokens = ethereumData
       .filter(item => item.token.type === 'ERC-20')
       .map(item => convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID));
-  } else if (ethereumResponse.status === 'rejected') {
+  } else if (ethereumResponse.status === PromiseStatus.REJECTED) {
     console.warn('Failed to fetch Ethereum balances:', ethereumResponse.reason);
   }
 
   // Process Fuse response (Blockscout)
-  if (fuseResponse.status === 'fulfilled' && fuseResponse.value.ok) {
+  if (fuseResponse.status === PromiseStatus.FULFILLED && fuseResponse.value.ok) {
     const fuseData: BlockscoutResponse = await fuseResponse.value.json();
     // Filter out NFTs and only include ERC-20 tokens
     fuseTokens = fuseData
       .filter(item => item.token.type === 'ERC-20')
       .map(item => convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID));
-  } else if (fuseResponse.status === 'rejected') {
+  } else if (fuseResponse.status === PromiseStatus.REJECTED) {
     console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
   }
 
