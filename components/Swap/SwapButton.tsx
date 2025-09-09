@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SWAP_MODAL } from '@/constants/modals';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
 import { useSwapCallback } from '@/hooks/swap/useSwapCallback';
 import { useVoltageSwapCallback } from '@/hooks/swap/useVoltageSwapCallback';
@@ -197,7 +198,7 @@ const SwapButton: React.FC = () => {
 
   const handleSwap = useCallback(async () => {
     try {
-      track('swap_initiated', {
+      track(TRACKING_EVENTS.SWAP_INITIATED, {
         trade_type: isVoltageTrade ? 'voltage' : 'standard',
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -230,7 +231,7 @@ const SwapButton: React.FC = () => {
         await swapCallback();
       }
 
-      track('swap_completed', {
+      track(TRACKING_EVENTS.SWAP_COMPLETED, {
         trade_type: isVoltageTrade ? 'voltage' : 'standard',
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -240,7 +241,7 @@ const SwapButton: React.FC = () => {
     } catch (error: any) {
       console.error('❌ Swap transaction failed:', error);
 
-      track('swap_failed', {
+      track(TRACKING_EVENTS.SWAP_FAILED, {
         trade_type: isVoltageTrade ? 'voltage' : 'standard',
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -277,7 +278,7 @@ const SwapButton: React.FC = () => {
 
   const handlePegSwap = useCallback(async () => {
     try {
-      track('peg_swap_initiated', {
+      track(TRACKING_EVENTS.PEG_SWAP_INITIATED, {
         peg_swap_type: String(pegSwapType),
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -300,7 +301,7 @@ const SwapButton: React.FC = () => {
       if (!pegSwapCallback) return;
       await pegSwapCallback();
 
-      track('peg_swap_completed', {
+      track(TRACKING_EVENTS.PEG_SWAP_COMPLETED, {
         peg_swap_type: String(pegSwapType),
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -309,7 +310,7 @@ const SwapButton: React.FC = () => {
     } catch (error: any) {
       console.error('❌ Peg swap transaction failed:', error);
 
-      track('peg_swap_failed', {
+      track(TRACKING_EVENTS.PEG_SWAP_FAILED, {
         peg_swap_type: String(pegSwapType),
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -370,7 +371,7 @@ const SwapButton: React.FC = () => {
   if (showWrap) {
     const handleWrap = async () => {
       try {
-        track('wrap_initiated', {
+        track(TRACKING_EVENTS.WRAP_INITIATED, {
           wrap_type: String(wrapType),
           input_currency: currencies[SwapField.INPUT]?.symbol,
           output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -400,7 +401,7 @@ const SwapButton: React.FC = () => {
           const result = await onWrap();
 
           if (result !== undefined) {
-            track('wrap_completed', {
+            track(TRACKING_EVENTS.WRAP_COMPLETED, {
               wrap_type: String(wrapType),
               input_currency: currencies[SwapField.INPUT]?.symbol,
               output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -413,7 +414,7 @@ const SwapButton: React.FC = () => {
       } catch (error: any) {
         console.error('❌ Wrap/Unwrap failed:', error);
 
-        track('wrap_failed', {
+        track(TRACKING_EVENTS.WRAP_FAILED, {
           wrap_type: String(wrapType),
           input_currency: currencies[SwapField.INPUT]?.symbol,
           output_currency: currencies[SwapField.OUTPUT]?.symbol,

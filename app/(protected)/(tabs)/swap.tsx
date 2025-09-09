@@ -12,6 +12,7 @@ import SwapParams from '@/components/Swap/SwapParams';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 export default function SwapPage() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function SwapPage() {
           <View className="flex-row items-center justify-between">
             <Pressable
               onPress={() => {
-                track('swap_page_back_button_pressed', {
+                track(TRACKING_EVENTS.SWAP_PAGE_BACK_BUTTON_PRESSED, {
                   source: 'swap_page',
                 });
                 router.back();

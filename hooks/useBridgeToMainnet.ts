@@ -4,6 +4,7 @@ import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { Status } from '@/lib/types';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
@@ -47,7 +48,7 @@ const useBridgeToMainnet = (): BridgeResult => {
     try {
       if (!user) {
         const error = new Error('User is not selected');
-        track('bridge_to_mainnet_error', {
+        track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_ERROR, {
           amount: amount,
           error: 'User not found',
           step: 'validation',
@@ -66,7 +67,7 @@ const useBridgeToMainnet = (): BridgeResult => {
         throw error;
       }
 
-      track('bridge_to_mainnet_initiated', {
+      track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_INITIATED, {
         amount: amount,
         fee: fee?.toString() || '0',
         from_chain: fuse.id,
@@ -134,7 +135,7 @@ const useBridgeToMainnet = (): BridgeResult => {
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         const error = new Error('User cancelled transaction');
-        track('bridge_to_mainnet_cancelled', {
+        track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_CANCELLED, {
           amount: amount,
           fee: fee?.toString() || '0',
           from_chain: fuse.id,
@@ -161,7 +162,7 @@ const useBridgeToMainnet = (): BridgeResult => {
         throw error;
       }
 
-      track('bridge_to_mainnet_completed', {
+      track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_COMPLETED, {
         amount: amount,
         transaction_hash: transaction.transactionHash,
         fee: fee?.toString() || '0',
@@ -186,7 +187,7 @@ const useBridgeToMainnet = (): BridgeResult => {
     } catch (error) {
       console.error(error);
 
-      track('bridge_to_mainnet_error', {
+      track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_ERROR, {
         amount: amount,
         fee: fee?.toString() || '0',
         from_chain: fuse.id,

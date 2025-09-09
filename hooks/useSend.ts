@@ -7,6 +7,7 @@ import { encodeFunctionData, parseUnits } from 'viem/utils';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { Status } from '@/lib/types';
 import { getChain } from '@/lib/wagmi';
 import useUser from './useUser';
@@ -40,7 +41,7 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
         throw new Error('Chain not found');
       }
 
-      track('send_transaction_initiated', {
+      track(TRACKING_EVENTS.SEND_TRANSACTION_INITIATED, {
         token_address: tokenAddress,
         chain_id: chainId,
         amount: amount,
@@ -78,7 +79,7 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
         throw new Error('User cancelled transaction');
       }
 
-      track('send_transaction_completed', {
+      track(TRACKING_EVENTS.SEND_TRANSACTION_COMPLETED, {
         token_address: tokenAddress,
         chain_id: chainId,
         amount: amount,
@@ -92,7 +93,7 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
     } catch (error) {
       console.error(error);
       
-      track('send_transaction_error', {
+      track(TRACKING_EVENTS.SEND_TRANSACTION_ERROR, {
         token_address: tokenAddress,
         chain_id: chainId,
         amount: amount,

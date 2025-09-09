@@ -23,6 +23,7 @@ import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { PaymentMethodTile } from './PaymentMethodTile';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 type Props = {
   fiat?: BridgeTransferFiatCurrency;
@@ -83,7 +84,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
 
   async function onPressed(method: BridgeTransferMethod) {
     try {
-      track('payment_method_selected', {
+      track(TRACKING_EVENTS.PAYMENT_METHOD_SELECTED, {
         method: method,
         fiat_currency: normalizedFiat,
         fiat_amount: fiatAmount,

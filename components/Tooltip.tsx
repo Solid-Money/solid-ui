@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 interface TooltipProps {
   trigger?: React.ReactNode;
@@ -36,7 +37,7 @@ const TooltipPopover = ({
     return (
       <Pressable
         onPress={() => {
-          track('tooltip_opened', {
+          track(TRACKING_EVENTS.TOOLTIP_OPENED, {
             context: analyticsContext || 'unknown',
             tooltip_text: text?.substring(0, 50) || 'custom_content',
           });

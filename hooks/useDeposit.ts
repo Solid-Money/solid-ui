@@ -17,6 +17,7 @@ import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { Status } from '@/lib/types';
 import useUser from './useUser';
 
@@ -48,7 +49,7 @@ const useDeposit = (): DepositResult => {
     try {
       if (!user) {
         const error = new Error('User is not selected');
-        track('deposit_error', {
+        track(TRACKING_EVENTS.DEPOSIT_ERROR, {
           amount: amount,
           error: 'User not found',
           step: 'validation',
@@ -71,7 +72,7 @@ const useDeposit = (): DepositResult => {
         throw error;
       }
 
-      track('deposit_initiated', {
+      track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
         amount: amount,
         fee: fee?.toString() || '0',
         chain_id: mainnet.id,
@@ -140,7 +141,7 @@ const useDeposit = (): DepositResult => {
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         const error = new Error('User cancelled transaction');
-        track('deposit_cancelled', {
+        track(TRACKING_EVENTS.DEPOSIT_CANCELLED, {
           amount: amount,
           fee: fee?.toString() || '0',
           source: 'useDeposit_hook',
@@ -165,7 +166,7 @@ const useDeposit = (): DepositResult => {
         throw error;
       }
 
-      track('deposit_completed', {
+      track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
         amount: amount,
         transaction_hash: transaction.transactionHash,
         fee: fee?.toString() || '0',
@@ -189,7 +190,7 @@ const useDeposit = (): DepositResult => {
     } catch (error) {
       console.error(error);
 
-      track('deposit_error', {
+      track(TRACKING_EVENTS.DEPOSIT_ERROR, {
         amount: amount,
         fee: fee?.toString() || '0',
         error: error instanceof Error ? error.message : 'Unknown error',

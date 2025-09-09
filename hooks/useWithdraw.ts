@@ -3,6 +3,7 @@ import ERC20_ABI from '@/lib/abis/ERC20';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { Status } from '@/lib/types';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
@@ -44,7 +45,7 @@ const useWithdraw = (): WithdrawResult => {
         throw new Error('User not found');
       }
 
-      track('withdraw_transaction_initiated', {
+      track(TRACKING_EVENTS.WITHDRAW_TRANSACTION_INITIATED, {
         amount: amount,
         needs_approval: needsApproval,
         allowance: allowance?.toString(),
@@ -92,7 +93,7 @@ const useWithdraw = (): WithdrawResult => {
         throw new Error('User cancelled transaction');
       }
 
-      track('withdraw_transaction_completed', {
+      track(TRACKING_EVENTS.WITHDRAW_TRANSACTION_COMPLETED, {
         amount: amount,
         needs_approval: needsApproval,
         transaction_hash: transaction.transactionHash,
@@ -104,7 +105,7 @@ const useWithdraw = (): WithdrawResult => {
     } catch (error) {
       console.error(error);
 
-      track('withdraw_transaction_error', {
+      track(TRACKING_EVENTS.WITHDRAW_TRANSACTION_ERROR, {
         amount: amount,
         allowance: allowance?.toString(),
         needs_approval: needsApproval,

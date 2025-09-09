@@ -24,6 +24,7 @@ import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 import Toast from 'react-native-toast-message';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 interface TokenBalance {
   contractTickerSymbol: string;
@@ -132,7 +133,7 @@ const SendPage = () => {
     if (!selectedToken) return;
 
     try {
-      track('send_page_transaction_initiated', {
+      track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_INITIATED, {
         token_symbol: selectedToken.contractTickerSymbol,
         token_address: selectedToken.contractAddress,
         chain_id: selectedToken.chainId,
@@ -147,7 +148,7 @@ const SendPage = () => {
         address: data.address,
       });
 
-      track('send_page_transaction_completed', {
+      track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_COMPLETED, {
         token_symbol: selectedToken.contractTickerSymbol,
         amount: data.amount.toString(),
         transaction_hash: transaction.transactionHash,
@@ -177,7 +178,7 @@ const SendPage = () => {
       reset();
     } catch (error) {
       console.error('Send failed:', error);
-      track('send_page_transaction_failed', {
+      track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_FAILED, {
         token_symbol: selectedToken?.contractTickerSymbol,
         amount: data.amount.toString(),
         error: String(error),
@@ -240,7 +241,7 @@ const SendPage = () => {
               <Pressable
                 className="flex-row items-center gap-3 web:hover:bg-accent rounded-full px-2 h-10"
                 onPress={() => {
-                  track('send_page_token_selector_opened', {
+                  track(TRACKING_EVENTS.SEND_PAGE_TOKEN_SELECTOR_OPENED, {
                     source: 'send_page',
                     current_token: selectedToken?.contractTickerSymbol || null,
                   });
@@ -331,7 +332,7 @@ const SendPage = () => {
         }}
         tokens={allTokens}
         onSelectToken={token => {
-          track('send_page_token_selected', {
+          track(TRACKING_EVENTS.SEND_PAGE_TOKEN_SELECTED, {
             token_symbol: token.contractTickerSymbol,
             token_address: token.contractAddress,
             chain_id: token.chainId,

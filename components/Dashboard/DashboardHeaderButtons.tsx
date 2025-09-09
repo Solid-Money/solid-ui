@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DepositOptionModal } from '@/components/DepositOption';
 import { path } from '@/constants/path';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -24,7 +25,7 @@ const DashboardHeaderButtons = ({ hasTokens }: DashboardHeaderButtonsProps) => {
             variant="secondary"
             className="h-12 px-6 rounded-xl bg-[#303030] border-0"
             onPress={() => {
-              track('navigation_button_clicked', {
+              track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
                 button_name: 'swap',
                 source: 'dashboard_header',
               });
@@ -40,7 +41,7 @@ const DashboardHeaderButtons = ({ hasTokens }: DashboardHeaderButtonsProps) => {
             variant="secondary"
             className="h-12 px-6 rounded-xl bg-[#303030] border-0"
             onPress={() => {
-              track('navigation_button_clicked', {
+              track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
                 button_name: 'send',
                 source: 'dashboard_header',
               });

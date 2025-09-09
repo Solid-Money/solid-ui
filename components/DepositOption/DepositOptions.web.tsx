@@ -8,6 +8,7 @@ import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
 import DepositOption from './DepositOption';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 const DepositOptions = () => {
   const activeAccount = useActiveAccount();
@@ -23,7 +24,7 @@ const DepositOptions = () => {
 
       // If wallet is already connected, go directly to form
       if (address) {
-        track('deposit_wallet_already_connected', {
+        track(TRACKING_EVENTS.DEPOSIT_WALLET_ALREADY_CONNECTED, {
           wallet_address: address,
           deposit_method: 'wallet',
         });
@@ -31,7 +32,7 @@ const DepositOptions = () => {
         return;
       }
 
-      track('deposit_wallet_connection_started', {
+      track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_STARTED, {
         deposit_method: 'wallet',
       });
 
@@ -49,7 +50,7 @@ const DepositOptions = () => {
 
       // Only proceed to form if wallet connection was successful
       if (wallet) {
-        track('deposit_wallet_connection_success', {
+        track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_SUCCESS, {
           wallet_type: wallet.id,
           deposit_method: 'wallet',
         });
@@ -57,7 +58,7 @@ const DepositOptions = () => {
       }
     } catch (error) {
       console.error(error);
-      track('deposit_wallet_connection_failed', {
+      track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_FAILED, {
         error: String(error),
         deposit_method: 'wallet',
       });
@@ -68,7 +69,7 @@ const DepositOptions = () => {
   }, [isWalletOpen, connect, address, setModal]);
 
   const handleBankDepositPress = useCallback(async () => {
-    track('deposit_method_selected', {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'bank_transfer',
     });
     setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
@@ -85,7 +86,7 @@ const DepositOptions = () => {
       text: 'Debit/Credit Card',
       icon: <CreditCard color="white" size={26} />,
       onPress: () => {
-        track('deposit_method_selected', {
+        track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
           deposit_method: 'credit_card',
         });
         setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);

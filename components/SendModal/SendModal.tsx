@@ -10,6 +10,7 @@ import { useSendStore } from '@/store/useSendStore';
 import { Send, SendTrigger } from '.';
 import { path } from '@/constants/path';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 type SendModalProps = {
   tokenAddress: Address;
@@ -42,7 +43,7 @@ const SendModal = ({
   const isCurrentTokenAddress = currentTokenAddress === tokenAddress;
 
   const handleTransactionStatusPress = () => {
-    track('send_transaction_status_pressed', {
+    track(TRACKING_EVENTS.SEND_TRANSACTION_STATUS_PRESSED, {
       token_symbol: tokenSymbol,
       amount: transaction.amount,
     });
@@ -86,7 +87,7 @@ const SendModal = ({
 
   const handleOpenChange = (value: boolean) => {
     if (value) {
-      track('send_modal_opened', {
+      track(TRACKING_EVENTS.SEND_MODAL_OPENED, {
         token_symbol: tokenSymbol,
         token_address: tokenAddress,
         chain_id: chainId,
@@ -94,7 +95,7 @@ const SendModal = ({
       setCurrentTokenAddress(tokenAddress);
       setModal(SEND_MODAL.OPEN_FORM);
     } else {
-      track('send_modal_closed', {
+      track(TRACKING_EVENTS.SEND_MODAL_CLOSED, {
         token_symbol: tokenSymbol,
       });
       setModal(SEND_MODAL.CLOSE);

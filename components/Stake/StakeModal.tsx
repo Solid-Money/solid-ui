@@ -9,6 +9,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { useStakeStore } from '@/store/useStakeStore';
 import { Stake, StakeTrigger } from '.';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 const StakeModal = () => {
   const router = useRouter();
@@ -23,7 +24,7 @@ const StakeModal = () => {
   };
 
   const handleTransactionStatusPress = () => {
-    track('stake_transaction_status_pressed', {
+    track(TRACKING_EVENTS.STAKE_TRANSACTION_STATUS_PRESSED, {
       amount: transaction.amount,
       source: 'stake_modal',
     });
@@ -53,12 +54,12 @@ const StakeModal = () => {
 
   const handleOpenChange = (value: boolean) => {
     if (value) {
-      track('stake_modal_opened', {
+      track(TRACKING_EVENTS.STAKE_MODAL_OPENED, {
         source: 'stake_modal',
       });
       setModal(STAKE_MODAL.OPEN_FORM);
     } else {
-      track('stake_modal_closed', {
+      track(TRACKING_EVENTS.STAKE_MODAL_CLOSED, {
         source: 'stake_modal',
       });
       setModal(STAKE_MODAL.CLOSE);

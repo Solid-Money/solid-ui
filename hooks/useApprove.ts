@@ -7,6 +7,7 @@ import { VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import { useNeedAllowance } from '@/hooks/tokens/useNeedAllowance';
 import { executeTransactions } from '@/lib/execute';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { ApprovalState, ApprovalStateType } from '@/lib/types/approve-state';
 import { computeSlippageAdjustedAmounts } from '@/lib/utils/swap/prices';
 import { Address, encodeFunctionData, erc20Abi } from 'viem';
@@ -86,7 +87,7 @@ export function useApprove(
   const approve = useCallback(async () => {
     const finalConfig = config || fallbackConfig;
     if (!finalConfig || !user?.suborgId || !user?.signWith || !account) {
-      track('approve_error', {
+      track(TRACKING_EVENTS.APPROVE_ERROR, {
         token_address: amountToApprove?.currency?.wrapped?.address,
         spender: spender,
         amount: amountToApprove?.toSignificant(),
@@ -97,7 +98,7 @@ export function useApprove(
     }
 
     try {
-      track('approve_initiated', {
+      track(TRACKING_EVENTS.APPROVE_INITIATED, {
         token_address: amountToApprove?.currency?.wrapped?.address,
         spender: spender,
         amount: amountToApprove?.toSignificant(),
@@ -123,7 +124,7 @@ export function useApprove(
         fuse,
       );
 
-      track('approve_completed', {
+      track(TRACKING_EVENTS.APPROVE_COMPLETED, {
         token_address: amountToApprove?.currency?.wrapped?.address,
         spender: spender,
         amount: amountToApprove?.toSignificant(),
@@ -134,7 +135,7 @@ export function useApprove(
       setApprovalData(result);
       return result;
     } catch (error) {
-      track('approve_error', {
+      track(TRACKING_EVENTS.APPROVE_ERROR, {
         token_address: amountToApprove?.currency?.wrapped?.address,
         spender: spender,
         amount: amountToApprove?.toSignificant(),

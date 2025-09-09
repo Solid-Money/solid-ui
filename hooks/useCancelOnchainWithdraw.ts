@@ -2,6 +2,7 @@ import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { Status } from '@/lib/types';
 import { useState } from 'react';
 import { TransactionReceipt } from 'viem';
@@ -25,7 +26,7 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
   const cancelOnchainWithdraw = async (requestId: `0x${string}`) => {
     try {
       if (!user) {
-        track('cancel_withdraw_error', {
+        track(TRACKING_EVENTS.CANCEL_WITHDRAW_ERROR, {
           request_id: requestId,
           error: 'User not found',
           step: 'validation',
@@ -34,7 +35,7 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
         throw new Error('User not found');
       }
 
-      track('cancel_withdraw_initiated', {
+      track(TRACKING_EVENTS.CANCEL_WITHDRAW_INITIATED, {
         request_id: requestId,
         chain_id: mainnet.id,
         source: 'useCancelOnchainWithdraw',
@@ -66,14 +67,14 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
       );
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
-        track('cancel_withdraw_cancelled', {
+        track(TRACKING_EVENTS.CANCEL_WITHDRAW_CANCELLED, {
           request_id: requestId,
           source: 'useCancelOnchainWithdraw',
         });
         throw new Error('User cancelled transaction');
       }
 
-      track('cancel_withdraw_completed', {
+      track(TRACKING_EVENTS.CANCEL_WITHDRAW_COMPLETED, {
         request_id: requestId,
         transaction_hash: transaction.transactionHash,
         chain_id: mainnet.id,
@@ -85,7 +86,7 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
     } catch (error) {
       console.error(error);
       
-      track('cancel_withdraw_error', {
+      track(TRACKING_EVENTS.CANCEL_WITHDRAW_ERROR, {
         request_id: requestId,
         error: error instanceof Error ? error.message : 'Unknown error',
         user_cancelled: String(error).includes('cancelled'),
