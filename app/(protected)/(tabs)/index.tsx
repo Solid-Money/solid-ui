@@ -19,6 +19,7 @@ import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
+import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { fontSize } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
@@ -28,7 +29,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
-import { useIntercom } from 'react-use-intercom';
 
 export default function Savings() {
   const { user } = useUser();
@@ -39,7 +39,7 @@ export default function Savings() {
     refetch: refetchBalance,
   } = useFuseVaultBalance(user?.safeAddress as Address);
   const { updateUser } = useUserStore();
-  const { update } = useIntercom();
+  const intercom = useIntercom();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -110,14 +110,14 @@ export default function Savings() {
   }, [isDeposited, user, updateUser]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !intercom) return;
 
-    update({
+    intercom.update({
       userId: user.userId,
       name: user.username,
       email: user.email,
     });
-  }, [user, update]);
+  }, [user, intercom?.update]);
 
   if (isBalanceLoading || isTransactionsLoading) {
     return <Loading />;
