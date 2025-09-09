@@ -51,7 +51,7 @@ export default function Invite() {
   const handlePasteInviteCode = async () => {
     try {
       const text = await Clipboard.getStringAsync();
-      const code = (`${watchedInviteCode}${text}`).trim();
+      const code = `${watchedInviteCode}${text}`.trim();
       setValue('inviteCode', code);
       trigger('inviteCode');
     } catch (error) {
