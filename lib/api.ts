@@ -23,6 +23,7 @@ import {
   BridgeTransferResponse,
   CardResponse,
   CardStatusResponse,
+  CardTransactionsResponse,
   CustomerFromBridgeResponse,
   Deposit,
   ExchangeRateResponse,
@@ -827,6 +828,29 @@ export const unfreezeCard = async (): Promise<{ message: string }> => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getCardTransactions = async (
+  paginationToken?: string,
+): Promise<CardTransactionsResponse> => {
+  const jwt = getJWTToken();
+
+  const url = new URL('/accounts/v1/cards/transactions', EXPO_PUBLIC_FLASH_API_BASE_URL);
+  if (paginationToken) {
+    url.searchParams.append('pagination_token', paginationToken);
+  }
+
+  const response = await fetch(url.toString(), {
+    headers: {
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
