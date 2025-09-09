@@ -49,3 +49,12 @@ export const useEthereumVaultBalance = (safeAddress: Address) => {
     enabled: !!safeAddress,
   });
 };
+
+export const useUsdcVaultBalance = (safeAddress: Address) => {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: [VAULT, 'balanceUsdc', safeAddress],
+    queryFn: () => fetchVaultBalance(queryClient, safeAddress, mainnet.id, ADDRESSES.ethereum.usdc),
+    enabled: !!safeAddress,
+  });
+};

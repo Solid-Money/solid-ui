@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
-import { Info, Minus, Wallet } from 'lucide-react-native';
+import { ArrowUp, Info, Wallet } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Image, TextInput, View } from 'react-native';
@@ -12,25 +11,25 @@ import Max from '@/components/Max';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { WITHDRAW_MODAL } from '@/constants/modals';
+import { DEPOSIT_FROM_SAFE_ACCOUNT_MODAL } from '@/constants/modals';
+import useDeposit from '@/hooks/useDeposit';
 import useUser from '@/hooks/useUser';
-import { useEthereumVaultBalance } from '@/hooks/useVault';
-import useWithdraw from '@/hooks/useWithdraw';
+import { useUsdcVaultBalance } from '@/hooks/useVault';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
-import { useWithdrawStore } from '@/store/useWithdrawStore';
+import { useStakeStore } from '@/store/useStakeStore';
 
-const Withdraw = () => {
+const Deposit = () => {
   const { user } = useUser();
-  const { setModal, setTransaction } = useWithdrawStore();
+  const { setModal, setTransaction } = useStakeStore();
 
-  const { data: ethereumBalance, isLoading: isEthereumBalanceLoading } = useEthereumVaultBalance(
+  const { data: ethereumBalance, isLoading: isEthereumBalanceLoading } = useUsdcVaultBalance(
     user?.safeAddress as Address,
   );
 
   // Create dynamic schema for withdraw form based on ethereum balance
-  const withdrawSchema = useMemo(() => {
+  const depositSchema = useMemo(() => {
     const balanceAmount = ethereumBalance || 0;
     return z.object({
       amount: z
@@ -39,103 +38,87 @@ const Withdraw = () => {
         .refine(val => Number(val) > 0, 'Amount must be greater than 0')
         .refine(
           val => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} soUSD`,
+          `Available balance is ${formatNumber(balanceAmount)} USDC`,
         )
         .transform(val => Number(val)),
     });
   }, [ethereumBalance]);
 
-  type WithdrawFormData = { amount: string };
+  type DepositFormData = { amount: string };
 
   const {
-    control: withdrawControl,
-    handleSubmit: handleWithdrawSubmit,
-    formState: { errors: withdrawErrors, isValid: isWithdrawValid },
-    watch: watchWithdraw,
-    reset: resetWithdraw,
+    control: depositControl,
+    handleSubmit: handleDepositSubmit,
+    formState: { errors: depositErrors, isValid: isDepositValid },
+    watch: watchDeposit,
+    reset: resetDeposit,
     setValue,
     trigger,
-  } = useForm<WithdrawFormData>({
-    resolver: zodResolver(withdrawSchema) as any,
+  } = useForm<DepositFormData>({
+    resolver: zodResolver(depositSchema) as any,
     mode: 'onChange',
     defaultValues: {
       amount: '',
     },
   });
 
-  const watchedWithdrawAmount = watchWithdraw('amount');
+  const watchedDepositAmount = watchDeposit('amount');
 
-  const { withdraw, withdrawStatus } = useWithdraw();
-  const isWithdrawLoading = withdrawStatus === Status.PENDING;
+  const { deposit, depositStatus } = useDeposit();
+  const isDepositLoading = depositStatus === Status.PENDING;
 
-  const getWithdrawText = () => {
-    if (withdrawErrors.amount) return withdrawErrors.amount.message;
-    if (withdrawStatus === Status.PENDING) return 'Withdrawing';
-    if (withdrawStatus === Status.ERROR) return 'Error while Withdrawing';
-    if (withdrawStatus === Status.SUCCESS) return 'Withdrawal Successful';
-    if (!isWithdrawValid || !watchedWithdrawAmount) return 'Enter an amount';
-    return 'Withdraw';
+  const getDepositText = () => {
+    if (depositErrors.amount) return depositErrors.amount.message;
+    if (depositStatus === Status.PENDING) return 'Depositing';
+    if (depositStatus === Status.ERROR) return 'Error while Depositing';
+    if (depositStatus === Status.SUCCESS) return 'Deposit Successful';
+    if (!isDepositValid || !watchedDepositAmount) return 'Enter an amount';
+    return 'Deposit';
   };
 
-  const onWithdrawSubmit = async (data: WithdrawFormData) => {
+  const onDepositSubmit = async (data: DepositFormData) => {
     try {
-      const transaction = await withdraw(data.amount.toString());
+      const transaction = await deposit(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
       });
-      resetWithdraw(); // Reset form after successful transaction
-      setModal(WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS);
+      resetDeposit(); // Reset form after successful transaction
+      setModal(DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
         type: 'success',
-        text1: 'Withdrawal transaction completed',
-        text2: `${data.amount} soUSD`,
+        text1: 'Deposit transaction completed',
+        text2: `${data.amount} USDC`,
         props: {
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
-          image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
+          image: getTokenIcon({ tokenSymbol: 'USDC' }),
         },
       });
     } catch (_error) {
-      console.error('Withdraw transaction failed:', _error);
-      Sentry.captureException(_error, {
-        tags: {
-          type: 'withdraw_modal_error',
-          userId: user?.userId,
-        },
-        extra: {
-          amount: data.amount,
-          ethereumBalance,
-          userAddress: user?.safeAddress,
-        },
-        user: {
-          id: user?.userId,
-          address: user?.safeAddress,
-        },
-      });
       Toast.show({
         type: 'error',
-        text1: 'Error while withdrawing',
+        text1: 'Error while depositing',
       });
     }
   };
 
-  const isWithdrawFormDisabled = () => {
-    return isWithdrawLoading || !isWithdrawValid || !watchedWithdrawAmount;
+  const isDepositFormDisabled = () => {
+    return isDepositLoading || !isDepositValid || !watchedDepositAmount;
   };
 
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60">Withdraw amount</Text>
+        <Text className="opacity-60">Deposit amount</Text>
 
         <View
           className={cn(
             'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
-            withdrawErrors.amount && 'border border-red-500',
+            depositErrors.amount && 'border border-red-500',
           )}
         >
           <Controller
-            control={withdrawControl}
+            control={depositControl}
             name="amount"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
@@ -151,11 +134,11 @@ const Withdraw = () => {
           />
           <View className="flex-row items-center gap-2">
             <Image
-              source={require('@/assets/images/sousd-4x.png')}
-              alt="SoUSD"
+              source={require('@/assets/images/usdc-4x.png')}
+              alt="USDC"
               style={{ width: 34, height: 34 }}
             />
-            <Text className="font-semibold text-white text-lg">SoUSD</Text>
+            <Text className="font-semibold text-white text-lg">USDC</Text>
           </View>
         </View>
 
@@ -164,9 +147,9 @@ const Withdraw = () => {
           {isEthereumBalanceLoading ? (
             <Skeleton className="w-16 h-4 rounded-md" />
           ) : ethereumBalance ? (
-            `${formatNumber(ethereumBalance)} SoUSD`
+            `${formatNumber(ethereumBalance)} USDC`
           ) : (
-            '0 SoUSD'
+            '0 USDC'
           )}
           <Max
             onPress={() => {
@@ -179,25 +162,23 @@ const Withdraw = () => {
 
       <View className="flex-row gap-2">
         <Info size={30} color="gray" />
-        <Text className="text-sm text-muted-foreground">
-          This action will withdraw your funds and allow you to send them to another wallet
-        </Text>
+        <Text className="text-sm text-muted-foreground">This action will deposit your funds.</Text>
       </View>
 
       <Button
         variant="brand"
         className="rounded-2xl h-12 mt-32"
-        onPress={handleWithdrawSubmit(onWithdrawSubmit)}
-        disabled={isWithdrawFormDisabled()}
+        onPress={handleDepositSubmit(onDepositSubmit)}
+        disabled={isDepositFormDisabled()}
       >
-        <Text className="font-semibold text-black text-lg">{getWithdrawText()}</Text>
-        {isWithdrawLoading && <ActivityIndicator color="black" />}
+        <Text className="font-semibold text-black text-lg">{getDepositText()}</Text>
+        {isDepositLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>
   );
 };
 
-const WithdrawTrigger = (props: any) => {
+const DepositTrigger = (props: any) => {
   return (
     <Button
       variant="outline"
@@ -208,15 +189,15 @@ const WithdrawTrigger = (props: any) => {
       {...props}
     >
       <View className="flex-row items-center gap-4">
-        <Minus color="white" />
-        <Text className="hidden md:block font-bold">Withdraw</Text>
+        <ArrowUp color="white" />
+        <Text className="hidden md:block font-bold">Deposit</Text>
       </View>
     </Button>
   );
 };
 
-const WithdrawTitle = () => {
-  return <Text className="text-2xl font-semibold">Withdraw from savings</Text>;
+const DepositTitle = () => {
+  return <Text className="text-2xl font-semibold">Deposit to earn rewards</Text>;
 };
 
-export { Withdraw, WithdrawTitle, WithdrawTrigger };
+export { Deposit, DepositTitle, DepositTrigger };

@@ -6,6 +6,8 @@ import AccountCenterModal from '@/components/AccountCenter/AccountCenterModal';
 import { path } from '@/constants/path';
 import { NavMenu } from './NavMenu';
 import { useDimension } from '@/hooks/useDimension';
+import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 const Navbar = () => {
   const { isScreenMedium } = useDimension();
@@ -13,7 +15,15 @@ const Navbar = () => {
   return (
     <SafeAreaView className="sticky top-0 z-50 bg-background/10 backdrop-blur-lg border-b border-border/40">
       <View className="flex-row justify-between items-center p-4 md:py-6 w-full max-w-7xl mx-auto">
-        <Link href={path.HOME} className="flex flex-row items-center gap-2">
+        <Link
+          href={path.HOME}
+          className="flex flex-row items-center gap-2"
+          onPress={() => {
+            track(TRACKING_EVENTS.NAVBAR_LOGO_CLICKED, {
+              source: 'navbar',
+            });
+          }}
+        >
           <Image
             source={require('@/assets/images/solid-logo.png')}
             alt="Solid logo"

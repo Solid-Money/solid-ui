@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { detectAndSaveReferralCode } from '@/lib/utils/referral';
 import { useUserStore } from '@/store/useUserStore';
 import { path } from '@/constants/path';
+import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 import InfoError from '@/assets/images/info-error';
 
@@ -80,7 +82,10 @@ export default function Register() {
     }
   }, [signupInfo.status, reset]);
 
-  const handleSignupForm = (data: RegisterFormData) => {
+  const handleSignupForm = async (data: RegisterFormData) => {
+    await track(TRACKING_EVENTS.SIGNUP_STARTED, {
+      username: data.username,
+    });
     setSignupUser({ username: data.username, inviteCode: code });
     router.push(path.INVITE);
   };

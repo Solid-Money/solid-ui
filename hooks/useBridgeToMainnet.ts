@@ -1,12 +1,14 @@
-import * as Sentry from '@sentry/react-native';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { Status } from '@/lib/types';
+import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import {
@@ -42,10 +44,16 @@ const useBridgeToMainnet = (): BridgeResult => {
     chainId: fuse.id,
   });
 
-  const bridge = async (amount: string) => {
+  const bridge = useCallback(async (amount: string) => {
     try {
       if (!user) {
         const error = new Error('User is not selected');
+        track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_ERROR, {
+          amount: amount,
+          error: 'User not found',
+          step: 'validation',
+          source: 'useBridgeToMainnet',
+        });
         Sentry.captureException(error, {
           tags: {
             operation: 'bridge_to_mainnet',
@@ -58,6 +66,14 @@ const useBridgeToMainnet = (): BridgeResult => {
         });
         throw error;
       }
+
+      track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_INITIATED, {
+        amount: amount,
+        fee: fee?.toString() || '0',
+        from_chain: fuse.id,
+        to_chain: 1, // mainnet
+        source: 'useBridgeToMainnet',
+      });
 
       setBridgeStatus(Status.PENDING);
       setError(null);
@@ -119,6 +135,13 @@ const useBridgeToMainnet = (): BridgeResult => {
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         const error = new Error('User cancelled transaction');
+        track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_CANCELLED, {
+          amount: amount,
+          fee: fee?.toString() || '0',
+          from_chain: fuse.id,
+          to_chain: 1,
+          source: 'useBridgeToMainnet',
+        });
         Sentry.captureException(error, {
           tags: {
             operation: 'bridge_to_mainnet',
@@ -131,9 +154,22 @@ const useBridgeToMainnet = (): BridgeResult => {
             chainId: fuse.id,
             fee: fee?.toString(),
           },
+          user: {
+            id: user?.userId,
+            address: user?.safeAddress,
+          },
         });
         throw error;
       }
+
+      track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_COMPLETED, {
+        amount: amount,
+        transaction_hash: transaction.transactionHash,
+        fee: fee?.toString() || '0',
+        from_chain: fuse.id,
+        to_chain: 1,
+        source: 'useBridgeToMainnet',
+      });
 
       Sentry.addBreadcrumb({
         message: 'Bridge to Mainnet transaction successful',
@@ -150,7 +186,18 @@ const useBridgeToMainnet = (): BridgeResult => {
       return transaction;
     } catch (error) {
       console.error(error);
-      
+
+      track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_ERROR, {
+        amount: amount,
+        fee: fee?.toString() || '0',
+        from_chain: fuse.id,
+        to_chain: 1,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        user_cancelled: String(error).includes('cancelled'),
+        step: 'execution',
+        source: 'useBridgeToMainnet',
+      });
+
       Sentry.captureException(error, {
         tags: {
           operation: 'bridge_to_mainnet',
@@ -169,12 +216,12 @@ const useBridgeToMainnet = (): BridgeResult => {
           address: user?.safeAddress,
         },
       });
-      
+
       setBridgeStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
-  };
+  }, [user, fee, safeAA]);
 
   return { bridge, bridgeStatus, error };
 };

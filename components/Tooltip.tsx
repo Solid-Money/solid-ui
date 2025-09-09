@@ -1,18 +1,30 @@
+import { Image } from 'expo-image';
 import * as React from 'react';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { track } from '@/lib/firebase';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 interface TooltipProps {
   trigger?: React.ReactNode;
   content?: React.ReactNode;
   text?: string;
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  sideOffset?: number;
+  analyticsContext?: string;
 }
 
-const TooltipPopover = ({ trigger, content, text }: TooltipProps) => {
+const TooltipPopover = ({
+  trigger,
+  content,
+  text,
+  side = 'bottom',
+  sideOffset = 4,
+  analyticsContext,
+}: TooltipProps) => {
   const insets = useSafeAreaInsets();
   const contentInsets = {
     top: insets.top,
@@ -23,7 +35,14 @@ const TooltipPopover = ({ trigger, content, text }: TooltipProps) => {
 
   const getTrigger = () => {
     return (
-      <Pressable>
+      <Pressable
+        onPress={() => {
+          track(TRACKING_EVENTS.TOOLTIP_OPENED, {
+            context: analyticsContext || 'unknown',
+            tooltip_text: text?.substring(0, 50) || 'custom_content',
+          });
+        }}
+      >
         <Image
           source={require('@/assets/images/question-mark-gray.png')}
           alt="Tooltip"
@@ -35,13 +54,25 @@ const TooltipPopover = ({ trigger, content, text }: TooltipProps) => {
   };
 
   const getContent = () => {
-    return <Text className="text-sm">{text}</Text>;
+    return (
+      <Text
+        className="text-sm leading-5"
+        style={{
+          maxWidth: 280,
+          textAlign: 'left',
+        }}
+      >
+        {text}
+      </Text>
+    );
   };
 
   return (
     <Tooltip delayDuration={150}>
       <TooltipTrigger asChild>{trigger || getTrigger()}</TooltipTrigger>
-      <TooltipContent insets={contentInsets}>{content || getContent()}</TooltipContent>
+      <TooltipContent insets={contentInsets} side={side} sideOffset={sideOffset}>
+        {content || getContent()}
+      </TooltipContent>
     </Tooltip>
   );
 };

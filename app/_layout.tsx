@@ -3,6 +3,7 @@ import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
 import '@/global.css';
 import { infoClient } from '@/graphql/clients';
+import { init, trackScreen } from '@/lib/firebase';
 import { config } from '@/lib/wagmi';
 import { ApolloProvider } from '@apollo/client';
 import {
@@ -21,7 +22,7 @@ import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams, usePathname } from 'expo-router';
 import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { ChevronLeft } from 'lucide-react-native';
@@ -171,6 +172,8 @@ export default Sentry.wrap(function RootLayout() {
     MonaSans_800ExtraBold,
     MonaSans_900Black,
   });
+  const pathname = usePathname();
+  const params = useLocalSearchParams();
 
   useEffect(() => {
     async function prepare() {
@@ -179,6 +182,7 @@ export default Sentry.wrap(function RootLayout() {
         // await Font.loadAsync(Entypo.font);
 
         // Simulate loading time - replace with actual async operations
+        await init();
         Appearance.setColorScheme('dark');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -210,6 +214,12 @@ export default Sentry.wrap(function RootLayout() {
       }
     }
   }, [appIsReady, splashScreenHidden]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      trackScreen(pathname, params);
+    }
+  }, [pathname, params]);
 
   useEffect(() => {
     if (error) {
