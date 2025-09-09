@@ -13,6 +13,7 @@ import { eclipseAddress } from '@/lib/utils';
 import { Text } from './ui/text';
 import { useDepositStore } from '@/store/useDepositStore';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { track } from '@/lib/firebase';
 
 const ConnectedWalletDropdown = () => {
   const wallet = useActiveWallet();
@@ -52,6 +53,10 @@ const ConnectedWalletDropdown = () => {
       dropdownOpacity.value = withTiming(0, { duration: 150 });
     } else {
       dropdownOpacity.value = withTiming(1, { duration: 200 });
+      track('wallet_dropdown_opened', {
+        wallet_address: address,
+        network: networkName,
+      });
     }
   };
 
@@ -76,7 +81,16 @@ const ConnectedWalletDropdown = () => {
       <Animated.View style={dropdownAnimatedStyle} className="overflow-hidden">
         <Pressable
           className="flex-row items-center gap-4 border-t border-card px-5 py-4 web:hover:opacity-70"
-          onPress={() => wallet && disconnect(wallet)}
+          onPress={() => {
+            if (wallet) {
+              track('wallet_disconnected', {
+                wallet_address: address,
+                network: networkName,
+                wallet_type: wallet.id,
+              });
+              disconnect(wallet);
+            }
+          }}
           onLayout={event => {
             contentHeight.value = event.nativeEvent.layout.height;
           }}

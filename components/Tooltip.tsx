@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { track } from '@/lib/firebase';
 
 interface TooltipProps {
   trigger?: React.ReactNode;
@@ -12,14 +13,16 @@ interface TooltipProps {
   text?: string;
   side?: 'top' | 'right' | 'bottom' | 'left';
   sideOffset?: number;
+  analyticsContext?: string;
 }
 
-const TooltipPopover = ({ 
-  trigger, 
-  content, 
-  text, 
-  side = 'bottom', 
-  sideOffset = 4
+const TooltipPopover = ({
+  trigger,
+  content,
+  text,
+  side = 'bottom',
+  sideOffset = 4,
+  analyticsContext,
 }: TooltipProps) => {
   const insets = useSafeAreaInsets();
   const contentInsets = {
@@ -31,7 +34,14 @@ const TooltipPopover = ({
 
   const getTrigger = () => {
     return (
-      <Pressable>
+      <Pressable
+        onPress={() => {
+          track('tooltip_opened', {
+            context: analyticsContext || 'unknown',
+            tooltip_text: text?.substring(0, 50) || 'custom_content',
+          });
+        }}
+      >
         <Image
           source={require('@/assets/images/question-mark-gray.png')}
           alt="Tooltip"
@@ -44,11 +54,11 @@ const TooltipPopover = ({
 
   const getContent = () => {
     return (
-      <Text 
-        className="text-sm leading-5" 
-        style={{ 
-          maxWidth: 280, 
-          textAlign: 'left' 
+      <Text
+        className="text-sm leading-5"
+        style={{
+          maxWidth: 280,
+          textAlign: 'left',
         }}
       >
         {text}
@@ -59,11 +69,7 @@ const TooltipPopover = ({
   return (
     <Tooltip delayDuration={150}>
       <TooltipTrigger asChild>{trigger || getTrigger()}</TooltipTrigger>
-      <TooltipContent 
-        insets={contentInsets} 
-        side={side}
-        sideOffset={sideOffset}
-      >
+      <TooltipContent insets={contentInsets} side={side} sideOffset={sideOffset}>
         {content || getContent()}
       </TooltipContent>
     </Tooltip>

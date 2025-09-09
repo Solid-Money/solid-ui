@@ -22,6 +22,7 @@ import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { PaymentMethodTile } from './PaymentMethodTile';
+import { track } from '@/lib/firebase';
 
 type Props = {
   fiat?: BridgeTransferFiatCurrency;
@@ -82,6 +83,13 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
 
   async function onPressed(method: BridgeTransferMethod) {
     try {
+      track('payment_method_selected', {
+        method: method,
+        fiat_currency: normalizedFiat,
+        fiat_amount: fiatAmount,
+        has_customer: Boolean(customer),
+      });
+
       setLoadingMethod(method);
       if (!customer) {
         // Store the method selection for modal mode before KYC

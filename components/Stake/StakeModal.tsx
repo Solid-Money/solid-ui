@@ -8,6 +8,7 @@ import { path } from '@/constants/path';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useStakeStore } from '@/store/useStakeStore';
 import { Stake, StakeTrigger } from '.';
+import { track } from '@/lib/firebase';
 
 const StakeModal = () => {
   const router = useRouter();
@@ -22,6 +23,10 @@ const StakeModal = () => {
   };
 
   const handleTransactionStatusPress = () => {
+    track('stake_transaction_status_pressed', {
+      amount: transaction.amount,
+      source: 'stake_modal',
+    });
     setModal(STAKE_MODAL.CLOSE);
     router.push(path.ACTIVITY);
   };
@@ -48,8 +53,14 @@ const StakeModal = () => {
 
   const handleOpenChange = (value: boolean) => {
     if (value) {
+      track('stake_modal_opened', {
+        source: 'stake_modal',
+      });
       setModal(STAKE_MODAL.OPEN_FORM);
     } else {
+      track('stake_modal_closed', {
+        source: 'stake_modal',
+      });
       setModal(STAKE_MODAL.CLOSE);
     }
   };

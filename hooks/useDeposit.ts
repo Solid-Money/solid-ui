@@ -16,6 +16,7 @@ import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { track } from '@/lib/firebase';
 import { Status } from '@/lib/types';
 import useUser from './useUser';
 
@@ -47,6 +48,12 @@ const useDeposit = (): DepositResult => {
     try {
       if (!user) {
         const error = new Error('User is not selected');
+        track('deposit_error', {
+          amount: amount,
+          error: 'User not found',
+          step: 'validation',
+          source: 'useDeposit_hook',
+        });
         Sentry.captureException(error, {
           tags: {
             operation: 'deposit_from_safe',
@@ -56,9 +63,20 @@ const useDeposit = (): DepositResult => {
             amount,
             hasUser: !!user,
           },
+          user: {
+            id: user?.userId,
+            address: user?.safeAddress,
+          },
         });
         throw error;
       }
+
+      track('deposit_initiated', {
+        amount: amount,
+        fee: fee?.toString() || '0',
+        chain_id: mainnet.id,
+        source: 'useDeposit_hook',
+      });
 
       setDepositStatus(Status.PENDING);
       setError(null);
@@ -122,6 +140,11 @@ const useDeposit = (): DepositResult => {
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         const error = new Error('User cancelled transaction');
+        track('deposit_cancelled', {
+          amount: amount,
+          fee: fee?.toString() || '0',
+          source: 'useDeposit_hook',
+        });
         Sentry.captureException(error, {
           tags: {
             operation: 'deposit_from_safe',
@@ -134,9 +157,21 @@ const useDeposit = (): DepositResult => {
             chainId: mainnet.id,
             fee: fee?.toString(),
           },
+          user: {
+            id: user?.userId,
+            address: user?.safeAddress,
+          },
         });
         throw error;
       }
+
+      track('deposit_completed', {
+        amount: amount,
+        transaction_hash: transaction.transactionHash,
+        fee: fee?.toString() || '0',
+        chain_id: mainnet.id,
+        source: 'useDeposit_hook',
+      });
 
       Sentry.addBreadcrumb({
         message: 'Deposit from Safe transaction successful',
@@ -153,6 +188,15 @@ const useDeposit = (): DepositResult => {
       return transaction;
     } catch (error) {
       console.error(error);
+
+      track('deposit_error', {
+        amount: amount,
+        fee: fee?.toString() || '0',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        step: 'execution',
+        user_cancelled: String(error).includes('cancelled'),
+        source: 'useDeposit_hook',
+      });
 
       Sentry.captureException(error, {
         tags: {

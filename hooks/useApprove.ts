@@ -6,6 +6,7 @@ import { MarketData } from '@/constants/lend';
 import { VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import { useNeedAllowance } from '@/hooks/tokens/useNeedAllowance';
 import { executeTransactions } from '@/lib/execute';
+import { track } from '@/lib/firebase';
 import { ApprovalState, ApprovalStateType } from '@/lib/types/approve-state';
 import { computeSlippageAdjustedAmounts } from '@/lib/utils/swap/prices';
 import { Address, encodeFunctionData, erc20Abi } from 'viem';
@@ -85,28 +86,65 @@ export function useApprove(
   const approve = useCallback(async () => {
     const finalConfig = config || fallbackConfig;
     if (!finalConfig || !user?.suborgId || !user?.signWith || !account) {
+      track('approve_error', {
+        token_address: amountToApprove?.currency?.wrapped?.address,
+        spender: spender,
+        amount: amountToApprove?.toSignificant(),
+        error: 'Missing configuration or user',
+        source: 'useApprove',
+      });
       return;
     }
-    const smartAccountClient = await safeAA(fuse, user?.suborgId, user?.signWith);
-    const transactions = [
-      {
-        to: finalConfig.request.address,
-        data: encodeFunctionData({
-          abi: finalConfig.request.abi,
-          functionName: finalConfig.request.functionName,
-          args: finalConfig.request.args,
-        }),
-      },
-    ];
-    const result = await executeTransactions(
-      smartAccountClient,
-      transactions,
-      'Approve failed',
-      fuse,
-    );
-    setApprovalData(result);
-    return result;
-  }, [config, fallbackConfig, user?.suborgId, user?.signWith, account, safeAA]);
+
+    try {
+      track('approve_initiated', {
+        token_address: amountToApprove?.currency?.wrapped?.address,
+        spender: spender,
+        amount: amountToApprove?.toSignificant(),
+        chain_id: fuse.id,
+        source: 'useApprove',
+      });
+
+      const smartAccountClient = await safeAA(fuse, user?.suborgId, user?.signWith);
+      const transactions = [
+        {
+          to: finalConfig.request.address,
+          data: encodeFunctionData({
+            abi: finalConfig.request.abi,
+            functionName: finalConfig.request.functionName,
+            args: finalConfig.request.args,
+          }),
+        },
+      ];
+      const result = await executeTransactions(
+        smartAccountClient,
+        transactions,
+        'Approve failed',
+        fuse,
+      );
+
+      track('approve_completed', {
+        token_address: amountToApprove?.currency?.wrapped?.address,
+        spender: spender,
+        amount: amountToApprove?.toSignificant(),
+        transaction_hash: result.transactionHash,
+        source: 'useApprove',
+      });
+
+      setApprovalData(result);
+      return result;
+    } catch (error) {
+      track('approve_error', {
+        token_address: amountToApprove?.currency?.wrapped?.address,
+        spender: spender,
+        amount: amountToApprove?.toSignificant(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+        user_cancelled: String(error).includes('cancelled'),
+        source: 'useApprove',
+      });
+      throw error;
+    }
+  }, [config, fallbackConfig, user?.suborgId, user?.signWith, account, safeAA, amountToApprove, spender]);
 
   const { isLoading, isSuccess } = useTransactionAwait(approvalData?.transactionHash);
 

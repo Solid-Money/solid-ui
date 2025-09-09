@@ -8,6 +8,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { useWithdrawStore } from '@/store/useWithdrawStore';
 import { Withdraw, WithdrawTrigger } from '.';
 import { path } from '@/constants/path';
+import { track } from '@/lib/firebase';
 
 const WithdrawModal = () => {
   const router = useRouter();
@@ -22,6 +23,10 @@ const WithdrawModal = () => {
   };
 
   const handleTransactionStatusPress = () => {
+    track('withdraw_transaction_status_pressed', {
+      amount: transaction.amount,
+      source: 'withdraw_modal',
+    });
     setModal(WITHDRAW_MODAL.CLOSE);
     router.push(path.ACTIVITY);
   };
@@ -48,8 +53,14 @@ const WithdrawModal = () => {
 
   const handleOpenChange = (value: boolean) => {
     if (value) {
+      track('withdraw_modal_opened', {
+        source: 'withdraw_modal',
+      });
       setModal(WITHDRAW_MODAL.OPEN_FORM);
     } else {
+      track('withdraw_modal_closed', {
+        source: 'withdraw_modal',
+      });
       setModal(WITHDRAW_MODAL.CLOSE);
     }
   };

@@ -11,6 +11,7 @@ import SwapPair from '@/components/Swap/SwapPair';
 import SwapParams from '@/components/Swap/SwapParams';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import { track } from '@/lib/firebase';
 
 export default function SwapPage() {
   const router = useRouter();
@@ -26,7 +27,15 @@ export default function SwapPage() {
 
         <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
           <View className="flex-row items-center justify-between">
-            <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+            <Pressable
+              onPress={() => {
+                track('swap_page_back_button_pressed', {
+                  source: 'swap_page',
+                });
+                router.back();
+              }}
+              className="web:hover:opacity-70"
+            >
               <ArrowLeft color="white" />
             </Pressable>
             <Text className="text-white text-xl md:text-3xl font-semibold text-center">Swap</Text>

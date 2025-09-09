@@ -1,11 +1,12 @@
+import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useState } from 'react';
 import { TransactionReceipt } from 'viem';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
-import * as Sentry from '@sentry/react-native';
 
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { track } from '@/lib/firebase';
 import { Status } from '@/lib/types';
 import { getChain } from '@/lib/wagmi';
 import useUser from './useUser';
@@ -39,6 +40,14 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
         throw new Error('Chain not found');
       }
 
+      track('send_transaction_initiated', {
+        token_address: tokenAddress,
+        chain_id: chainId,
+        amount: amount,
+        to_address: to,
+        source: 'send_hook',
+      });
+
       setSendStatus(Status.PENDING);
       setError(null);
 
@@ -69,21 +78,44 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
         throw new Error('User cancelled transaction');
       }
 
+      track('send_transaction_completed', {
+        token_address: tokenAddress,
+        chain_id: chainId,
+        amount: amount,
+        to_address: to,
+        transaction_hash: transaction.transactionHash,
+        source: 'send_hook',
+      });
+
       setSendStatus(Status.SUCCESS);
       return transaction;
     } catch (error) {
       console.error(error);
+      
+      track('send_transaction_error', {
+        token_address: tokenAddress,
+        chain_id: chainId,
+        amount: amount,
+        to_address: to,
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+        user_cancelled: String(error).includes('cancelled'),
+      });
+
       Sentry.captureException(error, {
         tags: {
           type: 'send_transaction_error',
           chainId: chainId.toString(),
-          userId: user?.id,
+          userId: user?.userId,
         },
         extra: {
           tokenAddress,
           amount,
           to,
           tokenDecimals,
+        },
+        user: {
+          id: user?.userId,
+          address: user?.safeAddress,
         },
       });
       setSendStatus(Status.ERROR);

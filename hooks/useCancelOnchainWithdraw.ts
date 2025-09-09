@@ -1,6 +1,7 @@
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { track } from '@/lib/firebase';
 import { Status } from '@/lib/types';
 import { useState } from 'react';
 import { TransactionReceipt } from 'viem';
@@ -24,8 +25,20 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
   const cancelOnchainWithdraw = async (requestId: `0x${string}`) => {
     try {
       if (!user) {
+        track('cancel_withdraw_error', {
+          request_id: requestId,
+          error: 'User not found',
+          step: 'validation',
+          source: 'useCancelOnchainWithdraw',
+        });
         throw new Error('User not found');
       }
+
+      track('cancel_withdraw_initiated', {
+        request_id: requestId,
+        chain_id: mainnet.id,
+        source: 'useCancelOnchainWithdraw',
+      });
 
       setCancelOnchainWithdrawStatus(Status.PENDING);
       setError(null);
@@ -53,13 +66,33 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
       );
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
+        track('cancel_withdraw_cancelled', {
+          request_id: requestId,
+          source: 'useCancelOnchainWithdraw',
+        });
         throw new Error('User cancelled transaction');
       }
+
+      track('cancel_withdraw_completed', {
+        request_id: requestId,
+        transaction_hash: transaction.transactionHash,
+        chain_id: mainnet.id,
+        source: 'useCancelOnchainWithdraw',
+      });
 
       setCancelOnchainWithdrawStatus(Status.SUCCESS);
       return transaction;
     } catch (error) {
       console.error(error);
+      
+      track('cancel_withdraw_error', {
+        request_id: requestId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        user_cancelled: String(error).includes('cancelled'),
+        step: 'execution',
+        source: 'useCancelOnchainWithdraw',
+      });
+      
       setCancelOnchainWithdrawStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;
