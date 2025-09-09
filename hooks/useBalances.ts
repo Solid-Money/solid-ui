@@ -1,11 +1,11 @@
-import { ADDRESSES } from "@/lib/config";
-import { TokenBalance } from "@/lib/types";
-import { isSoUSDToken } from "@/lib/utils";
-import { publicClient } from "@/lib/wagmi";
-import { useQuery } from "@tanstack/react-query";
-import { readContract } from "viem/actions";
-import { mainnet } from "viem/chains";
-import useUser from "./useUser";
+import { ADDRESSES } from '@/lib/config';
+import { TokenBalance } from '@/lib/types';
+import { isSoUSDToken } from '@/lib/utils';
+import { publicClient } from '@/lib/wagmi';
+import { useQuery } from '@tanstack/react-query';
+import { readContract } from 'viem/actions';
+import { mainnet } from 'viem/chains';
+import useUser from './useUser';
 
 // Blockscout response structure for both Ethereum and Fuse
 interface BlockscoutTokenBalance {
@@ -36,7 +36,7 @@ type CalculatedTokenValue = {
   soUSDValue: number;
   regularValue: number;
   value: number;
-}
+};
 
 interface BalanceData {
   totalUSD: number;
@@ -62,16 +62,16 @@ const FUSE_CHAIN_ID = 122;
 const ACCOUNTANT_ABI = [
   {
     inputs: [],
-    name: "getRate",
+    name: 'getRate',
     outputs: [
       {
-        internalType: "uint256",
-        name: "rate",
-        type: "uint256",
+        internalType: 'uint256',
+        name: 'rate',
+        type: 'uint256',
       },
     ],
-    stateMutability: "view",
-    type: "function",
+    stateMutability: 'view',
+    type: 'function',
   },
 ] as const;
 
@@ -79,15 +79,15 @@ const ACCOUNTANT_ABI = [
 const fetchTokenBalances = async (safeAddress: string) => {
   const [ethereumResponse, fuseResponse, soUSDRate] = await Promise.allSettled([
     fetch(`https://eth.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
-      headers: { accept: "application/json" },
+      headers: { accept: 'application/json' },
     }),
     fetch(`https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-balances`, {
-      headers: { accept: "application/json" },
+      headers: { accept: 'application/json' },
     }),
     readContract(publicClient(mainnet.id), {
       address: ADDRESSES.ethereum.accountant,
       abi: ACCOUNTANT_ABI,
-      functionName: "getRate",
+      functionName: 'getRate',
     }),
   ]);
 
@@ -96,10 +96,10 @@ const fetchTokenBalances = async (safeAddress: string) => {
   let rate = 0;
 
   // Process soUSD rate
-  if (soUSDRate.status === "fulfilled") {
+  if (soUSDRate.status === 'fulfilled') {
     rate = Number(soUSDRate.value) / Math.pow(10, 6);
   } else {
-    console.warn("Failed to fetch soUSD rate:", soUSDRate.reason);
+    console.warn('Failed to fetch soUSD rate:', soUSDRate.reason);
   }
 
   // Convert Blockscout format to our standard format
@@ -109,7 +109,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   ): TokenBalance => {
     const address = item.token.address || item.token.address_hash;
     return {
-      contractTickerSymbol: item.token.symbol,
+      contractTickerSymbol: item.token.symbol === 'SOUSD' ? 'soUSD' : item.token.symbol,
       contractName: item.token.name,
       contractAddress: address,
       balance: item.value,
@@ -127,35 +127,25 @@ const fetchTokenBalances = async (safeAddress: string) => {
   };
 
   // Process Ethereum response (Blockscout)
-  if (
-    ethereumResponse.status === "fulfilled" &&
-    ethereumResponse.value.ok
-  ) {
+  if (ethereumResponse.status === 'fulfilled' && ethereumResponse.value.ok) {
     const ethereumData: BlockscoutResponse = await ethereumResponse.value.json();
     // Filter out NFTs and only include ERC-20 tokens
     ethereumTokens = ethereumData
-      .filter((item) => item.token.type === "ERC-20")
-      .map((item) =>
-        convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID)
-      );
-  } else if (ethereumResponse.status === "rejected") {
-    console.warn(
-      "Failed to fetch Ethereum balances:",
-      ethereumResponse.reason,
-    );
+      .filter(item => item.token.type === 'ERC-20')
+      .map(item => convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID));
+  } else if (ethereumResponse.status === 'rejected') {
+    console.warn('Failed to fetch Ethereum balances:', ethereumResponse.reason);
   }
 
   // Process Fuse response (Blockscout)
-  if (fuseResponse.status === "fulfilled" && fuseResponse.value.ok) {
+  if (fuseResponse.status === 'fulfilled' && fuseResponse.value.ok) {
     const fuseData: BlockscoutResponse = await fuseResponse.value.json();
     // Filter out NFTs and only include ERC-20 tokens
     fuseTokens = fuseData
-      .filter((item) => item.token.type === "ERC-20")
-      .map((item) =>
-        convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID)
-      );
-  } else if (fuseResponse.status === "rejected") {
-    console.warn("Failed to fetch Fuse balances:", fuseResponse.reason);
+      .filter(item => item.token.type === 'ERC-20')
+      .map(item => convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID));
+  } else if (fuseResponse.status === 'rejected') {
+    console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
   }
 
   const allTokens = [...ethereumTokens, ...fuseTokens];
@@ -202,7 +192,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       totalUSDExcludingSoUSD: 0,
       soUSDEthereum: 0,
       soUSDFuse: 0,
-    }
+    },
   );
 
   return {
@@ -216,21 +206,15 @@ const fetchTokenBalances = async (safeAddress: string) => {
 export const useBalances = (): BalanceData => {
   const { user } = useUser();
 
-  const {
-    data,
-    isLoading,
-    isRefetching,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ["tokenBalances", user?.safeAddress],
+  const { data, isLoading, isRefetching, error, refetch } = useQuery({
+    queryKey: ['tokenBalances', user?.safeAddress],
     queryFn: () => fetchTokenBalances(user?.safeAddress!),
     enabled: !!user?.safeAddress,
     // TanStack Query handles all the manual logic:
     staleTime: 60 * 1000, // 1 minute - data is considered fresh for 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes - data stays in cache for 5 minutes when unused
     retry: 3, // retry up to 3 times on failure
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
     // Refetch every 30 seconds when data becomes stale

@@ -1,4 +1,5 @@
 import {
+  DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
   DEPOSIT_MODAL,
   SEND_MODAL,
   STAKE_MODAL,
@@ -311,6 +312,8 @@ export type SwapModal = (typeof SWAP_MODAL)[keyof typeof SWAP_MODAL];
 export type WithdrawModal = (typeof WITHDRAW_MODAL)[keyof typeof WITHDRAW_MODAL];
 export type UnstakeModal = (typeof UNSTAKE_MODAL)[keyof typeof UNSTAKE_MODAL];
 export type StakeModal = (typeof STAKE_MODAL)[keyof typeof STAKE_MODAL];
+export type DepositFromSafeAccountModal =
+  (typeof DEPOSIT_FROM_SAFE_ACCOUNT_MODAL)[keyof typeof DEPOSIT_FROM_SAFE_ACCOUNT_MODAL];
 
 export type TransactionStatusModal = {
   amount?: number;

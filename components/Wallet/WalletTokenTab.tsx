@@ -8,6 +8,7 @@ import { useBlockNumber } from 'wagmi';
 
 import Ping from '@/components/Ping';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import SavingCountUp from '@/components/SavingCountUp';
 import SendModal from '@/components/SendModal/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
 import {
@@ -21,9 +22,16 @@ import {
 import { Text } from '@/components/ui/text';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
+import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
+import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
+import useUser from '@/hooks/useUser';
+import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { ADDRESSES } from '@/lib/config';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { SavingMode } from '@/lib/types';
 import {
   cn,
   compactNumberFormat,
@@ -31,15 +39,9 @@ import {
   formatNumber,
   isSoUSDEthereum,
   isSoUSDFuse,
+  isUSDCEthereum,
 } from '@/lib/utils';
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useFuseVaultBalance } from '@/hooks/useVault';
-import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
-import { ADDRESSES } from '@/lib/config';
-import { useDepositCalculations } from '@/hooks/useDepositCalculations';
-import useUser from '@/hooks/useUser';
-import SavingCountUp from '@/components/SavingCountUp';
-import { SavingMode } from '@/lib/types';
+import DepositModal from '../Deposit/DepositModal';
 
 const WalletTokenTab = () => {
   const insets = useSafeAreaInsets();
@@ -200,21 +202,26 @@ const WalletTokenTab = () => {
                     </View>
                   )}
                   <View className="flex-row items-center gap-2">
-                    <SendModal
-                      tokenAddress={token.contractAddress as Address}
-                      tokenDecimals={token.contractDecimals}
-                      tokenIcon={tokenIcon}
-                      tokenSymbol={token.contractTickerSymbol || 'Unknown'}
-                      chainId={token.chainId}
-                    />
+                    {!isSoUSDEthereum(token.contractAddress) && (
+                      <SendModal
+                        tokenAddress={token.contractAddress as Address}
+                        tokenDecimals={token.contractDecimals}
+                        tokenIcon={tokenIcon}
+                        tokenSymbol={token.contractTickerSymbol || 'Unknown'}
+                        chainId={token.chainId}
+                      />
+                    )}
                     {isSoUSDFuse(token.contractAddress) ? (
                       <UnstakeModal />
-                    ) : isSoUSDEthereum(token.contractAddress) ? (
-                      <>
-                        <WithdrawModal />
-                        <StakeModal />
-                      </>
-                    ) : null}
+                    ) : (
+                      isSoUSDEthereum(token.contractAddress) && (
+                        <>
+                          <WithdrawModal />
+                          <StakeModal />
+                        </>
+                      )
+                    )}
+                    {isUSDCEthereum(token.contractAddress) && <DepositModal />}
                   </View>
                 </View>
               </View>
@@ -385,21 +392,26 @@ const WalletTokenTab = () => {
                     </TableCell>
                     <TableCell className="p-3 pl-0 md:p-6" style={{ width: columnWidths[4] }}>
                       <View className="flex-row items-center justify-end gap-2">
-                        <SendModal
-                          tokenAddress={token.contractAddress as Address}
-                          tokenDecimals={token.contractDecimals}
-                          tokenIcon={tokenIcon}
-                          tokenSymbol={token.contractTickerSymbol || 'Unknown'}
-                          chainId={token.chainId}
-                        />
+                        {!isSoUSDEthereum(token.contractAddress) && (
+                          <SendModal
+                            tokenAddress={token.contractAddress as Address}
+                            tokenDecimals={token.contractDecimals}
+                            tokenIcon={tokenIcon}
+                            tokenSymbol={token.contractTickerSymbol || 'Unknown'}
+                            chainId={token.chainId}
+                          />
+                        )}
                         {isSoUSDFuse(token.contractAddress) ? (
                           <UnstakeModal />
-                        ) : isSoUSDEthereum(token.contractAddress) ? (
-                          <>
-                            <WithdrawModal />
-                            <StakeModal />
-                          </>
-                        ) : null}
+                        ) : (
+                          isSoUSDEthereum(token.contractAddress) && (
+                            <>
+                              <WithdrawModal />
+                              <StakeModal />
+                            </>
+                          )
+                        )}
+                        {isUSDCEthereum(token.contractAddress) && <DepositModal />}
                       </View>
                     </TableCell>
                   </TableRow>
