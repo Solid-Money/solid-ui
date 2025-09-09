@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { TransactionReceipt } from 'viem';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 
-import ERC20_ABI from '@/lib/abis/ERC20';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { track } from '@/lib/firebase';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import ERC20_ABI from '@/lib/abis/ERC20';
+import { track } from '@/lib/analytics';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status } from '@/lib/types';
 import { getChain } from '@/lib/wagmi';
 import useUser from './useUser';

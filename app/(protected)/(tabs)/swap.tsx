@@ -11,7 +11,7 @@ import SwapPair from '@/components/Swap/SwapPair';
 import SwapParams from '@/components/Swap/SwapParams';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
-import { track } from '@/lib/firebase';
+import { track } from '@/lib/analytics';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 export default function SwapPage() {

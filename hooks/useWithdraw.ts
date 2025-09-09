@@ -1,9 +1,9 @@
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import ERC20_ABI from '@/lib/abis/ERC20';
+import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { track } from '@/lib/firebase';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { Status } from '@/lib/types';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';

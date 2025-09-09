@@ -12,6 +12,7 @@
     "wagmi-generate": "wagmi generate"
   },
   "dependencies": {
+    "@amplitude/analytics-react-native": "^1.5.9",
     "@apollo/client": "^3.13.8",
     "@coinbase/wallet-mobile-sdk": "^1.1.2",
     "@cryptoalgebra/fuse-sdk": "npm:@cryptoalgebra/fuse-sdk@latest",

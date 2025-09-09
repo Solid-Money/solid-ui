@@ -1,12 +1,12 @@
-import { View } from 'react-native';
 import { router } from 'expo-router';
+import { View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
 import { DepositOptionModal } from '@/components/DepositOption';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { track } from '@/lib/firebase';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';

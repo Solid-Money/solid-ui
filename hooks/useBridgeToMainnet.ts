@@ -1,10 +1,10 @@
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
+import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { track } from '@/lib/firebase';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { Status } from '@/lib/types';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
@@ -12,10 +12,10 @@ import { useCallback, useState } from 'react';
 import { TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import {
-  encodeAbiParameters,
-  encodeFunctionData,
-  parseAbiParameters,
-  parseUnits,
+    encodeAbiParameters,
+    encodeFunctionData,
+    parseAbiParameters,
+    parseUnits,
 } from 'viem/utils';
 import { useReadContract } from 'wagmi';
 import useUser from './useUser';

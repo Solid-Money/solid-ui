@@ -565,6 +565,49 @@ export interface SignupUser {
   inviteCode?: string;
 }
 
+export interface LocalTransactionDetails {
+  amount: string;
+  currency: string;
+  exchange_rate: string;
+}
+
+export interface CryptoTransactionDetails {
+  from_address: string;
+  to_address: string;
+  tx_hash: string;
+  chain: string;
+}
+
+export interface CardTransaction {
+  id: string;
+  card_account_id: string;
+  customer_id: string;
+  category: 'adjustment' | 'purchase' | 'refund' | 'withdrawal' | 'crypto_funding';
+  amount: string;
+  currency: string;
+  status: string;
+  description: string;
+  posted_at: string;
+  authorized_at: string;
+  crypto_transaction_details?: CryptoTransactionDetails;
+  related_transaction_ids: string[];
+  billing_amount?: string;
+  merchant_category_code?: string;
+  merchant_name?: string;
+  merchant_location?: string;
+  local_transaction_details?: LocalTransactionDetails;
+}
+
+export interface CardTransactionsResponse {
+  page: number;
+  count: number;
+  total_pages: number;
+  total_count: number;
+  page_size: number;
+  pagination_token?: string;
+  data: CardTransaction[];
+}
+
 export enum PromiseStatus {
   PENDING = 'pending',
   FULFILLED = 'fulfilled',

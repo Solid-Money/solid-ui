@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 
@@ -105,6 +105,14 @@ export default function CardDetails() {
                 isLoading={isFreezing}
               />
             </View>
+
+            <Pressable
+              onPress={() => router.push(path.CARD_TRANSACTIONS)}
+              className="bg-[#1E1E1E] rounded-xl flex-row items-center justify-between p-4 mb-8"
+            >
+              <Text className=" text-base font-bold text-white">View transactions</Text>
+              <ChevronRight color="white" size={22} />
+            </Pressable>
           </View>
         </View>
       </ScrollView>

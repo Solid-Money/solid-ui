@@ -18,6 +18,7 @@ type Path = {
   CARD_TERMS_OF_SERVICE: Route;
   CARD_DETAILS: Route;
   CARD_DEPOSIT: Route;
+  CARD_TRANSACTIONS: Route;
   CARD_ACTIVATE_MOBILE: Href;
   CARD_KYC_MOBILE: Href;
   EARN: Href;
@@ -47,6 +48,7 @@ export const path: Path = {
   CARD_TERMS_OF_SERVICE: '/card/bridge_terms_of_service',
   CARD_DETAILS: '/card/details',
   CARD_DEPOSIT: '/card/deposit',
+  CARD_TRANSACTIONS: '/card/details/transactions',
   CARD_ACTIVATE_MOBILE: '/card/activate_mobile',
   CARD_KYC_MOBILE: '/card/kyc_mobile',
   EARN: '/earn',

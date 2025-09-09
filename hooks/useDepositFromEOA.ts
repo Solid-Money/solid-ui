@@ -28,6 +28,8 @@ import { publicClient } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 import useUser from './useUser';
+import { track } from '@/lib/analytics';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 export enum DepositStatus {
   IDLE = 'idle',
@@ -450,6 +452,7 @@ const useDepositFromEOA = (): DepositResult => {
       setDepositStatus(DepositStatus.SUCCESS);
     } catch (error) {
       console.error(error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
       Sentry.captureException(error, {
         tags: {
@@ -463,7 +466,7 @@ const useDepositFromEOA = (): DepositResult => {
           srcChainId,
           isEthereum,
           chainId,
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          errorMessage,
           depositStatus,
           nonce,
           tokenName,
@@ -474,9 +477,24 @@ const useDepositFromEOA = (): DepositResult => {
           address: user?.safeAddress,
         },
       });
+
+      track(TRACKING_EVENTS.DEPOSIT_ERROR, {
+        amount: amount,
+        eoa_address: eoaAddress,
+        safe_address: user?.safeAddress,
+        src_chain_id: srcChainId,
+        is_ethereum: isEthereum,
+        chain_id: chainId,
+        deposit_status: depositStatus,
+        nonce,
+        token_name: tokenName,
+        fee: fee?.toString(),
+        source: 'deposit_from_eoa',
+        error: errorMessage,
+      });
       
       setDepositStatus(DepositStatus.ERROR);
-      setError(error instanceof Error ? error.message : 'Unknown error');
+      setError(errorMessage);
       throw error;
     }
   };
