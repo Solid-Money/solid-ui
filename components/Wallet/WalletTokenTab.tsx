@@ -6,6 +6,7 @@ import { Address, formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
 
+import DepositModal from '@/components/Deposit/DepositModal';
 import Ping from '@/components/Ping';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import SavingCountUp from '@/components/SavingCountUp';
@@ -41,7 +42,6 @@ import {
   isSoUSDFuse,
   isUSDCEthereum,
 } from '@/lib/utils';
-import DepositModal from '../Deposit/DepositModal';
 
 const WalletTokenTab = () => {
   const insets = useSafeAreaInsets();
