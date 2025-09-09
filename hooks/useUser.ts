@@ -1,11 +1,14 @@
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { deleteAccount, getSubOrgIdByUsername, login, signUp, updateSafeAddress } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
   USER,
 } from '@/lib/config';
+import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import { getNonce, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
@@ -25,14 +28,11 @@ import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
 import { toSafeSmartAccount } from 'permissionless/accounts';
 import { useCallback, useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
-import { useIntercom } from 'react-use-intercom';
 import { v4 as uuidv4 } from 'uuid';
 import { Chain, createWalletClient, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { track } from '@/lib/analytics';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -50,7 +50,7 @@ interface UseUserReturn {
 const useUser = (): UseUserReturn => {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { shutdown, boot } = useIntercom();
+  const intercom = useIntercom();
 
   const {
     users,
@@ -505,8 +505,8 @@ const useUser = (): UseUserReturn => {
     });
     unselectUser();
     clearKycLinkId(); // Clear KYC data on logout
-    shutdown();
-    boot();
+    intercom?.shutdown();
+    intercom?.boot();
     router.replace(path.WELCOME);
   }, [unselectUser, clearKycLinkId, router, user]);
 
