@@ -18,6 +18,7 @@ Solid is a React Native/Expo mobile application that provides users with:
 - **Account Abstraction**: Safe smart accounts with ERC-4337 implementation
 - **Hardware Security**: Device secure enclave for key protection
 - **Turnkey Integration**: Secure custody and key management infrastructure
+- **Persona KYC**: Identity verification and compliance
 
 ### 💎 Crypto Savings & DeFi
 - **High-Yield Savings**: Earn competitive APY on various tokens
@@ -36,6 +37,13 @@ Solid is a React Native/Expo mobile application that provides users with:
 - **Points System**: Earn points for app activities
 - **Referral Program**: Invite friends and earn rewards together
 - **Achievement System**: Unlock benefits through engagement
+- **Rewards Integration**: Additional reward mechanisms
+
+### 📊 Analytics & Support
+- **Amplitude Analytics**: User behavior tracking and insights
+- **Firebase Analytics**: Event tracking and user engagement
+- **Sentry Integration**: Error monitoring and performance tracking
+- **Intercom Support**: In-app customer support and messaging
 
 ## 🛠️ Technology Stack
 
@@ -52,14 +60,16 @@ Solid is a React Native/Expo mobile application that provides users with:
 - **Turnkey SDK** for secure key management
 
 ### State & Data Management
-- **Zustand** for global state management
-- **React Query** (@tanstack/react-query) for server state
-- **Apollo Client** for GraphQL and The Graph integration
-- **MMKV** for performant local storage
+- **Zustand** 5.0.6 for global state management
+- **React Query** (@tanstack/react-query 5.83.0) for server state
+- **Apollo Client** 3.13.8 for GraphQL and The Graph integration
+- **MMKV** 3.3.0 for performant local storage
 
 ### DeFi Integration
-- **ThirdWeb** SDK for Web3 development
+- **ThirdWeb** 5.105.21 for Web3 development
 - **CryptoAlgebra Fuse SDK** for DEX functionality
+- **Voltage Finance SDK** 1.0.5 for additional DEX features
+- **LiFi** integration for cross-chain bridging
 - **Multiple networks**: Ethereum, Fuse, Polygon, Base, Arbitrum
 
 ## 🚀 Getting Started
@@ -130,7 +140,7 @@ npm start             # Start Expo development server
 npm run android       # Run on Android emulator  
 npm run ios          # Run on iOS simulator
 npm run web          # Run in web browser
-npm run lint         # Run ESLint with auto-fix
+npm run lint         # Run ESLint with auto-fix (uses expo lint)
 npm run codegen      # Generate GraphQL types from schema
 npm run wagmi-generate # Generate Wagmi hooks from contracts
 ```
@@ -141,12 +151,24 @@ npm run wagmi-generate # Generate Wagmi hooks from contracts
 Key environment variables (see `.env.example`):
 - `EXPO_PUBLIC_BASE_URL`: Backend API endpoint
 - `EXPO_PUBLIC_ALCHEMY_API_KEY`: Alchemy API key for blockchain data
-- `EXPO_PUBLIC_TURNKEY_API_BASE_URL`: Turnkey API configuration
+- `EXPO_PUBLIC_ETHEREUM_API_KEY`: Ethereum API key
+- `EXPO_PUBLIC_PIMLICO_API_KEY`: Pimlico paymaster API key
+- `EXPO_PUBLIC_FLASH_API_BASE_URL`: Solid API configuration
+- `EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL`: Solid analytics endpoint
+- `EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS`: Bridge auto-deposit address
+- `EXPO_PUBLIC_AMPLITUDE_API_KEY`: Amplitude analytics
 - `EXPO_PUBLIC_INFO_GRAPH`: The Graph endpoint for project data
 - `EXPO_PUBLIC_ALGEBRA_INFO_GRAPH`: The Graph endpoint for DEX data
+- `EXPO_PUBLIC_COIN_GECKO_API_KEY`: CoinGecko API for price data
 - `EXPO_PUBLIC_THIRDWEB_CLIENT_ID`: ThirdWeb client configuration
-- `EXPO_PUBLIC_PIMLICO_API_KEY`: Pimlico paymaster API key
-- `GOOGLE_SERVICES_JSON/PLIST`: Firebase configuration
+- `EXPO_PUBLIC_TURNKEY_API_BASE_URL`: Turnkey API endpoint
+- `EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID`: Turnkey organization ID
+- `EXPO_PUBLIC_REOWN_PROJECT_ID`: Reown (formerly WalletConnect) project ID
+- `EXPO_PUBLIC_PASSKEY_CERTIFICATES_HOST`: Passkey certificates host
+- `EXPO_PUBLIC_WAITLIST_API_BASE_URL`: Waitlist API endpoint
+- `EXPO_PUBLIC_ENVIRONMENT`: Environment configuration
+- `GOOGLE_SERVICES_JSON/PLIST`: Firebase configuration files
+- `SENTRY_AUTH_TOKEN`: Sentry authentication token
 
 ### Blockchain Configuration
 - **Ethereum Mainnet**: Primary network for high-value transactions
