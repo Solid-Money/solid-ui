@@ -7,7 +7,9 @@ import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
+import ResponsiveModal from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
@@ -17,6 +19,7 @@ export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
   const { isScreenMedium } = useDimension();
   const [isFreezing, setIsFreezing] = useState(false);
+  const [isCardImageModalOpen, setIsCardImageModalOpen] = useState(false);
   const router = useRouter();
 
   const availableBalance = cardDetails?.balances.available;
@@ -63,6 +66,12 @@ export default function CardDetails() {
               <CircularActionButton
                 icon={require('@/assets/images/card_actions_fund.png')}
                 label="Fund"
+                onPress={() => router.push(path.CARD_DEPOSIT)}
+              />
+              <CircularActionButton
+                icon={require('@/assets/images/card_details.png')}
+                label="Details"
+                onPress={() => setIsCardImageModalOpen(true)}
               />
               <CircularActionButton
                 icon={require('@/assets/images/card_actions_settings.png')}
@@ -99,6 +108,31 @@ export default function CardDetails() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Card Image Modal */}
+      <ResponsiveModal
+        currentModal={{ name: 'cardImage', number: 1 }}
+        previousModal={{ name: 'close', number: 0 }}
+        isOpen={isCardImageModalOpen}
+        onOpenChange={setIsCardImageModalOpen}
+        title="Card Details"
+        contentClassName="md:max-w-2xl"
+        contentKey="cardImage"
+        trigger={<></>}
+      >
+        <View className="items-center">
+          {cardDetails?.card_image_url ? (
+            <Image
+              source={{ uri: cardDetails.card_image_url }}
+              alt="Full Card Details"
+              style={{ width: '100%', aspectRatio: 1.6, maxWidth: 400 }}
+              contentFit="contain"
+            />
+          ) : (
+            <Text className="text-gray-400">Card image not available</Text>
+          )}
+        </View>
+      </ResponsiveModal>
     </View>
   );
 }
