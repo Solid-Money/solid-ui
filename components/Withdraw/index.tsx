@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { Info, Minus, Wallet } from 'lucide-react-native';
 import { useMemo } from 'react';
@@ -6,7 +7,6 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Image, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
-import * as Sentry from '@sentry/react-native';
 
 import Max from '@/components/Max';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -100,12 +100,16 @@ const Withdraw = () => {
       Sentry.captureException(_error, {
         tags: {
           type: 'withdraw_modal_error',
-          userId: user?.id,
+          userId: user?.userId,
         },
         extra: {
-          amount: withdrawFormValues.amount,
+          amount: data.amount,
           ethereumBalance,
           userAddress: user?.safeAddress,
+        },
+        user: {
+          id: user?.userId,
+          address: user?.safeAddress,
         },
       });
       Toast.show({

@@ -25,12 +25,12 @@ import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
 import { toSafeSmartAccount } from 'permissionless/accounts';
 import { useCallback, useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
+import { useIntercom } from 'react-use-intercom';
 import { v4 as uuidv4 } from 'uuid';
 import { Chain, createWalletClient, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
-import { useIntercom } from 'react-use-intercom';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -125,6 +125,10 @@ const useUser = (): UseUserReturn => {
                 type: 'gas_price_estimation_error',
                 chainId: chain.id,
               },
+              user: {
+                id: user?.userId,
+                address: user?.safeAddress,
+              },
             });
             throw error;
           }
@@ -147,15 +151,16 @@ const useUser = (): UseUserReturn => {
         return isDeposited;
       } catch (error) {
         console.error('Error fetching tokens:', error);
-        Sentry.captureException(error, {
+        Sentry.captureException(new Error('Error fetching tokens'), {
           tags: {
             type: 'token_fetch_error',
-            safeAddress: user.safeAddress,
           },
-        });
-        Sentry.captureException(new Error('Error fetching tokens'), {
           extra: {
             error,
+          },
+          user: {
+            id: user?.userId,
+            address: user?.safeAddress,
           },
         });
         return false;
@@ -276,15 +281,17 @@ const useUser = (): UseUserReturn => {
             updateSafeAddress(smartAccountClient.account.address),
           );
           if (!resp) {
-            Sentry.captureException(new Error('Error updating safe address on signup'));
-            const error = new Error('Error updating safe address');
+            const error = new Error('Error updating safe address on signup');
             Sentry.captureException(error, {
               tags: {
                 type: 'safe_address_update_error',
               },
               extra: {
                 username,
-                safeAddress: safeAccount.address,
+              },
+              user: {
+                id: user?.userId,
+                address: user?.safeAddress,
               },
             });
             throw error;
@@ -299,7 +306,10 @@ const useUser = (): UseUserReturn => {
             Sentry.captureException(error, {
               tags: {
                 type: 'points_fetch_error_signup',
-                userId: user?.id,
+              },
+              user: {
+                id: user?.userId,
+                address: user?.safeAddress,
               },
               level: 'warning',
             });

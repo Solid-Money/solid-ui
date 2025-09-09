@@ -11,23 +11,23 @@ import {
   Signature,
   verifyTypedData,
 } from 'viem';
+import { waitForTransactionReceipt } from 'viem/actions';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber, useChainId, useReadContract } from 'wagmi';
-import { waitForTransactionReceipt } from 'viem/actions';
 
+import { BRIDGE_TOKENS, getUsdcAddress } from '@/constants/bridge';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
+import { bridgeDeposit, bridgeTransaction, createDeposit, getLifiQuote } from '@/lib/api';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { useUserStore } from '@/store/useUserStore';
-import useUser from './useUser';
-import { BRIDGE_TOKENS, getUsdcAddress } from '@/constants/bridge';
 import { getChain } from '@/lib/thirdweb';
 import { withRefreshToken } from '@/lib/utils';
-import { bridgeDeposit, bridgeTransaction, createDeposit, getLifiQuote } from '@/lib/api';
-import { useDepositStore } from '@/store/useDepositStore';
-import { publicClient } from '@/lib/wagmi';
 import { checkAndSetAllowance, sendTransaction } from '@/lib/utils/contract';
+import { publicClient } from '@/lib/wagmi';
+import { useDepositStore } from '@/store/useDepositStore';
+import { useUserStore } from '@/store/useUserStore';
+import useUser from './useUser';
 
 export enum DepositStatus {
   IDLE = 'idle',
@@ -193,10 +193,13 @@ const useDepositFromEOA = (): DepositResult => {
         data: {
           amount,
           eoaAddress,
-          safeAddress: user.safeAddress,
           srcChainId,
           isEthereum,
           isSponsor,
+        },
+        user: {
+          id: user.userId,
+          address: user.safeAddress,
         },
       });
 
@@ -436,6 +439,7 @@ const useDepositFromEOA = (): DepositResult => {
           amount,
           transactionHash: txHash,
           eoaAddress,
+          userId: user.userId,
           safeAddress: user.safeAddress,
           srcChainId,
           isEthereum,
