@@ -17,8 +17,7 @@ export const EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ?? '100';
-export const EXPO_PUBLIC_LIFI_API_URL =
-  process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
+export const EXPO_PUBLIC_LIFI_API_URL = process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
 export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_ID ?? '';
 export const EXPO_PUBLIC_FIREBASE_API_KEY = process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? '';
 export const EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN = process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '';
@@ -97,5 +96,6 @@ export const USER = {
   withdrawStorageKey: 'flash_withdraw',
   unstakeStorageKey: 'flash_unstake',
   stakeStorageKey: 'flash_stake',
+  depositFromSafeAccountStorageKey: 'flash_deposit_from_safe_account',
   referralStorageKey: 'flash_referral',
 };

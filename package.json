@@ -85,6 +85,7 @@
     "lucide-react-native": "^0.536.0",
     "nativewind": "^4.1.23",
     "permissionless": "^0.2.51",
+    "persona": "^5.3.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-hook-form": "^7.60.0",
