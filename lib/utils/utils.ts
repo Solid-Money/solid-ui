@@ -144,6 +144,11 @@ export const isSoUSDToken = (contractAddress: string): boolean => {
   return isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress);
 };
 
+export const isUSDCEthereum = (contractAddress: string): boolean => {
+  if (!contractAddress) return false;
+  return contractAddress.toLowerCase() === ADDRESSES.ethereum.usdc.toLowerCase();
+};
+
 // see: https://www.nativewind.dev/docs/core-concepts/differences#rem-sizing
 export const remToPx = Platform.OS === 'web' ? 16 : 14;
 

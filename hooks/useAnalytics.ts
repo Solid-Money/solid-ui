@@ -15,6 +15,7 @@ import {
   fetchTotalAPY,
   getBankTransfers,
 } from '@/lib/api';
+import { ADDRESSES } from '@/lib/config';
 import {
   BankTransferActivityItem,
   BankTransferStatus,
@@ -81,8 +82,14 @@ const filterTransfers = (transfers: BlockscoutTransactions) => {
     const name = transfer.to.name;
     const isSafe = name?.toLowerCase().includes('safe');
     const isTokenTransfer = transfer.type === 'token_transfer';
+    const toAddress = transfer.to.hash.toLowerCase();
 
-    if ((!name || isSafe) && isTokenTransfer) {
+    if (
+      (!name || isSafe) &&
+      isTokenTransfer &&
+      toAddress !== ADDRESSES.ethereum.bridgePaymasterAddress.toLowerCase() &&
+      toAddress !== ADDRESSES.fuse.bridgePaymasterAddress.toLowerCase()
+    ) {
       return transfer;
     }
   });
