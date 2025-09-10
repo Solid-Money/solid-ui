@@ -1,23 +1,24 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { ChevronLeft, Clipboard as ClipboardIcon } from 'lucide-react-native';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { z } from 'zod';
-import { ChevronLeft, Clipboard as ClipboardIcon } from 'lucide-react-native';
-import * as Clipboard from 'expo-clipboard';
-import { useRouter } from 'expo-router';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import { Status } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
-import { path } from '@/constants/path';
 
 import InfoError from '@/assets/images/info-error';
+import Input from '@/components/ui/input';
 
 const inviteSchema = z.object({
   inviteCode: z.string().nonempty('Invite code is required'),
@@ -64,7 +65,7 @@ export default function Invite() {
 
   const getInviteButtonText = () => {
     if (signupInfo.status === Status.PENDING) return 'Creating';
-    if (!watchedInviteCode) return 'Enter an invite code';
+    if (!watchedInviteCode) return 'Create account';
     if (!isValid) return 'Enter valid information';
     return 'Create Account';
   };
@@ -96,14 +97,13 @@ export default function Invite() {
   return (
     <SafeAreaView className="bg-background text-foreground flex-1">
       <View className="flex-1 md:justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
-        <View className="hidden md:flex items-center gap-5">
+        <View className="flex-row items-center gap-5 justify-center">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
-            style={{ width: 60, height: 60 }}
+            style={{ width: 74, height: 80 }}
             contentFit="contain"
           />
-          <Text className="text-3xl font-semibold">Welcome!</Text>
         </View>
 
         <View className="gap-6 md:gap-2">
@@ -112,7 +112,7 @@ export default function Invite() {
             className="flex-row justify-between items-center gap-2 web:hover:opacity-70"
           >
             <ChevronLeft color="white" />
-            <Text className="text-xl font-bold">Do you have an invite code?</Text>
+            <Text className="text-3xl text-center font-bold">Do you have an invite code?</Text>
             <View className="w-4" />
           </Pressable>
 
@@ -121,28 +121,29 @@ export default function Invite() {
           </Text>
         </View>
 
-        <View className="gap-2 md:mt-4 flex-1 md:flex-none">
+        <View className="gap-5 md:mt-4 flex-1 md:flex-none" style={{ minHeight: 336 }}>
           <View
-            className={cn(
-              'flex-row items-center justify-between gap-2 h-14 px-6 rounded-xl border',
-              errors.inviteCode ? 'border-red-500' : 'border-border',
-            )}
+            
           >
             <Controller
               control={control}
               name="inviteCode"
               render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
+                <Input
                   id="inviteCode"
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
                   placeholder="Enter invite code"
-                  className="w-full h-full text-lg text-foreground font-semibold placeholder:text-muted-foreground web:focus:outline-none"
+                  //className="w-full h-full text-lg text-foreground font-semibold placeholder:text-muted-foreground web:focus:outline-none"
+                  className={cn(
+                    'flex-row items-center justify-between gap-2 h-14 px-6 rounded-xl border bg-[#111111]',
+                    errors.inviteCode ? 'border-red-500' : 'border-border',
+                  )}
                 />
               )}
             />
-            <Pressable onPress={handlePasteInviteCode} className="web:hover:opacity-70">
+            <Pressable onPress={handlePasteInviteCode} className="opacity-70 web:hover:opacity-100 absolute" style={{ right: 20, top: 18 }}>
               <ClipboardIcon size={18} color="white" />
             </Pressable>
           </View>
@@ -155,8 +156,8 @@ export default function Invite() {
           <Button
             variant="brand"
             onPress={handleSubmit(handleInviteForm)}
-            disabled={isInviteDisabled()}
-            className="rounded-xl h-14 mt-auto"
+            //disabled={isInviteDisabled()}
+            className="rounded-xl h-14"
           >
             <Text className="text-lg font-semibold">{getInviteButtonText()}</Text>
             {signupInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}

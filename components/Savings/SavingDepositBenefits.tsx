@@ -12,7 +12,7 @@ const SavingDepositBenefits = () => {
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
-        <Text className="leading-4 md:text-2xl max-w-24 md:max-w-36 text-center md:text-start">
+        <Text className="leading-4 md:text-2xl md:leading-[29px] max-w-24 md:max-w-36 text-center md:text-start">
           Earn from as little as $1
         </Text>
       </View>
@@ -22,7 +22,7 @@ const SavingDepositBenefits = () => {
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
-        <Text className="leading-4 md:text-2xl max-w-24 md:max-w-32 text-center md:text-start">
+        <Text className="leading-4 md:text-2xl md:leading-[29px] max-w-24 md:max-w-32 text-center md:text-start">
           Withdraw anytime
         </Text>
       </View>
@@ -32,7 +32,7 @@ const SavingDepositBenefits = () => {
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
-        <Text className="leading-4 md:text-2xl max-w-24 md:max-w-32 text-center md:text-start">
+        <Text className="leading-4 md:text-2xl md:leading-[29px] max-w-24 md:max-w-32 text-center md:text-start">
           Earn every second
         </Text>
       </View>

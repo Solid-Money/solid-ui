@@ -1,14 +1,14 @@
-import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Plus } from 'lucide-react-native';
+import { View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
-import TooltipPopover from '@/components/Tooltip';
-import { useTotalAPY } from '@/hooks/useAnalytics';
-import { Skeleton } from '@/components/ui/skeleton';
 import { DepositOptionModal } from '@/components/DepositOption';
+import TooltipPopover from '@/components/Tooltip';
 import { buttonVariants } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { useTotalAPY } from '@/hooks/useAnalytics';
 
 const ExtraYield = () => {
   const { data: totalAPY } = useTotalAPY();
@@ -18,19 +18,19 @@ const ExtraYield = () => {
       <View
         className={buttonVariants({
           variant: 'accent',
-          className: 'h-12 pr-6 rounded-xl',
+          className: 'h-12 pr-6 rounded-xl bg-[#3D3D3D]',
         })}
       >
         <View className="flex-row items-center gap-2">
           <Plus color="white" />
-          <Text className="font-bold">Start earning</Text>
+          <Text className="font-semibold">Start earning</Text>
         </View>
       </View>
     );
   };
 
   return (
-    <View className="bg-card rounded-twice px-4 py-6 md:px-10 md:py-6 md:flex-row md:items-center justify-between gap-4">
+    <View className="bg-card rounded-twice px-4 py-6 md:px-10 md:py-8 md:flex-row md:items-center justify-between gap-4">
       <View className="md:flex-row md:items-center gap-4">
         <Image
           source={require('@/assets/images/three-percent.png')}
@@ -38,7 +38,7 @@ const ExtraYield = () => {
           contentFit="contain"
         />
         <View>
-          <Text className="text-2xl font-bold">Get extra 3% for your early support!</Text>
+          <Text className="text-2xl font-medium pb-[5px]">Get extra 3% for your early support!</Text>
           <Text className="text-muted-foreground font-medium">
             Get +3% APY for 2 months.{' '}
             <Link

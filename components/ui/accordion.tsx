@@ -12,9 +12,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { TextClassContext } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
 import { Minus } from '@/lib/icons/Minus';
 import { Plus } from '@/lib/icons/Plus';
+import { cn } from '@/lib/utils';
 
 function Accordion({
   children,
@@ -22,13 +22,22 @@ function Accordion({
 }: Omit<AccordionPrimitive.RootProps, 'asChild'> & {
   ref?: React.RefObject<AccordionPrimitive.RootRef>;
 }) {
+  const childrenArray = React.Children.toArray(children);
+  const patchedChildren = childrenArray.map((child, index) => {
+    if (index === 0 && React.isValidElement(child)) {
+      return React.cloneElement(child as React.ReactElement<any>, {
+        className: cn((child as any).props?.className, 'border-t-0'),
+      });
+    }
+    return child;
+  });
   return (
     <LayoutAnimationConfig skipEntering>
       <AccordionPrimitive.Root
         {...(props as AccordionPrimitive.RootProps)}
         asChild={Platform.OS !== 'web'}
       >
-        <Animated.View layout={LinearTransition.duration(200)}>{children}</Animated.View>
+        <Animated.View layout={LinearTransition.duration(200)}>{patchedChildren}</Animated.View>
       </AccordionPrimitive.Root>
     </LayoutAnimationConfig>
   );
@@ -140,3 +149,4 @@ function InnerContent({ children, className }: { children: React.ReactNode; clas
 }
 
 export { Accordion, AccordionContent, AccordionItem, AccordionTrigger };
+
