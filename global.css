@@ -34,4 +34,19 @@
     --purple: 270 39% 44%;
     --rewards: 44 100% 66%;
   }
+
+  /* Override Tailwind's default system stack on web */
+  body {
+    /* On web, use the family name registered by the font files */
+    font-family: 'Mona Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* React Native Web generates classes like .css-text-xxxxx for Text elements.
+   * Ensure they use Mona Sans regardless of the default system stack. */
+  [class^="css-text"],
+  [class*=" css-text"] {
+    font-family: 'Mona Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+      Roboto, Helvetica, Arial, sans-serif !important;
+  }
 }
