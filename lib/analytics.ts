@@ -7,7 +7,7 @@ import { getApps, initializeApp, setReactNativeAsyncStorage } from '@react-nativ
 import { Platform } from 'react-native';
 // Local imports
 import { EXPO_PUBLIC_AMPLITUDE_API_KEY, EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_APP_ID, EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN, EXPO_PUBLIC_FIREBASE_DATABASE_URL, EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID, EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, EXPO_PUBLIC_FIREBASE_PROJECT_ID, EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET } from '@/lib/config';
-import { track as trackGTM } from '@/lib/gtm';
+import { trackGTMEvent } from '@/lib/gtm';
 import { toTitleCase } from '@/lib/utils/utils';
 
 // Firebase app instance
@@ -109,7 +109,7 @@ export const track = (event: string, params: Record<string, any> = {}) => {
   Promise.allSettled([
     Promise.resolve(trackAmplitudeEvent(event, sanitizedParams)),
     trackFirebaseEvent(event, sanitizedParams),
-    Promise.resolve(trackGTM(event, sanitizedParams)),
+    Promise.resolve(trackGTMEvent(event, sanitizedParams)),
   ]);
 };
 
