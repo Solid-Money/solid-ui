@@ -11,6 +11,19 @@ declare global {
  * Pushes events to Google Tag Manager for consumption by Addressable
  */
 
+// GTM events enum
+export enum GTMEventType {
+  SIGNUP_INITIATED = 'signup_initiated',
+  ACCOUNT_CREATED = 'account_created', 
+  EMAIL_VERIFICATION_INITIATED = 'email_verification_initiated',
+  EMAIL_VERIFIED = 'email_verified',
+  DEPOSIT_INITIATED = 'deposit_initiated',
+  DEPOSIT_COMPLETED = 'deposit_completed',
+  DEPOSIT_FAILED = 'deposit_failed',
+  DEPOSIT_ABANDONED = 'deposit_abandoned',
+  STAKED = 'staked',
+}
+
 interface BaseGTMEvent {
   event: string;
   user_id?: string;
@@ -57,7 +70,62 @@ interface StakeGTMEvent extends BaseGTMEvent {
   token_symbol: string;
 }
 
-type GTMEvent = SignupGTMEvent | AccountCreationGTMEvent | EmailVerificationGTMEvent | DepositGTMEvent | StakeGTMEvent;
+export type GTMEvent = SignupGTMEvent | AccountCreationGTMEvent | EmailVerificationGTMEvent | DepositGTMEvent | StakeGTMEvent;
+
+// Track GTM events
+const trackGTMEvent = (event: string, params: Record<string, any>) => {
+  try {
+    // Only push to dataLayer on web platform where GTM is available
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    // Validate required fields
+    if (!event) {
+      console.warn('GTM event missing required event field:', { event, params });
+      return;
+    }
+
+    // Ensure dataLayer exists
+    if (typeof window !== 'undefined' && window.dataLayer) {
+      // Sanitize event data - remove undefined/null values
+      const sanitizedData = Object.entries(params)
+        .filter(([_, value]) => value !== undefined && value !== null)
+        .reduce((acc, [key, value]) => {
+          // Ensure values are serializable
+          acc[key] = typeof value === 'object' && value !== null ? 
+            JSON.stringify(value) : value;
+          return acc;
+        }, {} as Record<string, any>);
+
+      const enrichedEvent = {
+        event,
+        ...sanitizedData,
+        timestamp: params.timestamp || Date.now(),
+        platform: params.platform || Platform.OS,
+        // Add standard GTM fields
+        gtm_event_category: 'addressable',
+        gtm_event_version: '1.0',
+      };
+
+      window.dataLayer.push(enrichedEvent);
+      
+      // Log for debugging in development
+      if (__DEV__) {
+        console.log('GTM Event pushed for Addressable:', enrichedEvent);
+      }
+    } else {
+      console.warn('GTM dataLayer not available');
+    }
+  } catch (error) {
+    console.error('Error pushing to GTM dataLayer:', error);
+  }
+};
+
+// Main GTM track function for facade pattern
+export const track = (event: string, params: Record<string, any> = {}) => {
+  trackGTMEvent(event, params);
+};
 
 /**
  * Push event to GTM dataLayer for Addressable tracking
