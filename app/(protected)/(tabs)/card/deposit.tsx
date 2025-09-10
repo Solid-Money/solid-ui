@@ -1,22 +1,20 @@
 import { useRouter } from 'expo-router';
-import { ArrowLeft, X } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { Address, formatUnits } from 'viem';
 
 import Navbar from '@/components/Navbar';
-import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useDimension } from '@/hooks/useDimension';
 import useSend from '@/hooks/useSend';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
-import Toast from 'react-native-toast-message';
 
 interface TokenBalance {
   contractTickerSymbol: string;
@@ -34,31 +32,17 @@ interface TokenBalance {
 const DepositToCard = () => {
   const router = useRouter();
   const { isScreenMedium } = useDimension();
-  const { ethereumTokens, fuseTokens } = useWalletTokens();
+  const { ethereumTokens } = useWalletTokens();
   const { data: cardDetails } = useCardDetails();
   const [amount, setAmount] = useState('');
   const [selectedToken, setSelectedToken] = useState<TokenBalance | null>(null);
 
-  // Filter for stablecoins only (USDC for now)
+  // Get USDC on Ethereum only
   const stablecoins = useMemo(() => {
-    const combined = [...ethereumTokens, ...fuseTokens];
-    return combined
-      .filter(
-        token =>
-          token.contractTickerSymbol === 'USDC' ||
-          token.contractTickerSymbol === 'USDT' ||
-          token.contractTickerSymbol === 'DAI',
-      )
-      .sort((a, b) => {
-        const balanceA = Number(formatUnits(BigInt(a.balance || '0'), a.contractDecimals));
-        const balanceUSD_A = balanceA * (a.quoteRate || 0);
-
-        const balanceB = Number(formatUnits(BigInt(b.balance || '0'), b.contractDecimals));
-        const balanceUSD_B = balanceB * (b.quoteRate || 0);
-
-        return balanceUSD_B - balanceUSD_A; // Descending order
-      });
-  }, [ethereumTokens, fuseTokens]);
+    return ethereumTokens.filter(
+      token => token.contractTickerSymbol === 'USDC' && token.chainId === 1,
+    );
+  }, [ethereumTokens]);
 
   // Auto-select first available stablecoin
   React.useEffect(() => {
@@ -108,11 +92,7 @@ const DepositToCard = () => {
         props: {
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
           linkText: 'View on Etherscan',
-          image: getTokenIcon({
-            logoUrl: selectedToken.logoUrl,
-            tokenSymbol: selectedToken.contractTickerSymbol,
-            size: 24,
-          }),
+          image: require('@/assets/images/usdc-4x.png'),
         },
       });
 
@@ -169,28 +149,25 @@ const DepositToCard = () => {
             <View className="flex-row items-center justify-between">
               {selectedToken ? (
                 <>
-                  <RenderTokenIcon
-                    tokenIcon={getTokenIcon({
-                      logoUrl: selectedToken.logoUrl,
-                      tokenSymbol: selectedToken.contractTickerSymbol,
-                      size: 32,
-                    })}
-                    size={32}
+                  <Image
+                    source={require('@/assets/images/usdc-4x.png')}
+                    style={{ width: 42, height: 42 }}
                   />
                   <View className="flex-1 ml-3">
-                    <Text className="text-white font-medium">
+                    <Text className="text-white font-bold text-lg">
                       {selectedToken.contractTickerSymbol}
                     </Text>
-                    <Text className="text-muted-foreground text-sm">
-                      {selectedToken.contractName}
-                    </Text>
+                    <Text className="text-[#ACACAC] font-medium">{selectedToken.contractName}</Text>
                   </View>
-                  <View className="items-end">
-                    <Text className="text-white text-sm">
+                  <View className="flex-row items-center gap-4">
+                    <Text className=" text-[#ACACAC] font-medium">
                       {formatNumber(availableBalance)} available
                     </Text>
-                    <Pressable onPress={handleMaxPress}>
-                      <Text className="text-primary text-sm font-medium">Max</Text>
+                    <Pressable
+                      onPress={handleMaxPress}
+                      className="bg-[#4D4D4D] px-3 py-1 rounded-xl"
+                    >
+                      <Text className="text-primary font-bold">Max</Text>
                     </Pressable>
                   </View>
                 </>
@@ -228,7 +205,10 @@ const DepositToCard = () => {
                     className="w-20 h-20 items-center justify-center web:hover:bg-card rounded-full"
                   >
                     {key === 'backspace' ? (
-                      <X size={24} color="white" />
+                      <Image
+                        source={require('@/assets/images/backspace.png')}
+                        style={{ width: 34, height: 25 }}
+                      />
                     ) : (
                       <Text className="text-3xl font-medium text-white">{key}</Text>
                     )}
@@ -246,7 +226,7 @@ const DepositToCard = () => {
             onPress={handleContinue}
             disabled={!isValidAmount || isDepositing}
           >
-            <Text className="font-semibold">{isDepositing ? 'Depositing...' : 'Continue'}</Text>
+            <Text className="font-bold">{isDepositing ? 'Depositing...' : 'Continue'}</Text>
             {isDepositing && <ActivityIndicator color="gray" size="small" />}
           </Button>
         </View>
