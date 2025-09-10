@@ -8,7 +8,6 @@ import {
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
   USER,
 } from '@/lib/config';
-import { trackAccountCreated, trackSignupCompleted } from '@/lib/gtm';
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
@@ -372,15 +371,6 @@ const useUser = (): UseUserReturn => {
           invite_code: inviteCode,
           referral_code: referralCode,
           safe_address: smartAccountClient?.account?.address,
-        });
-
-        // Track signup completion for Addressable
-        trackSignupCompleted({
-          user_id: user.userId,
-          safe_address: smartAccountClient.account.address,
-          username,
-          invite_code: inviteCode,
-          referral_code: referralCode,
         });
       } catch (error: any) {
         let message = '';

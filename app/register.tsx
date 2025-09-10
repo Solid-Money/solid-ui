@@ -14,7 +14,6 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { trackSignupInitiated } from '@/lib/gtm';
 import { Status } from '@/lib/types';
 import { detectAndSaveReferralCode } from '@/lib/utils/referral';
 import { useUserStore } from '@/store/useUserStore';
@@ -85,11 +84,6 @@ export default function Register() {
 
   const handleSignupForm = (data: RegisterFormData) => {
     track(TRACKING_EVENTS.SIGNUP_STARTED, {
-      username: data.username,
-    });
-
-    // Track signup initiation for Addressable
-    trackSignupInitiated({
       username: data.username,
     });
 
