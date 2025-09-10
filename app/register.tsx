@@ -10,14 +10,15 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
+import { trackSignupInitiated } from '@/lib/gtm';
 import { Status } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { detectAndSaveReferralCode } from '@/lib/utils/referral';
 import { useUserStore } from '@/store/useUserStore';
-import { path } from '@/constants/path';
-import { track } from '@/lib/analytics';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 import InfoError from '@/assets/images/info-error';
 
@@ -82,10 +83,16 @@ export default function Register() {
     }
   }, [signupInfo.status, reset]);
 
-  const handleSignupForm = async (data: RegisterFormData) => {
-    await track(TRACKING_EVENTS.SIGNUP_STARTED, {
+  const handleSignupForm = (data: RegisterFormData) => {
+    track(TRACKING_EVENTS.SIGNUP_STARTED, {
       username: data.username,
     });
+
+    // Track signup initiation for Addressable
+    trackSignupInitiated({
+      username: data.username,
+    });
+
     setSignupUser({ username: data.username, inviteCode: code });
     router.push(path.INVITE);
   };

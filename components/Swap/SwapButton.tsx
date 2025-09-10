@@ -9,6 +9,7 @@ import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback
 import { useSwapCallback } from '@/hooks/swap/useSwapCallback';
 import { useVoltageSwapCallback } from '@/hooks/swap/useVoltageSwapCallback';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
+import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { SwapField } from '@/lib/types/swap-field';
 import { TradeState } from '@/lib/types/trade-state';
@@ -19,6 +20,7 @@ import { tryParseAmount } from '@cryptoalgebra/fuse-sdk';
 
 const SwapButton: React.FC = () => {
   const { isExpertMode } = useUserState();
+  const { user } = useUser();
 
   const {
     independentField,
@@ -199,6 +201,8 @@ const SwapButton: React.FC = () => {
   const handleSwap = useCallback(async () => {
     try {
       track(TRACKING_EVENTS.SWAP_INITIATED, {
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
         trade_type: isVoltageTrade ? 'voltage' : 'standard',
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -232,6 +236,8 @@ const SwapButton: React.FC = () => {
       }
 
       track(TRACKING_EVENTS.SWAP_COMPLETED, {
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
         trade_type: isVoltageTrade ? 'voltage' : 'standard',
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -242,6 +248,8 @@ const SwapButton: React.FC = () => {
       console.error('❌ Swap transaction failed:', error);
 
       track(TRACKING_EVENTS.SWAP_FAILED, {
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
         trade_type: isVoltageTrade ? 'voltage' : 'standard',
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
@@ -279,6 +287,8 @@ const SwapButton: React.FC = () => {
   const handlePegSwap = useCallback(async () => {
     try {
       track(TRACKING_EVENTS.PEG_SWAP_INITIATED, {
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
         peg_swap_type: String(pegSwapType),
         input_currency: currencies[SwapField.INPUT]?.symbol,
         output_currency: currencies[SwapField.OUTPUT]?.symbol,
