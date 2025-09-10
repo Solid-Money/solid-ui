@@ -23,7 +23,6 @@ import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, bridgeTransaction, createDeposit, getLifiQuote } from '@/lib/api';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { trackDepositCompleted, trackDepositFailed, trackDepositInitiated, trackStaked } from '@/lib/gtm';
 import { getChain } from '@/lib/thirdweb';
 import { withRefreshToken } from '@/lib/utils';
 import { checkAndSetAllowance, sendTransaction } from '@/lib/utils/contract';
@@ -132,16 +131,6 @@ const useDepositFromEOA = (): DepositResult => {
         chain_id: srcChainId,
         chain_name: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
         is_sponsor: Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT),
-      });
-
-      // Track deposit initiation for Addressable
-      trackDepositInitiated({
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        amount,
-        deposit_type: 'connected_wallet',
-        deposit_method: isEthereum ? 'ethereum_direct' : 'cross_chain_bridge',
-        chain_id: srcChainId,
       });
 
       if (!eoaAddress) {
@@ -563,25 +552,6 @@ const useDepositFromEOA = (): DepositResult => {
         is_first_deposit: !user?.isDeposited,
       });
 
-      // Track deposit completion for Addressable
-      trackDepositCompleted({
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        amount,
-        deposit_type: 'connected_wallet',
-        deposit_method: isEthereum ? 'ethereum_direct' : 'cross_chain_bridge',
-        chain_id: srcChainId,
-        is_first_deposit: !user?.isDeposited,
-      });
-
-      // Track staking (deposits are automatically staked in this system)
-      trackStaked({
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        amount,
-        token_symbol: 'USDC',
-      });
-
       trackIdentity(user?.userId, {
         last_deposit_amount: parseFloat(amount),
         last_deposit_date: new Date().toISOString(),
@@ -630,16 +600,6 @@ const useDepositFromEOA = (): DepositResult => {
         token_name: tokenName,
         fee: fee?.toString(),
         source: 'deposit_from_eoa',
-        error: errorMessage,
-      });
-
-      // Track deposit failure for Addressable
-      trackDepositFailed({
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        amount: amount,
-        deposit_type: 'connected_wallet',
-        deposit_method: isEthereum ? 'ethereum_direct' : 'cross_chain_bridge',
         error: errorMessage,
       });
 
