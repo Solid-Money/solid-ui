@@ -52,6 +52,7 @@ export interface User {
   isDeposited?: boolean;
   tokens?: AuthTokens;
   email?: string;
+  turnkeyUserId?: string;
 }
 
 export type BlockscoutTransaction = {

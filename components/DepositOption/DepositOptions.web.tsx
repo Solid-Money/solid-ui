@@ -1,10 +1,12 @@
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { trackDepositAbandoned } from '@/lib/gtm';
 import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
 import { CreditCard, Landmark, Wallet } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
@@ -14,9 +16,20 @@ const DepositOptions = () => {
   const activeAccount = useActiveAccount();
   const { connect } = useConnectModal();
   const { setModal } = useDepositStore();
+  const { user } = useUser();
   const address = activeAccount?.address;
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
+
+  // Track when deposit options are viewed
+  useEffect(() => {
+    track(TRACKING_EVENTS.DEPOSIT_OPTIONS_VIEWED, {
+      user_id: user?.userId,
+      safe_address: user?.safeAddress,
+      has_wallet_connected: !!address,
+      is_first_deposit: !user?.isDeposited,
+    });
+  }, [user?.userId, user?.safeAddress, user?.isDeposited, address]);
 
   const openWallet = useCallback(async () => {
     try {
@@ -42,7 +55,7 @@ const DepositOptions = () => {
         showThirdwebBranding: false,
         size: 'compact',
         wallets: [
-          createWallet('walletConnect'),
+          // createWallet('walletConnect'),
           createWallet('io.rabby'),
           createWallet('io.metamask'),
         ],
@@ -62,6 +75,13 @@ const DepositOptions = () => {
         error: String(error),
         deposit_method: 'wallet',
       });
+
+      // Track deposit abandonment for Addressable
+      trackDepositAbandoned({
+        deposit_type: 'connected_wallet',
+        step: 'connected_walletion_failed',
+      });
+
       // Don't change modal state on error - user can try again
     } finally {
       setIsWalletOpen(false);
