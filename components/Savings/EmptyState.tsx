@@ -3,10 +3,12 @@ import React from 'react';
 import { FlatList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import CountUp from '@/components/CountUp';
 import { DepositOptionModal } from '@/components/DepositOption';
 import { FAQs } from '@/components/FAQ';
 import Navbar from '@/components/Navbar';
-import SavingCountUp from '@/components/SavingCountUp';
+import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import ExtraYield from '@/components/Savings/ExtraYield';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useDimension } from '@/hooks/useDimension';
@@ -14,19 +16,43 @@ import { fontSize } from '@/lib/utils';
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
-import ExtraYield from '@/components/Savings/ExtraYield';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
 
   const renderContent = () => (
     <>
+      {!isScreenMedium && <NavbarMobile />}
       {isScreenMedium && <Navbar />}
-      <View className="w-full max-w-7xl mx-auto gap-8 px-4 py-8">
+      <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 py-8">
         {isScreenMedium ? (
           <View className="md:flex-row justify-between md:items-center gap-y-4">
             <View className="flex-row items-center">
-              <Text className="text-5xl md:text-8xl text-foreground font-medium">$</Text>
+              <Text className="text-5xl font-semibold">$</Text>
+              <CountUp
+                count={0}
+                isTrailingZero={false}
+                classNames={{
+                  wrapper: 'text-foreground',
+                  decimalSeparator: 'text-5xl font-semibold',
+                }}
+                styles={{
+                  wholeText: {
+                    fontSize: fontSize(3),
+                    fontWeight: 'semibold',
+                    //fontFamily: 'MonaSans_600SemiBold',
+                    color: '#ffffff',
+                    marginRight: -1,
+                  },
+                  decimalText: {
+                    fontSize: fontSize(3),
+                    fontWeight: '100',
+                    //fontFamily: 'MonaSans_600SemiBold',
+                    color: '#ffffff',
+                  },
+                }}
+              />
+              {/*}
               <SavingCountUp
                 balance={0}
                 apy={0}
@@ -51,6 +77,7 @@ export default function SavingsEmptyState() {
                   },
                 }}
               />
+              */}
             </View>
 
             <View className="flex-row items-center gap-5">
@@ -58,14 +85,14 @@ export default function SavingsEmptyState() {
             </View>
           </View>
         ) : (
-          <Text className="text-xl font-semibold">Home</Text>
+          <></>
         )}
 
         <LinearGradient
           colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
           style={{
             borderRadius: 20,
-            padding: isScreenMedium ? 40 : 20,
+            padding: isScreenMedium ? 60 : 20,
             gap: isScreenMedium ? 96 : 40,
           }}
         >

@@ -13,7 +13,7 @@ const Navbar = () => {
   const { isScreenMedium } = useDimension();
 
   return (
-    <SafeAreaView className="sticky top-0 z-50 bg-background/10 backdrop-blur-lg border-b border-border/40">
+    <SafeAreaView className="sticky top-0 z-50 bg-background/40 backdrop-blur-lg border-b border-border/40">
       <View className="flex-row justify-between items-center p-4 md:py-6 w-full max-w-7xl mx-auto">
         <Link
           href={path.HOME}

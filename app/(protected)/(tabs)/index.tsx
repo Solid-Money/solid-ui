@@ -117,7 +117,7 @@ export default function Savings() {
       name: user.username,
       email: user.email,
     });
-  }, [user, intercom?.update]);
+  }, [user, intercom]);
 
   if (isBalanceLoading || isTransactionsLoading) {
     return <Loading />;
