@@ -162,7 +162,8 @@ const BankTransferPreviewModal = () => {
         <Row label="Bank Name" value={data?.bank_name ?? ''} withDivider />
         <Row label="Account number" value={data?.bank_account_number ?? ''} withDivider />
         <Row label="Routing / SWIFT / BIC" value={data?.bank_routing_number ?? ''} withDivider />
-        <Row label="Beneficiary name" value={data?.bank_beneficiary_name ?? ''} />
+        <Row label="Beneficiary name" value={data?.bank_beneficiary_name ?? ''} withDivider />
+        <Row label="Deposit message" value={data?.deposit_message ?? ''} />
       </View>
 
       <View className="bg-[#1C1C1C] rounded-2xl overflow-hidden">
