@@ -16,12 +16,12 @@ const ExtraYield = () => {
       <View
         className={buttonVariants({
           variant: 'accent',
-          className: 'h-12 pr-6 rounded-xl',
+          className: 'h-12 pr-6 rounded-xl bg-[#3D3D3D]',
         })}
       >
         <View className="flex-row items-center gap-2">
           <Plus color="white" />
-          <Text className="font-bold">Start earning</Text>
+          <Text className="font-semibold">Start earning</Text>
         </View>
       </View>
     );

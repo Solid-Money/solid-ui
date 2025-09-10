@@ -1,17 +1,23 @@
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
+import { useEffect } from 'react';
 import { Controller } from 'react-hook-form';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
+import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
+import { trackDepositAbandoned } from '@/lib/gtm';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositEmailModal: React.FC = () => {
   const { setModal } = useDepositStore();
+  const { user } = useUser();
 
   const {
     step,
@@ -32,12 +38,38 @@ const DepositEmailModal: React.FC = () => {
     setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
   }, 'email');
 
+  const currentStep = step === 'existing' ? 'email' : step;
+
+  // Track when email modal is shown
+  useEffect(() => {
+    track(TRACKING_EVENTS.EMAIL_ENTRY_STARTED, {
+      user_id: user?.userId,
+      safe_address: user?.safeAddress,
+      context: 'deposit_flow',
+      has_existing_email: !!user?.email,
+    });
+  }, [user?.userId, user?.safeAddress, user?.email]);
+
   const handleSkip = () => {
+    // Track email skip
+    track(TRACKING_EVENTS.EMAIL_SKIPPED, {
+      user_id: user?.userId,
+      safe_address: user?.safeAddress,
+      context: 'deposit_flow',
+      step: currentStep,
+    });
+
+    // Track deposit abandonment for Addressable
+    trackDepositAbandoned({
+      user_id: user?.userId,
+      safe_address: user?.safeAddress,
+      deposit_type: 'connected_wallet',
+      step: 'email_verification_skipped',
+    });
+
     setIsSkip(false);
     setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
   };
-
-  const currentStep = step === 'existing' ? 'email' : step;
 
   return (
     <View className="flex-1 gap-4">

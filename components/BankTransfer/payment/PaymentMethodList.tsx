@@ -11,12 +11,14 @@ import { KycMode } from '@/components/UserKyc';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer } from '@/hooks/useCustomer';
+import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import {
   createBridgeTransfer,
   getCustomerEndorsements,
   getKycLinkForExistingCustomer,
 } from '@/lib/api';
+import { trackDepositFailed, trackDepositInitiated } from '@/lib/gtm';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useDepositStore } from '@/store/useDepositStore';
 import { router } from 'expo-router';
@@ -45,6 +47,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
   const { data: customer, isLoading: isLoadingCustomer } = useCustomer();
   const [loadingMethod, setLoadingMethod] = useState<BridgeTransferMethod | null>(null);
   const { setBankTransferData, setModal } = useDepositStore();
+  const { user } = useUser();
 
   let filtered: BridgeTransferMethod[] = ALL_METHODS;
 
@@ -85,10 +88,14 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
   async function onPressed(method: BridgeTransferMethod) {
     try {
       track(TRACKING_EVENTS.PAYMENT_METHOD_SELECTED, {
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
         method: method,
         fiat_currency: normalizedFiat,
         fiat_amount: fiatAmount,
+        crypto_currency: crypto,
         has_customer: Boolean(customer),
+        deposit_type: 'bank_transfer',
       });
 
       setLoadingMethod(method);
@@ -161,6 +168,28 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
     } catch (err) {
       console.error('createBridgeTransfer failed', err);
 
+      // Track bank transfer error
+      track(TRACKING_EVENTS.DEPOSIT_ERROR, {
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
+        amount: fiatAmount,
+        fiat_currency: normalizedFiat,
+        crypto_currency: crypto,
+        deposit_type: 'bank_transfer',
+        deposit_method: loadingMethod,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+
+      // Track deposit failure for Addressable
+      trackDepositFailed({
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
+        amount: fiatAmount,
+        deposit_type: 'bank_transfer',
+        deposit_method: loadingMethod || 'unknown',
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -175,11 +204,44 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
   }
 
   async function createTransfer(method: BridgeTransferMethod) {
+    // Track bank transfer initiated
+    track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
+      user_id: user?.userId,
+      safe_address: user?.safeAddress,
+      amount: fiatAmount,
+      fiat_currency: normalizedFiat,
+      crypto_currency: crypto,
+      deposit_type: 'bank_transfer',
+      deposit_method: method,
+      has_customer: Boolean(customer),
+    });
+
+    // Track deposit initiation for Addressable
+    trackDepositInitiated({
+      user_id: user?.userId,
+      safe_address: user?.safeAddress,
+      amount: fiatAmount,
+      deposit_type: 'bank_transfer',
+      deposit_method: method,
+    });
+
     const sourceDepositInstructions = await createBridgeTransfer({
       amount: String(fiatAmount ?? ''),
       sourcePaymentRail: method,
       fiatCurrency: normalizedFiat,
       cryptoCurrency: String(crypto ?? ''),
+    });
+
+    // Track bank transfer created successfully
+    track(TRACKING_EVENTS.BANK_TRANSFER_CREATED, {
+      user_id: user?.userId,
+      safe_address: user?.safeAddress,
+      amount: fiatAmount,
+      fiat_currency: normalizedFiat,
+      crypto_currency: crypto,
+      deposit_type: 'bank_transfer',
+      deposit_method: method,
+      has_instructions: Boolean(sourceDepositInstructions),
     });
 
     if (isModal) {

@@ -1,7 +1,7 @@
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { track } from '@/lib/analytics';
+import { track, trackIdentity } from '@/lib/analytics';
 import { deleteAccount, getSubOrgIdByUsername, login, signUp, updateSafeAddress } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
@@ -250,14 +250,14 @@ const useUser = (): UseUserReturn => {
         }
 
         // Get referral code from storage (if any)
-        const referralCode = getReferralCodeForSignup();
+        const referralCode = getReferralCodeForSignup() || undefined;
 
         const user = await signUp(
           username,
           challenge,
           attestation,
           inviteCode,
-          referralCode || undefined,
+          referralCode,
         );
 
         const smartAccountClient = await safeAA(
@@ -270,15 +270,36 @@ const useUser = (): UseUserReturn => {
           const selectedUser: User = {
             safeAddress: smartAccountClient.account.address,
             username,
-            userId: user.turnkeyUserId,
+            userId: user._id,
             signWith: user.walletAddress,
             suborgId: user.subOrganizationId,
             selected: true,
             tokens: user.tokens || null,
             referralCode: user.referralCode,
+            turnkeyUserId: user.turnkeyUserId,
           };
           storeUser(selectedUser);
           await checkBalance(selectedUser);
+
+          // Identify user in analytics
+          trackIdentity(user.userId, {
+            username,
+            safe_address: smartAccountClient.account.address,
+            has_referral_code: !!user.referralCode,
+            signup_method: 'passkey',
+            platform: Platform.OS,
+            is_deposited: !!user.isDeposited,
+          });
+
+          // Track account creation for Addressable
+          trackAccountCreated({
+            user_id: user.userId,
+            safe_address: smartAccountClient.account.address,
+            username,
+            signup_method: 'passkey',
+            has_referral_code: !!user.referralCode,
+          });
+
           const resp = await withRefreshToken(() =>
             updateSafeAddress(smartAccountClient.account.address),
           );
@@ -345,8 +366,11 @@ const useUser = (): UseUserReturn => {
           throw error;
         }
         track(TRACKING_EVENTS.SIGNUP_COMPLETED, {
+          user_id: user?.userId,
           username,
           invite_code: inviteCode,
+          referral_code: referralCode,
+          safe_address: smartAccountClient?.account?.address,
         });
       } catch (error: any) {
         let message = '';
@@ -413,16 +437,28 @@ const useUser = (): UseUserReturn => {
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
         username: user.username,
-        userId: user.turnkeyUserId,
+        userId: user._id,
         signWith: user.walletAddress,
         suborgId: user.subOrganizationId,
         selected: true,
         tokens: user.tokens || null,
         email: user.email,
         referralCode: user.referralCode,
+        turnkeyUserId: user.turnkeyUserId,
       };
       storeUser(selectedUser);
       await checkBalance(selectedUser);
+
+      // Identify user in analytics
+      trackIdentity(user.userId, {
+        username: user.username,
+        safe_address: smartAccountClient.account.address,
+        email: user.email,
+        has_referral_code: !!user.referralCode,
+        login_method: 'passkey',
+        platform: Platform.OS,
+      });
+
       try {
         if (!user.safeAddress) {
           await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address));
@@ -452,7 +488,21 @@ const useUser = (): UseUserReturn => {
 
       setLoginInfo({ status: Status.SUCCESS });
       track(TRACKING_EVENTS.LOGGED_IN, {
+        user_id: user.userId,
         username: user.username,
+        safe_address: smartAccountClient.account.address,
+        has_email: !!user.email,
+        is_deposited: !!user.isDeposited,
+      });
+
+      // Update user properties on login
+      trackIdentity(user.userId, {
+        username: user.username,
+        safe_address: smartAccountClient.account.address,
+        has_email: !!user.email,
+        is_deposited: !!user.isDeposited,
+        last_login_date: new Date().toISOString(),
+        platform: Platform.OS,
       });
 
       router.replace(path.HOME);
@@ -501,6 +551,7 @@ const useUser = (): UseUserReturn => {
 
   const handleLogout = useCallback(() => {
     track(TRACKING_EVENTS.LOGGED_OUT, {
+      user_id: user?.userId,
       username: user?.username,
     });
     unselectUser();
@@ -515,7 +566,21 @@ const useUser = (): UseUserReturn => {
       const previousUsername = user?.username;
       selectUser(username);
       clearKycLinkId();
+
+      // Find the selected user to get their userId
+      const selectedUser = users.find(u => u.username === username);
+      if (selectedUser) {
+        // Re-identify with the selected user
+        trackIdentity(selectedUser.userId, {
+          username: selectedUser.username,
+          safe_address: selectedUser.safeAddress,
+          email: selectedUser.email,
+          platform: Platform.OS,
+        });
+      }
+
       track(TRACKING_EVENTS.WELCOME_USER, {
+        user_id: selectedUser?.userId,
         username: username,
       });
 
@@ -553,7 +618,7 @@ const useUser = (): UseUserReturn => {
         router.replace(path.HOME);
       });
     },
-    [selectUser, clearKycLinkId, router, user, unselectUser],
+    [selectUser, clearKycLinkId, router, user, unselectUser, users],
   );
 
   const handleRemoveUsers = useCallback(() => {

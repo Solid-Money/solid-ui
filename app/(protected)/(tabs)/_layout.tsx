@@ -38,8 +38,11 @@ export default function TabLayout() {
               position: 'absolute',
             },
             default: {
-              backgroundColor: '#161616',
               borderColor: '#3D3D3D',
+              backdropFilter: 'blur(20px)',
+              backgroundColor: 'rgba(0, 0, 0, 0.4)',
+              position: 'absolute',
+              borderTop: '1px solid hsl(344.55 3.72% 39.49% / .4)',
             },
           }),
         },
