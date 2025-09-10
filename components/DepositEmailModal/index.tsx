@@ -11,7 +11,6 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { trackDepositAbandoned } from '@/lib/gtm';
 import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -57,14 +56,6 @@ const DepositEmailModal: React.FC = () => {
       safe_address: user?.safeAddress,
       context: 'deposit_flow',
       step: currentStep,
-    });
-
-    // Track deposit abandonment for Addressable
-    trackDepositAbandoned({
-      user_id: user?.userId,
-      safe_address: user?.safeAddress,
-      deposit_type: 'connected_wallet',
-      step: 'email_verification_skipped',
     });
 
     setIsSkip(false);

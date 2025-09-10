@@ -18,7 +18,6 @@ import { withRefreshToken } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 import { track } from '@/lib/analytics';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { trackEmailVerificationInitiated, trackEmailVerified, trackEmailVerificationFailed } from '@/lib/gtm';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -180,14 +179,6 @@ export const useEmailManagement = (
       context: initialStep === 'email' ? 'deposit_flow' : 'settings',
     });
     
-    // Track email verification initiation for Addressable
-    trackEmailVerificationInitiated({
-      user_id: user?.userId,
-      safe_address: user?.safeAddress,
-      email: data.email,
-      context: initialStep === 'email' ? 'deposit_flow' : 'settings',
-    });
-    
     try {
       const response = await withRefreshToken(() => initGenericOtp(data.email, 6, false));
       setOtpId(response.otpId);
@@ -221,15 +212,6 @@ export const useEmailManagement = (
         error: errorMessage,
         error_type: 'otp_send_failed',
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
-      });
-      
-      // Track email verification failed for Addressable
-      trackEmailVerificationFailed({
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        email: data.email,
-        context: initialStep === 'email' ? 'deposit_flow' : 'settings',
-        error: errorMessage,
       });
 
       const isRateLimitError =
@@ -287,14 +269,6 @@ export const useEmailManagement = (
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
       });
       
-      // Track email verified for Addressable
-      trackEmailVerified({
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        email: emailValue,
-        context: initialStep === 'email' ? 'deposit_flow' : 'settings',
-      });
-      
       onSuccess?.();
     } catch (error: any) {
       let errorTitle = "Failed to verify OTP";
@@ -310,15 +284,6 @@ export const useEmailManagement = (
         error: error?.toString(),
         error_type: 'otp_verification_failed',
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
-      });
-      
-      // Track email verification failed for Addressable
-      trackEmailVerificationFailed({
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        email: emailValue,
-        context: initialStep === 'email' ? 'deposit_flow' : 'settings',
-        error: error?.toString(),
       });
 
       if(error?.toString().includes("SIGNATURE_INVALID")) {

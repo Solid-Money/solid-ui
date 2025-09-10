@@ -18,7 +18,6 @@ import {
   getCustomerEndorsements,
   getKycLinkForExistingCustomer,
 } from '@/lib/api';
-import { trackDepositFailed, trackDepositInitiated } from '@/lib/gtm';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useDepositStore } from '@/store/useDepositStore';
 import { router } from 'expo-router';
@@ -180,16 +179,6 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
         error: err instanceof Error ? err.message : 'Unknown error',
       });
 
-      // Track deposit failure for Addressable
-      trackDepositFailed({
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        amount: fiatAmount,
-        deposit_type: 'bank_transfer',
-        deposit_method: loadingMethod || 'unknown',
-        error: err instanceof Error ? err.message : 'Unknown error',
-      });
-
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -214,15 +203,6 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
       deposit_type: 'bank_transfer',
       deposit_method: method,
       has_customer: Boolean(customer),
-    });
-
-    // Track deposit initiation for Addressable
-    trackDepositInitiated({
-      user_id: user?.userId,
-      safe_address: user?.safeAddress,
-      amount: fiatAmount,
-      deposit_type: 'bank_transfer',
-      deposit_method: method,
     });
 
     const sourceDepositInstructions = await createBridgeTransfer({

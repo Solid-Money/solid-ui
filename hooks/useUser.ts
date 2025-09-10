@@ -291,15 +291,6 @@ const useUser = (): UseUserReturn => {
             is_deposited: !!user.isDeposited,
           });
 
-          // Track account creation for Addressable
-          trackAccountCreated({
-            user_id: user.userId,
-            safe_address: smartAccountClient.account.address,
-            username,
-            signup_method: 'passkey',
-            has_referral_code: !!user.referralCode,
-          });
-
           const resp = await withRefreshToken(() =>
             updateSafeAddress(smartAccountClient.account.address),
           );

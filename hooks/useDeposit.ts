@@ -18,7 +18,6 @@ import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { trackDepositCompleted, trackDepositFailed, trackDepositInitiated, trackStaked } from '@/lib/gtm';
 import { Status } from '@/lib/types';
 import useUser from './useUser';
 
@@ -78,16 +77,6 @@ const useDeposit = (): DepositResult => {
         deposit_type: 'safe_account',
         deposit_method: 'ethereum_safe_to_bridge',
         source: 'useDeposit_hook',
-      });
-
-      // Track deposit initiation for Addressable
-      trackDepositInitiated({
-        user_id: user.userId,
-        safe_address: user.safeAddress,
-        amount: amount,
-        deposit_type: 'safe_account',
-        deposit_method: 'ethereum_safe_to_bridge',
-        chain_id: mainnet.id,
       });
 
       setDepositStatus(Status.PENDING);
@@ -193,25 +182,6 @@ const useDeposit = (): DepositResult => {
         source: 'useDeposit_hook',
       });
 
-      // Track deposit completion for Addressable
-      trackDepositCompleted({
-        user_id: user.userId,
-        safe_address: user.safeAddress,
-        amount: amount,
-        deposit_type: 'safe_account',
-        deposit_method: 'ethereum_safe_to_bridge',
-        chain_id: mainnet.id,
-        is_first_deposit: !user.isDeposited,
-      });
-
-      // Track staking (deposits are automatically staked in this system)
-      trackStaked({
-        user_id: user.userId,
-        safe_address: user.safeAddress,
-        amount: amount,
-        token_symbol: 'USDC',
-      });
-
       trackIdentity(user.userId, {
         last_deposit_amount: parseFloat(amount),
         last_deposit_date: new Date().toISOString(),
@@ -245,16 +215,6 @@ const useDeposit = (): DepositResult => {
         user_cancelled: String(error).includes('cancelled'),
         deposit_type: 'safe_account',
         source: 'useDeposit_hook',
-      });
-
-      // Track deposit failure for Addressable
-      trackDepositFailed({
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        amount: amount,
-        deposit_type: 'safe_account',
-        deposit_method: 'ethereum_safe_to_bridge',
-        error: error instanceof Error ? error.message : 'Unknown error',
       });
 
       Sentry.captureException(error, {

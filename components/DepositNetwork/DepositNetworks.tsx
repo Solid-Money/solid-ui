@@ -45,7 +45,7 @@ const DepositNetworks = () => {
               <DepositNetwork
                 key={network.name}
                 name={network.name}
-                description={isEthereum ? 'Speed 5 mins' : 'Speed 30 mins'}
+                description={isEthereum ? 'Estimated speed: 5 min' : 'Estimated speed: 30 min'}
                 icon={network.icon}
                 isComingSoon={isComingSoon}
                 onPress={() => handlePress(Number(id))}

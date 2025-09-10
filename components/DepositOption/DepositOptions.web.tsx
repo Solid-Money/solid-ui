@@ -2,7 +2,6 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { trackDepositAbandoned } from '@/lib/gtm';
 import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
 import { CreditCard, Landmark, Wallet } from 'lucide-react-native';
@@ -74,12 +73,6 @@ const DepositOptions = () => {
       track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_FAILED, {
         error: String(error),
         deposit_method: 'wallet',
-      });
-
-      // Track deposit abandonment for Addressable
-      trackDepositAbandoned({
-        deposit_type: 'connected_wallet',
-        step: 'connected_walletion_failed',
       });
 
       // Don't change modal state on error - user can try again

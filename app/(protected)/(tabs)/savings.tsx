@@ -7,7 +7,7 @@ import Navbar from '@/components/Navbar';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
-import ExtraYield from '@/components/Savings/ExtraYield';
+import PoolBanners from '@/components/Savings/PoolBanners';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -237,7 +237,7 @@ export default function Savings() {
         {/* <PointsBanner /> */}
 
         {!isScreenMedium && <DashboardHeaderButtonsMobile />}
-        <ExtraYield />
+        <PoolBanners />
         <FAQs faqs={faqs} className="md:mt-20" />
       </View>
     </>
