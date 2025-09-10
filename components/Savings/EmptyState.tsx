@@ -8,7 +8,6 @@ import { DepositOptionModal } from '@/components/DepositOption';
 import { FAQs } from '@/components/FAQ';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
-import ExtraYield from '@/components/Savings/ExtraYield';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useDimension } from '@/hooks/useDimension';
@@ -16,6 +15,7 @@ import { fontSize } from '@/lib/utils';
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
+import PoolBanners from '@/components/Savings/PoolBanners';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
@@ -115,7 +115,7 @@ export default function SavingsEmptyState() {
           )}
         </LinearGradient>
         {!isScreenMedium && <DepositOptionModal />}
-        <ExtraYield />
+        <PoolBanners />
         <FAQs faqs={faqs} className="md:mt-16" />
       </View>
     </>
