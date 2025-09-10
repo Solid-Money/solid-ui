@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Platform, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
@@ -16,11 +16,11 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { trackSignupInitiated } from '@/lib/gtm';
 import { Status } from '@/lib/types';
-import { cn } from '@/lib/utils';
 import { detectAndSaveReferralCode } from '@/lib/utils/referral';
 import { useUserStore } from '@/store/useUserStore';
 
 import InfoError from '@/assets/images/info-error';
+import Input from '@/components/ui/input';
 
 const registerSchema = z.object({
   username: z
@@ -99,7 +99,7 @@ export default function Register() {
 
   const getSignupButtonText = () => {
     if (signupInfo.status === Status.PENDING) return 'Redirecting';
-    if (!watchedUsername) return 'Enter a username';
+    if (!watchedUsername) return 'Create account';
     if (!isValid) return 'Enter valid information';
     return 'Continue';
   };
@@ -110,9 +110,9 @@ export default function Register() {
     return '';
   }, [errors.username, signupInfo.status, signupInfo.message]);
 
-  const isSignupDisabled = () => {
-    return signupInfo.status === Status.PENDING || !isValid || !watchedUsername;
-  };
+  // const isSignupDisabled = () => {
+  //   return signupInfo.status === Status.PENDING || !isValid || !watchedUsername;
+  // };
 
   useEffect(() => {
     if (session === 'expired') {
@@ -147,39 +147,36 @@ export default function Register() {
 
   return (
     <SafeAreaView className="bg-background text-foreground flex-1">
-      <View className="flex-1 justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
-        <View className="flex-row items-center gap-5">
+      <View className="flex-1 justify-center gap-7 px-4 py-8 w-full max-w-[500px] mx-auto">
+        <View className="flex-row items-center gap-5 justify-center">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
-            style={{ width: 37, height: 40 }}
+            style={{ width: 74, height: 80 }}
             contentFit="contain"
           />
         </View>
-        <View className="gap-8">
-          <View className="flex-col gap-2">
-            <Text className="text-3xl font-semibold">Welcome!</Text>
-            <Text className="text-muted-foreground">
+        <View className="gap-[60px]">
+          <View className="flex-col gap-2 items-center">
+            <Text className="text-3xl font-semibold text-center">Welcome!</Text>
+            <Text className="text-muted-foreground text-center max-w-[300px] items-center">
               Invite-only access. Please use a referral from a friend to access the app
             </Text>
           </View>
 
-          <View className="w-full flex-col gap-8">
-            <View className="gap-2">
+          <View className="w-full flex-col gap-7">
+            <View className="gap-5">
               <Controller
                 control={control}
                 name="username"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
+                  <Input
                     id="username"
                     value={value}
                     onChangeText={onChange}
                     onBlur={onBlur}
                     placeholder="Choose a username"
-                    className={cn(
-                      'h-14 px-6 rounded-xl border text-lg text-foreground font-semibold placeholder:text-muted-foreground',
-                      errors.username ? 'border-red-500' : 'border-border',
-                    )}
+                    error={!!errors.username}
                   />
                 )}
               />
@@ -192,7 +189,7 @@ export default function Register() {
               <Button
                 variant="brand"
                 onPress={handleSubmit(handleSignupForm)}
-                disabled={isSignupDisabled()}
+                //disabled={isSignupDisabled()}
                 className="rounded-xl h-14"
               >
                 <Text className="text-lg font-semibold">{getSignupButtonText()}</Text>
@@ -201,16 +198,16 @@ export default function Register() {
             </View>
 
             <View className="flex-row items-center gap-4">
-              <View className="flex-1 h-px bg-border" />
+              <View className="flex-1 h-px bg-white/20" />
               <Text className="text-center text-muted-foreground">OR</Text>
-              <View className="flex-1 h-px bg-border" />
+              <View className="flex-1 h-px bg-white/20" />
             </View>
 
             <Button
               onPress={handleLogin}
               disabled={loginInfo.status === Status.PENDING}
               variant="secondary"
-              className="rounded-xl h-14"
+              className="rounded-xl h-14 border-0"
             >
               <Text className="text-lg font-semibold">
                 {loginInfo.status === Status.ERROR
@@ -238,17 +235,18 @@ export default function Register() {
                 <Text className="text-lg font-semibold">Dummy Login</Text>
               </Button>
             )}
+
+            <Text className="text-sm text-muted-foreground">
+              Your Solid Account is secured with a passkey - a safer replacement for passwords.{' '}
+              <Link
+                href="https://docs.solid.xyz"
+                target="_blank"
+                className="underline hover:opacity-70"
+              >
+                Learn more
+              </Link>
+            </Text>
           </View>
-          <Text className="text-sm text-muted-foreground">
-            Your Solid Account is secured with a passkey - a safer replacement for passwords.{' '}
-            <Link
-              href="https://docs.solid.xyz"
-              target="_blank"
-              className="underline hover:opacity-70"
-            >
-              Learn more
-            </Link>
-          </Text>
         </View>
       </View>
     </SafeAreaView>

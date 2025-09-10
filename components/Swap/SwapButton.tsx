@@ -282,6 +282,8 @@ const SwapButton: React.FC = () => {
     allowedSlippage,
     priceImpactSeverity,
     needsApproval,
+    user?.userId,
+    user?.safeAddress,
   ]);
 
   const handlePegSwap = useCallback(async () => {
@@ -342,7 +344,15 @@ const SwapButton: React.FC = () => {
       });
       return new Error(`Peg Swap Failed ${error}`);
     }
-  }, [pegSwapCallback, pegSwapType, currencies, inputAmount, needPegSwapAllowance]);
+  }, [
+    pegSwapCallback,
+    pegSwapType,
+    currencies,
+    inputAmount,
+    needPegSwapAllowance,
+    user?.userId,
+    user?.safeAddress,
+  ]);
 
   const isValid = !swapInputError;
 
