@@ -512,14 +512,48 @@ const useUser = (): UseUserReturn => {
 
   const handleSelectUser = useCallback(
     (username: string) => {
+      const previousUsername = user?.username;
       selectUser(username);
-      clearKycLinkId(); // Clear KYC data when switching users
+      clearKycLinkId();
       track(TRACKING_EVENTS.WELCOME_USER, {
         username: username,
       });
-      router.replace(path.HOME);
+
+      // We reauth if web to get a new session cookie
+      // and bind it to the selected user
+      const reauthIfWeb = async () => {
+        if (Platform.OS === 'web') {
+          try {
+            //@ts-ignore
+            const { Turnkey } = await import('@turnkey/sdk-browser');
+            const turnkey = new Turnkey({
+              apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+              defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+              rpId: getRuntimeRpId(),
+            });
+            const passkeyClient = turnkey.passkeyClient();
+            const stamp = await passkeyClient.stampGetWhoami({
+              organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+            });
+            const authedUser = await login(stamp);
+            if (authedUser?.username && authedUser.username !== username) {
+              selectUser(authedUser.username);
+            }
+          } catch (error) {
+            if (previousUsername) {
+              selectUser(previousUsername);
+            } else {
+              unselectUser();
+            }
+          }
+        }
+      };
+
+      void reauthIfWeb().finally(() => {
+        router.replace(path.HOME);
+      });
     },
-    [selectUser, clearKycLinkId, router],
+    [selectUser, clearKycLinkId, router, user, unselectUser],
   );
 
   const handleRemoveUsers = useCallback(() => {
