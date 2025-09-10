@@ -14,7 +14,7 @@ import { fontSize } from '@/lib/utils';
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
-import ExtraYield from '@/components/Savings/ExtraYield';
+import PoolBanners from '@/components/Savings/PoolBanners';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
@@ -88,7 +88,7 @@ export default function SavingsEmptyState() {
           )}
         </LinearGradient>
         {!isScreenMedium && <DepositOptionModal />}
-        <ExtraYield />
+        <PoolBanners />
         <FAQs faqs={faqs} className="md:mt-16" />
       </View>
     </>
