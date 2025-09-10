@@ -103,7 +103,7 @@ function DepositToVaultForm() {
         chain_id: srcChainId,
         is_ethereum: isEthereum,
         is_sponsor: isSponsor,
-        expected_output: amountOut,
+        // expected_output: amountOut.toString(),
         exchange_rate: exchangeRate,
       });
 
