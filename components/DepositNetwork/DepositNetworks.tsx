@@ -3,13 +3,29 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 import DepositNetwork from './DepositNetwork';
 
 const DepositNetworks = () => {
   const { setModal, setSrcChainId } = useDepositStore();
+  const { user } = useUser();
 
   const handlePress = (id: number) => {
+    const network = BRIDGE_TOKENS[id];
+
+    // Track network selection
+    track(TRACKING_EVENTS.NETWORK_SELECTED, {
+      user_id: user?.userId,
+      safe_address: user?.safeAddress,
+      chain_id: id,
+      network_name: network?.name,
+      deposit_type: 'connected_wallet',
+      deposit_method: 'cross_chain_bridge',
+    });
+
     setSrcChainId(id);
     setModal(DEPOSIT_MODAL.OPEN_FORM);
   };

@@ -5,6 +5,11 @@ export const TRACKING_EVENTS = {
   DEPOSIT_CANCELLED: 'deposit_cancelled',
   DEPOSIT_ERROR: 'deposit_error',
   DEPOSIT_FAILED: 'deposit_failed',
+  DEPOSIT_VALIDATED: 'deposit_validated',
+  DEPOSIT_PERMIT_REQUESTED: 'deposit_permit_requested',
+  DEPOSIT_PERMIT_SIGNED: 'deposit_permit_signed',
+  DEPOSIT_TRANSACTION_STARTED: 'deposit_transaction_started',
+  DEPOSIT_BRIDGE_STARTED: 'deposit_bridge_started',
 
   // Transaction Flow Events - Send/Transfer
   SEND_TRANSACTION_INITIATED: 'send_transaction_initiated',
@@ -82,6 +87,10 @@ export const TRACKING_EVENTS = {
   // Payment & Deposit Method Events
   PAYMENT_METHOD_SELECTED: 'payment_method_selected',
   DEPOSIT_METHOD_SELECTED: 'deposit_method_selected',
+  DEPOSIT_OPTIONS_VIEWED: 'deposit_options_viewed',
+  DEPOSIT_OPTIONS_ABANDONED: 'deposit_options_abandoned',
+  NETWORK_SELECTED: 'network_selected',
+  BANK_TRANSFER_CREATED: 'bank_transfer_created',
 
   // User Registration Events
   SIGNUP_STARTED: 'signup_started',
@@ -93,6 +102,14 @@ export const TRACKING_EVENTS = {
   WELCOME_USER: 'welcome_user',
   FORGOT_ALL_USERS: 'forgot_all_users',
   DELETE_ACCOUNT: 'delete_account',
+  
+  // Email Events
+  EMAIL_ENTRY_STARTED: 'email_entry_started',
+  EMAIL_SUBMITTED: 'email_submitted',
+  EMAIL_OTP_REQUESTED: 'email_otp_requested',
+  EMAIL_OTP_VERIFIED: 'email_otp_verified',
+  EMAIL_VERIFICATION_FAILED: 'email_verification_failed',
+  EMAIL_SKIPPED: 'email_skipped',
 
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',
