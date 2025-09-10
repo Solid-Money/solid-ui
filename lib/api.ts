@@ -861,3 +861,10 @@ export const getCardTransactions = async (
 
   return response.json();
 };
+
+export const fetchTVL = async () => {
+  const response = await axios.get<number>(
+    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/tvl`,
+  );
+  return response.data;
+};

@@ -13,6 +13,7 @@ import {
   fetchLayerZeroBridgeTransactions,
   fetchTokenTransfer,
   fetchTotalAPY,
+  fetchTVL,
   getBankTransfers,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
@@ -394,4 +395,11 @@ export const isDepositedQueryOptions = (safeAddress: string) => {
 
 export const fetchIsDeposited = (queryClient: QueryClient, safeAddress: string) => {
   return queryClient.fetchQuery(isDepositedQueryOptions(safeAddress));
+};
+
+export const useTVL = () => {
+  return useQuery({
+    queryKey: [ANALYTICS, 'tvl'],
+    queryFn: fetchTVL,
+  });
 };

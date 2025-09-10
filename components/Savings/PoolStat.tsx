@@ -3,10 +3,12 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTotalAPY } from '@/hooks/useAnalytics';
+import { useTotalAPY, useTVL } from '@/hooks/useAnalytics';
+import { compactNumberFormat } from '@/lib/utils';
 
 const PoolStat = () => {
   const { data: totalAPY } = useTotalAPY();
+  const { data: tvl } = useTVL();
 
   return (
     <View className="md:flex-1 justify-between bg-card rounded-twice p-5 md:px-10 md:py-8 gap-10">
@@ -20,7 +22,9 @@ const PoolStat = () => {
             <Text className="text-lg text-muted-foreground font-medium">TVL</Text>
             <TooltipPopover text="The total value locked in the Solid vault." />
           </View>
-          <Text className="text-2xl font-semibold">1M$</Text>
+          <Text className="text-2xl font-semibold">
+            {tvl ? `${compactNumberFormat(tvl)}$` : <Skeleton className="w-20 h-8" />}
+          </Text>
         </View>
 
         <View>
