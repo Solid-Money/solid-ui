@@ -1,11 +1,14 @@
+import { fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { PromiseStatus, TokenBalance } from '@/lib/types';
+import { PromiseStatus, TokenBalance, TokenType } from '@/lib/types';
 import { isSoUSDToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { useQuery } from '@tanstack/react-query';
-import { readContract } from 'viem/actions';
-import { mainnet } from 'viem/chains';
+import { zeroAddress } from 'viem';
+import { getBalance, readContract } from 'viem/actions';
+import { fuse, mainnet } from 'viem/chains';
 import useUser from './useUser';
+import { NATIVE_TOKENS } from '@/constants/tokens';
 
 // Blockscout response structure for both Ethereum and Fuse
 interface BlockscoutTokenBalance {
@@ -22,7 +25,7 @@ interface BlockscoutTokenBalance {
     name: string;
     symbol: string;
     total_supply?: string;
-    type: string;
+    type: TokenType;
     volume_24h?: string;
   };
   token_id: null;
@@ -77,7 +80,7 @@ const ACCOUNTANT_ABI = [
 
 // Fetch function for token balances
 const fetchTokenBalances = async (safeAddress: string) => {
-  const [ethereumResponse, fuseResponse, soUSDRate] = await Promise.allSettled([
+  const [ethereumResponse, fuseResponse, soUSDRate, ethBalance, fuseBalance, ethPrice, fusePrice] = await Promise.allSettled([
     fetch(`https://eth.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
       headers: { accept: 'application/json' },
     }),
@@ -89,6 +92,14 @@ const fetchTokenBalances = async (safeAddress: string) => {
       abi: ACCOUNTANT_ABI,
       functionName: 'getRate',
     }),
+    getBalance(publicClient(mainnet.id), {
+      address: safeAddress as `0x${string}`,
+    }),
+    getBalance(publicClient(fuse.id), {
+      address: safeAddress as `0x${string}`,
+    }),
+    fetchTokenPriceUsd(NATIVE_TOKENS[mainnet.id]),
+    fetchTokenPriceUsd(NATIVE_TOKENS[fuse.id]),
   ]);
 
   let ethereumTokens: TokenBalance[] = [];
@@ -131,7 +142,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     const ethereumData: BlockscoutResponse = await ethereumResponse.value.json();
     // Filter out NFTs and only include ERC-20 tokens
     ethereumTokens = ethereumData
-      .filter(item => item.token.type === 'ERC-20')
+      .filter(item => item.token.type === TokenType.ERC20)
       .map(item => convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID));
   } else if (ethereumResponse.status === PromiseStatus.REJECTED) {
     console.warn('Failed to fetch Ethereum balances:', ethereumResponse.reason);
@@ -142,10 +153,41 @@ const fetchTokenBalances = async (safeAddress: string) => {
     const fuseData: BlockscoutResponse = await fuseResponse.value.json();
     // Filter out NFTs and only include ERC-20 tokens
     fuseTokens = fuseData
-      .filter(item => item.token.type === 'ERC-20')
+      .filter(item => item.token.type === TokenType.ERC20)
       .map(item => convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID));
   } else if (fuseResponse.status === PromiseStatus.REJECTED) {
     console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
+  }
+
+  // Process native token balances
+  if (ethBalance.status === PromiseStatus.FULFILLED && Number(ethBalance.value)) {
+    const ethPriceValue = ethPrice.status === PromiseStatus.FULFILLED ? Number(ethPrice.value) : 0;
+    ethereumTokens.push({
+      contractTickerSymbol: 'ETH',
+      contractName: 'Ethereum',
+      contractAddress: zeroAddress,
+      balance: ethBalance.value.toString(),
+      quoteRate: ethPriceValue,
+      contractDecimals: 18,
+      type: TokenType.NATIVE,
+      verified: true,
+      chainId: ETHEREUM_CHAIN_ID,
+    });
+  }
+
+  if (fuseBalance.status === PromiseStatus.FULFILLED && Number(fuseBalance.value)) {
+    const fusePriceValue = fusePrice.status === PromiseStatus.FULFILLED ? Number(fusePrice.value) : 0;
+    fuseTokens.push({
+      contractTickerSymbol: 'FUSE',
+      contractName: 'Fuse',
+      contractAddress: zeroAddress,
+      balance: fuseBalance.value.toString(),
+      quoteRate: fusePriceValue,
+      contractDecimals: 18,
+      type: TokenType.NATIVE,
+      verified: true,
+      chainId: FUSE_CHAIN_ID,
+    });
   }
 
   const allTokens = [...ethereumTokens, ...fuseTokens];
