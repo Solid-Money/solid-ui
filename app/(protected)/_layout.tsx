@@ -9,14 +9,16 @@ import {
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
+import { trackIdentity } from '@/lib/analytics';
 import { isPasskeySupported } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useOnboardingStore } from '@/store/useOnboardingStore';
 import { useUserStore } from '@/store/useUserStore';
-import { trackIdentity } from '@/lib/analytics';
 
 export default function ProtectedLayout() {
   const { user } = useUser();
   const { users } = useUserStore();
+  const { hasSeenOnboarding } = useOnboardingStore();
   const searchParams = useLocalSearchParams();
 
   useEffect(() => {
@@ -73,7 +75,13 @@ export default function ProtectedLayout() {
   }
 
   if (!users.length) {
-    return <Redirect href={path.REGISTER} />;
+    // Show onboarding on native platforms (only if not seen before), register directly on web
+    if (Platform.OS === 'web') {
+      return <Redirect href={path.REGISTER} />;
+    } else {
+      // On native, show onboarding first time, then register
+      return <Redirect href={hasSeenOnboarding ? path.REGISTER : path.ONBOARDING} />;
+    }
   }
 
   if (users.length && !user) {
