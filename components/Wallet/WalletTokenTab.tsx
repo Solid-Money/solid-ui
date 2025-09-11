@@ -209,6 +209,7 @@ const WalletTokenTab = () => {
                         tokenIcon={tokenIcon}
                         tokenSymbol={token.contractTickerSymbol || 'Unknown'}
                         chainId={token.chainId}
+                        tokenType={token.type}
                       />
                     )}
                     {isSoUSDFuse(token.contractAddress) ? (
@@ -399,6 +400,7 @@ const WalletTokenTab = () => {
                             tokenIcon={tokenIcon}
                             tokenSymbol={token.contractTickerSymbol || 'Unknown'}
                             chainId={token.chainId}
+                            tokenType={token.type}
                           />
                         )}
                         {isSoUSDFuse(token.contractAddress) ? (

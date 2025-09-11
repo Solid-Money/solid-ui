@@ -1,5 +1,3 @@
-import Markdown from 'react-native-marked';
-
 import {
   Accordion,
   AccordionContent,
@@ -9,6 +7,7 @@ import {
 import { Text } from '@/components/ui/text';
 import { Faq } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import Markdown from '@/components/Markdown';
 
 type FAQProps = {
   faqs: Faq[];
@@ -29,29 +28,7 @@ const FAQ = ({ faqs, className }: FAQProps) => {
             <Text className="text-lg font-medium">{faq.question}</Text>
           </AccordionTrigger>
           <AccordionContent>
-            <Markdown
-              value={faq.answer}
-              flatListProps={{
-                initialNumToRender: 8,
-                style: {
-                  backgroundColor: '#212121',
-                },
-              }}
-              styles={{
-                text: {
-                  color: '#A1A1A1',
-                },
-                strong: {
-                  color: '#ffffff',
-                },
-                em: {
-                  color: '#ffffff',
-                },
-                code: {
-                  backgroundColor: '#161b22',
-                },
-              }}
-            />
+            <Markdown value={faq.answer} />
           </AccordionContent>
         </AccordionItem>
       ))}
