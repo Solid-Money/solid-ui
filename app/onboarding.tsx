@@ -99,7 +99,7 @@ export default function Onboarding() {
           {/* Bottom buttons */}
           <View className="gap-3">
             <Button variant="brand" className="rounded-xl h-14" onPress={handleLoginPress}>
-              <Text className="text-lg font-bold">{users.length > 0 ? 'Login' : 'Login'}</Text>
+              <Text className="text-lg font-bold">{'Login'}</Text>
             </Button>
 
             <Button variant="ghost" className="rounded-xl h-14" onPress={handleCreateAccount}>
