@@ -1,6 +1,7 @@
 import { Href, Route } from 'expo-router';
 
 type Path = {
+  ONBOARDING: Href;
   REGISTER: Route;
   WELCOME: Href;
   HOME: Href;
@@ -32,6 +33,7 @@ type Path = {
 };
 
 export const path: Path = {
+  ONBOARDING: '/onboarding',
   REGISTER: '/register',
   WELCOME: '/welcome',
   HOME: '/',
