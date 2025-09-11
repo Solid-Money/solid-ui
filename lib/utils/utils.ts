@@ -166,3 +166,37 @@ export const isPasskeySupported = () => {
 export const toTitleCase = (str: string) => {
   return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
+
+export const safeStringify = (value: any) => {
+  try {
+    return JSON.stringify(value, (_, value) =>
+      typeof value === 'bigint' ? value.toString() : (value as unknown),
+    );
+  } catch (error) {
+    console.error('Error stringifying value:', error);
+    return value;
+  }
+}
+
+export const safeParse = (value: any) => {
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    console.error('Error parsing value:', error);
+    return value;
+  }
+}
+
+export const sanitize = (data: Record<string, any>) => {
+  try {
+    return Object.entries(data)
+      .filter(([_, value]) => value !== undefined && value !== null)
+      .reduce((acc, [key, value]) => {
+        acc[key] = safeParse(safeStringify(value));
+        return acc;
+      }, {} as Record<string, any>);
+  } catch (error) {
+    console.error('Error sanitizing data:', error);
+    return data;
+  }
+}

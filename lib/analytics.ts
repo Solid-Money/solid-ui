@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 // Local imports
 import { EXPO_PUBLIC_AMPLITUDE_API_KEY, EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_APP_ID, EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN, EXPO_PUBLIC_FIREBASE_DATABASE_URL, EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID, EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, EXPO_PUBLIC_FIREBASE_PROJECT_ID, EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET } from '@/lib/config';
 import { trackGTMEvent } from '@/lib/gtm';
-import { toTitleCase } from '@/lib/utils/utils';
+import { sanitize, toTitleCase } from '@/lib/utils/utils';
 
 // Firebase app instance
 const isFirebaseApp = getApps().length > 0;
@@ -90,27 +90,25 @@ const trackFirebaseEvent = async (event: string, params: Record<string, any>) =>
 
 // Main track function
 export const track = (event: string, params: Record<string, any> = {}) => {
-  // Validate inputs
-  if (!event || typeof event !== 'string') {
-    console.warn('Invalid event name provided to track():', event);
-    return;
+  try {
+    // Validate inputs
+    if (!event || typeof event !== 'string') {
+      console.warn('Invalid event name provided to track():', event);
+      return;
+    }
+
+    // Sanitize params - remove undefined/null values and ensure serializable
+    const sanitizedParams = sanitize(params);
+
+    // Track to all providers in parallel
+    Promise.allSettled([
+      Promise.resolve(trackAmplitudeEvent(event, sanitizedParams)),
+      trackFirebaseEvent(event, sanitizedParams),
+      Promise.resolve(trackGTMEvent(event, sanitizedParams)),
+    ]);
+  } catch (error) {
+    console.error('Error tracking event:', error);
   }
-
-  // Sanitize params - remove undefined/null values and ensure serializable
-  const sanitizedParams = Object.entries(params)
-    .filter(([_, value]) => value !== undefined && value !== null)
-    .reduce((acc, [key, value]) => {
-      // Convert non-serializable values to strings
-      acc[key] = typeof value === 'object' ? JSON.stringify(value) : value;
-      return acc;
-    }, {} as Record<string, any>);
-
-  // Track to all providers in parallel
-  Promise.allSettled([
-    Promise.resolve(trackAmplitudeEvent(event, sanitizedParams)),
-    trackFirebaseEvent(event, sanitizedParams),
-    Promise.resolve(trackGTMEvent(event, sanitizedParams)),
-  ]);
 };
 
 // Track Amplitude screens
@@ -143,25 +141,24 @@ const trackFirebaseScreen = async (pathname: string, params: Record<string, any>
 
 // Main screen tracking function
 export const trackScreen = (pathname: string, params: Record<string, any> = {}) => {
-  // Validate inputs
-  if (!pathname || typeof pathname !== 'string') {
-    console.warn('Invalid pathname provided to trackScreen():', pathname);
-    return;
+  try {
+    // Validate inputs
+    if (!pathname || typeof pathname !== 'string') {
+      console.warn('Invalid pathname provided to trackScreen():', pathname);
+      return;
+    }
+
+    // Sanitize params
+    const sanitizedParams = sanitize(params);
+
+    // Track to all providers in parallel
+    Promise.allSettled([
+      Promise.resolve(trackAmplitudeScreen(pathname, sanitizedParams)),
+      trackFirebaseScreen(pathname, sanitizedParams),
+    ]);
+  } catch (error) {
+    console.error('Error tracking screen:', error);
   }
-
-  // Sanitize params
-  const sanitizedParams = Object.entries(params)
-    .filter(([_, value]) => value !== undefined && value !== null)
-    .reduce((acc, [key, value]) => {
-      acc[key] = typeof value === 'object' ? JSON.stringify(value) : value;
-      return acc;
-    }, {} as Record<string, any>);
-
-  // Track to all providers in parallel
-  Promise.allSettled([
-    Promise.resolve(trackAmplitudeScreen(pathname, sanitizedParams)),
-    trackFirebaseScreen(pathname, sanitizedParams),
-  ]);
 };
 
 // Track Amplitude identity
@@ -191,38 +188,37 @@ const trackFirebaseIdentity = async (id: string, params: Record<string, any>) =>
 
 // Main identity tracking function
 export const trackIdentity = (id: string, params: Record<string, any> = {}) => {
-  // Validate inputs
-  if (!id || typeof id !== 'string') {
-    console.warn('Invalid user ID provided to trackIdentity():', id);
-    return;
-  }
-
-  // Sanitize params
-  const sanitizedParams = Object.entries(params)
-    .filter(([_, value]) => value !== undefined && value !== null)
-    .reduce((acc, [key, value]) => {
-      acc[key] = typeof value === 'object' ? JSON.stringify(value) : value;
-      return acc;
-    }, {} as Record<string, any>);
-
-  // Track to all providers in parallel
-  Promise.allSettled([
-    Promise.resolve(trackAmplitudeIdentity(id, sanitizedParams)),
-    trackFirebaseIdentity(id, sanitizedParams),
-  ]);
-
-  // Push user identification to GTM dataLayer
-  if (typeof window !== 'undefined' && window.dataLayer) {
-    try {
-      window.dataLayer.push({
-        event: 'user_identified',
-        user_id: id,
-        timestamp: Date.now(),
-        platform: Platform.OS,
-        ...sanitizedParams,
-      });
-    } catch (error) {
-      console.error('Error pushing identity to GTM dataLayer:', error);
+  try {
+    // Validate inputs
+    if (!id || typeof id !== 'string') {
+      console.warn('Invalid user ID provided to trackIdentity():', id);
+      return;
     }
+
+    // Sanitize params
+    const sanitizedParams = sanitize(params);
+
+    // Track to all providers in parallel
+    Promise.allSettled([
+      Promise.resolve(trackAmplitudeIdentity(id, sanitizedParams)),
+      trackFirebaseIdentity(id, sanitizedParams),
+    ]);
+
+    // Push user identification to GTM dataLayer
+    if (typeof window !== 'undefined' && window.dataLayer) {
+      try {
+        window.dataLayer.push({
+          event: 'user_identified',
+          user_id: id,
+          timestamp: Date.now(),
+          platform: Platform.OS,
+          ...sanitizedParams,
+        });
+      } catch (error) {
+        console.error('Error pushing identity to GTM dataLayer:', error);
+      }
+    }
+  } catch (error) {
+    console.error('Error tracking identity:', error);
   }
 };
