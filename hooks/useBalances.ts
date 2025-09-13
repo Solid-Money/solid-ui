@@ -1,3 +1,4 @@
+import { NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { PromiseStatus, TokenBalance, TokenType } from '@/lib/types';
@@ -8,7 +9,6 @@ import { zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
 import { fuse, mainnet } from 'viem/chains';
 import useUser from './useUser';
-import { NATIVE_TOKENS } from '@/constants/tokens';
 
 // Blockscout response structure for both Ethereum and Fuse
 interface BlockscoutTokenBalance {
@@ -80,27 +80,28 @@ const ACCOUNTANT_ABI = [
 
 // Fetch function for token balances
 const fetchTokenBalances = async (safeAddress: string) => {
-  const [ethereumResponse, fuseResponse, soUSDRate, ethBalance, fuseBalance, ethPrice, fusePrice] = await Promise.allSettled([
-    fetch(`https://eth.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
-      headers: { accept: 'application/json' },
-    }),
-    fetch(`https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-balances`, {
-      headers: { accept: 'application/json' },
-    }),
-    readContract(publicClient(mainnet.id), {
-      address: ADDRESSES.ethereum.accountant,
-      abi: ACCOUNTANT_ABI,
-      functionName: 'getRate',
-    }),
-    getBalance(publicClient(mainnet.id), {
-      address: safeAddress as `0x${string}`,
-    }),
-    getBalance(publicClient(fuse.id), {
-      address: safeAddress as `0x${string}`,
-    }),
-    fetchTokenPriceUsd(NATIVE_TOKENS[mainnet.id]),
-    fetchTokenPriceUsd(NATIVE_TOKENS[fuse.id]),
-  ]);
+  const [ethereumResponse, fuseResponse, soUSDRate, ethBalance, fuseBalance, ethPrice, fusePrice] =
+    await Promise.allSettled([
+      fetch(`https://eth.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
+        headers: { accept: 'application/json' },
+      }),
+      fetch(`https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-balances`, {
+        headers: { accept: 'application/json' },
+      }),
+      readContract(publicClient(mainnet.id), {
+        address: ADDRESSES.ethereum.accountant,
+        abi: ACCOUNTANT_ABI,
+        functionName: 'getRate',
+      }),
+      getBalance(publicClient(mainnet.id), {
+        address: safeAddress as `0x${string}`,
+      }),
+      getBalance(publicClient(fuse.id), {
+        address: safeAddress as `0x${string}`,
+      }),
+      fetchTokenPriceUsd(NATIVE_TOKENS[mainnet.id]),
+      fetchTokenPriceUsd(NATIVE_TOKENS[fuse.id]),
+    ]);
 
   let ethereumTokens: TokenBalance[] = [];
   let fuseTokens: TokenBalance[] = [];
@@ -124,10 +125,10 @@ const fetchTokenBalances = async (safeAddress: string) => {
       contractName: item.token.name,
       contractAddress: address,
       balance: item.value,
-      quoteRate: item.token.exchange_rate
-        ? parseFloat(item.token.exchange_rate)
-        : isSoUSDToken(address)
-          ? rate
+      quoteRate: isSoUSDToken(address)
+        ? rate
+        : item.token.exchange_rate
+          ? parseFloat(item.token.exchange_rate)
           : 0,
       logoUrl: item.token.icon_url,
       contractDecimals: parseInt(item.token.decimals),
@@ -176,7 +177,8 @@ const fetchTokenBalances = async (safeAddress: string) => {
   }
 
   if (fuseBalance.status === PromiseStatus.FULFILLED && Number(fuseBalance.value)) {
-    const fusePriceValue = fusePrice.status === PromiseStatus.FULFILLED ? Number(fusePrice.value) : 0;
+    const fusePriceValue =
+      fusePrice.status === PromiseStatus.FULFILLED ? Number(fusePrice.value) : 0;
     fuseTokens.push({
       contractTickerSymbol: 'FUSE',
       contractName: 'Fuse',
