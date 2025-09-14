@@ -12,6 +12,7 @@ const BANNER_HEIGHT = 90;
 export const HomeBanners = () => {
   const ref = useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);
+  const data = [1];
 
   const onPressPagination = (index: number) => {
     ref.current?.scrollTo({
@@ -30,7 +31,9 @@ export const HomeBanners = () => {
         ref={ref}
         width={SCREEN_WIDTH - 32}
         height={BANNER_HEIGHT}
-        data={[1]}
+        data={data}
+        loop={false}
+        autoPlay={false}
         scrollAnimationDuration={1000}
         onProgressChange={progress}
         renderItem={renderItem}
@@ -39,14 +42,16 @@ export const HomeBanners = () => {
           parallaxScrollingOffset: 50,
         }}
       />
-      <Pagination.Custom
-        progress={progress}
-        data={[1]}
-        dotStyle={styles.dotStyle}
-        activeDotStyle={styles.activeDot}
-        containerStyle={styles.paginationContainer}
-        onPress={onPressPagination}
-      />
+      {data.length > 1 && (
+        <Pagination.Custom
+          progress={progress}
+          data={data}
+          dotStyle={styles.dotStyle}
+          activeDotStyle={styles.activeDot}
+          containerStyle={styles.paginationContainer}
+          onPress={onPressPagination}
+        />
+      )}
     </View>
   );
 };

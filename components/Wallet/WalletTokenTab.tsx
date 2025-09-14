@@ -1,5 +1,5 @@
 import { FlashList } from '@shopify/flash-list';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Address, formatUnits } from 'viem';
@@ -12,6 +12,8 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import SavingCountUp from '@/components/SavingCountUp';
 import SendModal from '@/components/SendModal/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
+import { TransactionCredenzaTrigger } from '@/components/Transaction/TransactionCredenza';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   Table,
   TableBody,
@@ -201,29 +203,36 @@ const WalletTokenTab = () => {
                       </Text>
                     </View>
                   )}
-                  <View className="flex-row items-center gap-2">
-                    {!isSoUSDEthereum(token.contractAddress) && (
-                      <SendModal
-                        tokenAddress={token.contractAddress as Address}
-                        tokenDecimals={token.contractDecimals}
-                        tokenIcon={tokenIcon}
-                        tokenSymbol={token.contractTickerSymbol || 'Unknown'}
-                        chainId={token.chainId}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      <TransactionCredenzaTrigger />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-card border-none rounded-xl p-1 min-w-[10rem]">
+                      <View className="gap-2">
+                        {!isSoUSDEthereum(token.contractAddress) && (
+                          <SendModal
+                            tokenAddress={token.contractAddress as Address}
+                            tokenDecimals={token.contractDecimals}
+                            tokenIcon={tokenIcon}
+                            tokenSymbol={token.contractTickerSymbol || 'Unknown'}
+                            chainId={token.chainId}
                         tokenType={token.type}
-                      />
-                    )}
-                    {isSoUSDFuse(token.contractAddress) ? (
-                      <UnstakeModal />
-                    ) : (
-                      isSoUSDEthereum(token.contractAddress) && (
-                        <>
-                          <WithdrawModal />
-                          <StakeModal />
-                        </>
-                      )
-                    )}
-                    {isUSDCEthereum(token.contractAddress) && <DepositModal />}
-                  </View>
+                          />
+                        )}
+                        {isSoUSDFuse(token.contractAddress) ? (
+                          <UnstakeModal />
+                        ) : (
+                          isSoUSDEthereum(token.contractAddress) && (
+                            <>
+                              <WithdrawModal />
+                              <StakeModal />
+                            </>
+                          )
+                        )}
+                        {isUSDCEthereum(token.contractAddress) && <DepositModal />}
+                      </View>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </View>
               </View>
             );
@@ -328,6 +337,7 @@ const WalletTokenTab = () => {
                               apy={totalAPY ?? 0}
                               lastTimestamp={firstDepositTimestamp ?? 0}
                               mode={SavingMode.TOTAL}
+                              suffix={token.contractTickerSymbol}
                               styles={{
                                 wholeText: {
                                   fontSize: fontSize(1),
@@ -343,7 +353,7 @@ const WalletTokenTab = () => {
                                 },
                               }}
                             />
-                            <Text className="font-bold">{token.contractTickerSymbol}</Text>
+                            
                           </View>
                           <View className="flex-row items-center">
                             <Text className="text-sm text-muted-foreground">$</Text>
@@ -392,28 +402,37 @@ const WalletTokenTab = () => {
                       </View>
                     </TableCell>
                     <TableCell className="p-3 pl-0 md:p-6" style={{ width: columnWidths[4] }}>
-                      <View className="flex-row items-center justify-end gap-2">
-                        {!isSoUSDEthereum(token.contractAddress) && (
-                          <SendModal
-                            tokenAddress={token.contractAddress as Address}
-                            tokenDecimals={token.contractDecimals}
-                            tokenIcon={tokenIcon}
-                            tokenSymbol={token.contractTickerSymbol || 'Unknown'}
-                            chainId={token.chainId}
+                      <View className="flex-row items-center justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger>
+                            <TransactionCredenzaTrigger />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-card border-none rounded-xl p-1 min-w-[12rem]">
+                            <View className="gap-2">
+                              {!isSoUSDEthereum(token.contractAddress) && (
+                                <SendModal
+                                  tokenAddress={token.contractAddress as Address}
+                                  tokenDecimals={token.contractDecimals}
+                                  tokenIcon={tokenIcon}
+                                  tokenSymbol={token.contractTickerSymbol || 'Unknown'}
+                                  chainId={token.chainId}
                             tokenType={token.type}
-                          />
-                        )}
-                        {isSoUSDFuse(token.contractAddress) ? (
-                          <UnstakeModal />
-                        ) : (
-                          isSoUSDEthereum(token.contractAddress) && (
-                            <>
-                              <WithdrawModal />
-                              <StakeModal />
-                            </>
-                          )
-                        )}
-                        {isUSDCEthereum(token.contractAddress) && <DepositModal />}
+                                />
+                              )}
+                              {isSoUSDFuse(token.contractAddress) ? (
+                                <UnstakeModal />
+                              ) : (
+                                isSoUSDEthereum(token.contractAddress) && (
+                                  <>
+                                    <WithdrawModal />
+                                    <StakeModal />
+                                  </>
+                                )
+                              )}
+                              {isUSDCEthereum(token.contractAddress) && <DepositModal />}
+                            </View>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </View>
                     </TableCell>
                   </TableRow>

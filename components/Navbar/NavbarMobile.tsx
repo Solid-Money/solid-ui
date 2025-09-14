@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import { eclipseUsername } from '@/lib/utils';
+import { Image } from 'expo-image';
 
 const NavbarMobile = () => {
   const { user } = useUser();
@@ -28,7 +29,13 @@ const NavbarMobile = () => {
 
   return (
     <SafeAreaView className="bg-background">
-      <View className="flex-row justify-start items-center p-4">
+      <View className="flex-row justify-between items-center p-4">
+        <Image
+            source={require('@/assets/images/solid-logo-4x.png')}
+            alt="Solid logo"
+            style={{ width: 33, height: 36 }}
+            contentFit="contain"
+          />
         <Pressable
           onPress={handleAvatarPress}
           className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-transform"

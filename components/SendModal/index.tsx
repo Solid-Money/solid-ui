@@ -291,7 +291,7 @@ const SendTrigger = (props: any) => {
       {...props}
     >
       <ArrowUpRight color="white" />
-      <Text className="hidden md:block font-bold">Send</Text>
+      <Text className="font-bold">Send</Text>
     </Button>
   );
 };
@@ -301,3 +301,4 @@ const SendTitle = () => {
 };
 
 export { Send, SendTitle, SendTrigger };
+

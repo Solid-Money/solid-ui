@@ -195,8 +195,8 @@ function DepositToVaultForm() {
               </Text>
             </View>
           </View>
-          <View className="flex-row items-center gap-1.5">
-            <Wallet color="gray" size={16} />
+          <View className="flex-row items-center gap-2">
+            <Wallet color="#A1A1A1" size={16} />
             <Text className="text-muted-foreground">
               {formatNumber(Number(formattedBalance))} USDC
             </Text>
@@ -209,9 +209,9 @@ function DepositToVaultForm() {
           </View>
         </View>
         <TokenDetails>
-          <View className="p-4 md:p-5 md:flex-row md:justify-between md:items-center gap-2 md:gap-10">
+          <View className="p-4 pr-6 md:p-5 md:flex-row md:items-center md:justify-between gap-2 md:gap-10">
             <View className="flex-row items-center gap-2">
-              <Text className="text-lg opacity-40">You will receive</Text>
+              <Text className="text-lg text-muted-foreground">You will receive</Text>
               {!isSponsor && !isEthereum && (
                 <TooltipPopover
                   content={
@@ -222,14 +222,14 @@ function DepositToVaultForm() {
                 />
               )}
             </View>
-            <View className="flex-row items-center gap-2">
+            <View className="flex-row items-center gap-2 ml-auto flex-shrink-0">
               <Image
                 source={require('@/assets/images/sousd-4x.png')}
-                style={{ width: 34, height: 34 }}
+                style={{ width: 24, height: 24 }}
                 contentFit="contain"
               />
-              <View className="flex-row items-baseline gap-2">
-                <Text className="text-2xl font-semibold">
+              <View className="flex-row items-baseline gap-1">
+                <Text className="text-lg font-semibold">
                   {isPreviewDepositLoading ? (
                     <Skeleton className="w-20 h-8" />
                   ) : isScreenMedium ? (
@@ -238,25 +238,25 @@ function DepositToVaultForm() {
                     parseFloat(amountOut.toFixed(3)) || 0
                   )}
                 </Text>
-                <Text>soUSD</Text>
+                <Text className="text-lg">soUSD</Text>
               </View>
               {/* <Text className="text-lg opacity-40 text-right">
                       {`(${compactNumberFormat(costInUsd)} USDC in fee)`}
                     </Text> */}
             </View>
           </View>
-          <View className="p-4 md:p-5 md:flex-row md:justify-between md:items-center gap-2 md:gap-10">
-            <Text className="text-lg opacity-40">Exchange rate</Text>
-            <View className="flex-row items-baseline gap-2">
-              <Text className="text-2xl font-semibold">
+          <View className="p-4 pr-6 md:p-5 md:flex-row md:items-center md:justify-between gap-2 md:gap-10">
+            <Text className="text-base text-muted-foreground">Exchange rate</Text>
+            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+              <Text className="text-lg font-semibold">
                 {exchangeRate ? formatUnits(exchangeRate, 6) : <Skeleton className="w-20 h-8" />}
               </Text>
             </View>
           </View>
-          <View className="p-4 md:p-5 md:flex-row md:justify-between md:items-center gap-2 md:gap-10">
-            <Text className="text-lg opacity-40">APY</Text>
-            <View className="flex-row items-baseline gap-2">
-              <Text className="text-2xl font-semibold text-[#94F27F]">
+          <View className="p-4 pr-6 md:p-5 md:flex-row md:items-center md:justify-between gap-2 md:gap-10">
+            <Text className="text-base text-muted-foreground">APY</Text>
+            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+              <Text className="text-lg font-semibold text-[#94F27F]">
                 {totalAPY ? `${totalAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
               </Text>
               {/* <Text className="text-base opacity-40">
@@ -272,8 +272,8 @@ function DepositToVaultForm() {
           </View>
         </TokenDetails>
         <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-1">
-            <Fuel color="gray" size={18} />
+          <View className="flex-row items-center gap-2 align-items: start">
+            <Fuel color="#A1A1A1" size={16} className='mt-1' />
             <Text className="text-base text-muted-foreground max-w-xs">
               Gasless deposit
               {isSponsor

@@ -6,7 +6,6 @@ import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
-import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
 import WalletTabs from '@/components/Wallet/WalletTabs';
@@ -135,13 +134,13 @@ export default function Savings() {
       <ScrollView className="flex-1">
         {!isScreenMedium && <NavbarMobile />}
         {isScreenMedium && <Navbar />}
-        <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
+        <View className="gap-8 md:gap-16 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
           {isScreenMedium ? (
             <View className="flex-row justify-between items-center">
               <View className="flex-row items-center gap-2">
                 <View className="flex-row items-center">
-                  <Text className="text-5xl font-semibold">$</Text>
                   <CountUp
+                    prefix="$"
                     count={totalUSDExcludingStaked + savings}
                     isTrailingZero={false}
                     classNames={{
@@ -151,21 +150,21 @@ export default function Savings() {
                     styles={{
                       wholeText: {
                         fontSize: fontSize(3),
-                        fontWeight: 'semibold',
-                        fontFamily: 'MonaSans_600SemiBold',
+                        fontWeight: '600',
+                        //fontFamily: 'MonaSans_600SemiBold',
                         color: '#ffffff',
                         marginRight: -1,
                       },
                       decimalText: {
                         fontSize: fontSize(3),
-                        fontWeight: 'semibold',
-                        fontFamily: 'MonaSans_600SemiBold',
+                        fontWeight: '200',
+                        //fontFamily: 'MonaSans_600SemiBold',
                         color: '#ffffff',
                       },
                     }}
                   />
                 </View>
-                <TooltipPopover text="Total = Wallet + Savings" />
+                
               </View>
               <DashboardHeaderButtons hasTokens={hasTokens} />
             </View>
@@ -176,7 +175,7 @@ export default function Savings() {
             />
           )}
           {isScreenMedium ? (
-            <View className="md:flex-row gap-4 min-h-44">
+            <View className="md:flex-row gap-8 min-h-44">
               <WalletCard
                 balance={totalUSDExcludingStaked}
                 className="flex-1"

@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { track } from '@/lib/analytics';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 
 type TooltipClassNames = {
   content?: string;
@@ -53,7 +53,7 @@ const TooltipPopover = ({
         <Image
           source={require('@/assets/images/question-mark-gray.png')}
           alt="Tooltip"
-          style={{ width: 16, height: 16 }}
+          style={{ width: 17, height: 17, marginTop: -4 }}
           contentFit="contain"
         />
       </Pressable>

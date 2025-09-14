@@ -33,7 +33,7 @@ const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrim
     return (
       <DialogPrimitive.Overlay
         className={cn(
-          'web:backdrop-blur-[11px] flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
+          'web:backdrop-blur-[4px] bg-black/40 flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
           open ? 'web:animate-in web:fade-in-0' : 'web:animate-out web:fade-out-0',
           className,
         )}
@@ -92,7 +92,7 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          'max-w-lg gap-4 web:cursor-default bg-card p-6 shadow-lg web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
+          'max-w-lg gap-4 web:cursor-default bg-card p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
           open
             ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
             : 'web:animate-out web:fade-out-0 web:zoom-out-95',
@@ -103,11 +103,11 @@ const DialogContent = React.forwardRef<
         {children}
         <DialogPrimitive.Close
           className={
-            'absolute top-4 md:top-0 right-4 md:-right-12 h-6 w-6 md:h-10 md:w-10 flex items-center justify-center bg-card md:border border-border rounded-full web:group web:ring-offset-background web:transition-opacity web:hover:opacity-70 web:focus:outline-none web:focus:ring-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none'
+            'absolute top-4 md:top-0 right-4 md:-right-12 h-6 w-6 md:h-10 md:w-10 flex items-center justify-center bg-card md:border border-0 rounded-full web:group web:ring-offset-background web:transition-opacity web:hover:opacity-70 web:focus:outline-none web:focus:ring-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none'
           }
         >
           <X
-            size={Platform.OS === 'web' ? 16 : 18}
+            size={Platform.OS === 'web' ? 22 : 18}
             className={cn('text-muted-foreground', open && 'text-accent-foreground')}
           />
         </DialogPrimitive.Close>
@@ -186,5 +186,6 @@ export {
   DialogOverlay,
   DialogPortal,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 };
+
