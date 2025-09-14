@@ -8,6 +8,7 @@ import { useCountdownTimer } from '@/hooks/useCountdownTimer';
 import { useDimension } from '@/hooks/useDimension';
 import { usePoints } from '@/hooks/usePoints';
 import { RewardsType } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -72,7 +73,7 @@ export default function Savings() {
                   <Text className="md:text-lg text-rewards/70">Your Total Points</Text>
                   <View className="flex-row items-center">
                     <Text className="text-5xl md:text-8xl text-rewards font-semibold">
-                      {points.userRewardsSummary.totalPoints}
+                      {formatNumber(points.userRewardsSummary.totalPoints, 0, 0)}
                     </Text>
                   </View>
                 </View>
