@@ -25,12 +25,14 @@ import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { track } from '@/lib/analytics';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { eclipseAddress, formatNumber } from '@/lib/utils';
+import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useDimension } from '@/hooks/useDimension';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
   const { setModal, setTransaction, srcChainId } = useDepositStore();
+  const { isScreenMedium } = useDimension();
 
   const isLoading =
     depositStatus === DepositStatus.PENDING ||
@@ -207,8 +209,8 @@ function DepositToVaultForm() {
           </View>
         </View>
         <TokenDetails>
-          <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
-            <View className="flex-row items-center gap-2 md:w-40">
+          <View className="p-4 md:p-5 md:flex-row md:justify-between md:items-center gap-2 md:gap-10">
+            <View className="flex-row items-center gap-2">
               <Text className="text-lg opacity-40">You will receive</Text>
               {!isSponsor && !isEthereum && (
                 <TooltipPopover
@@ -230,6 +232,8 @@ function DepositToVaultForm() {
                 <Text className="text-2xl font-semibold">
                   {isPreviewDepositLoading ? (
                     <Skeleton className="w-20 h-8" />
+                  ) : isScreenMedium ? (
+                    compactNumberFormat(amountOut || 0)
                   ) : (
                     parseFloat(amountOut.toFixed(3)) || 0
                   )}
@@ -241,16 +245,16 @@ function DepositToVaultForm() {
                     </Text> */}
             </View>
           </View>
-          <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
-            <Text className="text-lg opacity-40 md:w-40">Exchange rate</Text>
+          <View className="p-4 md:p-5 md:flex-row md:justify-between md:items-center gap-2 md:gap-10">
+            <Text className="text-lg opacity-40">Exchange rate</Text>
             <View className="flex-row items-baseline gap-2">
               <Text className="text-2xl font-semibold">
                 {exchangeRate ? formatUnits(exchangeRate, 6) : <Skeleton className="w-20 h-8" />}
               </Text>
             </View>
           </View>
-          <View className="p-4 md:p-5 md:flex-row md:items-center gap-2 md:gap-10">
-            <Text className="text-lg opacity-40 md:w-40">APY</Text>
+          <View className="p-4 md:p-5 md:flex-row md:justify-between md:items-center gap-2 md:gap-10">
+            <Text className="text-lg opacity-40">APY</Text>
             <View className="flex-row items-baseline gap-2">
               <Text className="text-2xl font-semibold text-[#94F27F]">
                 {totalAPY ? `${totalAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
