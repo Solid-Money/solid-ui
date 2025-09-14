@@ -8,7 +8,7 @@ import { SEND_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { TokenIcon } from '@/lib/types';
+import { TokenIcon, TokenType } from '@/lib/types';
 import { useSendStore } from '@/store/useSendStore';
 import { Send, SendTrigger } from '.';
 
@@ -18,6 +18,7 @@ type SendModalProps = {
   tokenIcon: TokenIcon;
   tokenSymbol: string;
   chainId: number;
+  tokenType: TokenType;
 };
 
 const SendModal = ({
@@ -26,6 +27,7 @@ const SendModal = ({
   tokenIcon,
   tokenSymbol,
   chainId,
+  tokenType,
 }: SendModalProps) => {
   const router = useRouter();
 
@@ -81,6 +83,7 @@ const SendModal = ({
         chainId={chainId}
         tokenIcon={tokenIcon}
         tokenSymbol={tokenSymbol}
+        tokenType={tokenType}
       />
     );
   };

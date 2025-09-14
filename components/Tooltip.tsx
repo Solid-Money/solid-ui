@@ -8,6 +8,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 
+type TooltipClassNames = {
+  content?: string;
+  trigger?: string;
+};
+
 interface TooltipProps {
   trigger?: React.ReactNode;
   content?: React.ReactNode;
@@ -15,6 +20,7 @@ interface TooltipProps {
   side?: 'top' | 'right' | 'bottom' | 'left';
   sideOffset?: number;
   analyticsContext?: string;
+  classNames?: TooltipClassNames;
 }
 
 const TooltipPopover = ({
@@ -24,6 +30,7 @@ const TooltipPopover = ({
   side = 'bottom',
   sideOffset = 4,
   analyticsContext,
+  classNames,
 }: TooltipProps) => {
   const insets = useSafeAreaInsets();
   const contentInsets = {
@@ -69,8 +76,8 @@ const TooltipPopover = ({
 
   return (
     <Tooltip delayDuration={150}>
-      <TooltipTrigger asChild>{trigger || getTrigger()}</TooltipTrigger>
-      <TooltipContent insets={contentInsets} side={side} sideOffset={sideOffset}>
+      <TooltipTrigger asChild className={classNames?.trigger}>{trigger || getTrigger()}</TooltipTrigger>
+      <TooltipContent insets={contentInsets} side={side} sideOffset={sideOffset} className={classNames?.content}>
         {content || getContent()}
       </TooltipContent>
     </Tooltip>

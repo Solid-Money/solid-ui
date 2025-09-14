@@ -18,7 +18,9 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       return { type: 'image', source: require('@/assets/images/usdc.png') };
     case 'WETH':
     case 'ETH':
-      return { type: 'image', source: require('@/assets/images/ethereum-square-4x.png') };
+      return { type: 'image', source: require('@/assets/images/eth.png') };
+    case 'FUSE':
+      return { type: 'image', source: require('@/assets/images/fuse.png') };
     case 'SOUSD':
       return { type: 'image', source: require('@/assets/images/sousd-4x.png') };
     default:

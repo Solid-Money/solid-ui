@@ -63,8 +63,8 @@ const WalletCard = ({ balance, className, tokens }: WalletCardProps) => {
           }
           content={
             <Text className="max-w-[16.2rem]">
-              Displaying top three tokens by balance. Wallet can contain any ERC-20 token in
-              Ethereum and Fuse for Swap and Send.
+              Displaying top three tokens by balance. Wallet can contain any ERC-20 and native token
+              in Ethereum and Fuse for Swap and Send.
             </Text>
           }
         />

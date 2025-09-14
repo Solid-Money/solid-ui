@@ -14,7 +14,7 @@ const WalletCardIcons = ({ tokens, size = 28 }: WalletCardIconsProps) => {
     <View className="flex-row">
       {tokens?.map((token, index) => (
         <View
-          key={token.contractAddress}
+          key={`${token.contractAddress}-${token.chainId}`}
           className="-ml-2"
           style={{
             zIndex: tokens.length - index,

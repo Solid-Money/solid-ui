@@ -1,5 +1,5 @@
 import { FlashList } from '@shopify/flash-list';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Address, formatUnits } from 'viem';
@@ -216,6 +216,7 @@ const WalletTokenTab = () => {
                             tokenIcon={tokenIcon}
                             tokenSymbol={token.contractTickerSymbol || 'Unknown'}
                             chainId={token.chainId}
+                        tokenType={token.type}
                           />
                         )}
                         {isSoUSDFuse(token.contractAddress) ? (
@@ -415,6 +416,7 @@ const WalletTokenTab = () => {
                                   tokenIcon={tokenIcon}
                                   tokenSymbol={token.contractTickerSymbol || 'Unknown'}
                                   chainId={token.chainId}
+                            tokenType={token.type}
                                 />
                               )}
                               {isSoUSDFuse(token.contractAddress) ? (
