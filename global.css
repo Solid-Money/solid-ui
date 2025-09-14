@@ -47,8 +47,8 @@
   /* React Native Web renders Text as span.css-xxxx. Force Mona on those. */
   [class^="css-text"],
   [class*=" css-text"],
-  span[class^="css-"],
-  span[class*=" css-"] {
+  [class^="css-"],
+  [class*=" css-"] {
     font-family: 'Mona Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI",
       Roboto, Helvetica, Arial, sans-serif !important;
   }
