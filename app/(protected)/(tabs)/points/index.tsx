@@ -153,7 +153,7 @@ export default function Savings() {
                 >
                   <Text className="md:text-2xl text-xl font-semibold text-[#C693E5]">10X</Text>
                 </LinearGradient>
-                <View className="flex-col md:ml-5 ml-2">
+                <View className="flex-col flex-1 md:ml-5 ml-2">
                   <Text className="md:text-2xl text-xl font-semibold">
                     Deposit and earn 10x points
                   </Text>
@@ -181,7 +181,7 @@ export default function Savings() {
                   style={{ width: isScreenMedium ? 90 : 70, height: isScreenMedium ? 90 : 70 }}
                   contentFit="contain"
                 />
-                <View className="flex-col md:ml-5 ml-2">
+                <View className="flex-col flex-1 md:ml-5 ml-2">
                   <Text className="md:text-2xl text-xl font-semibold">Refer a Friend</Text>
                   <Text className="md:text-lg text-base text-white/70">
                     Earn 10% of their daily points.
