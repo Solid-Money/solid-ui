@@ -75,7 +75,7 @@ To qualify:
     <View className="md:flex-1 bg-card rounded-twice p-5 md:p-8 md:flex-row md:items-center justify-between gap-4">
       <View className="md:items-start gap-4">
         {isScreenMedium ? null : getImage()}
-        <Text className="text-2xl leading-6 font-bold md:max-w-72">
+        <Text className="text-2xl leading-6 font-semibold md:max-w-72">
           Get extra 3% for your early support!
         </Text>
         <View className="flex-row items-center gap-1">

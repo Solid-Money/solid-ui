@@ -4,11 +4,11 @@ import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import useUser from '@/hooks/useUser';
-import { path } from '@/constants/path';
-import { eclipseUsername } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import useUser from '@/hooks/useUser';
+import { eclipseUsername } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 
 import PersonKey from '@/assets/images/person-key';
@@ -20,21 +20,21 @@ export default function Welcome() {
 
   return (
     <SafeAreaView className="bg-background text-foreground flex-1">
-      <View className="flex-1 justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
-        <View className="flex-row items-center gap-5">
+      <View className="flex-1 justify-center gap-7 px-4 py-8 w-full max-w-[500px] mx-auto">
+        <View className="flex-row items-center gap-5 justify-center">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
-            style={{ width: 37, height: 40 }}
+            style={{ width: 74, height: 80 }}
             contentFit="contain"
           />
         </View>
 
         <View className="gap-8">
           <View className="flex-col gap-2">
-            <Text className="text-3xl font-semibold">Welcome back!</Text>
-            <Text className="text-muted-foreground max-w-[23rem]">
-              Sign up with your email or connect a Web3 wallet to get started.
+            <Text className="text-3xl font-semibold text-center">Welcome back!</Text>
+            <Text className="text-muted-foreground text-center max-w-[400px] items-center mx-auto">
+              Please select your account to continue. you will be asked to login with your passkey.
             </Text>
           </View>
 
@@ -44,7 +44,7 @@ export default function Welcome() {
               <Button
                 key={user.username}
                 variant="brand"
-                className="justify-between rounded-xl h-14 px-6"
+                className="justify-between rounded-xl h-14 px-6 border-0"
                 onPress={() => handleSelectUser(user.username)}
               >
                 <View className="flex-row items-center gap-2">
@@ -62,7 +62,7 @@ export default function Welcome() {
           <View className="gap-2 w-full">
             <Button
               variant="secondary"
-              className="rounded-xl h-14"
+              className="rounded-xl h-14 border-0"
               onPress={() => router.replace(path.REGISTER)}
             >
               <Text className="text-lg font-semibold">Use another account</Text>

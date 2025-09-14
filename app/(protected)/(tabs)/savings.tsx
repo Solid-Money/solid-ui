@@ -121,14 +121,12 @@ export default function Savings() {
               opacity: 0.5,
             }}
           >
-            <View className="flex-1 bg-transparent p-6 pb-16 md:px-10 md:py-8 justify-between gap-12 md:gap-4 border-b border-border md:border-b-0 md:border-r">
+            <View className="flex-1 bg-transparent p-6 pb-16 md:px-10 md:py-8 justify-between gap-12 md:gap-4 border-b border-[#ffffff]/20 md:border-b-0 md:border-r">
               <View>
                 <Text className="md:text-lg text-primary/50">Total value</Text>
                 <View className="flex-row items-center">
-                  <Text className="text-5xl md:text-8xl native:leading-[1.2] text-foreground font-medium">
-                    $
-                  </Text>
                   <SavingCountUp
+                    prefix="$"
                     balance={balance ?? 0}
                     apy={totalAPY ?? 0}
                     lastTimestamp={firstDepositTimestamp ?? 0}
@@ -140,14 +138,14 @@ export default function Savings() {
                       wholeText: {
                         fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
                         fontWeight: 'medium',
-                        fontFamily: 'MonaSans_500Medium',
+                        //fontFamily: 'MonaSans_500Medium',
                         color: '#ffffff',
                         marginRight: -2,
                       },
                       decimalText: {
                         fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                        fontWeight: 'medium',
-                        fontFamily: 'MonaSans_500Medium',
+                        fontWeight: '300',
+                        //fontFamily: 'MonaSans_500Medium',
                         color: '#ffffff',
                       },
                     }}
@@ -157,8 +155,8 @@ export default function Savings() {
               <View className="gap-1">
                 <Text className="md:text-lg text-primary/50">Interest earned</Text>
                 <View className="flex-row items-center">
-                  <Text className="text-4xl md:text-4.5xl native:leading-[1.2] font-medium">$</Text>
                   <SavingCountUp
+                    prefix="$"
                     balance={balance ?? 0}
                     apy={totalAPY ?? 0}
                     lastTimestamp={firstDepositTimestamp ?? 0}
@@ -170,13 +168,13 @@ export default function Savings() {
                       wholeText: {
                         fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
                         fontWeight: 'medium',
-                        fontFamily: 'MonaSans_500Medium',
+                        //fontFamily: 'MonaSans_500Medium',
                         color: '#ffffff',
                       },
                       decimalText: {
                         fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
-                        fontWeight: 'medium',
-                        fontFamily: 'MonaSans_500Medium',
+                        fontWeight: '300',
+                        //fontFamily: 'MonaSans_500Medium',
                         color: '#ffffff',
                       },
                     }}
@@ -203,7 +201,7 @@ export default function Savings() {
               </View>
             </View>
 
-            <View className="border-r md:border-t border-border/50" />
+            <View className="border-r md:border-t border-[#ffffff]/20" />
 
             <View className="p-6 md:p-7">
               <View className="flex-row items-center gap-1">
@@ -219,7 +217,7 @@ export default function Savings() {
               </Text>
             </View>
 
-            <View className="border-t border-border/50 hidden md:block" />
+            <View className="border-t border-[#ffffff]/20 hidden md:block" />
 
             <View className="p-6 md:p-7 hidden md:flex">
               <Text className="md:text-lg text-primary/50">Projected 1Y Earnings</Text>

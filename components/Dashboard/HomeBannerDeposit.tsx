@@ -12,11 +12,12 @@ const HomeBannerDeposit = () => {
 
   return (
     <LinearGradient
-      colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
+      colors={['rgba(41, 20, 58, 1)', 'rgba(28, 14, 41, 1)']}
       style={{
         borderRadius: 16,
         padding: 16,
         height: 90,
+        overflow: 'hidden',
       }}
     >
       <View className="relative flex-row justify-end items-center h-full">
@@ -31,8 +32,8 @@ const HomeBannerDeposit = () => {
             left: -40,
           }}
         />
-        <Text className="font-semibold max-w-52 text-sm leading-tight">
-          Deposit your stablecoins and earn{' '}
+        <Text className="font-semibold max-w-52 leading-tight font-medium">
+          Deposit your stablecoins and earn1{' '}
           {isTotalAPYLoading ? (
             <Skeleton className="w-14 h-4 bg-purple/50" />
           ) : (

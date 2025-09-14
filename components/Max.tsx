@@ -9,7 +9,7 @@ type MaxProps = {
 const Max = ({ onPress }: MaxProps) => {
   return (
     <Pressable onPress={onPress}>
-      <Text className="font-medium text-sm web:hover:opacity-70">Max</Text>
+      <Text className="font-medium text-base web:hover:opacity-70">Max</Text>
     </Pressable>
   );
 };
