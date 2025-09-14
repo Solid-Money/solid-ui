@@ -28,7 +28,7 @@ const NavbarMobile = () => {
 
   return (
     <SafeAreaView className="bg-background">
-      <View className="flex-row justify-start items-center p-4">
+      <View className="flex-row justify-center items-center p-4">
         <Pressable
           onPress={handleAvatarPress}
           className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-transform"

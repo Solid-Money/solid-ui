@@ -2,8 +2,8 @@ import { View } from 'react-native';
 
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import SavingCountUp from '@/components/SavingCountUp';
-import { Text } from '@/components/ui/text';
 import { SavingMode } from '@/lib/types';
+import { fontSize } from '@/lib/utils';
 
 interface DashboardHeaderMobileProps {
   balance: number;
@@ -21,8 +21,8 @@ const DashboardHeaderMobile = ({
   return (
     <View className="gap-10 mt-10">
       <View className="flex-row justify-center items-center">
-        <Text className="text-[60px] sm:text-4xl font-medium">$</Text>
         <SavingCountUp
+          prefix="$"
           balance={balance ?? 0}
           apy={totalAPY ?? 0}
           lastTimestamp={lastTimestamp ?? 0}
@@ -33,15 +33,16 @@ const DashboardHeaderMobile = ({
           }}
           styles={{
             wholeText: {
-              fontSize: 60,
-              fontWeight: 'medium',
-              fontFamily: 'MonaSans_500Medium',
+              fontSize: fontSize(3),
+              fontWeight: '600',
+              //fontFamily: 'MonaSans_600SemiBold',
               color: '#ffffff',
+              marginRight: -1,
             },
             decimalText: {
-              fontSize: 24,
-              fontWeight: 'medium',
-              fontFamily: 'MonaSans_500Medium',
+              fontSize: fontSize(3),
+              fontWeight: '200',
+              //fontFamily: 'MonaSans_600SemiBold',
               color: '#ffffff',
             },
           }}

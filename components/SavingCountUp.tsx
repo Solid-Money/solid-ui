@@ -1,10 +1,10 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { TextStyle } from 'react-native';
-import { useQueryClient } from '@tanstack/react-query';
 
+import CountUp from '@/components/CountUp';
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
-import CountUp from '@/components/CountUp';
 
 type ClassNames = {
   wrapper?: string;
@@ -24,6 +24,8 @@ interface SavingCountUpProps {
   decimalPlaces?: number;
   classNames?: ClassNames;
   styles?: Styles;
+  prefix?: string;
+  suffix?: string;
 }
 
 const SavingCountUp = ({
@@ -34,6 +36,8 @@ const SavingCountUp = ({
   decimalPlaces = 6,
   classNames,
   styles,
+  prefix,
+  suffix,
 }: SavingCountUpProps) => {
   const [liveYield, setLiveYield] = useState<number>(0);
   const queryClient = useQueryClient();
@@ -63,6 +67,8 @@ const SavingCountUp = ({
       decimalPlaces={decimalPlaces}
       classNames={classNames}
       styles={styles}
+      prefix={prefix}
+      suffix={suffix}
     />
   );
 };

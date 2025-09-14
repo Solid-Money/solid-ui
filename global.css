@@ -37,15 +37,18 @@
 
   /* Override Tailwind's default system stack on web */
   body {
-    /* On web, use the family name registered by the font files */
+    /* On web, use the family name registered by Expo Font */
     font-family: 'Mona Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI",
       Roboto, Helvetica, Arial, sans-serif;
   }
 
   /* React Native Web generates classes like .css-text-xxxxx for Text elements.
    * Ensure they use Mona Sans regardless of the default system stack. */
+  /* React Native Web renders Text as span.css-xxxx. Force Mona on those. */
   [class^="css-text"],
-  [class*=" css-text"] {
+  [class*=" css-text"],
+  span[class^="css-"],
+  span[class*=" css-"] {
     font-family: 'Mona Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI",
       Roboto, Helvetica, Arial, sans-serif !important;
   }

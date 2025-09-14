@@ -68,7 +68,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
           className: 'h-12 pr-6 rounded-xl',
         })}
       >
-        <View className="flex-row items-center gap-4">
+        <View className="flex-row items-center gap-1">
           <Plus color="black" />
           <Text className="text-primary-foreground font-bold">{buttonText}</Text>
         </View>

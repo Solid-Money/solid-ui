@@ -190,7 +190,7 @@ const StakeTrigger = (props: any) => {
     >
       <View className="flex-row items-center gap-4">
         <ArrowUp color="white" />
-        <Text className="hidden md:block font-bold">Stake</Text>
+        <Text className="font-bold">Stake</Text>
       </View>
     </Button>
   );
@@ -201,3 +201,4 @@ const StakeTitle = () => {
 };
 
 export { Stake, StakeTitle, StakeTrigger };
+
