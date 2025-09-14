@@ -1,10 +1,10 @@
 import { View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
 import SavingCountUp from '@/components/SavingCountUp';
 import TooltipPopover from '@/components/Tooltip';
-import { SavingMode } from '@/lib/types';
+import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import { SavingMode } from '@/lib/types';
 
 type DashboardSavingsProps = {
   balance: number;

@@ -12,6 +12,7 @@ type ClassNames = {
 type Styles = {
   wholeText?: TextStyle;
   decimalText?: TextStyle;
+  suffixText?: TextStyle;
 };
 
 interface CountUpProps {
@@ -20,6 +21,8 @@ interface CountUpProps {
   classNames?: ClassNames;
   styles?: Styles;
   isTrailingZero?: boolean;
+  prefix?: string;
+  suffix?: string;
 }
 
 const DURATION = 500;
@@ -30,6 +33,8 @@ const CountUp = ({
   classNames,
   styles,
   isTrailingZero = true,
+  prefix,
+  suffix,
 }: CountUpProps) => {
   const safeCount = isFinite(count) && count >= 0 ? count : 0;
   const wholeNumber = Math.floor(safeCount);
@@ -40,6 +45,9 @@ const CountUp = ({
 
   return (
     <View className={cn('flex-row items-baseline', classNames?.wrapper)}>
+      {prefix ? (
+        <Text style={styles?.wholeText}>{prefix}</Text>
+      ) : null}
       <AnimatedRollingNumber
         value={wholeNumber}
         textStyle={styles?.wholeText}
@@ -53,6 +61,9 @@ const CountUp = ({
         textStyle={styles?.decimalText}
         spinningAnimationConfig={{ duration: DURATION }}
       />
+      {suffix ? (
+        <Text style={[{ marginLeft: 6 }, styles?.wholeText, styles?.suffixText]}>{suffix}</Text>
+      ) : null}
     </View>
   );
 };

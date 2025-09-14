@@ -1,25 +1,25 @@
-import { useEffect } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Leaf } from 'lucide-react-native';
-import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { Leaf } from 'lucide-react-native';
+import { useEffect } from 'react';
+import { Pressable, View } from 'react-native';
 import { Address } from 'viem';
-import { useBlockNumber } from 'wagmi';
 import { mainnet } from 'viem/chains';
+import { useBlockNumber } from 'wagmi';
 
-import { Text } from '@/components/ui/text';
-import { cn, fontSize } from '@/lib/utils';
-import TooltipPopover from '@/components/Tooltip';
-import { path } from '@/constants/path';
-import { useDimension } from '@/hooks/useDimension';
 import SavingCountUp from '@/components/SavingCountUp';
+import TooltipPopover from '@/components/Tooltip';
+import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
+import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useDepositCalculations } from '@/hooks/useDepositCalculations';
+import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
-import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { ADDRESSES } from '@/lib/config';
-import { useDepositCalculations } from '@/hooks/useDepositCalculations';
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
+import { cn, fontSize } from '@/lib/utils';
 
 type SavingCardProps = {
   className?: string;
@@ -64,19 +64,19 @@ const SavingCard = ({ className }: SavingCardProps) => {
       <LinearGradient
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        colors={['rgb(52, 10, 89)', 'rgba(40, 9, 67, 0.7)']}
+        colors={['rgb(41, 21, 59)', 'rgb(29, 15, 41)']}
         className={cn('bg-card rounded-twice p-6 justify-between w-full h-full', className)}
       >
         <View className="flex-row items-center gap-2 opacity-50">
           <Leaf size={18} />
-          <Text className="text-lg font-semibold">Savings</Text>
+          <Text className="text-lg font-medium">Savings</Text>
         </View>
 
         <View className="flex-row justify-between items-center">
           <View className="flex-row items-center gap-2">
             <View className="flex-row items-center">
-              <Text className="text-2xl md:text-3xl font-semibold native:leading-[1.2]">$</Text>
               <SavingCountUp
+                prefix="$"
                 balance={balance ?? 0}
                 apy={totalAPY ?? 0}
                 lastTimestamp={firstDepositTimestamp ?? 0}
@@ -87,15 +87,15 @@ const SavingCard = ({ className }: SavingCardProps) => {
                 styles={{
                   wholeText: {
                     fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
-                    fontWeight: 'semibold',
-                    fontFamily: 'MonaSans_600SemiBold',
+                    fontWeight: '500',
+                    //fontFamily: 'MonaSans_600SemiBold',
                     color: '#ffffff',
                     marginRight: -1,
                   },
                   decimalText: {
                     fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
-                    fontWeight: 'semibold',
-                    fontFamily: 'MonaSans_600SemiBold',
+                    fontWeight: '500',
+                    //fontFamily: 'MonaSans_600SemiBold',
                     color: '#ffffff',
                   },
                 }}

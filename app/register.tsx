@@ -151,7 +151,7 @@ export default function Register() {
           />
         </View>
         <View className="gap-[60px]">
-          <View className="flex-col gap-2 items-center">
+          <View className="flex-col gap-2">
             <Text className="text-3xl font-semibold text-center">Welcome!</Text>
             <Text className="text-muted-foreground text-center max-w-[300px] items-center">
               Invite-only access. Please use a referral from a friend to access the app

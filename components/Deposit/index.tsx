@@ -190,7 +190,7 @@ const DepositTrigger = (props: any) => {
     >
       <View className="flex-row items-center gap-4">
         <ArrowUp color="white" />
-        <Text className="hidden md:block font-bold">Deposit</Text>
+        <Text className="font-bold">Deposit</Text>
       </View>
     </Button>
   );
@@ -201,3 +201,4 @@ const DepositTitle = () => {
 };
 
 export { Deposit, DepositTitle, DepositTrigger };
+

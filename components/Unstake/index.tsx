@@ -198,7 +198,7 @@ const UnstakeTrigger = (props: any) => {
     >
       <View className="flex-row items-center gap-4">
         <ArrowDownLeft color="white" />
-        <Text className="hidden md:block font-bold">Unstake</Text>
+        <Text className="font-bold">Unstake</Text>
       </View>
     </Button>
   );
@@ -209,3 +209,4 @@ const UnstakeTitle = () => {
 };
 
 export { Unstake, UnstakeTitle, UnstakeTrigger };
+
