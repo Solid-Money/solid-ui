@@ -25,12 +25,14 @@ import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { track } from '@/lib/analytics';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { eclipseAddress, formatNumber } from '@/lib/utils';
+import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useDimension } from '@/hooks/useDimension';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
   const { setModal, setTransaction, srcChainId } = useDepositStore();
+  const { isScreenMedium } = useDimension();
 
   const isLoading =
     depositStatus === DepositStatus.PENDING ||
@@ -230,6 +232,8 @@ function DepositToVaultForm() {
                 <Text className="text-lg font-semibold">
                   {isPreviewDepositLoading ? (
                     <Skeleton className="w-20 h-8" />
+                  ) : isScreenMedium ? (
+                    compactNumberFormat(amountOut || 0)
                   ) : (
                     parseFloat(amountOut.toFixed(3)) || 0
                   )}

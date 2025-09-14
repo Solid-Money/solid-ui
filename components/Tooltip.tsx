@@ -76,8 +76,15 @@ const TooltipPopover = ({
 
   return (
     <Tooltip delayDuration={150}>
-      <TooltipTrigger asChild className={classNames?.trigger}>{trigger || getTrigger()}</TooltipTrigger>
-      <TooltipContent insets={contentInsets} side={side} sideOffset={sideOffset} className={classNames?.content}>
+      <TooltipTrigger asChild className={classNames?.trigger}>
+        {trigger || getTrigger()}
+      </TooltipTrigger>
+      <TooltipContent
+        insets={contentInsets}
+        side={side}
+        sideOffset={sideOffset}
+        className={classNames?.content}
+      >
         {content || getContent()}
       </TooltipContent>
     </Tooltip>
