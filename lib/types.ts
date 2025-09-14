@@ -458,6 +458,11 @@ export interface BridgeTransferResponse {
   source_deposit_instructions: SourceDepositInstructions;
 }
 
+export enum TokenType {
+  ERC20 = 'ERC-20',
+  NATIVE = 'native',
+}
+
 export interface TokenBalance {
   contractTickerSymbol: string;
   contractName: string;
@@ -466,9 +471,10 @@ export interface TokenBalance {
   quoteRate?: number;
   logoUrl?: string;
   contractDecimals: number;
-  type: string;
+  type: TokenType;
   verified?: boolean;
   chainId: number;
+  tokenIcon?: TokenIcon;
 }
 
 export enum RewardsType {

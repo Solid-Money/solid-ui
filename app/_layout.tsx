@@ -289,6 +289,12 @@ export default Sentry.wrap(function RootLayout() {
           animation: 'none',
         }}
       />
+      <Stack.Screen
+        name="onboarding"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 

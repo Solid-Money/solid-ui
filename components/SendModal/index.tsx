@@ -7,7 +7,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { formatUnits, isAddress } from 'viem';
-import { useReadContract } from 'wagmi';
+import { useBalance, useReadContract } from 'wagmi';
 import { z } from 'zod';
 
 import Max from '@/components/Max';
@@ -21,7 +21,7 @@ import { useEstimateGas } from '@/hooks/useEstimateGas';
 import useSend from '@/hooks/useSend';
 import useUser from '@/hooks/useUser';
 import ERC20_ABI from '@/lib/abis/ERC20';
-import { Status, TokenIcon } from '@/lib/types';
+import { Status, TokenIcon, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
@@ -32,24 +32,43 @@ type SendProps = {
   tokenIcon: TokenIcon;
   tokenSymbol: string;
   chainId: number;
+  tokenType: TokenType;
 };
 
-const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: SendProps) => {
+const Send = ({
+  tokenAddress,
+  tokenDecimals,
+  tokenIcon,
+  tokenSymbol,
+  chainId,
+  tokenType,
+}: SendProps) => {
   const { user } = useUser();
   const { costInUsd, loading } = useEstimateGas(1200000n, 0n, chainId, NATIVE_TOKENS[chainId]);
   const chain = getChain(chainId);
   const { setModal, setTransaction } = useSendStore();
 
-  const { data: balance, isPending } = useReadContract({
+  const { data: balanceNative, isLoading: isBalanceNativeLoading } = useBalance({
+    address: user?.safeAddress as Address,
+    chainId: chainId,
+    query: {
+      enabled: !!user?.safeAddress && tokenType === TokenType.NATIVE,
+    },
+  });
+
+  const { data: balanceERC20, isLoading: isBalanceERC20Loading } = useReadContract({
     abi: ERC20_ABI,
     address: tokenAddress,
     functionName: 'balanceOf',
     args: [user?.safeAddress as Address],
     chainId: chainId,
     query: {
-      enabled: !!user?.safeAddress,
+      enabled: !!user?.safeAddress && tokenType === TokenType.ERC20,
     },
   });
+
+  const balance = tokenType === TokenType.NATIVE ? balanceNative?.value : balanceERC20;
+  const isLoading = tokenType === TokenType.NATIVE ? isBalanceNativeLoading : isBalanceERC20Loading;
 
   // Create dynamic schema based on balance
   const sendSchema = useMemo(() => {
@@ -188,7 +207,7 @@ const Send = ({ tokenAddress, tokenDecimals, tokenIcon, tokenSymbol, chainId }: 
         <View className="flex-row items-center gap-1.5 text-muted-foreground">
           <Wallet size={16} color="gray" />
           <Text className="text-muted-foreground sm:text-sm">
-            {isPending ? (
+            {isLoading ? (
               <Skeleton className="w-16 h-4 rounded-md" />
             ) : balance ? (
               `${formatUnits(balance, tokenDecimals)} ${tokenSymbol}`
