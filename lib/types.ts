@@ -53,6 +53,8 @@ export interface User {
   tokens?: AuthTokens;
   email?: string;
   turnkeyUserId?: string;
+  leaderboardPosition?: number;
+  points?: number;
 }
 
 export type BlockscoutTransaction = {
@@ -619,4 +621,16 @@ export enum PromiseStatus {
   PENDING = 'pending',
   FULFILLED = 'fulfilled',
   REJECTED = 'rejected',
+}
+
+export interface LeaderboardUser {
+  id: string;
+  walletAddress: string;
+  points: number;
+  leaderboardPosition: number;
+  walletAgeInDays?: number;
+}
+
+export interface LeaderboardResponse {
+  users: LeaderboardUser[];
 }

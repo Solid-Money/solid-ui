@@ -33,6 +33,7 @@ import {
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
   LayerZeroTransaction,
+  LeaderboardResponse,
   LifiQuoteResponse,
   Points,
   ToCurrency,
@@ -497,6 +498,33 @@ export const fetchPoints = async (): Promise<Points> => {
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/points/user-summary`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const fetchLeaderboardUsers = async (params: {
+  pageSize?: string;
+  userIdToStartAfter?: string;
+}): Promise<LeaderboardResponse> => {
+  const jwt = getJWTToken();
+  const searchParams = new URLSearchParams();
+  
+  if (params.pageSize) searchParams.append('pageSize', params.pageSize);
+  if (params.userIdToStartAfter) searchParams.append('userIdToStartAfter', params.userIdToStartAfter);
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/leaderboard?${searchParams.toString()}`,
     {
       method: 'GET',
       headers: {

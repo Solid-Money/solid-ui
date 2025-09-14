@@ -56,7 +56,7 @@ To qualify:
 **Effective Bonus Yield:** Varies with TVL (1-4%+)
 
 [Learn more](https://docs.solid.xyz/solid-early-adopter-bonus)
-`
+`;
 
   const getTooltipContent = () => {
     return (
@@ -80,7 +80,10 @@ To qualify:
         </Text>
         <View className="flex-row items-center gap-1">
           <Text className="text-muted-foreground font-medium">Get +3% APY for 2 months.</Text>
-          <TooltipPopover content={getTooltipContent()} classNames={{ content: 'bg-card rounded-twice p-3 pt-6' }} />
+          <TooltipPopover
+            content={getTooltipContent()}
+            classNames={{ content: 'bg-card rounded-twice p-3 pt-6' }}
+          />
         </View>
         <DepositOptionModal trigger={getTrigger()} />
       </View>

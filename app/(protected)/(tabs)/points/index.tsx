@@ -131,6 +131,7 @@ export default function Savings() {
                     variant: 'rewards',
                     className: 'h-12 md:pr-6 rounded-xl',
                   })}
+                  onPress={() => router.push(path.POINTS_LEADERBOARD)}
                 >
                   <View className="flex-row items-center gap-4">
                     <Text className="font-bold">View Leaderboard</Text>
@@ -156,7 +157,7 @@ export default function Savings() {
                     Deposit and earn 10x points
                   </Text>
                   <Text className="md:text-lg text-base text-white/70">
-                    Earn 4 points per $1 per hour
+                    Earn 4 points per $1 per hour
                   </Text>
                 </View>
               </View>
