@@ -166,7 +166,7 @@ export default function Savings() {
                 variant="secondary"
                 className="md:h-12 h-10 px-6 rounded-xl bg-[#303030] border-0 mt-7"
                 onPress={() => {
-                  router.push(path.DEPOSIT);
+                  router.push(path.SAVINGS);
                 }}
               >
                 <View className="flex-row items-center gap-4">
