@@ -200,3 +200,5 @@ export const sanitize = (data: Record<string, any>) => {
     return data;
   }
 }
+
+export const oneMinute = 60 * 1000;

@@ -21,23 +21,21 @@ import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useTotalAPY } from '@/hooks/useAnalytics';
-import useDepositFromEOA, { DepositStatus } from '@/hooks/useDepositFromEOA';
+import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { track } from '@/lib/analytics';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useDimension } from '@/hooks/useDimension';
+import { Status } from '@/lib/types';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
   const { setModal, setTransaction, srcChainId } = useDepositStore();
   const { isScreenMedium } = useDimension();
 
-  const isLoading =
-    depositStatus === DepositStatus.PENDING ||
-    depositStatus === DepositStatus.DEPOSITING ||
-    depositStatus === DepositStatus.BRIDGING;
+  const isLoading = depositStatus.status === Status.PENDING;
   const { data: totalAPY } = useTotalAPY();
 
   const formattedBalance = balance ? formatUnits(balance, 6) : '0';
@@ -88,12 +86,10 @@ function DepositToVaultForm() {
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
     if (!isValid || !watchedAmount) return 'Enter an amount';
-    if (depositStatus === DepositStatus.PENDING) return 'Check Wallet';
-    if (depositStatus === DepositStatus.DEPOSITING) return 'Depositing (takes 2mins)';
-    if (depositStatus === DepositStatus.BRIDGING) return 'Bridging (takes 2mins)';
-    if (depositStatus === DepositStatus.SUCCESS)
+    if (depositStatus.status === Status.PENDING) return depositStatus.message;
+    if (depositStatus.status === Status.SUCCESS)
       return isEthereum ? 'Successfully deposited!' : 'Successfully bridged!';
-    if (depositStatus === DepositStatus.ERROR)
+    if (depositStatus.status === Status.ERROR)
       return isEthereum ? 'Error while depositing' : 'Error while bridging';
     return 'Deposit';
   };
@@ -125,7 +121,7 @@ function DepositToVaultForm() {
   };
 
   useEffect(() => {
-    if (depositStatus === DepositStatus.SUCCESS) {
+    if (depositStatus.status === Status.SUCCESS) {
       track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
         chain_id: srcChainId,
         is_ethereum: isEthereum,
@@ -136,14 +132,15 @@ function DepositToVaultForm() {
       setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
       if (!hash) return;
 
-      const explorerUrl = isEthereum
+      const isDeposit = isEthereum || !isSponsor;
+      const explorerUrl = isDeposit
         ? explorerUrls[layerzero.id]?.layerzeroscan
         : explorerUrls[lifi.id]?.lifiscan;
 
       Toast.show({
         type: 'success',
-        text1: isEthereum ? 'Depositing USDC' : 'Bridged USDC',
-        text2: isEthereum ? 'Staking USDC to the protocol' : 'Deposit will start soon',
+        text1: isDeposit ? 'Depositing USDC' : 'Bridged USDC',
+        text2: isDeposit ? 'Staking USDC to the protocol' : 'Deposit will start soon',
         props: {
           link: `${explorerUrl}/tx/${hash}`,
           linkText: eclipseAddress(hash),
@@ -151,7 +148,7 @@ function DepositToVaultForm() {
         },
       });
     }
-  }, [reset, setModal, depositStatus, isEthereum, hash, srcChainId]);
+  }, [reset, setModal, depositStatus, isEthereum, hash, srcChainId, isSponsor]);
 
   const isFormDisabled = () => {
     return isLoading || !isValid || !watchedAmount;

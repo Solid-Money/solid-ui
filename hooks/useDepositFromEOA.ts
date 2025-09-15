@@ -30,20 +30,13 @@ import { publicClient } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 import useUser from './useUser';
-
-export enum DepositStatus {
-  IDLE = 'idle',
-  PENDING = 'pending',
-  DEPOSITING = 'depositing',
-  BRIDGING = 'bridging',
-  SUCCESS = 'success',
-  ERROR = 'error',
-}
+import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
+import { Status, StatusInfo, User } from '@/lib/types';
 
 type DepositResult = {
   balance: bigint | undefined;
   deposit: (amount: string) => Promise<void>;
-  depositStatus: DepositStatus;
+  depositStatus: StatusInfo;
   error: string | null;
   hash: Address | undefined;
   isEthereum: boolean;
@@ -54,7 +47,7 @@ const useDepositFromEOA = (): DepositResult => {
   const wallet = useActiveWallet();
   const account = useActiveAccount();
   const chainId = useChainId();
-  const [depositStatus, setDepositStatus] = useState<DepositStatus>(DepositStatus.IDLE);
+  const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<Address | undefined>();
   const eoaAddress = account?.address;
@@ -117,6 +110,47 @@ const useDepositFromEOA = (): DepositResult => {
       enabled: !!eoaAddress && !!srcChainId,
     },
   });
+
+  const depositOnEthereum = async (amount: string, signatureData: Signature, deadline: bigint, user: User) => {
+    const amountWei = parseUnits(amount, 6);
+
+    Sentry.addBreadcrumb({
+      message: 'Executing direct deposit and bridge on Ethereum',
+      category: 'deposit',
+      data: { amount, eoaAddress, fee: fee?.toString(), isEthereum: true, isSponsor: false },
+    });
+
+    const callData = encodeFunctionData({
+      abi: ETHEREUM_TELLER_ABI,
+      functionName: 'depositAndBridgeWithPermit',
+      args: [
+        ADDRESSES.ethereum.usdc,
+        amountWei,
+        0n,
+        deadline,
+        Number(signatureData.v),
+        signatureData.r,
+        signatureData.s,
+        user.safeAddress,
+        encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
+        ADDRESSES.ethereum.nativeFeeToken,
+        fee ? fee : 0n,
+      ],
+    });
+
+    const transaction = await account?.sendTransaction({
+      chainId: mainnet.id,
+      to: ADDRESSES.ethereum.teller,
+      data: callData,
+      value: fee,
+    });
+
+    await waitForTransactionReceipt(publicClient(mainnet.id), {
+      hash: transaction?.transactionHash as `0x${string}`,
+    });
+
+    return transaction;
+  };
 
   const deposit = async (amount: string) => {
     try {
@@ -211,7 +245,7 @@ const useDepositFromEOA = (): DepositResult => {
         throw error;
       }
 
-      setDepositStatus(DepositStatus.PENDING);
+      setDepositStatus({ status: Status.PENDING, message: 'Check Wallet' });
       setError(null);
 
       Sentry.addBreadcrumb({
@@ -285,53 +319,50 @@ const useDepositFromEOA = (): DepositResult => {
         deadline: deadline,
       };
 
-      let signatureData: Signature;
-      if (isSponsor || isEthereum) {
-        // Track permit signature request
-        track(TRACKING_EVENTS.DEPOSIT_PERMIT_REQUESTED, {
-          user_id: user?.userId,
-          safe_address: user?.safeAddress,
-          eoa_address: eoaAddress,
-          amount,
-          is_sponsor: isSponsor,
-          chain_id: srcChainId,
-          deposit_type: 'connected_wallet',
-        });
+      // Track permit signature request
+      track(TRACKING_EVENTS.DEPOSIT_PERMIT_REQUESTED, {
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
+        eoa_address: eoaAddress,
+        amount,
+        is_sponsor: isSponsor,
+        chain_id: srcChainId,
+        deposit_type: 'connected_wallet',
+      });
 
-        const signature = await account?.signTypedData({
-          domain,
-          types,
-          primaryType: 'Permit',
-          message,
-        });
+      const signature = await account?.signTypedData({
+        domain,
+        types,
+        primaryType: 'Permit',
+        message,
+      });
 
-        signatureData = parseSignature(signature);
+      const signatureData = parseSignature(signature);
 
-        await verifyTypedData({
-          domain,
-          types,
-          primaryType: 'Permit',
-          message,
-          signature,
-          address: eoaAddress,
-        });
+      await verifyTypedData({
+        domain,
+        types,
+        primaryType: 'Permit',
+        message,
+        signature,
+        address: eoaAddress,
+      });
 
-        // Track permit signature success
-        track(TRACKING_EVENTS.DEPOSIT_PERMIT_SIGNED, {
-          user_id: user?.userId,
-          safe_address: user?.safeAddress,
-          eoa_address: eoaAddress,
-          amount,
-          is_sponsor: isSponsor,
-          chain_id: srcChainId,
-          deposit_type: 'connected_wallet',
-        });
-      }
+      // Track permit signature success
+      track(TRACKING_EVENTS.DEPOSIT_PERMIT_SIGNED, {
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
+        eoa_address: eoaAddress,
+        amount,
+        is_sponsor: isSponsor,
+        chain_id: srcChainId,
+        deposit_type: 'connected_wallet',
+      });
 
       let txHash: Address | undefined;
       let transaction: { transactionHash: Address } | undefined = { transactionHash: '' };
       if (isEthereum) {
-        setDepositStatus(DepositStatus.DEPOSITING);
+        setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2mins)' });
 
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
@@ -366,44 +397,11 @@ const useDepositFromEOA = (): DepositResult => {
             }),
           );
         } else {
-          Sentry.addBreadcrumb({
-            message: 'Executing direct deposit and bridge on Ethereum',
-            category: 'deposit',
-            data: { amount, eoaAddress, fee: fee?.toString(), isEthereum: true, isSponsor: false },
-          });
-
-          const callData = encodeFunctionData({
-            abi: ETHEREUM_TELLER_ABI,
-            functionName: 'depositAndBridgeWithPermit',
-            args: [
-              ADDRESSES.ethereum.usdc,
-              amountWei,
-              0n,
-              deadline,
-              Number(signatureData!.v),
-              signatureData!.r,
-              signatureData!.s,
-              user.safeAddress,
-              encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
-              ADDRESSES.ethereum.nativeFeeToken,
-              fee ? fee : 0n,
-            ],
-          });
-
-          transaction = await account?.sendTransaction({
-            chainId: mainnet.id,
-            to: ADDRESSES.ethereum.teller,
-            data: callData,
-            value: fee,
-          });
-
-          await waitForTransactionReceipt(publicClient(mainnet.id), {
-            hash: transaction?.transactionHash as `0x${string}`,
-          });
+          transaction = await depositOnEthereum(amount, signatureData, deadline, user);
         }
       } else {
         if (isSponsor) {
-          setDepositStatus(DepositStatus.BRIDGING);
+          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 2mins)' });
 
           // Track bridge deposit start
           track(TRACKING_EVENTS.DEPOSIT_BRIDGE_STARTED, {
@@ -471,8 +469,6 @@ const useDepositFromEOA = (): DepositResult => {
             BigInt(quote.estimate.fromAmount),
           );
 
-          setDepositStatus(DepositStatus.BRIDGING);
-
           // Track LiFi bridge start
           track(TRACKING_EVENTS.DEPOSIT_BRIDGE_STARTED, {
             user_id: user?.userId,
@@ -489,13 +485,14 @@ const useDepositFromEOA = (): DepositResult => {
             to_amount: quote.estimate.toAmount,
           });
 
-          transaction.transactionHash = await sendTransaction(srcChainId, quote.transactionRequest);
+          const bridgeTxHash = await sendTransaction(srcChainId, quote.transactionRequest);
+          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 15mins)' });
 
           Sentry.addBreadcrumb({
             message: 'Recording bridge transaction',
             category: 'deposit',
             data: {
-              bridgeTxHash: transaction?.transactionHash,
+              bridgeTxHash,
               fromAmount: quote.estimate.fromAmount,
               toAmount: quote.estimate.toAmount,
             },
@@ -509,9 +506,14 @@ const useDepositFromEOA = (): DepositResult => {
               fromAmount: quote.estimate.fromAmount,
               toAmount: quote.estimate.toAmount,
               toAmountMin: quote.estimate.toAmountMin,
-              bridgeTxHash: transaction?.transactionHash as Address,
+              bridgeTxHash,
             }),
           );
+
+          const bridgeStatus = await waitForBridgeTransactionReceipt(bridgeTxHash);
+
+          setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2mins)' });
+          transaction = await depositOnEthereum(bridgeStatus.receiving.amount, signatureData, deadline, user);
         }
       }
 
@@ -559,7 +561,7 @@ const useDepositFromEOA = (): DepositResult => {
         last_deposit_chain: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
       });
 
-      setDepositStatus(DepositStatus.SUCCESS);
+      setDepositStatus({ status: Status.SUCCESS });
     } catch (error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -603,7 +605,7 @@ const useDepositFromEOA = (): DepositResult => {
         error: errorMessage,
       });
 
-      setDepositStatus(DepositStatus.ERROR);
+      setDepositStatus({ status: Status.ERROR });
       setError(errorMessage);
       throw error;
     }
