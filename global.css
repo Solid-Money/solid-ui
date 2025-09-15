@@ -53,3 +53,10 @@
       Roboto, Helvetica, Arial, sans-serif !important;
   }
 }
+
+/* Raise Intercom launcher by 80px on mobile */
+@media (max-width: 768px) {
+  .intercom-namespace {
+    bottom: 100px !important;
+  }
+}

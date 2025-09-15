@@ -8,6 +8,7 @@ import { useCountdownTimer } from '@/hooks/useCountdownTimer';
 import { useDimension } from '@/hooks/useDimension';
 import { usePoints } from '@/hooks/usePoints';
 import { RewardsType } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -72,7 +73,7 @@ export default function Savings() {
                   <Text className="md:text-lg text-rewards/70">Your Total Points</Text>
                   <View className="flex-row items-center">
                     <Text className="text-5xl md:text-8xl text-rewards font-semibold">
-                      {points.userRewardsSummary.totalPoints}
+                      {formatNumber(points.userRewardsSummary.totalPoints, 0, 0)}
                     </Text>
                   </View>
                 </View>
@@ -131,6 +132,7 @@ export default function Savings() {
                     variant: 'rewards',
                     className: 'h-12 md:pr-6 rounded-xl',
                   })}
+                  onPress={() => router.push(path.POINTS_LEADERBOARD)}
                 >
                   <View className="flex-row items-center gap-4">
                     <Text className="font-bold">View Leaderboard</Text>
@@ -151,12 +153,12 @@ export default function Savings() {
                 >
                   <Text className="md:text-2xl text-xl font-semibold text-[#C693E5]">10X</Text>
                 </LinearGradient>
-                <View className="flex-col md:ml-5 ml-2">
+                <View className="flex-col flex-1 md:ml-5 ml-2">
                   <Text className="md:text-2xl text-xl font-semibold">
                     Deposit and earn 10x points
                   </Text>
                   <Text className="md:text-lg text-base text-white/70">
-                    Earn 4 points per $1 per hour
+                    Earn 4 points per $1 per hour
                   </Text>
                 </View>
               </View>
@@ -164,7 +166,7 @@ export default function Savings() {
                 variant="secondary"
                 className="md:h-12 h-10 px-6 rounded-xl bg-[#303030] border-0 mt-7"
                 onPress={() => {
-                  router.push(path.DEPOSIT);
+                  router.push(path.SAVINGS);
                 }}
               >
                 <View className="flex-row items-center gap-4">
@@ -179,7 +181,7 @@ export default function Savings() {
                   style={{ width: isScreenMedium ? 90 : 70, height: isScreenMedium ? 90 : 70 }}
                   contentFit="contain"
                 />
-                <View className="flex-col md:ml-5 ml-2">
+                <View className="flex-col flex-1 md:ml-5 ml-2">
                   <Text className="md:text-2xl text-xl font-semibold">Refer a Friend</Text>
                   <Text className="md:text-lg text-base text-white/70">
                     Earn 10% of their daily points.
