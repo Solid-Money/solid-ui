@@ -23,7 +23,7 @@ import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
-import { router, Stack, useLocalSearchParams, usePathname } from 'expo-router';
+import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
 import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { ChevronLeft } from 'lucide-react-native';
@@ -173,7 +173,7 @@ export default Sentry.wrap(function RootLayout() {
     MonaSans_900Black,
   });
   const pathname = usePathname();
-  const params = useLocalSearchParams();
+  const params = useGlobalSearchParams();
 
   useEffect(() => {
     async function prepare() {
