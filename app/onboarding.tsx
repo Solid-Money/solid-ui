@@ -44,13 +44,14 @@ export default function Onboarding() {
     // Mark onboarding as seen
     setHasSeenOnboarding(true);
 
-    // If users exist, try passkey login
+    // If users exist, automatically trigger passkey login
     if (users.length > 0) {
       try {
         await handleLogin();
+        // Login successful - user will be redirected by the login handler
       } catch (error) {
-        // If login fails, go to register page
-        router.replace(path.REGISTER);
+        // If passkey login fails, stay on current screen
+        console.error('Passkey login failed:', error);
       }
     } else {
       // No users exist, go to register page
