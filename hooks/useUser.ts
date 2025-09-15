@@ -252,13 +252,7 @@ const useUser = (): UseUserReturn => {
         // Get referral code from storage (if any)
         const referralCode = getReferralCodeForSignup() || undefined;
 
-        const user = await signUp(
-          username,
-          challenge,
-          attestation,
-          inviteCode,
-          referralCode,
-        );
+        const user = await signUp(username, challenge, attestation, inviteCode, referralCode);
 
         const smartAccountClient = await safeAA(
           mainnet,
@@ -549,7 +543,13 @@ const useUser = (): UseUserReturn => {
     clearKycLinkId(); // Clear KYC data on logout
     intercom?.shutdown();
     intercom?.boot();
-    router.replace(path.WELCOME);
+
+    // Go to onboarding on native, welcome on web
+    if (Platform.OS === 'web') {
+      router.replace(path.WELCOME);
+    } else {
+      router.replace(path.ONBOARDING);
+    }
   }, [unselectUser, clearKycLinkId, router, user]);
 
   const handleSelectUser = useCallback(
