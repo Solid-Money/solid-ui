@@ -45,9 +45,7 @@ const CountUp = ({
 
   return (
     <View className={cn('flex-row items-baseline', classNames?.wrapper)}>
-      {prefix ? (
-        <Text style={styles?.wholeText}>{prefix}</Text>
-      ) : null}
+      {prefix ? <Text style={styles?.wholeText}>{prefix}</Text> : null}
       <AnimatedRollingNumber
         value={wholeNumber}
         textStyle={styles?.wholeText}

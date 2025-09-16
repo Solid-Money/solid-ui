@@ -201,4 +201,3 @@ const StakeTitle = () => {
 };
 
 export { Stake, StakeTitle, StakeTrigger };
-

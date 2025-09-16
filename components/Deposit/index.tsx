@@ -201,4 +201,3 @@ const DepositTitle = () => {
 };
 
 export { Deposit, DepositTitle, DepositTrigger };
-

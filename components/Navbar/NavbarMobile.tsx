@@ -31,11 +31,11 @@ const NavbarMobile = () => {
     <SafeAreaView className="bg-background">
       <View className="flex-row justify-between items-center p-4">
         <Image
-            source={require('@/assets/images/solid-logo-4x.png')}
-            alt="Solid logo"
-            style={{ width: 33, height: 36 }}
-            contentFit="contain"
-          />
+          source={require('@/assets/images/solid-logo-4x.png')}
+          alt="Solid logo"
+          style={{ width: 33, height: 36 }}
+          contentFit="contain"
+        />
         <Pressable
           onPress={handleAvatarPress}
           className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-transform"
