@@ -11,8 +11,7 @@ export const GET_USER_TRANSACTIONS_QUERY = gql`
       shareAmount
       transactionHash
     }
-    withdraws(where: { user: $address }) {
-      user
+    withdraws(where: { user_: { id: $address } }) {
       amountOfAssets
       amountOfShares
       creationTime
