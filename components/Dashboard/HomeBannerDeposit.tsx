@@ -33,7 +33,7 @@ const HomeBannerDeposit = () => {
           }}
         />
         <Text className="font-semibold max-w-52 leading-tight font-medium">
-          Deposit your stablecoins and earn1{' '}
+          Deposit your stablecoins and earn{' '}
           {isTotalAPYLoading ? (
             <Skeleton className="w-14 h-4 bg-purple/50" />
           ) : (
