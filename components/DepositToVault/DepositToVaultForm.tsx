@@ -273,7 +273,7 @@ function DepositToVaultForm() {
         </TokenDetails>
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2 align-items: start">
-            <Fuel color="#A1A1A1" size={16} className='mt-1' />
+            <Fuel color="#A1A1A1" size={16} className="mt-1" />
             <Text className="text-base text-muted-foreground max-w-xs">
               Gasless deposit
               {isSponsor
