@@ -515,7 +515,7 @@ const useUser = (): UseUserReturn => {
         username: user?.username,
         error: error.message,
       });
-      console.error(error.status);
+      console.error(error);
       const errorMessage = error?.status === 404 ? 'User not found, please sign up' : error?.message || 'Network request timed out';
       setLoginInfo({ status: Status.ERROR, message: errorMessage });
 
