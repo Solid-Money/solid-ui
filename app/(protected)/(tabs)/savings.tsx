@@ -74,6 +74,8 @@ export default function Savings() {
     firstDepositTimestamp ?? 0,
     Math.floor(Date.now() / 1000),
     SavingMode.INTEREST_ONLY,
+    userDepositTransactions,
+    user?.safeAddress,
   );
 
   useEffect(() => {
@@ -160,7 +162,7 @@ export default function Savings() {
                     balance={balance ?? 0}
                     apy={totalAPY ?? 0}
                     lastTimestamp={firstDepositTimestamp ?? 0}
-                    mode={SavingMode.INTEREST_ONLY}
+                    mode={SavingMode.CURRENT}
                     classNames={{
                       decimalSeparator: 'md:text-xl font-medium',
                     }}
