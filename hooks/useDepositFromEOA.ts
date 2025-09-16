@@ -112,6 +112,8 @@ const useDepositFromEOA = (): DepositResult => {
   });
 
   const depositOnEthereum = async (amount: string, signatureData: Signature, deadline: bigint, user: User) => {
+    setDepositStatus({ status: Status.PENDING, message: 'Check Wallet' });
+
     const amountWei = parseUnits(amount, 6);
 
     Sentry.addBreadcrumb({
@@ -144,6 +146,8 @@ const useDepositFromEOA = (): DepositResult => {
       data: callData,
       value: fee,
     });
+
+    setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2mins)' });
 
     await waitForTransactionReceipt(publicClient(mainnet.id), {
       hash: transaction?.transactionHash as `0x${string}`,
@@ -362,8 +366,6 @@ const useDepositFromEOA = (): DepositResult => {
       let txHash: Address | undefined;
       let transaction: { transactionHash: Address } | undefined = { transactionHash: '' };
       if (isEthereum) {
-        setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2mins)' });
-
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
           user_id: user?.userId,
@@ -378,6 +380,7 @@ const useDepositFromEOA = (): DepositResult => {
         });
 
         if (isSponsor) {
+          setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2mins)' });
           Sentry.addBreadcrumb({
             message: 'Creating sponsored deposit on Ethereum',
             category: 'deposit',

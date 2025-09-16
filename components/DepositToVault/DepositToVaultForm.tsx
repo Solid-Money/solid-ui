@@ -77,6 +77,8 @@ function DepositToVaultForm() {
 
   const watchedAmount = watch('amount');
   const isSponsor = Number(watchedAmount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
+  const isDeposit = isEthereum || !isSponsor;
+
   const {
     amountOut,
     isLoading: isPreviewDepositLoading,
@@ -88,9 +90,9 @@ function DepositToVaultForm() {
     if (!isValid || !watchedAmount) return 'Enter an amount';
     if (depositStatus.status === Status.PENDING) return depositStatus.message;
     if (depositStatus.status === Status.SUCCESS)
-      return isEthereum ? 'Successfully deposited!' : 'Successfully bridged!';
+      return isDeposit ? 'Successfully deposited!' : 'Successfully bridged!';
     if (depositStatus.status === Status.ERROR)
-      return isEthereum ? 'Error while depositing' : 'Error while bridging';
+      return isDeposit ? 'Error while depositing' : 'Error while bridging';
     return 'Deposit';
   };
 
@@ -132,7 +134,6 @@ function DepositToVaultForm() {
       setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
       if (!hash) return;
 
-      const isDeposit = isEthereum || !isSponsor;
       const explorerUrl = isDeposit
         ? explorerUrls[layerzero.id]?.layerzeroscan
         : explorerUrls[lifi.id]?.lifiscan;
@@ -148,7 +149,7 @@ function DepositToVaultForm() {
         },
       });
     }
-  }, [reset, setModal, depositStatus, isEthereum, hash, srcChainId, isSponsor]);
+  }, [reset, setModal, depositStatus, isEthereum, hash, srcChainId, isDeposit]);
 
   const isFormDisabled = () => {
     return isLoading || !isValid || !watchedAmount;
