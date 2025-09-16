@@ -35,6 +35,7 @@ import {
   LayerZeroTransaction,
   LeaderboardResponse,
   LifiQuoteResponse,
+  LifiStatusResponse,
   Points,
   ToCurrency,
   TokenPriceUsd,
@@ -519,7 +520,7 @@ export const fetchLeaderboardUsers = async (params: {
 }): Promise<LeaderboardResponse> => {
   const jwt = getJWTToken();
   const searchParams = new URLSearchParams();
-  
+
   if (params.pageSize) searchParams.append('pageSize', params.pageSize);
   if (params.userIdToStartAfter) searchParams.append('userIdToStartAfter', params.userIdToStartAfter);
 
@@ -791,6 +792,19 @@ export const getLifiQuote = async ({
 
   return response?.data;
 };
+
+export const checkBridgeStatus = async (bridgeTxHash: string): Promise<LifiStatusResponse> => {
+  const response = await axios.get<LifiStatusResponse>(
+    `${EXPO_PUBLIC_LIFI_API_URL}/status`,
+    {
+      params: {
+        txHash: bridgeTxHash,
+      },
+    },
+  );
+
+  return response?.data;
+}
 
 export const bridgeTransaction = async (bridge: BridgeTransactionRequest): Promise<Response> => {
   const jwt = getJWTToken();
