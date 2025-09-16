@@ -419,6 +419,20 @@ const useUser = (): UseUserReturn => {
 
       const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
 
+      if (!user.safeAddress || user.safeAddress == '') {
+        const resp = await withRefreshToken(() =>
+          updateSafeAddress(smartAccountClient.account.address),
+        );
+        if (!resp) {
+          const error = new Error('Error updating safe address on login');
+          Sentry.captureException(error, {
+            tags: {
+              type: 'safe_address_update_error',
+            },
+          });
+        }
+      }
+
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
         username: user.username,
@@ -502,7 +516,7 @@ const useUser = (): UseUserReturn => {
         error: error.message,
       });
       console.error(error);
-      const errorMessage = error?.message || 'Network request timed out';
+      const errorMessage = error?.status === 404 ? 'User not found, please sign up' : error?.message || 'Network request timed out';
       setLoginInfo({ status: Status.ERROR, message: errorMessage });
 
       // Reset to IDLE after showing error for 3 seconds
