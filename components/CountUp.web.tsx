@@ -41,7 +41,9 @@ const CountUp = ({
   return (
     <div className={cn('flex items-baseline', classNames?.wrapper)}>
       {prefix ? (
-        <span className={classNames?.decimalSeparator} style={styles?.wholeText as any}>{prefix}</span>
+        <span className={classNames?.decimalSeparator} style={styles?.wholeText as any}>
+          {prefix}
+        </span>
       ) : null}
       <NumberFlow
         value={Math.floor(safeCount)}
@@ -49,12 +51,18 @@ const CountUp = ({
         className={cn('font-variant-numeric-tabular', classNames?.decimalSeparator)}
         style={styles?.wholeText as any}
       />
-      <span className={classNames?.decimalSeparator} style={styles?.decimalText as any}>.</span>
+      <span className={classNames?.decimalSeparator} style={styles?.decimalText as any}>
+        .
+      </span>
       <NumberFlow
         value={Number(trailingZero ?? '0')}
         plugins={[continuous]}
         // Render exact decimals without grouping
-        format={{ useGrouping: false, minimumIntegerDigits: decimalPlaces, maximumFractionDigits: 0 }}
+        format={{
+          useGrouping: false,
+          minimumIntegerDigits: decimalPlaces,
+          maximumFractionDigits: 0,
+        }}
         className={cn('font-variant-numeric-tabular', classNames?.decimalSeparator)}
         style={styles?.decimalText as any}
       />
@@ -71,5 +79,3 @@ const CountUp = ({
 };
 
 export default CountUp;
-
-

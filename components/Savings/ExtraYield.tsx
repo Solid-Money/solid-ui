@@ -1,18 +1,19 @@
 import { Image } from 'expo-image';
-import { Plus } from 'lucide-react-native';
+import { Link } from 'expo-router';
+import { ChevronRight, Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import { DepositOptionModal } from '@/components/DepositOption';
-import TooltipPopover from '@/components/Tooltip';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
-import { useTotalAPY } from '@/hooks/useAnalytics';
-import Markdown from '@/components/Markdown';
+import useUser from '@/hooks/useUser';
+import { cn } from '@/lib/utils';
 
 const ExtraYield = () => {
   const { isScreenMedium } = useDimension();
-  const { data: totalAPY } = useTotalAPY();
+  const { user } = useUser();
+  const hasDeposited = user?.isDeposited;
 
   const getTrigger = () => {
     return (
@@ -23,8 +24,10 @@ const ExtraYield = () => {
         })}
       >
         <View className="flex-row items-center gap-2">
-          <Plus color="white" />
-          <Text className="font-semibold">Start earning</Text>
+          {hasDeposited ? null : <Plus color="white" />}
+          <Text className="font-semibold">
+            {hasDeposited ? 'Claim boosted yield' : 'Start earning'}
+          </Text>
         </View>
       </View>
     );
@@ -34,56 +37,44 @@ const ExtraYield = () => {
     return (
       <Image
         source={require('@/assets/images/three-percent.png')}
-        style={{ width: 146, height: 146 }}
+        style={{
+          width: 193,
+          height: 193,
+          position: isScreenMedium ? 'absolute' : 'relative',
+          top: isScreenMedium ? '5%' : 0,
+          right: isScreenMedium ? '5%' : 0,
+        }}
         contentFit="contain"
       />
     );
   };
 
-  const tooltipContent = `
-Solid Bonus Yield ft. MERKL
-
-**$10,000 Early Adopter Pool** to early depositors during the first two months of Solid's launch. 
-
-Rewards are claimable in the official Merkl app.
-
-To qualify:
-* Deposit at least $100 soUSD
-* Rewards distributed proportionally among participants (up to $200)
-* Program runs for 2 months from launch
-
-**Protocol APY:** ${totalAPY ? totalAPY.toFixed(2) : '~12'}%
-**Effective Bonus Yield:** Varies with TVL (1-4%+)
-
-[Learn more](https://docs.solid.xyz/solid-early-adopter-bonus)
-`;
-
-  const getTooltipContent = () => {
-    return (
-      <>
-        <Image
-          source={require('@/assets/images/merkl.png')}
-          style={{ width: 200, height: 50 }}
-          contentFit="contain"
-        />
-        <Markdown value={tooltipContent} />
-      </>
-    );
-  };
-
   return (
-    <View className="md:flex-1 bg-card rounded-twice p-5 md:p-8 md:flex-row md:items-center justify-between gap-4">
+    <View className="md:flex-1 relative bg-card rounded-twice p-5 md:p-8 md:flex-row md:items-center justify-between gap-4">
       <View className="md:items-start gap-4">
         {isScreenMedium ? null : getImage()}
-        <Text className="text-2xl leading-6 font-semibold md:max-w-72">
-          Get extra 3% for your early support!
-        </Text>
+        <Text className="text-2xl leading-6 font-semibold md:max-w-72">Get 3% boosted yield!</Text>
         <View className="flex-row items-center gap-1">
-          <Text className="text-muted-foreground font-medium">Get +3% APY for 2 months.</Text>
-          <TooltipPopover
-            content={getTooltipContent()}
-            classNames={{ content: 'bg-card rounded-twice p-3 pt-6' }}
-          />
+          <Text
+            className={cn(
+              'text-muted-foreground font-medium',
+              isScreenMedium ? (hasDeposited ? 'max-w-56' : 'max-w-xs') : 'max-w-full',
+            )}
+          >
+            {hasDeposited
+              ? 'Read the terms and claim your yield'
+              : 'Limited time offer - Get 3% extra boosted yield if you deposit now.'}{' '}
+            <Link
+              href="https://docs.solid.xyz/solid-early-adopter-bonus"
+              target="_blank"
+              className="hover:opacity-70"
+            >
+              <View className="flex-row items-center">
+                <Text className="underline leading-4">Read more</Text>
+                <ChevronRight size={18} color="white" className="mt-0.5" />
+              </View>
+            </Link>
+          </Text>
         </View>
         <DepositOptionModal trigger={getTrigger()} />
       </View>

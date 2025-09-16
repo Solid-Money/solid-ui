@@ -13,7 +13,11 @@ import SavingCountUp from '@/components/SavingCountUp';
 import SendModal from '@/components/SendModal/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
 import { TransactionCredenzaTrigger } from '@/components/Transaction/TransactionCredenza';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Table,
   TableBody,
@@ -207,7 +211,10 @@ const WalletTokenTab = () => {
                     <DropdownMenuTrigger>
                       <TransactionCredenzaTrigger />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-card border-none rounded-xl p-1 min-w-[10rem]">
+                    <DropdownMenuContent
+                      align="end"
+                      className="bg-card border-none rounded-xl p-1 min-w-[10rem]"
+                    >
                       <View className="gap-2">
                         {!isSoUSDEthereum(token.contractAddress) && (
                           <SendModal
@@ -216,7 +223,7 @@ const WalletTokenTab = () => {
                             tokenIcon={tokenIcon}
                             tokenSymbol={token.contractTickerSymbol || 'Unknown'}
                             chainId={token.chainId}
-                        tokenType={token.type}
+                            tokenType={token.type}
                           />
                         )}
                         {isSoUSDFuse(token.contractAddress) ? (
@@ -353,7 +360,6 @@ const WalletTokenTab = () => {
                                 },
                               }}
                             />
-                            
                           </View>
                           <View className="flex-row items-center">
                             <Text className="text-sm text-muted-foreground">$</Text>
@@ -407,7 +413,10 @@ const WalletTokenTab = () => {
                           <DropdownMenuTrigger>
                             <TransactionCredenzaTrigger />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-card border-none rounded-xl p-1 min-w-[12rem]">
+                          <DropdownMenuContent
+                            align="end"
+                            className="bg-card border-none rounded-xl p-1 min-w-[12rem]"
+                          >
                             <View className="gap-2">
                               {!isSoUSDEthereum(token.contractAddress) && (
                                 <SendModal
@@ -416,7 +425,7 @@ const WalletTokenTab = () => {
                                   tokenIcon={tokenIcon}
                                   tokenSymbol={token.contractTickerSymbol || 'Unknown'}
                                   chainId={token.chainId}
-                            tokenType={token.type}
+                                  tokenType={token.type}
                                 />
                               )}
                               {isSoUSDFuse(token.contractAddress) ? (

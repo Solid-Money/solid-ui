@@ -220,4 +220,3 @@ const WithdrawTitle = () => {
 };
 
 export { Withdraw, WithdrawTitle, WithdrawTrigger };
-

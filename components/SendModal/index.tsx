@@ -301,4 +301,3 @@ const SendTitle = () => {
 };
 
 export { Send, SendTitle, SendTrigger };
-
