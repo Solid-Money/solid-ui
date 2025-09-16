@@ -90,6 +90,9 @@ export default function Savings() {
     totalAPY ?? 0,
     firstDepositTimestamp ?? 0,
     Math.floor(Date.now() / 1000),
+    SavingMode.TOTAL_USD,
+    userDepositTransactions,
+    user?.safeAddress,
   );
 
   const topThreeTokens = uniqueTokens.slice(0, 3);
@@ -164,7 +167,6 @@ export default function Savings() {
                     }}
                   />
                 </View>
-                
               </View>
               <DashboardHeaderButtons hasTokens={hasTokens} />
             </View>

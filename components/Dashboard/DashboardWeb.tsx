@@ -9,6 +9,7 @@ import Navbar from '@/components/Navbar';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
+import { useCalculateSavings } from '@/hooks/useFinancial';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
@@ -18,7 +19,6 @@ import { DashboardCards } from './DashboardCards';
 import { DashboardCardsNoFunds } from './DashboardCardsNoFunds';
 import DashboardHeader from './DashboardHeader';
 import { DashboardTokens } from './DashboardTokens';
-import { useCalculateSavings } from '@/hooks/useFinancial';
 
 export function DashboardWeb() {
   const { user } = useUser();
@@ -59,6 +59,8 @@ export function DashboardWeb() {
     firstDepositTimestamp ?? 0,
     Math.floor(Date.now() / 1000),
     SavingMode.INTEREST_ONLY,
+    userDepositTransactions,
+    user?.safeAddress,
   );
 
   useEffect(() => {
