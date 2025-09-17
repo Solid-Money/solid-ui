@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Platform, View } from 'react-native';
@@ -10,10 +10,7 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
-import { track } from '@/lib/analytics';
 import { Status } from '@/lib/types';
 import { detectAndSaveReferralCode } from '@/lib/utils/referral';
 import { useUserStore } from '@/store/useUserStore';
@@ -33,11 +30,10 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function Register() {
-  const { handleLogin, handleDummyLogin } = useUser();
-  const { signupInfo, loginInfo, setSignupInfo, setLoginInfo, setSignupUser } = useUserStore();
+  const { handleLogin, handleDummyLogin, handleSignupStarted } = useUser();
+  const { signupInfo, loginInfo, setSignupInfo, setLoginInfo } = useUserStore();
   const { code } = useLocalSearchParams<{ code: string }>();
   const { session } = useLocalSearchParams<{ session: string }>();
-  const router = useRouter();
   // TODO: Add recovery flow
   // const [showRecoveryFlow, setShowRecoveryFlow] = useState(false);
 
@@ -82,13 +78,8 @@ export default function Register() {
     }
   }, [signupInfo.status, reset]);
 
-  const handleSignupForm = (data: RegisterFormData) => {
-    track(TRACKING_EVENTS.SIGNUP_STARTED, {
-      username: data.username,
-    });
-
-    setSignupUser({ username: data.username, inviteCode: code });
-    router.push(path.INVITE);
+  const handleSignupForm = async (data: RegisterFormData) => {
+    handleSignupStarted(data.username, code);
   };
 
   const getSignupButtonText = () => {
