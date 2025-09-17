@@ -33,6 +33,7 @@ import { Chain, createWalletClient, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
+import { ERRORS } from '@/constants/errors';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -178,16 +179,7 @@ const useUser = (): UseUserReturn => {
         const subOrgId = await getSubOrgIdByUsername(username);
 
         if (subOrgId.organizationId) {
-          const error = new Error('Username already exists');
-          Sentry.captureException(error, {
-            tags: {
-              type: 'signup_username_exists',
-            },
-            extra: {
-              username,
-            },
-          });
-          throw error;
+          throw new Error(ERRORS.USERNAME_ALREADY_EXISTS);
         }
 
         const passkeyName = username;
@@ -359,17 +351,31 @@ const useUser = (): UseUserReturn => {
         });
       } catch (error: any) {
         let message = '';
-        if (error?.status === 409 || error.message?.includes('Username already exists')) {
-          message = 'Username already exists';
+        if (error?.status === 409 || error.message?.includes(ERRORS.USERNAME_ALREADY_EXISTS)) {
+          message = ERRORS.USERNAME_ALREADY_EXISTS;
         } else if ((await error?.text?.())?.toLowerCase()?.includes('invite')) {
-          message = 'Invalid invite code';
+          message = ERRORS.INVALID_INVITE_CODE;
         }
-        Sentry.captureException(new Error('Error signing up'), {
-          extra: {
-            error,
-            message,
-          },
-        });
+
+        if(message) {
+          Sentry.captureMessage(message, {
+            level: 'warning',
+            extra: {
+              username,
+              inviteCode,
+              error,
+            },
+          });
+        } else {
+          Sentry.captureException(new Error('Error signing up'), {
+            extra: {
+              username,
+              inviteCode,
+              error,
+            },
+          });
+        }
+
         track(TRACKING_EVENTS.SIGNUP_FAILED, {
           username,
           invite_code: inviteCode,
