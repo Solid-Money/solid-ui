@@ -912,3 +912,14 @@ export const fetchTVL = async () => {
   );
   return response.data;
 };
+
+export const usernameExists = async (username: string) => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/username/${username}`, {
+    method: 'HEAD',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+    },
+  });
+  return response;
+};
