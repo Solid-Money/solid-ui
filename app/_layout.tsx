@@ -183,8 +183,10 @@ export default Sentry.wrap(function RootLayout() {
 
         // Simulate loading time - replace with actual async operations
         await initAnalytics();
-        Appearance.setColorScheme('dark');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (Platform.OS !== 'web') {
+          Appearance.setColorScheme('dark');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
 
         // Add any additional initialization here
         // await initializeApp();
