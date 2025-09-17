@@ -89,11 +89,22 @@ export default function Register() {
     return 'Continue';
   };
 
+  const getLoginButtonText = () => {
+    if (loginInfo.status === Status.PENDING) return 'Logging in';
+    if (loginInfo.status === Status.ERROR) return 'Error logging in';
+    return 'Login';
+  };
+
   const getSignupErrorText = useMemo(() => {
     if (errors.username) return errors.username.message;
     if (signupInfo.status === Status.ERROR) return signupInfo.message || 'Error creating account';
     return '';
   }, [errors.username, signupInfo.status, signupInfo.message]);
+
+  const getLoginErrorText = useMemo(() => {
+    if (loginInfo.status === Status.ERROR) return loginInfo.message || 'Error logging in';
+    return '';
+  }, [loginInfo.status, loginInfo.message]);
 
   // const isSignupDisabled = () => {
   //   return signupInfo.status === Status.PENDING || !isValid || !watchedUsername;
@@ -194,15 +205,15 @@ export default function Register() {
               variant="secondary"
               className="rounded-xl h-14 border-0"
             >
-              <Text className="text-lg font-semibold">
-                {loginInfo.status === Status.ERROR
-                  ? loginInfo.message || 'Error logging in'
-                  : loginInfo.status === Status.PENDING
-                    ? 'Logging in'
-                    : 'Login'}
-              </Text>
+              <Text className="text-lg font-semibold">{getLoginButtonText()}</Text>
               {loginInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}
             </Button>
+            {getLoginErrorText ? (
+              <View className="flex-row items-center gap-2">
+                <InfoError />
+                <Text className="text-sm text-red-400">{getLoginErrorText}</Text>
+              </View>
+            ) : null}
             {/* TODO: Add recovery flow */}
             {/* <Button
               onPress={() => setShowRecoveryFlow(true)}

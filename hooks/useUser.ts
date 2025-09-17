@@ -556,17 +556,31 @@ const useUser = (): UseUserReturn => {
 
       router.replace(path.HOME);
     } catch (error: any) {
-      Sentry.captureException(new Error('Error logging in'), {
-        extra: {
-          error,
-        },
-      });
+      let errorMessage = error?.status === 404 ? 'User not found, please sign up' : error?.message || 'Network request timed out';
+
+      if (error?.name === 'NotAllowedError') {
+        errorMessage = 'User cancelled login';
+        Sentry.captureMessage(errorMessage, {
+          level: 'warning',
+          extra: {
+            error,
+          },
+        });
+      } else {
+        Sentry.captureException(new Error('Error logging in'), {
+          extra: {
+            error,
+            errorMessage,
+          },
+        });
+      }
+
       track(TRACKING_EVENTS.LOGIN_FAILED, {
         username: user?.username,
         error: error.message,
       });
+
       console.error(error);
-      const errorMessage = error?.status === 404 ? 'User not found, please sign up' : error?.message || 'Network request timed out';
       setLoginInfo({ status: Status.ERROR, message: errorMessage });
 
       // Reset to IDLE after showing error for 3 seconds
