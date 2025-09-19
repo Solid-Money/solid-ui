@@ -49,10 +49,10 @@ export const setGlobalLogoutHandler = (handler: () => void) => {
   globalLogoutHandler = handler;
 };
 
-const isUnauthorizedError = (error: any) => {
+export const isHTTPError = (error: any, status: number) => {
   return (
-    (error?.status !== undefined && error?.status === 401) ||
-    (error?.statusCode !== undefined && error?.statusCode === 401)
+    (error?.status !== undefined && error?.status === status) ||
+    (error?.statusCode !== undefined && error?.statusCode === status)
   );
 };
 
@@ -63,7 +63,7 @@ export const withRefreshToken = async <T>(
   try {
     return await apiCall();
   } catch (error: any) {
-    if (!isUnauthorizedError(error)) {
+    if (!isHTTPError(error, 401)) {
       console.error(error);
       throw error;
     }
@@ -88,7 +88,7 @@ export const withRefreshToken = async <T>(
       console.error(refreshTokenError);
       if (onError) {
         onError();
-      } else if (isUnauthorizedError(refreshTokenError)) {
+      } else if (isHTTPError(refreshTokenError, 401)) {
         globalLogoutHandler?.();
       }
     }
@@ -200,3 +200,5 @@ export const sanitize = (data: Record<string, any>) => {
     return data;
   }
 }
+
+export const oneMinute = 60 * 1000;

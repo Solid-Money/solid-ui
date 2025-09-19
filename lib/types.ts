@@ -570,6 +570,23 @@ export interface LifiQuoteResponse {
   };
 }
 
+export enum LifiStatus {
+  PENDING = 'PENDING',
+  DONE = 'DONE',
+  FAILED = 'FAILED',
+}
+
+export interface LifiStatusResponse {
+  status: LifiStatus;
+  substatusMessage: string;
+  sending: {
+    amount: string;
+  };
+  receiving: {
+    amount: string;
+  };
+}
+
 export interface SignupUser {
   username: string;
   inviteCode?: string;

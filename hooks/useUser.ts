@@ -2,7 +2,7 @@ import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track, trackIdentity } from '@/lib/analytics';
-import { deleteAccount, getSubOrgIdByUsername, login, signUp, updateSafeAddress } from '@/lib/api';
+import { deleteAccount, getSubOrgIdByUsername, login, signUp, updateSafeAddress, usernameExists } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -11,7 +11,7 @@ import {
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
-import { getNonce, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
+import { getNonce, isHTTPError, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { publicClient, rpcUrls } from '@/lib/wagmi';
 import { useKycStore } from '@/store/useKycStore';
@@ -33,9 +33,11 @@ import { Chain, createWalletClient, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
+import { ERRORS } from '@/constants/errors';
 
 interface UseUserReturn {
   user: User | undefined;
+  handleSignupStarted: (username: string, inviteCode: string) => Promise<void>;
   handleSignup: (username: string, inviteCode: string) => Promise<void>;
   handleLogin: () => Promise<void>;
   handleDummyLogin: () => Promise<void>;
@@ -61,6 +63,7 @@ const useUser = (): UseUserReturn => {
     removeUsers,
     setSignupInfo,
     setLoginInfo,
+    setSignupUser,
   } = useUserStore();
 
   const { clearKycLinkId } = useKycStore();
@@ -171,6 +174,48 @@ const useUser = (): UseUserReturn => {
     [queryClient, updateUser],
   );
 
+  const handleSignupStarted = useCallback(async (username: string, inviteCode: string) => {
+    try {
+      setSignupInfo({ status: Status.PENDING });
+      track(TRACKING_EVENTS.SIGNUP_STARTED, {
+        username,
+      });
+
+      const response = await usernameExists(username);
+      if (!isHTTPError(response, 404)) {
+        throw response;
+      }
+
+      setSignupUser({ username, inviteCode });
+      router.push(path.INVITE);
+    } catch (error: any) {
+      let message = 'Error checking username exists';
+
+      if (isHTTPError(error, 200)) {
+        message = ERRORS.USERNAME_ALREADY_EXISTS;
+        Sentry.captureMessage(message, {
+          level: 'warning',
+          extra: {
+            username,
+            inviteCode,
+            error,
+          },
+        });
+      } else {
+        Sentry.captureException(new Error(message), {
+          extra: {
+            username,
+            inviteCode,
+            error,
+          },
+        });
+      }
+
+      setSignupInfo({ status: Status.ERROR, message });
+      console.error(message, error);
+    }
+  }, [setSignupInfo, setSignupUser, router]);
+
   const handleSignup = useCallback(
     async (username: string, inviteCode: string) => {
       try {
@@ -178,16 +223,7 @@ const useUser = (): UseUserReturn => {
         const subOrgId = await getSubOrgIdByUsername(username);
 
         if (subOrgId.organizationId) {
-          const error = new Error('Username already exists');
-          Sentry.captureException(error, {
-            tags: {
-              type: 'signup_username_exists',
-            },
-            extra: {
-              username,
-            },
-          });
-          throw error;
+          throw new Error(ERRORS.USERNAME_ALREADY_EXISTS);
         }
 
         const passkeyName = username;
@@ -359,17 +395,31 @@ const useUser = (): UseUserReturn => {
         });
       } catch (error: any) {
         let message = '';
-        if (error?.status === 409 || error.message?.includes('Username already exists')) {
-          message = 'Username already exists';
+        if (error?.status === 409 || error.message?.includes(ERRORS.USERNAME_ALREADY_EXISTS)) {
+          message = ERRORS.USERNAME_ALREADY_EXISTS;
         } else if ((await error?.text?.())?.toLowerCase()?.includes('invite')) {
-          message = 'Invalid invite code';
+          message = ERRORS.INVALID_INVITE_CODE;
         }
-        Sentry.captureException(new Error('Error signing up'), {
-          extra: {
-            error,
-            message,
-          },
-        });
+
+        if (message) {
+          Sentry.captureMessage(message, {
+            level: 'warning',
+            extra: {
+              username,
+              inviteCode,
+              error,
+            },
+          });
+        } else {
+          Sentry.captureException(new Error('Error signing up'), {
+            extra: {
+              username,
+              inviteCode,
+              error,
+            },
+          });
+        }
+
         track(TRACKING_EVENTS.SIGNUP_FAILED, {
           username,
           invite_code: inviteCode,
@@ -506,17 +556,31 @@ const useUser = (): UseUserReturn => {
 
       router.replace(path.HOME);
     } catch (error: any) {
-      Sentry.captureException(new Error('Error logging in'), {
-        extra: {
-          error,
-        },
-      });
+      let errorMessage = error?.status === 404 ? 'User not found, please sign up' : error?.message || 'Network request timed out';
+
+      if (error?.name === 'NotAllowedError') {
+        errorMessage = 'User cancelled login';
+        Sentry.captureMessage(errorMessage, {
+          level: 'warning',
+          extra: {
+            error,
+          },
+        });
+      } else {
+        Sentry.captureException(new Error('Error logging in'), {
+          extra: {
+            error,
+            errorMessage,
+          },
+        });
+      }
+
       track(TRACKING_EVENTS.LOGIN_FAILED, {
         username: user?.username,
         error: error.message,
       });
+
       console.error(error);
-      const errorMessage = error?.status === 404 ? 'User not found, please sign up' : error?.message || 'Network request timed out';
       setLoginInfo({ status: Status.ERROR, message: errorMessage });
 
       // Reset to IDLE after showing error for 3 seconds
@@ -670,6 +734,7 @@ const useUser = (): UseUserReturn => {
 
   return {
     user,
+    handleSignupStarted,
     handleSignup,
     handleLogin,
     handleDummyLogin,

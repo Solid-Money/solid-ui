@@ -6,34 +6,34 @@ import { Text } from '@/components/ui/text';
 const CardBenefits = () => {
   return (
     <View className="flex-row justify-between items-center gap-x-4 gap-y-5">
-      <View className="items-center md:items-start gap-4">
+      <View className="items-center md:items-start gap-3">
         <Image
-          source={require('@/assets/images/deposit-green.png')}
+          source={require('@/assets/images/card_benefits_one.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
         <Text className="leading-4 md:text-2xl max-w-24 md:max-w-36 text-center md:text-start">
-          Deposit as little as $1
+          Spend your yield
         </Text>
       </View>
-      <View className="items-center md:items-start gap-4">
+      <View className="items-center md:items-start gap-3">
         <Image
-          source={require('@/assets/images/withdraw-green.png')}
+          source={require('@/assets/images/card_benefits_two.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
         <Text className="leading-4 md:text-2xl max-w-24 md:max-w-32 text-center md:text-start">
-          Withdraw anytime
+          Accepted anywhere
         </Text>
       </View>
-      <View className="items-center md:items-start gap-4">
+      <View className="items-center md:items-start gap-3">
         <Image
-          source={require('@/assets/images/earn-green.png')}
+          source={require('@/assets/images/card_benefits_three.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
         <Text className="leading-4 md:text-2xl max-w-24 md:max-w-32 text-center md:text-start">
-          Earn every second
+          2% Cashback
         </Text>
       </View>
     </View>

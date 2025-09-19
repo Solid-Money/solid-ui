@@ -39,7 +39,7 @@ Sentry.init({
   dsn: 'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952',
 
   // Only enable Sentry in production
-  enabled: process.env.EXPO_PUBLIC_ENVIRONMENT === 'production',
+  enabled: process.env.EXPO_PUBLIC_ENVIRONMENT === 'production' && !__DEV__,
 
   // Set environment from env variable
   environment: process.env.EXPO_PUBLIC_ENVIRONMENT || 'development',
@@ -183,8 +183,10 @@ export default Sentry.wrap(function RootLayout() {
 
         // Simulate loading time - replace with actual async operations
         await initAnalytics();
-        Appearance.setColorScheme('dark');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (Platform.OS !== 'web') {
+          Appearance.setColorScheme('dark');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
 
         // Add any additional initialization here
         // await initializeApp();

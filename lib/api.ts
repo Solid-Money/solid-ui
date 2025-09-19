@@ -35,6 +35,7 @@ import {
   LayerZeroTransaction,
   LeaderboardResponse,
   LifiQuoteResponse,
+  LifiStatusResponse,
   Points,
   ToCurrency,
   TokenPriceUsd,
@@ -519,7 +520,7 @@ export const fetchLeaderboardUsers = async (params: {
 }): Promise<LeaderboardResponse> => {
   const jwt = getJWTToken();
   const searchParams = new URLSearchParams();
-  
+
   if (params.pageSize) searchParams.append('pageSize', params.pageSize);
   if (params.userIdToStartAfter) searchParams.append('userIdToStartAfter', params.userIdToStartAfter);
 
@@ -792,6 +793,19 @@ export const getLifiQuote = async ({
   return response?.data;
 };
 
+export const checkBridgeStatus = async (bridgeTxHash: string): Promise<LifiStatusResponse> => {
+  const response = await axios.get<LifiStatusResponse>(
+    `${EXPO_PUBLIC_LIFI_API_URL}/status`,
+    {
+      params: {
+        txHash: bridgeTxHash,
+      },
+    },
+  );
+
+  return response?.data;
+}
+
 export const bridgeTransaction = async (bridge: BridgeTransactionRequest): Promise<Response> => {
   const jwt = getJWTToken();
 
@@ -897,4 +911,15 @@ export const fetchTVL = async () => {
     `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/tvl`,
   );
   return response.data;
+};
+
+export const usernameExists = async (username: string) => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/username/${username}`, {
+    method: 'HEAD',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+    },
+  });
+  return response;
 };

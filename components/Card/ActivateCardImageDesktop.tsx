@@ -5,7 +5,7 @@ const ActivateCardImageDesktop = () => {
     <Image
       source={require('@/assets/images/activate_card_desktop.png')}
       contentFit="contain"
-      style={{ width: 320, height: 377 }}
+      style={{ width: 321, height: 389 }}
     />
   );
 };
