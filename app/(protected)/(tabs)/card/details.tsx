@@ -56,7 +56,7 @@ export default function CardDetails() {
   if (isLoading) return <Loading />;
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1 bg-background px-4">
       {isScreenMedium && <Navbar />}
 
       <ScrollView className="flex-1" contentContainerClassName="flex-grow">
@@ -137,7 +137,7 @@ function CardImageSection({ isScreenMedium, isCardFrozen }: CardImageSectionProp
         <Image
           source={require('@/assets/images/card_details.png')}
           alt="Solid Card"
-          style={{ width: '100%', aspectRatio: 414 / 693 }}
+          style={{ width: '80%', aspectRatio: 414 / 693 }}
           contentFit="contain"
         />
       )}
