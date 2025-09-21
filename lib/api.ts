@@ -14,6 +14,8 @@ import {
   EXPO_PUBLIC_LIFI_API_URL,
 } from './config';
 import {
+  ActivityEvent,
+  ActivityEvents,
   BlockscoutTransactions,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
@@ -37,6 +39,7 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
+  UpdateActivityEvent,
   ToCurrency,
   TokenPriceUsd,
   User,
@@ -922,4 +925,69 @@ export const usernameExists = async (username: string) => {
     },
   });
   return response;
+};
+
+export const createActivityEvent = async (
+  event: ActivityEvent,
+): Promise<{ transactionHash: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(event),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const fetchActivityEvents = async (
+  page: number = 1,
+  limit: number = 30,
+): Promise<ActivityEvents> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity?page=${page}&limit=${limit}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const updateActivityEvent = async (
+  clientTxId: string,
+  event: UpdateActivityEvent,
+): Promise<ActivityEvent> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/${clientTxId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(event),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };
