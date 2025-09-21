@@ -103,7 +103,7 @@ export default function Card() {
 
           <View className="flex-row items-center gap-5">
             <Button
-              className="rounded-xl h-12 px-6"
+              className="rounded-xl h-12 px-10"
               style={{ backgroundColor: '#94F27F' }}
               onPress={activateCard}
             >
@@ -113,7 +113,7 @@ export default function Card() {
         </View>
 
         <LinearGradient
-          colors={['rgba(148, 242, 127, 0.3)', 'rgba(148, 242, 127, 0.2)']}
+          colors={['rgba(148, 242, 127, 0.23)', 'rgba(148, 242, 127, 0.05)']}
           style={{
             borderRadius: 20,
             padding: 40,

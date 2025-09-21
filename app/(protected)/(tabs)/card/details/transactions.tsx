@@ -1,16 +1,21 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ExternalLink, RotateCw } from 'lucide-react-native';
+import { ArrowLeft, RotateCw } from 'lucide-react-native';
 import React from 'react';
-import { ActivityIndicator, FlatList, Linking, Pressable, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, View } from 'react-native';
 
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
+import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
+import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { cardTransactionsQueryKey, useCardTransactions } from '@/hooks/useCardTransactions';
 import { useDimension } from '@/hooks/useDimension';
+import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 export default function CardTransactions() {
   const { isScreenMedium } = useDimension();
@@ -42,37 +47,65 @@ export default function CardTransactions() {
     });
   };
 
-  const renderTransaction = ({ item }: { item: CardTransaction }) => (
-    <View className="flex-row justify-between items-center py-4 border-b border-[#2E2E2E]">
-      <View className="flex-1">
-        <Text className="text-white text-base font-medium">
-          {item.merchant_name || item.description}
-        </Text>
-        <Text className="text-gray-400 text-sm mt-1">{formatDate(item.posted_at)}</Text>
-      </View>
-      <View className="flex-row items-center gap-4">
-        {item.crypto_transaction_details?.tx_hash && (
-          <Pressable
-            className="bg-[#2E2E2E] rounded-lg py-2 px-4 web:hover:opacity-70 flex-row items-center gap-2"
-            onPress={() => {
-              const url = `https://etherscan.io/tx/${item.crypto_transaction_details?.tx_hash}`;
-              Linking.openURL(url);
-            }}
-          >
-            <Text className="text-white text-sm font-medium">View transaction</Text>
-            <ExternalLink size={14} color="white" />
-          </Pressable>
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const getTransactionClassName = (totalTransactions: number, index: number) => {
+    // Remove bottom border for last item only
+    if (index === totalTransactions - 1) return 'border-b-0';
+    return '';
+  };
+
+  const renderTransaction = ({ item, index }: { item: CardTransaction; index: number }) => {
+    const tokenIcon = getTokenIcon({
+      tokenSymbol: item.currency?.toUpperCase(),
+      size: 34,
+    });
+
+    const transactionUrl = item.crypto_transaction_details?.tx_hash
+      ? `https://etherscan.io/tx/${item.crypto_transaction_details.tx_hash}`
+      : undefined;
+
+    return (
+      <Pressable
+        className={cn(
+          'flex-row items-center justify-between p-4 md:px-6',
+          'border-b border-border/40',
+          getTransactionClassName(allTransactions.length, index),
         )}
-        <Text
-          className={`text-base font-medium ${
-            parseFloat(item.amount) >= 0 ? 'text-green-500' : 'text-red-500'
-          }`}
-        >
-          {formatAmount(item.amount, item.currency)}
-        </Text>
-      </View>
-    </View>
-  );
+      >
+        <View className="flex-row items-center gap-2 md:gap-4 flex-1 mr-2">
+          <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
+          <View className="flex-1">
+            <Text className="text-lg font-medium" numberOfLines={1}>
+              {item.merchant_name || item.description}
+            </Text>
+            <Text className="text-sm text-muted-foreground" numberOfLines={1}>
+              {formatDate(item.posted_at)}
+              {', '}
+              {formatTime(item.posted_at)}
+            </Text>
+          </View>
+        </View>
+        <View className="flex-row items-center gap-2 md:gap-10 flex-shrink-0">
+          <Text className={`font-bold text-right text-white`}>
+            {formatAmount(item.amount, item.currency)}
+          </Text>
+          {Platform.OS === 'web' ? (
+            <TransactionDropdown url={transactionUrl} />
+          ) : (
+            <TransactionDrawer url={transactionUrl} />
+          )}
+        </View>
+      </Pressable>
+    );
+  };
 
   if (isLoading) return <Loading />;
 
@@ -97,7 +130,7 @@ export default function CardTransactions() {
     <View className="flex-1 bg-background">
       {isScreenMedium && <Navbar />}
 
-      <View className="flex-1 w-full max-w-[800px] mx-auto">
+      <View className="flex-1 w-full max-w-[600px] mx-auto">
         <View className="px-8 pt-8">
           <View className="flex-row items-center justify-between mb-8">
             <Pressable
@@ -109,7 +142,7 @@ export default function CardTransactions() {
               <ArrowLeft color="white" />
             </Pressable>
             <Text className="text-white text-xl md:text-2xl font-semibold text-center">
-              Transactions
+              Solid card transactions
             </Text>
             <Pressable
               onPress={() => {
@@ -126,30 +159,34 @@ export default function CardTransactions() {
           </View>
         </View>
 
-        <FlatList
-          data={allTransactions}
-          renderItem={renderTransaction}
-          keyExtractor={item => item.id}
-          contentContainerClassName="px-4"
-          onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) {
-              fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.5}
-          ListEmptyComponent={
-            <View className="items-center py-8">
-              <Text className="text-gray-400">No transactions yet</Text>
+        {allTransactions.length ? (
+          <View className="px-4">
+            <View className="bg-card rounded-xl md:rounded-twice overflow-hidden">
+              <FlatList
+                data={allTransactions}
+                renderItem={renderTransaction}
+                keyExtractor={item => item.id}
+                onEndReached={() => {
+                  if (hasNextPage && !isFetchingNextPage) {
+                    fetchNextPage();
+                  }
+                }}
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={
+                  isFetchingNextPage ? (
+                    <View className="py-4">
+                      <Loading />
+                    </View>
+                  ) : null
+                }
+              />
             </View>
-          }
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View className="py-4">
-                <Loading />
-              </View>
-            ) : null
-          }
-        />
+          </View>
+        ) : (
+          <View className="items-center py-8 px-4">
+            <Text className="text-muted-foreground">No transactions yet</Text>
+          </View>
+        )}
       </View>
     </View>
   );
