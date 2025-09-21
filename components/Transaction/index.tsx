@@ -18,7 +18,7 @@ interface TransactionProps {
   title: string;
   shortTitle?: string;
   timestamp: string;
-  amount: number;
+  amount: string;
   status: TransactionStatus;
   hash?: string;
   type: TransactionType;
@@ -105,7 +105,7 @@ const Transaction = ({
         </View>
       </View>
       <View className="flex-row items-center gap-2 md:gap-4 flex-shrink-0">
-        <Text className="text-lg font-medium text-right">${formatNumber(amount)}</Text>
+        <Text className="text-lg font-medium text-right">${formatNumber(Number(amount))}</Text>
         {isScreenMedium && (
           <View className={cn('w-20 h-8 rounded-twice items-center justify-center', statusBgColor)}>
             <Text className={cn('text-sm font-bold', statusTextColor)}>{statusText}</Text>

@@ -290,12 +290,17 @@ export enum TransactionStatus {
 
 export type Transaction = {
   title: string;
+  shortTitle?: string;
   timestamp: string;
-  amount: number;
+  amount: string;
   status: TransactionStatus;
+  chainId?: number;
   hash?: string;
+  url?: string;
   type: TransactionType;
-  symbol?: string;
+  symbol: string;
+  fromAddress?: string;
+  toAddress?: string;
   sourceDepositInstructions?: SourceDepositInstructions;
 };
 
@@ -651,4 +656,45 @@ export interface LeaderboardUser {
 
 export interface LeaderboardResponse {
   users: LeaderboardUser[];
+}
+
+export interface ActivityEventMetadata {
+  description: string;
+  source: string;
+}
+
+export interface ActivityEvent {
+  clientTxId: string;
+  title: string;
+  shortTitle?: string;
+  timestamp: string;
+  type: TransactionType;
+  status: TransactionStatus;
+  amount: string;
+  symbol: string;
+  chainId?: number;
+  hash?: string;
+  fromAddress?: string;
+  toAddress?: string;
+  sourceDepositInstructions?: SourceDepositInstructions;
+  metadata?: ActivityEventMetadata;
+}
+
+export interface ActivityEvents {
+  docs: ActivityEvent[];
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  limit: number;
+  nextPage: number | null;
+  page: number;
+  pagingCounter: number;
+  prevPage: number | null;
+  totalDocs: number;
+  totalPages: number;
+}
+
+export interface UpdateActivityEvent {
+  status?: TransactionStatus;
+  txHash?: string;
+  metadata?: ActivityEventMetadata;
 }
