@@ -139,7 +139,7 @@ export const useEmailManagement = (
       await indexedDbClient?.init();
       await indexedDbClient!.resetKeyPair();
       await passkeyClient?.updateUserEmail({
-        userId: user?.userId as string,
+        userId: user?.turnkeyUserId as string,
         userEmail: email,
         organizationId: user?.suborgId,
         verificationToken,
@@ -159,7 +159,7 @@ export const useEmailManagement = (
         timestampMs: Date.now().toString(),
         organizationId: user?.suborgId as string,
         parameters: {
-          userId: user?.userId as string,
+          userId: user?.turnkeyUserId as string,
           userEmail: email,
           verificationToken,
         },
@@ -170,7 +170,7 @@ export const useEmailManagement = (
   const handleSendOtp = async (data: EmailFormData) => {
     setIsLoading(true);
     setRateLimitError(null);
-    
+
     // Track email OTP request
     track(TRACKING_EVENTS.EMAIL_OTP_REQUESTED, {
       user_id: user?.userId,
@@ -178,13 +178,13 @@ export const useEmailManagement = (
       email: data.email,
       context: initialStep === 'email' ? 'deposit_flow' : 'settings',
     });
-    
+
     try {
       const response = await withRefreshToken(() => initGenericOtp(data.email, 6, false));
       setOtpId(response.otpId);
       setEmailValue(data.email);
       setStep('otp');
-      
+
       // Track email submitted successfully
       track(TRACKING_EVENTS.EMAIL_SUBMITTED, {
         user_id: user?.userId,
@@ -192,18 +192,18 @@ export const useEmailManagement = (
         email: data.email,
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
       });
-      
+
       if (Platform.OS !== 'web') {
         Alert.alert('OTP Sent', 'A verification code has been sent to your email address.', [
           { text: 'OK' },
         ]);
       }
     } catch (error: any) {
-      const errorTitle = "Failed to send OTP";
+      const errorTitle = 'Failed to send OTP';
       let errorMessage = error?.message || error?.toString() || '';
       console.error(errorTitle, error);
       setIsSkip(true);
-      
+
       // Track email verification failure
       track(TRACKING_EVENTS.EMAIL_VERIFICATION_FAILED, {
         user_id: user?.userId,
@@ -235,9 +235,7 @@ export const useEmailManagement = (
             },
           });
         } else {
-          Alert.alert('Error', errorMessage, [
-            { text: 'OK' },
-          ]);
+          Alert.alert('Error', errorMessage, [{ text: 'OK' }]);
         }
       }
     } finally {
@@ -268,14 +266,14 @@ export const useEmailManagement = (
         email: emailValue,
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
       });
-      
+
       onSuccess?.();
     } catch (error: any) {
-      let errorTitle = "Failed to verify OTP";
+      let errorTitle = 'Failed to verify OTP';
       let errorMessage = 'Inspect console log for more details and try again';
       console.error(errorTitle, error);
       setIsSkip(true);
-      
+
       // Track email OTP verification failure
       track(TRACKING_EVENTS.EMAIL_VERIFICATION_FAILED, {
         user_id: user?.userId,
@@ -286,7 +284,7 @@ export const useEmailManagement = (
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
       });
 
-      if(error?.toString().includes("SIGNATURE_INVALID")) {
+      if (error?.toString().includes('SIGNATURE_INVALID')) {
         errorTitle = 'Incorrect passkey used';
         errorMessage = 'Passkey must match with the registered account';
       }
