@@ -50,6 +50,7 @@ type Addresses = {
     teller: Address;
     nativeFeeToken: Address;
     bridgePaymasterAddress: Address;
+    merklDistributor: Address;
   };
 };
 
@@ -84,6 +85,7 @@ export const ADDRESSES: Addresses = {
       : '0xcBA3D8DC1DdE5fbD4c04cBbD5624Dc79D300963d',
     nativeFeeToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     bridgePaymasterAddress: '0xE046FC894Ec020501BA32fcA814a69B49c9Dac10',
+    merklDistributor: '0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae',
   },
 };
 
