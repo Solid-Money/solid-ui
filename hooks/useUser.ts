@@ -34,6 +34,7 @@ import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
 import { ERRORS } from '@/constants/errors';
+import { useActivityStore } from '@/store/useActivityStore';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -67,6 +68,8 @@ const useUser = (): UseUserReturn => {
   } = useUserStore();
 
   const { clearKycLinkId } = useKycStore();
+  
+  const { removeEvents } = useActivityStore();
 
   const user = useMemo(() => users.find((user: User) => user.selected), [users]);
 
@@ -696,6 +699,7 @@ const useUser = (): UseUserReturn => {
     });
     removeUsers();
     clearKycLinkId(); // Clear KYC data when removing all users
+    removeEvents();
     router.replace(path.REGISTER);
   }, [removeUsers, clearKycLinkId, router]);
 

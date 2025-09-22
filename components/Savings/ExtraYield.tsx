@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
+import TooltipPopover from '@/components/Tooltip';
 
 const ExtraYield = () => {
   const { isScreenMedium } = useDimension();
@@ -30,6 +31,14 @@ const ExtraYield = () => {
           </Text>
         </View>
       </View>
+    );
+  };
+
+  const getButton = () => {
+    return hasDeposited ? (
+      <TooltipPopover trigger={getTrigger()} text="Coming soon" />
+    ) : (
+      getTrigger()
     );
   };
 
@@ -76,7 +85,7 @@ const ExtraYield = () => {
             </Link>
           </Text>
         </View>
-        <DepositOptionModal trigger={getTrigger()} />
+        <DepositOptionModal trigger={getButton()} />
       </View>
 
       {isScreenMedium ? getImage() : null}

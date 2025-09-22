@@ -99,4 +99,5 @@ export const USER = {
   stakeStorageKey: 'flash_stake',
   depositFromSafeAccountStorageKey: 'flash_deposit_from_safe_account',
   referralStorageKey: 'flash_referral',
+  activityStorageKey: 'flash_activity',
 };
