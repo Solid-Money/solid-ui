@@ -1,15 +1,11 @@
 import { FlashList } from '@shopify/flash-list';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Address, formatUnits } from 'viem';
-import { mainnet } from 'viem/chains';
-import { useBlockNumber } from 'wagmi';
 
 import DepositModal from '@/components/Deposit/DepositModal';
-import Ping from '@/components/Ping';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
-import SavingCountUp from '@/components/SavingCountUp';
 import SendModal from '@/components/SendModal/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
 import { TransactionCredenzaTrigger } from '@/components/Transaction/TransactionCredenza';
@@ -29,55 +25,23 @@ import {
 import { Text } from '@/components/ui/text';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
-import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
-import useUser from '@/hooks/useUser';
-import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { ADDRESSES } from '@/lib/config';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { SavingMode } from '@/lib/types';
 import {
   cn,
   compactNumberFormat,
-  fontSize,
   formatNumber,
   isSoUSDEthereum,
   isSoUSDFuse,
   isUSDCEthereum,
 } from '@/lib/utils';
+import TooltipPopover from '@/components/Tooltip';
 
 const WalletTokenTab = () => {
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
   const { isScreenMedium } = useDimension();
-  const { user } = useUser();
-  const { data: totalAPY } = useTotalAPY();
-
-  const { data: blockNumber } = useBlockNumber({
-    watch: true,
-    chainId: mainnet.id,
-  });
-  const { data: userDepositTransactions, refetch: refetchTransactions } =
-    useGetUserTransactionsQuery({
-      variables: {
-        address: user?.safeAddress?.toLowerCase() ?? '',
-      },
-    });
-  const { data: balance, refetch: refetchBalance } = useFuseVaultBalance(
-    user?.safeAddress as Address,
-  );
-  const { data: lastTimestamp } = useLatestTokenTransfer(
-    user?.safeAddress ?? '',
-    ADDRESSES.fuse.vault,
-  );
-  const { firstDepositTimestamp } = useDepositCalculations(
-    userDepositTransactions,
-    balance,
-    lastTimestamp,
-  );
 
   const { ethereumTokens, fuseTokens } = useWalletTokens();
 
@@ -103,16 +67,11 @@ const WalletTokenTab = () => {
   };
 
   const columnWidths = useMemo(() => {
-    const COLUMN_WIDTHS = isScreenMedium ? [0.15, 0.15, 0.2, 0.2, 0.3] : [0.25, 0, 0.25, 0, 0.5];
+    const COLUMN_WIDTHS = isScreenMedium ? [0.3, 0.3, 0.3, 0.1] : [0.25, 0, 0.25, 0.5];
     const offset = isScreenMedium ? 0 : 32;
 
     return COLUMN_WIDTHS.map(ratio => (width - offset) * ratio);
   }, [width, isScreenMedium]);
-
-  useEffect(() => {
-    refetchBalance();
-    refetchTransactions();
-  }, [blockNumber, refetchBalance, refetchTransactions]);
 
   // Use card-based design for mobile, table for desktop
   if (!isScreenMedium) {
@@ -149,64 +108,12 @@ const WalletTokenTab = () => {
                 </View>
 
                 <View className="flex-row items-center gap-3">
-                  {isSoUSDFuse(token.contractAddress) ? (
-                    <View>
-                      <SavingCountUp
-                        balance={balance ?? 0}
-                        apy={totalAPY ?? 0}
-                        lastTimestamp={firstDepositTimestamp ?? 0}
-                        mode={SavingMode.TOTAL}
-                        styles={{
-                          wholeText: {
-                            fontSize: fontSize(1),
-                            fontWeight: 'bold',
-                            fontFamily: 'MonaSans_700Bold',
-                            color: '#ffffff',
-                          },
-                          decimalText: {
-                            fontSize: fontSize(1),
-                            fontWeight: 'bold',
-                            fontFamily: 'MonaSans_700Bold',
-                            color: '#ffffff',
-                          },
-                        }}
-                      />
-                      <View className="flex-row items-center">
-                        <Text className="text-sm text-muted-foreground">$</Text>
-                        <SavingCountUp
-                          balance={balance ?? 0}
-                          apy={totalAPY ?? 0}
-                          lastTimestamp={firstDepositTimestamp ?? 0}
-                          decimalPlaces={2}
-                          classNames={{
-                            wrapper: 'text-muted-foreground',
-                            decimalSeparator: 'text-sm text-muted-foreground',
-                          }}
-                          styles={{
-                            wholeText: {
-                              fontSize: fontSize(0.875),
-                              fontWeight: 'normal',
-                              fontFamily: 'MonaSans_400Regular',
-                              color: '#A1A1A1',
-                            },
-                            decimalText: {
-                              fontSize: fontSize(0.875),
-                              fontWeight: 'normal',
-                              fontFamily: 'MonaSans_400Regular',
-                              color: '#A1A1A1',
-                            },
-                          }}
-                        />
-                      </View>
-                    </View>
-                  ) : (
-                    <View>
-                      <Text className="font-bold">{compactNumberFormat(balance)}</Text>
-                      <Text className="text-sm font-medium text-muted-foreground">
-                        ${compactNumberFormat(balanceUSD)}
-                      </Text>
-                    </View>
-                  )}
+                  <View>
+                    <Text className="font-bold">{compactNumberFormat(balance)}</Text>
+                    <Text className="text-sm font-medium text-muted-foreground">
+                      ${compactNumberFormat(balanceUSD)}
+                    </Text>
+                  </View>
                   <DropdownMenu>
                     <DropdownMenuTrigger>
                       <TransactionCredenzaTrigger />
@@ -264,24 +171,23 @@ const WalletTokenTab = () => {
                 <Text className="hidden md:block text-sm">Asset</Text>
               </TableHead>
               <TableHead
-                className="hidden md:block h-0 md:h-full md:px-6 md:py-2"
-                style={{ width: columnWidths[1] }}
-              ></TableHead>
-              <TableHead
                 className="h-0 md:h-full md:px-6 md:py-2"
-                style={{ width: columnWidths[2] }}
+                style={{ width: columnWidths[1] }}
               >
-                <Text className="hidden md:block text-sm">Balance</Text>
+                <View className="flex-row items-center gap-1">
+                  <Text className="hidden md:block text-sm">Balance</Text>
+                  <TooltipPopover text="Balance without yield" />
+                </View>
               </TableHead>
               <TableHead
                 className="h-0 md:h-full md:px-6 md:py-2"
-                style={{ width: columnWidths[3] }}
+                style={{ width: columnWidths[2] }}
               >
                 <Text className="hidden md:block text-sm">Price</Text>
               </TableHead>
               <TableHead
                 className="h-0 md:h-full md:px-6 md:py-2"
-                style={{ width: columnWidths[4] }}
+                style={{ width: columnWidths[3] }}
               ></TableHead>
             </TableRow>
           </TableHeader>
@@ -324,90 +230,23 @@ const WalletTokenTab = () => {
                         </View>
                       </View>
                     </TableCell>
-                    <TableCell
-                      className="hidden md:block p-3 md:p-6"
-                      style={{ width: columnWidths[1] }}
-                    >
-                      {isSoUSDFuse(token.contractAddress) ? (
-                        <View className="bg-brand/20 rounded-full px-2 py-1 md:px-4 md:py-2 flex-row items-center gap-2 w-fit">
-                          <Ping />
-                          <Text className="text-brand font-semibold">Staking</Text>
-                        </View>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="p-3 md:p-6" style={{ width: columnWidths[2] }}>
-                      {isSoUSDFuse(token.contractAddress) ? (
-                        <View>
-                          <View className="flex-row items-center gap-1">
-                            <SavingCountUp
-                              balance={balance ?? 0}
-                              apy={totalAPY ?? 0}
-                              lastTimestamp={firstDepositTimestamp ?? 0}
-                              mode={SavingMode.TOTAL}
-                              suffix={token.contractTickerSymbol}
-                              styles={{
-                                wholeText: {
-                                  fontSize: fontSize(1),
-                                  fontWeight: 'bold',
-                                  fontFamily: 'MonaSans_700Bold',
-                                  color: '#ffffff',
-                                },
-                                decimalText: {
-                                  fontSize: fontSize(1),
-                                  fontWeight: 'bold',
-                                  fontFamily: 'MonaSans_700Bold',
-                                  color: '#ffffff',
-                                },
-                              }}
-                            />
-                          </View>
-                          <View className="flex-row items-center">
-                            <Text className="text-sm text-muted-foreground">$</Text>
-                            <SavingCountUp
-                              balance={balance ?? 0}
-                              apy={totalAPY ?? 0}
-                              lastTimestamp={firstDepositTimestamp ?? 0}
-                              classNames={{
-                                wrapper: 'text-muted-foreground',
-                                decimalSeparator: 'text-sm text-muted-foreground',
-                              }}
-                              styles={{
-                                wholeText: {
-                                  fontSize: fontSize(0.875),
-                                  fontWeight: 'normal',
-                                  fontFamily: 'MonaSans_400Regular',
-                                  color: '#A1A1A1',
-                                },
-                                decimalText: {
-                                  fontSize: fontSize(0.875),
-                                  fontWeight: 'normal',
-                                  fontFamily: 'MonaSans_400Regular',
-                                  color: '#A1A1A1',
-                                },
-                              }}
-                            />
-                          </View>
-                        </View>
-                      ) : (
-                        <View className="items-end md:items-start">
-                          <Text className="font-bold">
-                            {format(balance)} {isScreenMedium ? token.contractTickerSymbol : ''}
-                          </Text>
-                          <Text className="text-sm text-muted-foreground">
-                            ${format(balanceUSD)}
-                          </Text>
-                        </View>
-                      )}
+                    <TableCell className="p-3 md:p-6" style={{ width: columnWidths[1] }}>
+                      <View className="items-end md:items-start">
+                        <Text className="font-bold">
+                          {format(balance)} {isScreenMedium ? token.contractTickerSymbol : ''}
+                        </Text>
+                        <Text className="text-sm text-muted-foreground">${format(balanceUSD)}</Text>
+                      </View>
                     </TableCell>
                     <TableCell
                       className="hidden md:block md:p-6"
-                      style={{ width: columnWidths[3] }}
+                      style={{ width: columnWidths[2] }}
                     >
                       <View className="items-start">
                         <Text className="font-bold">${format(token.quoteRate || 0)}</Text>
                       </View>
                     </TableCell>
-                    <TableCell className="p-3 pl-0 md:p-6" style={{ width: columnWidths[4] }}>
+                    <TableCell className="p-3 pl-0 md:p-6" style={{ width: columnWidths[3] }}>
                       <View className="flex-row items-center justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger>
