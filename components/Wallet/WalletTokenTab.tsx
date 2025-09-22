@@ -36,6 +36,7 @@ import {
   isSoUSDFuse,
   isUSDCEthereum,
 } from '@/lib/utils';
+import TooltipPopover from '@/components/Tooltip';
 
 const WalletTokenTab = () => {
   const insets = useSafeAreaInsets();
@@ -173,7 +174,10 @@ const WalletTokenTab = () => {
                 className="h-0 md:h-full md:px-6 md:py-2"
                 style={{ width: columnWidths[1] }}
               >
-                <Text className="hidden md:block text-sm">Balance</Text>
+                <View className="flex-row items-center gap-1">
+                  <Text className="hidden md:block text-sm">Balance</Text>
+                  <TooltipPopover text="Balance without yield" />
+                </View>
               </TableHead>
               <TableHead
                 className="h-0 md:h-full md:px-6 md:py-2"
