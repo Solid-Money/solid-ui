@@ -74,14 +74,9 @@ export default function ProtectedLayout() {
     return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
   }
 
-  if (!users.length) {
-    // Show onboarding on native platforms (only if not seen before), register directly on web
-    if (Platform.OS === 'web') {
-      return <Redirect href={path.REGISTER} />;
-    } else {
-      // On native, show onboarding first time, then register
-      return <Redirect href={hasSeenOnboarding ? path.REGISTER : path.ONBOARDING} />;
-    }
+  if (!users.length && Platform.OS !== 'web') {
+    // On native, show onboarding first time, then register
+    return <Redirect href={hasSeenOnboarding ? path.REGISTER : path.ONBOARDING} />;
   }
 
   if (users.length && !user) {

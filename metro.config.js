@@ -23,7 +23,8 @@ config.resolver = {
         moduleName === '@hpke/core' ||
         moduleName === 'hpke-js' ||
         moduleName === 'ws' ||
-        moduleName === 'react-use-intercom')
+        moduleName === 'react-use-intercom' ||
+        moduleName === 'recharts')
     ) {
       // Return an empty module for these packages on native platforms
       return {

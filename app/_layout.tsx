@@ -236,6 +236,13 @@ export default Sentry.wrap(function RootLayout() {
   const AppContent = () => (
     <Stack>
       <Stack.Screen
+        name="index"
+        options={{
+          headerShown: false,
+          animation: 'none',
+        }}
+      />
+      <Stack.Screen
         name="(protected)"
         options={{
           headerShown: false,
