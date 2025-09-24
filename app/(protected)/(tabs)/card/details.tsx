@@ -2,8 +2,9 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, SafeAreaView, ScrollView, View } from 'react-native';
 
+import { AppleWalletWrapper } from '@/components/AddToAppleWallet/AppleWalletWrapper';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
@@ -31,7 +32,11 @@ export default function CardDetails() {
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
   const handleBackPress = () => {
-    router.canGoBack() ? router.back() : router.replace('/');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   };
 
   const handleFreezeToggle = async () => {
@@ -56,14 +61,14 @@ export default function CardDetails() {
   if (isLoading) return <Loading />;
 
   return (
-    <View className="flex-1 bg-background px-4">
-      {isScreenMedium && <Navbar />}
+    <SafeAreaView className="flex-1 bg-background text-foreground">
+      <View className="flex-1 bg-background px-4">
+        {isScreenMedium && <Navbar />}
 
-      <ScrollView className="flex-1" contentContainerClassName="flex-grow">
-        <View className="w-full max-w-lg mx-auto pt-8">
-          <CardHeader onBackPress={handleBackPress} />
+        <ScrollView className="flex-1" contentContainerClassName="pb-8">
+          <View className="w-full max-w-lg mx-auto pt-8">
+            <CardHeader onBackPress={handleBackPress} />
 
-          <View className="flex-1">
             <BalanceDisplay amount={availableAmount} />
             <CardImageSection isScreenMedium={isScreenMedium} isCardFrozen={isCardFrozen} />
             <CardActions
@@ -73,17 +78,34 @@ export default function CardDetails() {
               onCardDetails={() => setIsCardImageModalOpen(true)}
               onFreezeToggle={handleFreezeToggle}
             />
+
+            {/* Apple Wallet Integration */}
+            <View className="mb-6">
+              <AppleWalletWrapper
+                style={{ alignItems: 'center' }}
+                onSuccess={() => {
+                  Alert.alert(
+                    'Success',
+                    'Your Solid card has been added to Apple Wallet successfully!',
+                  );
+                }}
+                onError={_error => {
+                  Alert.alert('Error', 'Failed to add card to Apple Wallet. Please try again.');
+                }}
+              />
+            </View>
+
             <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
 
-      <CardImageModal
-        isOpen={isCardImageModalOpen}
-        onOpenChange={setIsCardImageModalOpen}
-        cardImageUrl={cardDetails?.card_image_url}
-      />
-    </View>
+        <CardImageModal
+          isOpen={isCardImageModalOpen}
+          onOpenChange={setIsCardImageModalOpen}
+          cardImageUrl={cardDetails?.card_image_url}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -137,7 +159,7 @@ function CardImageSection({ isScreenMedium, isCardFrozen }: CardImageSectionProp
         <Image
           source={require('@/assets/images/card_details.png')}
           alt="Solid Card"
-          style={{ width: '80%', aspectRatio: 414 / 693 }}
+          style={{ width: '60%', aspectRatio: 414 / 693 }}
           contentFit="contain"
         />
       )}
@@ -161,17 +183,19 @@ function CardActions({
   onFreezeToggle,
 }: CardActionsProps) {
   return (
-    <View className="flex-row justify-center space-x-12 items-center mb-8">
+    <View className="flex-row justify-center items-center mb-8">
       <CircularActionButton
         icon={require('@/assets/images/card_actions_fund.png')}
         label="Add funds"
         onPress={onAddFunds}
       />
-      <CircularActionButton
-        icon={require('@/assets/images/card_actions_details.png')}
-        label="Card details"
-        onPress={onCardDetails}
-      />
+      <View className="mx-6">
+        <CircularActionButton
+          icon={require('@/assets/images/card_actions_details.png')}
+          label="Card details"
+          onPress={onCardDetails}
+        />
+      </View>
       <CircularActionButton
         icon={require('@/assets/images/card_actions_freeze.png')}
         label={isCardFrozen ? 'Unfreeze' : 'Freeze'}
