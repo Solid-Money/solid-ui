@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, RotateCw } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
@@ -111,7 +112,7 @@ export default function CardTransactions() {
 
   if (isError) {
     return (
-      <View className="flex-1 bg-background items-center justify-center">
+      <SafeAreaView className="flex-1 bg-background items-center justify-center">
         <Text className="text-gray-400 mb-4">Failed to load transactions</Text>
         <Pressable
           onPress={() => refetch()}
@@ -120,14 +121,14 @@ export default function CardTransactions() {
           <RotateCw size={16} color="white" className="mr-2" />
           <Text className="text-white">Try Again</Text>
         </Pressable>
-      </View>
+      </SafeAreaView>
     );
   }
 
   const allTransactions = data?.pages.flatMap(page => page.data) ?? [];
 
   return (
-    <View className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background">
       {isScreenMedium && <Navbar />}
 
       <View className="flex-1 w-full max-w-[600px] mx-auto">
@@ -188,6 +189,6 @@ export default function CardTransactions() {
           </View>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
