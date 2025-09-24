@@ -102,7 +102,7 @@ export const TRACKING_EVENTS = {
   WELCOME_USER: 'welcome_user',
   FORGOT_ALL_USERS: 'forgot_all_users',
   DELETE_ACCOUNT: 'delete_account',
-  
+
   // Email Events
   EMAIL_ENTRY_STARTED: 'email_entry_started',
   EMAIL_SUBMITTED: 'email_submitted',
@@ -113,6 +113,12 @@ export const TRACKING_EVENTS = {
 
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',
+
+  // Apple Wallet Events
+  ADD_TO_APPLE_PAY_CLICK: 'add_to_apple_pay_click',
+  ADD_TO_APPLE_PAY_STARTED: 'add_to_apple_pay_started',
+  ADD_TO_APPLE_PAY_COMPLETED: 'add_to_apple_pay_completed',
+  ADD_TO_APPLE_PAY_FAILED: 'add_to_apple_pay_failed',
 } as const;
 
-export type TrackingEvent = typeof TRACKING_EVENTS[keyof typeof TRACKING_EVENTS];
+export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];
