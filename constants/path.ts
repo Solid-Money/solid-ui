@@ -31,6 +31,7 @@ type Path = {
   REFERRAL: Href;
   INVITE: Href;
   POINTS_LEADERBOARD: Href;
+  OVERVIEW: Href;
 };
 
 export const path: Path = {
@@ -63,4 +64,5 @@ export const path: Path = {
   REFERRAL: '/referral',
   INVITE: '/invite',
   POINTS_LEADERBOARD: '/points/leaderboard',
+  OVERVIEW: '/overview',
 };

@@ -1,10 +1,11 @@
-import { DimensionValue, ImageSourcePropType, Pressable, View } from 'react-native';
+import { DimensionValue, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { VaultBreakdown } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
+import { protocolsImages } from '@/constants/protocols';
 
 type Column = {
   width: DimensionValue;
@@ -21,6 +22,7 @@ type Column = {
 interface TableProps {
   data: VaultBreakdown[];
   setSelectedBreakdown: (index: number) => void;
+  className?: string;
 }
 
 interface HeaderProps {
@@ -32,10 +34,6 @@ interface BodyProps {
   data: VaultBreakdown[];
   setSelectedBreakdown: (index: number) => void;
 }
-
-const images: Record<string, ImageSourcePropType> = {
-  Pendle: require('@/assets/images/pendle.png'),
-};
 
 const columns: Column[] = [
   {
@@ -104,7 +102,7 @@ const Body = ({ data, columns, setSelectedBreakdown }: BodyProps) => {
                 <View className="flex-row items-center gap-2">
                   {c.key === 'type' && (
                     <Image
-                      source={images[d[c.key]]}
+                      source={protocolsImages[d[c.key]]}
                       style={{ width: 24, height: 24 }}
                       contentFit="contain"
                     />
@@ -114,7 +112,7 @@ const Body = ({ data, columns, setSelectedBreakdown }: BodyProps) => {
                   </Text>
                 </View>
               ) : (
-                <ChevronRight color="white" />
+                <ChevronRight color="white" className="ml-auto" />
               )}
             </View>
           ))}
@@ -124,9 +122,9 @@ const Body = ({ data, columns, setSelectedBreakdown }: BodyProps) => {
   );
 };
 
-const VaultBreakdownTable = ({ data, setSelectedBreakdown }: TableProps) => {
+const VaultBreakdownTable = ({ data, setSelectedBreakdown, className }: TableProps) => {
   return (
-    <View className="flex-1">
+    <View className={cn('flex-1', className)}>
       <Header columns={columns} />
       <Body data={data} columns={columns} setSelectedBreakdown={setSelectedBreakdown} />
     </View>
