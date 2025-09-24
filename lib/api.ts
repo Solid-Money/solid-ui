@@ -44,6 +44,7 @@ import {
   TokenPriceUsd,
   User,
 } from './types';
+import { AppleWalletProvisionRequest, AppleWalletProvisionResponse } from './types/apple-wallet';
 
 // Helper function to get platform-specific headers
 const getPlatformHeaders = () => {
@@ -844,6 +845,27 @@ export const getBankTransfers = async (): Promise<BridgeApiTransfer[]> => {
       credentials: 'include',
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const createAppleWalletProvision = async (
+  params: AppleWalletProvisionRequest,
+): Promise<AppleWalletProvisionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/v1/in-app-provisioning/apple`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(params),
+  });
 
   if (!response.ok) throw response;
 
