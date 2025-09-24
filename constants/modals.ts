@@ -134,3 +134,30 @@ export const SWAP_MODAL = {
     number: 1,
   },
 };
+
+// Card deposit modal (two-step flow)
+export const CARD_DEPOSIT_MODAL = {
+  CLOSE: {
+    name: 'close',
+    number: 0,
+  },
+  OPEN_OPTIONS: {
+    // Step 1: choose source
+    name: 'open_options',
+    number: 1,
+  },
+  OPEN_INTERNAL_FORM: {
+    // Step 2A: Wallet/Savings
+    name: 'open_internal_form',
+    number: 2,
+  },
+  OPEN_EXTERNAL_FORM: {
+    // Step 2B: External wallet connect + form
+    name: 'open_external_form',
+    number: 2,
+  },
+  OPEN_TRANSACTION_STATUS: {
+    name: 'open_transaction_status',
+    number: 3,
+  },
+};

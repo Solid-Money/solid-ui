@@ -5,15 +5,18 @@ import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
+import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { CardStatus } from '@/lib/types';
+import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 interface CardHeaderProps {
   onBackPress: () => void;
@@ -25,13 +28,18 @@ export default function CardDetails() {
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardImageModalOpen, setIsCardImageModalOpen] = useState(false);
   const router = useRouter();
+  const { setModal } = useCardDepositStore();
 
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
   const handleBackPress = () => {
-    router.canGoBack() ? router.back() : router.replace('/');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   };
 
   const handleFreezeToggle = async () => {
@@ -69,10 +77,13 @@ export default function CardDetails() {
             <CardActions
               isCardFrozen={isCardFrozen}
               isFreezing={isFreezing}
-              onAddFunds={() => router.push(path.CARD_DEPOSIT)}
+              onAddFunds={() => setModal(CARD_DEPOSIT_MODAL.OPEN_OPTIONS)}
               onCardDetails={() => setIsCardImageModalOpen(true)}
               onFreezeToggle={handleFreezeToggle}
             />
+            <View className="mt-4">
+              <DepositToCardModal trigger={<></>} />
+            </View>
             <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
           </View>
         </View>
