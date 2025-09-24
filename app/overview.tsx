@@ -1,23 +1,23 @@
-import { ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useState } from 'react';
+import { ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Text } from '@/components/ui/text';
-import { useVaultBreakdown } from '@/hooks/useAnalytics';
-import VaultBreakdownTable from '@/components/Landing/VaultBreakdownTable';
-import VaultBreakdownChart from '@/components/Landing/VaultBreakdownChart.web';
-import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
-import { useDimension } from '@/hooks/useDimension';
 import { FAQ } from '@/components/FAQ';
-import faqs from '@/constants/faqs';
 import Audits from '@/components/Landing/Audits';
 import HowItWorks from '@/components/Landing/HowItWorks';
-import { howItWorks } from '@/constants/how-it-works';
-import { VaultBreakdown } from '@/lib/types';
+import VaultBreakdownChart from '@/components/Landing/VaultBreakdownChart.web';
+import VaultBreakdownTable from '@/components/Landing/VaultBreakdownTable';
 import VaultInfo from '@/components/Landing/VaultInfo';
 import VaultStat from '@/components/Landing/VaultStat';
+import Navbar from '@/components/Navbar';
+import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import { Text } from '@/components/ui/text';
+import faqs from '@/constants/faqs';
+import { howItWorks } from '@/constants/how-it-works';
+import { useVaultBreakdown } from '@/hooks/useAnalytics';
+import { useDimension } from '@/hooks/useDimension';
+import { VaultBreakdown } from '@/lib/types';
 
 interface SoUSDSectionProps {
   vaultBreakdown: VaultBreakdown[];
@@ -29,9 +29,9 @@ interface VaultBreakdownSectionProps {
 
 const SoUSDSection = ({ vaultBreakdown }: SoUSDSectionProps) => {
   return (
-    <View className="gap-12">
-      <View className="flex-row justify-between items-center gap-6">
-        <View className="flex-1 gap-10">
+    <View className="gap-6 md:gap-12">
+      <View className="md:flex-row justify-between md:items-center gap-6">
+        <View className="flex-1 gap-6 md:gap-10">
           <View className="gap-2">
             <Text className="text-2xl md:text-4.5xl font-semibold">soUSD vault</Text>
             <Text className="text-lg text-muted-foreground font-medium">
@@ -55,7 +55,7 @@ const HowSection = () => {
   return (
     <View className="gap-6">
       <Text className="text-xl md:text-3xl font-semibold">How it works?</Text>
-      <View className="flex-row justify-between gap-10">
+      <View className="md:flex-row justify-between gap-4 md:gap-10">
         {howItWorks.map((how, index) => (
           <HowItWorks key={index} index={index + 1} description={how} />
         ))}
@@ -72,7 +72,7 @@ const VaultBreakdownSection = ({ vaultBreakdown }: VaultBreakdownSectionProps) =
   return (
     <View className="gap-6">
       <Text className="text-xl md:text-3xl font-semibold">Vault breakdown</Text>
-      <View className="flex-row justify-between min-h-80 bg-card rounded-twice p-10">
+      <View className="md:flex-row md:justify-between md:min-h-80 bg-card rounded-twice p-5 md:p-10">
         <VaultBreakdownTable
           data={vaultBreakdown}
           setSelectedBreakdown={setSelectedBreakdown}
@@ -94,7 +94,7 @@ const AuditSection = () => {
           security.
         </Text>
       </View>
-      <View className="flex-row justify-between bg-card rounded-twice px-10 py-8">
+      <View className="md:flex-row justify-between bg-card rounded-twice p-5 md:px-10 md:py-8">
         <Audits className="max-w-2xl" />
       </View>
     </View>
@@ -105,7 +105,7 @@ const FAQSection = () => {
   return (
     <View className="gap-6">
       <Text className="text-xl md:text-3xl font-semibold">Frequently asked questions</Text>
-      <View className="bg-card rounded-twice p-6">
+      <View className="bg-card rounded-twice p-2 md:p-6">
         <FAQ faqs={faqs} />
       </View>
     </View>

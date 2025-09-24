@@ -99,7 +99,7 @@ const Address = () => {
 
 const VaultInfo = ({ vaultBreakdown, className }: VaultInfoProps) => {
   return (
-    <View className={cn('flex-row justify-between items-center gap-2', className)}>
+    <View className={cn('md:flex-row justify-between md:items-center gap-6 md:gap-2', className)}>
       <Asset />
       <Protocols vaultBreakdown={vaultBreakdown} />
       <Chain />

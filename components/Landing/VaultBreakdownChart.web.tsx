@@ -1,3 +1,4 @@
+import { View } from 'react-native';
 import { Cell, Label, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 import { VaultBreakdown } from '@/lib/types';
@@ -66,35 +67,37 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
   const totalAPY = data.reduce((acc, item) => acc + item.effectivePositionAPY, 0);
 
   return (
-    <ResponsiveContainer width={'30%'} height="100%">
-      <PieChart>
-        <Pie
-          data={chartData}
-          cx="50%"
-          cy="50%"
-          innerRadius={100}
-          outerRadius={112}
-          paddingAngle={2}
-          cornerRadius={16}
-          dataKey="value"
-          labelLine={false}
-          stroke="none"
-        >
-          {chartData.map((entry, index) => (
-            <Cell
-              key={`cell-${index}`}
-              fill={entry.color}
-              opacity={selectedBreakdown === -1 || selectedBreakdown === index ? 1 : 0.5}
-            />
-          ))}
-          <Label
-            width={100}
-            position="center"
-            content={<CustomLabel value1={'7D APY'} value2={`${formatNumber(totalAPY, 2)}%`} />}
-          ></Label>
-        </Pie>
-      </PieChart>
-    </ResponsiveContainer>
+    <View className="w-full md:w-[30%] h-64 md:h-auto">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            innerRadius={100}
+            outerRadius={112}
+            paddingAngle={2}
+            cornerRadius={16}
+            dataKey="value"
+            labelLine={false}
+            stroke="none"
+          >
+            {chartData.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={entry.color}
+                opacity={selectedBreakdown === -1 || selectedBreakdown === index ? 1 : 0.5}
+              />
+            ))}
+            <Label
+              width={100}
+              position="center"
+              content={<CustomLabel value1={'7D APY'} value2={`${formatNumber(totalAPY, 2)}%`} />}
+            ></Label>
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+    </View>
   );
 };
 

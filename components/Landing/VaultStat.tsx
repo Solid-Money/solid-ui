@@ -17,7 +17,7 @@ const VaultStat = () => {
   const { exchangeRate } = usePreviewDeposit(soUSD);
 
   return (
-    <View className="flex-row justify-between bg-card rounded-twice p-5 md:p-10 gap-10">
+    <View className="md:flex-row justify-between bg-card rounded-twice p-5 md:p-10 gap-6 md:gap-10">
       <View className="gap-2">
         <View className="flex-row items-center gap-1">
           <Text className="text-lg text-muted-foreground font-medium">Pool APY</Text>
