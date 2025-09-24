@@ -122,7 +122,7 @@ function CardImageSection({ isScreenMedium, isCardFrozen }: CardImageSectionProp
     ? require('@/assets/images/card_frozen.png')
     : require('@/assets/images/activate_card_steps_desktop.png');
 
-  const desktopImageAspectRatio = isCardFrozen ? 1063 / 656 : 512 / 306;
+  const desktopImageAspectRatio = isCardFrozen ? 1063 / 656 : 1024 / 612;
 
   return (
     <View className="items-center my-12">
