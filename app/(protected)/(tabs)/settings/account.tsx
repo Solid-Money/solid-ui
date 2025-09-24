@@ -48,6 +48,12 @@ export default function Account() {
       icon: <EmailIcon color="#ffffff" />,
       link: '/settings/email',
     },
+    {
+      title: 'Card',
+      description: 'Card details',
+      icon: <EmailIcon color="#ffffff" />,
+      link: '/card',
+    },
   ];
 
   const handleDeletePress = () => {
