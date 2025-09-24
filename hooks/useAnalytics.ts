@@ -14,6 +14,7 @@ import {
   fetchTokenTransfer,
   fetchTotalAPY,
   fetchTVL,
+  fetchVaultBreakdown,
   getBankTransfers,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
@@ -401,5 +402,12 @@ export const useTVL = () => {
   return useQuery({
     queryKey: [ANALYTICS, 'tvl'],
     queryFn: fetchTVL,
+  });
+};
+
+export const useVaultBreakdown = () => {
+  return useQuery({
+    queryKey: [ANALYTICS, 'vaultBreakdown'],
+    queryFn: fetchVaultBreakdown,
   });
 };
