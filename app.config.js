@@ -17,6 +17,9 @@ export default {
         ITSAppUsesNonExemptEncryption: false,
       },
       associatedDomains: ['webcredentials:solid.xyz', 'applinks:solid.xyz'],
+      entitlements: {
+        'com.apple.developer.payment-pass-provisioning': true,
+      },
       appleTeamId: 'QC9255BHMY',
       splash: {
         image: './assets/splash/splash-icon.png',
