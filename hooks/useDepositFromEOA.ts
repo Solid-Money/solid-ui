@@ -147,7 +147,7 @@ const useDepositFromEOA = (): DepositResult => {
       value: fee,
     });
 
-    setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2mins)' });
+    setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2 min)' });
 
     await waitForTransactionReceipt(publicClient(mainnet.id), {
       hash: transaction?.transactionHash as `0x${string}`,
@@ -380,7 +380,7 @@ const useDepositFromEOA = (): DepositResult => {
         });
 
         if (isSponsor) {
-          setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2mins)' });
+          setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2 min)' });
           Sentry.addBreadcrumb({
             message: 'Creating sponsored deposit on Ethereum',
             category: 'deposit',
@@ -404,7 +404,7 @@ const useDepositFromEOA = (): DepositResult => {
         }
       } else {
         if (isSponsor) {
-          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 2mins)' });
+          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 2 min)' });
 
           // Track bridge deposit start
           track(TRACKING_EVENTS.DEPOSIT_BRIDGE_STARTED, {
@@ -489,7 +489,7 @@ const useDepositFromEOA = (): DepositResult => {
           });
 
           const bridgeTxHash = await sendTransaction(srcChainId, quote.transactionRequest);
-          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 15mins)' });
+          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 15 min)' });
 
           Sentry.addBreadcrumb({
             message: 'Recording bridge transaction',
@@ -515,7 +515,7 @@ const useDepositFromEOA = (): DepositResult => {
 
           const bridgeStatus = await waitForBridgeTransactionReceipt(bridgeTxHash);
 
-          setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2mins)' });
+          setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2 min)' });
           transaction = await depositOnEthereum(bridgeStatus.receiving.amount, signatureData, deadline, user);
         }
       }
