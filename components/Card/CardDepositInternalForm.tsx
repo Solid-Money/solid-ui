@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Image, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -10,7 +10,6 @@ import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useSend from '@/hooks/useSend';
 import useUser from '@/hooks/useUser';
@@ -25,9 +24,9 @@ type FormData = { amount: string; from: 'wallet' | 'savings' };
 
 export default function CardDepositInternalForm() {
   const { user } = useUser();
-  const { setModal, setTransaction } = useCardDepositStore();
+  const { setTransaction } = useCardDepositStore();
   const { data: cardDetails } = useCardDetails();
-  const [from, setFrom] = useState<'wallet' | 'savings'>('wallet');
+  const [from] = useState<'wallet' | 'savings'>('wallet');
 
   // For MVP we use the same USDC vault balance for both entries
   const { data: ethereumBalance, isLoading: isBalanceLoading } = useUsdcVaultBalance(
@@ -84,7 +83,7 @@ export default function CardDepositInternalForm() {
         },
       });
       reset();
-      setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+
       setTimeout(() => {
         resetSendStatus();
       }, 2000);

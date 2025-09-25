@@ -58,7 +58,7 @@ export default function AddToWalletModal({ trigger, isOpen, onOpenChange }: AddT
               <Text className="text-white text-lg font-normal mb-4">Copy your card info</Text>
               <View className="pl-2">
                 <Text className="text-gray-400 text-base leading-6 mb-2">
-                  • On your Card tab, tap "Show" on the card
+                  • On your Card tab, tap &quot;Show&quot; on the card
                 </Text>
                 <Text className="text-gray-400 text-base leading-6">
                   • Copy your credit card details displayed: card number, expiration date and CVV
@@ -102,7 +102,7 @@ export default function AddToWalletModal({ trigger, isOpen, onOpenChange }: AddT
               <Text className="text-white text-lg font-normal mb-4">Copy your card info</Text>
               <View className="pl-2">
                 <Text className="text-gray-400 text-base leading-6 mb-2">
-                  • On your Card tab, tap "Show" on the card
+                  • On your Card tab, tap &quot;Show&quot; on the card
                 </Text>
                 <Text className="text-gray-400 text-base leading-6">
                   • Copy your credit card details displayed: card number, expiration date and CVV
@@ -126,8 +126,8 @@ export default function AddToWalletModal({ trigger, isOpen, onOpenChange }: AddT
                   • Choose New credit or debit card
                 </Text>
                 <Text className="text-gray-400 text-base leading-6 mb-2">
-                  • Scan your card or choose "Or enter details manually" and paste your details when
-                  prompted
+                  • Scan your card or choose &quot;Or enter details manually&quot; and paste your
+                  details when prompted
                 </Text>
                 <Text className="text-gray-400 text-base leading-6">
                   • Complete the rest of the Wallet app setup
