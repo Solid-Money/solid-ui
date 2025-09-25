@@ -11,33 +11,37 @@ import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import ERC20_ABI from '@/lib/abis/ERC20';
-import { ADDRESSES } from '@/lib/config';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { getChain } from '@/lib/thirdweb';
 import { Status } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { Wallet as WalletIcon } from 'lucide-react-native';
-import { useActiveAccount } from 'thirdweb/react';
+import { useActiveAccount, useSwitchActiveWalletChain } from 'thirdweb/react';
+import { arbitrum } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
 type FormData = { amount: string };
 
 export default function CardDepositExternalForm() {
   const account = useActiveAccount();
+  const switchChain = useSwitchActiveWalletChain();
   const { setTransaction } = useCardDepositStore();
   const { data: cardDetails } = useCardDetails();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
 
   const eoaAddress = account?.address as Address | undefined;
+  const arbitrumUsdcAddress = BRIDGE_TOKENS[arbitrum.id]?.tokens?.USDC?.address as Address;
   const { data: eoaUsdcBalance, isLoading: isEOABalanceLoading } = useReadContract({
     abi: ERC20_ABI,
-    address: ADDRESSES.ethereum.usdc,
+    address: arbitrumUsdcAddress,
     functionName: 'balanceOf',
     args: [eoaAddress as Address],
-    chainId: 1,
-    query: { enabled: !!eoaAddress },
+    chainId: arbitrum.id,
+    query: { enabled: !!eoaAddress && !!arbitrumUsdcAddress },
   });
 
   const schema = useMemo(() => {
@@ -68,17 +72,75 @@ export default function CardDepositExternalForm() {
   };
 
   const onSubmit = async (data: any) => {
+    const arbitrumFundingAddress = cardDetails?.additional_funding_instructions?.find(
+      instruction => instruction.chain === 'arbitrum',
+    );
+
     try {
-      if (!cardDetails?.funding_instructions?.address || !account) return;
+      if (!arbitrumFundingAddress) {
+        Toast.show({
+          type: 'error',
+          text1: 'Arbitrum deposits not available',
+          text2: 'This card does not support Arbitrum deposits',
+        });
+        return;
+      }
+
+      if (!account) {
+        Toast.show({
+          type: 'error',
+          text1: 'Wallet not connected',
+          text2: 'Please connect your wallet to continue',
+        });
+        return;
+      }
+
+      if (!arbitrumUsdcAddress) {
+        Toast.show({
+          type: 'error',
+          text1: 'Configuration error',
+          text2: 'Arbitrum USDC address not found',
+        });
+        return;
+      }
 
       setSendStatus(Status.PENDING);
-      const fundingAddress = cardDetails.funding_instructions.address as Address;
+      const fundingAddress = arbitrumFundingAddress.address as Address;
       const amountWei = parseUnits(data.amount, 6);
+
+      // Switch to Arbitrum network first
+      Toast.show({
+        type: 'info',
+        text1: 'Switching to Arbitrum',
+        text2: 'Please approve the network switch in your wallet',
+      });
+
+      try {
+        const arbitrumChain = getChain(arbitrum.id);
+        if (arbitrumChain) {
+          await switchChain(arbitrumChain);
+        }
+      } catch (chainError) {
+        console.error('Failed to switch to Arbitrum:', chainError);
+        Toast.show({
+          type: 'error',
+          text1: 'Network switch failed',
+          text2: 'Please manually switch your wallet to Arbitrum',
+        });
+        setSendStatus(Status.ERROR);
+        return;
+      }
+
+      Toast.show({
+        type: 'info',
+        text1: 'Processing transaction',
+        text2: 'Please approve the USDC transfer in your wallet',
+      });
 
       // Send USDC transfer transaction from external wallet directly to card funding address
       const tx = await account.sendTransaction({
-        chainId: 1, // Ethereum mainnet
-        to: ADDRESSES.ethereum.usdc,
+        chainId: arbitrum.id, // Arbitrum
+        to: arbitrumUsdcAddress,
         data: encodeFunctionData({
           abi: ERC20_ABI,
           functionName: 'transfer',
@@ -95,8 +157,8 @@ export default function CardDepositExternalForm() {
         text1: 'Card deposit initiated',
         text2: `${data.amount} USDC sent to card`,
         props: {
-          link: `https://etherscan.io/tx/${tx.transactionHash}`,
-          linkText: 'View on Etherscan',
+          link: `https://arbiscan.io/tx/${tx.transactionHash}`,
+          linkText: 'View on Arbiscan',
           image: getTokenIcon({ tokenSymbol: 'USDC' }),
         },
       });
@@ -123,7 +185,7 @@ export default function CardDepositExternalForm() {
     <View className="gap-6 flex-1">
       <View className="gap-2">
         <Text className="opacity-50 font-medium">From wallet</Text>
-        <ConnectedWalletDropdown chainId={1} />
+        <ConnectedWalletDropdown chainId={arbitrum.id} />
       </View>
 
       <View className="gap-2">
@@ -158,6 +220,9 @@ export default function CardDepositExternalForm() {
             <Text className="font-semibold text-white text-lg">USDC</Text>
           </View>
         </View>
+        {formState.errors.amount && (
+          <Text className="text-red-500 text-sm mt-1">{formState.errors.amount.message}</Text>
+        )}
         <View className="flex-row items-center gap-2">
           <WalletIcon color="#A1A1A1" size={16} />
           {isEOABalanceLoading ? (
@@ -182,9 +247,50 @@ export default function CardDepositExternalForm() {
         variant="brand"
         className="rounded-2xl h-12"
         disabled={disabled}
-        onPress={handleSubmit(onSubmit)}
+        onPress={() => {
+          if (!account) {
+            Toast.show({
+              type: 'error',
+              text1: 'Wallet not connected',
+              text2: 'Please connect your wallet to Arbitrum',
+            });
+            return;
+          }
+
+          if (!watchedAmount || watchedAmount === '') {
+            Toast.show({
+              type: 'error',
+              text1: 'Enter amount',
+              text2: 'Please enter a deposit amount',
+            });
+            return;
+          }
+
+          if (!formState.isValid) {
+            const errorMessage = formState.errors.amount?.message;
+            Toast.show({
+              type: 'error',
+              text1: 'Invalid amount',
+              text2: errorMessage || 'Please check your deposit amount',
+            });
+            return;
+          }
+
+          if (sendStatus === Status.PENDING) {
+            Toast.show({
+              type: 'info',
+              text1: 'Transaction in progress',
+              text2: 'Please wait for the current transaction to complete',
+            });
+            return;
+          }
+
+          handleSubmit(onSubmit)();
+        }}
       >
-        <Text className="font-semibold text-black text-lg">Deposit</Text>
+        <Text className="font-semibold text-black text-lg">
+          {sendStatus === Status.PENDING ? 'Processing...' : 'Deposit'}
+        </Text>
       </Button>
     </View>
   );
