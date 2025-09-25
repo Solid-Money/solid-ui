@@ -16,14 +16,19 @@ import { eclipseAddress } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Text } from './ui/text';
 
-const ConnectedWalletDropdown = () => {
+type ConnectedWalletDropdownProps = {
+  chainId?: number;
+};
+
+const ConnectedWalletDropdown = ({ chainId }: ConnectedWalletDropdownProps = {}) => {
   const wallet = useActiveWallet();
   const activeAccount = useActiveAccount();
   const { disconnect } = useDisconnect();
   const [isOpen, setIsOpen] = useState(false);
   const { srcChainId } = useDepositStore();
   const address = activeAccount?.address;
-  const networkName = BRIDGE_TOKENS[srcChainId].name;
+  const effectiveChainId = chainId || srcChainId;
+  const networkName = BRIDGE_TOKENS[effectiveChainId].name;
 
   const rotation = useSharedValue(0);
   const contentHeight = useSharedValue(0);

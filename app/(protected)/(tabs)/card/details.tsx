@@ -1,10 +1,12 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Wallet } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 
+import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
+import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import ResponsiveModal from '@/components/ResponsiveModal';
@@ -24,6 +26,7 @@ export default function CardDetails() {
   const { isScreenMedium } = useDimension();
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardImageModalOpen, setIsCardImageModalOpen] = useState(false);
+  const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const router = useRouter();
 
   const availableBalance = cardDetails?.balances.available;
@@ -31,7 +34,11 @@ export default function CardDetails() {
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
   const handleBackPress = () => {
-    router.canGoBack() ? router.back() : router.replace('/');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   };
 
   const handleFreezeToggle = async () => {
@@ -69,10 +76,10 @@ export default function CardDetails() {
             <CardActions
               isCardFrozen={isCardFrozen}
               isFreezing={isFreezing}
-              onAddFunds={() => router.push(path.CARD_DEPOSIT)}
               onCardDetails={() => setIsCardImageModalOpen(true)}
               onFreezeToggle={handleFreezeToggle}
             />
+            <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
             <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
           </View>
         </View>
@@ -82,6 +89,12 @@ export default function CardDetails() {
         isOpen={isCardImageModalOpen}
         onOpenChange={setIsCardImageModalOpen}
         cardImageUrl={cardDetails?.card_image_url}
+      />
+
+      <AddToWalletModal
+        isOpen={isAddToWalletModalOpen}
+        onOpenChange={setIsAddToWalletModalOpen}
+        trigger={<></>}
       />
     </View>
   );
@@ -122,7 +135,7 @@ function CardImageSection({ isScreenMedium, isCardFrozen }: CardImageSectionProp
     ? require('@/assets/images/card_frozen.png')
     : require('@/assets/images/activate_card_steps_desktop.png');
 
-  const desktopImageAspectRatio = isCardFrozen ? 1084 / 668 : 512 / 306;
+  const desktopImageAspectRatio = isCardFrozen ? 1063 / 656 : 1024 / 612;
 
   return (
     <View className="items-center my-12">
@@ -148,7 +161,6 @@ function CardImageSection({ isScreenMedium, isCardFrozen }: CardImageSectionProp
 interface CardActionsProps {
   isCardFrozen: boolean;
   isFreezing: boolean;
-  onAddFunds: () => void;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
 }
@@ -156,16 +168,19 @@ interface CardActionsProps {
 function CardActions({
   isCardFrozen,
   isFreezing,
-  onAddFunds,
   onCardDetails,
   onFreezeToggle,
 }: CardActionsProps) {
   return (
-    <View className="flex-row justify-center space-x-12 items-center mb-8">
-      <CircularActionButton
-        icon={require('@/assets/images/card_actions_fund.png')}
-        label="Add funds"
-        onPress={onAddFunds}
+    <View className="flex-row justify-center space-x-8 items-center mb-8">
+      <DepositToCardModal
+        trigger={
+          <CircularActionButton
+            icon={require('@/assets/images/card_actions_fund.png')}
+            label="Add funds"
+            onPress={() => {}}
+          />
+        }
       />
       <CircularActionButton
         icon={require('@/assets/images/card_actions_details.png')}
@@ -179,6 +194,22 @@ function CardActions({
         isLoading={isFreezing}
       />
     </View>
+  );
+}
+
+interface AddToWalletButtonProps {
+  onPress: () => void;
+}
+
+function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="border border-white rounded-xl flex-row items-center justify-center p-4 mb-6 web:hover:opacity-80"
+    >
+      <Wallet size={20} color="#FFFFFF" />
+      <Text className="text-white text-base font-semibold ml-2">Add to Wallet</Text>
+    </Pressable>
   );
 }
 
