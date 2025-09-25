@@ -121,7 +121,7 @@ export default function CardDepositExternalForm() {
   const disabled = sendStatus === Status.PENDING || !formState.isValid || !watchedAmount;
 
   return (
-    <View className="gap-6 flex-1 justify-between">
+    <View className="gap-6 flex-1">
       <View className="gap-2">
         <Text className="opacity-50 font-medium">From wallet</Text>
         <ConnectedWalletDropdown chainId={1} />
@@ -176,6 +176,8 @@ export default function CardDepositExternalForm() {
           />
         </View>
       </View>
+
+      <View className="flex-1" />
 
       <Button
         variant="brand"
