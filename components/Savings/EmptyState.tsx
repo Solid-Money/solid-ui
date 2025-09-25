@@ -3,19 +3,17 @@ import React from 'react';
 import { FlatList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import CountUp from '@/components/CountUp';
 import { DepositOptionModal } from '@/components/DepositOption';
 import { FAQs } from '@/components/FAQ';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import PoolBanners from '@/components/Savings/PoolBanners';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useDimension } from '@/hooks/useDimension';
-import { fontSize } from '@/lib/utils';
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
-import PoolBanners from '@/components/Savings/PoolBanners';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
@@ -28,7 +26,8 @@ export default function SavingsEmptyState() {
         {isScreenMedium ? (
           <View className="md:flex-row justify-between md:items-center gap-y-4">
             <View className="flex-row items-center">
-              <Text className="text-5xl font-semibold">$</Text>
+              <Text className="text-5xl font-semibold">$0</Text>
+              {/*
               <CountUp
                 count={0}
                 isTrailingZero={false}
@@ -52,6 +51,8 @@ export default function SavingsEmptyState() {
                   },
                 }}
               />
+              */}
+
               {/*}
               <SavingCountUp
                 balance={0}

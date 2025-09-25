@@ -698,3 +698,15 @@ export interface UpdateActivityEvent {
   txHash?: string;
   metadata?: ActivityEventMetadata;
 }
+
+export interface VaultBreakdown {
+  name: string;
+  type: string;
+  expiryDate: string;
+  amountUSD: number;
+  allocation: number;
+  effectivePositionAPY: number;
+  positionMaxAPY: number;
+  risk: string;
+  chain: string;
+}
