@@ -224,6 +224,12 @@ interface FundingInstructions {
   memo: string;
 }
 
+interface AdditionalFundingInstructions {
+  currency: string;
+  chain: string;
+  address: string;
+}
+
 interface Freeze {
   initiator: FreezeInitiator;
   card_account_id: string;
@@ -246,6 +252,7 @@ export interface CardResponse {
   freezes: Freeze[];
   crypto_account: CryptoAccount;
   funding_instructions: FundingInstructions;
+  additional_funding_instructions?: AdditionalFundingInstructions[];
 }
 
 export interface CardStatusResponse {
