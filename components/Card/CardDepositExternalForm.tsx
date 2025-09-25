@@ -15,11 +15,12 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { getChain } from '@/lib/thirdweb';
 import { Status } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { Wallet as WalletIcon } from 'lucide-react-native';
-import { useActiveAccount } from 'thirdweb/react';
+import { useActiveAccount, useSwitchActiveWalletChain } from 'thirdweb/react';
 import { arbitrum } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
@@ -27,6 +28,7 @@ type FormData = { amount: string };
 
 export default function CardDepositExternalForm() {
   const account = useActiveAccount();
+  const switchChain = useSwitchActiveWalletChain();
   const { setTransaction } = useCardDepositStore();
   const { data: cardDetails } = useCardDetails();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
@@ -105,6 +107,35 @@ export default function CardDepositExternalForm() {
       setSendStatus(Status.PENDING);
       const fundingAddress = arbitrumFundingAddress.address as Address;
       const amountWei = parseUnits(data.amount, 6);
+
+      // Switch to Arbitrum network first
+      Toast.show({
+        type: 'info',
+        text1: 'Switching to Arbitrum',
+        text2: 'Please approve the network switch in your wallet',
+      });
+
+      try {
+        const arbitrumChain = getChain(arbitrum.id);
+        if (arbitrumChain) {
+          await switchChain(arbitrumChain);
+        }
+      } catch (chainError) {
+        console.error('Failed to switch to Arbitrum:', chainError);
+        Toast.show({
+          type: 'error',
+          text1: 'Network switch failed',
+          text2: 'Please manually switch your wallet to Arbitrum',
+        });
+        setSendStatus(Status.ERROR);
+        return;
+      }
+
+      Toast.show({
+        type: 'info',
+        text1: 'Processing transaction',
+        text2: 'Please approve the USDC transfer in your wallet',
+      });
 
       // Send USDC transfer transaction from external wallet directly to card funding address
       const tx = await account.sendTransaction({
@@ -217,7 +248,6 @@ export default function CardDepositExternalForm() {
         className="rounded-2xl h-12"
         disabled={disabled}
         onPress={() => {
-          // Show specific error messages for why button might be disabled
           if (!account) {
             Toast.show({
               type: 'error',
