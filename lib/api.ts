@@ -11,6 +11,7 @@ import {
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
+  EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL,
   EXPO_PUBLIC_LIFI_API_URL,
 } from './config';
 import {
@@ -43,6 +44,7 @@ import {
   ToCurrency,
   TokenPriceUsd,
   User,
+  VaultBreakdown,
 } from './types';
 
 // Helper function to get platform-specific headers
@@ -990,4 +992,11 @@ export const updateActivityEvent = async (
   if (!response.ok) throw response;
 
   return response.json();
+};
+
+export const fetchVaultBreakdown = async () => {
+  const response = await axios.get<VaultBreakdown[]>(
+    `${EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL}/vault-manager/v1/tokens/vault-breakdown`,
+  );
+  return response.data;
 };

@@ -75,9 +75,9 @@ export default function ProtectedLayout() {
   }
 
   if (!users.length) {
-    // Show onboarding on native platforms (only if not seen before), register directly on web
+    // Show onboarding on native platforms (only if not seen before), and overview on web
     if (Platform.OS === 'web') {
-      return <Redirect href={path.REGISTER} />;
+      return <Redirect href={path.OVERVIEW} />;
     } else {
       // On native, show onboarding first time, then register
       return <Redirect href={hasSeenOnboarding ? path.REGISTER : path.ONBOARDING} />;

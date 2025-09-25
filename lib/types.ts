@@ -224,6 +224,12 @@ interface FundingInstructions {
   memo: string;
 }
 
+interface AdditionalFundingInstructions {
+  currency: string;
+  chain: string;
+  address: string;
+}
+
 interface Freeze {
   initiator: FreezeInitiator;
   card_account_id: string;
@@ -246,6 +252,7 @@ export interface CardResponse {
   freezes: Freeze[];
   crypto_account: CryptoAccount;
   funding_instructions: FundingInstructions;
+  additional_funding_instructions?: AdditionalFundingInstructions[];
 }
 
 export interface CardStatusResponse {
@@ -697,4 +704,16 @@ export interface UpdateActivityEvent {
   status?: TransactionStatus;
   txHash?: string;
   metadata?: ActivityEventMetadata;
+}
+
+export interface VaultBreakdown {
+  name: string;
+  type: string;
+  expiryDate: string;
+  amountUSD: number;
+  allocation: number;
+  effectivePositionAPY: number;
+  positionMaxAPY: number;
+  risk: string;
+  chain: string;
 }

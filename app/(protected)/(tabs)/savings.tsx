@@ -207,8 +207,7 @@ export default function Savings() {
 
             <View className="p-6 md:p-7">
               <View className="flex-row items-center gap-1">
-                <Text className="md:text-lg text-primary/50">P&L</Text>
-                <TooltipPopover text="Profit and loss" />
+                <Text className="md:text-lg text-primary/50">All time yield</Text>
               </View>
               <Text className="text-2xl font-semibold">
                 {isBalanceLoading ? (

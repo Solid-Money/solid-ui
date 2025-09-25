@@ -8,15 +8,18 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { NavMenu } from './NavMenu';
+import useUser from '@/hooks/useUser';
+import RegisterButtons from './RegisterButtons';
 
 const Navbar = () => {
   const { isScreenMedium } = useDimension();
+  const { user } = useUser();
 
   return (
     <SafeAreaView className="sticky top-0 z-50 bg-background/40 backdrop-blur-lg border-b border-border/40">
       <View className="flex-row justify-between items-center p-4 md:py-6 w-full max-w-7xl mx-auto">
         <Link
-          href={path.HOME}
+          href={path.OVERVIEW}
           className="flex flex-row items-center gap-2"
           onPress={() => {
             track(TRACKING_EVENTS.NAVBAR_LOGO_CLICKED, {
@@ -38,8 +41,9 @@ const Navbar = () => {
             className="hidden md:block"
           />
         </Link>
-        {isScreenMedium && <NavMenu />}
-        {Platform.OS === 'web' && <AccountCenterModal />}
+        {user && isScreenMedium && <NavMenu />}
+        {user && Platform.OS === 'web' && <AccountCenterModal />}
+        {!user && <RegisterButtons />}
       </View>
     </SafeAreaView>
   );
