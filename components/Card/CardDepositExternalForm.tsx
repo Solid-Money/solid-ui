@@ -11,7 +11,6 @@ import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { ADDRESSES } from '@/lib/config';
@@ -27,7 +26,7 @@ type FormData = { amount: string };
 
 export default function CardDepositExternalForm() {
   const account = useActiveAccount();
-  const { setModal, setTransaction } = useCardDepositStore();
+  const { setTransaction } = useCardDepositStore();
   const { data: cardDetails } = useCardDetails();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
 
@@ -103,7 +102,7 @@ export default function CardDepositExternalForm() {
       });
 
       reset();
-      setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+
       setTimeout(() => {
         resetSendStatus();
       }, 2000);
