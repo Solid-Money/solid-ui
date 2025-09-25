@@ -125,7 +125,7 @@ const ResponsiveModal = ({
         <DialogContent className={cn('p-6 md:p-8 md:max-w-md', contentClassName)}>
           <Animated.View style={dialogAnimatedStyle} className="overflow-hidden">
             <View
-              className={cn('gap-8', containerClassName)}
+              className={cn('gap-8 flex-1', containerClassName)}
               onLayout={event => {
                 dialogHeight.value = event.nativeEvent.layout.height;
               }}
@@ -169,6 +169,7 @@ const ResponsiveModal = ({
                     : FadeOutRight.duration(ANIMATION_DURATION)
                 }
                 key={contentKey}
+                className="flex-1"
               >
                 {children}
               </Animated.View>
@@ -206,7 +207,7 @@ const ResponsiveModal = ({
             paddingTop: 12,
           }}
         >
-          <View className={cn('gap-6', containerClassName)}>
+          <View className={cn('gap-6 flex-1', containerClassName)}>
             {title && (
               <View
                 className={cn(
@@ -230,7 +231,9 @@ const ResponsiveModal = ({
                 {showBackButton && <View className="w-10" />}
               </View>
             )}
-            <View key={contentKey}>{children}</View>
+            <View key={contentKey} className="flex-1">
+              {children}
+            </View>
           </View>
         </BottomSheetView>
       </BottomSheetModal>
