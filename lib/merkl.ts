@@ -3,40 +3,50 @@ import { SmartAccountClient } from 'permissionless'
 import { Chain, encodeFunctionData } from 'viem'
 
 import MerklDistributorABI from '@/lib/abis/MerklDistributor'
-import { ADDRESSES } from '@/lib/config'
+import { ADDRESSES, EXPO_PUBLIC_MERKL_CAMPAIGN_ID } from '@/lib/config'
 import { executeTransactions } from '@/lib/execute'
 
 export const getMerklRewards = async (address: string, chainId: number) => {
   const { status, data } = await MerklApi('https://api.merkl.xyz')
     .v4.users({ address })
-    .rewards.get({ query: { chainId: [chainId.toString()], breakdownPage: 1 } })
+    .rewards.get({ query: { chainId: [chainId.toString()], breakdownPage: 0 } })
 
   if (status !== 200) throw 'Failed to fetch Merkl rewards'
 
   if (!data) throw 'No data received from Merkl API'
 
-  return data
+  let rewardsData = [];
+
+  for (const d of data) {
+    if (d.chain.id !== chainId) continue
+
+    for (const reward of d.rewards) {
+      for (const breakdown of reward.breakdowns) {
+        if (breakdown.campaignId === EXPO_PUBLIC_MERKL_CAMPAIGN_ID) {
+          rewardsData.push(reward)
+        }
+      }
+    }
+  }
+
+  return rewardsData
 }
 
 export const claimMerklRewards = async (smartAccountClient: SmartAccountClient, chain: Chain) => {
   if (!smartAccountClient.account?.address) throw 'Smart account address not found'
 
-  const data = await getMerklRewards(smartAccountClient.account.address, chain.id)
+  const rewards = await getMerklRewards(smartAccountClient.account.address, chain.id)
 
   const users: string[] = []
   const tokens: string[] = []
   const amounts: bigint[] = []
   const proofs: `0x${string}`[][] = []
 
-  for (const rewards of data) {
-    if (rewards.chain.id !== chain.id) continue
-
-    for (const reward of rewards.rewards) {
-      users.push(smartAccountClient.account.address)
-      tokens.push(reward.token.address)
-      amounts.push(BigInt(reward.amount))
-      proofs.push(reward.proofs as `0x${string}`[])
-    }
+  for (const reward of rewards) {
+    users.push(smartAccountClient.account.address)
+    tokens.push(reward.token.address)
+    amounts.push(BigInt(reward.amount))
+    proofs.push(reward.proofs as `0x${string}`[])
   }
 
   if (tokens.length === 0) throw 'No tokens to claim Merkl rewards'
