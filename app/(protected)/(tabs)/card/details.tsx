@@ -11,13 +11,11 @@ import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
-import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { CardStatus } from '@/lib/types';
-import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 interface CardHeaderProps {
   onBackPress: () => void;
@@ -30,7 +28,6 @@ export default function CardDetails() {
   const [isCardImageModalOpen, setIsCardImageModalOpen] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const router = useRouter();
-  const { setModal } = useCardDepositStore();
 
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
@@ -79,14 +76,10 @@ export default function CardDetails() {
             <CardActions
               isCardFrozen={isCardFrozen}
               isFreezing={isFreezing}
-              onAddFunds={() => setModal(CARD_DEPOSIT_MODAL.OPEN_OPTIONS)}
               onCardDetails={() => setIsCardImageModalOpen(true)}
               onFreezeToggle={handleFreezeToggle}
             />
             <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
-            <View className="mt-4">
-              <DepositToCardModal trigger={<></>} />
-            </View>
             <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
           </View>
         </View>
@@ -168,7 +161,6 @@ function CardImageSection({ isScreenMedium, isCardFrozen }: CardImageSectionProp
 interface CardActionsProps {
   isCardFrozen: boolean;
   isFreezing: boolean;
-  onAddFunds: () => void;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
 }
@@ -176,16 +168,19 @@ interface CardActionsProps {
 function CardActions({
   isCardFrozen,
   isFreezing,
-  onAddFunds,
   onCardDetails,
   onFreezeToggle,
 }: CardActionsProps) {
   return (
     <View className="flex-row justify-center space-x-8 items-center mb-8">
-      <CircularActionButton
-        icon={require('@/assets/images/card_actions_fund.png')}
-        label="Add funds"
-        onPress={onAddFunds}
+      <DepositToCardModal
+        trigger={
+          <CircularActionButton
+            icon={require('@/assets/images/card_actions_fund.png')}
+            label="Add funds"
+            onPress={() => {}}
+          />
+        }
       />
       <CircularActionButton
         icon={require('@/assets/images/card_actions_details.png')}
@@ -210,7 +205,7 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="border border-white rounded-xl flex-row items-center justify-center p-4 mb-4 web:hover:opacity-80"
+      className="border border-white rounded-xl flex-row items-center justify-center p-4 mb-6 web:hover:opacity-80"
     >
       <Wallet size={20} color="#FFFFFF" />
       <Text className="text-white text-base font-semibold ml-2">Add to Wallet</Text>

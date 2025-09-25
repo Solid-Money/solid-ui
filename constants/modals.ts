@@ -156,8 +156,4 @@ export const CARD_DEPOSIT_MODAL = {
     name: 'open_external_form',
     number: 2,
   },
-  OPEN_TRANSACTION_STATUS: {
-    name: 'open_transaction_status',
-    number: 3,
-  },
 };
