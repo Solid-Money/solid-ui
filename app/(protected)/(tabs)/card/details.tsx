@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
+import { CardDetailsReveal } from '@/components/Card/CardDetailsReveal';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import Loading from '@/components/Loading';
@@ -85,11 +86,7 @@ export default function CardDetails() {
         </View>
       </ScrollView>
 
-      <CardImageModal
-        isOpen={isCardImageModalOpen}
-        onOpenChange={setIsCardImageModalOpen}
-        cardImageUrl={cardDetails?.card_image_url}
-      />
+      <CardImageModal isOpen={isCardImageModalOpen} onOpenChange={setIsCardImageModalOpen} />
 
       <AddToWalletModal
         isOpen={isAddToWalletModalOpen}
@@ -232,10 +229,9 @@ function ViewTransactionsButton({ onPress }: ViewTransactionsButtonProps) {
 interface CardImageModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  cardImageUrl?: string;
 }
 
-function CardImageModal({ isOpen, onOpenChange, cardImageUrl }: CardImageModalProps) {
+function CardImageModal({ isOpen, onOpenChange }: CardImageModalProps) {
   return (
     <ResponsiveModal
       currentModal={{ name: 'cardImage', number: 1 }}
@@ -247,18 +243,7 @@ function CardImageModal({ isOpen, onOpenChange, cardImageUrl }: CardImageModalPr
       contentKey="cardImage"
       trigger={<></>}
     >
-      <View className="items-center">
-        {cardImageUrl ? (
-          <Image
-            source={{ uri: cardImageUrl }}
-            alt="Full Card Details"
-            style={{ width: '100%', aspectRatio: 1.6, maxWidth: 400 }}
-            contentFit="contain"
-          />
-        ) : (
-          <Text className="text-gray-400">Card image not available</Text>
-        )}
-      </View>
+      <CardDetailsReveal onClose={() => onOpenChange(false)} />
     </ResponsiveModal>
   );
 }
