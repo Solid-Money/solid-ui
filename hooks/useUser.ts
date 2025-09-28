@@ -35,6 +35,7 @@ import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
 import { ERRORS } from '@/constants/errors';
 import { useActivityStore } from '@/store/useActivityStore';
+import { useBalanceStore } from '@/store/useBalanceStore';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -68,8 +69,8 @@ const useUser = (): UseUserReturn => {
   } = useUserStore();
 
   const { clearKycLinkId } = useKycStore();
-  
   const { removeEvents } = useActivityStore();
+  const { clearBalance } = useBalanceStore();
 
   const user = useMemo(() => users.find((user: User) => user.selected), [users]);
 
@@ -620,6 +621,7 @@ const useUser = (): UseUserReturn => {
       user_id: user?.userId,
       username: user?.username,
     });
+    clearBalance();
     unselectUser();
     clearKycLinkId(); // Clear KYC data on logout
     intercom?.shutdown();

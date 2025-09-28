@@ -105,4 +105,5 @@ export const USER = {
   depositFromSafeAccountStorageKey: 'flash_deposit_from_safe_account',
   referralStorageKey: 'flash_referral',
   activityStorageKey: 'flash_activity',
+  balanceStorageKey: 'flash_balance',
 };
