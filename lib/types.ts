@@ -286,11 +286,17 @@ export enum TransactionType {
   WITHDRAW = 'withdraw',
   SEND = 'send',
   BRIDGE = 'bridge',
+  CANCEL_WITHDRAW = 'cancel_withdraw',
+  BRIDGE_DEPOSIT = 'bridge_deposit',
   BANK_TRANSFER = 'bank_transfer',
+  SWAP = 'swap',
+  WRAP = 'wrap',
+  UNWRAP = 'unwrap',
 }
 
 export enum TransactionStatus {
   PENDING = 'pending',
+  PROCESSING = 'processing',
   SUCCESS = 'success',
   FAILED = 'failed',
 }
@@ -682,10 +688,12 @@ export interface ActivityEvent {
   symbol: string;
   chainId?: number;
   hash?: string;
+  userOpHash?: string;
   fromAddress?: string;
   toAddress?: string;
+  url?: string;
   sourceDepositInstructions?: SourceDepositInstructions;
-  metadata?: ActivityEventMetadata;
+  metadata?: Record<string, any>;
 }
 
 export interface ActivityEvents {
@@ -704,7 +712,8 @@ export interface ActivityEvents {
 export interface UpdateActivityEvent {
   status?: TransactionStatus;
   txHash?: string;
-  metadata?: ActivityEventMetadata;
+  userOpHash?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface VaultBreakdown {

@@ -1,9 +1,10 @@
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useActivity } from '@/hooks/useActivity';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status } from '@/lib/types';
+import { Status, TransactionType } from '@/lib/types';
 import { useState } from 'react';
 import { TransactionReceipt } from 'viem';
 import { mainnet } from 'viem/chains';
@@ -18,6 +19,7 @@ type CancelOnChainWithdrawResult = {
 
 const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
   const { user, safeAA } = useUser();
+  const { trackTransaction } = useActivity();
   const [cancelOnchainWithdrawStatus, setCancelOnchainWithdrawStatus] = useState<Status>(
     Status.IDLE,
   );
@@ -59,12 +61,33 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
 
       const smartAccountClient = await safeAA(mainnet, user.suborgId, user.signWith);
 
-      const transaction = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Cancel onchain withdraw failed',
-        mainnet,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.CANCEL_WITHDRAW,
+          title: 'Cancel onchain withdraw',
+          shortTitle: 'Cancel withdraw',
+          amount: '0',
+          symbol: 'soUSD',
+          chainId: mainnet.id,
+          fromAddress: user.safeAddress,
+          toAddress: ADDRESSES.ethereum.boringQueue,
+          metadata: {
+            description: 'Cancel onchain withdraw request',
+            requestId,
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Cancel onchain withdraw failed',
+          mainnet,
+          onUserOpHash
+        )
       );
+
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         track(TRACKING_EVENTS.CANCEL_WITHDRAW_CANCELLED, {

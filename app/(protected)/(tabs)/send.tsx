@@ -14,17 +14,17 @@ import TokenSelectorModal from '@/components/SendModal/TokenSelectorModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import useSend from '@/hooks/useSend';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 import Toast from 'react-native-toast-message';
-import { track } from '@/lib/analytics';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 interface TokenBalance {
   contractTickerSymbol: string;
@@ -100,6 +100,7 @@ const SendPage = () => {
   const { send, sendStatus, resetSendStatus } = useSend({
     tokenAddress: selectedToken?.contractAddress as any,
     tokenDecimals: selectedToken?.contractDecimals || 18,
+    tokenSymbol: selectedToken?.contractTickerSymbol || 'TOKEN',
     chainId: selectedToken?.chainId || 1,
   });
 
