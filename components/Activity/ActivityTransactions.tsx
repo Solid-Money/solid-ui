@@ -127,53 +127,59 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
   useEffect(() => {
     if (!user?.userId || !transactions || transactions.length === 0) return;
 
-    transactions.forEach(async tx => {
-      // Check if this transaction already exists in our activities
-      const existsInActivities = activities.some(
-        activity =>
-          activity.hash === tx.hash ||
-          activity.clientTxId === `${tx.type}-${tx.hash}` ||
-          (tx.hash && activity.hash === tx.hash),
-      );
-
-      const existsInServer = fetchedEvents.some(
-        activity =>
-          activity.hash === tx.hash ||
-          activity.clientTxId === `${tx.type}-${tx.hash}` ||
-          (tx.hash && activity.hash === tx.hash),
-      );
-
-      // If transaction doesn't exist in either local or server, sync it
-      if (!existsInActivities && !existsInServer && tx.hash) {
-        try {
-          // Create activity for external transaction
-          await withRefreshToken(() =>
-            createActivityEvent({
-              clientTxId: `${tx.type}-${tx.hash}`,
-              title: tx.title || `${tx.type} Transaction`,
-              timestamp: tx.timestamp,
-              type: tx.type,
-              status: tx.status,
-              amount: tx.amount.toString(),
-              symbol: tx.symbol || 'USDC',
-              chainId: tx.chainId,
-              fromAddress: tx.fromAddress || user.safeAddress,
-              toAddress: tx.toAddress,
-              hash: tx.hash,
-              url: tx.url,
-              metadata: {
-                description: tx.title || `External ${tx.type} transaction`,
-                source: 'external-sync',
-                originalType: tx.type,
-                synced: true,
-              },
-            }),
+    const syncTransactions = async () => {
+      await Promise.all(
+        transactions.map(async tx => {
+          // Check if this transaction already exists in our activities
+          const existsInActivities = activities.some(
+            activity =>
+              activity.hash === tx.hash ||
+              activity.clientTxId === `${tx.type}-${tx.hash}` ||
+              (tx.hash && activity.hash === tx.hash),
           );
-        } catch (error) {
-          console.error(`Failed to sync external transaction ${tx.hash}:`, error);
-        }
-      }
-    });
+
+          const existsInServer = fetchedEvents.some(
+            activity =>
+              activity.hash === tx.hash ||
+              activity.clientTxId === `${tx.type}-${tx.hash}` ||
+              (tx.hash && activity.hash === tx.hash),
+          );
+
+          // If transaction doesn't exist in either local or server, sync it
+          if (!existsInActivities && !existsInServer && tx.hash) {
+            try {
+              // Create activity for external transaction
+              await withRefreshToken(() =>
+                createActivityEvent({
+                  clientTxId: `${tx.type}-${tx.hash}`,
+                  title: tx.title || `${tx.type} Transaction`,
+                  timestamp: tx.timestamp,
+                  type: tx.type,
+                  status: tx.status,
+                  amount: tx.amount.toString(),
+                  symbol: tx.symbol || 'USDC',
+                  chainId: tx.chainId,
+                  fromAddress: tx.fromAddress || user.safeAddress,
+                  toAddress: tx.toAddress,
+                  hash: tx.hash,
+                  url: tx.url,
+                  metadata: {
+                    description: tx.title || `External ${tx.type} transaction`,
+                    source: 'external-sync',
+                    originalType: tx.type,
+                    synced: true,
+                  },
+                }),
+              );
+            } catch (error) {
+              console.error(`Failed to sync external transaction ${tx.hash}:`, error);
+            }
+          }
+        }),
+      );
+    };
+
+    syncTransactions();
   }, [transactions, activities, fetchedEvents, user?.userId, user?.safeAddress]);
 
   // Sync local store with confirmed server activities
