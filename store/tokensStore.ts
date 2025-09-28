@@ -3,6 +3,7 @@ import { Address } from 'viem';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { TokenListItem } from '@/lib/types/tokens';
 
@@ -49,8 +50,8 @@ export const useTokensState = create(
       },
     }),
     {
-      name: 'tokens-storage',
-      storage: createJSONStorage(() => mmkvStorage('tokens-storage')),
+      name: USER.tokensStorageKey,
+      storage: createJSONStorage(() => mmkvStorage(USER.tokensStorageKey)),
       merge: (persistedState, currentState) => deepMerge(currentState, persistedState),
     },
   ),

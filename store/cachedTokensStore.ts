@@ -2,6 +2,7 @@ import deepMerge from 'lodash.merge';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { TokenListItem } from '@/lib/types/tokens';
 
@@ -84,8 +85,8 @@ export const useCachedTokensStore = create<CachedTokensState>()(
       },
     }),
     {
-      name: 'swap-tokens',
-      storage: createJSONStorage(() => mmkvStorage('swap-tokens')),
+      name: USER.swapTokensStorageKey,
+      storage: createJSONStorage(() => mmkvStorage(USER.swapTokensStorageKey)),
       merge: (persistedState, currentState) => deepMerge(currentState, persistedState),
       // Only persist if we have valid data
       partialize: state => {
