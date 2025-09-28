@@ -2,7 +2,9 @@ import * as Sentry from '@sentry/react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { algebraRouterConfig } from '@/generated/wagmi';
+import { useActivity } from '@/hooks/useActivity';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { TransactionType } from '@/lib/types';
 
 import { SwapCallbackState } from '@/lib/types/swap-state';
 import { Currency, Percent, Trade, TradeType } from '@cryptoalgebra/fuse-sdk';
@@ -36,6 +38,7 @@ export function useSwapCallback(
   successInfo?: TransactionSuccessInfo,
 ) {
   const { user, safeAA } = useUser();
+  const { trackTransaction } = useActivity();
   const account = user?.safeAddress;
 
   const [bestCall, setBestCall] = useState<SuccessfulCall | SwapCallEstimate | undefined>(undefined);
@@ -120,7 +123,7 @@ export function useSwapCallback(
     try {
       setIsSendingSwap(true);
 
-      const transactions = [];
+      const transactions: Array<{ to: Address; data: `0x${string}`; value: bigint }> = [];
 
       // Add approval transaction if needed
       if (needAllowance || (isTokenInput && !approvalConfig)) {
@@ -203,14 +206,39 @@ export function useSwapCallback(
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-      const result = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Swap failed',
-        fuse,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.SWAP,
+          title: `Swap ${trade.inputAmount.currency.symbol} for ${trade.outputAmount.currency.symbol}`,
+          shortTitle: `${trade.inputAmount.currency.symbol} → ${trade.outputAmount.currency.symbol}`,
+          amount: trade.inputAmount.toSignificant(6),
+          symbol: trade.inputAmount.currency.symbol || '',
+          chainId: fuse.id,
+          fromAddress: user.safeAddress,
+          toAddress: swapConfig.request.address,
+          metadata: {
+            slippage: allowedSlippage.toSignificant(3),
+            platform: 'algebra',
+            inputToken: trade.inputAmount.currency.symbol,
+            outputToken: trade.outputAmount.currency.symbol,
+            inputAmount: trade.inputAmount.toSignificant(6),
+            outputAmount: trade.outputAmount.toSignificant(6),
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Swap failed',
+          fuse,
+          onUserOpHash
+        )
       );
 
-      if (result === USER_CANCELLED_TRANSACTION) {
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
+
+      if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
       }
 

@@ -18,7 +18,8 @@ import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status } from '@/lib/types';
+import { Status, TransactionType } from '@/lib/types';
+import { useActivity } from '@/hooks/useActivity';
 import useUser from './useUser';
 
 type DepositResult = {
@@ -29,6 +30,7 @@ type DepositResult = {
 
 const useDeposit = (): DepositResult => {
   const { user, safeAA } = useUser();
+  const { trackTransaction } = useActivity();
   const [depositStatus, setDepositStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,12 +134,33 @@ const useDeposit = (): DepositResult => {
 
       const smartAccountClient = await safeAA(mainnet, user.suborgId, user.signWith);
 
-      const transaction = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Deposit failed',
-        mainnet,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.DEPOSIT,
+          title: `Deposit ${amount} USDC`,
+          shortTitle: `Deposit ${amount}`,
+          amount,
+          symbol: 'USDC',
+          chainId: mainnet.id,
+          fromAddress: user.safeAddress,
+          toAddress: user.safeAddress,
+          metadata: {
+            description: `Deposit ${amount} USDC from Safe to Fuse`,
+            fee: fee?.toString(),
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Deposit failed',
+          mainnet,
+          onUserOpHash
+        )
       );
+
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         const error = new Error('User cancelled transaction');

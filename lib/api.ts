@@ -40,9 +40,9 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
-  UpdateActivityEvent,
   ToCurrency,
   TokenPriceUsd,
+  UpdateActivityEvent,
   User,
   VaultBreakdown,
 } from './types';

@@ -1,10 +1,11 @@
-import * as Sentry from '@sentry/react-native';
+import { useActivity } from '@/hooks/useActivity';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status } from '@/lib/types';
+import { Status, TransactionType } from '@/lib/types';
+import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useState } from 'react';
 import { TransactionReceipt } from 'viem';
@@ -26,6 +27,7 @@ type BridgeResult = {
 
 const useBridgeToFuse = (): BridgeResult => {
   const { user, safeAA } = useUser();
+  const { trackTransaction } = useActivity();
   const [bridgeStatus, setBridgeStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,12 +112,33 @@ const useBridgeToFuse = (): BridgeResult => {
 
       const smartAccountClient = await safeAA(mainnet, user.suborgId, user.signWith);
 
-      const transaction = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Stake failed',
-        mainnet,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.BRIDGE_DEPOSIT,
+          title: `Stake ${amount} soUSD to Fuse`,
+          shortTitle: `Stake ${amount}`,
+          amount,
+          symbol: 'soUSD',
+          chainId: mainnet.id,
+          fromAddress: user.safeAddress,
+          toAddress: user.safeAddress,
+          metadata: {
+            description: `Stake ${amount} soUSD from Mainnet to Fuse`,
+            fee: fee?.toString(),
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Bridge failed',
+          mainnet,
+          onUserOpHash
+        )
       );
+
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         const error = new Error('User cancelled transaction');

@@ -1,21 +1,22 @@
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useActivity } from '@/hooks/useActivity';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status } from '@/lib/types';
+import { Status, TransactionType } from '@/lib/types';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useCallback, useState } from 'react';
 import { TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import {
-    encodeAbiParameters,
-    encodeFunctionData,
-    parseAbiParameters,
-    parseUnits,
+  encodeAbiParameters,
+  encodeFunctionData,
+  parseAbiParameters,
+  parseUnits,
 } from 'viem/utils';
 import { useReadContract } from 'wagmi';
 import useUser from './useUser';
@@ -28,6 +29,7 @@ type BridgeResult = {
 
 const useBridgeToMainnet = (): BridgeResult => {
   const { user, safeAA } = useUser();
+  const { trackTransaction } = useActivity();
   const [bridgeStatus, setBridgeStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,12 +128,33 @@ const useBridgeToMainnet = (): BridgeResult => {
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-      const transaction = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Unstake failed',
-        fuse,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.BRIDGE_DEPOSIT,
+          title: `Unstake ${amount} soUSD`,
+          shortTitle: `Unstake ${amount}`,
+          amount,
+          symbol: 'USDC',
+          chainId: fuse.id,
+          fromAddress: user.safeAddress,
+          toAddress: user.safeAddress,
+          metadata: {
+            description: `Unstake ${amount} soUSD from Fuse to Mainnet`,
+            fee: fee?.toString(),
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Unstake failed',
+          fuse,
+          onUserOpHash
+        )
       );
+
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         const error = new Error('User cancelled transaction');
