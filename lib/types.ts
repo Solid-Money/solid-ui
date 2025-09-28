@@ -717,3 +717,20 @@ export interface VaultBreakdown {
   risk: string;
   chain: string;
 }
+
+// Card Details Reveal Types
+export interface EphemeralKeyResponse {
+  ephemeral_key: string;
+}
+
+export interface CardDetailsRevealResponse {
+  card_number: string;
+  card_security_code: string;
+  expiry_date: string;
+}
+
+export interface ClientNonceData {
+  clientSecret: string;
+  clientTimestamp: number;
+  nonce: string;
+}
