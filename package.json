@@ -21,6 +21,7 @@
     "@gorhom/bottom-sheet": "^5.1.8",
     "@hookform/resolvers": "^5.1.1",
     "@lottiefiles/dotlottie-react": "^0.13.5",
+    "@merkl/api": "file:./packages/merkl-api-1.4.15-patched.tgz",
     "@number-flow/react": "^0.5.10",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-dialog": "^1.1.13",
