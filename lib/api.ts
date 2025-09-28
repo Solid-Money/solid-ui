@@ -8,6 +8,7 @@ import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { useUserStore } from '@/store/useUserStore';
 import {
   EXPO_PUBLIC_ALCHEMY_API_KEY,
+  EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
@@ -24,11 +25,13 @@ import {
   BridgeTransaction,
   BridgeTransactionRequest,
   BridgeTransferResponse,
+  CardDetailsRevealResponse,
   CardResponse,
   CardStatusResponse,
   CardTransactionsResponse,
   CustomerFromBridgeResponse,
   Deposit,
+  EphemeralKeyResponse,
   ExchangeRateResponse,
   FromCurrency,
   GetLifiQuoteParams,
@@ -46,6 +49,7 @@ import {
   User,
   VaultBreakdown,
 } from './types';
+import { generateClientNonceData } from './utils/cardDetailsReveal';
 
 // Helper function to get platform-specific headers
 const getPlatformHeaders = () => {
@@ -999,4 +1003,79 @@ export const fetchVaultBreakdown = async () => {
     `${EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL}/vault-manager/v1/tokens/vault-breakdown`,
   );
   return response.data;
+};
+
+// Card Details Reveal Functions
+
+/**
+ * Request ephemeral key from backend
+ * Your backend will relay this nonce to Bridge and return the ephemeral key
+ */
+export const requestEphemeralKey = async (nonce: string): Promise<EphemeralKeyResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/ephemeral-key`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        client_nonce: nonce,
+      }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Directly call Bridge API to reveal card details
+ * This bypasses your backend and calls Bridge directly with the ephemeral key
+ */
+export const revealCardDetails = async (
+  ephemeralKey: string,
+  clientSecret: string,
+  clientTimestamp: number,
+): Promise<CardDetailsRevealResponse> => {
+  const url = `${EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL}/v0/card_details/?secret=${encodeURIComponent(clientSecret)}&timestamp=${clientTimestamp}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${ephemeralKey}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Complete card details reveal flow
+ * This combines all operations into a single function for convenience
+ */
+export const revealCardDetailsComplete = async (): Promise<CardDetailsRevealResponse> => {
+  // Generate client nonce data
+  const nonceData = await generateClientNonceData();
+
+  // Request ephemeral key from your backend
+  const ephemeralKeyResponse = await requestEphemeralKey(nonceData.nonce);
+
+  // Directly call Bridge to reveal card details
+  const cardDetails = await revealCardDetails(
+    ephemeralKeyResponse.ephemeral_key,
+    nonceData.clientSecret,
+    nonceData.clientTimestamp,
+  );
+
+  return cardDetails;
 };

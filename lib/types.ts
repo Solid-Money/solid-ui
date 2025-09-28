@@ -224,6 +224,12 @@ interface FundingInstructions {
   memo: string;
 }
 
+interface AdditionalFundingInstructions {
+  currency: string;
+  chain: string;
+  address: string;
+}
+
 interface Freeze {
   initiator: FreezeInitiator;
   card_account_id: string;
@@ -246,6 +252,7 @@ export interface CardResponse {
   freezes: Freeze[];
   crypto_account: CryptoAccount;
   funding_instructions: FundingInstructions;
+  additional_funding_instructions?: AdditionalFundingInstructions[];
 }
 
 export interface CardStatusResponse {
@@ -353,6 +360,7 @@ export enum SavingMode {
   INTEREST_ONLY = 'interest-only',
   BALANCE_ONLY = 'balance-only',
   CURRENT = 'current',
+  ALL_TIME = 'all-time',
 }
 
 export type BridgeDeposit = {
@@ -718,4 +726,21 @@ export interface VaultBreakdown {
   positionMaxAPY: number;
   risk: string;
   chain: string;
+}
+
+// Card Details Reveal Types
+export interface EphemeralKeyResponse {
+  ephemeral_key: string;
+}
+
+export interface CardDetailsRevealResponse {
+  card_number: string;
+  card_security_code: string;
+  expiry_date: string;
+}
+
+export interface ClientNonceData {
+  clientSecret: string;
+  clientTimestamp: number;
+  nonce: string;
 }
