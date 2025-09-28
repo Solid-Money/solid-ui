@@ -363,6 +363,14 @@ export const calculateYield = async (
           return balanceUSD + interestEarnedUSD;
         }
 
+        if (mode === SavingMode.ALL_TIME) {
+          if (actualDeposited <= 0) return 0;
+
+          const totalReturn = balanceUSD - actualDeposited;
+          const totalReturnPercentage = (totalReturn / actualDeposited) * 100;
+          return totalReturnPercentage;
+        }
+
         return balanceUSD + interestEarnedUSD;
       }
     } catch (error) {
@@ -388,6 +396,15 @@ export const calculateYield = async (
 
   if (mode === SavingMode.TOTAL) {
     return balance + interestEarned;
+  }
+
+  if (mode === SavingMode.ALL_TIME) {
+    const estimatedOriginalDeposit = balanceUSD - interestEarnedUSD;
+    if (estimatedOriginalDeposit <= 0) return 0;
+
+    const totalReturn = balanceUSD - estimatedOriginalDeposit;
+    const totalReturnPercentage = (totalReturn / estimatedOriginalDeposit) * 100;
+    return totalReturnPercentage;
   }
 
   return balanceUSD + interestEarnedUSD;
