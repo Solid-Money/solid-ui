@@ -234,7 +234,6 @@ const WalletTokenTab = () => {
                               {token.contractTickerSymbol || 'Unknown'}
                             </Text>
                           </View>
-
                         </View>
                         {isSoUSDFuse(token.contractAddress) ? (
                           <View className="bg-brand/20 rounded-full px-2 py-1 md:px-4 md:py-2 flex-row items-center gap-2 w-fit">
