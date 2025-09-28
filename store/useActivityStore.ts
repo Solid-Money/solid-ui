@@ -31,9 +31,18 @@ export const useActivityStore = create<ActivityState>()(
             state.events[userId] = state.events[userId] || [];
 
             events.forEach((event: ActivityEvent) => {
+              // Find existing event by multiple identifiers
               const existingEvent = state.events[userId].find(
-                (e: ActivityEvent) =>
-                  e.clientTxId === event.clientTxId
+                (e: ActivityEvent) => {
+                  const match =
+                    e.clientTxId === event.clientTxId ||
+                    (e.userOpHash && e.userOpHash === event.userOpHash) ||
+                    (e.hash && e.hash === event.hash) ||
+                    (e.clientTxId === event.userOpHash) || // Local clientTxId might be userOpHash
+                    (e.clientTxId === event.hash); // Local clientTxId might be hash
+
+                  return match;
+                }
               );
 
               if (!existingEvent) {
@@ -43,12 +52,26 @@ export const useActivityStore = create<ActivityState>()(
                 return;
               }
 
+              // Update existing event if status or hash changed
               if (
                 existingEvent.status !== event.status ||
-                existingEvent.hash !== event.hash
+                existingEvent.hash !== event.hash ||
+                existingEvent.userOpHash !== event.userOpHash
               ) {
-                state.updateEventPromises[userId] = state.updateEventPromises[userId] || [];
-                state.updateEventPromises[userId].push(withRefreshToken(() => updateActivityEvent(event.clientTxId, event)));
+                // Replace the existing event with the new one
+                const index = state.events[userId].indexOf(existingEvent);
+                if (index !== -1) {
+                  state.events[userId][index] = {
+                    ...existingEvent,
+                    ...event,
+                  };
+                }
+
+                // Only send update to server if it's not already confirmed
+                if (existingEvent.status !== 'success' && existingEvent.status !== 'failed') {
+                  state.updateEventPromises[userId] = state.updateEventPromises[userId] || [];
+                  state.updateEventPromises[userId].push(withRefreshToken(() => updateActivityEvent(event.clientTxId, event)));
+                }
               }
             });
 

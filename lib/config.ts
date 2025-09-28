@@ -30,6 +30,7 @@ export const EXPO_PUBLIC_FIREBASE_DATABASE_URL = process.env.EXPO_PUBLIC_FIREBAS
 export const EXPO_PUBLIC_AMPLITUDE_API_KEY = process.env.EXPO_PUBLIC_AMPLITUDE_API_KEY ?? '';
 export const EXPO_PUBLIC_MERKL_CAMPAIGN_ID = process.env.EXPO_PUBLIC_MERKL_CAMPAIGN_ID ?? '';
 export const EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL ?? '';
+export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL = process.env.EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL ?? '';
 
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 
@@ -104,4 +105,9 @@ export const USER = {
   depositFromSafeAccountStorageKey: 'flash_deposit_from_safe_account',
   referralStorageKey: 'flash_referral',
   activityStorageKey: 'flash_activity',
+  balanceStorageKey: 'flash_balance',
+  poolsStorageKey: 'pools-storage',
+  swapTokensStorageKey: 'swap-tokens',
+  tokensStorageKey: 'tokens-storage',
+  pointsStorageKey: 'points-storage',
 };

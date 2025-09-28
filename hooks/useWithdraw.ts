@@ -1,10 +1,11 @@
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useActivity } from '@/hooks/useActivity';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status } from '@/lib/types';
+import { Status, TransactionType } from '@/lib/types';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useState } from 'react';
@@ -22,6 +23,7 @@ type WithdrawResult = {
 
 const useWithdraw = (): WithdrawResult => {
   const { user, safeAA } = useUser();
+  const { trackTransaction } = useActivity();
   const [withdrawStatus, setWithdrawStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,12 +84,33 @@ const useWithdraw = (): WithdrawResult => {
 
       const smartAccountClient = await safeAA(mainnet, user.suborgId, user.signWith);
 
-      const transaction = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Withdraw failed',
-        mainnet,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.WITHDRAW,
+          title: `Withdraw ${amount} soUSD`,
+          shortTitle: `Withdraw ${amount}`,
+          amount,
+          symbol: 'soUSD',
+          chainId: mainnet.id,
+          fromAddress: user.safeAddress,
+          toAddress: ADDRESSES.ethereum.boringQueue,
+          metadata: {
+            description: `Withdraw ${amount} soUSD`,
+            needsApproval,
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Withdraw failed',
+          mainnet,
+          onUserOpHash
+        )
       );
+
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         throw new Error('User cancelled transaction');

@@ -5,16 +5,18 @@ import { TransactionReceipt } from 'viem';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useActivity } from '@/hooks/useActivity';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { track } from '@/lib/analytics';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status } from '@/lib/types';
+import { Status, TransactionType } from '@/lib/types';
 import { getChain } from '@/lib/wagmi';
 import useUser from './useUser';
 
 type SendProps = {
   tokenAddress: Address;
   tokenDecimals: number;
+  tokenSymbol: string;
   chainId: number;
 };
 
@@ -25,8 +27,9 @@ type SendResult = {
   resetSendStatus: () => void;
 };
 
-const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResult => {
+const useSend = ({ tokenAddress, tokenDecimals, chainId, tokenSymbol }: SendProps): SendResult => {
   const { user, safeAA } = useUser();
+  const { trackTransaction } = useActivity();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
   const chain = getChain(chainId);
@@ -68,12 +71,35 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId }: SendProps): SendResul
 
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 
-      const transaction = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Send failed',
-        chain,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.SEND,
+          title: `Send ${amount} ${tokenSymbol}`,
+          shortTitle: `Send ${amount}`,
+          amount,
+          symbol: tokenSymbol,
+          chainId,
+          fromAddress: user.safeAddress,
+          toAddress: to,
+          metadata: {
+            description: `Send ${amount} ${tokenSymbol} to ${to}`,
+            tokenAddress,
+            tokenDecimals: tokenDecimals.toString(),
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Send failed',
+          chain,
+          onUserOpHash
+        )
       );
+
+      // Extract transaction from result
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         throw new Error('User cancelled transaction');

@@ -6,6 +6,7 @@ import { GetExchangeRateUpdatesDocument } from '@/graphql/generated/user-info';
 import { fetchExchangeRate } from '@/hooks/usePreviewDeposit';
 import { ADDRESSES } from './config';
 import { SavingMode } from './types';
+import { useBalanceStore } from '@/store/useBalanceStore';
 
 export const SECONDS_PER_YEAR = 31_557_600;
 
@@ -325,6 +326,8 @@ export const calculateYield = async (
   if (!currentTime || currentTime <= 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
 
   const exchangeRate = await fetchExchangeRate(queryClient);
+  const { earnedUSD, setEarnedUSD } = useBalanceStore.getState();
+
   const formattedExchangeRate = Number(formatUnits(BigInt(exchangeRate), 6));
   const balanceUSD = balance * formattedExchangeRate;
 
@@ -345,7 +348,15 @@ export const calculateYield = async (
       );
 
       if (timeWeightedBalances.length > 0) {
-        const interestEarnedUSD = balanceUSD - actualDeposited;
+        let interestEarnedUSD = balanceUSD - actualDeposited;
+
+        if (interestEarnedUSD > 0) {
+          setEarnedUSD(interestEarnedUSD);
+        }
+
+        if (interestEarnedUSD < 0) {
+          interestEarnedUSD = earnedUSD;
+        }
 
         const amountGained =
           (((apy / 100) * (currentTime - lastTimestamp)) / 1000 / SECONDS_PER_YEAR) * balanceUSD;
@@ -361,6 +372,14 @@ export const calculateYield = async (
         if (mode === SavingMode.TOTAL) {
           // Convert current balance to USD and add interest
           return balanceUSD + interestEarnedUSD;
+        }
+
+        if (mode === SavingMode.ALL_TIME) {
+          if (actualDeposited <= 0) return 0;
+
+          const totalReturn = balanceUSD - actualDeposited;
+          const totalReturnPercentage = (totalReturn / actualDeposited) * 100;
+          return totalReturnPercentage;
         }
 
         return balanceUSD + interestEarnedUSD;
@@ -388,6 +407,15 @@ export const calculateYield = async (
 
   if (mode === SavingMode.TOTAL) {
     return balance + interestEarned;
+  }
+
+  if (mode === SavingMode.ALL_TIME) {
+    const estimatedOriginalDeposit = balanceUSD - interestEarnedUSD;
+    if (estimatedOriginalDeposit <= 0) return 0;
+
+    const totalReturn = balanceUSD - estimatedOriginalDeposit;
+    const totalReturnPercentage = (totalReturn / estimatedOriginalDeposit) * 100;
+    return totalReturnPercentage;
   }
 
   return balanceUSD + interestEarnedUSD;

@@ -9,6 +9,8 @@ import {
   useSimulateWrappedNativeWithdraw,
 } from '@/generated/wagmi';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { TransactionType } from '@/lib/types';
+import { useActivity } from '@/hooks/useActivity';
 import { Address, encodeFunctionData } from 'viem';
 import { fuse } from 'viem/chains';
 import { useTransactionAwait } from '../useTransactionAwait';
@@ -35,6 +37,7 @@ export default function useWrapCallback(
 } {
   const chainId = fuse.id;
   const { user, safeAA } = useUser();
+  const { trackTransaction } = useActivity();
   const account = user?.safeAddress;
   const [wrapData, setWrapData] = useState<any>(null);
   const [unwrapData, setUnwrapData] = useState<any>(null);
@@ -118,19 +121,39 @@ export default function useWrapCallback(
           value: wrapConfig?.request.value,
         },
       ];
-      const result = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Wrap failed',
-        fuse,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.WRAP,
+          title: `Wrap ${inputAmount?.toSignificant()} ${inputCurrency?.symbol}`,
+          shortTitle: 'Wrap FUSE',
+          amount: inputAmount?.toSignificant() || '0',
+          symbol: inputCurrency?.symbol || 'FUSE',
+          chainId: fuse.id,
+          fromAddress: user.safeAddress,
+          toAddress: wrapConfig?.request.address as string,
+          metadata: {
+            description: `Wrap ${inputCurrency?.symbol} to ${outputCurrency?.symbol}`,
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Wrap failed',
+          fuse,
+          onUserOpHash
+        )
       );
 
-      if (result === USER_CANCELLED_TRANSACTION) {
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
+
+      if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
       }
 
-      setWrapData(result);
-      return result;
+      setWrapData(transaction);
+      return transaction;
     } catch (error) {
       console.error('Wrap failed', error);
       Sentry.captureException(error, {
@@ -173,19 +196,39 @@ export default function useWrapCallback(
           value: unwrapConfig?.request.value,
         },
       ];
-      const result = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Unwrap failed',
-        fuse,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.UNWRAP,
+          title: `Unwrap ${inputAmount?.toSignificant()} ${inputCurrency?.symbol}`,
+          shortTitle: 'Unwrap WFUSE',
+          amount: inputAmount?.toSignificant() || '0',
+          symbol: inputCurrency?.symbol || 'WFUSE',
+          chainId: fuse.id,
+          fromAddress: user.safeAddress,
+          toAddress: unwrapConfig?.request.address as string,
+          metadata: {
+            description: `Unwrap ${inputCurrency?.symbol} to ${outputCurrency?.symbol}`,
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Unwrap failed',
+          fuse,
+          onUserOpHash
+        )
       );
 
-      if (result === USER_CANCELLED_TRANSACTION) {
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
+
+      if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
       }
 
-      setUnwrapData(result);
-      return result;
+      setUnwrapData(transaction);
+      return transaction;
     } catch (error) {
       console.error('Unwrap failed', error);
       Sentry.captureException(error, {

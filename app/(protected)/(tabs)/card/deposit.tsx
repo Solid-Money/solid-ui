@@ -76,6 +76,7 @@ const DepositToCard = () => {
   const { send, sendStatus, resetSendStatus } = useSend({
     tokenAddress: selectedToken?.contractAddress as any,
     tokenDecimals: selectedToken?.contractDecimals || 18,
+    tokenSymbol: selectedToken?.contractTickerSymbol || 'TOKEN',
     chainId: selectedToken?.chainId || 1,
   });
 

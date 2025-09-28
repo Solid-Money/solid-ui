@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
 
@@ -10,7 +10,7 @@ export default function CardDepositExternal() {
   const account = useActiveAccount();
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const connectWallet = async () => {
+  const connectWallet = useCallback(async () => {
     try {
       setIsConnecting(true);
       await connect({
@@ -22,13 +22,13 @@ export default function CardDepositExternal() {
     } finally {
       setIsConnecting(false);
     }
-  };
+  }, [connect]);
 
   useEffect(() => {
     if (!account && !isConnecting) {
       connectWallet();
     }
-  }, [account, isConnecting]);
+  }, [account, isConnecting, connectWallet]);
 
   // After wallet is connected, show external form with ConnectedWalletDropdown
   return <CardDepositExternalForm />;

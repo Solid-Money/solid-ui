@@ -1,7 +1,9 @@
 import * as Sentry from '@sentry/react-native';
 import { useCallback, useMemo, useState } from 'react';
 
+import { useActivity } from '@/hooks/useActivity';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { TransactionType } from '@/lib/types';
 import { SwapCallbackState } from '@/lib/types/swap-state';
 import { Percent } from '@cryptoalgebra/fuse-sdk';
 import { Address } from 'abitype';
@@ -18,6 +20,7 @@ export function useVoltageSwapCallback(
   successInfo?: TransactionSuccessInfo,
 ) {
   const { user, safeAA } = useUser();
+  const { trackTransaction } = useActivity();
   const { needAllowance, approvalConfig } =
     useApproveCallbackFromVoltageTrade(trade, allowedSlippage);
     
@@ -36,7 +39,7 @@ export function useVoltageSwapCallback(
       setIsSendingSwap(true);
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
-      const transactions = [];
+      const transactions: Array<{ to: Address; data: `0x${string}`; value?: bigint }> = [];
 
 
       if (needAllowance && approvalConfig) {
@@ -70,19 +73,46 @@ export function useVoltageSwapCallback(
         value: BigInt(trade?.value?.quotient.toString() || '0'),
       });
 
-      const result = await executeTransactions(
-        smartAccountClient,
-        transactions,
-        'Voltage swap failed',
-        fuse,
+      const result = await trackTransaction(
+        {
+          type: TransactionType.SWAP,
+          title: `Swap ${trade?.inputAmount?.toSignificant()} ${trade?.inputAmount?.currency?.symbol} to ${trade?.outputAmount?.toSignificant()} ${trade?.outputAmount?.currency?.symbol}`,
+          shortTitle: `${trade?.inputAmount?.currency?.symbol} → ${trade?.outputAmount?.currency?.symbol}`,
+          amount: trade?.inputAmount?.toSignificant() || '0',
+          symbol: trade?.inputAmount?.currency?.symbol || 'TOKEN',
+          chainId: fuse.id,
+          fromAddress: user.safeAddress,
+          toAddress: trade?.to as string,
+          metadata: {
+            description: `Swap ${trade?.inputAmount?.currency?.symbol} to ${trade?.outputAmount?.currency?.symbol}`,
+            slippage: allowedSlippage?.toSignificant(2),
+            needsApproval: needAllowance,
+            platform: 'voltage',
+            inputToken: trade?.inputAmount?.currency?.symbol,
+            outputToken: trade?.outputAmount?.currency?.symbol,
+            inputAmount: trade?.inputAmount?.toSignificant(6),
+            outputAmount: trade?.outputAmount?.toSignificant(6),
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Voltage swap failed',
+          fuse,
+          onUserOpHash
+        )
       );
 
-      if (result === USER_CANCELLED_TRANSACTION) {
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
+
+      if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
       }
 
-      setSwapData(result);
-      return result;
+      setSwapData(transaction);
+      return transaction;
     } catch (error) {
       console.error('Voltage swap failed', error);
       Sentry.captureException(error, {

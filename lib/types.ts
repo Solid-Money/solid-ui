@@ -286,11 +286,17 @@ export enum TransactionType {
   WITHDRAW = 'withdraw',
   SEND = 'send',
   BRIDGE = 'bridge',
+  CANCEL_WITHDRAW = 'cancel_withdraw',
+  BRIDGE_DEPOSIT = 'bridge_deposit',
   BANK_TRANSFER = 'bank_transfer',
+  SWAP = 'swap',
+  WRAP = 'wrap',
+  UNWRAP = 'unwrap',
 }
 
 export enum TransactionStatus {
   PENDING = 'pending',
+  PROCESSING = 'processing',
   SUCCESS = 'success',
   FAILED = 'failed',
 }
@@ -354,6 +360,7 @@ export enum SavingMode {
   INTEREST_ONLY = 'interest-only',
   BALANCE_ONLY = 'balance-only',
   CURRENT = 'current',
+  ALL_TIME = 'all-time',
 }
 
 export type BridgeDeposit = {
@@ -681,10 +688,12 @@ export interface ActivityEvent {
   symbol: string;
   chainId?: number;
   hash?: string;
+  userOpHash?: string;
   fromAddress?: string;
   toAddress?: string;
+  url?: string;
   sourceDepositInstructions?: SourceDepositInstructions;
-  metadata?: ActivityEventMetadata;
+  metadata?: Record<string, any>;
 }
 
 export interface ActivityEvents {
@@ -703,7 +712,8 @@ export interface ActivityEvents {
 export interface UpdateActivityEvent {
   status?: TransactionStatus;
   txHash?: string;
-  metadata?: ActivityEventMetadata;
+  userOpHash?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface VaultBreakdown {
@@ -716,4 +726,21 @@ export interface VaultBreakdown {
   positionMaxAPY: number;
   risk: string;
   chain: string;
+}
+
+// Card Details Reveal Types
+export interface EphemeralKeyResponse {
+  ephemeral_key: string;
+}
+
+export interface CardDetailsRevealResponse {
+  card_number: string;
+  card_security_code: string;
+  expiry_date: string;
+}
+
+export interface ClientNonceData {
+  clientSecret: string;
+  clientTimestamp: number;
+  nonce: string;
 }

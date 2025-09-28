@@ -1,3 +1,5 @@
+import { USER } from '@/lib/config';
+import mmkvStorage from '@/lib/mmvkStorage';
 import { Address } from 'viem';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -26,8 +28,8 @@ export const usePoolsStore = create(
         }),
     }),
     {
-      name: 'pools-plugins',
-      storage: createJSONStorage(() => sessionStorage),
+      name: USER.poolsStorageKey,
+      storage: createJSONStorage(() => mmkvStorage(USER.poolsStorageKey)),
     },
   ),
 );
