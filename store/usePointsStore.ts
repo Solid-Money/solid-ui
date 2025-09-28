@@ -1,11 +1,12 @@
 import { fetchPoints } from '@/lib/api';
+import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { Points } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import * as Sentry from '@sentry/react-native';
 import { produce } from 'immer';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import * as Sentry from '@sentry/react-native';
 
 interface PointsState {
   points: Points;
@@ -74,8 +75,8 @@ export const usePointsStore = create<PointsState>()(
       },
     }),
     {
-      name: 'points-storage',
-      storage: createJSONStorage(() => mmkvStorage('points-storage')),
+      name: USER.pointsStorageKey,
+      storage: createJSONStorage(() => mmkvStorage(USER.pointsStorageKey)),
     },
   ),
 );

@@ -106,4 +106,8 @@ export const USER = {
   referralStorageKey: 'flash_referral',
   activityStorageKey: 'flash_activity',
   balanceStorageKey: 'flash_balance',
+  poolsStorageKey: 'pools-storage',
+  swapTokensStorageKey: 'swap-tokens',
+  tokensStorageKey: 'tokens-storage',
+  pointsStorageKey: 'points-storage',
 };
