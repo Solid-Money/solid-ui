@@ -354,6 +354,7 @@ export enum SavingMode {
   INTEREST_ONLY = 'interest-only',
   BALANCE_ONLY = 'balance-only',
   CURRENT = 'current',
+  ALL_TIME = 'all-time',
 }
 
 export type BridgeDeposit = {

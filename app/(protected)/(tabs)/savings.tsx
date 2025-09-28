@@ -8,7 +8,6 @@ import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import PoolBanners from '@/components/Savings/PoolBanners';
-import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
@@ -68,12 +67,12 @@ export default function Savings() {
     lastTimestamp,
   );
 
-  const { savings } = useCalculateSavings(
+  const { savings: allTimeYield } = useCalculateSavings(
     balance ?? 0,
     totalAPY ?? 0,
     firstDepositTimestamp ?? 0,
     Math.floor(Date.now() / 1000),
-    SavingMode.INTEREST_ONLY,
+    SavingMode.ALL_TIME,
     userDepositTransactions,
     user?.safeAddress,
   );
@@ -213,7 +212,7 @@ export default function Savings() {
                 {isBalanceLoading ? (
                   <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
                 ) : (
-                  `$${savings ? formatNumber(savings, 6) : 0}`
+                  `${allTimeYield ? formatNumber(allTimeYield, 2) : 0}%`
                 )}
               </Text>
             </View>

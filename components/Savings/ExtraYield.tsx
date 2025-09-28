@@ -116,10 +116,10 @@ const ExtraYield = () => {
     if (isClaimingMerklRewardsError) return 'Error claiming yield';
     if (isClaimingMerklRewardsSuccess) return 'Yield claimed';
     if (isMaxClaimed) return `Max $${compactNumberFormat(MAX_REWARD)} claimed`;
-    if (!isUnclaimed && isPending) return `Pending $${compactNumberFormat(totalPending)} yield`;
-    if (!isUnclaimed) return 'No yield to claim';
     if (isClaimingMerklRewards) return 'Claiming yield';
     if (isMerklLoading) return 'Checking yield';
+    if (!isUnclaimed && isPending) return `Pending $${compactNumberFormat(totalPending)} yield`;
+    if (!isUnclaimed) return 'No yield to claim';
     if (isUnclaimed) return `Claim $${compactNumberFormat(totalUnclaimed)} yield`;
     return 'Claim boosted yield';
   };
