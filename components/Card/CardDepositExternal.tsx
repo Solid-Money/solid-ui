@@ -28,7 +28,7 @@ export default function CardDepositExternal() {
     if (!account && !isConnecting) {
       connectWallet();
     }
-  }, [account, isConnecting]);
+  }, [account, isConnecting, connectWallet]);
 
   // After wallet is connected, show external form with ConnectedWalletDropdown
   return <CardDepositExternalForm />;
