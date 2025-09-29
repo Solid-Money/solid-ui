@@ -8,14 +8,14 @@ import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import PoolBanners from '@/components/Savings/PoolBanners';
+import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useAllTimeYield, useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
-import { useCalculateSavings } from '@/hooks/useFinancial';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
@@ -38,6 +38,7 @@ export default function Savings() {
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
   } = useFuseVaultBalance(user?.safeAddress as Address);
+  const { data: allTimeYield, isLoading: isAllTimeYieldLoading } = useAllTimeYield();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -65,16 +66,6 @@ export default function Savings() {
     userDepositTransactions,
     balance,
     lastTimestamp,
-  );
-
-  const { savings: allTimeYield } = useCalculateSavings(
-    balance ?? 0,
-    totalAPY ?? 0,
-    firstDepositTimestamp ?? 0,
-    Math.floor(Date.now() / 1000),
-    SavingMode.ALL_TIME,
-    userDepositTransactions,
-    user?.safeAddress,
   );
 
   useEffect(() => {
@@ -187,7 +178,10 @@ export default function Savings() {
 
           <View className="flex-row md:flex-col web:md:w-80 bg-transparent justify-between md:justify-center">
             <View className="p-6 md:p-7">
-              <Text className="md:text-lg text-primary/50">Current Yield</Text>
+              <View className="flex-row items-center gap-1">
+                <Text className="md:text-lg text-primary/50">Current Yield</Text>
+                <TooltipPopover text="Last 15 days yield of the vault" />
+              </View>
               <View className="flex-row items-center gap-2">
                 <Text className="text-2xl text-brand font-semibold">
                   {isTotalAPYLoading ? (
@@ -207,9 +201,10 @@ export default function Savings() {
             <View className="p-6 md:p-7">
               <View className="flex-row items-center gap-1">
                 <Text className="md:text-lg text-primary/50">All time yield</Text>
+                <TooltipPopover text="All time yield of the vault" />
               </View>
               <Text className="text-2xl font-semibold">
-                {isBalanceLoading ? (
+                {isAllTimeYieldLoading ? (
                   <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
                 ) : (
                   `${allTimeYield ? formatNumber(allTimeYield, 2) : 0}%`
