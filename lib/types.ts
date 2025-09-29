@@ -744,3 +744,63 @@ export interface ClientNonceData {
   clientTimestamp: number;
   nonce: string;
 }
+
+// Stargate API interfaces
+export interface StargateQuoteParams {
+  srcToken: string;
+  srcChainKey: string;
+  dstToken: string;
+  dstChainKey: string;
+  srcAddress: string;
+  dstAddress: string;
+  srcAmount: string;
+  dstAmountMin: string;
+}
+
+export interface StargateTransaction {
+  data: string;
+  to: string;
+  value: string;
+  from: string;
+}
+
+export interface StargateStep {
+  type: string;
+  sender: string;
+  chainKey: string;
+  transaction: StargateTransaction;
+}
+
+export interface StargateFee {
+  token: string;
+  chainKey: string;
+  amount: string;
+  type: string;
+}
+
+export interface StargateDuration {
+  estimated: number;
+}
+
+export interface StargateQuote {
+  route: string;
+  error: string | null;
+  srcAmount: string;
+  dstAmount: string;
+  srcAmountMax: string;
+  dstAmountMin: string;
+  srcToken: string;
+  dstToken: string;
+  srcAddress: string;
+  dstAddress: string;
+  srcChainKey: string;
+  dstChainKey: string;
+  dstNativeAmount: string;
+  duration: StargateDuration;
+  fees: StargateFee[];
+  steps: StargateStep[];
+}
+
+export interface StargateQuoteResponse {
+  quotes: StargateQuote[];
+}
