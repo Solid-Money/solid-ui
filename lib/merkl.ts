@@ -4,7 +4,7 @@ import { Chain, encodeFunctionData } from 'viem'
 
 import MerklDistributorABI from '@/lib/abis/MerklDistributor'
 import { ADDRESSES, EXPO_PUBLIC_MERKL_CAMPAIGN_ID } from '@/lib/config'
-import { executeTransactions } from '@/lib/execute'
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute'
 
 export const getMerklRewards = async (address: string, chainId: number) => {
   const { status, data } = await MerklApi('https://api.merkl.xyz')
@@ -64,10 +64,16 @@ export const claimMerklRewards = async (smartAccountClient: SmartAccountClient, 
     },
   ]
 
-  await executeTransactions(
+  const transaction = await executeTransactions(
     smartAccountClient,
     transactions,
     'Failed to claim Merkl rewards',
     chain,
   )
+
+  if(transaction === USER_CANCELLED_TRANSACTION) {
+    throw new Error('User cancelled transaction')
+  }
+
+  return transaction
 }
