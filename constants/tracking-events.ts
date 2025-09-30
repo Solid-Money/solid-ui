@@ -43,6 +43,12 @@ export const TRACKING_EVENTS = {
   BRIDGE_TO_MAINNET_CANCELLED: 'bridge_to_mainnet_cancelled',
   BRIDGE_TO_MAINNET_ERROR: 'bridge_to_mainnet_error',
 
+  // Transaction Flow Events - Bridge to Arbitrum
+  BRIDGE_TO_ARBITRUM_INITIATED: 'bridge_to_arbitrum_initiated',
+  BRIDGE_TO_ARBITRUM_COMPLETED: 'bridge_to_arbitrum_completed',
+  BRIDGE_TO_ARBITRUM_CANCELLED: 'bridge_to_arbitrum_cancelled',
+  BRIDGE_TO_ARBITRUM_ERROR: 'bridge_to_arbitrum_error',
+
   // Transaction Flow Events - Approval
   APPROVE_INITIATED: 'approve_initiated',
   APPROVE_COMPLETED: 'approve_completed',
@@ -102,7 +108,7 @@ export const TRACKING_EVENTS = {
   WELCOME_USER: 'welcome_user',
   FORGOT_ALL_USERS: 'forgot_all_users',
   DELETE_ACCOUNT: 'delete_account',
-  
+
   // Email Events
   EMAIL_ENTRY_STARTED: 'email_entry_started',
   EMAIL_SUBMITTED: 'email_submitted',
@@ -115,4 +121,4 @@ export const TRACKING_EVENTS = {
   TOOLTIP_OPENED: 'tooltip_opened',
 } as const;
 
-export type TrackingEvent = typeof TRACKING_EVENTS[keyof typeof TRACKING_EVENTS];
+export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];
