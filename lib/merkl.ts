@@ -96,12 +96,11 @@ export const claimMerklRewards = async (
         description: `Claim ${formattedAmount} soUSD from Merkl`,
       },
     },
-    (onUserOpHash) => executeTransactions(
+    () => executeTransactions(
       smartAccountClient,
       transactions,
       'Failed to claim Merkl rewards',
       chain,
-      onUserOpHash
     )
   );
 
