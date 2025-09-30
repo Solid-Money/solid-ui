@@ -292,6 +292,7 @@ export enum TransactionType {
   SWAP = 'swap',
   WRAP = 'wrap',
   UNWRAP = 'unwrap',
+  MERKL_CLAIM = 'merkl_claim',
 }
 
 export enum TransactionStatus {
