@@ -158,23 +158,7 @@ const useBridgeToCard = (): BridgeResult => {
             }),
             value: 0n,
           },
-          // 2) Approve router from BridgePaymaster (spender is quote.transaction.to)
-          {
-            to: ADDRESSES.fuse.bridgePaymasterAddress,
-            data: encodeFunctionData({
-              abi: BridgePayamster_ABI,
-              functionName: 'approveERC20',
-              args: [USDC_STARGATE, transaction.to as Address, amountWei],
-            }),
-            value: 0n,
-          },
-          // 3) Send the native fee to BridgePaymaster so it can forward it in step 4
-          {
-            to: ADDRESSES.fuse.bridgePaymasterAddress,
-            data: '0x',
-            value: nativeFeeAmount, // fund the contract for the upcoming callWithValue
-          },
-          // 4) Perform the Stargate taxi call via BridgePaymaster, forwarding the fee it now holds
+          // 2) Perform the Stargate taxi call via BridgePaymaster, forwarding the fee it now holds
           {
             to: ADDRESSES.fuse.bridgePaymasterAddress,
             data: encodeFunctionData({
@@ -187,7 +171,7 @@ const useBridgeToCard = (): BridgeResult => {
                 nativeFeeAmount, // the native to forward
               ],
             }),
-            value: 0n, // nonpayable function; value already sent in step 3
+            value: 0n,
           },
         ];
 
