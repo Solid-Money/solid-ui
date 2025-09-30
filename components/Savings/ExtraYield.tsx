@@ -16,6 +16,7 @@ import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { cn, compactNumberFormat } from '@/lib/utils';
 import { claimMerklRewards, getMerklRewards } from '@/lib/merkl';
+import { useActivity } from '@/hooks/useActivity';
 
 const MAX_REWARD = 200;
 
@@ -23,6 +24,7 @@ const ExtraYield = () => {
   const { isScreenMedium } = useDimension();
   const { user, safeAA } = useUser();
   const queryClient = useQueryClient();
+  const { trackTransaction } = useActivity();
   const hasDeposited = user?.isDeposited;
 
   const { data: merklRewards, isLoading: isMerklLoading } = useQuery({
@@ -43,7 +45,7 @@ const ExtraYield = () => {
       }
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
-      await claimMerklRewards(smartAccountClient, fuse);
+      await claimMerklRewards(smartAccountClient, fuse, trackTransaction);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['merkl', user?.safeAddress] });
