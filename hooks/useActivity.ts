@@ -212,10 +212,15 @@ export function useActivity() {
 
       return result;
     } catch (error: any) {
+      if (params.status === TransactionStatus.SUCCESS) {
+        // If status is success, don't create failed activity
+        throw error;
+      }
+
       // If activity was created, update it as failed
       if (clientTxId) {
         updateActivity(clientTxId, {
-          status: params.status || TransactionStatus.FAILED,
+          status: TransactionStatus.FAILED,
           metadata: {
             error: error?.message || 'Transaction failed',
             failedAt: new Date().toISOString(),
@@ -225,7 +230,7 @@ export function useActivity() {
         // Create activity to show failure
         const failedClientTxId = await createActivity(params);
         updateActivity(failedClientTxId, {
-          status: params.status || TransactionStatus.FAILED,
+          status: TransactionStatus.FAILED,
           metadata: {
             error: error?.message || 'Transaction failed',
             failedAt: new Date().toISOString(),
