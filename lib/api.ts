@@ -1099,4 +1099,11 @@ export const getStargateQuote = async (
   }
 
   return response.json();
+}
+
+export const fetchAllTimeYield = async () => {
+  const response = await axios.get<number>(
+    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/all-time-yield`,
+  );
+  return response.data;
 };

@@ -38,7 +38,7 @@ const PoolStat = () => {
         <View>
           <View className="flex-row items-center gap-1">
             <Text className="text-lg text-muted-foreground font-medium">Pool APY</Text>
-            <TooltipPopover text="Annual Percentage Yield (APY): the projected yearly return on your funds, shown as a percentage." />
+            <TooltipPopover text="Annual Percentage Yield (APY): the projected yearly return on your funds based on the vault's performance over the last 15 days." />
           </View>
           <Text className="text-2xl text-brand font-semibold">
             {totalAPY ? `${totalAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}

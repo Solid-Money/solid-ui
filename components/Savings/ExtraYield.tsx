@@ -16,6 +16,7 @@ import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { cn, compactNumberFormat } from '@/lib/utils';
 import { claimMerklRewards, getMerklRewards } from '@/lib/merkl';
+import { useActivity } from '@/hooks/useActivity';
 
 const MAX_REWARD = 200;
 
@@ -23,6 +24,7 @@ const ExtraYield = () => {
   const { isScreenMedium } = useDimension();
   const { user, safeAA } = useUser();
   const queryClient = useQueryClient();
+  const { trackTransaction } = useActivity();
   const hasDeposited = user?.isDeposited;
 
   const { data: merklRewards, isLoading: isMerklLoading } = useQuery({
@@ -43,7 +45,7 @@ const ExtraYield = () => {
       }
 
       const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
-      await claimMerklRewards(smartAccountClient, fuse);
+      await claimMerklRewards(smartAccountClient, fuse, trackTransaction);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['merkl', user?.safeAddress] });
@@ -59,7 +61,7 @@ const ExtraYield = () => {
       });
       Toast.show({
         type: 'error',
-        text1: 'Error claiming Merkl rewards',
+        text1: errorMessage,
         text2: 'Inspect console log for more details and try again.',
         props: {
           badgeText: '',
@@ -112,15 +114,22 @@ const ExtraYield = () => {
   const isMaxClaimed = totalClaimed >= MAX_REWARD;
   const isDisabled = isLoading || !isUnclaimed || isMaxClaimed;
 
+  const formatReward = (amount: number, maximumFractionDigits = 2) => {
+    if (amount > 0 && amount < Math.pow(10, -maximumFractionDigits)) {
+      return `<$${Math.pow(10, -maximumFractionDigits)}`;
+    }
+    return `$${compactNumberFormat(amount)}`;
+  }
+
   const getClaimText = () => {
     if (isClaimingMerklRewardsError) return 'Error claiming yield';
     if (isClaimingMerklRewardsSuccess) return 'Yield claimed';
-    if (isMaxClaimed) return `Max $${compactNumberFormat(MAX_REWARD)} claimed`;
+    if (isMaxClaimed) return `Max ${formatReward(MAX_REWARD)} claimed`;
     if (isClaimingMerklRewards) return 'Claiming yield';
     if (isMerklLoading) return 'Checking yield';
-    if (!isUnclaimed && isPending) return `Pending $${compactNumberFormat(totalPending)} yield`;
+    if (!isUnclaimed && isPending) return `Pending ${formatReward(totalPending)} yield`;
     if (!isUnclaimed) return 'No yield to claim';
-    if (isUnclaimed) return `Claim $${compactNumberFormat(totalUnclaimed)} yield`;
+    if (isUnclaimed) return `Claim ${formatReward(totalUnclaimed)} yield`;
     return 'Claim boosted yield';
   };
 

@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
+import { Hash } from 'viem';
 
 import { createActivityEvent, updateActivityEvent } from '@/lib/api';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
@@ -19,6 +20,16 @@ function getExplorerUrl(chainId: number, txHash: string): string {
   return `https://explorer.fuse.io/tx/${txHash}`;
 }
 
+function getTransactionHash(transaction: any): string {
+  if (!transaction || typeof transaction !== 'object') return '';
+
+  if ('transactionHash' in transaction || 'hash' in transaction) {
+    return (transaction as any).transactionHash || (transaction as any).hash;
+  }
+
+  return '';
+}
+
 export interface CreateActivityParams {
   type: TransactionType;
   title: string;
@@ -29,6 +40,7 @@ export interface CreateActivityParams {
   fromAddress?: string;
   toAddress?: string;
   userOpHash?: string;
+  status?: TransactionStatus;
   metadata?: {
     description?: string;
     slippage?: string;
@@ -37,6 +49,8 @@ export interface CreateActivityParams {
     [key: string]: any;
   };
 }
+
+export type TrackTransaction = <TransactionResult>(params: CreateActivityParams, executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<TransactionResult>) => Promise<TransactionResult>
 
 export function useActivity() {
   const { user } = useUser();
@@ -73,7 +87,7 @@ export function useActivity() {
       shortTitle: params.shortTitle,
       timestamp,
       type: params.type,
-      status: TransactionStatus.PENDING,
+      status: params.status || TransactionStatus.PENDING,
       amount: params.amount,
       symbol: params.symbol,
       chainId: params.chainId,
@@ -117,7 +131,9 @@ export function useActivity() {
   ) => {
     if (!user?.userId) return;
 
-    const existingActivities = events[user.userId] || [];
+    // Get the most current state from the store
+    const currentState = useActivityStore.getState();
+    const existingActivities = currentState.events[user.userId] || [];
     const activityIndex = existingActivities.findIndex(a => a.clientTxId === clientTxId);
 
     if (activityIndex === -1) return;
@@ -158,9 +174,10 @@ export function useActivity() {
   // Wrapper function to track transactions
   const trackTransaction = useCallback(async <T>(
     params: CreateActivityParams,
-    executeTransaction: (onUserOpHash: (userOpHash: `0x${string}`) => void) => Promise<T>
+    executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<T>,
   ): Promise<T> => {
     let clientTxId: string | null = null;
+    const isSuccess = params.status === TransactionStatus.SUCCESS;
 
     try {
       // Execute the transaction with callback for immediate userOpHash
@@ -172,15 +189,19 @@ export function useActivity() {
         });
       });
 
-      // If activity wasn't created (no userOpHash callback), create it now
-      if (!clientTxId) {
-        clientTxId = await createActivity(params);
-      }
-
       // Extract transaction data
       const transaction = result && typeof result === 'object' && 'transaction' in result
         ? (result as any).transaction
         : result;
+
+      if (isSuccess && !getTransactionHash(transaction)) {
+        return result;
+      }
+
+      // If activity wasn't created (no userOpHash callback), create it now
+      if (!clientTxId) {
+        clientTxId = await createActivity(params);
+      }
 
       // Update with transaction hash when available
       if (transaction && typeof transaction === 'object') {
@@ -190,15 +211,13 @@ export function useActivity() {
           url?: string;
           metadata: Record<string, any>;
         } = {
-          status: TransactionStatus.PROCESSING,
+          status: params.status || TransactionStatus.PROCESSING,
           metadata: {
             submittedAt: new Date().toISOString(),
           },
         };
 
-        if ('transactionHash' in transaction) {
-          updateData.hash = (transaction as any).transactionHash || (transaction as any).hash;
-        }
+        updateData.hash = getTransactionHash(transaction);
 
         if (updateData.hash && params.chainId) {
           updateData.url = getExplorerUrl(params.chainId, updateData.hash);
@@ -208,6 +227,11 @@ export function useActivity() {
 
       return result;
     } catch (error: any) {
+      if (isSuccess) {
+        // If status is success, don't create failed activity
+        throw error;
+      }
+
       // If activity was created, update it as failed
       if (clientTxId) {
         updateActivity(clientTxId, {

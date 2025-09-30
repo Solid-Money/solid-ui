@@ -35,6 +35,12 @@ const isUserOperationError = (error: any): boolean => {
   );
 };
 
+export const getTransaction = (result: TransactionResult): TransactionResult => {
+  return result && typeof result === 'object' && 'transaction' in result
+    ? result.transaction
+    : result;
+}
+
 export const executeTransactions = async (
   smartAccountClient: SmartAccountClient,
   transactions: any[],
