@@ -50,6 +50,19 @@ export const useEthereumVaultBalance = (safeAddress: Address) => {
   });
 };
 
+export const useVaultBalance = (safeAddress: Address) => {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: [VAULT, 'balance', safeAddress],
+    queryFn: async () => {
+      const ethereumBalance = await fetchVaultBalance(queryClient, safeAddress, mainnet.id, ADDRESSES.ethereum.vault)
+      const fuseBalance = await fetchVaultBalance(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.vault)
+      return ethereumBalance + fuseBalance
+    },
+    enabled: !!safeAddress,
+  });
+};
+
 export const useUsdcVaultBalance = (safeAddress: Address) => {
   const queryClient = useQueryClient();
   return useQuery({
