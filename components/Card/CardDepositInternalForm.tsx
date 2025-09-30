@@ -91,8 +91,8 @@ export default function CardDepositInternalForm() {
         text1: 'Deposit to card initiated',
         text2: `${data.amount} USDC.e bridged to card`,
         props: {
-          link: `https://fusescan.io/tx/${tx.transactionHash}`,
-          linkText: 'View on Fusescan',
+          link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+          linkText: 'View on LayerZeroScan',
           image: getTokenIcon({ tokenSymbol: 'USDC' }),
         },
       });
@@ -125,7 +125,7 @@ export default function CardDepositInternalForm() {
       </View>
 
       <View className="gap-2">
-        <Text className="opacity-50 font-medium">Bridge amount</Text>
+        <Text className="opacity-50 font-medium">Deposit amount</Text>
         <View
           className={cn(
             'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',

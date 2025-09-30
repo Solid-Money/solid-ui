@@ -140,13 +140,6 @@ const useBridgeToCard = (): BridgeResult => {
         const { transaction } = bridgeStep;
         const nativeFeeAmount = BigInt(transaction.value);
 
-        console.log('Stargate quote:', {
-          taxiQuote,
-          bridgeStep,
-          transaction: bridgeStep?.transaction,
-          nativeFeeAmount: nativeFeeAmount.toString(),
-        });
-
         const transactions = [
           // 1) Move USDC.e from Safe to BridgePaymaster
           {
@@ -166,7 +159,7 @@ const useBridgeToCard = (): BridgeResult => {
               functionName: 'callWithValue',
               args: [
                 transaction.to as Address,
-                '0x05921740', // send function selector
+                '0xc7c7f5b3', // send function selector
                 transaction.data as `0x${string}`,
                 nativeFeeAmount, // the native to forward
               ],
