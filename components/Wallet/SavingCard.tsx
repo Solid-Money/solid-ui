@@ -17,7 +17,7 @@ import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { useFuseVaultBalance } from '@/hooks/useVault';
+import { useVaultBalance } from '@/hooks/useVault';
 import { ADDRESSES } from '@/lib/config';
 import { cn, fontSize } from '@/lib/utils';
 
@@ -41,7 +41,7 @@ const SavingCard = ({ className }: SavingCardProps) => {
         address: user?.safeAddress?.toLowerCase() ?? '',
       },
     });
-  const { data: balance, refetch: refetchBalance } = useFuseVaultBalance(
+  const { data: balance, refetch: refetchBalance } = useVaultBalance(
     user?.safeAddress as Address,
   );
   const { data: lastTimestamp } = useLatestTokenTransfer(
@@ -101,7 +101,7 @@ const SavingCard = ({ className }: SavingCardProps) => {
                 }}
               />
             </View>
-            <TooltipPopover text="Balance + Yield of staked soUSD" />
+            <TooltipPopover text="Balance + Yield of soUSD" />
           </View>
           <Image
             source={require('@/assets/images/sousd-4x.png')}

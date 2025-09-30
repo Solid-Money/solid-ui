@@ -53,7 +53,7 @@ const WalletCard = ({ balance, className, tokens }: WalletCardProps) => {
               }}
             />
           </View>
-          <TooltipPopover text="All coins balance excluding staked soUSD" />
+          <TooltipPopover text="All coins balance excluding soUSD" />
         </View>
         <TooltipPopover
           trigger={

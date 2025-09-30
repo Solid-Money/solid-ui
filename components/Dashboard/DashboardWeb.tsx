@@ -11,7 +11,7 @@ import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useCalculateSavings } from '@/hooks/useFinancial';
 import useUser from '@/hooks/useUser';
-import { useFuseVaultBalance } from '@/hooks/useVault';
+import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
@@ -32,7 +32,7 @@ export function DashboardWeb() {
     retry: retryTokens,
     isRefreshing,
   } = useWalletTokens();
-  const { data: balance, refetch: refetchBalance } = useFuseVaultBalance(
+  const { data: balance, refetch: refetchBalance } = useVaultBalance(
     user?.safeAddress as Address,
   );
 
