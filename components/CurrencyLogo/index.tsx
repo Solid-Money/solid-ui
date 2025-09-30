@@ -56,7 +56,9 @@ const CurrencyLogo = ({ currency, size, style = {} }: CurrencyLogoProps) => {
   }
 
   const logoUrl = (currency as Token)?.address
-    ? tokens.find(token => token.address === (currency as Token)?.address)?.logoURI
+    ? tokens.find(
+        token => token.address.toLowerCase() === (currency as Token)?.address.toLowerCase(),
+      )?.logoURI
     : undefined;
 
   if (logoUrl) {
