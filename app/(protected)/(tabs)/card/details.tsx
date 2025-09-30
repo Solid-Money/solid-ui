@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Wallet } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 
@@ -202,10 +202,25 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="border border-white rounded-xl flex-row items-center justify-center p-4 mb-6 web:hover:opacity-80"
+      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 mb-4 h-14"
     >
-      <Wallet size={20} color="#FFFFFF" />
-      <Text className="text-white text-base font-semibold ml-2">Add to Wallet</Text>
+      <View className="flex-row items-center flex-1">
+        <Text className="flex-1 text-base font-bold text-white mr-3">Add to wallet</Text>
+        <View className="flex-row items-center mr-8">
+          <Image
+            source={require('@/assets/images/apple_pay.png')}
+            style={{ width: 49, height: 22}}
+            contentFit="contain"
+          />
+          <View className="w-px h-8 bg-white/50 mx-3" />
+          <Image
+            source={require('@/assets/images/google_pay.png')}
+            style={{ width: 47, height: 19 }}
+            contentFit="contain"
+          />
+        </View>
+      </View>
+      <ChevronRight color="white" size={22} />
     </Pressable>
   );
 }
@@ -218,7 +233,7 @@ function ViewTransactionsButton({ onPress }: ViewTransactionsButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="bg-[#1E1E1E] rounded-xl flex-row items-center justify-between p-4 mb-8"
+      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 mb-8 h-14"
     >
       <Text className=" text-base font-bold text-white">View transactions</Text>
       <ChevronRight color="white" size={22} />
