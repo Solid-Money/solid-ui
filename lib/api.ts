@@ -43,6 +43,8 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
+  StargateQuoteParams,
+  StargateQuoteResponse,
   ToCurrency,
   TokenPriceUsd,
   UpdateActivityEvent,
@@ -531,7 +533,8 @@ export const fetchLeaderboardUsers = async (params: {
   const searchParams = new URLSearchParams();
 
   if (params.pageSize) searchParams.append('pageSize', params.pageSize);
-  if (params.userIdToStartAfter) searchParams.append('userIdToStartAfter', params.userIdToStartAfter);
+  if (params.userIdToStartAfter)
+    searchParams.append('userIdToStartAfter', params.userIdToStartAfter);
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/leaderboard?${searchParams.toString()}`,
@@ -803,17 +806,14 @@ export const getLifiQuote = async ({
 };
 
 export const checkBridgeStatus = async (bridgeTxHash: string): Promise<LifiStatusResponse> => {
-  const response = await axios.get<LifiStatusResponse>(
-    `${EXPO_PUBLIC_LIFI_API_URL}/status`,
-    {
-      params: {
-        txHash: bridgeTxHash,
-      },
+  const response = await axios.get<LifiStatusResponse>(`${EXPO_PUBLIC_LIFI_API_URL}/status`, {
+    params: {
+      txHash: bridgeTxHash,
     },
-  );
+  });
 
   return response?.data;
-}
+};
 
 export const bridgeTransaction = async (bridge: BridgeTransactionRequest): Promise<Response> => {
   const jwt = getJWTToken();
@@ -923,13 +923,16 @@ export const fetchTVL = async () => {
 };
 
 export const usernameExists = async (username: string) => {
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/username/${username}`, {
-    method: 'HEAD',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getPlatformHeaders(),
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/username/${username}`,
+    {
+      method: 'HEAD',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
     },
-  });
+  );
   return response;
 };
 
@@ -982,16 +985,19 @@ export const updateActivityEvent = async (
 ): Promise<ActivityEvent> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/${clientTxId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getPlatformHeaders(),
-      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/${clientTxId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(event),
     },
-    credentials: 'include',
-    body: JSON.stringify(event),
-  });
+  );
 
   if (!response.ok) throw response;
 
@@ -1079,6 +1085,21 @@ export const revealCardDetailsComplete = async (): Promise<CardDetailsRevealResp
 
   return cardDetails;
 };
+
+// Stargate API for bridging
+export const getStargateQuote = async (
+  params: StargateQuoteParams,
+): Promise<StargateQuoteResponse> => {
+  const searchParams = new URLSearchParams(params as unknown as Record<string, string>);
+
+  const response = await fetch(`https://stargate.finance/api/v1/quotes?${searchParams}`);
+
+  if (!response.ok) {
+    throw new Error(`Stargate API error: ${response.statusText}`);
+  }
+
+  return response.json();
+}
 
 export const fetchAllTimeYield = async () => {
   const response = await axios.get<number>(
