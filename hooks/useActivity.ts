@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
+import { Hash } from 'viem';
 
 import { createActivityEvent, updateActivityEvent } from '@/lib/api';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
@@ -29,6 +30,7 @@ export interface CreateActivityParams {
   fromAddress?: string;
   toAddress?: string;
   userOpHash?: string;
+  status?: TransactionStatus;
   metadata?: {
     description?: string;
     slippage?: string;
@@ -37,6 +39,8 @@ export interface CreateActivityParams {
     [key: string]: any;
   };
 }
+
+export type TrackTransaction = <TransactionResult>(params: CreateActivityParams, executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<TransactionResult>) => Promise<TransactionResult>
 
 export function useActivity() {
   const { user } = useUser();
@@ -73,7 +77,7 @@ export function useActivity() {
       shortTitle: params.shortTitle,
       timestamp,
       type: params.type,
-      status: TransactionStatus.PENDING,
+      status: params.status || TransactionStatus.PENDING,
       amount: params.amount,
       symbol: params.symbol,
       chainId: params.chainId,
@@ -158,7 +162,7 @@ export function useActivity() {
   // Wrapper function to track transactions
   const trackTransaction = useCallback(async <T>(
     params: CreateActivityParams,
-    executeTransaction: (onUserOpHash: (userOpHash: `0x${string}`) => void) => Promise<T>
+    executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<T>,
   ): Promise<T> => {
     let clientTxId: string | null = null;
 
@@ -190,7 +194,7 @@ export function useActivity() {
           url?: string;
           metadata: Record<string, any>;
         } = {
-          status: TransactionStatus.PROCESSING,
+          status: params.status || TransactionStatus.PROCESSING,
           metadata: {
             submittedAt: new Date().toISOString(),
           },
@@ -208,6 +212,11 @@ export function useActivity() {
 
       return result;
     } catch (error: any) {
+      if (params.status === TransactionStatus.SUCCESS) {
+        // If status is success, don't create failed activity
+        throw error;
+      }
+
       // If activity was created, update it as failed
       if (clientTxId) {
         updateActivity(clientTxId, {

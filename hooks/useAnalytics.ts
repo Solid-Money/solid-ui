@@ -10,6 +10,7 @@ import {
 } from '@/graphql/generated/user-info';
 import {
   bridgeDepositTransactions,
+  fetchAllTimeYield,
   fetchLayerZeroBridgeTransactions,
   fetchTokenTransfer,
   fetchTotalAPY,
@@ -409,5 +410,12 @@ export const useVaultBreakdown = () => {
   return useQuery({
     queryKey: [ANALYTICS, 'vaultBreakdown'],
     queryFn: fetchVaultBreakdown,
+  });
+};
+
+export const useAllTimeYield = () => {
+  return useQuery({
+    queryKey: [ANALYTICS, 'allTimeYield'],
+    queryFn: fetchAllTimeYield,
   });
 };
