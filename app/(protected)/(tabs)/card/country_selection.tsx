@@ -25,7 +25,11 @@ export default function CountrySelection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
-  const { countryInfo: cachedCountryInfo, lastFetchTime, setCountryInfo: setCachedCountryInfo } = useCountryStore();
+  const {
+    countryInfo: cachedCountryInfo,
+    lastFetchTime,
+    setCountryInfo: setCachedCountryInfo,
+  } = useCountryStore();
 
   useEffect(() => {
     const fetchCountry = async () => {
@@ -33,12 +37,12 @@ export default function CountrySelection() {
         // Check if we have cached country info that's still valid
         if (cachedCountryInfo && !shouldRefetchCountry(lastFetchTime)) {
           setCountryInfo(cachedCountryInfo);
-          const country = COUNTRIES.find((c) => c.code === cachedCountryInfo.countryCode);
+          const country = COUNTRIES.find(c => c.code === cachedCountryInfo.countryCode);
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          
+
           // If country is available, proceed directly to card activation
           if (cachedCountryInfo.isAvailable) {
             router.replace(path.CARD_ACTIVATE_MOBILE);
@@ -53,13 +57,13 @@ export default function CountrySelection() {
         if (info) {
           setCountryInfo(info);
           setCachedCountryInfo(info); // Cache the country info
-          
-          const country = COUNTRIES.find((c) => c.code === info.countryCode);
+
+          const country = COUNTRIES.find(c => c.code === info.countryCode);
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          
+
           // If country is available, proceed directly to card activation
           if (info.isAvailable) {
             router.replace(path.CARD_ACTIVATE_MOBILE);
@@ -81,8 +85,8 @@ export default function CountrySelection() {
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
-    return COUNTRIES.filter((country) =>
-      country.name.toLowerCase().includes(searchQuery.toLowerCase())
+    return COUNTRIES.filter(country =>
+      country.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
   }, [searchQuery]);
 
@@ -110,24 +114,24 @@ export default function CountrySelection() {
       try {
         // Check card access via backend API
         const accessCheck = await checkCardAccess(selectedCountry.code);
-        
+
         // Create the updated country info
         const updatedCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
           isAvailable: accessCheck.hasAccess,
         };
-        
+
         // Update both local and cached state
         setCountryInfo(updatedCountryInfo);
         setCachedCountryInfo(updatedCountryInfo);
-        
+
         // If selected country is available, proceed directly to card activation
         if (accessCheck.hasAccess) {
           router.replace(path.CARD_ACTIVATE_MOBILE);
           return;
         }
-        
+
         setShowCountrySelector(false);
         setNotifyClicked(false);
       } catch (error) {
@@ -138,7 +142,7 @@ export default function CountrySelection() {
           countryName: selectedCountry.name,
           isAvailable: false,
         };
-        
+
         setCountryInfo(unavailableCountryInfo);
         setCachedCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
@@ -186,26 +190,26 @@ export default function CountrySelection() {
               onCountrySelect={handleCountrySelect}
             />
           </>
-         ) : (
-           <View className="flex-1 justify-center">
-             <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full max-w-md items-center">
-               {notifyClicked ? (
-                 <NotifyConfirmationView
-                   countryName={countryInfo.countryName}
-                   countryCode={countryInfo.countryCode}
-                   onOk={() => router.back()}
-                 />
-               ) : (
-                 <CountryUnavailableView
-                   countryName={countryInfo.countryName}
-                   countryCode={countryInfo.countryCode}
-                   onChangeCountry={handleChangeCountry}
-                   onNotifyByMail={handleNotifyByMail}
-                 />
-               )}
-             </View>
-           </View>
-         )}
+        ) : (
+          <View className="flex-1 justify-center">
+            <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full max-w-md items-center">
+              {notifyClicked ? (
+                <NotifyConfirmationView
+                  countryName={countryInfo.countryName}
+                  countryCode={countryInfo.countryCode}
+                  onOk={() => router.back()}
+                />
+              ) : (
+                <CountryUnavailableView
+                  countryName={countryInfo.countryName}
+                  countryCode={countryInfo.countryCode}
+                  onChangeCountry={handleChangeCountry}
+                  onNotifyByMail={handleNotifyByMail}
+                />
+              )}
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -215,7 +219,7 @@ const getCountryFlag = (countryCode: string) => {
   const codePoints = countryCode
     .toUpperCase()
     .split('')
-    .map((char) => 127397 + char.charCodeAt(0));
+    .map(char => 127397 + char.charCodeAt(0));
   return String.fromCodePoint(...codePoints);
 };
 
@@ -242,7 +246,7 @@ function CountryDropdown({
       <Pressable className="flex-1 bg-black/50 justify-center items-center" onPress={onClose}>
         <Pressable
           className="bg-[#333331] rounded-2xl w-[90%] max-w-md"
-          onPress={(e) => e.stopPropagation()}
+          onPress={e => e.stopPropagation()}
         >
           <View className="p-4">
             <TextInput
@@ -258,7 +262,7 @@ function CountryDropdown({
               showsVerticalScrollIndicator={true}
               nestedScrollEnabled={true}
             >
-              {filteredCountries.map((country) => (
+              {filteredCountries.map(country => (
                 <Pressable
                   key={country.code}
                   className="py-3 px-4 web:hover:bg-white/10 rounded-lg"
@@ -333,20 +337,17 @@ function CountryUnavailableView({
         <Text className="text-[64px]">{getCountryFlag(countryCode)}</Text>
       </View>
       <Text className="text-white text-2xl font-bold mb-4 text-center">
-        We're not ready for {countryName} just yet!
+        {`We're not ready for ${countryName} just yet!`}
       </Text>
       <Text className="text-[#ACACAC] text-center font-weight-400 mb-6 leading-6">
-        Unfortunately, Solid card isn't available here yet. We can let you know as soon as it is.
+        {`Unfortunately, Solid card isn't available here yet. We can let you know as soon as it is.`}
       </Text>
       <Pressable onPress={onChangeCountry} className="mb-6 web:hover:opacity-70">
         <Text className="text-white font-bold text-base">Change country</Text>
       </Pressable>
-        <Button
-          className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]"
-          onPress={onNotifyByMail}
-        >
-          <Text className="text-base font-bold text-black">Notify by mail</Text>
-        </Button>
+      <Button className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]" onPress={onNotifyByMail}>
+        <Text className="text-base font-bold text-black">Notify by mail</Text>
+      </Button>
     </>
   );
 }
@@ -366,13 +367,9 @@ function NotifyConfirmationView({ countryName, countryCode, onOk }: NotifyConfir
       </View>
       <Text className="text-white text-2xl font-semibold mb-4 text-center">Thanks</Text>
       <Text className="text-[#ACACAC] text-center mb-8 leading-6">
-        We'll let you know as soon as Cash cards become available in {countryName}. Hopefully very
-        soon!
+        {`We'll let you know as soon as Cash cards become available in ${countryName}. Hopefully very soon!`}
       </Text>
-      <Button
-        className="rounded-xl h-11 w-full mt-6 mb-4 bg-[#94F27F]"
-        onPress={onOk}
-      >
+      <Button className="rounded-xl h-11 w-full mt-6 mb-4 bg-[#94F27F]" onPress={onOk}>
         <Text className="text-base font-bold text-black">Ok</Text>
       </Button>
     </>
@@ -414,10 +411,7 @@ function ErrorView({ isScreenMedium, onBack }: { isScreenMedium: boolean; onBack
           <Text className="text-white/60 text-center mb-8">
             Please check your internet connection and try again.
           </Text>
-          <Button
-            className="rounded-xl h-12 w-full bg-[#94F27F]"
-            onPress={onBack}
-          >
+          <Button className="rounded-xl h-12 w-full bg-[#94F27F]" onPress={onBack}>
             <Text className="text-base font-bold text-black">Go Back</Text>
           </Button>
         </View>
@@ -425,4 +419,3 @@ function ErrorView({ isScreenMedium, onBack }: { isScreenMedium: boolean; onBack
     </View>
   );
 }
-
