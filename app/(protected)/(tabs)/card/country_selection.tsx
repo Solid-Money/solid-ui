@@ -6,11 +6,11 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { checkCardAccess, getCountryFromIp } from '@/lib/api';
 import { CountryInfo } from '@/lib/types';
+import { COUNTRIES, Country } from '@/constants/countries';
 
 export default function CountrySelection() {
   const router = useRouter();
