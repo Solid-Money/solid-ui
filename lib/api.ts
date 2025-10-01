@@ -25,10 +25,12 @@ import {
   BridgeTransaction,
   BridgeTransactionRequest,
   BridgeTransferResponse,
+  CardAccessResponse,
   CardDetailsRevealResponse,
   CardResponse,
   CardStatusResponse,
   CardTransactionsResponse,
+  CountryInfo,
   CustomerFromBridgeResponse,
   Deposit,
   EphemeralKeyResponse,
@@ -485,6 +487,44 @@ export const getClientIp = async () => {
     return response.data.ip;
   } catch (error) {
     console.error('Error fetching IP from ipify:', error);
+  }
+};
+
+export const checkCardAccess = async (countryCode: string): Promise<CardAccessResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/check-access?countryCode=${countryCode}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    }
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getCountryFromIp = async (): Promise<CountryInfo | null> => {
+  try {
+    const response = await axios.get('https://ipapi.co/json/');
+    const { country_code, country_name } = response.data;
+
+    // Check card access via backend
+    const accessCheck = await checkCardAccess(country_code);
+
+    return {
+      countryCode: country_code,
+      countryName: country_name,
+      isAvailable: accessCheck.hasAccess,
+    };
+  } catch (error) {
+    console.error('Error fetching country from IP:', error);
+    return null;
   }
 };
 

@@ -22,6 +22,7 @@ type Path = {
   CARD_TRANSACTIONS: Route;
   CARD_ACTIVATE_MOBILE: Href;
   CARD_KYC_MOBILE: Href;
+  CARD_COUNTRY_SELECTION: Href;
   EARN: Href;
   BUY_CRYPTO: Href;
   SETTINGS: Href;
@@ -55,6 +56,7 @@ export const path: Path = {
   CARD_TRANSACTIONS: '/card/details/transactions',
   CARD_ACTIVATE_MOBILE: '/card/activate_mobile',
   CARD_KYC_MOBILE: '/card/kyc_mobile',
+  CARD_COUNTRY_SELECTION: '/card/country_selection',
   EARN: '/earn',
   BUY_CRYPTO: '/buy-crypto',
   SETTINGS: '/settings',
