@@ -6,11 +6,12 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { checkCardAccess, getCountryFromIp } from '@/lib/api';
 import { CountryInfo } from '@/lib/types';
-import { COUNTRIES, Country } from '@/constants/countries';
+import { shouldRefetchCountry, useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
   const router = useRouter();
@@ -24,12 +25,35 @@ export default function CountrySelection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
+  const { countryInfo: cachedCountryInfo, lastFetchTime, setCountryInfo: setCachedCountryInfo } = useCountryStore();
+
   useEffect(() => {
     const fetchCountry = async () => {
       try {
+        // Check if we have cached country info that's still valid
+        if (cachedCountryInfo && !shouldRefetchCountry(lastFetchTime)) {
+          setCountryInfo(cachedCountryInfo);
+          const country = COUNTRIES.find((c) => c.code === cachedCountryInfo.countryCode);
+          if (country) {
+            setSelectedCountry(country);
+            setSearchQuery(country.name);
+          }
+          
+          // If country is available, proceed directly to card activation
+          if (cachedCountryInfo.isAvailable) {
+            router.replace(path.CARD_ACTIVATE_MOBILE);
+            return;
+          }
+          setLoading(false);
+          return;
+        }
+
+        // Fetch new country info if cache is invalid or missing
         const info = await getCountryFromIp();
         if (info) {
           setCountryInfo(info);
+          setCachedCountryInfo(info); // Cache the country info
+          
           const country = COUNTRIES.find((c) => c.code === info.countryCode);
           if (country) {
             setSelectedCountry(country);
@@ -53,7 +77,7 @@ export default function CountrySelection() {
     };
 
     fetchCountry();
-  }, [router]);
+  }, [router, cachedCountryInfo, lastFetchTime, setCachedCountryInfo]);
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
@@ -87,27 +111,36 @@ export default function CountrySelection() {
         // Check card access via backend API
         const accessCheck = await checkCardAccess(selectedCountry.code);
         
+        // Create the updated country info
+        const updatedCountryInfo = {
+          countryCode: selectedCountry.code,
+          countryName: selectedCountry.name,
+          isAvailable: accessCheck.hasAccess,
+        };
+        
+        // Update both local and cached state
+        setCountryInfo(updatedCountryInfo);
+        setCachedCountryInfo(updatedCountryInfo);
+        
         // If selected country is available, proceed directly to card activation
         if (accessCheck.hasAccess) {
           router.replace(path.CARD_ACTIVATE_MOBILE);
           return;
         }
         
-        setCountryInfo({
-          countryCode: selectedCountry.code,
-          countryName: selectedCountry.name,
-          isAvailable: accessCheck.hasAccess,
-        });
         setShowCountrySelector(false);
         setNotifyClicked(false);
       } catch (error) {
         console.error('Error checking card access:', error);
         // On error, show as unavailable
-        setCountryInfo({
+        const unavailableCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
           isAvailable: false,
-        });
+        };
+        
+        setCountryInfo(unavailableCountryInfo);
+        setCachedCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
         setNotifyClicked(false);
       }
@@ -353,7 +386,7 @@ function LoadingView({ isScreenMedium }: { isScreenMedium: boolean }) {
       {isScreenMedium && <Navbar />}
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" color="#94F27F" />
-        <Text className="mt-4 text-white/70">Detecting your location...</Text>
+        <Text className="mt-4 text-white/70">Loading...</Text>
       </View>
     </View>
   );
