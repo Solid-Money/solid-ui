@@ -17,7 +17,7 @@ import { useAllTimeYield, useLatestTokenTransfer, useTotalAPY } from '@/hooks/us
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { useFuseVaultBalance } from '@/hooks/useVault';
+import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
@@ -37,7 +37,7 @@ export default function Savings() {
     data: balance,
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
-  } = useFuseVaultBalance(user?.safeAddress as Address);
+  } = useVaultBalance(user?.safeAddress as Address);
   const { data: allTimeYield, isLoading: isAllTimeYieldLoading } = useAllTimeYield();
 
   const { data: blockNumber } = useBlockNumber({

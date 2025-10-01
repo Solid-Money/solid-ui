@@ -15,7 +15,7 @@ import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { useCalculateSavings } from '@/hooks/useFinancial';
 import useUser from '@/hooks/useUser';
-import { useFuseVaultBalance } from '@/hooks/useVault';
+import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
@@ -36,7 +36,7 @@ export default function Savings() {
     data: balance,
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
-  } = useFuseVaultBalance(user?.safeAddress as Address);
+  } = useVaultBalance(user?.safeAddress as Address);
   const { updateUser } = useUserStore();
   const intercom = useIntercom();
 
@@ -49,8 +49,7 @@ export default function Savings() {
   const {
     isLoading: isLoadingTokens,
     hasTokens,
-    totalUSD,
-    soUSDFuse,
+    totalUSDExcludingSoUSD,
     uniqueTokens,
     error: tokenError,
     retry: retryTokens,
@@ -60,8 +59,6 @@ export default function Savings() {
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
   );
-
-  const totalUSDExcludingStaked = totalUSD - soUSDFuse;
 
   useEffect(() => {
     if (balance && !isBalanceLoading) {
@@ -144,7 +141,7 @@ export default function Savings() {
                 <View className="flex-row items-center">
                   <CountUp
                     prefix="$"
-                    count={totalUSDExcludingStaked + savings}
+                    count={totalUSDExcludingSoUSD + savings}
                     isTrailingZero={false}
                     classNames={{
                       wrapper: 'text-foreground',
@@ -172,14 +169,14 @@ export default function Savings() {
             </View>
           ) : (
             <DashboardHeaderMobile
-              balance={totalUSDExcludingStaked + savings}
+              balance={totalUSDExcludingSoUSD + savings}
               mode={SavingMode.BALANCE_ONLY}
             />
           )}
           {isScreenMedium ? (
             <View className="md:flex-row gap-8 min-h-44">
               <WalletCard
-                balance={totalUSDExcludingStaked}
+                balance={totalUSDExcludingSoUSD}
                 className="flex-1"
                 tokens={topThreeTokens}
               />
