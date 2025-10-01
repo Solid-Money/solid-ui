@@ -78,6 +78,11 @@ const ACCOUNTANT_ABI = [
   },
 ] as const;
 
+const symbols = {
+  'SOUSD': 'soUSD',
+  'USDC.E': 'USDC',
+}
+
 // Fetch function for token balances
 const fetchTokenBalances = async (safeAddress: string) => {
   const [ethereumResponse, fuseResponse, soUSDRate, ethBalance, fuseBalance, ethPrice, fusePrice] =
@@ -121,7 +126,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   ): TokenBalance => {
     const address = item.token.address || item.token.address_hash;
     return {
-      contractTickerSymbol: item.token.symbol === 'SOUSD' ? 'soUSD' : item.token.symbol,
+      contractTickerSymbol: symbols[item.token.symbol as keyof typeof symbols] || item.token.symbol,
       contractName: item.token.name,
       contractAddress: address,
       balance: item.value,
