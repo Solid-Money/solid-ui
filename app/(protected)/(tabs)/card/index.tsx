@@ -30,7 +30,7 @@ export default function Card() {
   }, [cardStatus, isLoading, error, router]);
 
   const activateCard = async () => {
-    router.push(path.CARD_ACTIVATE_MOBILE);
+    router.push(path.CARD_COUNTRY_SELECTION);
   };
 
   // Show loading state while checking card status
