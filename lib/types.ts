@@ -9,6 +9,17 @@ import {
 } from '@/constants/modals';
 import { Address, Hex } from 'viem';
 
+export interface CountryInfo {
+  countryCode: string;
+  countryName: string;
+  isAvailable: boolean;
+}
+
+export interface CardAccessResponse {
+  hasAccess: boolean;
+  countryCode: string;
+}
+
 export enum Status {
   IDLE = 'idle',
   PENDING = 'pending',

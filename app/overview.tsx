@@ -57,7 +57,13 @@ const HowSection = () => {
       <Text className="text-xl md:text-3xl font-semibold">How it works?</Text>
       <View className="md:flex-row justify-between gap-4 md:gap-10">
         {howItWorks.map((how, index) => (
-          <HowItWorks key={index} index={index + 1} description={how} />
+          <HowItWorks
+            key={index}
+            index={index + 1}
+            title={how.title}
+            description={how.description}
+            image={how.image}
+          />
         ))}
       </View>
     </View>
@@ -72,11 +78,11 @@ const VaultBreakdownSection = ({ vaultBreakdown }: VaultBreakdownSectionProps) =
   return (
     <View className="gap-6">
       <Text className="text-xl md:text-3xl font-semibold">Vault breakdown</Text>
-      <View className="md:flex-row md:justify-between md:min-h-80 bg-card rounded-twice p-5 md:p-10">
+      <View className="md:flex-row md:justify-between gap-4 md:min-h-80 bg-card rounded-twice p-5 md:p-10">
         <VaultBreakdownTable
           data={vaultBreakdown}
           setSelectedBreakdown={setSelectedBreakdown}
-          className="max-w-2xl"
+          className="max-w-[45rem]"
         />
         <VaultBreakdownChart data={vaultBreakdown} selectedBreakdown={selectedBreakdown} />
       </View>
@@ -86,26 +92,24 @@ const VaultBreakdownSection = ({ vaultBreakdown }: VaultBreakdownSectionProps) =
 
 const AuditSection = () => {
   return (
-    <View className="gap-6">
-      <View className="gap-2">
+    <View className="md:flex-row justify-between gap-6">
+      <View className="gap-2 max-w-80">
         <Text className="text-xl md:text-3xl font-semibold">Audits</Text>
         <Text className="text-lg text-muted-foreground font-medium">
           Solid and the underlying protocols have been audited by industry leaders in blockchain
           security.
         </Text>
       </View>
-      <View className="md:flex-row justify-between bg-card rounded-twice p-5 md:px-10 md:py-8">
-        <Audits className="max-w-2xl" />
-      </View>
+      <Audits className="bg-card rounded-twice p-5 md:px-10 md:py-8 max-w-3xl" />
     </View>
   );
 };
 
 const FAQSection = () => {
   return (
-    <View className="gap-6">
-      <Text className="text-xl md:text-3xl font-semibold">Frequently asked questions</Text>
-      <View className="bg-card rounded-twice p-2 md:p-6">
+    <View className="md:flex-row justify-between gap-6">
+      <Text className="text-xl md:text-3xl font-semibold max-w-40">Frequently asked questions</Text>
+      <View className="bg-card rounded-twice p-2 md:p-6 max-w-3xl">
         <FAQ faqs={faqs} />
       </View>
     </View>

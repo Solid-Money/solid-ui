@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { ChevronLeft, Clipboard as ClipboardIcon } from 'lucide-react-native';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -124,8 +124,15 @@ export default function Invite() {
             <View className="w-4" />
           </Pressable>
 
-          <Text className="text-muted-foreground text-center max-w-xs mx-auto">
-            In order to create an account on solid you need to enter an invite code
+          <Text className="leading-5 text-muted-foreground text-center max-w-xs mx-auto">
+            In order to create an account on solid you need to enter an invite code.{'\n'}
+            <Link
+              href="https://docs.solid.xyz/getting-started-on-solid/solid-private-launch"
+              target="_blank"
+              className="text-primary font-bold hover:opacity-70"
+            >
+              How do i get an invite?
+            </Link>
           </Text>
         </View>
 

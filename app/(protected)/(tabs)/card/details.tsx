@@ -209,7 +209,7 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
         <View className="flex-row items-center mr-8">
           <Image
             source={require('@/assets/images/apple_pay.png')}
-            style={{ width: 49, height: 22}}
+            style={{ width: 49, height: 22 }}
             contentFit="contain"
           />
           <View className="w-px h-8 bg-white/50 mx-3" />

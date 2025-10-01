@@ -191,6 +191,9 @@ function DepositToVaultForm() {
               <Text className="font-semibold text-white text-lg">
                 {BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.name}
               </Text>
+              {BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.fullName && (
+                <TooltipPopover text={BRIDGE_TOKENS[srcChainId].tokens.USDC.fullName} />
+              )}
             </View>
           </View>
           <View className="flex-row items-center gap-2">
