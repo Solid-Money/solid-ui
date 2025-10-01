@@ -3,6 +3,7 @@ import { arbitrum, base, fuse, mainnet, polygon } from "viem/chains";
 
 type BridgeToken = {
   name?: string;
+  fullName?: string;
   address: string;
 }
 
@@ -66,7 +67,8 @@ export const BRIDGE_TOKENS: BridgeTokens = {
   [fuse.id]: {
     tokens: {
       USDC: {
-        name: 'USDC.e (Stargate)',
+        name: 'USDC',
+        fullName: 'Stargate USDC.e',
         address: '0xc6Bc407706B7140EE8Eef2f86F9504651b63e7f9',
       },
     },

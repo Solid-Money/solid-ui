@@ -83,7 +83,7 @@ export default function Register() {
   };
 
   const getSignupButtonText = () => {
-    if (signupInfo.status === Status.PENDING) return 'Redirecting';
+    if (signupInfo.status === Status.PENDING) return 'Create account';
     if (!watchedUsername) return 'Create account';
     if (!isValid) return 'Enter valid information';
     return 'Continue';
