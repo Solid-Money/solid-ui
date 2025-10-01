@@ -38,21 +38,12 @@ export default function ActivateMobile() {
           <View className="w-10" />
         </View>
         <View className="items-center justify-center mt-8">
-          {isScreenMedium ? (
-            <Image
-              source={require('@/assets/images/activate_card_steps_desktop.png')}
-              alt="Solid Card"
-              style={{ width: '100%', aspectRatio: 512 / 306 }}
-              contentFit="contain"
-            />
-          ) : (
-            <Image
-              source={require('@/assets/images/activate_card_steps.png')}
-              alt="Solid Card"
-              style={{ width: '100%', aspectRatio: 690 / 417 }}
-              contentFit="contain"
-            />
-          )}
+          <Image
+            source={require('@/assets/images/activate_card_steps.png')}
+            alt="Solid Card"
+            style={{ width: '100%', aspectRatio: 512 / 306 }}
+            contentFit="contain"
+          />
         </View>
 
         {/* Card issuance status */}
