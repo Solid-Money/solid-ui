@@ -32,9 +32,7 @@ export function DashboardWeb() {
     retry: retryTokens,
     isRefreshing,
   } = useWalletTokens();
-  const { data: balance, refetch: refetchBalance } = useVaultBalance(
-    user?.safeAddress as Address,
-  );
+  const { data: balance, refetch: refetchBalance } = useVaultBalance(user?.safeAddress as Address);
 
   const { data: totalAPY } = useTotalAPY();
   const { data: lastTimestamp } = useLatestTokenTransfer(
