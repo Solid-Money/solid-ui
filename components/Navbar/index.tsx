@@ -19,7 +19,7 @@ const Navbar = () => {
     <SafeAreaView className="sticky top-0 z-50 bg-background/40 backdrop-blur-lg border-b border-border/40">
       <View className="flex-row justify-between items-center p-4 md:py-6 w-full max-w-7xl mx-auto">
         <Link
-          href={path.OVERVIEW}
+          href={path.HOME}
           className="flex flex-row items-center gap-2"
           onPress={() => {
             track(TRACKING_EVENTS.NAVBAR_LOGO_CLICKED, {

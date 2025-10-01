@@ -119,7 +119,7 @@ const ExtraYield = () => {
       return `<$${Math.pow(10, -maximumFractionDigits)}`;
     }
     return `$${compactNumberFormat(amount)}`;
-  }
+  };
 
   const getClaimText = () => {
     if (isClaimingMerklRewardsError) return 'Error claiming yield';

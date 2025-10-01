@@ -24,7 +24,7 @@ const Asset = () => {
     <View className="gap-2">
       <View className="flex-row items-center gap-2">
         <Text className="text-lg text-muted-foreground font-medium">Base asset</Text>
-        <TooltipPopover text="Base asset of the vault" />
+        <TooltipPopover text="The primary asset denominating this pool" />
       </View>
       <View className="flex-row items-center gap-1">
         <Image
@@ -47,15 +47,28 @@ const Protocols = ({ vaultBreakdown }: VaultBreakdownProps) => {
     <View className="gap-2">
       <View className="flex-row items-center gap-2">
         <Text className="text-lg text-muted-foreground font-medium">Protocols</Text>
-        <TooltipPopover text="Protocols used in the vault" />
+        <TooltipPopover text="DEXs and lending platforms where assets may be deployed" />
       </View>
       <View className="flex-row items-center gap-1">
-        {uniqueProtocols.map(protocol => (
-          <Image
+        {uniqueProtocols.map((protocol, index) => (
+          <TooltipPopover
             key={protocol}
-            source={protocolsImages[protocol]}
-            style={{ width: 24, height: 24 }}
-            contentFit="contain"
+            trigger={
+              <View
+                key={protocol}
+                className="-mr-2"
+                style={{
+                  zIndex: index,
+                }}
+              >
+                <Image
+                  source={protocolsImages[protocol]}
+                  style={{ width: 24, height: 24 }}
+                  contentFit="contain"
+                />
+              </View>
+            }
+            content={<Text className="text-sm">{protocol}</Text>}
           />
         ))}
       </View>
@@ -68,7 +81,7 @@ const Chain = () => {
     <View className="gap-2">
       <View className="flex-row items-center gap-2">
         <Text className="text-lg text-muted-foreground font-medium">Chain</Text>
-        <TooltipPopover text="Chain of the vault" />
+        <TooltipPopover text="Blockchain network hosting the token" />
       </View>
       <View className="flex-row items-center gap-1">
         <Image
@@ -90,8 +103,8 @@ const Address = () => {
         <TooltipPopover text="Address of the vault on Ethereum" />
       </View>
       <View className="flex-row items-center gap-1">
-        <Text className="text-xl font-semibold">{eclipseAddress(ADDRESSES.fuse.vault)}</Text>
-        <CopyToClipboard text={ADDRESSES.fuse.vault} />
+        <Text className="text-xl font-semibold">{eclipseAddress(ADDRESSES.ethereum.vault)}</Text>
+        <CopyToClipboard text={ADDRESSES.ethereum.vault} />
       </View>
     </View>
   );

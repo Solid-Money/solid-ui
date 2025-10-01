@@ -41,9 +41,7 @@ const SavingCard = ({ className }: SavingCardProps) => {
         address: user?.safeAddress?.toLowerCase() ?? '',
       },
     });
-  const { data: balance, refetch: refetchBalance } = useVaultBalance(
-    user?.safeAddress as Address,
-  );
+  const { data: balance, refetch: refetchBalance } = useVaultBalance(user?.safeAddress as Address);
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
