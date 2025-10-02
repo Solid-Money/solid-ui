@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from 'clsx';
 import { Platform } from 'react-native';
 import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
+import { formatDistanceToNow } from 'date-fns';
 
 import { refreshToken } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
@@ -202,3 +203,8 @@ export const sanitize = (data: Record<string, any>) => {
 }
 
 export const oneMinute = 60 * 1000;
+
+export const formatTimeRemaining = (milliseconds: number): string => {
+  const futureDate = new Date(Date.now() + milliseconds);
+  return formatDistanceToNow(futureDate, { addSuffix: true });
+};

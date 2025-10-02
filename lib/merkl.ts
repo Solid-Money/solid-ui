@@ -1,19 +1,33 @@
-import { MerklApi } from '@merkl/api'
-import { SmartAccountClient } from 'permissionless'
-import { Chain, encodeFunctionData, formatUnits } from 'viem'
+import { MerklApi } from '@merkl/api';
 import * as Sentry from '@sentry/react-native';
+import { SmartAccountClient } from 'permissionless';
+import { Chain, encodeFunctionData, formatUnits } from 'viem';
 
-import MerklDistributorABI from '@/lib/abis/MerklDistributor'
-import { ADDRESSES, EXPO_PUBLIC_MERKL_CAMPAIGN_ID } from '@/lib/config'
-import { executeTransactions, getTransaction, USER_CANCELLED_TRANSACTION } from '@/lib/execute'
-import { TransactionType, TransactionStatus } from '@/lib/types'
 import { TrackTransaction } from '@/hooks/useActivity';
+import MerklDistributorABI from '@/lib/abis/MerklDistributor';
+import { ADDRESSES, EXPO_PUBLIC_MERKL_CAMPAIGN_ID } from '@/lib/config';
+import { executeTransactions, getTransaction, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { TransactionStatus, TransactionType, MerklRewards, MerklReward } from '@/lib/types';
+
+export const calculateUnclaimedMerklRewards = (rewards: MerklRewards) => {
+  let value = 0;
+  for (const reward of rewards) {
+    value += Number(reward.amount) - Number(reward.claimed);
+  }
+
+  const formatted = formatUnits(BigInt(value), 6);
+
+  return {
+    value,
+    formatted,
+  }
+}
 
 export const getMerklRewards = async (
   address: string,
   chainId: number,
   campaignId: string = EXPO_PUBLIC_MERKL_CAMPAIGN_ID
-) => {
+): Promise<MerklRewards> => {
   const { status, data } = await MerklApi('https://api.merkl.xyz')
     .v4.users({ address })
     .rewards.get({ query: { chainId: [chainId.toString()], breakdownPage: 0 } })
@@ -22,7 +36,7 @@ export const getMerklRewards = async (
 
   if (!data) throw 'No data received from Merkl API'
 
-  let rewardsData = [];
+  let rewardsData: MerklRewards = [];
 
   for (const d of data) {
     if (d.chain.id !== chainId) continue
@@ -30,7 +44,7 @@ export const getMerklRewards = async (
     for (const reward of d.rewards) {
       for (const breakdown of reward.breakdowns) {
         if (breakdown.campaignId === campaignId) {
-          rewardsData.push(reward)
+          rewardsData.push(reward as unknown as MerklReward)
         }
       }
     }
@@ -77,8 +91,7 @@ export const claimMerklRewards = async (
     },
   ]
 
-  const amount = amounts.reduce((acc, amount) => acc + amount, 0n)
-  const formattedAmount = formatUnits(amount, 6)
+  const { formatted: formattedAmount } = calculateUnclaimedMerklRewards(rewards)
   // Track only successful claim rewards
   const status = TransactionStatus.SUCCESS
 
@@ -115,7 +128,7 @@ export const claimMerklRewards = async (
         reason: 'user_cancelled',
       },
       extra: {
-        amount,
+        amount: formattedAmount,
         userAddress: safeAddress,
         chainId: chain.id,
       },

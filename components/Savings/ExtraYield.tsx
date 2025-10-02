@@ -1,31 +1,35 @@
+import * as Sentry from '@sentry/react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { ChevronRight, Plus } from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { fuse } from 'viem/chains';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
-import * as Sentry from '@sentry/react-native';
 import { formatUnits } from 'viem';
-import { useMemo } from 'react';
+import { fuse } from 'viem/chains';
 
 import { DepositOptionModal } from '@/components/DepositOption';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useActivity } from '@/hooks/useActivity';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { cn, compactNumberFormat } from '@/lib/utils';
-import { claimMerklRewards, getMerklRewards } from '@/lib/merkl';
-import { useActivity } from '@/hooks/useActivity';
+import { calculateUnclaimedMerklRewards, claimMerklRewards, getMerklRewards } from '@/lib/merkl';
+import { TransactionStatus, TransactionType } from '@/lib/types';
+import { cn, compactNumberFormat, formatTimeRemaining } from '@/lib/utils';
 
 const MAX_REWARD = 200;
+const COOLDOWN_HOURS = 12;
+const COOLDOWN_MILLISECONDS = COOLDOWN_HOURS * 60 * 60 * 1000;
 
 const ExtraYield = () => {
   const { isScreenMedium } = useDimension();
   const { user, safeAA } = useUser();
   const queryClient = useQueryClient();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction, activities } = useActivity();
   const hasDeposited = user?.isDeposited;
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   const { data: merklRewards, isLoading: isMerklLoading } = useQuery({
     queryKey: ['merkl', user?.safeAddress],
@@ -85,14 +89,9 @@ const ExtraYield = () => {
   const totalUnclaimed = useMemo(() => {
     if (!merklRewards) return 0;
 
-    let total = 0;
+    const { formatted: formattedTotal } = calculateUnclaimedMerklRewards(merklRewards);
 
-    for (const reward of merklRewards) {
-      total += Number(reward.amount);
-    }
-
-    total = Number(formatUnits(BigInt(total), 6));
-    return total;
+    return Number(formattedTotal);
   }, [merklRewards]);
 
   const totalPending = useMemo(() => {
@@ -108,11 +107,46 @@ const ExtraYield = () => {
     return total;
   }, [merklRewards]);
 
+  const lastClaimTransaction = useMemo(() => {
+    return activities.find(
+      activity =>
+        activity.type === TransactionType.MERKL_CLAIM &&
+        activity.status === TransactionStatus.SUCCESS,
+    );
+  }, [activities]);
+
+  const { isCooldown, nextClaimTime } = useMemo(() => {
+    if (!lastClaimTransaction) {
+      return { isCooldown: false, nextClaimTime: null };
+    }
+
+    const lastClaimTimestamp = parseInt(lastClaimTransaction.timestamp) * 1000;
+    const timeSinceLastClaim = currentTime - lastClaimTimestamp;
+    const isCooldown = timeSinceLastClaim < COOLDOWN_MILLISECONDS;
+    if (!isCooldown) {
+      return { isCooldown: false, nextClaimTime: null };
+    }
+
+    const remainingTime = COOLDOWN_MILLISECONDS - timeSinceLastClaim;
+    const nextClaimTime = formatTimeRemaining(remainingTime);
+    return { isCooldown: true, nextClaimTime };
+  }, [lastClaimTransaction, currentTime]);
+
+  useEffect(() => {
+    if (!isCooldown) return;
+
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isCooldown]);
+
   const isLoading = isMerklLoading || isClaimingMerklRewards;
   const isUnclaimed = totalUnclaimed > 0;
   const isPending = totalPending > 0;
   const isMaxClaimed = totalClaimed >= MAX_REWARD;
-  const isDisabled = isLoading || !isUnclaimed || isMaxClaimed;
+  const isDisabled = isLoading || !isUnclaimed || isMaxClaimed || isCooldown;
 
   const formatReward = (amount: number, maximumFractionDigits = 2) => {
     if (amount > 0 && amount < Math.pow(10, -maximumFractionDigits)) {
@@ -127,6 +161,7 @@ const ExtraYield = () => {
     if (isMaxClaimed) return `Max ${formatReward(MAX_REWARD)} claimed`;
     if (isClaimingMerklRewards) return 'Claiming yield';
     if (isMerklLoading) return 'Checking yield';
+    if (isCooldown) return `Next claim ${nextClaimTime}`;
     if (!isUnclaimed && isPending) return `Pending ${formatReward(totalPending)} yield`;
     if (!isUnclaimed) return 'No yield to claim';
     if (isUnclaimed) return `Claim ${formatReward(totalUnclaimed)} yield`;

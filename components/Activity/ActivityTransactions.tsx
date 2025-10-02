@@ -1,6 +1,6 @@
 import { FlashList } from '@shopify/flash-list';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { RefreshControl, View } from 'react-native';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
@@ -182,12 +182,35 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
     syncTransactions();
   }, [transactions, activities, fetchedEvents, user?.userId, user?.safeAddress]);
 
+  // Track previous values to prevent infinite loops
+  const prevFetchedEventsRef = useRef<ActivityEvent[]>([]);
+  const prevActivitiesRef = useRef<ActivityEvent[]>([]);
+
   // Sync local store with confirmed server activities
   useEffect(() => {
     if (!user?.userId || !fetchedEvents || fetchedEvents.length === 0) return;
 
     const serverActivities = fetchedEvents;
     const localActivities = activities;
+
+    const fetchedEventsChanged =
+      prevFetchedEventsRef.current.length !== serverActivities.length ||
+      prevFetchedEventsRef.current.some(
+        (prev, index) =>
+          !serverActivities[index] || prev.clientTxId !== serverActivities[index].clientTxId,
+      );
+
+    const activitiesChanged =
+      prevActivitiesRef.current.length !== localActivities.length ||
+      prevActivitiesRef.current.some(
+        (prev, index) =>
+          !localActivities[index] || prev.clientTxId !== localActivities[index].clientTxId,
+      );
+
+    if (!fetchedEventsChanged && !activitiesChanged) return;
+
+    prevFetchedEventsRef.current = [...serverActivities];
+    prevActivitiesRef.current = [...localActivities];
 
     // Find local activities that are now confirmed on server and update them
     localActivities.forEach(localActivity => {
@@ -212,6 +235,10 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
         storeEvents(user.userId, [serverVersion]);
       }
     });
+
+    if (!localActivities.length && serverActivities.length) {
+      storeEvents(user.userId, serverActivities);
+    }
   }, [fetchedEvents, activities, user?.userId, storeEvents]);
 
   // Merge local activities (for immediate feedback) with server activities
