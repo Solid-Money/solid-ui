@@ -1,4 +1,4 @@
-import { MerklApi, Reward } from '@merkl/api';
+import { MerklApi } from '@merkl/api';
 import * as Sentry from '@sentry/react-native';
 import { SmartAccountClient } from 'permissionless';
 import { Chain, encodeFunctionData, formatUnits } from 'viem';
@@ -7,9 +7,9 @@ import { TrackTransaction } from '@/hooks/useActivity';
 import MerklDistributorABI from '@/lib/abis/MerklDistributor';
 import { ADDRESSES, EXPO_PUBLIC_MERKL_CAMPAIGN_ID } from '@/lib/config';
 import { executeTransactions, getTransaction, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { TransactionStatus, TransactionType } from '@/lib/types';
+import { TransactionStatus, TransactionType, MerklRewards, MerklReward } from '@/lib/types';
 
-export const calculateUnclaimedMerklRewards = (rewards: Reward["rewards"]) => {
+export const calculateUnclaimedMerklRewards = (rewards: MerklRewards) => {
   let value = 0;
   for (const reward of rewards) {
     value += Number(reward.amount) - Number(reward.claimed);
@@ -27,7 +27,7 @@ export const getMerklRewards = async (
   address: string,
   chainId: number,
   campaignId: string = EXPO_PUBLIC_MERKL_CAMPAIGN_ID
-): Promise<Reward["rewards"]> => {
+): Promise<MerklRewards> => {
   const { status, data } = await MerklApi('https://api.merkl.xyz')
     .v4.users({ address })
     .rewards.get({ query: { chainId: [chainId.toString()], breakdownPage: 0 } })
@@ -36,7 +36,7 @@ export const getMerklRewards = async (
 
   if (!data) throw 'No data received from Merkl API'
 
-  let rewardsData: Reward["rewards"] = [];
+  let rewardsData: MerklRewards = [];
 
   for (const d of data) {
     if (d.chain.id !== chainId) continue
@@ -44,7 +44,7 @@ export const getMerklRewards = async (
     for (const reward of d.rewards) {
       for (const breakdown of reward.breakdowns) {
         if (breakdown.campaignId === campaignId) {
-          rewardsData.push(reward as unknown as Reward["rewards"][0])
+          rewardsData.push(reward as unknown as MerklReward)
         }
       }
     }
