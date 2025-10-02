@@ -7,6 +7,7 @@ import {
   UNSTAKE_MODAL,
   WITHDRAW_MODAL,
 } from '@/constants/modals';
+import { Reward } from '@merkl/api';
 import { Address, Hex } from 'viem';
 
 export interface CountryInfo {
@@ -816,3 +817,6 @@ export interface StargateQuote {
 export interface StargateQuoteResponse {
   quotes: StargateQuote[];
 }
+
+export type MerklRewards = Reward["rewards"];
+export type MerklReward = MerklRewards[0];
