@@ -76,4 +76,5 @@ export const WETH_STARGATE_TOKEN = new Token(
   'WETH',
   'Bridged Wrapped Ether (Stargate)'
 );
-export const USDC_STARGATE_TOKEN = new Token(ChainsId.Fuse, USDC_STARGATE, 6, 'USDC.e', 'Bridged USDC (Stargate)');
+export const USDC_STARGATE_TOKEN = new Token(ChainsId.Fuse, USDC_STARGATE, 6, 'USDCe', 'USD Coin on Fuse - Stargate');
+export const soUSDC_TOKEN = new Token(ChainsId.Fuse, '0x75333830E7014e909535389a6E5b0C02aA62ca27', 6, 'soUSDC', 'Solid USD');

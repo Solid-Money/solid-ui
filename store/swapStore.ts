@@ -1,5 +1,5 @@
 import { SWAP_MODAL } from '@/constants/modals';
-import { VOLT_TOKEN, WFUSE_TOKEN } from '@/constants/tokens';
+import { soUSDC_TOKEN, USDC_STARGATE_TOKEN } from '@/constants/tokens';
 import { useReadAlgebraPoolGlobalState, useReadAlgebraPoolTickSpacing } from '@/generated/wagmi';
 import { useBestTradeExactIn, useBestTradeExactOut } from '@/hooks/swap/useBestTrade';
 import useSwapSlippageTolerance from '@/hooks/swap/useSwapSlippageTolerance';
@@ -60,10 +60,10 @@ export const useSwapState = create<SwapState>((set, get) => ({
   independentField: SwapField.INPUT,
   typedValue: '',
   [SwapField.INPUT]: {
-    currencyId: WFUSE_TOKEN.address as Address, // TOOD: DEFAULT TOKEN, change it to load from localStorage
+    currencyId: USDC_STARGATE_TOKEN.address as Address, // TOOD: DEFAULT TOKEN, change it to load from localStorage
   },
   [SwapField.OUTPUT]: {
-    currencyId: VOLT_TOKEN.address as Address,
+    currencyId: soUSDC_TOKEN.address as Address,
   },
   wasInverted: false,
   lastFocusedField: SwapField.INPUT,

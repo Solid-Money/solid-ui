@@ -1,8 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { Address, zeroAddress } from 'viem';
 
-import { algebraInfoClient } from '@/graphql/clients';
-import { useAllTokensQuery } from '@/graphql/generated/algebra-info';
 import { useFetchTokenList } from '@/hooks/tokens/useFetchTokenList';
 import { TokenListItem } from '@/lib/types/tokens';
 import { useCachedTokensStore } from '@/store/cachedTokensStore';
@@ -12,9 +10,9 @@ import { fuse } from 'viem/chains';
 export function useAllTokens(showNativeToken = true) {
   const chainId = fuse.id;
 
-  const { data: allTokens, loading } = useAllTokensQuery({
-    client: algebraInfoClient,
-  });
+  // const { data: allTokens, loading } = useAllTokensQuery({
+  //   client: algebraInfoClient,
+  // });
   const { tokenList, loading: loadingTokenList } = useFetchTokenList();
 
   const { importedTokens } = useTokensState();
@@ -22,12 +20,39 @@ export function useAllTokens(showNativeToken = true) {
 
   // Try to get cached tokens first
   const cachedTokens = getCachedTokens(chainId);
-  const shouldUseCachedData = cachedTokens && !loading && !loadingTokenList;
+  const shouldUseCachedData = cachedTokens && !loadingTokenList;
 
   const tokensBlackList: Address[] = useMemo(() => [], []);
 
   const mergedTokens = useMemo(() => {
-    // Use cached data if available and fresh
+    // If we have fresh backend tokens, always use fresh data path
+    if (tokenList && tokenList.length > 0) {
+      const tokens = new Map<Address, TokenListItem>();
+
+      if (showNativeToken)
+        tokens.set(zeroAddress, {
+          address: zeroAddress,
+          symbol: fuse.nativeCurrency.symbol,
+          name: fuse.nativeCurrency.name,
+          decimals: fuse.nativeCurrency.decimals,
+          chainId: chainId,
+        });
+
+      // Add backend tokens first (highest priority)
+      for (const token of tokenList) {
+        tokens.set(token.address.toLowerCase() as Address, { ...token });
+      }
+
+      // Add imported tokens
+      const _importedTokens = Object.values(importedTokens[chainId] || []);
+      for (const token of _importedTokens) {
+        tokens.set(token.address.toLowerCase() as Address, { ...token });
+      }
+
+      return [...tokens].map(([, token]) => ({ ...token }));
+    }
+
+    // Use cached data if available and no backend tokens
     if (shouldUseCachedData) {
       const tokens = new Map<Address, TokenListItem>();
 
@@ -48,15 +73,15 @@ export function useAllTokens(showNativeToken = true) {
     // Fresh data processing (original logic)
     const tokens = new Map<Address, TokenListItem>();
 
-    if (!allTokens) {
-      const _importedTokens = Object.values(importedTokens[chainId] || []);
-      for (const token of _importedTokens) {
-        tokens.set(token.address.toLowerCase() as Address, {
-          ...token,
-        });
-      }
-      return [...tokens].map(([, token]) => ({ ...token }));
-    }
+    // if (!allTokens) {
+    //   const _importedTokens = Object.values(importedTokens[chainId] || []);
+    //   for (const token of _importedTokens) {
+    //     tokens.set(token.address.toLowerCase() as Address, {
+    //       ...token,
+    //     });
+    //   }
+    //   return [...tokens].map(([, token]) => ({ ...token }));
+    // }
 
     if (showNativeToken)
       tokens.set(zeroAddress, {
@@ -67,17 +92,17 @@ export function useAllTokens(showNativeToken = true) {
         chainId: chainId,
       });
 
-    for (const token of allTokens.tokens.filter(
-      token => !tokensBlackList.includes(token.id as Address),
-    )) {
-      tokens.set(token.id.toLowerCase() as Address, {
-        address: token.id.toLowerCase() as Address,
-        symbol: token.symbol,
-        name: token.name,
-        decimals: token.decimals,
-        chainId,
-      });
-    }
+    // for (const token of allTokens.tokens.filter(
+    //   token => !tokensBlackList.includes(token.id as Address),
+    // )) {
+    //   tokens.set(token.id.toLowerCase() as Address, {
+    //     address: token.id.toLowerCase() as Address,
+    //     symbol: token.symbol,
+    //     name: token.name,
+    //     decimals: token.decimals,
+    //     chainId,
+    //   });
+    // }
 
     const _importedTokens = Object.values(importedTokens[chainId] || []);
 
@@ -93,7 +118,7 @@ export function useAllTokens(showNativeToken = true) {
 
     return [...tokens].map(([, token]) => ({ ...token }));
   }, [
-    allTokens,
+    // allTokens,
     importedTokens,
     chainId,
     showNativeToken,
@@ -106,18 +131,19 @@ export function useAllTokens(showNativeToken = true) {
   // Cache fresh data when it becomes available
   useEffect(() => {
     if (
-      !loading &&
+      // !loading &&
       !loadingTokenList &&
-      allTokens &&
+      // allTokens &&
       mergedTokens.length > 0 &&
       !shouldUseCachedData
     ) {
       setCachedTokens(chainId, mergedTokens);
     }
   }, [
-    loading,
+    // loading,
     loadingTokenList,
-    allTokens,
+    tokenList,
+    // allTokens,
     mergedTokens,
     chainId,
     shouldUseCachedData,
@@ -127,8 +153,10 @@ export function useAllTokens(showNativeToken = true) {
   return useMemo(
     () => ({
       tokens: mergedTokens,
-      isLoading: loading || loadingTokenList || Boolean(allTokens && !mergedTokens.length),
+      // isLoading: loading || loadingTokenList || Boolean(allTokens && !mergedTokens.length),
+      isLoading: loadingTokenList || Boolean(!mergedTokens.length),
     }),
-    [mergedTokens, allTokens, loading, loadingTokenList],
+    // [mergedTokens, allTokens, loading, loadingTokenList],
+    [mergedTokens, loadingTokenList],
   );
 }
