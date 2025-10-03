@@ -15,7 +15,6 @@ export const NotificationEmailModalDialog: React.FC<NotificationEmailModalDialog
     onOpenChange,
     onSuccess,
 }) => {
-    console.log('NotificationEmailModalDialog render', { open, platform: Platform.OS });
     if (Platform.OS === 'web') {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
