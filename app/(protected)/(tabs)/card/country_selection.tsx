@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 
+import CountryFlagImage from '@/components/CountryFlagImage';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -211,14 +212,6 @@ export default function CountrySelection() {
   );
 }
 
-const getCountryFlag = (countryCode: string) => {
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map((char) => 127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
-};
-
 // Country Dropdown Modal Component
 interface CountryDropdownProps {
   visible: boolean;
@@ -293,8 +286,17 @@ function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelec
           Check to see which Membership features are available to you today
         </Text>
 
+        {selectedCountry && (
+          <View className="items-center mb-6">
+            <CountryFlagImage 
+              isoCode={selectedCountry.code}
+              size={110}
+              style={{ marginBottom: 8 }}
+            />
+          </View>
+        )}
         <Pressable onPress={onOpenDropdown}>
-          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center mt-8 mb-6 border border-[#898989]">
+          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center mt-2 mb-6 border border-[#898989]">
             <Text className="text-white">
               {selectedCountry ? selectedCountry.name : 'Select country'}
             </Text>
@@ -329,9 +331,11 @@ function CountryUnavailableView({
 }: CountryUnavailableViewProps) {
   return (
     <>
-      <View className="w-24 h-24 rounded-full bg-white items-center justify-center mt-4 mb-6">
-        <Text className="text-[64px]">{getCountryFlag(countryCode)}</Text>
-      </View>
+      <CountryFlagImage 
+        isoCode={countryCode}
+        size={110}
+        style={{ marginTop: 16, marginBottom: 24 }}
+      />
       <Text className="text-white text-2xl font-bold mb-4 text-center">
         We're not ready for {countryName} just yet!
       </Text>
@@ -361,9 +365,11 @@ interface NotifyConfirmationViewProps {
 function NotifyConfirmationView({ countryName, countryCode, onOk }: NotifyConfirmationViewProps) {
   return (
     <>
-      <View className="w-24 h-24 rounded-full bg-white items-center justify-center mb-6">
-        <Text className="text-[64px]">{getCountryFlag(countryCode)}</Text>
-      </View>
+      <CountryFlagImage 
+        isoCode={countryCode}
+        size={110}
+        style={{ marginBottom: 24 }}
+      />
       <Text className="text-white text-2xl font-semibold mb-4 text-center">Thanks</Text>
       <Text className="text-[#ACACAC] text-center mb-8 leading-6">
         We'll let you know as soon as Cash cards become available in {countryName}. Hopefully very
