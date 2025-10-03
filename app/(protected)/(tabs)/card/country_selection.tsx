@@ -10,9 +10,9 @@ import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { checkCardAccess, getCountryFromIp } from '@/lib/api';
+import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { CountryInfo } from '@/lib/types';
-import { shouldRefetchCountry, useCountryStore } from '@/store/useCountryStore';
+import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
   const router = useRouter();
@@ -26,22 +26,37 @@ export default function CountrySelection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
-  const { countryInfo: cachedCountryInfo, lastFetchTime, setCountryInfo: setCachedCountryInfo } = useCountryStore();
+  const {
+    setCountryInfo: setCachedCountryInfo,
+    getIpDetectedCountry,
+    setIpDetectedCountry
+  } = useCountryStore();
 
   useEffect(() => {
     const fetchCountry = async () => {
       try {
-        // Check if we have cached country info that's still valid
-        if (cachedCountryInfo && !shouldRefetchCountry(lastFetchTime)) {
-          setCountryInfo(cachedCountryInfo);
-          const country = COUNTRIES.find((c) => c.code === cachedCountryInfo.countryCode);
+        // First, get the client's IP address
+        const ip = await getClientIp();
+
+        if (!ip) {
+          setError(true);
+          setLoading(false);
+          return;
+        }
+
+        // Check if we have a valid cached country info for this IP
+        const cachedInfo = getIpDetectedCountry(ip);
+
+        if (cachedInfo) {
+          setCountryInfo(cachedInfo);
+          const country = COUNTRIES.find((c) => c.code === cachedInfo.countryCode);
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          
+
           // If country is available, proceed directly to card activation
-          if (cachedCountryInfo.isAvailable) {
+          if (cachedInfo.isAvailable) {
             router.replace(path.CARD_ACTIVATE_MOBILE);
             return;
           }
@@ -51,16 +66,18 @@ export default function CountrySelection() {
 
         // Fetch new country info if cache is invalid or missing
         const info = await getCountryFromIp();
+
         if (info) {
           setCountryInfo(info);
-          setCachedCountryInfo(info); // Cache the country info
-          
+          setIpDetectedCountry(ip, info); // Cache the country info with IP
+
           const country = COUNTRIES.find((c) => c.code === info.countryCode);
+
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          
+
           // If country is available, proceed directly to card activation
           if (info.isAvailable) {
             router.replace(path.CARD_ACTIVATE_MOBILE);
@@ -78,7 +95,7 @@ export default function CountrySelection() {
     };
 
     fetchCountry();
-  }, [router, cachedCountryInfo, lastFetchTime, setCachedCountryInfo]);
+  }, [router, getIpDetectedCountry, setIpDetectedCountry]);
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
@@ -111,24 +128,24 @@ export default function CountrySelection() {
       try {
         // Check card access via backend API
         const accessCheck = await checkCardAccess(selectedCountry.code);
-        
+
         // Create the updated country info
         const updatedCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
           isAvailable: accessCheck.hasAccess,
         };
-        
-        // Update both local and cached state
+
+        // Update local state only, don't cache manually selected countries
         setCountryInfo(updatedCountryInfo);
         setCachedCountryInfo(updatedCountryInfo);
-        
+
         // If selected country is available, proceed directly to card activation
         if (accessCheck.hasAccess) {
           router.replace(path.CARD_ACTIVATE_MOBILE);
           return;
         }
-        
+
         setShowCountrySelector(false);
         setNotifyClicked(false);
       } catch (error) {
@@ -139,7 +156,7 @@ export default function CountrySelection() {
           countryName: selectedCountry.name,
           isAvailable: false,
         };
-        
+
         setCountryInfo(unavailableCountryInfo);
         setCachedCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
@@ -187,26 +204,26 @@ export default function CountrySelection() {
               onCountrySelect={handleCountrySelect}
             />
           </>
-         ) : (
-           <View className="flex-1 justify-center">
-             <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full max-w-md items-center">
-               {notifyClicked ? (
-                 <NotifyConfirmationView
-                   countryName={countryInfo.countryName}
-                   countryCode={countryInfo.countryCode}
-                   onOk={() => router.back()}
-                 />
-               ) : (
-                 <CountryUnavailableView
-                   countryName={countryInfo.countryName}
-                   countryCode={countryInfo.countryCode}
-                   onChangeCountry={handleChangeCountry}
-                   onNotifyByMail={handleNotifyByMail}
-                 />
-               )}
-             </View>
-           </View>
-         )}
+        ) : (
+          <View className="flex-1 justify-center">
+            <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full max-w-md items-center">
+              {notifyClicked ? (
+                <NotifyConfirmationView
+                  countryName={countryInfo.countryName}
+                  countryCode={countryInfo.countryCode}
+                  onOk={() => router.back()}
+                />
+              ) : (
+                <CountryUnavailableView
+                  countryName={countryInfo.countryName}
+                  countryCode={countryInfo.countryCode}
+                  onChangeCountry={handleChangeCountry}
+                  onNotifyByMail={handleNotifyByMail}
+                />
+              )}
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -288,7 +305,7 @@ function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelec
 
         {selectedCountry && (
           <View className="items-center mb-6">
-            <CountryFlagImage 
+            <CountryFlagImage
               isoCode={selectedCountry.code}
               size={110}
               className="mb-2"
@@ -331,7 +348,7 @@ function CountryUnavailableView({
 }: CountryUnavailableViewProps) {
   return (
     <>
-      <CountryFlagImage 
+      <CountryFlagImage
         isoCode={countryCode}
         size={110}
         className="mt-4 mb-6"
@@ -345,12 +362,12 @@ function CountryUnavailableView({
       <Pressable onPress={onChangeCountry} className="mb-6 web:hover:opacity-70">
         <Text className="text-white font-bold text-base">Change country</Text>
       </Pressable>
-        <Button
-          className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]"
-          onPress={onNotifyByMail}
-        >
-          <Text className="text-base font-bold text-black">Notify by mail</Text>
-        </Button>
+      <Button
+        className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]"
+        onPress={onNotifyByMail}
+      >
+        <Text className="text-base font-bold text-black">Notify by mail</Text>
+      </Button>
     </>
   );
 }
@@ -365,7 +382,7 @@ interface NotifyConfirmationViewProps {
 function NotifyConfirmationView({ countryName, countryCode, onOk }: NotifyConfirmationViewProps) {
   return (
     <>
-      <CountryFlagImage 
+      <CountryFlagImage
         isoCode={countryCode}
         size={110}
         className="mb-6"

@@ -481,12 +481,13 @@ export const fetchLayerZeroBridgeTransactions = async (
   return response.data;
 };
 
-export const getClientIp = async () => {
+export const getClientIp = async (): Promise<string | null> => {
   try {
     const response = await axios.get('https://api.ipify.org?format=json');
     return response.data.ip;
   } catch (error) {
     console.error('Error fetching IP from ipify:', error);
+    return null;
   }
 };
 
