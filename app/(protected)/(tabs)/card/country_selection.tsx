@@ -3,6 +3,8 @@ import { ArrowLeft } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 
+import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
+
 import CountryFlagImage from '@/components/CountryFlagImage';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -10,17 +12,20 @@ import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
+import useUser from '@/hooks/useUser';
 import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { CountryInfo } from '@/lib/types';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
   const router = useRouter();
+  const { user } = useUser();
   const { isScreenMedium } = useDimension();
   const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notifyClicked, setNotifyClicked] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [showCountrySelector, setShowCountrySelector] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,7 +110,12 @@ export default function CountrySelection() {
   }, [searchQuery]);
 
   const handleNotifyByMail = () => {
-    setNotifyClicked(true);
+    // Check if user has email
+    if (user && !user.email) {
+      setShowEmailModal(true);
+    } else {
+      setNotifyClicked(true);
+    }
   };
 
   const handleChangeCountry = () => {
@@ -175,6 +185,17 @@ export default function CountrySelection() {
 
   return (
     <View className="flex-1 bg-background">
+      {/* Email collection modal */}
+      <NotificationEmailModalDialog
+        open={showEmailModal}
+        onOpenChange={(open) => {
+          setShowEmailModal(open);
+        }}
+        onSuccess={() => {
+          setShowEmailModal(false);
+          setNotifyClicked(true);
+        }}
+      />
       {isScreenMedium && <Navbar />}
 
       <View className="w-full max-w-lg mx-auto pt-12 px-4">
