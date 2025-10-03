@@ -291,7 +291,7 @@ function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelec
             <CountryFlagImage 
               isoCode={selectedCountry.code}
               size={110}
-              style={{ marginBottom: 8 }}
+              className="mb-2"
             />
           </View>
         )}
@@ -334,7 +334,7 @@ function CountryUnavailableView({
       <CountryFlagImage 
         isoCode={countryCode}
         size={110}
-        style={{ marginTop: 16, marginBottom: 24 }}
+        className="mt-4 mb-6"
       />
       <Text className="text-white text-2xl font-bold mb-4 text-center">
         We're not ready for {countryName} just yet!
@@ -368,7 +368,7 @@ function NotifyConfirmationView({ countryName, countryCode, onOk }: NotifyConfir
       <CountryFlagImage 
         isoCode={countryCode}
         size={110}
-        style={{ marginBottom: 24 }}
+        className="mb-6"
       />
       <Text className="text-white text-2xl font-semibold mb-4 text-center">Thanks</Text>
       <Text className="text-[#ACACAC] text-center mb-8 leading-6">

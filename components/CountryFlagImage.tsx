@@ -6,12 +6,19 @@ interface CountryFlagImageProps {
   size: number;
   style?: StyleProp<ViewStyle>;
   imageStyle?: StyleProp<ImageStyle>;
+  className?: string;
 }
 
 /**
  * A component to display high-quality country flags using direct SVG imports
  */
-const CountryFlagImage: React.FC<CountryFlagImageProps> = ({ isoCode, size, style, imageStyle }) => {
+const CountryFlagImage: React.FC<CountryFlagImageProps> = ({ 
+  isoCode, 
+  size, 
+  style, 
+  imageStyle,
+  className = "" 
+}) => {
   // Convert ISO code to lowercase
   const countryCode = isoCode.toLowerCase();
   
@@ -20,15 +27,11 @@ const CountryFlagImage: React.FC<CountryFlagImageProps> = ({ isoCode, size, styl
 
   return (
     <View 
+      className={`bg-white rounded-full overflow-hidden items-center justify-center ${className}`}
       style={[
         { 
           width: size, 
           height: size, 
-          borderRadius: size / 2,
-          overflow: 'hidden',
-          backgroundColor: 'white',
-          justifyContent: 'center',
-          alignItems: 'center'
         }, 
         style
       ]}
