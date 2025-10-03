@@ -206,7 +206,7 @@ export default function CountrySelection() {
           </>
         ) : (
           <View className="flex-1 justify-center">
-            <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full max-w-md items-center">
+            <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full  items-center">
               {notifyClicked ? (
                 <NotifyConfirmationView
                   countryName={countryInfo.countryName}
