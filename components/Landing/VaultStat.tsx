@@ -1,74 +1,124 @@
 import { View } from 'react-native';
+import { formatUnits } from 'viem';
 
-import { Text } from '@/components/ui/text';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
 import { useAllTimeYield, useTotalAPY, useTVL } from '@/hooks/useAnalytics';
-import { compactNumberFormat, formatNumber } from '@/lib/utils';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
-import { formatUnits } from 'viem';
+import { compactNumberFormat, formatNumber } from '@/lib/utils';
+import { useDimension } from '@/hooks/useDimension';
 
 const poolCap = 1_000_000;
 const soUSD = '1';
 
-const VaultStat = () => {
-  const { data: totalAPY } = useTotalAPY();
-  const { data: tvl } = useTVL();
-  const { exchangeRate } = usePreviewDeposit(soUSD);
-  const { data: allTimeYield } = useAllTimeYield();
+const CurrentYield = () => {
+  const { data } = useTotalAPY();
 
   return (
-    <View className="md:flex-row justify-between bg-card rounded-twice p-5 md:p-10 gap-6 md:gap-10">
-      <View className="gap-2">
-        <View className="flex-row items-center gap-1">
-          <Text className="text-lg text-muted-foreground font-medium">Current Yield</Text>
-          <TooltipPopover text="Last 15 days yield of the vault" />
-        </View>
-        <Text className="text-2xl md:text-4.5xl text-brand font-semibold">
-          {totalAPY ? `${totalAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
-        </Text>
+    <View className="gap-1 md:gap-2">
+      <View className="flex-row items-center gap-1">
+        <Text className="md:text-lg text-muted-foreground font-medium">Current Yield</Text>
+        <TooltipPopover text="Last 15 days yield of the vault" />
       </View>
+      <Text className="text-2xl md:text-4.5xl text-brand font-semibold">
+        {data ? `${data.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
+      </Text>
+    </View>
+  );
+};
 
-      <View className="gap-2">
-        <View className="flex-row items-center gap-1">
-          <Text className="text-lg text-muted-foreground font-medium">All time Yield</Text>
-          <TooltipPopover text="All time yield of the vault" />
-        </View>
+const AllTimeYield = () => {
+  const { data } = useAllTimeYield();
+
+  return (
+    <View className="gap-1 md:gap-2">
+      <View className="flex-row items-center gap-1">
+        <Text className="md:text-lg text-muted-foreground font-medium">All time Yield</Text>
+        <TooltipPopover text="All time yield of the vault" />
+      </View>
+      <Text className="text-2xl md:text-4.5xl font-semibold">
+        {data ? `${data.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
+      </Text>
+    </View>
+  );
+};
+
+const TVL = () => {
+  const { data } = useTVL();
+
+  return (
+    <View className="gap-1 md:gap-2">
+      <View className="flex-row items-center gap-1">
+        <Text className="md:text-lg text-muted-foreground font-medium">TVL</Text>
+        <TooltipPopover
+          text={`TVL: Total value locked in the Solid vault.\n\nPool cap: The maximum amount that can be deposited into this Solid vault. Once the cap is reached, it may be raised to allow more deposits.`}
+        />
+      </View>
+      <View className="flex-row items-center">
         <Text className="text-2xl md:text-4.5xl font-semibold">
-          {allTimeYield ? `${allTimeYield.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
+          {data ? `${compactNumberFormat(data)}$` : <Skeleton className="w-20 h-8" />}
+        </Text>
+        <Text className="text-2xl md:text-4.5xl text-muted-foreground font-light">
+          /{compactNumberFormat(poolCap)}$
         </Text>
       </View>
+    </View>
+  );
+};
 
-      <View className="gap-2">
-        <View className="flex-row items-center gap-1">
-          <Text className="text-lg text-muted-foreground font-medium">TVL</Text>
-          <TooltipPopover
-            text={`TVL: Total value locked in the Solid vault.\n\nPool cap: The maximum amount that can be deposited into this Solid vault. Once the cap is reached, it may be raised to allow more deposits.`}
-          />
+const SoUSDPrice = () => {
+  const { exchangeRate } = usePreviewDeposit(soUSD);
+
+  return (
+    <View className="gap-1 md:gap-2">
+      <View className="flex-row items-center gap-1">
+        <Text className="md:text-lg text-muted-foreground font-medium">Price per soUSD</Text>
+      </View>
+      <View className="flex-row items-center">
+        <Text className="text-2xl md:text-4.5xl font-semibold">
+          {exchangeRate ? (
+            formatNumber(Number(formatUnits(exchangeRate, 6)), 2)
+          ) : (
+            <Skeleton className="w-20 h-8" />
+          )}{' '}
+          USD
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+const VaultStat = () => {
+  const { isScreenMedium } = useDimension();
+
+  if (isScreenMedium) {
+    return (
+      <View className="flex-row justify-between bg-card rounded-twice p-10 gap-10">
+        <CurrentYield />
+        <AllTimeYield />
+        <TVL />
+        <SoUSDPrice />
+      </View>
+    );
+  }
+
+  return (
+    <View className="justify-between bg-card rounded-twice p-5 gap-6">
+      <View className="flex-row justify-between gap-2">
+        <View className="flex-1 min-w-0">
+          <CurrentYield />
         </View>
-        <View className="flex-row items-center">
-          <Text className="text-2xl md:text-4.5xl font-semibold">
-            {tvl ? `${compactNumberFormat(tvl)}$` : <Skeleton className="w-20 h-8" />}
-          </Text>
-          <Text className="text-2xl md:text-4.5xl text-muted-foreground font-light">
-            /{compactNumberFormat(poolCap)}$
-          </Text>
+        <View className="flex-1 min-w-0">
+          <AllTimeYield />
         </View>
       </View>
-
-      <View className="gap-2">
-        <View className="flex-row items-center gap-1">
-          <Text className="text-lg text-muted-foreground font-medium">Price per soUSD</Text>
+      <View className="flex-row justify-between gap-2">
+        <View className="flex-1 min-w-0">
+          <TVL />
         </View>
-        <View className="flex-row items-center">
-          <Text className="text-2xl md:text-4.5xl font-semibold">
-            {exchangeRate ? (
-              formatNumber(Number(formatUnits(exchangeRate, 6)), 2)
-            ) : (
-              <Skeleton className="w-20 h-8" />
-            )}{' '}
-            USD
-          </Text>
+        <View className="flex-1 min-w-0">
+          <SoUSDPrice />
         </View>
       </View>
     </View>
