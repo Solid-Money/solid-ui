@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import { howItWorks } from '@/constants/how-it-works';
 import { useVaultBreakdown } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { VaultBreakdown } from '@/lib/types';
+import SolidImage from '@/components/Landing/SolidImage';
 
 interface SoUSDSectionProps {
   vaultBreakdown: VaultBreakdown[];
@@ -28,23 +28,24 @@ interface VaultBreakdownSectionProps {
 }
 
 const SoUSDSection = ({ vaultBreakdown }: SoUSDSectionProps) => {
+  const { isScreenMedium } = useDimension();
+
   return (
     <View className="gap-6 md:gap-12">
       <View className="md:flex-row justify-between md:items-center gap-6">
         <View className="flex-1 gap-6 md:gap-10">
-          <View className="gap-2">
-            <Text className="text-2xl md:text-4.5xl font-semibold">soUSD vault</Text>
-            <Text className="text-lg text-muted-foreground font-medium">
-              USD stablecoins deployed across integrated DEXs and lending protocols on Fuse.
-            </Text>
+          <View className="flex-row justify-between items-center">
+            <View className="gap-2 flex-1">
+              <Text className="text-2xl md:text-4.5xl font-semibold">soUSD vault</Text>
+              <Text className="md:text-lg text-muted-foreground font-medium max-w-60 md:max-w-full">
+                USD stablecoins deployed across integrated DEXs and lending protocols on Fuse.
+              </Text>
+            </View>
+            {!isScreenMedium && <SolidImage width={101} height={101} />}
           </View>
           <VaultInfo vaultBreakdown={vaultBreakdown} className="max-w-3xl" />
         </View>
-        <Image
-          source={require('@/assets/images/solid-dark-purple.png')}
-          style={{ width: 201, height: 201 }}
-          contentFit="contain"
-        />
+        {isScreenMedium && <SolidImage />}
       </View>
       <VaultStat />
     </View>
