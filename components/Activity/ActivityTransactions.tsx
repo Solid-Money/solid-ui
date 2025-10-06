@@ -1,12 +1,13 @@
 import { FlashList } from '@shopify/flash-list';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
+import { isBefore, subDays } from 'date-fns';
 
 import { useActivity } from '@/hooks/useActivity';
-
+import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -20,8 +21,15 @@ import {
 } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
 import { createActivityEvent, fetchActivityEvents } from '@/lib/api';
-import { ActivityEvent, ActivityTab, TransactionStatus, TransactionType } from '@/lib/types';
+import {
+  ActivityEvent,
+  ActivityGroup,
+  ActivityTab,
+  TransactionStatus,
+  TransactionType,
+} from '@/lib/types';
 import { cn, withRefreshToken } from '@/lib/utils';
+import { groupTransactionsByTime, TimeGroup, TimeGroupHeaderData } from '@/lib/utils/timeGrouping';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -29,11 +37,23 @@ type ActivityTransactionsProps = {
   tab?: ActivityTab;
 };
 
+type RenderItemProps = {
+  item: TimeGroup;
+  index: number;
+};
+
 export default function ActivityTransactions({ tab = ActivityTab.ALL }: ActivityTransactionsProps) {
   const { user } = useUser();
   const { setModal, setBankTransferData } = useDepositStore();
   const { storeEvents } = useActivityStore();
   const { activities, pendingCount, refreshActivities } = useActivity();
+  const [showStuckTransactions, setShowStuckTransactions] = useState(false);
+
+  const isTransactionStuck = (timestamp: string): boolean => {
+    const transactionDate = new Date(parseInt(timestamp) * 1000);
+    const oneDayAgo = subDays(new Date(), 1);
+    return isBefore(transactionDate, oneDayAgo);
+  };
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -95,11 +115,50 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
       ),
   });
 
-  const getTransactionClassName = (totalTransactions: number, index: number) => {
+  const getTransactionClassName = (groupedData: TimeGroup[], currentIndex: number) => {
     const classNames = ['bg-card overflow-hidden'];
-    if (index === 0) classNames.push('rounded-t-xl md:rounded-t-twice');
-    if (index === totalTransactions - 1)
-      classNames.push('border-b-0 rounded-b-xl md:rounded-b-twice');
+
+    // Find the current group's transactions
+    const currentGroupTransactions = [];
+    let currentGroupStart = -1;
+    let currentGroupEnd = -1;
+
+    // Find the start of current group
+    for (let i = currentIndex; i >= 0; i--) {
+      if (groupedData[i].type === ActivityGroup.HEADER) {
+        currentGroupStart = i + 1;
+        break;
+      }
+    }
+
+    // Find the end of current group
+    for (let i = currentIndex; i < groupedData.length; i++) {
+      if (groupedData[i].type === ActivityGroup.HEADER && i > currentIndex) {
+        currentGroupEnd = i - 1;
+        break;
+      }
+    }
+
+    // If we're at the end of the list, the group ends there
+    if (currentGroupEnd === -1) {
+      currentGroupEnd = groupedData.length - 1;
+    }
+
+    // Get all transactions in current group
+    for (let i = currentGroupStart; i <= currentGroupEnd; i++) {
+      if (groupedData[i].type === ActivityGroup.TRANSACTION) {
+        currentGroupTransactions.push(i);
+      }
+    }
+
+    // Find position within the group
+    const groupTransactionIndex = currentGroupTransactions.indexOf(currentIndex);
+    const isFirstInGroup = groupTransactionIndex === 0;
+    const isLastInGroup = groupTransactionIndex === currentGroupTransactions.length - 1;
+
+    if (isFirstInGroup) classNames.push('rounded-t-twice');
+    if (isLastInGroup) classNames.push('border-b-0 rounded-b-twice');
+
     return cn(classNames);
   };
 
@@ -303,32 +362,57 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
 
   fetchedEvents = allEvents;
 
-  const filteredTransactions = fetchedEvents.filter(transaction => {
-    if (tab === ActivityTab.ALL) return true;
-    if (tab === ActivityTab.PROGRESS) {
-      return transaction.status === TransactionStatus.PENDING;
-    }
-    return false;
-  });
+  const filteredTransactions = useMemo(() => {
+    const filtered = fetchedEvents.filter(transaction => {
+      if (tab === ActivityTab.ALL) return true;
+      if (tab === ActivityTab.PROGRESS) {
+        return transaction.status === TransactionStatus.PENDING;
+      }
+      return false;
+    });
 
-  const renderItem = ({ item, index }: { item: ActivityEvent; index: number }) => (
-    <Transaction
-      key={`${item.timestamp}-${index}`}
-      {...item}
-      onPress={() => {
-        if (item.type === TransactionType.BANK_TRANSFER) {
-          setBankTransferData({
-            instructions: item.sourceDepositInstructions,
-            fromActivity: true,
-          });
-          setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
-        }
-      }}
-      classNames={{
-        container: getTransactionClassName(filteredTransactions.length, index),
-      }}
-    />
-  );
+    return groupTransactionsByTime(filtered);
+  }, [fetchedEvents, tab]);
+
+  const renderItem = ({ item, index }: RenderItemProps) => {
+    if (item.type === ActivityGroup.HEADER) {
+      return (
+        <TimeGroupHeader
+          index={index}
+          title={item.data.title}
+          isPending={item.data.status === TransactionStatus.PENDING}
+          showStuck={showStuckTransactions}
+          onToggleStuck={setShowStuckTransactions}
+        />
+      );
+    }
+
+    const transaction = item.data as ActivityEvent;
+    const isPending = transaction.status === TransactionStatus.PENDING;
+    const isStuck = isTransactionStuck(transaction.timestamp);
+    if (!showStuckTransactions && isPending && isStuck) {
+      return null;
+    }
+
+    return (
+      <Transaction
+        key={`${transaction.timestamp}-${index}`}
+        {...transaction}
+        onPress={() => {
+          if (transaction.type === TransactionType.BANK_TRANSFER) {
+            setBankTransferData({
+              instructions: transaction.sourceDepositInstructions,
+              fromActivity: true,
+            });
+            setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
+          }
+        }}
+        classNames={{
+          container: getTransactionClassName(filteredTransactions, index),
+        }}
+      />
+    );
+  };
 
   const renderLoading = () => (
     <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
@@ -353,27 +437,6 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
     refetchTransactions,
     refetchFormattedTransactions,
   ]);
-
-  const renderStatusHeader = () => {
-    if (pendingCount === 0) return null;
-
-    return (
-      <View className="mb-4 p-4 md:px-6 bg-card rounded-xl border border-border/40">
-        <View className="flex-row items-center gap-3">
-          <View className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-          <Text className="text-foreground font-medium text-sm flex-1">
-            {pendingCount} transaction{pendingCount > 1 ? 's' : ''} pending
-          </Text>
-          <View className="bg-yellow-400/10 px-2 py-1 rounded-md">
-            <Text className="text-yellow-400 text-xs font-medium">Processing</Text>
-          </View>
-        </View>
-        <Text className="text-muted-foreground text-xs mt-2 ml-5">
-          Updates automatically every few seconds
-        </Text>
-      </View>
-    );
-  };
 
   const renderEmpty = () => (
     <View className="py-16 px-4">
@@ -401,11 +464,17 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
 
   return (
     <View className="flex-1">
-      {renderStatusHeader()}
       <FlashList
+        key={`flashlist-${showStuckTransactions}`}
         data={filteredTransactions}
         renderItem={renderItem}
-        keyExtractor={(item, index) => item.clientTxId || `${item.timestamp}-${index}`}
+        keyExtractor={(item, index) => {
+          if (item.type === ActivityGroup.HEADER) {
+            return (item.data as TimeGroupHeaderData).key;
+          }
+          const transaction = item.data as ActivityEvent;
+          return transaction.clientTxId || `${transaction.timestamp}-${index}`;
+        }}
         onEndReached={() => {
           if (hasNextPage && !isFetchingNextPage) {
             fetchNextPage();

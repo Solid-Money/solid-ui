@@ -307,6 +307,21 @@ export enum TransactionType {
   MERKL_CLAIM = 'merkl_claim',
 }
 
+export enum TransactionDirection {
+  IN = '+',
+  OUT = '-',
+  FAILED = '✕'
+}
+
+export enum TransactionCategory {
+  SAVINGS_ACCOUNT = 'Savings account',
+  WALLET_TRANSFER = 'Wallet transfer',
+  EXTERNAL_WALLET_TRANSFER = 'External wallet transfer',
+  BANK_DEPOSIT = 'Bank deposit',
+  CARD_DEPOSIT = 'Card deposit',
+  REWARD = 'Reward',
+}
+
 export enum TransactionStatus {
   PENDING = 'pending',
   PROCESSING = 'processing',
@@ -820,3 +835,8 @@ export interface StargateQuoteResponse {
 
 export type MerklRewards = Reward["rewards"];
 export type MerklReward = MerklRewards[0];
+
+export enum ActivityGroup {
+  HEADER = 'header',
+  TRANSACTION = 'transaction',
+}
