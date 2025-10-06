@@ -3,11 +3,22 @@ import { CountryInfo } from '@/lib/types';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+interface IpCountryCache {
+  info: CountryInfo;
+  fetchTime: number;
+}
+
 interface CountryState {
+  // Current country info (can be manually selected or from IP)
   countryInfo: CountryInfo | null;
-  lastFetchTime: number | null;
   
+  // Cache for IP-detected countries
+  ipCountryCache: Record<string, IpCountryCache>;
+  
+  // Store methods
   setCountryInfo: (info: CountryInfo) => void;
+  setIpDetectedCountry: (ip: string, info: CountryInfo) => void;
+  getIpDetectedCountry: (ip: string) => CountryInfo | null;
   clearCountryInfo: () => void;
 }
 
@@ -16,21 +27,46 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export const useCountryStore = create<CountryState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       countryInfo: null,
-      lastFetchTime: null,
+      ipCountryCache: {},
 
       setCountryInfo: (info: CountryInfo) => {
-        set({ 
+        set({ countryInfo: info });
+      },
+
+      setIpDetectedCountry: (ip: string, info: CountryInfo) => {
+        set((state) => ({
           countryInfo: info,
-          lastFetchTime: Date.now()
-        });
+          ipCountryCache: {
+            ...state.ipCountryCache,
+            [ip]: {
+              info,
+              fetchTime: Date.now()
+            }
+          }
+        }));
+      },
+
+      getIpDetectedCountry: (ip: string) => {
+        const state = get();
+        const cachedEntry = state.ipCountryCache[ip];
+        
+        if (!cachedEntry) return null;
+        
+        // Check if cache is still valid
+        const now = Date.now();
+        if (now - cachedEntry.fetchTime > CACHE_DURATION) {
+          return null;
+        }
+        
+        return cachedEntry.info;
       },
 
       clearCountryInfo: () => {
         set({ 
           countryInfo: null,
-          lastFetchTime: null
+          ipCountryCache: {}
         });
       },
     }),
@@ -40,10 +76,3 @@ export const useCountryStore = create<CountryState>()(
     },
   ),
 );
-
-export const shouldRefetchCountry = (lastFetchTime: number | null): boolean => {
-  if (!lastFetchTime) return true;
-  
-  const now = Date.now();
-  return now - lastFetchTime > CACHE_DURATION;
-};
