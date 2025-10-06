@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 import { Cell, Label, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
@@ -59,6 +60,8 @@ function CustomLabel({ viewBox, value1, value2 }: CustomLabelProps) {
 }
 
 const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartProps) => {
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
   const chartData = data.map((item, index) => ({
     name: item.name,
     value: item.allocation,
@@ -66,37 +69,50 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
   }));
   const totalAPY = data.reduce((acc, item) => acc + item.effectivePositionAPY, 0);
 
+  const handleLayout = (event: any) => {
+    const { width, height } = event.nativeEvent.layout;
+    setDimensions({ width, height });
+  };
+
+  const minDimension = Math.min(dimensions.width, dimensions.height);
+  const innerRadiusRatio = 0.45;
+  const outerRadiusRatio = 0.5;
+  const innerRadius = minDimension * innerRadiusRatio;
+  const outerRadius = minDimension * outerRadiusRatio;
+
   return (
-    <View className="w-full md:w-[30%] h-64 md:h-auto">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            innerRadius={100}
-            outerRadius={112}
-            paddingAngle={2}
-            cornerRadius={16}
-            dataKey="value"
-            labelLine={false}
-            stroke="none"
-          >
-            {chartData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={entry.color}
-                opacity={selectedBreakdown === -1 || selectedBreakdown === index ? 1 : 0.5}
-              />
-            ))}
-            <Label
-              width={100}
-              position="center"
-              content={<CustomLabel value1={'7D APY'} value2={`${formatNumber(totalAPY, 2)}%`} />}
-            ></Label>
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
+    <View className="flex-1 md:grow-0 md:basis-1/3 justify-end md:items-center" onLayout={handleLayout}>
+      <View style={{ width: minDimension || undefined, height: minDimension || undefined }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              innerRadius={innerRadius}
+              outerRadius={outerRadius}
+              paddingAngle={2}
+              cornerRadius={16}
+              dataKey="value"
+              labelLine={false}
+              stroke="none"
+            >
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.color}
+                  opacity={selectedBreakdown === -1 || selectedBreakdown === index ? 1 : 0.5}
+                />
+              ))}
+              <Label
+                width={100}
+                position="center"
+                content={<CustomLabel value1={'7D APY'} value2={`${formatNumber(totalAPY, 2)}%`} />}
+              ></Label>
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </View>
     </View>
   );
 };

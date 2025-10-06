@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import { Pressable, SafeAreaView, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import UserAvatar from '@/assets/images/user';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import { eclipseUsername } from '@/lib/utils';
-import { Image } from 'expo-image';
+import RegisterButtons from './RegisterButtons';
 
 const NavbarMobile = () => {
   const { user } = useUser();
@@ -25,7 +26,7 @@ const NavbarMobile = () => {
           style={{ width: 33, height: 36 }}
           contentFit="contain"
         />
-        {user && (
+        {user ? (
           <Pressable
             onPress={handleAvatarPress}
             className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-transform"
@@ -36,6 +37,8 @@ const NavbarMobile = () => {
             </Text>
             <ChevronDown size={16} color="white" />
           </Pressable>
+        ) : (
+          <RegisterButtons />
         )}
         {/* <Link href={path.POINTS} className="-mt-1.5">
           <PointsNavButton />

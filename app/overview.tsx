@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import { howItWorks } from '@/constants/how-it-works';
 import { useVaultBreakdown } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { VaultBreakdown } from '@/lib/types';
+import SolidImage from '@/components/Landing/SolidImage';
 
 interface SoUSDSectionProps {
   vaultBreakdown: VaultBreakdown[];
@@ -28,23 +28,24 @@ interface VaultBreakdownSectionProps {
 }
 
 const SoUSDSection = ({ vaultBreakdown }: SoUSDSectionProps) => {
+  const { isScreenMedium } = useDimension();
+
   return (
     <View className="gap-6 md:gap-12">
       <View className="md:flex-row justify-between md:items-center gap-6">
         <View className="flex-1 gap-6 md:gap-10">
-          <View className="gap-2">
-            <Text className="text-2xl md:text-4.5xl font-semibold">soUSD vault</Text>
-            <Text className="text-lg text-muted-foreground font-medium">
-              USD stablecoins deployed across integrated DEXs and lending protocols on Fuse.
-            </Text>
+          <View className="flex-row justify-between items-center">
+            <View className="gap-2 flex-1">
+              <Text className="text-2xl md:text-4.5xl font-semibold">soUSD vault</Text>
+              <Text className="md:text-lg text-muted-foreground font-medium max-w-60 md:max-w-full">
+                USD stablecoins deployed across integrated DEXs and lending protocols on Fuse.
+              </Text>
+            </View>
+            {!isScreenMedium && <SolidImage width={101} height={101} />}
           </View>
           <VaultInfo vaultBreakdown={vaultBreakdown} className="max-w-3xl" />
         </View>
-        <Image
-          source={require('@/assets/images/solid-dark-purple.png')}
-          style={{ width: 201, height: 201 }}
-          contentFit="contain"
-        />
+        {isScreenMedium && <SolidImage />}
       </View>
       <VaultStat />
     </View>
@@ -57,7 +58,13 @@ const HowSection = () => {
       <Text className="text-xl md:text-3xl font-semibold">How it works?</Text>
       <View className="md:flex-row justify-between gap-4 md:gap-10">
         {howItWorks.map((how, index) => (
-          <HowItWorks key={index} index={index + 1} description={how} />
+          <HowItWorks
+            key={index}
+            index={index + 1}
+            title={how.title}
+            description={how.description}
+            image={how.image}
+          />
         ))}
       </View>
     </View>
@@ -72,11 +79,11 @@ const VaultBreakdownSection = ({ vaultBreakdown }: VaultBreakdownSectionProps) =
   return (
     <View className="gap-6">
       <Text className="text-xl md:text-3xl font-semibold">Vault breakdown</Text>
-      <View className="md:flex-row md:justify-between md:min-h-80 bg-card rounded-twice p-5 md:p-10">
+      <View className="md:flex-row md:justify-between gap-4 md:min-h-80 bg-card rounded-twice p-5 md:p-10">
         <VaultBreakdownTable
           data={vaultBreakdown}
           setSelectedBreakdown={setSelectedBreakdown}
-          className="max-w-2xl"
+          className="max-w-[45rem]"
         />
         <VaultBreakdownChart data={vaultBreakdown} selectedBreakdown={selectedBreakdown} />
       </View>
@@ -86,26 +93,24 @@ const VaultBreakdownSection = ({ vaultBreakdown }: VaultBreakdownSectionProps) =
 
 const AuditSection = () => {
   return (
-    <View className="gap-6">
-      <View className="gap-2">
+    <View className="md:flex-row justify-between gap-6">
+      <View className="gap-2 max-w-80">
         <Text className="text-xl md:text-3xl font-semibold">Audits</Text>
         <Text className="text-lg text-muted-foreground font-medium">
           Solid and the underlying protocols have been audited by industry leaders in blockchain
           security.
         </Text>
       </View>
-      <View className="md:flex-row justify-between bg-card rounded-twice p-5 md:px-10 md:py-8">
-        <Audits className="max-w-2xl" />
-      </View>
+      <Audits className="bg-card rounded-twice p-5 md:px-10 md:py-8 max-w-3xl" />
     </View>
   );
 };
 
 const FAQSection = () => {
   return (
-    <View className="gap-6">
-      <Text className="text-xl md:text-3xl font-semibold">Frequently asked questions</Text>
-      <View className="bg-card rounded-twice p-2 md:p-6">
+    <View className="md:flex-row justify-between gap-6">
+      <Text className="text-xl md:text-3xl font-semibold max-w-40">Frequently asked questions</Text>
+      <View className="bg-card rounded-twice p-2 md:p-6 max-w-3xl">
         <FAQ faqs={faqs} />
       </View>
     </View>

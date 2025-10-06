@@ -1,14 +1,15 @@
 import { Image } from 'expo-image';
-import { View } from 'react-native';
 import { useMemo } from 'react';
+import { View } from 'react-native';
 
+import CopyToClipboard from '@/components/CopyToClipboard';
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
-import { VaultBreakdown } from '@/lib/types';
 import { protocolsImages } from '@/constants/protocols';
-import { cn, eclipseAddress } from '@/lib/utils';
 import { ADDRESSES } from '@/lib/config';
-import CopyToClipboard from '@/components/CopyToClipboard';
+import { VaultBreakdown } from '@/lib/types';
+import { cn, eclipseAddress } from '@/lib/utils';
+import { useDimension } from '@/hooks/useDimension';
 
 interface VaultInfoProps {
   vaultBreakdown: VaultBreakdown[];
@@ -21,10 +22,10 @@ interface VaultBreakdownProps {
 
 const Asset = () => {
   return (
-    <View className="gap-2">
+    <View className="gap-1 md:gap-2">
       <View className="flex-row items-center gap-2">
-        <Text className="text-lg text-muted-foreground font-medium">Base asset</Text>
-        <TooltipPopover text="Base asset of the vault" />
+        <Text className="md:text-lg text-muted-foreground font-medium">Base asset</Text>
+        <TooltipPopover text="The primary asset denominating this pool" />
       </View>
       <View className="flex-row items-center gap-1">
         <Image
@@ -32,7 +33,7 @@ const Asset = () => {
           style={{ width: 24, height: 24 }}
           contentFit="contain"
         />
-        <Text className="text-xl font-semibold">USDC</Text>
+        <Text className="text-lg md:text-xl font-semibold">USDC</Text>
       </View>
     </View>
   );
@@ -44,18 +45,31 @@ const Protocols = ({ vaultBreakdown }: VaultBreakdownProps) => {
   }, [vaultBreakdown]);
 
   return (
-    <View className="gap-2">
+    <View className="gap-1 md:gap-2">
       <View className="flex-row items-center gap-2">
-        <Text className="text-lg text-muted-foreground font-medium">Protocols</Text>
-        <TooltipPopover text="Protocols used in the vault" />
+        <Text className="md:text-lg text-muted-foreground font-medium">Protocols</Text>
+        <TooltipPopover text="DEXs and lending platforms where assets may be deployed" />
       </View>
       <View className="flex-row items-center gap-1">
-        {uniqueProtocols.map(protocol => (
-          <Image
+        {uniqueProtocols.map((protocol, index) => (
+          <TooltipPopover
             key={protocol}
-            source={protocolsImages[protocol]}
-            style={{ width: 24, height: 24 }}
-            contentFit="contain"
+            trigger={
+              <View
+                key={protocol}
+                className="-mr-2"
+                style={{
+                  zIndex: index,
+                }}
+              >
+                <Image
+                  source={protocolsImages[protocol]}
+                  style={{ width: 24, height: 24 }}
+                  contentFit="contain"
+                />
+              </View>
+            }
+            content={<Text className="text-sm">{protocol}</Text>}
           />
         ))}
       </View>
@@ -65,10 +79,10 @@ const Protocols = ({ vaultBreakdown }: VaultBreakdownProps) => {
 
 const Chain = () => {
   return (
-    <View className="gap-2">
+    <View className="gap-1 md:gap-2">
       <View className="flex-row items-center gap-2">
-        <Text className="text-lg text-muted-foreground font-medium">Chain</Text>
-        <TooltipPopover text="Chain of the vault" />
+        <Text className="md:text-lg text-muted-foreground font-medium">Chain</Text>
+        <TooltipPopover text="Blockchain network hosting the token" />
       </View>
       <View className="flex-row items-center gap-1">
         <Image
@@ -76,7 +90,7 @@ const Chain = () => {
           style={{ width: 24, height: 24 }}
           contentFit="contain"
         />
-        <Text className="text-xl font-semibold">Fuse</Text>
+        <Text className="text-lg md:text-xl font-semibold">Fuse</Text>
       </View>
     </View>
   );
@@ -84,26 +98,53 @@ const Chain = () => {
 
 const Address = () => {
   return (
-    <View className="gap-2">
+    <View className="gap-1 md:gap-2">
       <View className="flex-row items-center gap-2">
-        <Text className="text-lg text-muted-foreground font-medium">Vault address</Text>
+        <Text className="md:text-lg text-muted-foreground font-medium">Vault address</Text>
         <TooltipPopover text="Address of the vault on Ethereum" />
       </View>
       <View className="flex-row items-center gap-1">
-        <Text className="text-xl font-semibold">{eclipseAddress(ADDRESSES.fuse.vault)}</Text>
-        <CopyToClipboard text={ADDRESSES.fuse.vault} />
+        <Text className="text-lg md:text-xl font-semibold">
+          {eclipseAddress(ADDRESSES.ethereum.vault)}
+        </Text>
+        <CopyToClipboard text={ADDRESSES.ethereum.vault} />
       </View>
     </View>
   );
 };
 
 const VaultInfo = ({ vaultBreakdown, className }: VaultInfoProps) => {
+  const { isScreenMedium } = useDimension();
+
+  if (isScreenMedium) {
+    return (
+      <View className={cn('flex-row justify-between items-center gap-2', className)}>
+        <Asset />
+        <Protocols vaultBreakdown={vaultBreakdown} />
+        <Chain />
+        <Address />
+      </View>
+    );
+  }
+
   return (
-    <View className={cn('md:flex-row justify-between md:items-center gap-6 md:gap-2', className)}>
-      <Asset />
-      <Protocols vaultBreakdown={vaultBreakdown} />
-      <Chain />
-      <Address />
+    <View className={cn('justify-between gap-6', className)}>
+      <View className="flex-row justify-between gap-2">
+        <View className="flex-1 min-w-0">
+          <Asset />
+        </View>
+        <View className="flex-1 min-w-0">
+          <Protocols vaultBreakdown={vaultBreakdown} />
+        </View>
+      </View>
+      <View className="flex-row justify-between gap-2">
+        <View className="flex-1 min-w-0">
+          <Chain />
+        </View>
+        <View className="flex-1 min-w-0">
+          <Address />
+        </View>
+      </View>
     </View>
   );
 };
