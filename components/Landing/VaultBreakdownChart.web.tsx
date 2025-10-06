@@ -81,7 +81,7 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
   const outerRadius = minDimension * outerRadiusRatio;
 
   return (
-    <View className="flex-1 md:grow-0 md:basis-1/3 md:items-center" onLayout={handleLayout}>
+    <View className="flex-1 md:grow-0 md:basis-1/3 justify-end md:items-center" onLayout={handleLayout}>
       <View style={{ width: minDimension || undefined, height: minDimension || undefined }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
