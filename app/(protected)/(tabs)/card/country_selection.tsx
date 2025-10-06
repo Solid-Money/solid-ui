@@ -15,6 +15,7 @@ import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { useCountryStore } from '@/store/useCountryStore';
+import { withRefreshToken } from '@/lib/utils';
 
 export default function CountrySelection() {
   const router = useRouter();
@@ -134,7 +135,9 @@ export default function CountrySelection() {
     if (selectedCountry) {
       try {
         // Check card access via backend API
-        const accessCheck = await checkCardAccess(selectedCountry.code);
+        const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
+
+        if (!accessCheck) throw new Error('Failed to check card access');
 
         // Create the updated country info
         const updatedCountryInfo = {
