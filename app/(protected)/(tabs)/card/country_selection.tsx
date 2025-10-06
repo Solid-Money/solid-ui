@@ -3,48 +3,64 @@ import { ArrowLeft } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 
+import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
+
+import CountryFlagImage from '@/components/CountryFlagImage';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
-import { checkCardAccess, getCountryFromIp } from '@/lib/api';
-import { CountryInfo } from '@/lib/types';
-import { shouldRefetchCountry, useCountryStore } from '@/store/useCountryStore';
+import useUser from '@/hooks/useUser';
+import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
+import { useCountryStore } from '@/store/useCountryStore';
+import { withRefreshToken } from '@/lib/utils';
 
 export default function CountrySelection() {
   const router = useRouter();
+  const { user } = useUser();
   const { isScreenMedium } = useDimension();
-  const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notifyClicked, setNotifyClicked] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [showCountrySelector, setShowCountrySelector] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
   const {
-    countryInfo: cachedCountryInfo,
-    lastFetchTime,
-    setCountryInfo: setCachedCountryInfo,
+    countryInfo,
+    setCountryInfo,
+    getIpDetectedCountry,
+    setIpDetectedCountry
   } = useCountryStore();
 
   useEffect(() => {
     const fetchCountry = async () => {
       try {
-        // Check if we have cached country info that's still valid
-        if (cachedCountryInfo && !shouldRefetchCountry(lastFetchTime)) {
-          setCountryInfo(cachedCountryInfo);
-          const country = COUNTRIES.find(c => c.code === cachedCountryInfo.countryCode);
+        // First, get the client's IP address
+        const ip = await getClientIp();
+
+        if (!ip) {
+          setError(true);
+          setLoading(false);
+          return;
+        }
+
+        // Check if we have a valid cached country info for this IP
+        const cachedInfo = getIpDetectedCountry(ip);
+
+        if (cachedInfo) {
+          const country = COUNTRIES.find((c) => c.code === cachedInfo.countryCode);
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
 
           // If country is available, proceed directly to card activation
-          if (cachedCountryInfo.isAvailable) {
+          if (cachedInfo.isAvailable) {
             router.replace(path.CARD_ACTIVATE_MOBILE);
             return;
           }
@@ -54,11 +70,12 @@ export default function CountrySelection() {
 
         // Fetch new country info if cache is invalid or missing
         const info = await getCountryFromIp();
-        if (info) {
-          setCountryInfo(info);
-          setCachedCountryInfo(info); // Cache the country info
 
-          const country = COUNTRIES.find(c => c.code === info.countryCode);
+        if (info) {
+          setIpDetectedCountry(ip, info); // This sets both countryInfo and caches it
+
+          const country = COUNTRIES.find((c) => c.code === info.countryCode);
+
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
@@ -81,7 +98,7 @@ export default function CountrySelection() {
     };
 
     fetchCountry();
-  }, [router, cachedCountryInfo, lastFetchTime, setCachedCountryInfo]);
+  }, [router, getIpDetectedCountry, setIpDetectedCountry]);
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
@@ -91,7 +108,12 @@ export default function CountrySelection() {
   }, [searchQuery]);
 
   const handleNotifyByMail = () => {
-    setNotifyClicked(true);
+    // Check if user has email
+    if (user && !user.email) {
+      setShowEmailModal(true);
+    } else {
+      setNotifyClicked(true);
+    }
   };
 
   const handleChangeCountry = () => {
@@ -113,7 +135,9 @@ export default function CountrySelection() {
     if (selectedCountry) {
       try {
         // Check card access via backend API
-        const accessCheck = await checkCardAccess(selectedCountry.code);
+        const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
+
+        if (!accessCheck) throw new Error('Failed to check card access');
 
         // Create the updated country info
         const updatedCountryInfo = {
@@ -122,9 +146,8 @@ export default function CountrySelection() {
           isAvailable: accessCheck.hasAccess,
         };
 
-        // Update both local and cached state
+        // Update store
         setCountryInfo(updatedCountryInfo);
-        setCachedCountryInfo(updatedCountryInfo);
 
         // If selected country is available, proceed directly to card activation
         if (accessCheck.hasAccess) {
@@ -144,7 +167,6 @@ export default function CountrySelection() {
         };
 
         setCountryInfo(unavailableCountryInfo);
-        setCachedCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
         setNotifyClicked(false);
       }
@@ -161,6 +183,17 @@ export default function CountrySelection() {
 
   return (
     <View className="flex-1 bg-background">
+      {/* Email collection modal */}
+      <NotificationEmailModalDialog
+        open={showEmailModal}
+        onOpenChange={(open) => {
+          setShowEmailModal(open);
+        }}
+        onSuccess={() => {
+          setShowEmailModal(false);
+          setNotifyClicked(true);
+        }}
+      />
       {isScreenMedium && <Navbar />}
 
       <View className="w-full max-w-lg mx-auto pt-12 px-4">
@@ -192,7 +225,7 @@ export default function CountrySelection() {
           </>
         ) : (
           <View className="flex-1 justify-center">
-            <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full max-w-md items-center">
+            <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full  items-center">
               {notifyClicked ? (
                 <NotifyConfirmationView
                   countryName={countryInfo.countryName}
@@ -214,14 +247,6 @@ export default function CountrySelection() {
     </View>
   );
 }
-
-const getCountryFlag = (countryCode: string) => {
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map(char => 127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
-};
 
 // Country Dropdown Modal Component
 interface CountryDropdownProps {
@@ -297,8 +322,17 @@ function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelec
           Check to see which Membership features are available to you today
         </Text>
 
+        {selectedCountry && (
+          <View className="items-center mb-6">
+            <CountryFlagImage
+              isoCode={selectedCountry.code}
+              size={110}
+              className="mb-2"
+            />
+          </View>
+        )}
         <Pressable onPress={onOpenDropdown}>
-          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center mt-8 mb-6 border border-[#898989]">
+          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center mt-2 mb-6 border border-[#898989]">
             <Text className="text-white">
               {selectedCountry ? selectedCountry.name : 'Select country'}
             </Text>
@@ -333,9 +367,11 @@ function CountryUnavailableView({
 }: CountryUnavailableViewProps) {
   return (
     <>
-      <View className="w-24 h-24 rounded-full bg-white items-center justify-center mt-4 mb-6">
-        <Text className="text-[64px]">{getCountryFlag(countryCode)}</Text>
-      </View>
+      <CountryFlagImage
+        isoCode={countryCode}
+        size={110}
+        className="mt-4 mb-6"
+      />
       <Text className="text-white text-2xl font-bold mb-4 text-center">
         {`We're not ready for ${countryName} just yet!`}
       </Text>
@@ -345,7 +381,10 @@ function CountryUnavailableView({
       <Pressable onPress={onChangeCountry} className="mb-6 web:hover:opacity-70">
         <Text className="text-white font-bold text-base">Change country</Text>
       </Pressable>
-      <Button className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]" onPress={onNotifyByMail}>
+      <Button
+        className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]"
+        onPress={onNotifyByMail}
+      >
         <Text className="text-base font-bold text-black">Notify by mail</Text>
       </Button>
     </>
@@ -362,9 +401,11 @@ interface NotifyConfirmationViewProps {
 function NotifyConfirmationView({ countryName, countryCode, onOk }: NotifyConfirmationViewProps) {
   return (
     <>
-      <View className="w-24 h-24 rounded-full bg-white items-center justify-center mb-6">
-        <Text className="text-[64px]">{getCountryFlag(countryCode)}</Text>
-      </View>
+      <CountryFlagImage
+        isoCode={countryCode}
+        size={110}
+        className="mb-6"
+      />
       <Text className="text-white text-2xl font-semibold mb-4 text-center">Thanks</Text>
       <Text className="text-[#ACACAC] text-center mb-8 leading-6">
         {`We'll let you know as soon as Cash cards become available in ${countryName}. Hopefully very soon!`}
