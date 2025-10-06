@@ -14,14 +14,12 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
-import { CountryInfo } from '@/lib/types';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
-  const [countryInfo, setCountryInfo] = useState<CountryInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notifyClicked, setNotifyClicked] = useState(false);
@@ -32,7 +30,8 @@ export default function CountrySelection() {
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
   const {
-    setCountryInfo: setCachedCountryInfo,
+    countryInfo,
+    setCountryInfo,
     getIpDetectedCountry,
     setIpDetectedCountry
   } = useCountryStore();
@@ -53,7 +52,6 @@ export default function CountrySelection() {
         const cachedInfo = getIpDetectedCountry(ip);
 
         if (cachedInfo) {
-          setCountryInfo(cachedInfo);
           const country = COUNTRIES.find((c) => c.code === cachedInfo.countryCode);
           if (country) {
             setSelectedCountry(country);
@@ -73,8 +71,7 @@ export default function CountrySelection() {
         const info = await getCountryFromIp();
 
         if (info) {
-          setCountryInfo(info);
-          setIpDetectedCountry(ip, info); // Cache the country info with IP
+          setIpDetectedCountry(ip, info); // This sets both countryInfo and caches it
 
           const country = COUNTRIES.find((c) => c.code === info.countryCode);
 
@@ -146,9 +143,8 @@ export default function CountrySelection() {
           isAvailable: accessCheck.hasAccess,
         };
 
-        // Update local state only, don't cache manually selected countries
+        // Update store
         setCountryInfo(updatedCountryInfo);
-        setCachedCountryInfo(updatedCountryInfo);
 
         // If selected country is available, proceed directly to card activation
         if (accessCheck.hasAccess) {
@@ -168,7 +164,6 @@ export default function CountrySelection() {
         };
 
         setCountryInfo(unavailableCountryInfo);
-        setCachedCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
         setNotifyClicked(false);
       }
