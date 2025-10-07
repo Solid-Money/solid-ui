@@ -24,6 +24,10 @@ export enum FirebaseEvent {
   SCREEN_VIEW = 'screen_view',
 }
 
+export const formatAmplitudeEvent = (str: string) => {
+  return str.split('_').map(word => toTitleCase(word)).join(' ');
+};
+
 // Initialize Amplitude
 const initAmplitude = () => {
   try {
@@ -70,7 +74,7 @@ export const initAnalytics = async () => {
 // Track Amplitude events
 const trackAmplitudeEvent = (event: string, params: Record<string, any>) => {
   try {
-    trackAmplitude(toTitleCase(event), params);
+    trackAmplitude(formatAmplitudeEvent(event), params);
   } catch (error) {
     console.error('Error tracking Amplitude event:', error);
   }

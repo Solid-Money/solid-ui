@@ -1,8 +1,9 @@
-import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
+import { Pressable, View } from 'react-native';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
+import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
   TransactionCategory,
@@ -11,7 +12,6 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
-import { TRANSACTION_DETAILS } from '@/constants/transaction';
 
 type TransactionClassNames = {
   container?: string;
@@ -58,7 +58,7 @@ const Transaction = ({
     <Pressable
       onPress={onPress}
       className={cn(
-        'flex-row items-center justify-between p-4 md:px-6',
+        'flex-row items-center justify-between p-4 md:px-6 hover:opacity-80',
         'border-b border-border/40',
         classNames?.container,
       )}

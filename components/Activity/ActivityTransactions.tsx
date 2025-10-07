@@ -1,18 +1,19 @@
 import { FlashList } from '@shopify/flash-list';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { isBefore, subDays } from 'date-fns';
+import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
-import { isBefore, subDays } from 'date-fns';
 
-import { useActivity } from '@/hooks/useActivity';
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
+import { useActivity } from '@/hooks/useActivity';
 import {
   formatTransactions,
   useBankTransferTransactions,
@@ -144,10 +145,17 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
       currentGroupEnd = groupedData.length - 1;
     }
 
-    // Get all transactions in current group
+    // Get all transactions in current group that would actually be rendered
     for (let i = currentGroupStart; i <= currentGroupEnd; i++) {
       if (groupedData[i].type === ActivityGroup.TRANSACTION) {
-        currentGroupTransactions.push(i);
+        const transaction = groupedData[i].data as ActivityEvent;
+        const isPending = transaction.status === TransactionStatus.PENDING;
+        const isStuck = isTransactionStuck(transaction.timestamp);
+
+        // Only include transactions that would be rendered (not filtered out)
+        if (showStuckTransactions || !(isPending && isStuck)) {
+          currentGroupTransactions.push(i);
+        }
       }
     }
 
@@ -405,6 +413,8 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
               fromActivity: true,
             });
             setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
+          } else {
+            router.push(`/activity/${transaction.clientTxId}`);
           }
         }}
         classNames={{

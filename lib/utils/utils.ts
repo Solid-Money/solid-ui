@@ -164,8 +164,8 @@ export const isPasskeySupported = () => {
   );
 };
 
-export const toTitleCase = (str: string) => {
-  return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+export const toTitleCase = (word: string) => {
+  return word.charAt(0).toUpperCase() + word.slice(1);
 };
 
 export const safeStringify = (value: any) => {

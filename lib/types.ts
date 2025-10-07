@@ -720,6 +720,7 @@ export interface ActivityEvent {
   fromAddress?: string;
   toAddress?: string;
   url?: string;
+  requestId?: Hex;
   sourceDepositInstructions?: SourceDepositInstructions;
   metadata?: Record<string, any>;
 }
