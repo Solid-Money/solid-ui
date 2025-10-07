@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import * as React from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
@@ -77,7 +77,7 @@ const TooltipPopover = ({
   return (
     <Tooltip delayDuration={150}>
       <TooltipTrigger asChild className={classNames?.trigger}>
-        {trigger || getTrigger()}
+        {trigger ? <View>{trigger}</View> : getTrigger()}
       </TooltipTrigger>
       <TooltipContent
         insets={contentInsets}
