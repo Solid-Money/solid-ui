@@ -1,8 +1,15 @@
 import { useMemo } from 'react';
-import { Control, Controller, FieldErrors, useForm, UseFormSetValue, UseFormTrigger } from 'react-hook-form';
-import { Image, TextInput, View } from 'react-native';
+import {
+  Control,
+  Controller,
+  FieldErrors,
+  useForm,
+  UseFormSetValue,
+  UseFormTrigger,
+} from 'react-hook-form';
+import { ActivityIndicator, Image, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Address } from 'viem';
+import { Address, TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
@@ -21,6 +28,8 @@ import { USDC_STARGATE } from '@/constants/addresses';
 import { useBalances } from '@/hooks/useBalances';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
+import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { ADDRESSES } from '@/lib/config';
@@ -125,7 +134,7 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
             source={
               from === 'wallet'
                 ? require('@/assets/images/usdc-4x.png')
-                : require('@/assets/images/usdc-4x.png')
+                : require('@/assets/images/sousd-4x.png')
             }
             alt={from === 'wallet' ? 'USDC.e' : 'soUSD'}
             style={{ width: 34, height: 34 }}
@@ -179,14 +188,11 @@ function BalanceDisplay({
 }
 
 type EstimatedReceiveProps = {
-  soUsdAmount: string;
-  soUsdQuoteRate: number;
+  estimatedUSDC: number;
   isLoading?: boolean;
 };
 
-function EstimatedReceive({ soUsdAmount, soUsdQuoteRate, isLoading }: EstimatedReceiveProps) {
-  const estimatedUSDC = soUsdAmount ? Number(soUsdAmount) * soUsdQuoteRate : 0;
-
+function EstimatedReceive({ estimatedUSDC, isLoading }: EstimatedReceiveProps) {
   return (
     <View className="bg-accent/50 rounded-2xl p-4 flex-row items-center gap-3">
       <Info color="#60A5FA" size={20} />
@@ -235,15 +241,18 @@ function ErrorDisplay({ error }: ErrorDisplayProps) {
 type SubmitButtonProps = {
   disabled: boolean;
   bridgeStatus: Status;
+  swapAndBridgeStatus: Status;
   onPress: () => void;
 };
 
-function SubmitButton({ disabled, bridgeStatus, onPress }: SubmitButtonProps) {
+function SubmitButton({ disabled, bridgeStatus, swapAndBridgeStatus, onPress }: SubmitButtonProps) {
   return (
     <Button variant="brand" className="rounded-2xl h-12" disabled={disabled} onPress={onPress}>
-      <Text className="font-semibold text-black text-lg">
-        {bridgeStatus === Status.PENDING ? 'Depositing...' : 'Deposit to Card'}
-      </Text>
+      {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
+        <ActivityIndicator color="black" />
+      ) : (
+        <Text className="font-semibold text-black text-lg">Deposit to Card</Text>
+      )}
     </Button>
   );
 }
@@ -287,12 +296,14 @@ export default function CardDepositInternalForm() {
   const soUsdBalanceAmount = soUsdToken
     ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
     : 0;
-  const soUsdQuoteRate = soUsdToken?.quoteRate || 0;
 
   const balanceAmount = watchedFrom === 'wallet' ? usdcBalanceAmount : soUsdBalanceAmount;
-  const isBalanceLoading =
-    watchedFrom === 'wallet' ? isUsdcBalanceLoading : isBalancesLoading;
+  const isBalanceLoading = watchedFrom === 'wallet' ? isUsdcBalanceLoading : isBalancesLoading;
   const tokenSymbol = watchedFrom === 'wallet' ? 'USDC.e' : 'soUSD';
+  const { amountOut: estimatedUSDC, isLoading: isEstimatedUSDCLoading } = usePreviewDepositToCard(
+    watchedAmount,
+    ADDRESSES.fuse.stargateOftUSDC,
+  );
 
   const schema = useMemo(() => {
     return z.object({
@@ -311,6 +322,11 @@ export default function CardDepositInternalForm() {
 
   // Fuse bridge hook
   const { bridge, bridgeStatus, error: bridgeError } = useBridgeToCard();
+  const {
+    swapAndBridge,
+    bridgeStatus: swapAndBridgeStatus,
+    error: swapAndBridgeError,
+  } = useSwapAndBridgeToCard();
 
   const onSubmit = async (data: any) => {
     try {
@@ -327,30 +343,33 @@ export default function CardDepositInternalForm() {
         });
         return;
       }
+      let tx: TransactionReceipt | undefined;
 
       if (watchedFrom === 'savings') {
-        // TODO: Implement soUSD withdrawal and bridge logic
-        // This will be more complex than just a simple bridge
+        tx = await swapAndBridge(data.amount, estimatedUSDC ?? '0');
         Toast.show({
-          type: 'info',
-          text1: 'Coming soon',
-          text2: 'Depositing from savings is not yet implemented',
+          type: 'success',
+          text1: 'Deposit to card initiated',
+          text2: `${data.amount} soUSD bridged to card`,
+          props: {
+            link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+            linkText: 'View on LayerZeroScan',
+            image: getTokenIcon({ tokenSymbol: 'SOUSD' }),
+          },
         });
-        return;
+      } else {
+        tx = await bridge(data.amount);
+        Toast.show({
+          type: 'success',
+          text1: 'Deposit to card initiated',
+          text2: `${data.amount} USDC.e bridged to card`,
+          props: {
+            link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+            linkText: 'View on LayerZeroScan',
+            image: getTokenIcon({ tokenSymbol: 'USDC' }),
+          },
+        });
       }
-
-      const tx = await bridge(data.amount);
-
-      Toast.show({
-        type: 'success',
-        text1: 'Deposit to card initiated',
-        text2: `${data.amount} USDC.e bridged to card`,
-        props: {
-          link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
-          linkText: 'View on LayerZeroScan',
-          image: getTokenIcon({ tokenSymbol: 'USDC' }),
-        },
-      });
 
       setTransaction({ amount: Number(data.amount) });
       reset();
@@ -374,7 +393,12 @@ export default function CardDepositInternalForm() {
     }
   }, [watchedAmount, schema]);
 
-  const disabled = bridgeStatus === Status.PENDING || !isValid || !watchedAmount;
+  const disabled =
+    bridgeStatus === Status.PENDING ||
+    swapAndBridgeStatus === Status.PENDING ||
+    isEstimatedUSDCLoading ||
+    !isValid ||
+    !watchedAmount;
 
   // Show validation error message
   const validationError = useMemo(() => {
@@ -388,7 +412,7 @@ export default function CardDepositInternalForm() {
   }, [watchedAmount, schema]);
 
   return (
-    <View className="gap-6 flex-1">
+    <View className="gap-3 flex-1">
       <SourceSelector control={control} from={watchedFrom} />
 
       <View className="gap-2">
@@ -405,9 +429,8 @@ export default function CardDepositInternalForm() {
 
       {watchedFrom === 'savings' && watchedAmount && (
         <EstimatedReceive
-          soUsdAmount={watchedAmount}
-          soUsdQuoteRate={soUsdQuoteRate}
-          isLoading={isBalancesLoading}
+          estimatedUSDC={estimatedUSDC ? Number(estimatedUSDC) : 0}
+          isLoading={isEstimatedUSDCLoading}
         />
       )}
 
@@ -415,11 +438,12 @@ export default function CardDepositInternalForm() {
 
       <DestinationDisplay />
 
-      <ErrorDisplay error={validationError || bridgeError} />
+      <ErrorDisplay error={validationError || bridgeError || swapAndBridgeError} />
 
       <SubmitButton
         disabled={disabled}
         bridgeStatus={bridgeStatus}
+        swapAndBridgeStatus={swapAndBridgeStatus}
         onPress={handleSubmit(onSubmit)}
       />
     </View>
