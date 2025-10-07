@@ -1,0 +1,231 @@
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
+import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import Loading from '@/components/Loading';
+import Navbar from '@/components/Navbar';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { TRANSACTION_DETAILS } from '@/constants/transaction';
+import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
+import { useDimension } from '@/hooks/useDimension';
+import { fetchActivityEvent } from '@/lib/api';
+import getTokenIcon from '@/lib/getTokenIcon';
+import { TransactionDirection, TransactionStatus } from '@/lib/types';
+import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
+import { path } from '@/constants/path';
+
+type RowProps = {
+  label: React.ReactNode;
+  value: React.ReactNode;
+  className?: string;
+};
+
+type LabelProps = {
+  children: React.ReactNode;
+};
+
+type ValueProps = {
+  children: React.ReactNode;
+  className?: string;
+};
+
+type BackProps = {
+  title: string;
+  className?: string;
+};
+
+const Row = ({ label, value, className }: RowProps) => {
+  return (
+    <View className={cn('flex-row justify-between p-5 border-b border-border/50', className)}>
+      {label}
+      {value}
+    </View>
+  );
+};
+
+const Label = ({ children }: LabelProps) => {
+  return <Text className="text-muted-foreground font-medium">{children}</Text>;
+};
+
+const Value = ({ children, className }: ValueProps) => {
+  return <Text className={cn('text-lg font-bold', className)}>{children}</Text>;
+};
+
+const Back = ({ title, className }: BackProps) => {
+  const router = useRouter();
+
+  const handleBackPress = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(path.ACTIVITY);
+    }
+  };
+
+  return (
+    <View className="flex-row items-center justify-between">
+      <Pressable onPress={handleBackPress} className="web:hover:opacity-70">
+        <ChevronLeft color="white" />
+      </Pressable>
+      <Text className={cn('text-white text-lg font-semibold text-center', className)}>{title}</Text>
+      <View className="w-10" />
+    </View>
+  );
+};
+
+export default function ActivityDetail() {
+  const { clientTxId } = useLocalSearchParams<{ clientTxId: string }>();
+  const { isScreenMedium } = useDimension();
+  const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
+
+  const { data: activity, isLoading } = useQuery({
+    queryKey: ['activity-event', clientTxId],
+    queryFn: () => withRefreshToken(() => fetchActivityEvent(clientTxId!)),
+    enabled: !!clientTxId,
+  });
+
+  if (isLoading) return <Loading />;
+
+  if (!activity)
+    return (
+      <SafeAreaView className="bg-background text-foreground flex-1">
+        <ScrollView className="flex-1">
+          {isScreenMedium && <Navbar />}
+          <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+            <Back title={`Transaction ${eclipseAddress(clientTxId)} not found`} />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+
+  const isFailed = activity.status === TransactionStatus.FAILED;
+  const isPending = activity.status === TransactionStatus.PENDING;
+  const isIncoming = TRANSACTION_DETAILS[activity.type].sign === TransactionDirection.IN;
+  const isCancelWithdraw = activity.requestId && isPending;
+
+  const statusTextColor = isFailed ? 'text-red-400' : isIncoming ? 'text-brand' : '';
+  const statusSign = isFailed
+    ? TransactionDirection.FAILED
+    : TRANSACTION_DETAILS[activity.type].sign;
+
+  const tokenIcon = getTokenIcon({
+    tokenSymbol: 'FUSE',
+    size: 75,
+  });
+
+  const handleCancelWithdraw = async () => {
+    if (!isCancelWithdraw) return;
+    await cancelOnchainWithdraw(activity.requestId!);
+  };
+
+  const rows = [
+    {
+      label: <Label>Sent from</Label>,
+      value: activity.fromAddress && <Value>{eclipseAddress(activity.fromAddress)}</Value>,
+      enabled: !!activity.fromAddress,
+    },
+    {
+      label: <Label>Recipient</Label>,
+      value: activity.toAddress && <Value>{eclipseAddress(activity.toAddress)}</Value>,
+      enabled: !!activity.toAddress,
+    },
+    {
+      label: <Label>Status</Label>,
+      value: <Value>{toTitleCase(activity.status)}</Value>,
+      enabled: !!activity.status,
+    },
+    {
+      label: <Label>Paid</Label>,
+      value: activity.metadata?.inputAmount && activity.metadata?.inputToken && (
+        <Value>
+          {activity.metadata.inputAmount} {activity.metadata.inputToken}
+        </Value>
+      ),
+      enabled: !!activity.metadata?.inputAmount && !!activity.metadata?.inputToken,
+    },
+    {
+      label: <Label>Received</Label>,
+      value: activity.metadata?.outputAmount && activity.metadata?.outputToken && (
+        <Value>
+          {activity.metadata.outputAmount} {activity.metadata.outputToken}
+        </Value>
+      ),
+      enabled: !!activity.metadata?.outputAmount && !!activity.metadata?.outputToken,
+    },
+    {
+      label: <Label>Explorer</Label>,
+      value: activity.url && activity.hash && (
+        <Pressable onPress={() => Linking.openURL(activity.url!)} className="hover:opacity-70">
+          <View className="flex-row items-center gap-1">
+            <Value className="underline">{eclipseAddress(activity.hash)}</Value>
+            <ArrowUpRight color="white" size={16} />
+          </View>
+        </Pressable>
+      ),
+      enabled: !!activity.url && !!activity.hash,
+    },
+  ];
+
+  const isLastRow = (index: number) => {
+    const lastEnabledIndex = rows.findLastIndex(row => row.enabled);
+    return index === lastEnabledIndex;
+  };
+
+  return (
+    <SafeAreaView
+      className="bg-background text-foreground flex-1"
+      edges={['right', 'left', 'bottom', 'top']}
+    >
+      <ScrollView className="flex-1">
+        {isScreenMedium && <Navbar />}
+
+        <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+          <Back title={activity.title} className="text-xl md:text-3xl" />
+
+          <View className="items-center gap-4">
+            <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
+
+            <View className="items-center">
+              <Text className={cn('text-2xl font-bold', statusTextColor)}>
+                {statusSign}${formatNumber(Number(activity.amount))}
+              </Text>
+              <Text className="text-muted-foreground font-semibold">
+                {format(Number(activity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}
+              </Text>
+            </View>
+          </View>
+
+          <View className="bg-card rounded-twice">
+            {rows.map(
+              (row, index) =>
+                row.enabled && (
+                  <Row
+                    key={index}
+                    label={row.label}
+                    value={row.value}
+                    className={cn(isLastRow(index) && 'border-b-0')}
+                  />
+                ),
+            )}
+          </View>
+
+          {isCancelWithdraw && (
+            <Button
+              onPress={handleCancelWithdraw}
+              variant="secondary"
+              className="rounded-xl h-14 border-0"
+            >
+              <X color="white" size={16} />
+              <Text>Cancel Withdraw</Text>
+            </Button>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
