@@ -110,7 +110,9 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
               <Label
                 width={100}
                 position="center"
-                content={<CustomLabel value1={'7D APY'} value2={`${formatNumber(totalAPY, 2)}%`} />}
+                content={
+                  <CustomLabel value1={'Total APY'} value2={`${formatNumber(totalAPY, 2)}%`} />
+                }
               ></Label>
             </Pie>
           </PieChart>
