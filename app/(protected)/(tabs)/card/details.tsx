@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -80,6 +81,7 @@ export default function CardDetails() {
               onCardDetails={() => setIsCardImageModalOpen(true)}
               onFreezeToggle={handleFreezeToggle}
             />
+            <CashbackDisplay cashback={cardDetails?.cashback} />
             <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
             <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
           </View>
@@ -200,6 +202,41 @@ function CardActions({
         isLoading={isFreezing}
       />
     </View>
+  );
+}
+
+interface CashbackDisplayProps {
+  cashback?: {
+    monthlyFuseAmount: number;
+    monthlyUsdValue: number;
+    percentage: number;
+  };
+}
+
+function CashbackDisplay({ cashback }: CashbackDisplayProps) {
+  const totalUsdValue = cashback?.monthlyUsdValue ? Math.round(cashback.monthlyUsdValue) : 0;
+  const cashbackPercentage = cashback?.percentage || 0;
+
+  return (
+    <LinearGradient
+      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.175)']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      className="rounded-2xl p-6 mb-4 flex-row"
+    >
+      <View className="flex-1 pr-4">
+        <Text className="text-white/70 mb-1">Cashback</Text>
+        <Text className="text-[#94F27F] text-2xl font-semibold">${totalUsdValue} this month</Text>
+      </View>
+      <View className="w-[1px] bg-[#3D5A3B] mx-4 my-[-24px]" />
+      <View className="flex-1 pl-8 justify-center">
+        <Text className="text-white text-lg leading-6">
+          you are receiving{'\n'}
+          <Text className="text-[#94F27F] text-lg font-bold">{cashbackPercentage * 100}%</Text>{' '}
+          cashback on all purchases
+        </Text>
+      </View>
+    </LinearGradient>
   );
 }
 
