@@ -13,16 +13,16 @@ const poolCap = 1_000_000;
 const soUSD = '1';
 
 const CurrentYield = () => {
-  const { data } = useTotalAPY();
+  const { data } = useAPYs();
 
   return (
     <View className="gap-1 md:gap-2">
       <View className="flex-row items-center gap-1">
-        <Text className="md:text-lg text-muted-foreground font-medium">Current Yield</Text>
-        <TooltipPopover text="Last 15 days yield of the vault" />
+        <Text className="md:text-lg text-muted-foreground font-medium">7D APY</Text>
+        <TooltipPopover text="Last 7 days yield of the vault" />
       </View>
       <Text className="text-2xl md:text-4.5xl text-brand font-semibold">
-        {data ? `${data.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
+        {data ? `${data.sevenDay.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
       </Text>
     </View>
   );
