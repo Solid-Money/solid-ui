@@ -841,3 +841,10 @@ export enum ActivityGroup {
   HEADER = 'header',
   TRANSACTION = 'transaction',
 }
+
+export interface APYs {
+  allTime: number;
+  sevenDay: number;
+  fifteenDay: number;
+  thirtyDay: number;
+}

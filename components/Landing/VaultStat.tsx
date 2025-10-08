@@ -4,7 +4,7 @@ import { formatUnits } from 'viem';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { useAllTimeYield, useTotalAPY, useTVL } from '@/hooks/useAnalytics';
+import { useAPYs, useTotalAPY, useTVL } from '@/hooks/useAnalytics';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { compactNumberFormat, formatNumber } from '@/lib/utils';
 import { useDimension } from '@/hooks/useDimension';
@@ -29,7 +29,7 @@ const CurrentYield = () => {
 };
 
 const AllTimeYield = () => {
-  const { data } = useAllTimeYield();
+  const { data } = useAPYs();
 
   return (
     <View className="gap-1 md:gap-2">
@@ -38,7 +38,7 @@ const AllTimeYield = () => {
         <TooltipPopover text="All time yield of the vault" />
       </View>
       <Text className="text-2xl md:text-4.5xl font-semibold">
-        {data ? `${data.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
+        {data ? `${data.allTime.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
       </Text>
     </View>
   );

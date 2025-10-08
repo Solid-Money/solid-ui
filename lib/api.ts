@@ -18,6 +18,7 @@ import {
 import {
   ActivityEvent,
   ActivityEvents,
+  APYs,
   BlockscoutTransactions,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
@@ -1142,9 +1143,9 @@ export const getStargateQuote = async (
   return response.json();
 }
 
-export const fetchAllTimeYield = async () => {
-  const response = await axios.get<number>(
-    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/all-time-yield`,
+export const fetchAPYs = async () => {
+  const response = await axios.get<APYs>(
+    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/apys`,
   );
   return response.data;
 };
