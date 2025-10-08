@@ -4,7 +4,7 @@ import { formatUnits } from 'viem';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { useAPYs, useTotalAPY, useTVL } from '@/hooks/useAnalytics';
+import { useAPYs, useTVL } from '@/hooks/useAnalytics';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { compactNumberFormat, formatNumber } from '@/lib/utils';
 import { useDimension } from '@/hooks/useDimension';
