@@ -55,7 +55,7 @@ export default function DepositToCardModal({ trigger }: { trigger?: React.ReactN
       trigger={trigger ?? <Trigger />}
       title={getTitle()}
       titleClassName={isOptions ? 'justify-start' : undefined}
-      containerClassName={'min-h-[36rem] flex-1'}
+      containerClassName={'min-h-[36rem] overflow-y-auto flex-1'}
       contentKey={getContentKey()}
       showBackButton={!isOptions}
       onBackPress={() => setModal(CARD_DEPOSIT_MODAL.OPEN_OPTIONS)}

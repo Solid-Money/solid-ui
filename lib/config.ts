@@ -22,15 +22,21 @@ export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_
 export const EXPO_PUBLIC_FIREBASE_API_KEY = process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? '';
 export const EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN = process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? '';
 export const EXPO_PUBLIC_FIREBASE_PROJECT_ID = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? '';
-export const EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET = process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '';
-export const EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '';
+export const EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET =
+  process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '';
+export const EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID =
+  process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '';
 export const EXPO_PUBLIC_FIREBASE_APP_ID = process.env.EXPO_PUBLIC_FIREBASE_APP_ID ?? '';
-export const EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID = process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID ?? '';
-export const EXPO_PUBLIC_FIREBASE_DATABASE_URL = process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL ?? '';
+export const EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID =
+  process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID ?? '';
+export const EXPO_PUBLIC_FIREBASE_DATABASE_URL =
+  process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL ?? '';
 export const EXPO_PUBLIC_AMPLITUDE_API_KEY = process.env.EXPO_PUBLIC_AMPLITUDE_API_KEY ?? '';
 export const EXPO_PUBLIC_MERKL_CAMPAIGN_ID = process.env.EXPO_PUBLIC_MERKL_CAMPAIGN_ID ?? '';
-export const EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL ?? '';
-export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL = process.env.EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL ?? '';
+export const EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL =
+  process.env.EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL ?? '';
+export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL =
+  process.env.EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL ?? '';
 
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 
@@ -54,6 +60,8 @@ type Addresses = {
     nativeFeeToken: Address;
     bridgePaymasterAddress: Address;
     merklDistributor: Address;
+    cardDepositManager: Address;
+    stargateOftUSDC: Address;
   };
 };
 
@@ -89,6 +97,8 @@ export const ADDRESSES: Addresses = {
     nativeFeeToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     bridgePaymasterAddress: '0xE046FC894Ec020501BA32fcA814a69B49c9Dac10',
     merklDistributor: '0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae',
+    cardDepositManager: '0x22BBc13D022735f2586d4eb04a93f0F4E0173E50',
+    stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',
   },
 };
 

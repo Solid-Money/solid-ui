@@ -1,38 +1,272 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { Image, TextInput, View } from 'react-native';
+import { useMemo } from 'react';
+import {
+  Control,
+  Controller,
+  FieldErrors,
+  useForm,
+  UseFormSetValue,
+  UseFormTrigger,
+} from 'react-hook-form';
+import { ActivityIndicator, Image, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Address } from 'viem';
+import { Address, TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
 
 import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { USDC_STARGATE } from '@/constants/addresses';
+import { useBalances } from '@/hooks/useBalances';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
+import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
 import ERC20_ABI from '@/lib/abis/ERC20';
+import { ADDRESSES } from '@/lib/config';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
-import { Wallet as WalletIcon } from 'lucide-react-native';
+import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
 
 type FormData = { amount: string; from: 'wallet' | 'savings' };
+
+type SourceSelectorProps = {
+  control: Control<FormData>;
+  from: 'wallet' | 'savings';
+};
+
+function SourceSelector({ control, from }: SourceSelectorProps) {
+  return (
+    <View className="gap-2">
+      <Text className="opacity-50 font-medium">From</Text>
+      <Controller
+        control={control}
+        name="from"
+        render={({ field: { onChange, value } }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <View className="bg-accent rounded-2xl p-4 flex-row justify-between items-center">
+                <View className="flex-row items-center gap-2">
+                  {value === 'wallet' ? (
+                    <WalletIcon color="#A1A1A1" size={24} />
+                  ) : (
+                    <Leaf color="#A1A1A1" size={24} />
+                  )}
+                  <Text className="text-lg font-semibold">
+                    {value === 'wallet' ? 'Wallet' : 'Savings'}
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-sm text-muted-foreground">
+                    {from === 'wallet' ? 'USDC.e' : 'soUSD'}
+                  </Text>
+                  <ChevronDown color="#A1A1A1" size={20} />
+                </View>
+              </View>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-full min-w-[380px] border-0 rounded-t-none rounded-b-2xl -mt-4">
+              <DropdownMenuItem
+                onPress={() => onChange('wallet')}
+                className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+              >
+                <WalletIcon color="#A1A1A1" size={20} />
+                <Text className="text-lg">Wallet</Text>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onPress={() => onChange('savings')}
+                className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+              >
+                <Leaf color="#A1A1A1" size={20} />
+                <Text className="text-lg">Savings</Text>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      />
+    </View>
+  );
+}
+
+type AmountInputProps = {
+  control: Control<FormData>;
+  errors: FieldErrors<FormData>;
+  from: 'wallet' | 'savings';
+};
+
+function AmountInput({ control, errors, from }: AmountInputProps) {
+  return (
+    <View className="gap-2">
+      <Text className="opacity-50 font-medium">Deposit amount</Text>
+      <View
+        className={cn(
+          'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
+          errors.amount && 'border border-red-500',
+        )}
+      >
+        <Controller
+          control={control}
+          name="amount"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              keyboardType="decimal-pad"
+              className="w-full text-2xl text-white font-semibold web:focus:outline-none"
+              value={value as any}
+              placeholder="0.0"
+              placeholderTextColor="#666"
+              onChangeText={onChange}
+              onBlur={onBlur}
+            />
+          )}
+        />
+        <View className="flex-row items-center gap-2">
+          <Image
+            source={
+              from === 'wallet'
+                ? require('@/assets/images/usdc-4x.png')
+                : require('@/assets/images/sousd-4x.png')
+            }
+            alt={from === 'wallet' ? 'USDC.e' : 'soUSD'}
+            style={{ width: 34, height: 34 }}
+          />
+          <Text className="font-semibold text-white text-lg">
+            {from === 'wallet' ? 'USDC.e' : 'soUSD'}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+type BalanceDisplayProps = {
+  balanceAmount: number;
+  isBalanceLoading: boolean;
+  formattedBalance: string;
+  setValue: UseFormSetValue<FormData>;
+  trigger: UseFormTrigger<FormData>;
+  from: 'wallet' | 'savings';
+};
+
+function BalanceDisplay({
+  balanceAmount,
+  isBalanceLoading,
+  formattedBalance,
+  setValue,
+  trigger,
+  from,
+}: BalanceDisplayProps) {
+  const tokenSymbol = from === 'wallet' ? 'USDC.e' : 'soUSD';
+
+  return (
+    <View className="flex-row items-center gap-2">
+      <WalletIcon color="#A1A1A1" size={16} />
+      {isBalanceLoading ? (
+        <Skeleton className="w-20 h-5 rounded-md" />
+      ) : (
+        <Text className="text-muted-foreground">
+          {formatNumber(balanceAmount)} {tokenSymbol}
+        </Text>
+      )}
+      <Max
+        onPress={() => {
+          setValue('amount', formattedBalance);
+          trigger('amount');
+        }}
+      />
+    </View>
+  );
+}
+
+type EstimatedReceiveProps = {
+  estimatedUSDC: number;
+  isLoading?: boolean;
+};
+
+function EstimatedReceive({ estimatedUSDC, isLoading }: EstimatedReceiveProps) {
+  return (
+    <View className="bg-accent/50 rounded-2xl p-4 flex-row items-center gap-3">
+      <Info color="#60A5FA" size={20} />
+      <View className="flex-1">
+        <Text className="text-sm text-muted-foreground">You will receive (estimated)</Text>
+        {isLoading ? (
+          <Skeleton className="w-24 h-6 rounded-md mt-1" />
+        ) : (
+          <Text className="text-lg font-semibold text-white mt-0.5">
+            ~{formatNumber(estimatedUSDC)} USDC
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function DestinationDisplay() {
+  return (
+    <View className="gap-2">
+      <Text className="opacity-50 font-medium">To</Text>
+      <View className="bg-accent rounded-2xl p-4 flex-row justify-between items-center">
+        <View className="flex-row items-center gap-2">
+          <Text className="text-lg font-semibold">Card (Arbitrum)</Text>
+        </View>
+        <Text className="text-sm text-muted-foreground">USDC</Text>
+      </View>
+    </View>
+  );
+}
+
+type ErrorDisplayProps = {
+  error?: string | null;
+};
+
+function ErrorDisplay({ error }: ErrorDisplayProps) {
+  if (!error) return null;
+
+  return (
+    <View className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
+      <Text className="text-red-500 text-sm">{error}</Text>
+    </View>
+  );
+}
+
+type SubmitButtonProps = {
+  disabled: boolean;
+  bridgeStatus: Status;
+  swapAndBridgeStatus: Status;
+  onPress: () => void;
+};
+
+function SubmitButton({ disabled, bridgeStatus, swapAndBridgeStatus, onPress }: SubmitButtonProps) {
+  return (
+    <Button variant="brand" className="rounded-2xl h-12" disabled={disabled} onPress={onPress}>
+      {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
+        <ActivityIndicator color="black" />
+      ) : (
+        <Text className="font-semibold text-black text-lg">Deposit to Card</Text>
+      )}
+    </Button>
+  );
+}
 
 export default function CardDepositInternalForm() {
   const { user } = useUser();
   const { setTransaction } = useCardDepositStore();
   const { data: cardDetails } = useCardDetails();
-  const [_from] = useState<'wallet' | 'savings'>('wallet');
+
+  // Get all token balances including soUSD
+  const { tokens, isLoading: isBalancesLoading } = useBalances();
 
   // Get Fuse USDC.e balance
-  const { data: fuseUsdcBalance, isLoading: isBalanceLoading } = useReadContract({
+  const { data: fuseUsdcBalance, isLoading: isUsdcBalanceLoading } = useReadContract({
     abi: ERC20_ABI,
     address: USDC_STARGATE,
     functionName: 'balanceOf',
@@ -41,7 +275,35 @@ export default function CardDepositInternalForm() {
     query: { enabled: !!user?.safeAddress },
   });
 
-  const balanceAmount = fuseUsdcBalance ? Number(fuseUsdcBalance) / 1e6 : 0;
+  // Get soUSD balance and rate from tokens
+  const soUsdToken = useMemo(() => {
+    return tokens.find(
+      token =>
+        token.contractAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase() &&
+        token.chainId === fuse.id,
+    );
+  }, [tokens]);
+
+  const { control, handleSubmit, formState, watch, reset, setValue, trigger } = useForm<FormData>({
+    mode: 'onChange',
+    defaultValues: { amount: '', from: 'wallet' },
+  });
+
+  const watchedAmount = watch('amount');
+  const watchedFrom = watch('from');
+
+  const usdcBalanceAmount = fuseUsdcBalance ? Number(fuseUsdcBalance) / 1e6 : 0;
+  const soUsdBalanceAmount = soUsdToken
+    ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
+    : 0;
+
+  const balanceAmount = watchedFrom === 'wallet' ? usdcBalanceAmount : soUsdBalanceAmount;
+  const isBalanceLoading = watchedFrom === 'wallet' ? isUsdcBalanceLoading : isBalancesLoading;
+  const tokenSymbol = watchedFrom === 'wallet' ? 'USDC.e' : 'soUSD';
+  const { amountOut: estimatedUSDC, isLoading: isEstimatedUSDCLoading } = usePreviewDepositToCard(
+    watchedAmount,
+    ADDRESSES.fuse.stargateOftUSDC,
+  );
 
   const schema = useMemo(() => {
     return z.object({
@@ -51,22 +313,20 @@ export default function CardDepositInternalForm() {
         .refine(val => Number(val) > 0, 'Amount must be greater than 0')
         .refine(
           val => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} USDC.e`,
+          `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
         ),
     });
-  }, [balanceAmount]);
+  }, [balanceAmount, tokenSymbol]);
 
-  const { control, handleSubmit, formState, watch, reset, setValue, trigger } = useForm<FormData>({
-    resolver: zodResolver(schema) as any,
-    mode: 'onChange',
-    defaultValues: { amount: '', from: 'wallet' },
-  });
-
-  const watchedAmount = watch('amount');
   const formattedBalance = balanceAmount.toString();
 
   // Fuse bridge hook
   const { bridge, bridgeStatus, error: bridgeError } = useBridgeToCard();
+  const {
+    swapAndBridge,
+    bridgeStatus: swapAndBridgeStatus,
+    error: swapAndBridgeError,
+  } = useSwapAndBridgeToCard();
 
   const onSubmit = async (data: any) => {
     try {
@@ -83,19 +343,33 @@ export default function CardDepositInternalForm() {
         });
         return;
       }
+      let tx: TransactionReceipt | undefined;
 
-      const tx = await bridge(data.amount);
-
-      Toast.show({
-        type: 'success',
-        text1: 'Deposit to card initiated',
-        text2: `${data.amount} USDC.e bridged to card`,
-        props: {
-          link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
-          linkText: 'View on LayerZeroScan',
-          image: getTokenIcon({ tokenSymbol: 'USDC' }),
-        },
-      });
+      if (watchedFrom === 'savings') {
+        tx = await swapAndBridge(data.amount, estimatedUSDC ?? '0');
+        Toast.show({
+          type: 'success',
+          text1: 'Deposit to card initiated',
+          text2: `${data.amount} soUSD bridged to card`,
+          props: {
+            link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+            linkText: 'View on LayerZeroScan',
+            image: getTokenIcon({ tokenSymbol: 'SOUSD' }),
+          },
+        });
+      } else {
+        tx = await bridge(data.amount);
+        Toast.show({
+          type: 'success',
+          text1: 'Deposit to card initiated',
+          text2: `${data.amount} USDC.e bridged to card`,
+          props: {
+            link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+            linkText: 'View on LayerZeroScan',
+            image: getTokenIcon({ tokenSymbol: 'USDC' }),
+          },
+        });
+      }
 
       setTransaction({ amount: Number(data.amount) });
       reset();
@@ -109,97 +383,69 @@ export default function CardDepositInternalForm() {
     }
   };
 
-  const disabled = bridgeStatus === Status.PENDING || !formState.isValid || !watchedAmount;
+  // Dynamically apply validation
+  const isValid = useMemo(() => {
+    try {
+      schema.parse({ amount: watchedAmount });
+      return true;
+    } catch {
+      return false;
+    }
+  }, [watchedAmount, schema]);
+
+  const disabled =
+    bridgeStatus === Status.PENDING ||
+    swapAndBridgeStatus === Status.PENDING ||
+    isEstimatedUSDCLoading ||
+    !isValid ||
+    !watchedAmount;
+
+  // Show validation error message
+  const validationError = useMemo(() => {
+    if (!watchedAmount) return null;
+    try {
+      schema.parse({ amount: watchedAmount });
+      return null;
+    } catch (error: any) {
+      return error.errors?.[0]?.message || null;
+    }
+  }, [watchedAmount, schema]);
 
   return (
-    <View className="gap-6 flex-1">
-      <View className="gap-2">
-        <Text className="opacity-50 font-medium">From</Text>
-        <View className="bg-accent rounded-2xl p-4 flex-row justify-between items-center">
-          <View className="flex-row items-center gap-2">
-            <WalletIcon color="#A1A1A1" size={24} />
-            <Text className="text-lg font-semibold">Fuse Wallet</Text>
-          </View>
-          <Text className="text-sm text-muted-foreground">USDC.e</Text>
-        </View>
-      </View>
+    <View className="gap-3 flex-1">
+      <SourceSelector control={control} from={watchedFrom} />
 
       <View className="gap-2">
-        <Text className="opacity-50 font-medium">Deposit amount</Text>
-        <View
-          className={cn(
-            'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
-            formState.errors.amount && 'border border-red-500',
-          )}
-        >
-          <Controller
-            control={control}
-            name="amount"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                keyboardType="decimal-pad"
-                className="w-full text-2xl text-white font-semibold web:focus:outline-none"
-                value={value as any}
-                placeholder="0.0"
-                placeholderTextColor="#666"
-                onChangeText={onChange}
-                onBlur={onBlur}
-              />
-            )}
-          />
-          <View className="flex-row items-center gap-2">
-            <Image
-              source={require('@/assets/images/usdc-4x.png')}
-              alt="USDC.e"
-              style={{ width: 34, height: 34 }}
-            />
-            <Text className="font-semibold text-white text-lg">USDC.e</Text>
-          </View>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <WalletIcon color="#A1A1A1" size={16} />
-          {isBalanceLoading ? (
-            <Skeleton className="w-20 h-5 rounded-md" />
-          ) : (
-            <Text className="text-muted-foreground">{formatNumber(balanceAmount)} USDC.e</Text>
-          )}
-          <Max
-            onPress={() => {
-              setValue('amount', formattedBalance);
-              trigger('amount');
-            }}
-          />
-        </View>
+        <AmountInput control={control} errors={formState.errors} from={watchedFrom} />
+        <BalanceDisplay
+          balanceAmount={balanceAmount}
+          isBalanceLoading={isBalanceLoading}
+          formattedBalance={formattedBalance}
+          setValue={setValue}
+          trigger={trigger}
+          from={watchedFrom}
+        />
       </View>
+
+      {watchedFrom === 'savings' && watchedAmount && (
+        <EstimatedReceive
+          estimatedUSDC={estimatedUSDC ? Number(estimatedUSDC) : 0}
+          isLoading={isEstimatedUSDCLoading}
+        />
+      )}
 
       <View className="flex-1" />
 
-      <View className="gap-2">
-        <Text className="opacity-50 font-medium">To</Text>
-        <View className="bg-accent rounded-2xl p-4 flex-row justify-between items-center">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-lg font-semibold">Card (Arbitrum)</Text>
-          </View>
-          <Text className="text-sm text-muted-foreground">USDC</Text>
-        </View>
-      </View>
+      <DestinationDisplay />
 
-      {bridgeError && (
-        <View className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
-          <Text className="text-red-500 text-sm">{bridgeError}</Text>
-        </View>
-      )}
+      <ErrorDisplay error={validationError || bridgeError || swapAndBridgeError} />
 
-      <Button
-        variant="brand"
-        className="rounded-2xl h-12"
+      <SubmitButton
         disabled={disabled}
+        bridgeStatus={bridgeStatus}
+        swapAndBridgeStatus={swapAndBridgeStatus}
         onPress={handleSubmit(onSubmit)}
-      >
-        <Text className="font-semibold text-black text-lg">
-          {bridgeStatus === Status.PENDING ? 'Depositing...' : 'Deposit to Card'}
-        </Text>
-      </Button>
+      />
     </View>
   );
 }
