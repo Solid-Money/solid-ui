@@ -34,11 +34,11 @@ const AllTimeYield = () => {
   return (
     <View className="gap-1 md:gap-2">
       <View className="flex-row items-center gap-1">
-        <Text className="md:text-lg text-muted-foreground font-medium">All time Yield</Text>
-        <TooltipPopover text="All time yield of the vault" />
+        <Text className="md:text-lg text-muted-foreground font-medium">30D APY</Text>
+        <TooltipPopover text="Last 30 days yield of the vault" />
       </View>
       <Text className="text-2xl md:text-4.5xl font-semibold">
-        {data ? `${data.allTime.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
+        {data ? `${data.thirtyDay.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
       </Text>
     </View>
   );
