@@ -19,20 +19,20 @@ import { useCardDetails } from './useCardDetails';
 import useUser from './useUser';
 
 type BridgeResult = {
-  bridge: (amount: string) => Promise<TransactionReceipt>;
+  swapAndBridge: (amount: string, minAmount: string) => Promise<TransactionReceipt>;
   bridgeStatus: Status;
   error: string | null;
 };
 
-const useBridgeToCard = (): BridgeResult => {
+const useSwapAndBridgeToCard = (): BridgeResult => {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivity();
   const { data: cardDetails } = useCardDetails();
   const [bridgeStatus, setBridgeStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 
-  const bridge = useCallback(
-    async (amount: string) => {
+  const swapAndBridge = useCallback(
+    async (amount: string, minAmount: string) => {
       try {
         if (!user) {
           const error = new Error('User is not selected');
@@ -40,11 +40,11 @@ const useBridgeToCard = (): BridgeResult => {
             amount: amount,
             error: 'User not found',
             step: 'validation',
-            source: 'useBridgeToCard',
+            source: 'useSwapAndBridgeToCard',
           });
           Sentry.captureException(error, {
             tags: {
-              operation: 'bridge_to_card',
+              operation: 'swap_and_bridge_to_card',
               step: 'validation',
             },
             extra: {
@@ -66,11 +66,11 @@ const useBridgeToCard = (): BridgeResult => {
             amount: amount,
             error: 'Arbitrum funding address not found',
             step: 'validation',
-            source: 'useBridgeToCard',
+            source: 'useSwapAndBridgeToCard',
           });
           Sentry.captureException(error, {
             tags: {
-              operation: 'bridge_to_card',
+              operation: 'swap_and_bridge_to_card',
               step: 'validation',
             },
             extra: {
@@ -85,7 +85,7 @@ const useBridgeToCard = (): BridgeResult => {
           amount: amount,
           from_chain: fuse.id,
           to_chain: 42161, // Arbitrum
-          source: 'useBridgeToCard',
+          source: 'useSwapBridgeToCard',
         });
 
         setBridgeStatus(Status.PENDING);
@@ -95,7 +95,7 @@ const useBridgeToCard = (): BridgeResult => {
         const amountWei = parseUnits(amount, 6);
 
         Sentry.addBreadcrumb({
-          message: 'Starting bridge to Card transaction',
+          message: 'Starting swap and bridge to Card transaction',
           category: 'bridge',
           data: {
             amount,
@@ -146,8 +146,8 @@ const useBridgeToCard = (): BridgeResult => {
           to: pad(destinationAddress as `0x${string}`, {
             size: 32,
           }),
-          amountLD: amountWei,
-          minAmountLD: dstAmountMin,
+          amountLD: parseUnits(minAmount, 6),
+          minAmountLD: (parseUnits(minAmount, 6) * 95n) / 100n,
           extraOptions: '0x',
           composeMsg: '0x',
           oftCmd: '0x',
@@ -155,10 +155,11 @@ const useBridgeToCard = (): BridgeResult => {
 
         const calldata = encodeFunctionData({
           abi: CardDepositManager_ABI,
-          functionName: 'depositUsingStargate',
+          functionName: 'swapAndDepositUsingStargate',
           args: [
             transaction.to as Address,
             user.safeAddress as Address,
+            amountWei,
             sendParam,
             nativeFeeAmount,
             ADDRESSES.fuse.bridgePaymasterAddress,
@@ -166,9 +167,9 @@ const useBridgeToCard = (): BridgeResult => {
         });
 
         const transactions = [
-          // 1) Approve USDC.e from Safe to DepositManager
+          // 1) Approve soUSD from Safe to DepositManager
           {
-            to: USDC_STARGATE,
+            to: ADDRESSES.fuse.vault,
             data: encodeFunctionData({
               abi: ERC20_ABI,
               functionName: 'approve',
@@ -184,7 +185,7 @@ const useBridgeToCard = (): BridgeResult => {
               functionName: 'callWithValue',
               args: [
                 ADDRESSES.fuse.cardDepositManager,
-                '0x37fe667d', // depositUsingStargate function selector
+                '0xf5c5bb28', // swapAndDepositUsingStargate function selector
                 calldata,
                 nativeFeeAmount, // the native to forward
               ],
@@ -317,7 +318,7 @@ const useBridgeToCard = (): BridgeResult => {
     [user, cardDetails, safeAA, trackTransaction, bridgeStatus],
   );
 
-  return { bridge, bridgeStatus, error };
+  return { swapAndBridge, bridgeStatus, error };
 };
 
-export default useBridgeToCard;
+export default useSwapAndBridgeToCard;

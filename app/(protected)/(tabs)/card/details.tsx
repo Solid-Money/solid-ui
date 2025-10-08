@@ -132,15 +132,24 @@ function CardImageSection({ isScreenMedium, isCardFrozen }: CardImageSectionProp
     ? require('@/assets/images/card_frozen.png')
     : require('@/assets/images/activate_card_steps.png');
 
-  const desktopImageAspectRatio = isCardFrozen ? 532 / 329 : 512 / 306;
+  const desktopImageAspectRatio = isCardFrozen ? 531 / 328 : 512 / 305;
 
   return (
-    <View className="items-center my-12">
+    <View
+      className="items-center my-12"
+      style={{
+        paddingHorizontal: isCardFrozen || !isScreenMedium ? 0 : 9.5,
+        paddingVertical: isCardFrozen || !isScreenMedium ? 0 : 11.5,
+      }}
+    >
       {isScreenMedium ? (
         <Image
           source={desktopImagePath}
           alt="Solid Card"
-          style={{ width: '100%', aspectRatio: desktopImageAspectRatio }}
+          style={{
+            width: '100%',
+            aspectRatio: desktopImageAspectRatio,
+          }}
           contentFit="contain"
         />
       ) : (
