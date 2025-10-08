@@ -166,6 +166,14 @@ export default function TabLayout() {
           href: null,
         }}
       />
+
+      <Tabs.Screen
+        name="card-waitlist"
+        options={{
+          title: 'Card Waitlist',
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

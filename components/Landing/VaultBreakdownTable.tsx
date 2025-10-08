@@ -7,10 +7,12 @@ import { VaultBreakdown } from '@/lib/types';
 import { cn, eclipseUsername, formatNumber } from '@/lib/utils';
 import { protocols, protocolsImages } from '@/constants/protocols';
 import { useDimension } from '@/hooks/useDimension';
+import TooltipPopover from '@/components/Tooltip';
 
 type Column = {
   width: DimensionValue;
   title?: string;
+  tooltip?: string;
   key?: keyof VaultBreakdown;
   percent?: boolean;
   classNames?: {
@@ -67,8 +69,13 @@ const Header = ({ columns }: HeaderProps) => {
         if (!c.width) return null;
 
         return (
-          <View key={`vault-th-${index}`} style={{ width: c.width }}>
+          <View
+            key={`vault-th-${index}`}
+            className="flex-row items-center gap-2"
+            style={{ width: c.width }}
+          >
             <Text className="text-muted-foreground font-medium">{c.title}</Text>
+            {c.tooltip && <TooltipPopover text={c.tooltip} />}
           </View>
         );
       })}
@@ -145,7 +152,8 @@ const VaultBreakdownTable = ({ data, setSelectedBreakdown, className }: TablePro
       width: isScreenMedium ? '15%' : 0,
     },
     {
-      title: '7D APY',
+      title: 'APY',
+      tooltip: 'Effective Position APY',
       key: 'effectivePositionAPY',
       width: isScreenMedium ? '15%' : '25%',
       percent: true,

@@ -33,6 +33,8 @@ type Path = {
   INVITE: Href;
   POINTS_LEADERBOARD: Href;
   OVERVIEW: Href;
+  CARD_WAITLIST: Href;
+  CARD_WAITLIST_SUCCESS: Href;
 };
 
 export const path: Path = {
@@ -67,4 +69,6 @@ export const path: Path = {
   INVITE: '/invite',
   POINTS_LEADERBOARD: '/points/leaderboard',
   OVERVIEW: '/overview',
+  CARD_WAITLIST: '/card-waitlist',
+  CARD_WAITLIST_SUCCESS: '/card-waitlist/success',
 };

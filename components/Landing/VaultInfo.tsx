@@ -86,11 +86,11 @@ const Chain = () => {
       </View>
       <View className="flex-row items-center gap-1">
         <Image
-          source={require('@/assets/images/fuse.png')}
+          source={require('@/assets/images/eth.png')}
           style={{ width: 24, height: 24 }}
           contentFit="contain"
         />
-        <Text className="text-lg md:text-xl font-semibold">Fuse</Text>
+        <Text className="text-lg md:text-xl font-semibold">Ethereum</Text>
       </View>
     </View>
   );

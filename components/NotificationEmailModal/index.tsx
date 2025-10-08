@@ -51,7 +51,6 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
     });
   }, [user?.userId, user?.safeAddress, user?.email]);
 
-
   return (
     <View className="flex-1 gap-4">
       <View className="items-center">
@@ -174,7 +173,6 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
               <Text className="text-lg font-semibold">Back to Email</Text>
             </Button>
           )}
-
         </View>
       </View>
     </View>

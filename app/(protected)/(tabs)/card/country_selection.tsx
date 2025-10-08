@@ -30,12 +30,8 @@ export default function CountrySelection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
-  const {
-    countryInfo,
-    setCountryInfo,
-    getIpDetectedCountry,
-    setIpDetectedCountry
-  } = useCountryStore();
+  const { countryInfo, setCountryInfo, getIpDetectedCountry, setIpDetectedCountry } =
+    useCountryStore();
 
   useEffect(() => {
     const fetchCountry = async () => {
@@ -53,7 +49,7 @@ export default function CountrySelection() {
         const cachedInfo = getIpDetectedCountry(ip);
 
         if (cachedInfo) {
-          const country = COUNTRIES.find((c) => c.code === cachedInfo.countryCode);
+          const country = COUNTRIES.find(c => c.code === cachedInfo.countryCode);
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
@@ -74,7 +70,7 @@ export default function CountrySelection() {
         if (info) {
           setIpDetectedCountry(ip, info); // This sets both countryInfo and caches it
 
-          const country = COUNTRIES.find((c) => c.code === info.countryCode);
+          const country = COUNTRIES.find(c => c.code === info.countryCode);
 
           if (country) {
             setSelectedCountry(country);
@@ -186,7 +182,7 @@ export default function CountrySelection() {
       {/* Email collection modal */}
       <NotificationEmailModalDialog
         open={showEmailModal}
-        onOpenChange={(open) => {
+        onOpenChange={open => {
           setShowEmailModal(open);
         }}
         onSuccess={() => {
@@ -324,11 +320,7 @@ function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelec
 
         {selectedCountry && (
           <View className="items-center mb-6">
-            <CountryFlagImage
-              isoCode={selectedCountry.code}
-              size={110}
-              className="mb-2"
-            />
+            <CountryFlagImage isoCode={selectedCountry.code} size={110} className="mb-2" />
           </View>
         )}
         <Pressable onPress={onOpenDropdown}>
@@ -367,11 +359,7 @@ function CountryUnavailableView({
 }: CountryUnavailableViewProps) {
   return (
     <>
-      <CountryFlagImage
-        isoCode={countryCode}
-        size={110}
-        className="mt-4 mb-6"
-      />
+      <CountryFlagImage isoCode={countryCode} size={110} className="mt-4 mb-6" />
       <Text className="text-white text-2xl font-bold mb-4 text-center">
         {`We're not ready for ${countryName} just yet!`}
       </Text>
@@ -381,10 +369,7 @@ function CountryUnavailableView({
       <Pressable onPress={onChangeCountry} className="mb-6 web:hover:opacity-70">
         <Text className="text-white font-bold text-base">Change country</Text>
       </Pressable>
-      <Button
-        className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]"
-        onPress={onNotifyByMail}
-      >
+      <Button className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]" onPress={onNotifyByMail}>
         <Text className="text-base font-bold text-black">Notify by mail</Text>
       </Button>
     </>
@@ -401,11 +386,7 @@ interface NotifyConfirmationViewProps {
 function NotifyConfirmationView({ countryName, countryCode, onOk }: NotifyConfirmationViewProps) {
   return (
     <>
-      <CountryFlagImage
-        isoCode={countryCode}
-        size={110}
-        className="mb-6"
-      />
+      <CountryFlagImage isoCode={countryCode} size={110} className="mb-6" />
       <Text className="text-white text-2xl font-semibold mb-4 text-center">Thanks</Text>
       <Text className="text-[#ACACAC] text-center mb-8 leading-6">
         {`We'll let you know as soon as Cash cards become available in ${countryName}. Hopefully very soon!`}

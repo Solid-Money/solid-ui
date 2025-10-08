@@ -18,6 +18,7 @@ import {
 import {
   ActivityEvent,
   ActivityEvents,
+  APYs,
   BlockscoutTransactions,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
@@ -26,6 +27,7 @@ import {
   BridgeTransactionRequest,
   BridgeTransferResponse,
   CardAccessResponse,
+  CardDetailsResponseDto,
   CardDetailsRevealResponse,
   CardResponse,
   CardStatusResponse,
@@ -437,7 +439,7 @@ export const getCardStatus = async (): Promise<CardStatusResponse> => {
   return response.json();
 };
 
-export const getCardDetails = async (): Promise<CardResponse> => {
+export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
   const jwt = getJWTToken();
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/details`, {
@@ -502,7 +504,7 @@ export const checkCardAccess = async (countryCode: string): Promise<CardAccessRe
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
-    }
+    },
   );
 
   if (!response.ok) throw response;
@@ -1140,11 +1142,11 @@ export const getStargateQuote = async (
   }
 
   return response.json();
-}
+};
 
-export const fetchAllTimeYield = async () => {
-  const response = await axios.get<number>(
-    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/all-time-yield`,
+export const fetchAPYs = async () => {
+  const response = await axios.get<APYs>(
+    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/apys`,
   );
   return response.data;
 };

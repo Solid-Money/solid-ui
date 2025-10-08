@@ -15,12 +15,14 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 interface CheckmarkProps {
   width?: number;
   height?: number;
+  color?: string;
   onAnimationComplete?: () => void;
 }
 
 const Checkmark = ({
   width = 154,
   height = 154,
+  color = '#838383',
   onAnimationComplete
 }: CheckmarkProps) => {
   const circleProgress = useSharedValue(0);
@@ -74,14 +76,14 @@ const Checkmark = ({
         cx={77}
         cy={76.6797}
         r={74}
-        stroke="#838383"
+        stroke={color}
         strokeWidth={5}
         fill="none"
         animatedProps={circleAnimatedProps}
       />
       <AnimatedPath
         d="M112.369 56.1797L69.9025 99.1797L54.3691 83.5433"
-        stroke="#838383"
+        stroke={color}
         strokeWidth={5}
         strokeLinecap="round"
         strokeLinejoin="round"

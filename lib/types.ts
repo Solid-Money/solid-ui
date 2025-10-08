@@ -267,6 +267,16 @@ export interface CardResponse {
   additional_funding_instructions?: AdditionalFundingInstructions[];
 }
 
+export interface CashbackData {
+  monthlyFuseAmount: number;
+  monthlyUsdValue: number;
+  percentage: number;
+}
+
+export interface CardDetailsResponseDto extends CardResponse {
+  cashback: CashbackData;
+}
+
 export interface CardStatusResponse {
   status: CardStatus;
 }
@@ -310,7 +320,7 @@ export enum TransactionType {
 export enum TransactionDirection {
   IN = '+',
   OUT = '-',
-  FAILED = '✕'
+  FAILED = '✕',
 }
 
 export enum TransactionCategory {
@@ -834,10 +844,17 @@ export interface StargateQuoteResponse {
   quotes: StargateQuote[];
 }
 
-export type MerklRewards = Reward["rewards"];
+export type MerklRewards = Reward['rewards'];
 export type MerklReward = MerklRewards[0];
 
 export enum ActivityGroup {
   HEADER = 'header',
   TRANSACTION = 'transaction',
+}
+
+export interface APYs {
+  allTime: number;
+  sevenDay: number;
+  fifteenDay: number;
+  thirtyDay: number;
 }

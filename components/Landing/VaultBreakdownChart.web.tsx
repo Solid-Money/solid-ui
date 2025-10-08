@@ -81,7 +81,10 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
   const outerRadius = minDimension * outerRadiusRatio;
 
   return (
-    <View className="flex-1 md:grow-0 md:basis-1/3 justify-end md:items-center" onLayout={handleLayout}>
+    <View
+      className="flex-1 md:grow-0 md:basis-1/3 justify-end md:items-center"
+      onLayout={handleLayout}
+    >
       <View style={{ width: minDimension || undefined, height: minDimension || undefined }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -107,7 +110,9 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
               <Label
                 width={100}
                 position="center"
-                content={<CustomLabel value1={'7D APY'} value2={`${formatNumber(totalAPY, 2)}%`} />}
+                content={
+                  <CustomLabel value1={'Total APY'} value2={`${formatNumber(totalAPY, 2)}%`} />
+                }
               ></Label>
             </Pie>
           </PieChart>
