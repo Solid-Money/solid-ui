@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useAllTimeYield, useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useAPYs, useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -38,7 +38,7 @@ export default function Savings() {
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
   } = useVaultBalance(user?.safeAddress as Address);
-  const { data: allTimeYield, isLoading: isAllTimeYieldLoading } = useAllTimeYield();
+  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -204,10 +204,10 @@ export default function Savings() {
                 <TooltipPopover text="All time yield of the vault" />
               </View>
               <Text className="text-2xl font-semibold">
-                {isAllTimeYieldLoading ? (
+                {isAPYsLoading ? (
                   <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
                 ) : (
-                  `${allTimeYield ? formatNumber(allTimeYield, 2) : 0}%`
+                  `${apys ? formatNumber(apys.allTime, 2) : 0}%`
                 )}
               </Text>
             </View>

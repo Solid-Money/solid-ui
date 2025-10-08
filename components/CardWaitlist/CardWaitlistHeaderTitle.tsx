@@ -1,4 +1,3 @@
-import { Link } from 'expo-router';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
@@ -15,13 +14,6 @@ const CardWaitlistHeaderTitle = () => {
         <Text className="opacity-70 leading-5">
           Non-custodial, secure by design, and ready to use with Apple or Google Pay.
         </Text>
-        <Link
-          href="https://docs.solid.xyz/how-solid-works/solid-card-coming-soon"
-          target="_blank"
-          className="text-base text-primary font-medium underline hover:opacity-70"
-        >
-          How it works
-        </Link>
       </View>
     </View>
   );

@@ -7,22 +7,38 @@ import CardWaitlistHeaderButtons from '@/components/CardWaitlist/CardWaitlistHea
 import ReserveCardButton from '@/components/CardWaitlist/ReserveCardButton';
 import CardWaitlistContainer from '@/components/CardWaitlist/CardWaitlistContainer';
 import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';
+import { cn } from '@/lib/utils';
+
+type ClassNames = {
+  title?: string;
+  description?: string;
+};
 
 type FeatureProps = {
   icon: string;
   title: string;
-  description: string;
+  description: string | React.ReactNode;
+  classNames?: ClassNames;
 };
 
-const Feature = ({ icon, title, description }: FeatureProps) => {
+const Feature = ({ icon, title, description, classNames }: FeatureProps) => {
   return (
     <View className="flex-row items-center gap-2 w-[17rem]">
       <Image source={icon} style={{ width: 50, height: 50 }} contentFit="contain" />
       <View>
-        <Text className="md:text-lg leading-5 font-bold">{title}</Text>
-        <Text className="text-sm md:text-base text-muted-foreground max-w-44 md:max-w-56">
-          {description}
-        </Text>
+        <Text className={cn('md:text-lg leading-5 font-bold', classNames?.title)}>{title}</Text>
+        {typeof description === 'string' ? (
+          <Text
+            className={cn(
+              'text-sm md:text-base text-muted-foreground max-w-40 md:max-w-56',
+              classNames?.description,
+            )}
+          >
+            {description}
+          </Text>
+        ) : (
+          description
+        )}
       </View>
     </View>
   );
@@ -37,7 +53,10 @@ const features = [
   {
     icon: require('@/assets/images/card-earn.png'),
     title: 'Earn while you spend',
-    description: '2% cashback',
+    description: '2% cashback for every purchase',
+    classNames: {
+      description: 'md:max-w-full',
+    },
   },
   {
     icon: require('@/assets/images/card-safe.png'),
@@ -47,7 +66,20 @@ const features = [
   {
     icon: require('@/assets/images/card-effortless.png'),
     title: 'Effortless setup',
-    description: 'Start using instantly. Apple/Google Pay support',
+    description: (
+      <View>
+        <Text className="text-sm md:text-base text-muted-foreground">Start using instantly.</Text>
+        <View className="flex-row items-center gap-1.5">
+          <Image
+            source={require('@/assets/images/apple-google-pay.png')}
+            alt="Apple/Google Pay"
+            style={{ width: 82, height: 19 }}
+            contentFit="contain"
+          />
+          <Text className="text-sm md:text-base text-muted-foreground">support</Text>
+        </View>
+      </View>
+    ),
   },
 ];
 
