@@ -32,6 +32,7 @@ import {
   CardResponse,
   CardStatusResponse,
   CardTransactionsResponse,
+  CardWaitlistResponse,
   CountryInfo,
   CustomerFromBridgeResponse,
   Deposit,
@@ -503,6 +504,44 @@ export const checkCardAccess = async (countryCode: string): Promise<CardAccessRe
       headers: {
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const addToCardWaitlist = async (
+  email: string,
+  countryCode: string,
+): Promise<CardWaitlistResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      'Content-Type': 'application/json',
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify({ email, countryCode }),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const checkCardWaitlistStatus = async (email: string): Promise<CardWaitlistResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist/check?email=${encodeURIComponent(email)}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
       },
     },
   );
