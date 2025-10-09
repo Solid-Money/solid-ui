@@ -54,6 +54,7 @@ export const useWalletTokens = () => {
     totalUSDExcludingSoUSD,
     ethereumTokens,
     fuseTokens,
+    tokens,
     uniqueTokens,
     isLoading,
     isRefreshing,
