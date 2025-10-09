@@ -289,7 +289,6 @@ const useUser = (): UseUserReturn => {
           throw error;
         }
 
-        // Get referral code from storage (if any)
         const referralCode = getReferralCodeForSignup() || undefined;
 
         const user = await signUp(username, challenge, attestation, inviteCode, referralCode);

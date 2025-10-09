@@ -5,14 +5,6 @@ import { useReferralStore } from '@/store/useReferralStore';
  */
 
 /**
- * Detects referral code from URL and saves it to storage if found
- * This should be called when the app/page loads
- */
-export const detectAndSaveReferralCode = (): string | null => {
-  return useReferralStore.getState().detectAndSaveReferralCode();
-};
-
-/**
  * Gets referral code for signup - checks URL first, then storage
  * @returns string | null - The referral code to use for signup
  */
