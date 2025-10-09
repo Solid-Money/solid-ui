@@ -20,6 +20,7 @@ import {
   useBridgeDepositTransactions,
   useSendTransactions,
 } from '@/hooks/useAnalytics';
+import { useCardDepositPoller } from '@/hooks/useCardDepositPoller';
 import useUser from '@/hooks/useUser';
 import { createActivityEvent, fetchActivityEvents } from '@/lib/api';
 import {
@@ -49,6 +50,9 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
   const { storeEvents } = useActivityStore();
   const { activities, pendingCount, refreshActivities } = useActivity();
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
+
+  // Poll Bridge API to update card deposit status when processed
+  useCardDepositPoller();
 
   const isTransactionStuck = (timestamp: string): boolean => {
     const transactionDate = new Date(parseInt(timestamp) * 1000);

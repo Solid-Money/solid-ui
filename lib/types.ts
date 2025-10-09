@@ -318,6 +318,7 @@ export enum TransactionType {
   CANCEL_WITHDRAW = 'cancel_withdraw',
   BRIDGE_DEPOSIT = 'bridge_deposit',
   BANK_TRANSFER = 'bank_transfer',
+  CARD_TRANSACTION = 'card_transaction',
   SWAP = 'swap',
   WRAP = 'wrap',
   UNWRAP = 'unwrap',

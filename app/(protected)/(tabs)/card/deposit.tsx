@@ -9,11 +9,13 @@ import { Address, formatUnits } from 'viem';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useActivity } from '@/hooks/useActivity';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useDimension } from '@/hooks/useDimension';
 import useSend from '@/hooks/useSend';
+import useUser from '@/hooks/useUser';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { Status } from '@/lib/types';
+import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
 interface TokenBalance {
@@ -34,6 +36,8 @@ const DepositToCard = () => {
   const { isScreenMedium } = useDimension();
   const { ethereumTokens } = useWalletTokens();
   const { data: cardDetails } = useCardDetails();
+  const { createActivity, updateActivity } = useActivity();
+  const { user } = useUser();
   const [amount, setAmount] = useState('');
   const [selectedToken, setSelectedToken] = useState<TokenBalance | null>(null);
 
@@ -81,11 +85,49 @@ const DepositToCard = () => {
   });
 
   const handleContinue = async () => {
-    if (!selectedToken || !amount || !cardDetails?.funding_instructions) return;
+    if (!selectedToken || !amount || !cardDetails?.funding_instructions || !user) {
+      return;
+    }
 
     try {
       const fundingAddress = cardDetails.funding_instructions.address as Address;
+
+      console.warn('[Card Deposit] Creating activity...');
+
+      // Create activity event for card deposit (stays PENDING until Bridge processes it)
+      const clientTxId = await createActivity({
+        type: TransactionType.CARD_TRANSACTION,
+        title: `Card Deposit`,
+        shortTitle: `Card Deposit`,
+        amount,
+        symbol: selectedToken.contractTickerSymbol,
+        chainId: selectedToken.chainId,
+        fromAddress: user.safeAddress,
+        toAddress: fundingAddress,
+        status: TransactionStatus.PENDING, // Explicitly set to PENDING
+        metadata: {
+          description: `Deposit ${amount} ${selectedToken.contractTickerSymbol} to card`,
+          processingStatus: 'sending',
+        },
+      });
+
+      console.warn('[Card Deposit] Activity created:', clientTxId);
+
+      // Send the transaction
       const transaction = await send(amount, fundingAddress);
+
+      // Update activity with transaction hash, but keep it PENDING
+      // It will only go to SUCCESS when Bridge processes it
+      await updateActivity(clientTxId, {
+        status: TransactionStatus.PENDING, // Explicitly keep as PENDING
+        hash: transaction.transactionHash,
+        url: `https://etherscan.io/tx/${transaction.transactionHash}`,
+        metadata: {
+          txHash: transaction.transactionHash,
+          processingStatus: 'awaiting_bridge',
+        },
+      });
+
       Toast.show({
         type: 'success',
         text1: 'Card deposit initiated',
