@@ -25,6 +25,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { USDC_STARGATE } from '@/constants/addresses';
+import { useActivity } from '@/hooks/useActivity';
 import { useBalances } from '@/hooks/useBalances';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
 import { useCardDetails } from '@/hooks/useCardDetails';
@@ -34,7 +35,7 @@ import useUser from '@/hooks/useUser';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { ADDRESSES } from '@/lib/config';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { Status } from '@/lib/types';
+import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
@@ -259,6 +260,7 @@ function SubmitButton({ disabled, bridgeStatus, swapAndBridgeStatus, onPress }: 
 
 export default function CardDepositInternalForm() {
   const { user } = useUser();
+  const { createActivity, updateActivity } = useActivity();
   const { setTransaction } = useCardDepositStore();
   const { data: cardDetails } = useCardDetails();
 
@@ -329,6 +331,8 @@ export default function CardDepositInternalForm() {
   } = useSwapAndBridgeToCard();
 
   const onSubmit = async (data: any) => {
+    if (!user) return;
+
     try {
       // Check for Arbitrum funding address
       const arbitrumFundingAddress = cardDetails?.additional_funding_instructions?.find(
@@ -343,33 +347,55 @@ export default function CardDepositInternalForm() {
         });
         return;
       }
+
+      const sourceSymbol = watchedFrom === 'savings' ? 'soUSD' : 'USDC.e';
+
+      // Create activity event (stays PENDING until Bridge processes it)
+      const clientTxId = await createActivity({
+        type: TransactionType.CARD_TRANSACTION,
+        title: `Card Deposit`,
+        shortTitle: `Card Deposit`,
+        amount: data.amount,
+        symbol: sourceSymbol,
+        chainId: fuse.id,
+        fromAddress: user.safeAddress,
+        toAddress: arbitrumFundingAddress.address,
+        status: TransactionStatus.PENDING,
+        metadata: {
+          description: `Deposit ${data.amount} ${sourceSymbol} to card`,
+          processingStatus: 'bridging',
+        },
+      });
+
       let tx: TransactionReceipt | undefined;
 
       if (watchedFrom === 'savings') {
         tx = await swapAndBridge(data.amount, estimatedUSDC ?? '0');
-        Toast.show({
-          type: 'success',
-          text1: 'Deposit to card initiated',
-          text2: `${data.amount} soUSD bridged to card`,
-          props: {
-            link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
-            linkText: 'View on LayerZeroScan',
-            image: getTokenIcon({ tokenSymbol: 'SOUSD' }),
-          },
-        });
       } else {
         tx = await bridge(data.amount);
-        Toast.show({
-          type: 'success',
-          text1: 'Deposit to card initiated',
-          text2: `${data.amount} USDC.e bridged to card`,
-          props: {
-            link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
-            linkText: 'View on LayerZeroScan',
-            image: getTokenIcon({ tokenSymbol: 'USDC' }),
-          },
-        });
       }
+
+      // Update activity with transaction hash, keeping it PENDING
+      await updateActivity(clientTxId, {
+        status: TransactionStatus.PENDING,
+        hash: tx.transactionHash,
+        url: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+        metadata: {
+          txHash: tx.transactionHash,
+          processingStatus: 'awaiting_bridge',
+        },
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: 'Card deposit initiated',
+        text2: `${data.amount} ${sourceSymbol} bridged to card`,
+        props: {
+          link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+          linkText: 'View on LayerZeroScan',
+          image: getTokenIcon({ tokenSymbol: watchedFrom === 'savings' ? 'SOUSD' : 'USDC' }),
+        },
+      });
 
       setTransaction({ amount: Number(data.amount) });
       reset();
