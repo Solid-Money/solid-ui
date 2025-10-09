@@ -21,6 +21,13 @@ export interface CardAccessResponse {
   countryCode: string;
 }
 
+export interface CardWaitlistResponse {
+  isInWaitlist: boolean;
+  email?: string;
+  countryCode?: string;
+  joinedAt?: Date;
+}
+
 export enum Status {
   IDLE = 'idle',
   PENDING = 'pending',

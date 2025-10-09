@@ -11,7 +11,7 @@ const ReserveCardButton = () => {
     <Button
       variant="brand"
       className="rounded-xl h-12 px-8"
-      onPress={() => router.push(path.CARD_WAITLIST_SUCCESS)}
+      onPress={() => router.push(path.CARD_COUNTRY_SELECTION)}
     >
       <Text className="text-base font-bold">Reserve your card</Text>
     </Button>

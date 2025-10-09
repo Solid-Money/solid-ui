@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { Status } from '@/lib/types';
-import { detectAndSaveReferralCode } from '@/lib/utils/referral';
 import { useUserStore } from '@/store/useUserStore';
 
 import InfoError from '@/assets/images/info-error';
@@ -42,18 +41,6 @@ export default function Register() {
     setSignupInfo({ status: Status.IDLE, message: '' });
     setLoginInfo({ status: Status.IDLE, message: '' });
   }, [setSignupInfo, setLoginInfo]);
-
-  // Detect and save referral code from URL when component mounts
-  useEffect(() => {
-    try {
-      const detectedReferralCode = detectAndSaveReferralCode();
-      if (detectedReferralCode) {
-        console.warn('Referral code detected from URL:', detectedReferralCode);
-      }
-    } catch (error) {
-      console.warn('Error detecting referral code:', error);
-    }
-  }, []);
 
   const {
     control,

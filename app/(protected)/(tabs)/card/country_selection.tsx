@@ -13,9 +13,9 @@ import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
-import { useCountryStore } from '@/store/useCountryStore';
+import { addToCardWaitlist, checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
+import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
   const router = useRouter();
@@ -103,11 +103,21 @@ export default function CountrySelection() {
     );
   }, [searchQuery]);
 
-  const handleNotifyByMail = () => {
+  const handleNotifyByMail = async () => {
     // Check if user has email
     if (user && !user.email) {
       setShowEmailModal(true);
     } else {
+      // User already has email, add to waitlist directly
+      if (user?.email && countryInfo?.countryCode) {
+        try {
+          await withRefreshToken(() =>
+            addToCardWaitlist(user.email!, countryInfo.countryCode.toUpperCase()),
+          );
+        } catch (error) {
+          console.error('Error adding to card waitlist:', error);
+        }
+      }
       setNotifyClicked(true);
     }
   };
@@ -185,8 +195,18 @@ export default function CountrySelection() {
         onOpenChange={open => {
           setShowEmailModal(open);
         }}
-        onSuccess={() => {
+        onSuccess={async () => {
           setShowEmailModal(false);
+          // Add user to waitlist
+          if (user?.email && countryInfo?.countryCode) {
+            try {
+              await withRefreshToken(() =>
+                addToCardWaitlist(user.email!, countryInfo.countryCode.toUpperCase()),
+              );
+            } catch (error) {
+              console.error('Error adding to card waitlist:', error);
+            }
+          }
           setNotifyClicked(true);
         }}
       />
@@ -226,7 +246,7 @@ export default function CountrySelection() {
                 <NotifyConfirmationView
                   countryName={countryInfo.countryName}
                   countryCode={countryInfo.countryCode}
-                  onOk={() => router.back()}
+                  onOk={() => router.replace(path.CARD_WAITLIST_SUCCESS)}
                 />
               ) : (
                 <CountryUnavailableView

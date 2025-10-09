@@ -1,12 +1,16 @@
-import { View } from 'react-native';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
-import CardWaitlistHeaderTitle from '@/components/CardWaitlist/CardWaitlistHeaderTitle';
-import CardWaitlistHeaderButtons from '@/components/CardWaitlist/CardWaitlistHeaderButtons';
-import ReserveCardButton from '@/components/CardWaitlist/ReserveCardButton';
 import CardWaitlistContainer from '@/components/CardWaitlist/CardWaitlistContainer';
 import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';
+import CardWaitlistHeaderButtons from '@/components/CardWaitlist/CardWaitlistHeaderButtons';
+import CardWaitlistHeaderTitle from '@/components/CardWaitlist/CardWaitlistHeaderTitle';
+import ReserveCardButton from '@/components/CardWaitlist/ReserveCardButton';
+import { Text } from '@/components/ui/text';
+import useUser from '@/hooks/useUser';
+import { checkCardWaitlistStatus } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 type ClassNames = {
@@ -84,6 +88,51 @@ const features = [
 ];
 
 const CardWaitlist = () => {
+  const { user } = useUser();
+  const [isInWaitlist, setIsInWaitlist] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkWaitlistStatus = async () => {
+      if (user?.email) {
+        try {
+          const response = await checkCardWaitlistStatus(user.email);
+          setIsInWaitlist(response.isInWaitlist);
+        } catch (error) {
+          console.error('Error checking waitlist status:', error);
+        }
+      }
+      setLoading(false);
+    };
+
+    checkWaitlistStatus();
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (!loading && isInWaitlist) {
+      router.replace('/card-waitlist/success');
+    }
+  }, [loading, isInWaitlist]);
+
+  if (loading || isInWaitlist) {
+    return (
+      <CardWaitlistHeader
+        content={
+          <View className="flex-row justify-between items-center">
+            <CardWaitlistHeaderTitle />
+            <CardWaitlistHeaderButtons />
+          </View>
+        }
+      >
+        <CardWaitlistContainer>
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color="#94F27F" />
+          </View>
+        </CardWaitlistContainer>
+      </CardWaitlistHeader>
+    );
+  }
+
   return (
     <CardWaitlistHeader
       content={
