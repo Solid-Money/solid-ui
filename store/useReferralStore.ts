@@ -1,7 +1,7 @@
-import * as Sentry from '@sentry/react-native';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import * as Sentry from '@sentry/react-native';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
@@ -10,6 +10,7 @@ interface ReferralState {
   referralCode: string | null;
   setReferralCode: (code: string | null) => void;
   clearReferralCode: () => void;
+  detectAndSaveReferralCode: () => string | null;
   getReferralCodeForSignup: () => string | null;
 }
 
@@ -34,13 +35,37 @@ export const useReferralStore = create<ReferralState>()(
         console.warn('Referral code cleared');
       },
 
+      detectAndSaveReferralCode: () => {
+        if (Platform.OS !== 'web') return null;
+
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const code = urlParams.get('referralCode');
+
+          if (code && code.trim()) {
+            const trimmedCode = code.trim();
+            get().setReferralCode(trimmedCode);
+            return trimmedCode;
+          }
+        } catch (error) {
+          console.warn('Failed to detect and save referral code:', error);
+          Sentry.captureException(error, {
+            tags: {
+              type: 'referral_code_detection_error',
+            },
+            level: 'warning',
+          });
+        }
+
+        return null;
+      },
+
       getReferralCodeForSignup: () => {
-        // Check for query parameter (backward compatibility with old ?referralCode= format)
+        // First try to get from URL (in case user just clicked a referral link)
         if (Platform.OS === 'web') {
           try {
             const urlParams = new URLSearchParams(window.location.search);
             const urlReferralCode = urlParams.get('referralCode');
-
             if (urlReferralCode && urlReferralCode.trim()) {
               const trimmedCode = urlReferralCode.trim();
               // Save it to storage for future use
@@ -58,7 +83,7 @@ export const useReferralStore = create<ReferralState>()(
           }
         }
 
-        // Return from storage (primary method - saved by /join/ route)
+        // If not in URL, return from storage
         return get().referralCode;
       },
     }),
