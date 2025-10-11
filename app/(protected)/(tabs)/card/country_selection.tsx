@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 
@@ -241,7 +241,7 @@ export default function CountrySelection() {
           </>
         ) : (
           <View className="flex-1 justify-center">
-            <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full  items-center">
+            <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full  items-center">
               {notifyClicked ? (
                 <NotifyConfirmationView
                   countryName={countryInfo.countryName}
@@ -344,10 +344,11 @@ function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelec
           </View>
         )}
         <Pressable onPress={onOpenDropdown}>
-          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center mt-2 mb-6 border border-[#898989]">
+          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center justify-between mt-2 mb-6 border border-[#898989]">
             <Text className="text-white">
               {selectedCountry ? selectedCountry.name : 'Select country'}
             </Text>
+            <ChevronDown color="white" size={20} />
           </View>
         </Pressable>
 
