@@ -36,6 +36,9 @@ const BuyCrypto = () => {
 
       try {
         const userIp = await getClientIp();
+
+        if (!userIp) throw new Error('Could not get user IP address');
+
         const transactionId = Crypto.randomUUID();
 
         const widgetUrl = await withRefreshToken(() =>

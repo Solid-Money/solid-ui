@@ -39,19 +39,32 @@ export default function CountrySelection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
-  const { countryInfo, setCountryInfo, getIpDetectedCountry, setIpDetectedCountry } =
-    useCountryStore();
+  const {
+    countryInfo,
+    setCountryInfo,
+    getIpDetectedCountry,
+    setIpDetectedCountry,
+    getCachedIp,
+    setCachedIp,
+  } = useCountryStore();
 
   useEffect(() => {
     const fetchCountry = async () => {
       try {
-        // First, get the client's IP address
-        const ip = await getClientIp();
+        // First, check if we have a cached IP address
+        let ip = getCachedIp();
 
+        // If no cached IP or cache expired, fetch a new one
         if (!ip) {
-          setError(true);
-          setLoading(false);
-          return;
+          ip = await getClientIp();
+
+          if (ip) {
+            setCachedIp(ip);
+          } else {
+            setError(true);
+            setLoading(false);
+            return;
+          }
         }
 
         // Check if we have a valid cached country info for this IP
@@ -103,7 +116,7 @@ export default function CountrySelection() {
     };
 
     fetchCountry();
-  }, [router, getIpDetectedCountry, setIpDetectedCountry]);
+  }, [router, getIpDetectedCountry, setIpDetectedCountry, getCachedIp, setCachedIp]);
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
