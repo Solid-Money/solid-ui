@@ -120,4 +120,5 @@ export const USER = {
   swapTokensStorageKey: 'swap-tokens',
   tokensStorageKey: 'tokens-storage',
   pointsStorageKey: 'points-storage',
+  coinStorageKey: 'coin-storage',
 };

@@ -1,6 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { LayoutChangeEvent, ScrollView, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Address, formatUnits } from 'viem';
 
@@ -8,6 +9,7 @@ import DepositModal from '@/components/Deposit/DepositModal';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import SendModal from '@/components/SendModal/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
+import TooltipPopover from '@/components/Tooltip';
 import { TransactionCredenzaTrigger } from '@/components/Transaction/TransactionCredenza';
 import {
   DropdownMenu,
@@ -28,6 +30,7 @@ import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { useDimension } from '@/hooks/useDimension';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { TokenBalance } from '@/lib/types';
 import {
   cn,
   compactNumberFormat,
@@ -36,13 +39,12 @@ import {
   isSoUSDFuse,
   isUSDCEthereum,
 } from '@/lib/utils';
-import TooltipPopover from '@/components/Tooltip';
 
 const WalletTokenTab = () => {
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
   const { isScreenMedium } = useDimension();
-
+  const router = useRouter();
   const { ethereumTokens, fuseTokens } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
@@ -73,6 +75,10 @@ const WalletTokenTab = () => {
     return COLUMN_WIDTHS.map(ratio => (width - offset) * ratio);
   }, [width, isScreenMedium]);
 
+  const redirectToCoin = (token: TokenBalance) => {
+    router.push(`/coins/${token.chainId}-${token.contractAddress}`);
+  };
+
   // Use card-based design for mobile, table for desktop
   if (!isScreenMedium) {
     return (
@@ -97,7 +103,10 @@ const WalletTokenTab = () => {
             });
 
             return (
-              <View className="flex-row items-center justify-between p-4 py-5 bg-[#1C1C1C] rounded-[20px] mb-2">
+              <Pressable
+                className="flex-row items-center justify-between p-4 py-5 bg-[#1C1C1C] rounded-[20px] mb-2"
+                onPress={() => redirectToCoin(token)}
+              >
                 <View className="flex-row items-center gap-3">
                   <RenderTokenIcon tokenIcon={tokenIcon} size={40} />
                   <View>
@@ -153,7 +162,7 @@ const WalletTokenTab = () => {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </View>
-              </View>
+              </Pressable>
             );
           }}
         />
@@ -224,6 +233,7 @@ const WalletTokenTab = () => {
                       index === 0 && 'rounded-t-twice',
                       index === allTokens.length - 1 && 'rounded-b-twice border-0',
                     )}
+                    onPress={() => redirectToCoin(token)}
                   >
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[0] }}>
                       <View className="flex-row items-center gap-4">
