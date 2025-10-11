@@ -71,6 +71,9 @@ export default function CountrySelection() {
         const cachedInfo = getIpDetectedCountry(ip);
 
         if (cachedInfo) {
+          // Update countryInfo to match the IP-detected country
+          setCountryInfo(cachedInfo);
+
           const country = COUNTRIES.find(c => c.code === cachedInfo.countryCode);
           if (country) {
             setSelectedCountry(country);
@@ -116,7 +119,14 @@ export default function CountrySelection() {
     };
 
     fetchCountry();
-  }, [router, getIpDetectedCountry, setIpDetectedCountry, getCachedIp, setCachedIp]);
+  }, [
+    router,
+    getIpDetectedCountry,
+    setIpDetectedCountry,
+    getCachedIp,
+    setCachedIp,
+    setCountryInfo,
+  ]);
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
