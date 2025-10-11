@@ -57,6 +57,7 @@ import {
   VaultBreakdown,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
+import { withRefreshToken } from './utils';
 
 // Helper function to get platform-specific headers
 const getPlatformHeaders = () => {
@@ -557,7 +558,8 @@ export const getCountryFromIp = async (): Promise<CountryInfo | null> => {
     const { country_code, country_name } = response.data;
 
     // Check card access via backend
-    const accessCheck = await checkCardAccess(country_code);
+    const accessCheck = await withRefreshToken(() => checkCardAccess(country_code));
+    if (!accessCheck) throw new Error('Failed to check card access');
 
     return {
       countryCode: country_code,
