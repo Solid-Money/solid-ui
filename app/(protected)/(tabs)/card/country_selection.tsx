@@ -21,6 +21,15 @@ export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
+
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.push(path.CARD);
+    }
+  };
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notifyClicked, setNotifyClicked] = useState(false);
@@ -184,7 +193,7 @@ export default function CountrySelection() {
   }
 
   if (error || !countryInfo) {
-    return <ErrorView isScreenMedium={isScreenMedium} onBack={() => router.back()} />;
+    return <ErrorView isScreenMedium={isScreenMedium} onBack={goBack} />;
   }
 
   return (
@@ -214,7 +223,7 @@ export default function CountrySelection() {
 
       <View className="w-full max-w-lg mx-auto pt-12 px-4">
         <View className="flex-row items-center justify-between mb-10">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+          <Pressable onPress={goBack} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
           <Text className="text-white text-xl md:text-2xl font-semibold text-center">
