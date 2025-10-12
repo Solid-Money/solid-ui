@@ -105,14 +105,23 @@ export default function ActivityDetail() {
     );
 
   const isFailed = activity.status === TransactionStatus.FAILED;
+  const isCancelled = activity.status === TransactionStatus.CANCELLED;
   const isPending = activity.status === TransactionStatus.PENDING;
   const isIncoming = TRANSACTION_DETAILS[activity.type].sign === TransactionDirection.IN;
   const isCancelWithdraw = activity.requestId && isPending;
 
-  const statusTextColor = isFailed ? 'text-red-400' : isIncoming ? 'text-brand' : '';
+  const statusTextColor = isFailed
+    ? 'text-red-400'
+    : isCancelled
+      ? ''
+      : isIncoming
+        ? 'text-brand'
+        : '';
   const statusSign = isFailed
     ? TransactionDirection.FAILED
-    : TRANSACTION_DETAILS[activity.type].sign;
+    : isCancelled
+      ? TransactionDirection.CANCELLED
+      : TRANSACTION_DETAILS[activity.type].sign;
 
   const tokenIcon = getTokenIcon({
     tokenSymbol: activity.symbol,
