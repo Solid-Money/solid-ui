@@ -114,7 +114,7 @@ export default function ActivityDetail() {
     : TRANSACTION_DETAILS[activity.type].sign;
 
   const tokenIcon = getTokenIcon({
-    tokenSymbol: 'FUSE',
+    tokenSymbol: activity.symbol,
     size: 75,
   });
 
