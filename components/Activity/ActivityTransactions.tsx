@@ -154,10 +154,11 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
       if (groupedData[i].type === ActivityGroup.TRANSACTION) {
         const transaction = groupedData[i].data as ActivityEvent;
         const isPending = transaction.status === TransactionStatus.PENDING;
+        const isCancelled = transaction.status === TransactionStatus.CANCELLED;
         const isStuck = isTransactionStuck(transaction.timestamp);
 
         // Only include transactions that would be rendered (not filtered out)
-        if (showStuckTransactions || !(isPending && isStuck)) {
+        if (showStuckTransactions || !((isPending && isStuck) || isCancelled)) {
           currentGroupTransactions.push(i);
         }
       }
@@ -401,8 +402,10 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
 
     const transaction = item.data as ActivityEvent;
     const isPending = transaction.status === TransactionStatus.PENDING;
+    const isCancelled = transaction.status === TransactionStatus.CANCELLED;
     const isStuck = isTransactionStuck(transaction.timestamp);
-    if (!showStuckTransactions && isPending && isStuck) {
+
+    if (!showStuckTransactions && ((isPending && isStuck) || isCancelled)) {
       return null;
     }
 

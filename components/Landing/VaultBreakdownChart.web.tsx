@@ -82,7 +82,7 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
 
   return (
     <View
-      className="flex-1 md:grow-0 md:basis-1/3 justify-end md:items-center"
+      className="flex-1 md:grow-0 md:basis-1/3 justify-end md:justify-center md:items-center"
       onLayout={handleLayout}
     >
       <View style={{ width: minDimension || undefined, height: minDimension || undefined }}>
