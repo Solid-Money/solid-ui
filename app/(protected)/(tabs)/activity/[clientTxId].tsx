@@ -18,6 +18,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { TransactionDirection, TransactionStatus } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
 import { path } from '@/constants/path';
+import CopyToClipboard from '@/components/CopyToClipboard';
 
 type RowProps = {
   label: React.ReactNode;
@@ -126,12 +127,22 @@ export default function ActivityDetail() {
   const rows = [
     {
       label: <Label>Sent from</Label>,
-      value: activity.fromAddress && <Value>{eclipseAddress(activity.fromAddress)}</Value>,
+      value: activity.fromAddress && (
+        <View className="flex-row items-center gap-1">
+          <Value>{eclipseAddress(activity.fromAddress)}</Value>
+          <CopyToClipboard text={activity.fromAddress} />
+        </View>
+      ),
       enabled: !!activity.fromAddress,
     },
     {
       label: <Label>Recipient</Label>,
-      value: activity.toAddress && <Value>{eclipseAddress(activity.toAddress)}</Value>,
+      value: activity.toAddress && (
+        <View className="flex-row items-center gap-1">
+          <Value>{eclipseAddress(activity.toAddress)}</Value>
+          <CopyToClipboard text={activity.toAddress} />
+        </View>
+      ),
       enabled: !!activity.toAddress,
     },
     {
