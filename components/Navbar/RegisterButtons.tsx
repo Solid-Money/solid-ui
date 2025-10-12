@@ -9,7 +9,7 @@ const RegisterButtons = () => {
   return (
     <View className="flex-row items-center gap-2">
       <Button
-        onPress={() => router.push(path.REGISTER)}
+        onPress={() => router.push(path.HOME)}
         variant="ghost"
         className="rounded-xl px-6 border-0"
       >
@@ -17,7 +17,7 @@ const RegisterButtons = () => {
       </Button>
 
       <Button
-        onPress={() => router.push(path.REGISTER)}
+        onPress={() => router.push(path.HOME)}
         variant="brand"
         className="rounded-xl px-6 border-0"
       >
