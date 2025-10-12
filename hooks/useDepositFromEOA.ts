@@ -593,7 +593,7 @@ const useDepositFromEOA = (): DepositResult => {
       setDepositStatus({ status: Status.SUCCESS });
     } catch (error) {
       console.error(error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       Sentry.captureException(error, {
         tags: {
@@ -641,6 +641,17 @@ const useDepositFromEOA = (): DepositResult => {
             error: errorMessage,
           },
         });
+      }
+
+      errorMessage = '';
+      const msg = (error as Error).message.toLowerCase();
+      if (
+        msg.includes('user rejected') ||
+        msg.includes('user denied') ||
+        msg.includes('rejected by user') ||
+        msg.includes('user cancelled')
+      ) {
+        errorMessage = 'User rejected transaction';
       }
 
       setDepositStatus({ status: Status.ERROR });
