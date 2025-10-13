@@ -38,6 +38,8 @@ export default function CountrySelection() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+  const [confirmedAvailableCountry, setConfirmedAvailableCountry] = useState(false);
+  const [processingWaitlist, setProcessingWaitlist] = useState(false);
 
   const {
     countryInfo,
@@ -176,11 +178,13 @@ export default function CountrySelection() {
 
   const handleChangeCountry = () => {
     setShowCountrySelector(true);
+    setConfirmedAvailableCountry(false);
   };
 
   const handleOpenDropdown = () => {
     setSearchQuery('');
     setShowDropdown(true);
+    setConfirmedAvailableCountry(false);
   };
 
   const handleCountrySelect = (country: Country) => {
@@ -191,6 +195,7 @@ export default function CountrySelection() {
 
   const handleCountrySelectorOk = async () => {
     if (selectedCountry) {
+      setProcessingWaitlist(true);
       try {
         // Check card access via backend API
         const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
@@ -207,9 +212,25 @@ export default function CountrySelection() {
         // Update store
         setCountryInfo(updatedCountryInfo);
 
-        // If selected country is available, proceed directly to card activation
+        // If selected country is available, show confirmation instead of navigating
         if (accessCheck.hasAccess) {
-          router.replace(path.CARD_ACTIVATE_MOBILE);
+          // Check if user has email and add to waitlist
+          if (user && !user.email) {
+            setProcessingWaitlist(false);
+            setShowEmailModal(true);
+          } else if (user?.email) {
+            try {
+              await withRefreshToken(() =>
+                addToCardWaitlist(user.email!, selectedCountry.code.toUpperCase()),
+              );
+
+              setConfirmedAvailableCountry(true);
+            } catch (error) {
+              console.error('Error adding to card waitlist:', error);
+            } finally {
+              setProcessingWaitlist(false);
+            }
+          }
           return;
         }
 
@@ -227,6 +248,8 @@ export default function CountrySelection() {
         setCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
         setNotifyClicked(false);
+      } finally {
+        setProcessingWaitlist(false);
       }
     }
   };
@@ -250,16 +273,21 @@ export default function CountrySelection() {
         onSuccess={async () => {
           setShowEmailModal(false);
           // Add user to waitlist
-          if (user?.email && countryInfo?.countryCode) {
+          if (user?.email && selectedCountry) {
             try {
               await withRefreshToken(() =>
-                addToCardWaitlist(user.email!, countryInfo.countryCode.toUpperCase()),
+                addToCardWaitlist(user.email!, selectedCountry.code.toUpperCase()),
               );
+              // If we're in country selector, show confirmation for available country
+              if (showCountrySelector) {
+                setConfirmedAvailableCountry(true);
+              } else {
+                setNotifyClicked(true);
+              }
             } catch (error) {
               console.error('Error adding to card waitlist:', error);
             }
           }
-          setNotifyClicked(true);
         }}
       />
       {isScreenMedium && <Navbar />}
@@ -281,6 +309,8 @@ export default function CountrySelection() {
               selectedCountry={selectedCountry}
               onOpenDropdown={handleOpenDropdown}
               onOk={handleCountrySelectorOk}
+              confirmed={confirmedAvailableCountry}
+              processing={processingWaitlist}
             />
             <CountryDropdown
               visible={showDropdown}
@@ -379,9 +409,17 @@ interface CountrySelectorProps {
   selectedCountry: Country | null;
   onOpenDropdown: () => void;
   onOk: () => void;
+  confirmed?: boolean;
+  processing?: boolean;
 }
 
-function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelectorProps) {
+function CountrySelector({
+  selectedCountry,
+  onOpenDropdown,
+  onOk,
+  confirmed,
+  processing,
+}: CountrySelectorProps) {
   return (
     <View className="flex-1 justify-center">
       <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
@@ -397,22 +435,34 @@ function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelec
             <CountryFlagImage isoCode={selectedCountry.code} size={110} className="mb-2" />
           </View>
         )}
-        <Pressable onPress={onOpenDropdown}>
-          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center justify-between mt-2 mb-6 border border-[#898989]">
-            <Text className="text-white">
-              {selectedCountry ? selectedCountry.name : 'Select country'}
-            </Text>
-            <ChevronDown color="white" size={20} />
-          </View>
-        </Pressable>
+        {!confirmed ? (
+          <>
+            <Pressable onPress={onOpenDropdown}>
+              <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center justify-between mt-2 mb-6 border border-[#898989]">
+                <Text className="text-white">
+                  {selectedCountry ? selectedCountry.name : 'Select country'}
+                </Text>
+                <ChevronDown color="white" size={20} />
+              </View>
+            </Pressable>
 
-        <Button
-          className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
-          onPress={onOk}
-          disabled={!selectedCountry}
-        >
-          <Text className="text-base font-bold text-black">Ok</Text>
-        </Button>
+            <Button
+              className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
+              onPress={onOk}
+              disabled={!selectedCountry || processing}
+            >
+              {processing ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text className="text-base font-bold text-black">Ok</Text>
+              )}
+            </Button>
+          </>
+        ) : (
+          <View className="items-center py-4">
+            <Text className="text-[#94F27F] text-lg font-semibold">✓ We will notify you</Text>
+          </View>
+        )}
       </View>
     </View>
   );

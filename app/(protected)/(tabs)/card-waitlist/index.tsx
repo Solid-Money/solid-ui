@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { checkCardWaitlistStatus } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { path } from '@/constants/path';
 
 type ClassNames = {
   title?: string;
@@ -110,7 +111,7 @@ const CardWaitlist = () => {
 
   useEffect(() => {
     if (!loading && isInWaitlist) {
-      router.replace('/card-waitlist/success');
+      router.replace(path.CARD_WAITLIST_SUCCESS);
     }
   }, [loading, isInWaitlist]);
 
