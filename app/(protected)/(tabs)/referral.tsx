@@ -42,8 +42,10 @@ export default function Savings() {
                 they use Solid App
               </Text>
               <View className="flex-row w-[400px] justify-between items-center p-4 ps-6 bg-primary/10 rounded-2xl text-primary font-medium mt-6">
-                <Text>https://app.solid.xyz/join/{user?.referralCode}</Text>
-                <CopyToClipboard text={`https://app.solid.xyz/join/${user?.referralCode}`} />
+                <Text>https://app.solid.xyz/?referralCode={user?.referralCode}</Text>
+                <CopyToClipboard
+                  text={`https://app.solid.xyz/?referralCode=${user?.referralCode}`}
+                />
               </View>
             </View>
           </View>
