@@ -214,7 +214,7 @@ export const calculateActualDepositedAmount = async (
   // Fetch Fuse transfers and collect their timestamps
   const fuseTransfers = await fetchSoUSDTransfers(safeAddress);
   const filteredFuseTransfers = fuseTransfers.filter(
-    transfer => transfer.from !== zeroAddress && transfer.to !== zeroAddress,
+    transfer => transfer.from !== zeroAddress && transfer.to !== zeroAddress && transfer.to !== ADDRESSES.fuse.bridgePaymasterAddress,
   );
 
   // Collect Fuse transfer timestamps

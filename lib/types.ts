@@ -10,6 +10,11 @@ import {
 import { Reward } from '@merkl/api';
 import { Address, Hex } from 'viem';
 
+export interface CountryFromIp {
+  countryCode: string;
+  countryName: string;
+}
+
 export interface CountryInfo {
   countryCode: string;
   countryName: string;
@@ -19,6 +24,13 @@ export interface CountryInfo {
 export interface CardAccessResponse {
   hasAccess: boolean;
   countryCode: string;
+}
+
+export interface CardWaitlistResponse {
+  isInWaitlist: boolean;
+  email?: string;
+  countryCode?: string;
+  joinedAt?: Date;
 }
 
 export enum Status {
@@ -311,6 +323,7 @@ export enum TransactionType {
   CANCEL_WITHDRAW = 'cancel_withdraw',
   BRIDGE_DEPOSIT = 'bridge_deposit',
   BANK_TRANSFER = 'bank_transfer',
+  CARD_TRANSACTION = 'card_transaction',
   SWAP = 'swap',
   WRAP = 'wrap',
   UNWRAP = 'unwrap',
@@ -321,6 +334,7 @@ export enum TransactionDirection {
   IN = '+',
   OUT = '-',
   FAILED = '✕',
+  CANCELLED = '⊘',
 }
 
 export enum TransactionCategory {
@@ -337,6 +351,7 @@ export enum TransactionStatus {
   PROCESSING = 'processing',
   SUCCESS = 'success',
   FAILED = 'failed',
+  CANCELLED = 'cancelled',
 }
 
 export type Transaction = {

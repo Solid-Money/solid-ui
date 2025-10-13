@@ -31,7 +31,9 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 import useUser from './useUser';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
-import { Status, StatusInfo, User } from '@/lib/types';
+import { Status, StatusInfo, TransactionStatus, TransactionType, User } from '@/lib/types';
+import { useActivity } from '@/hooks/useActivity';
+import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
 
 type DepositResult = {
   balance: bigint | undefined;
@@ -54,6 +56,7 @@ const useDepositFromEOA = (): DepositResult => {
   const { updateUser } = useUserStore();
   const { srcChainId } = useDepositStore();
   const isEthereum = srcChainId === mainnet.id;
+  const { createActivity, updateActivity } = useActivity();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -157,6 +160,7 @@ const useDepositFromEOA = (): DepositResult => {
   };
 
   const deposit = async (amount: string) => {
+    let clientTxId: string | undefined;
     try {
       // Track deposit initiation
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
@@ -224,6 +228,9 @@ const useDepositFromEOA = (): DepositResult => {
       }
 
       const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
+      const spender = isSponsor ? EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS : ADDRESSES.ethereum.vault;
+      const isDeposit = isEthereum || !isSponsor;
+      const explorerUrl = isDeposit ? explorerUrls[layerzero.id].layerzeroscan : explorerUrls[lifi.id].lifiscan;
 
       // Track deposit validation passed
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
@@ -317,7 +324,7 @@ const useDepositFromEOA = (): DepositResult => {
 
       const message = {
         owner: eoaAddress,
-        spender: isSponsor ? EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS : ADDRESSES.ethereum.vault,
+        spender,
         value: amountWei,
         nonce: nonce,
         deadline: deadline,
@@ -361,6 +368,17 @@ const useDepositFromEOA = (): DepositResult => {
         is_sponsor: isSponsor,
         chain_id: srcChainId,
         deposit_type: 'connected_wallet',
+      });
+
+      clientTxId = await createActivity({
+        title: isDeposit ? 'Staked USDC' : 'Bridge USDC to Ethereum',
+        shortTitle: isDeposit ? undefined : 'Bridge USDC',
+        amount,
+        symbol: isDeposit ? 'soUsd' : 'USDC',
+        chainId: srcChainId,
+        fromAddress: eoaAddress,
+        toAddress: spender,
+        type: isDeposit ? TransactionType.DEPOSIT : TransactionType.BRIDGE,
       });
 
       let txHash: Address | undefined;
@@ -564,10 +582,18 @@ const useDepositFromEOA = (): DepositResult => {
         last_deposit_chain: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
       });
 
+      await updateActivity(clientTxId, {
+        hash: txHash,
+        url: `${explorerUrl}/tx/${txHash}`,
+        metadata: {
+          substatus: isDeposit ? 'awaiting_deposit' : 'awaiting_bridge',
+        },
+      });
+
       setDepositStatus({ status: Status.SUCCESS });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error?.message || 'Unknown error';
 
       Sentry.captureException(error, {
         tags: {
@@ -608,8 +634,32 @@ const useDepositFromEOA = (): DepositResult => {
         error: errorMessage,
       });
 
+
+      const msg = errorMessage?.toLowerCase();
+      let status = TransactionStatus.FAILED;
+      let errMsg = '';
+      if (
+        msg.includes('user rejected') ||
+        msg.includes('user denied') ||
+        msg.includes('rejected by user') ||
+        msg.includes('user cancelled')
+      ) {
+        errMsg = 'User rejected transaction';
+        status = TransactionStatus.CANCELLED;
+      }
+
+      if (clientTxId) {
+        await updateActivity(clientTxId, {
+          status,
+          metadata: {
+            error: errMsg || errorMessage,
+          },
+        });
+      }
+
+
       setDepositStatus({ status: Status.ERROR });
-      setError(errorMessage);
+      setError(errMsg);
       throw error;
     }
   };

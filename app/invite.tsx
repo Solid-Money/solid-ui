@@ -179,6 +179,13 @@ export default function Invite() {
             <Text className="text-lg font-semibold">{getInviteButtonText()}</Text>
             {signupInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}
           </Button>
+          <Button
+            onPress={() => handleSignup(signupUser.username, 'Skip')}
+            variant="ghost"
+            className="rounded-2xl h-14 border-0"
+          >
+            <Text className="text-lg font-semibold">Skip</Text>
+          </Button>
         </View>
       </View>
     </SafeAreaView>

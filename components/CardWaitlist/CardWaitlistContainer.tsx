@@ -12,9 +12,9 @@ const CardWaitlistContainer = ({ children }: CardWaitlistContainerProps) => {
 
   return (
     <LinearGradient
-      colors={['rgba(148, 242, 127, 0.3)', 'rgba(148, 242, 127, 0)']}
+      colors={['rgba(148, 242, 127, 0.25)', 'rgba(148, 242, 127, 0)']}
       start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
+      end={{ x: 0.6, y: 1 }}
       className="web:md:flex web:md:flex-row rounded-twice overflow-hidden"
       style={{ minHeight: 500, ...(Platform.OS === 'web' ? {} : { borderRadius: 20 }) }}
     >

@@ -1,4 +1,4 @@
-import { TransactionCategory, TransactionDirection, TransactionType } from "@/lib/types";
+import { TransactionCategory, TransactionDirection, TransactionType } from '@/lib/types';
 
 type TransactionDetails = {
   sign: TransactionDirection;
@@ -37,6 +37,10 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
   [TransactionType.BANK_TRANSFER]: {
     sign: TransactionDirection.IN,
     category: TransactionCategory.BANK_DEPOSIT,
+  },
+  [TransactionType.CARD_TRANSACTION]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.CARD_DEPOSIT,
   },
   [TransactionType.SWAP]: {
     sign: TransactionDirection.IN,

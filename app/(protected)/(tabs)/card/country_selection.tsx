@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 
@@ -13,14 +13,23 @@ import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
-import { useCountryStore } from '@/store/useCountryStore';
+import { addToCardWaitlist, checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
+import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
+
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.push(path.CARD);
+    }
+  };
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notifyClicked, setNotifyClicked] = useState(false);
@@ -29,59 +38,97 @@ export default function CountrySelection() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+  const [confirmedAvailableCountry, setConfirmedAvailableCountry] = useState(false);
+  const [processingWaitlist, setProcessingWaitlist] = useState(false);
 
-  const { countryInfo, setCountryInfo, getIpDetectedCountry, setIpDetectedCountry } =
-    useCountryStore();
+  const {
+    countryInfo,
+    setCountryInfo,
+    getIpDetectedCountry,
+    setIpDetectedCountry,
+    getCachedIp,
+    setCachedIp,
+  } = useCountryStore();
+
+  // Function to get country from IP and check card access
+  const getCountryFromIpAndCheckAccess = async (): Promise<{
+    countryCode: string;
+    countryName: string;
+    isAvailable: boolean;
+  } | null> => {
+    try {
+      const countryData = await getCountryFromIp();
+
+      if (!countryData) return null;
+
+      const { countryCode, countryName } = countryData;
+
+      // Check card access via backend
+      const accessCheck = await withRefreshToken(() => checkCardAccess(countryCode));
+      if (!accessCheck) throw new Error('Failed to check card access');
+
+      return {
+        countryCode,
+        countryName,
+        isAvailable: accessCheck.hasAccess,
+      };
+    } catch (error) {
+      console.error('Error fetching country from IP:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const fetchCountry = async () => {
       try {
-        // First, get the client's IP address
-        const ip = await getClientIp();
+        // First, check if we have a cached IP address
+        let ip = getCachedIp();
 
+        // If no cached IP or cache expired, fetch a new one
         if (!ip) {
-          setError(true);
-          setLoading(false);
-          return;
+          ip = await getClientIp();
+
+          if (ip) {
+            setCachedIp(ip);
+          } else {
+            setError(true);
+            setLoading(false);
+            return;
+          }
         }
 
         // Check if we have a valid cached country info for this IP
         const cachedInfo = getIpDetectedCountry(ip);
 
         if (cachedInfo) {
+          // Update countryInfo to match the IP-detected country
+          setCountryInfo(cachedInfo);
+
           const country = COUNTRIES.find(c => c.code === cachedInfo.countryCode);
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-
-          // If country is available, proceed directly to card activation
-          if (cachedInfo.isAvailable) {
-            router.replace(path.CARD_ACTIVATE_MOBILE);
-            return;
-          }
+          // Always show country selection screen
+          setShowCountrySelector(true);
           setLoading(false);
           return;
         }
 
         // Fetch new country info if cache is invalid or missing
-        const info = await getCountryFromIp();
+        const countryInfo = await getCountryFromIpAndCheckAccess();
 
-        if (info) {
-          setIpDetectedCountry(ip, info); // This sets both countryInfo and caches it
+        if (countryInfo) {
+          setIpDetectedCountry(ip, countryInfo);
 
-          const country = COUNTRIES.find(c => c.code === info.countryCode);
+          const country = COUNTRIES.find(c => c.code === countryInfo.countryCode);
 
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-
-          // If country is available, proceed directly to card activation
-          if (info.isAvailable) {
-            router.replace(path.CARD_ACTIVATE_MOBILE);
-            return;
-          }
+          // Always show country selection screen
+          setShowCountrySelector(true);
         } else {
           setError(true);
         }
@@ -94,7 +141,14 @@ export default function CountrySelection() {
     };
 
     fetchCountry();
-  }, [router, getIpDetectedCountry, setIpDetectedCountry]);
+  }, [
+    router,
+    getIpDetectedCountry,
+    setIpDetectedCountry,
+    getCachedIp,
+    setCachedIp,
+    setCountryInfo,
+  ]);
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
@@ -103,22 +157,34 @@ export default function CountrySelection() {
     );
   }, [searchQuery]);
 
-  const handleNotifyByMail = () => {
+  const handleNotifyByMail = async () => {
     // Check if user has email
     if (user && !user.email) {
       setShowEmailModal(true);
     } else {
+      // User already has email, add to waitlist directly
+      if (user?.email && countryInfo?.countryCode) {
+        try {
+          await withRefreshToken(() =>
+            addToCardWaitlist(user.email!, countryInfo.countryCode.toUpperCase()),
+          );
+        } catch (error) {
+          console.error('Error adding to card waitlist:', error);
+        }
+      }
       setNotifyClicked(true);
     }
   };
 
   const handleChangeCountry = () => {
     setShowCountrySelector(true);
+    setConfirmedAvailableCountry(false);
   };
 
   const handleOpenDropdown = () => {
     setSearchQuery('');
     setShowDropdown(true);
+    setConfirmedAvailableCountry(false);
   };
 
   const handleCountrySelect = (country: Country) => {
@@ -129,6 +195,7 @@ export default function CountrySelection() {
 
   const handleCountrySelectorOk = async () => {
     if (selectedCountry) {
+      setProcessingWaitlist(true);
       try {
         // Check card access via backend API
         const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
@@ -145,9 +212,25 @@ export default function CountrySelection() {
         // Update store
         setCountryInfo(updatedCountryInfo);
 
-        // If selected country is available, proceed directly to card activation
+        // If selected country is available, show confirmation instead of navigating
         if (accessCheck.hasAccess) {
-          router.replace(path.CARD_ACTIVATE_MOBILE);
+          // Check if user has email and add to waitlist
+          if (user && !user.email) {
+            setProcessingWaitlist(false);
+            setShowEmailModal(true);
+          } else if (user?.email) {
+            try {
+              await withRefreshToken(() =>
+                addToCardWaitlist(user.email!, selectedCountry.code.toUpperCase()),
+              );
+
+              setConfirmedAvailableCountry(true);
+            } catch (error) {
+              console.error('Error adding to card waitlist:', error);
+            } finally {
+              setProcessingWaitlist(false);
+            }
+          }
           return;
         }
 
@@ -165,6 +248,8 @@ export default function CountrySelection() {
         setCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
         setNotifyClicked(false);
+      } finally {
+        setProcessingWaitlist(false);
       }
     }
   };
@@ -174,7 +259,7 @@ export default function CountrySelection() {
   }
 
   if (error || !countryInfo) {
-    return <ErrorView isScreenMedium={isScreenMedium} onBack={() => router.back()} />;
+    return <ErrorView isScreenMedium={isScreenMedium} onBack={goBack} />;
   }
 
   return (
@@ -185,16 +270,31 @@ export default function CountrySelection() {
         onOpenChange={open => {
           setShowEmailModal(open);
         }}
-        onSuccess={() => {
+        onSuccess={async () => {
           setShowEmailModal(false);
-          setNotifyClicked(true);
+          // Add user to waitlist
+          if (user?.email && selectedCountry) {
+            try {
+              await withRefreshToken(() =>
+                addToCardWaitlist(user.email!, selectedCountry.code.toUpperCase()),
+              );
+              // If we're in country selector, show confirmation for available country
+              if (showCountrySelector) {
+                setConfirmedAvailableCountry(true);
+              } else {
+                setNotifyClicked(true);
+              }
+            } catch (error) {
+              console.error('Error adding to card waitlist:', error);
+            }
+          }
         }}
       />
       {isScreenMedium && <Navbar />}
 
       <View className="w-full max-w-lg mx-auto pt-12 px-4">
         <View className="flex-row items-center justify-between mb-10">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+          <Pressable onPress={goBack} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
           <Text className="text-white text-xl md:text-2xl font-semibold text-center">
@@ -209,6 +309,8 @@ export default function CountrySelection() {
               selectedCountry={selectedCountry}
               onOpenDropdown={handleOpenDropdown}
               onOk={handleCountrySelectorOk}
+              confirmed={confirmedAvailableCountry}
+              processing={processingWaitlist}
             />
             <CountryDropdown
               visible={showDropdown}
@@ -219,23 +321,25 @@ export default function CountrySelection() {
               onCountrySelect={handleCountrySelect}
             />
           </>
+        ) : notifyClicked ? (
+          <View className="flex-1 justify-center">
+            <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full items-center">
+              <NotifyConfirmationView
+                countryName={countryInfo.countryName}
+                countryCode={countryInfo.countryCode}
+                onOk={() => router.replace(path.CARD_WAITLIST_SUCCESS)}
+              />
+            </View>
+          </View>
         ) : (
           <View className="flex-1 justify-center">
-            <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full  items-center">
-              {notifyClicked ? (
-                <NotifyConfirmationView
-                  countryName={countryInfo.countryName}
-                  countryCode={countryInfo.countryCode}
-                  onOk={() => router.back()}
-                />
-              ) : (
-                <CountryUnavailableView
-                  countryName={countryInfo.countryName}
-                  countryCode={countryInfo.countryCode}
-                  onChangeCountry={handleChangeCountry}
-                  onNotifyByMail={handleNotifyByMail}
-                />
-              )}
+            <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full items-center">
+              <CountryUnavailableView
+                countryName={countryInfo.countryName}
+                countryCode={countryInfo.countryCode}
+                onChangeCountry={handleChangeCountry}
+                onNotifyByMail={handleNotifyByMail}
+              />
             </View>
           </View>
         )}
@@ -305,9 +409,17 @@ interface CountrySelectorProps {
   selectedCountry: Country | null;
   onOpenDropdown: () => void;
   onOk: () => void;
+  confirmed?: boolean;
+  processing?: boolean;
 }
 
-function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelectorProps) {
+function CountrySelector({
+  selectedCountry,
+  onOpenDropdown,
+  onOk,
+  confirmed,
+  processing,
+}: CountrySelectorProps) {
   return (
     <View className="flex-1 justify-center">
       <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
@@ -323,21 +435,34 @@ function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelec
             <CountryFlagImage isoCode={selectedCountry.code} size={110} className="mb-2" />
           </View>
         )}
-        <Pressable onPress={onOpenDropdown}>
-          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center mt-2 mb-6 border border-[#898989]">
-            <Text className="text-white">
-              {selectedCountry ? selectedCountry.name : 'Select country'}
-            </Text>
-          </View>
-        </Pressable>
+        {!confirmed ? (
+          <>
+            <Pressable onPress={onOpenDropdown}>
+              <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center justify-between mt-2 mb-6 border border-[#898989]">
+                <Text className="text-white">
+                  {selectedCountry ? selectedCountry.name : 'Select country'}
+                </Text>
+                <ChevronDown color="white" size={20} />
+              </View>
+            </Pressable>
 
-        <Button
-          className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
-          onPress={onOk}
-          disabled={!selectedCountry}
-        >
-          <Text className="text-base font-bold text-black">Ok</Text>
-        </Button>
+            <Button
+              className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
+              onPress={onOk}
+              disabled={!selectedCountry || processing}
+            >
+              {processing ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text className="text-base font-bold text-black">Ok</Text>
+              )}
+            </Button>
+          </>
+        ) : (
+          <View className="items-center py-4">
+            <Text className="text-[#94F27F] text-lg font-semibold">✓ We will notify you</Text>
+          </View>
+        )}
       </View>
     </View>
   );

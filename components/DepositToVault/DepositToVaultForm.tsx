@@ -31,7 +31,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { Status } from '@/lib/types';
 
 function DepositToVaultForm() {
-  const { balance, deposit, depositStatus, hash, isEthereum } = useDepositFromEOA();
+  const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA();
   const { setModal, setTransaction, srcChainId } = useDepositStore();
   const { isScreenMedium } = useDimension();
 
@@ -92,7 +92,7 @@ function DepositToVaultForm() {
     if (depositStatus.status === Status.SUCCESS)
       return isDeposit ? 'Successfully deposited!' : 'Successfully bridged!';
     if (depositStatus.status === Status.ERROR)
-      return isDeposit ? 'Error while depositing' : 'Error while bridging';
+      return error || (isDeposit ? 'Error while depositing' : 'Error while bridging');
     return 'Deposit';
   };
 

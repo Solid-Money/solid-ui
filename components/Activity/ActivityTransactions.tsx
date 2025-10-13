@@ -20,6 +20,7 @@ import {
   useBridgeDepositTransactions,
   useSendTransactions,
 } from '@/hooks/useAnalytics';
+import { useCardDepositPoller } from '@/hooks/useCardDepositPoller';
 import useUser from '@/hooks/useUser';
 import { createActivityEvent, fetchActivityEvents } from '@/lib/api';
 import {
@@ -49,6 +50,9 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
   const { storeEvents } = useActivityStore();
   const { activities, pendingCount, refreshActivities } = useActivity();
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
+
+  // Poll Bridge API to update card deposit status when processed
+  useCardDepositPoller();
 
   const isTransactionStuck = (timestamp: string): boolean => {
     const transactionDate = new Date(parseInt(timestamp) * 1000);
@@ -150,10 +154,11 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
       if (groupedData[i].type === ActivityGroup.TRANSACTION) {
         const transaction = groupedData[i].data as ActivityEvent;
         const isPending = transaction.status === TransactionStatus.PENDING;
+        const isCancelled = transaction.status === TransactionStatus.CANCELLED;
         const isStuck = isTransactionStuck(transaction.timestamp);
 
         // Only include transactions that would be rendered (not filtered out)
-        if (showStuckTransactions || !(isPending && isStuck)) {
+        if (showStuckTransactions || !((isPending && isStuck) || isCancelled)) {
           currentGroupTransactions.push(i);
         }
       }
@@ -397,8 +402,10 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
 
     const transaction = item.data as ActivityEvent;
     const isPending = transaction.status === TransactionStatus.PENDING;
+    const isCancelled = transaction.status === TransactionStatus.CANCELLED;
     const isStuck = isTransactionStuck(transaction.timestamp);
-    if (!showStuckTransactions && isPending && isStuck) {
+
+    if (!showStuckTransactions && ((isPending && isStuck) || isCancelled)) {
       return null;
     }
 

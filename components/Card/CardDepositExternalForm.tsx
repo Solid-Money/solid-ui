@@ -12,11 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { useActivity } from '@/hooks/useActivity';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import useUser from '@/hooks/useUser';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { getChain } from '@/lib/thirdweb';
-import { Status } from '@/lib/types';
+import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { Wallet as WalletIcon } from 'lucide-react-native';
@@ -29,6 +31,8 @@ type FormData = { amount: string };
 export default function CardDepositExternalForm() {
   const account = useActiveAccount();
   const switchChain = useSwitchActiveWalletChain();
+  const { user } = useUser();
+  const { createActivity, updateActivity } = useActivity();
   const { setTransaction } = useCardDepositStore();
   const { data: cardDetails } = useCardDetails();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
@@ -104,6 +108,15 @@ export default function CardDepositExternalForm() {
         return;
       }
 
+      if (!user) {
+        Toast.show({
+          type: 'error',
+          text1: 'User not authenticated',
+          text2: 'Please refresh and try again',
+        });
+        return;
+      }
+
       setSendStatus(Status.PENDING);
       const fundingAddress = arbitrumFundingAddress.address as Address;
       const amountWei = parseUnits(data.amount, 6);
@@ -131,6 +144,23 @@ export default function CardDepositExternalForm() {
         return;
       }
 
+      // Create activity event (stays PENDING until Bridge processes it)
+      const clientTxId = await createActivity({
+        type: TransactionType.CARD_TRANSACTION,
+        title: `Card Deposit`,
+        shortTitle: `Card Deposit`,
+        amount: data.amount,
+        symbol: 'USDC',
+        chainId: arbitrum.id,
+        fromAddress: account.address,
+        toAddress: fundingAddress,
+        status: TransactionStatus.PENDING,
+        metadata: {
+          description: `Deposit ${data.amount} USDC to card from external wallet`,
+          processingStatus: 'sending',
+        },
+      });
+
       Toast.show({
         type: 'info',
         text1: 'Processing transaction',
@@ -147,6 +177,17 @@ export default function CardDepositExternalForm() {
           args: [fundingAddress, amountWei],
         }),
         value: 0n,
+      });
+
+      // Update activity with transaction hash, keeping it PENDING
+      await updateActivity(clientTxId, {
+        status: TransactionStatus.PENDING,
+        hash: tx.transactionHash,
+        url: `https://arbiscan.io/tx/${tx.transactionHash}`,
+        metadata: {
+          txHash: tx.transactionHash,
+          processingStatus: 'awaiting_bridge',
+        },
       });
 
       setSendStatus(Status.SUCCESS);

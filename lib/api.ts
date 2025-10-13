@@ -35,6 +35,8 @@ import {
   CardTransactionsResponse,
   CoinHistoricalChart,
   CountryInfo,
+  CardWaitlistResponse,
+  CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
   EphemeralKeyResponse,
@@ -515,18 +517,52 @@ export const checkCardAccess = async (countryCode: string): Promise<CardAccessRe
   return response.json();
 };
 
-export const getCountryFromIp = async (): Promise<CountryInfo | null> => {
+export const addToCardWaitlist = async (
+  email: string,
+  countryCode: string,
+): Promise<CardWaitlistResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      'Content-Type': 'application/json',
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify({ email, countryCode }),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const checkCardWaitlistStatus = async (email: string): Promise<CardWaitlistResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist/check?email=${encodeURIComponent(email)}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getCountryFromIp = async (): Promise<CountryFromIp | null> => {
   try {
     const response = await axios.get('https://ipapi.co/json/');
     const { country_code, country_name } = response.data;
 
-    // Check card access via backend
-    const accessCheck = await checkCardAccess(country_code);
-
     return {
       countryCode: country_code,
       countryName: country_name,
-      isAvailable: accessCheck.hasAccess,
     };
   } catch (error) {
     console.error('Error fetching country from IP:', error);

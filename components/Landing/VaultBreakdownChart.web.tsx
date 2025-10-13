@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { Cell, Label, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
+import TooltipPopover from '@/components/Tooltip';
 import { VaultBreakdown } from '@/lib/types';
 import { formatNumber } from '@/lib/utils/utils';
 
@@ -43,6 +44,9 @@ function CustomLabel({ viewBox, value1, value2 }: CustomLabelProps) {
           {value1}
         </tspan>
       </text>
+      <foreignObject x={cx + 80} y={cy - 22} width="20" height="20" style={{ overflow: 'visible' }}>
+        <TooltipPopover text="Sum of all Effective Position APY" />
+      </foreignObject>
       <text
         x={cx}
         y={cy + 15}
@@ -82,7 +86,7 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
 
   return (
     <View
-      className="flex-1 md:grow-0 md:basis-1/3 justify-end md:items-center"
+      className="flex-1 md:grow-0 md:basis-1/3 justify-end md:justify-center md:items-center"
       onLayout={handleLayout}
     >
       <View style={{ width: minDimension || undefined, height: minDimension || undefined }}>
@@ -111,7 +115,10 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
                 width={100}
                 position="center"
                 content={
-                  <CustomLabel value1={'Total APY'} value2={`${formatNumber(totalAPY, 2)}%`} />
+                  <CustomLabel
+                    value1={'Total Effective APY'}
+                    value2={`${formatNumber(totalAPY, 2)}%`}
+                  />
                 }
               ></Label>
             </Pie>
