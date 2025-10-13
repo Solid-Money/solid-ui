@@ -329,6 +329,7 @@ export enum TransactionDirection {
   IN = '+',
   OUT = '-',
   FAILED = '✕',
+  CANCELLED = '⊘',
 }
 
 export enum TransactionCategory {
@@ -345,6 +346,7 @@ export enum TransactionStatus {
   PROCESSING = 'processing',
   SUCCESS = 'success',
   FAILED = 'failed',
+  CANCELLED = 'cancelled',
 }
 
 export type Transaction = {

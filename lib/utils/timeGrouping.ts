@@ -5,6 +5,8 @@ export type TimeGroupHeaderData = {
   title: string;
   key: string;
   status?: TransactionStatus;
+  hasPendingTransactions?: boolean;
+  hasCancelledTransactions?: boolean;
 };
 
 export type TimeGroup = {
@@ -27,22 +29,32 @@ export const formatTimeGroup = (timestamp: string): string => {
 export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGroup[] => {
   const grouped: TimeGroup[] = [];
   
-  // Separate pending and completed transactions
+  // Separate pending, cancelled and completed transactions
   const pendingTransactions = transactions.filter(tx => tx.status === TransactionStatus.PENDING);
-  const completedTransactions = transactions.filter(tx => tx.status !== TransactionStatus.PENDING);
+  const cancelledTransactions = transactions.filter(tx => tx.status === TransactionStatus.CANCELLED);
+  const completedTransactions = transactions.filter(tx => tx.status !== TransactionStatus.PENDING && tx.status !== TransactionStatus.CANCELLED);
   
-  // Add pending transactions group at the top if there are any
-  if (pendingTransactions.length > 0) {
+  // Add pending transactions group at the top if there are any pending or cancelled
+  if (pendingTransactions.length > 0 || cancelledTransactions.length > 0) {
     grouped.push({
       type: ActivityGroup.HEADER,
       data: {
         title: 'Pending activity',
         key: 'header-pending',
         status: TransactionStatus.PENDING,
+        hasPendingTransactions: pendingTransactions.length > 0,
+        hasCancelledTransactions: cancelledTransactions.length > 0,
       },
     });
     
     pendingTransactions.forEach((transaction) => {
+      grouped.push({
+        type: ActivityGroup.TRANSACTION,
+        data: transaction,
+      });
+    });
+    
+    cancelledTransactions.forEach((transaction) => {
       grouped.push({
         type: ActivityGroup.TRANSACTION,
         data: transaction,

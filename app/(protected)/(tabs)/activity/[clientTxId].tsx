@@ -18,6 +18,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { TransactionDirection, TransactionStatus } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
 import { path } from '@/constants/path';
+import CopyToClipboard from '@/components/CopyToClipboard';
 
 type RowProps = {
   label: React.ReactNode;
@@ -104,17 +105,26 @@ export default function ActivityDetail() {
     );
 
   const isFailed = activity.status === TransactionStatus.FAILED;
+  const isCancelled = activity.status === TransactionStatus.CANCELLED;
   const isPending = activity.status === TransactionStatus.PENDING;
   const isIncoming = TRANSACTION_DETAILS[activity.type].sign === TransactionDirection.IN;
   const isCancelWithdraw = activity.requestId && isPending;
 
-  const statusTextColor = isFailed ? 'text-red-400' : isIncoming ? 'text-brand' : '';
+  const statusTextColor = isFailed
+    ? 'text-red-400'
+    : isCancelled
+      ? ''
+      : isIncoming
+        ? 'text-brand'
+        : '';
   const statusSign = isFailed
     ? TransactionDirection.FAILED
-    : TRANSACTION_DETAILS[activity.type].sign;
+    : isCancelled
+      ? TransactionDirection.CANCELLED
+      : TRANSACTION_DETAILS[activity.type].sign;
 
   const tokenIcon = getTokenIcon({
-    tokenSymbol: 'FUSE',
+    tokenSymbol: activity.symbol,
     size: 75,
   });
 
@@ -126,12 +136,22 @@ export default function ActivityDetail() {
   const rows = [
     {
       label: <Label>Sent from</Label>,
-      value: activity.fromAddress && <Value>{eclipseAddress(activity.fromAddress)}</Value>,
+      value: activity.fromAddress && (
+        <View className="flex-row items-center gap-1">
+          <Value>{eclipseAddress(activity.fromAddress)}</Value>
+          <CopyToClipboard text={activity.fromAddress} />
+        </View>
+      ),
       enabled: !!activity.fromAddress,
     },
     {
       label: <Label>Recipient</Label>,
-      value: activity.toAddress && <Value>{eclipseAddress(activity.toAddress)}</Value>,
+      value: activity.toAddress && (
+        <View className="flex-row items-center gap-1">
+          <Value>{eclipseAddress(activity.toAddress)}</Value>
+          <CopyToClipboard text={activity.toAddress} />
+        </View>
+      ),
       enabled: !!activity.toAddress,
     },
     {

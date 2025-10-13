@@ -42,11 +42,22 @@ const Transaction = ({
   type,
 }: TransactionProps) => {
   const isFailed = status === TransactionStatus.FAILED;
+  const isCancelled = status === TransactionStatus.CANCELLED;
   const isIncoming = TRANSACTION_DETAILS[type].sign === TransactionDirection.IN;
   const isReward = TRANSACTION_DETAILS[type].category === TransactionCategory.REWARD;
 
-  const statusTextColor = isFailed ? 'text-red-400' : isIncoming ? 'text-brand' : '';
-  const statusSign = isFailed ? TransactionDirection.FAILED : TRANSACTION_DETAILS[type].sign;
+  const statusTextColor = isFailed
+    ? 'text-red-400'
+    : isCancelled
+      ? ''
+      : isIncoming
+        ? 'text-brand'
+        : '';
+  const statusSign = isFailed
+    ? TransactionDirection.FAILED
+    : isCancelled
+      ? TransactionDirection.CANCELLED
+      : TRANSACTION_DETAILS[type].sign;
 
   const tokenIcon = getTokenIcon({
     logoUrl,
