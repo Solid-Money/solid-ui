@@ -45,7 +45,7 @@ export default function Savings() {
     chainId: mainnet.id,
   });
 
-  const { data: totalAPY, isLoading: isTotalAPYLoading } = useTotalAPY();
+  const { data: totalAPY } = useTotalAPY();
   const { hasTokens } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
@@ -180,14 +180,14 @@ export default function Savings() {
             <View className="p-6 md:p-7">
               <View className="flex-row items-center gap-1">
                 <Text className="md:text-lg text-primary/50">Current Yield</Text>
-                <TooltipPopover text="Last 15 days yield of the vault" />
+                <TooltipPopover text="Last 30 days yield of the vault" />
               </View>
               <View className="flex-row items-center gap-2">
                 <Text className="text-2xl text-brand font-semibold">
-                  {isTotalAPYLoading ? (
+                  {isAPYsLoading ? (
                     <Skeleton className="w-20 h-8 rounded-md bg-purple/50" />
-                  ) : totalAPY ? (
-                    `${totalAPY.toFixed(2)}%`
+                  ) : apys ? (
+                    `${formatNumber(apys.thirtyDay, 2)}%`
                   ) : (
                     '0%'
                   )}
