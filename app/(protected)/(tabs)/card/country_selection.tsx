@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 
@@ -21,6 +21,15 @@ export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
+
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.push(path.CARD);
+    }
+  };
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [notifyClicked, setNotifyClicked] = useState(false);
@@ -30,25 +39,41 @@ export default function CountrySelection() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
 
-  const { countryInfo, setCountryInfo, getIpDetectedCountry, setIpDetectedCountry } =
-    useCountryStore();
+  const {
+    countryInfo,
+    setCountryInfo,
+    getIpDetectedCountry,
+    setIpDetectedCountry,
+    getCachedIp,
+    setCachedIp,
+  } = useCountryStore();
 
   useEffect(() => {
     const fetchCountry = async () => {
       try {
-        // First, get the client's IP address
-        const ip = await getClientIp();
+        // First, check if we have a cached IP address
+        let ip = getCachedIp();
 
+        // If no cached IP or cache expired, fetch a new one
         if (!ip) {
-          setError(true);
-          setLoading(false);
-          return;
+          ip = await getClientIp();
+
+          if (ip) {
+            setCachedIp(ip);
+          } else {
+            setError(true);
+            setLoading(false);
+            return;
+          }
         }
 
         // Check if we have a valid cached country info for this IP
         const cachedInfo = getIpDetectedCountry(ip);
 
         if (cachedInfo) {
+          // Update countryInfo to match the IP-detected country
+          setCountryInfo(cachedInfo);
+
           const country = COUNTRIES.find(c => c.code === cachedInfo.countryCode);
           if (country) {
             setSelectedCountry(country);
@@ -94,7 +119,14 @@ export default function CountrySelection() {
     };
 
     fetchCountry();
-  }, [router, getIpDetectedCountry, setIpDetectedCountry]);
+  }, [
+    router,
+    getIpDetectedCountry,
+    setIpDetectedCountry,
+    getCachedIp,
+    setCachedIp,
+    setCountryInfo,
+  ]);
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
@@ -184,7 +216,7 @@ export default function CountrySelection() {
   }
 
   if (error || !countryInfo) {
-    return <ErrorView isScreenMedium={isScreenMedium} onBack={() => router.back()} />;
+    return <ErrorView isScreenMedium={isScreenMedium} onBack={goBack} />;
   }
 
   return (
@@ -214,7 +246,7 @@ export default function CountrySelection() {
 
       <View className="w-full max-w-lg mx-auto pt-12 px-4">
         <View className="flex-row items-center justify-between mb-10">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+          <Pressable onPress={goBack} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
           <Text className="text-white text-xl md:text-2xl font-semibold text-center">
@@ -241,7 +273,7 @@ export default function CountrySelection() {
           </>
         ) : (
           <View className="flex-1 justify-center">
-            <View className="bg-[#1C1C1C] rounded-xl px-10 py-8 w-full  items-center">
+            <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full  items-center">
               {notifyClicked ? (
                 <NotifyConfirmationView
                   countryName={countryInfo.countryName}
@@ -344,10 +376,11 @@ function CountrySelector({ selectedCountry, onOpenDropdown, onOk }: CountrySelec
           </View>
         )}
         <Pressable onPress={onOpenDropdown}>
-          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center mt-2 mb-6 border border-[#898989]">
+          <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center justify-between mt-2 mb-6 border border-[#898989]">
             <Text className="text-white">
               {selectedCountry ? selectedCountry.name : 'Select country'}
             </Text>
+            <ChevronDown color="white" size={20} />
           </View>
         </Pressable>
 
