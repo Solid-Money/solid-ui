@@ -1,19 +1,19 @@
 export const times = [
   {
     label: '1D',
-    value: '1d',
+    value: '1',
   },
   {
     label: '1W',
-    value: '1w',
+    value: '7',
   },
   {
     label: '1M',
-    value: '1m',
+    value: '30',
   },
   {
     label: '1Y',
-    value: '1y',
+    value: '365',
   },
   {
     label: 'MAX',

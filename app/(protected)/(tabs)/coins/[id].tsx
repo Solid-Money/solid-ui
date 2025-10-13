@@ -1,25 +1,38 @@
 import { useLocalSearchParams } from 'expo-router';
+import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { useMemo } from 'react';
-import { ArrowUp } from 'lucide-react-native';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import CoinBackButton from '@/components/Coin/CoinBackButton';
+import CoinChart from '@/components/Coin/CoinChart.web';
+import CoinChartTime from '@/components/Coin/CoinChartTime';
+import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import { Text } from '@/components/ui/text';
+import { times } from '@/constants/coins';
+import { useSearchCoinHistoricalChart } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
-import { eclipseAddress } from '@/lib/utils';
-import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
-import CoinBackButton from '@/components/Coin/CoinBackButton';
-import CoinChartTime from '@/components/Coin/CoinChartTime';
+import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { useCoinStore } from '@/store/useCoinStore';
+
+const MAX_SAMPLE_SIZE = 20;
 
 export default function Coin() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [chainId, contractAddress] = id.split('-');
   const { isScreenMedium } = useDimension();
   const { tokens, isLoading } = useWalletTokens();
+  const { selectedTime, selectedPrice, selectedPriceChange } = useCoinStore();
+
+  const isPriceIncrease = selectedPriceChange && selectedPriceChange >= 0;
+
+  const time = useMemo(() => {
+    return times.find(time => time.value === selectedTime);
+  }, [selectedTime]);
 
   const token = useMemo(() => {
     return tokens.find(
@@ -27,6 +40,31 @@ export default function Coin() {
         token.chainId === Number(chainId) && token.contractAddress === contractAddress,
     );
   }, [tokens, chainId, contractAddress]);
+
+  const { data: coinHistoricalChart, isLoading: isLoadingCoinHistoricalChart } =
+    useSearchCoinHistoricalChart(
+      token?.contractTickerSymbol || token?.contractName || token?.contractAddress || '',
+      time?.value,
+    );
+
+  const formattedChartData = useMemo(() => {
+    if (!coinHistoricalChart?.prices) return [];
+
+    const prices = coinHistoricalChart.prices;
+
+    const sampled =
+      prices.length > MAX_SAMPLE_SIZE
+        ? Array.from({ length: MAX_SAMPLE_SIZE }, (_, i) => {
+            const index = Math.round((i * (prices.length - 1)) / (MAX_SAMPLE_SIZE - 1));
+            return prices[index];
+          })
+        : prices;
+
+    return sampled.map(([timestamp, price]) => ({
+      time: timestamp,
+      value: price,
+    }));
+  }, [coinHistoricalChart]);
 
   if (isLoading) return <Loading />;
 
@@ -65,13 +103,39 @@ export default function Coin() {
                 </Text>
               </View>
 
-              <Text className="text-4xl md:text-5xl font-semibold">$3.56</Text>
+              <Text className="text-4xl md:text-5xl font-semibold">
+                {selectedPrice
+                  ? `$${formatNumber(selectedPrice)}`
+                  : formattedChartData.length > 0
+                    ? `$${formatNumber(formattedChartData[formattedChartData.length - 1].value)}`
+                    : '$0.00'}
+              </Text>
 
               <View className="flex-row items-center">
-                <Text className="text-sm text-brand font-medium">+0%</Text>
-                <ArrowUp color="#94F27F" size={14} strokeWidth={3} />
+                <Text
+                  className={cn(
+                    'text-sm font-medium',
+                    isPriceIncrease ? 'text-brand' : 'text-red-500',
+                  )}
+                >
+                  {isPriceIncrease ? '+' : '-'}
+                  {selectedPriceChange
+                    ? `$${formatNumber(Math.abs(selectedPriceChange), 2)}%`
+                    : '0.00%'}
+                </Text>
+                {isPriceIncrease ? (
+                  <ArrowUp color="#94F27F" size={14} strokeWidth={3} />
+                ) : (
+                  <ArrowDown color="#EF4444" size={14} strokeWidth={3} />
+                )}
               </View>
             </View>
+
+            {isLoadingCoinHistoricalChart ? (
+              <View className="h-[200px]" />
+            ) : formattedChartData.length > 0 ? (
+              <CoinChart data={formattedChartData} />
+            ) : null}
 
             <CoinChartTime />
 
