@@ -151,7 +151,7 @@ const CardWaitlist = () => {
             <Text className="text-2xl md:text-4.5xl font-semibold">Introducing the Solid Card</Text>
           </View>
 
-          <View className="flex-row flex-wrap gap-4 max-w-xl">
+          <View className="flex-row flex-wrap gap-10 max-w-2xl">
             {features.map(feature => (
               <Feature key={feature.title} {...feature} />
             ))}
