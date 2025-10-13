@@ -15,8 +15,10 @@ export type TimeGroup = {
 };
 
 export const formatTimeGroup = (timestamp: string): string => {
+  if (!timestamp) return '';
+
   const transactionDate = new Date(Number(timestamp) * 1000);
-  
+
   if (isToday(transactionDate)) {
     return 'Today';
   } else if (isYesterday(transactionDate)) {
@@ -28,12 +30,12 @@ export const formatTimeGroup = (timestamp: string): string => {
 
 export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGroup[] => {
   const grouped: TimeGroup[] = [];
-  
+
   // Separate pending, cancelled and completed transactions
   const pendingTransactions = transactions.filter(tx => tx.status === TransactionStatus.PENDING);
   const cancelledTransactions = transactions.filter(tx => tx.status === TransactionStatus.CANCELLED);
   const completedTransactions = transactions.filter(tx => tx.status !== TransactionStatus.PENDING && tx.status !== TransactionStatus.CANCELLED);
-  
+
   // Add pending transactions group at the top if there are any pending or cancelled
   if (pendingTransactions.length > 0 || cancelledTransactions.length > 0) {
     grouped.push({
@@ -46,14 +48,14 @@ export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGrou
         hasCancelledTransactions: cancelledTransactions.length > 0,
       },
     });
-    
+
     pendingTransactions.forEach((transaction) => {
       grouped.push({
         type: ActivityGroup.TRANSACTION,
         data: transaction,
       });
     });
-    
+
     cancelledTransactions.forEach((transaction) => {
       grouped.push({
         type: ActivityGroup.TRANSACTION,
@@ -61,12 +63,12 @@ export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGrou
       });
     });
   }
-  
+
   // Add completed transactions grouped by time
   let currentGroup: string | null = null;
   completedTransactions.forEach((transaction) => {
-    const groupTitle = formatTimeGroup(transaction.timestamp);
-    
+    const groupTitle = formatTimeGroup(transaction?.timestamp);
+
     // Add group header if this is a new group
     if (currentGroup !== groupTitle) {
       grouped.push({
@@ -78,13 +80,13 @@ export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGrou
       });
       currentGroup = groupTitle;
     }
-    
+
     // Add the transaction
     grouped.push({
       type: ActivityGroup.TRANSACTION,
       data: transaction,
     });
   });
-  
+
   return grouped;
 };
