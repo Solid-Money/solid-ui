@@ -48,6 +48,34 @@ export default function CountrySelection() {
     setCachedIp,
   } = useCountryStore();
 
+  // Function to get country from IP and check card access
+  const getCountryFromIpAndCheckAccess = async (): Promise<{
+    countryCode: string;
+    countryName: string;
+    isAvailable: boolean;
+  } | null> => {
+    try {
+      const countryData = await getCountryFromIp();
+
+      if (!countryData) return null;
+
+      const { countryCode, countryName } = countryData;
+
+      // Check card access via backend
+      const accessCheck = await withRefreshToken(() => checkCardAccess(countryCode));
+      if (!accessCheck) throw new Error('Failed to check card access');
+
+      return {
+        countryCode,
+        countryName,
+        isAvailable: accessCheck.hasAccess,
+      };
+    } catch (error) {
+      console.error('Error fetching country from IP:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const fetchCountry = async () => {
       try {
@@ -79,34 +107,26 @@ export default function CountrySelection() {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-
-          // If country is available, proceed directly to card activation
-          if (cachedInfo.isAvailable) {
-            router.replace(path.CARD_ACTIVATE_MOBILE);
-            return;
-          }
+          // Always show country selection screen
+          setShowCountrySelector(true);
           setLoading(false);
           return;
         }
 
         // Fetch new country info if cache is invalid or missing
-        const info = await getCountryFromIp();
+        const countryInfo = await getCountryFromIpAndCheckAccess();
 
-        if (info) {
-          setIpDetectedCountry(ip, info); // This sets both countryInfo and caches it
+        if (countryInfo) {
+          setIpDetectedCountry(ip, countryInfo);
 
-          const country = COUNTRIES.find(c => c.code === info.countryCode);
+          const country = COUNTRIES.find(c => c.code === countryInfo.countryCode);
 
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-
-          // If country is available, proceed directly to card activation
-          if (info.isAvailable) {
-            router.replace(path.CARD_ACTIVATE_MOBILE);
-            return;
-          }
+          // Always show country selection screen
+          setShowCountrySelector(true);
         } else {
           setError(true);
         }
@@ -271,23 +291,25 @@ export default function CountrySelection() {
               onCountrySelect={handleCountrySelect}
             />
           </>
+        ) : notifyClicked ? (
+          <View className="flex-1 justify-center">
+            <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full items-center">
+              <NotifyConfirmationView
+                countryName={countryInfo.countryName}
+                countryCode={countryInfo.countryCode}
+                onOk={() => router.replace(path.CARD_WAITLIST_SUCCESS)}
+              />
+            </View>
+          </View>
         ) : (
           <View className="flex-1 justify-center">
-            <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full  items-center">
-              {notifyClicked ? (
-                <NotifyConfirmationView
-                  countryName={countryInfo.countryName}
-                  countryCode={countryInfo.countryCode}
-                  onOk={() => router.replace(path.CARD_WAITLIST_SUCCESS)}
-                />
-              ) : (
-                <CountryUnavailableView
-                  countryName={countryInfo.countryName}
-                  countryCode={countryInfo.countryCode}
-                  onChangeCountry={handleChangeCountry}
-                  onNotifyByMail={handleNotifyByMail}
-                />
-              )}
+            <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full items-center">
+              <CountryUnavailableView
+                countryName={countryInfo.countryName}
+                countryCode={countryInfo.countryCode}
+                onChangeCountry={handleChangeCountry}
+                onNotifyByMail={handleNotifyByMail}
+              />
             </View>
           </View>
         )}
