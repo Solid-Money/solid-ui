@@ -10,6 +10,11 @@ import {
 import { Reward } from '@merkl/api';
 import { Address, Hex } from 'viem';
 
+export interface CountryFromIp {
+  countryCode: string;
+  countryName: string;
+}
+
 export interface CountryInfo {
   countryCode: string;
   countryName: string;

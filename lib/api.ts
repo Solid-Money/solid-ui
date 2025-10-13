@@ -33,7 +33,7 @@ import {
   CardStatusResponse,
   CardTransactionsResponse,
   CardWaitlistResponse,
-  CountryInfo,
+  CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
   EphemeralKeyResponse,
@@ -57,7 +57,6 @@ import {
   VaultBreakdown,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
-import { withRefreshToken } from './utils';
 
 // Helper function to get platform-specific headers
 const getPlatformHeaders = () => {
@@ -552,19 +551,14 @@ export const checkCardWaitlistStatus = async (email: string): Promise<CardWaitli
   return response.json();
 };
 
-export const getCountryFromIp = async (): Promise<CountryInfo | null> => {
+export const getCountryFromIp = async (): Promise<CountryFromIp | null> => {
   try {
     const response = await axios.get('https://ipapi.co/json/');
     const { country_code, country_name } = response.data;
 
-    // Check card access via backend
-    const accessCheck = await withRefreshToken(() => checkCardAccess(country_code));
-    if (!accessCheck) throw new Error('Failed to check card access');
-
     return {
       countryCode: country_code,
       countryName: country_name,
-      isAvailable: accessCheck.hasAccess,
     };
   } catch (error) {
     console.error('Error fetching country from IP:', error);
