@@ -257,7 +257,7 @@ export default Sentry.wrap(function RootLayout() {
         }}
       />
       <Stack.Screen
-        name="invite"
+        name="referral"
         options={{
           headerShown: false,
           animation: 'none',
