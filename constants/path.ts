@@ -66,7 +66,7 @@ export const path: Path = {
   PASSKEY_NOT_SUPPORTED: '/passkey-not-supported',
   POINTS: '/points',
   REFERRAL: '/referral',
-  INVITE: '/invite',
+  INVITE: '/referral',
   POINTS_LEADERBOARD: '/points/leaderboard',
   OVERVIEW: '/overview',
   CARD_WAITLIST: '/card-waitlist',

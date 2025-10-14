@@ -21,7 +21,7 @@ import InfoError from '@/assets/images/info-error';
 import Input from '@/components/ui/input';
 
 const inviteSchema = z.object({
-  inviteCode: z.string().nonempty('Invite code is required'),
+  inviteCode: z.string().nonempty('Referral code is required'),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
@@ -56,7 +56,7 @@ export default function Invite() {
       setValue('inviteCode', code);
       trigger('inviteCode');
     } catch (error) {
-      console.error('Error pasting invite code:', error);
+      console.error('Error pasting referral code:', error);
     }
   };
 
@@ -105,38 +105,32 @@ export default function Invite() {
   return (
     <SafeAreaView className="bg-background text-foreground flex-1">
       <View className="flex-1 md:justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
-        <View className="flex-row items-center gap-5 justify-center">
+        <View className="justify-center items-center gap-7">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
             style={{ width: 74, height: 80 }}
             contentFit="contain"
           />
+          <Text className="text-3xl font-semibold text-center">Welcome!</Text>
         </View>
 
-        <View className="gap-6 md:gap-2">
+        <View className="gap-6 md:gap-4">
           <Pressable
             onPress={handleBack}
             className="flex-row justify-between items-center gap-2 web:hover:opacity-70"
           >
             <ChevronLeft color="white" />
-            <Text className="text-3xl text-center font-bold">Do you have an invite code?</Text>
+            <Text className="text-xl text-center font-bold">Do you have a referral code?</Text>
             <View className="w-4" />
           </Pressable>
 
-          <Text className="leading-5 text-muted-foreground text-center max-w-xs mx-auto">
-            In order to create an account on solid you need to enter an invite code.{'\n'}
-            <Link
-              href="https://docs.solid.xyz/getting-started-on-solid/solid-private-launch"
-              target="_blank"
-              className="text-primary font-bold hover:opacity-70"
-            >
-              How do i get an invite?
-            </Link>
+          <Text className="leading-5 text-muted-foreground text-center font-medium max-w-64 mx-auto">
+            Get special benefits when you join through a friend
           </Text>
         </View>
 
-        <View className="gap-5 md:mt-4 flex-1 md:flex-none" style={{ minHeight: 336 }}>
+        <View className="gap-5 md:mt-4">
           <View>
             <Controller
               control={control}
@@ -147,7 +141,7 @@ export default function Invite() {
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  placeholder="Enter invite code"
+                  placeholder="Enter referral code"
                   //className="w-full h-full text-lg text-foreground font-semibold placeholder:text-muted-foreground web:focus:outline-none"
                   className={cn(
                     'flex-row items-center justify-between gap-2 h-14 px-6 rounded-xl border bg-[#111111]',
@@ -170,22 +164,36 @@ export default function Invite() {
               <Text className="text-sm text-red-400">{getInviteCodeErrorText}</Text>
             </View>
           ) : null}
-          <Button
-            variant="brand"
-            onPress={handleSubmit(handleInviteForm)}
-            //disabled={isInviteDisabled()}
-            className="rounded-xl h-14"
-          >
-            <Text className="text-lg font-semibold">{getInviteButtonText()}</Text>
-            {signupInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}
-          </Button>
+          {Boolean(watchedInviteCode) && (
+            <Button
+              variant="brand"
+              onPress={handleSubmit(handleInviteForm)}
+              //disabled={isInviteDisabled()}
+              className="rounded-xl h-14"
+            >
+              <Text className="text-lg font-semibold">{getInviteButtonText()}</Text>
+              {signupInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}
+            </Button>
+          )}
           <Button
             onPress={() => handleSignup(signupUser.username, 'Skip')}
-            variant="ghost"
+            variant={Boolean(watchedInviteCode) ? 'ghost' : 'brand'}
             className="rounded-2xl h-14 border-0"
           >
             <Text className="text-lg font-semibold">Skip</Text>
+            {signupInfo.status === Status.PENDING && !Boolean(watchedInviteCode) && (
+              <ActivityIndicator color="gray" />
+            )}
           </Button>
+          {!Boolean(watchedInviteCode) && (
+            <Link
+              href="https://docs.solid.xyz/getting-started-on-solid/solid-private-launch"
+              target="_blank"
+              className="text-muted-foreground font-bold hover:opacity-70 mx-auto mt-4"
+            >
+              {"I don't have a referral code"}
+            </Link>
+          )}
         </View>
       </View>
     </SafeAreaView>
