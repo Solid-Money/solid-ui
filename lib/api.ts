@@ -9,6 +9,7 @@ import { useUserStore } from '@/store/useUserStore';
 import {
   EXPO_PUBLIC_ALCHEMY_API_KEY,
   EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL,
+  EXPO_PUBLIC_COINGECKO_API_KEY,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
@@ -32,6 +33,8 @@ import {
   CardResponse,
   CardStatusResponse,
   CardTransactionsResponse,
+  CoinHistoricalChart,
+  CountryInfo,
   CardWaitlistResponse,
   CountryFromIp,
   CustomerFromBridgeResponse,
@@ -48,6 +51,7 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
+  SearchCoin,
   StargateQuoteParams,
   StargateQuoteResponse,
   ToCurrency,
@@ -1203,4 +1207,28 @@ export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEv
   if (!response.ok) throw response;
 
   return response.json();
+};
+
+export const searchCoin = async (query: string) => {
+  const response = await axios.get<SearchCoin>(
+    `https://pro-api.coingecko.com/api/v3/search?query=${query}`,
+    {
+      headers: {
+        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
+      },
+    },
+  );
+  return response.data;
+};
+
+export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1') => {
+  const response = await axios.get<CoinHistoricalChart>(
+    `https://pro-api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`,
+    {
+      headers: {
+        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
+      },
+    },
+  );
+  return response.data;
 };

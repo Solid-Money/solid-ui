@@ -11,12 +11,14 @@ import {
 import {
   bridgeDepositTransactions,
   fetchAPYs,
+  fetchCoinHistoricalChart,
   fetchLayerZeroBridgeTransactions,
   fetchTokenTransfer,
   fetchTotalAPY,
   fetchTVL,
   fetchVaultBreakdown,
   getBankTransfers,
+  searchCoin,
 } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import {
@@ -33,6 +35,7 @@ import {
 } from '@/lib/types';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
+import { hoursToMilliseconds } from 'date-fns';
 
 const ANALYTICS = 'analytics';
 
@@ -417,5 +420,18 @@ export const useAPYs = () => {
   return useQuery({
     queryKey: [ANALYTICS, 'apys'],
     queryFn: fetchAPYs,
+  });
+};
+
+export const useSearchCoinHistoricalChart = (query: string, days: string = '1') => {
+  return useQuery({
+    queryKey: [ANALYTICS, 'coinHistoricalChart', query, days],
+    queryFn: async () => {
+      const searchedCoin = await searchCoin(query);
+      const coin = searchedCoin.coins[0];
+      return fetchCoinHistoricalChart(coin.id, days)
+    },
+    enabled: !!query,
+    staleTime: hoursToMilliseconds(1),
   });
 };
