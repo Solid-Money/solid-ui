@@ -43,8 +43,19 @@ const Transaction = ({
 }: TransactionProps) => {
   const isFailed = status === TransactionStatus.FAILED;
   const isCancelled = status === TransactionStatus.CANCELLED;
-  const isIncoming = TRANSACTION_DETAILS[type].sign === TransactionDirection.IN;
-  const isReward = TRANSACTION_DETAILS[type].category === TransactionCategory.REWARD;
+  const transactionDetails = TRANSACTION_DETAILS[type];
+
+  if (!transactionDetails) {
+    console.error('[Transaction] Unknown transaction type:', type, {
+      title,
+      amount,
+      status,
+      symbol,
+    });
+  }
+
+  const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
+  const isReward = transactionDetails?.category === TransactionCategory.REWARD;
 
   const statusTextColor = isFailed
     ? 'text-red-400'
@@ -53,11 +64,12 @@ const Transaction = ({
       : isIncoming
         ? 'text-brand'
         : '';
+
   const statusSign = isFailed
     ? TransactionDirection.FAILED
     : isCancelled
       ? TransactionDirection.CANCELLED
-      : TRANSACTION_DETAILS[type].sign;
+      : (transactionDetails?.sign ?? '');
 
   const tokenIcon = getTokenIcon({
     logoUrl,
@@ -95,7 +107,7 @@ const Transaction = ({
               className={cn('text-sm text-muted-foreground font-medium', isReward && 'text-brand')}
               numberOfLines={1}
             >
-              {TRANSACTION_DETAILS[type].category}
+              {transactionDetails?.category ?? 'Unknown'}
             </Text>
           </View>
         </View>

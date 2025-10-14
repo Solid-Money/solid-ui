@@ -107,7 +107,19 @@ export default function ActivityDetail() {
   const isFailed = activity.status === TransactionStatus.FAILED;
   const isCancelled = activity.status === TransactionStatus.CANCELLED;
   const isPending = activity.status === TransactionStatus.PENDING;
-  const isIncoming = TRANSACTION_DETAILS[activity.type].sign === TransactionDirection.IN;
+  const transactionDetails = TRANSACTION_DETAILS[activity.type];
+
+  if (!transactionDetails) {
+    console.error('[ActivityDetail] Unknown transaction type:', activity.type, {
+      clientTxId,
+      title: activity.title,
+      amount: activity.amount,
+      status: activity.status,
+      symbol: activity.symbol,
+    });
+  }
+
+  const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
   const isCancelWithdraw = activity.requestId && isPending;
 
   const statusTextColor = isFailed
@@ -117,11 +129,12 @@ export default function ActivityDetail() {
       : isIncoming
         ? 'text-brand'
         : '';
+
   const statusSign = isFailed
     ? TransactionDirection.FAILED
     : isCancelled
       ? TransactionDirection.CANCELLED
-      : TRANSACTION_DETAILS[activity.type].sign;
+      : (transactionDetails?.sign ?? '');
 
   const tokenIcon = getTokenIcon({
     tokenSymbol: activity.symbol,
