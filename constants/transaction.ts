@@ -32,6 +32,10 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
   },
   [TransactionType.BRIDGE_DEPOSIT]: {
     sign: TransactionDirection.IN,
+    category: TransactionCategory.EXTERNAL_WALLET_TRANSFER,
+  },
+  [TransactionType.BRIDGE_TRANSFER]: {
+    sign: TransactionDirection.IN,
     category: TransactionCategory.BANK_DEPOSIT,
   },
   [TransactionType.BANK_TRANSFER]: {
@@ -41,6 +45,10 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
   [TransactionType.CARD_TRANSACTION]: {
     sign: TransactionDirection.OUT,
     category: TransactionCategory.CARD_DEPOSIT,
+  },
+  [TransactionType.MERCURYO_TRANSACTION]: {
+    sign: TransactionDirection.IN,
+    category: TransactionCategory.BANK_DEPOSIT,
   },
   [TransactionType.SWAP]: {
     sign: TransactionDirection.IN,
