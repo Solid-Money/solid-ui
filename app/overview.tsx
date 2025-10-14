@@ -18,6 +18,7 @@ import { useVaultBreakdown } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { VaultBreakdown } from '@/lib/types';
 import SolidImage from '@/components/Landing/SolidImage';
+import APYChart from '@/components/Landing/APYChart';
 
 interface SoUSDSectionProps {
   vaultBreakdown: VaultBreakdown[];
@@ -47,7 +48,10 @@ const SoUSDSection = ({ vaultBreakdown }: SoUSDSectionProps) => {
         </View>
         {isScreenMedium && <SolidImage />}
       </View>
-      <VaultStat />
+      <View className="md:flex-row justify-between gap-6 md:gap-10">
+        <VaultStat />
+        <APYChart />
+      </View>
     </View>
   );
 };

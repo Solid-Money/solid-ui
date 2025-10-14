@@ -1,12 +1,13 @@
-import ChartTooltip from '@/components/Coin/ChartTooltip';
-import { CoinPayload } from '@/lib/types';
+import ChartTooltip from '@/components/ChartTooltip';
+import { ChartPayload } from '@/lib/types';
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from 'recharts';
 
-interface CoinChartProps {
-  data: CoinPayload[];
+interface AreaChartProps {
+  data: ChartPayload[];
+  formatToolTip?: (value: number | null) => string;
 }
 
-const CoinChart = ({ data }: CoinChartProps) => {
+const Chart = ({ data, formatToolTip }: AreaChartProps) => {
   return (
     <ResponsiveContainer height={200}>
       <AreaChart
@@ -27,7 +28,7 @@ const CoinChart = ({ data }: CoinChartProps) => {
           </linearGradient>
         </defs>
 
-        <Tooltip content={<ChartTooltip data={data} />} />
+        <Tooltip content={<ChartTooltip data={data} formatToolTip={formatToolTip} />} />
 
         <Area
           type="linear"
@@ -41,4 +42,4 @@ const CoinChart = ({ data }: CoinChartProps) => {
   );
 };
 
-export default CoinChart;
+export default Chart;

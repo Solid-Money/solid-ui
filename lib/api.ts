@@ -59,6 +59,7 @@ import {
   UpdateActivityEvent,
   User,
   VaultBreakdown,
+  CoinPayload,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 
@@ -1229,6 +1230,13 @@ export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1
         'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
       },
     },
+  );
+  return response.data;
+};
+
+export const fetchHistoricalAPY = async (days: string = '30') => {
+  const response = await axios.get<CoinPayload[]>(
+    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/historical-apy?days=${days}`,
   );
   return response.data;
 };

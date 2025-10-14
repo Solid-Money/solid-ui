@@ -1,18 +1,19 @@
 import { Text } from '@/components/ui/text';
-import { CoinPayload } from '@/lib/types';
+import { ChartPayload } from '@/lib/types';
 import { useCoinStore } from '@/store/useCoinStore';
 import { cn, formatNumber } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 interface TooltipPayload {
-  payload: CoinPayload;
+  payload: ChartPayload;
 }
 
 interface ChartTooltipProps {
   active?: boolean;
   payload?: TooltipPayload[];
-  data?: CoinPayload[];
+  data?: ChartPayload[];
+  formatToolTip?: (value: number | null) => string;
 }
 
 export function calculatePercentageChange(oldValue: number, newValue: number) {
@@ -31,7 +32,7 @@ const formatTimestamp = (timestamp: number) => {
   });
 };
 
-const ChartTooltip = ({ active, payload, data }: ChartTooltipProps) => {
+const ChartTooltip = ({ active, payload, data, formatToolTip }: ChartTooltipProps) => {
   const { selectedPrice, selectedPriceChange, setSelectedPriceChange, setSelectedPrice } =
     useCoinStore();
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
@@ -77,11 +78,18 @@ const ChartTooltip = ({ active, payload, data }: ChartTooltipProps) => {
     return null;
   }
 
+  const format = (value: number | null) => {
+    if (!value) {
+      return `$0.00`;
+    }
+    return `$${formatNumber(value)}`;
+  };
+
   return (
     <View className="p-3 bg-primary shadow-md rounded-xl">
       <View className="gap-1">
         <Text className="text-lg font-semibold text-primary-foreground">
-          {selectedPrice ? `$${formatNumber(selectedPrice)}` : `$0.00`}
+          {formatToolTip ? formatToolTip(selectedPrice) : format(selectedPrice)}
         </Text>
         <View className="flex-row gap-2">
           {selectedPriceChange && (

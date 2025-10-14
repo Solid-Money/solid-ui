@@ -889,7 +889,7 @@ export interface CoinHistoricalChart {
   prices: [number, number][];
 }
 
-export interface CoinPayload {
+export interface ChartPayload {
   time: number;
   value: number;
 }
