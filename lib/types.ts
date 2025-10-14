@@ -322,8 +322,10 @@ export enum TransactionType {
   BRIDGE = 'bridge',
   CANCEL_WITHDRAW = 'cancel_withdraw',
   BRIDGE_DEPOSIT = 'bridge_deposit',
+  BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
   CARD_TRANSACTION = 'card_transaction',
+  MERCURYO_TRANSACTION = 'mercuryo_transaction',
   SWAP = 'swap',
   WRAP = 'wrap',
   UNWRAP = 'unwrap',
@@ -872,4 +874,24 @@ export interface APYs {
   sevenDay: number;
   fifteenDay: number;
   thirtyDay: number;
+}
+
+export interface Coin {
+  id: string;
+  name: string;
+  api_symbol: string;
+  symbol: string;
+}
+
+export interface SearchCoin {
+  coins: Coin[];
+}
+
+export interface CoinHistoricalChart {
+  prices: [number, number][];
+}
+
+export interface ChartPayload {
+  time: number;
+  value: number;
 }

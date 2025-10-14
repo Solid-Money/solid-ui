@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -5,11 +6,13 @@ import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
 import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import CopyToClipboard from '@/components/CopyToClipboard';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useDimension } from '@/hooks/useDimension';
@@ -17,8 +20,6 @@ import { fetchActivityEvent } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TransactionDirection, TransactionStatus } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
-import { path } from '@/constants/path';
-import CopyToClipboard from '@/components/CopyToClipboard';
 
 type RowProps = {
   label: React.ReactNode;
@@ -107,7 +108,34 @@ export default function ActivityDetail() {
   const isFailed = activity.status === TransactionStatus.FAILED;
   const isCancelled = activity.status === TransactionStatus.CANCELLED;
   const isPending = activity.status === TransactionStatus.PENDING;
-  const isIncoming = TRANSACTION_DETAILS[activity.type].sign === TransactionDirection.IN;
+  const transactionDetails = TRANSACTION_DETAILS[activity.type];
+
+  if (!transactionDetails) {
+    console.error('[ActivityDetail] Unknown transaction type:', activity.type, {
+      clientTxId,
+      title: activity.title,
+      amount: activity.amount,
+      status: activity.status,
+      symbol: activity.symbol,
+    });
+
+    Sentry.captureException(new Error(`Unknown transaction type: ${activity.type}`), {
+      tags: {
+        type: 'unknown_transaction_type',
+        transaction_type: activity.type,
+        screen: 'activity_detail',
+      },
+      extra: {
+        clientTxId,
+        title: activity.title,
+        amount: activity.amount,
+        status: activity.status,
+        symbol: activity.symbol,
+      },
+    });
+  }
+
+  const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
   const isCancelWithdraw = activity.requestId && isPending;
 
   const statusTextColor = isFailed
@@ -117,11 +145,12 @@ export default function ActivityDetail() {
       : isIncoming
         ? 'text-brand'
         : '';
+
   const statusSign = isFailed
     ? TransactionDirection.FAILED
     : isCancelled
       ? TransactionDirection.CANCELLED
-      : TRANSACTION_DETAILS[activity.type].sign;
+      : (transactionDetails?.sign ?? '');
 
   const tokenIcon = getTokenIcon({
     tokenSymbol: activity.symbol,

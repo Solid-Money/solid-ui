@@ -37,6 +37,7 @@ export const EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL =
   process.env.EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL ?? '';
+export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
 
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 
@@ -120,4 +121,5 @@ export const USER = {
   swapTokensStorageKey: 'swap-tokens',
   tokensStorageKey: 'tokens-storage',
   pointsStorageKey: 'points-storage',
+  coinStorageKey: 'coin-storage',
 };
