@@ -79,22 +79,22 @@ const ChartTooltip = ({ active, payload, data }: ChartTooltipProps) => {
 
   return (
     <View className="p-3 bg-primary shadow-md rounded-xl">
-      <View className="flex flex-col gap-1">
+      <View className="gap-1">
         <Text className="text-lg font-semibold text-primary-foreground">
           {selectedPrice ? `$${formatNumber(selectedPrice)}` : `$0.00`}
         </Text>
-        <View className="flex text-sm gap-1">
+        <View className="flex-row gap-2">
           {selectedPriceChange && (
             <Text
               className={cn(
-                'font-semibold',
-                selectedPriceChange < 0 ? 'text-red-500' : 'text-brand',
+                'text-sm font-semibold',
+                selectedPriceChange < 0 ? 'text-red-500' : 'text-green-500',
               )}
             >
               {formatNumber(selectedPriceChange, 2)}%
             </Text>
           )}
-          <Text className="text-muted-foreground">{formatTimestamp(currentTimestamp)}</Text>
+          <Text className="text-sm text-muted-foreground">{formatTimestamp(currentTimestamp)}</Text>
         </View>
       </View>
     </View>

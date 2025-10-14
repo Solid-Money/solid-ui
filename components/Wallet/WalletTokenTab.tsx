@@ -113,16 +113,16 @@ const WalletTokenTab = () => {
                     <Text className="font-bold text-lg">
                       {token.contractTickerSymbol || 'Unknown'}
                     </Text>
+                    {isSoUSDEthereum(token.contractAddress) ? (
+                      <View className="bg-accent rounded-full px-2 py-1 md:px-4 md:py-2 flex-row items-center gap-2 w-fit">
+                        <Text className="text-xs font-semibold">Ready to withdraw</Text>
+                      </View>
+                    ) : null}
                   </View>
-                  {isSoUSDEthereum(token.contractAddress) ? (
-                    <View className="bg-accent rounded-full px-2 py-1 md:px-4 md:py-2 flex-row items-center gap-2 w-fit">
-                      <Text className="text-xs font-semibold">Ready to withdraw</Text>
-                    </View>
-                  ) : null}
                 </View>
 
                 <View className="flex-row items-center gap-3">
-                  <View>
+                  <View className="items-end">
                     <Text className="font-bold">{compactNumberFormat(balance)}</Text>
                     <Text className="text-sm font-medium text-muted-foreground">
                       ${compactNumberFormat(balanceUSD)}

@@ -1,7 +1,8 @@
 import { useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
+import { formatUnits } from 'viem';
 import { useMemo } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import CoinBackButton from '@/components/Coin/CoinBackButton';
@@ -80,6 +81,9 @@ export default function Coin() {
       </SafeAreaView>
     );
 
+  const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
+  const balanceUSD = balance * (token.quoteRate || 0);
+
   return (
     <SafeAreaView
       className="bg-background text-foreground flex-1"
@@ -88,7 +92,7 @@ export default function Coin() {
       <ScrollView className="flex-1">
         {isScreenMedium && <Navbar />}
 
-        <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+        <View className="flex-1 gap-12 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
           <View className="gap-6">
             <CoinBackButton
               tokenSymbol={token.contractTickerSymbol}
@@ -132,14 +136,28 @@ export default function Coin() {
             </View>
 
             {isLoadingCoinHistoricalChart ? (
-              <View className="h-[200px]" />
+              <View className="h-[200px] items-center justify-center">
+                <ActivityIndicator size="large" color="white" />
+              </View>
             ) : formattedChartData.length > 0 ? (
               <CoinChart data={formattedChartData} />
             ) : null}
 
             <CoinChartTime />
+          </View>
 
-            <DashboardHeaderButtonsMobile />
+          <DashboardHeaderButtonsMobile />
+
+          <View className="bg-card rounded-twice p-5 flex-row items-center justify-between">
+            <Text className="text-lg font-bold">Balance</Text>
+            <View className="items-end">
+              <Text className="text-xl font-bold">
+                {formatNumber(balance)} {token.contractTickerSymbol}
+              </Text>
+              <Text className="text-sm text-muted-foreground font-bold">
+                ${formatNumber(balanceUSD)}
+              </Text>
+            </View>
           </View>
         </View>
       </ScrollView>
