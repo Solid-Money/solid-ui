@@ -12,6 +12,7 @@ import {
   bridgeDepositTransactions,
   fetchAPYs,
   fetchCoinHistoricalChart,
+  fetchHistoricalAPY,
   fetchLayerZeroBridgeTransactions,
   fetchTokenTransfer,
   fetchTotalAPY,
@@ -432,6 +433,16 @@ export const useSearchCoinHistoricalChart = (query: string, days: string = '1') 
       return fetchCoinHistoricalChart(coin.id, days)
     },
     enabled: !!query,
+    staleTime: hoursToMilliseconds(1),
+  });
+};
+
+export const useHistoricalAPY = (days: string = '30') => {
+  return useQuery({
+    queryKey: [ANALYTICS, 'historicalAPY', days],
+    queryFn: async () => {
+      return fetchHistoricalAPY(days);
+    },
     staleTime: hoursToMilliseconds(1),
   });
 };

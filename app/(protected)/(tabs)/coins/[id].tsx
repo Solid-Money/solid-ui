@@ -1,12 +1,12 @@
 import { useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
-import { formatUnits } from 'viem';
 import { useMemo } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { formatUnits } from 'viem';
 
+import AreaChart from '@/components/AreaChart.web';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
-import CoinChart from '@/components/Coin/CoinChart.web';
 import CoinChartTime from '@/components/Coin/CoinChartTime';
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import Loading from '@/components/Loading';
@@ -140,7 +140,7 @@ export default function Coin() {
                 <ActivityIndicator size="large" color="white" />
               </View>
             ) : formattedChartData.length > 0 ? (
-              <CoinChart data={formattedChartData} />
+              <AreaChart data={formattedChartData} />
             ) : null}
 
             <CoinChartTime />
