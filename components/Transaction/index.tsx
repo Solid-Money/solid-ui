@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { Image } from 'expo-image';
 import { Pressable, View } from 'react-native';
 
@@ -51,6 +52,19 @@ const Transaction = ({
       amount,
       status,
       symbol,
+    });
+
+    Sentry.captureException(new Error(`Unknown transaction type: ${type}`), {
+      tags: {
+        type: 'unknown_transaction_type',
+        transaction_type: type,
+      },
+      extra: {
+        title,
+        amount,
+        status,
+        symbol,
+      },
     });
   }
 
