@@ -1,5 +1,6 @@
 import { ActivityEvent, ActivityGroup, TransactionStatus } from '@/lib/types';
 import { format, isToday, isYesterday } from 'date-fns';
+import { isTransactionStuck } from './utils';
 
 export type TimeGroupHeaderData = {
   title: string;
@@ -7,6 +8,7 @@ export type TimeGroupHeaderData = {
   status?: TransactionStatus;
   hasPendingTransactions?: boolean;
   hasCancelledTransactions?: boolean;
+  hasActivePendingTransactions?: boolean;
 };
 
 export type TimeGroup = {
@@ -36,6 +38,8 @@ export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGrou
   const cancelledTransactions = transactions.filter(tx => tx.status === TransactionStatus.CANCELLED);
   const completedTransactions = transactions.filter(tx => tx.status !== TransactionStatus.PENDING && tx.status !== TransactionStatus.CANCELLED);
 
+  const hasActivePendingTransactions = pendingTransactions.some(tx => !isTransactionStuck(tx.timestamp));
+
   // Add pending transactions group at the top if there are any pending or cancelled
   if (pendingTransactions.length > 0 || cancelledTransactions.length > 0) {
     grouped.push({
@@ -46,6 +50,7 @@ export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGrou
         status: TransactionStatus.PENDING,
         hasPendingTransactions: pendingTransactions.length > 0,
         hasCancelledTransactions: cancelledTransactions.length > 0,
+        hasActivePendingTransactions,
       },
     });
 

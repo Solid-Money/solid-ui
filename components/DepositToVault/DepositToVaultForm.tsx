@@ -258,7 +258,11 @@ function DepositToVaultForm() {
             <Text className="text-base text-muted-foreground">APY</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
               <Text className="text-lg font-semibold text-[#94F27F]">
-                {apys?.thirtyDay ? `${apys.thirtyDay.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
+                {apys?.thirtyDay ? (
+                  `${apys.thirtyDay.toFixed(2)}%`
+                ) : (
+                  <Skeleton className="w-20 h-8" />
+                )}
               </Text>
               {/* <Text className="text-base opacity-40">
                   {totalAPY ? (
