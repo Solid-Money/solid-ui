@@ -120,7 +120,7 @@ export default function Savings() {
                   <SavingCountUp
                     prefix="$"
                     balance={balance ?? 0}
-                    apy={totalAPY ?? 0}
+                    apy={apys?.allTime ?? 0}
                     lastTimestamp={firstDepositTimestamp ?? 0}
                     classNames={{
                       wrapper: 'text-foreground',
@@ -150,7 +150,7 @@ export default function Savings() {
                   <SavingCountUp
                     prefix="$"
                     balance={balance ?? 0}
-                    apy={totalAPY ?? 0}
+                    apy={apys?.allTime ?? 0}
                     lastTimestamp={firstDepositTimestamp ?? 0}
                     mode={SavingMode.CURRENT}
                     classNames={{
@@ -220,7 +220,7 @@ export default function Savings() {
                 {isBalanceLoading ? (
                   <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
                 ) : (
-                  `$${balance && totalAPY ? formatNumber(balance * (totalAPY / 100), 2) : 0}`
+                  `$${balance && apys?.allTime ? formatNumber(balance * (apys.allTime / 100), 2) : 0}`
                 )}
               </Text>
             </View>
