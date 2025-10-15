@@ -135,7 +135,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
         : item.token.exchange_rate
           ? parseFloat(item.token.exchange_rate)
           : 0,
-      logoUrl: item.token.icon_url,
+      logoUrl: isSoUSDToken(address) ? undefined : item.token.icon_url,
       contractDecimals: parseInt(item.token.decimals),
       type: item.token.type,
       verified: true,

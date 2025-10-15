@@ -15,6 +15,7 @@ interface TimeGroupHeaderProps {
   isPending: boolean;
   showStuck?: boolean;
   onToggleStuck?: (showStuck: boolean) => void;
+  hasActivePendingTransactions?: boolean;
 }
 
 const Header = ({ title, isPending }: HeaderProps) => {
@@ -34,15 +35,23 @@ export default function TimeGroupHeader({
   isPending,
   showStuck,
   onToggleStuck,
+  hasActivePendingTransactions,
 }: TimeGroupHeaderProps) {
   return (
     <View className={cn('py-3 bg-background', index > 0 && 'pt-6')}>
       {isPending ? (
-        <View className="flex-row justify-between items-center">
-          <TooltipPopover
-            trigger={<Header title={title} isPending={isPending} />}
-            text="Updates automatically every few seconds"
-          />
+        <View
+          className={cn(
+            'flex-row justify-between items-center',
+            !hasActivePendingTransactions && 'justify-end',
+          )}
+        >
+          {hasActivePendingTransactions && (
+            <TooltipPopover
+              trigger={<Header title={title} isPending={isPending} />}
+              text="Updates automatically every few seconds"
+            />
+          )}
           {isPending && onToggleStuck && (
             <SwitchStuckTransaction showStuck={showStuck || false} onToggle={onToggleStuck} />
           )}

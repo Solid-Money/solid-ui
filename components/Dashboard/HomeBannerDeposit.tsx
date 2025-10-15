@@ -4,11 +4,11 @@ import { Platform, View } from 'react-native';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { useTotalAPY } from '@/hooks/useAnalytics';
+import { useAPYs } from '@/hooks/useAnalytics';
 import { cn } from '@/lib/utils';
 
 const HomeBannerDeposit = () => {
-  const { data: totalAPY, isLoading: isTotalAPYLoading } = useTotalAPY();
+  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
 
   return (
     <LinearGradient
@@ -34,7 +34,7 @@ const HomeBannerDeposit = () => {
         />
         <Text className="font-semibold max-w-52 leading-tight font-medium">
           Deposit your stablecoins and earn{' '}
-          {isTotalAPYLoading ? (
+          {isAPYsLoading ? (
             <Skeleton className="w-14 h-4 bg-purple/50" />
           ) : (
             <Text
@@ -42,7 +42,7 @@ const HomeBannerDeposit = () => {
                 underline: Platform.OS === 'web',
               })}
             >
-              {totalAPY?.toFixed(2)}%
+              {apys?.thirtyDay?.toFixed(2)}%
             </Text>
           )}{' '}
           per year

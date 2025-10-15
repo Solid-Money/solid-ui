@@ -1,6 +1,5 @@
 import { FlashList } from '@shopify/flash-list';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { isBefore, subDays } from 'date-fns';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
@@ -30,7 +29,7 @@ import {
   TransactionStatus,
   TransactionType,
 } from '@/lib/types';
-import { cn, withRefreshToken } from '@/lib/utils';
+import { cn, isTransactionStuck, withRefreshToken } from '@/lib/utils';
 import { groupTransactionsByTime, TimeGroup, TimeGroupHeaderData } from '@/lib/utils/timeGrouping';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -53,12 +52,6 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
 
   // Poll Bridge API to update card deposit status when processed
   useCardDepositPoller();
-
-  const isTransactionStuck = (timestamp: string): boolean => {
-    const transactionDate = new Date(parseInt(timestamp) * 1000);
-    const oneDayAgo = subDays(new Date(), 1);
-    return isBefore(transactionDate, oneDayAgo);
-  };
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -389,13 +382,16 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
 
   const renderItem = ({ item, index }: RenderItemProps) => {
     if (item.type === ActivityGroup.HEADER) {
+      const headerData = item.data as TimeGroupHeaderData;
+
       return (
         <TimeGroupHeader
           index={index}
-          title={item.data.title}
-          isPending={item.data.status === TransactionStatus.PENDING}
+          title={headerData.title}
+          isPending={headerData.status === TransactionStatus.PENDING}
           showStuck={showStuckTransactions}
           onToggleStuck={setShowStuckTransactions}
+          hasActivePendingTransactions={headerData.hasActivePendingTransactions}
         />
       );
     }

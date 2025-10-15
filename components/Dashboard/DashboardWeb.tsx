@@ -82,7 +82,7 @@ export function DashboardWeb() {
           />
 
           {hasTokens ? (
-            <DashboardCards totalUSD={totalUSD} savings={savings} />
+            <DashboardCards totalUSD={totalUSD} savings={savings ?? 0} />
           ) : (
             <DashboardCardsNoFunds />
           )}
