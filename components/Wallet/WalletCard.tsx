@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 
 import CountUp from '@/components/CountUp';
 import TooltipPopover from '@/components/Tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import WalletCardIcons from '@/components/Wallet/WalletCardIcons';
 import { useDimension } from '@/hooks/useDimension';
@@ -13,9 +14,10 @@ type WalletCardProps = {
   balance: number;
   className?: string;
   tokens: TokenBalance[];
+  isLoading?: boolean;
 };
 
-const WalletCard = ({ balance, className, tokens }: WalletCardProps) => {
+const WalletCard = ({ balance, className, tokens, isLoading }: WalletCardProps) => {
   const { isScreenMedium } = useDimension();
 
   return (
@@ -28,30 +30,34 @@ const WalletCard = ({ balance, className, tokens }: WalletCardProps) => {
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-2">
           <View className="flex-row items-center">
-            <CountUp
-              prefix="$"
-              count={balance ?? 0}
-              isTrailingZero={false}
-              classNames={{
-                wrapper: 'text-foreground',
-                decimalSeparator: 'text-2xl md:text-3xl font-semibold',
-              }}
-              styles={{
-                wholeText: {
-                  fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
-                  fontWeight: '500',
-                  //fontFamily: 'MonaSans_600SemiBold',
-                  color: '#ffffff',
-                  marginRight: -1,
-                },
-                decimalText: {
-                  fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
-                  fontWeight: '500',
-                  //fontFamily: 'MonaSans_600SemiBold',
-                  color: '#ffffff',
-                },
-              }}
-            />
+            {isLoading ? (
+              <Skeleton className="w-36 h-11" />
+            ) : (
+              <CountUp
+                prefix="$"
+                count={balance ?? 0}
+                isTrailingZero={false}
+                classNames={{
+                  wrapper: 'text-foreground',
+                  decimalSeparator: 'text-2xl md:text-3xl font-semibold',
+                }}
+                styles={{
+                  wholeText: {
+                    fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
+                    fontWeight: '500',
+                    //fontFamily: 'MonaSans_600SemiBold',
+                    color: '#ffffff',
+                    marginRight: -1,
+                  },
+                  decimalText: {
+                    fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
+                    fontWeight: '500',
+                    //fontFamily: 'MonaSans_600SemiBold',
+                    color: '#ffffff',
+                  },
+                }}
+              />
+            )}
           </View>
           <TooltipPopover text="All coins balance excluding soUSD" />
         </View>

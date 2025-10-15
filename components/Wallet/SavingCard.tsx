@@ -20,6 +20,7 @@ import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { ADDRESSES } from '@/lib/config';
 import { cn, fontSize } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type SavingCardProps = {
   className?: string;
@@ -29,7 +30,7 @@ const SavingCard = ({ className }: SavingCardProps) => {
   const router = useRouter();
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
-  const { data: apys } = useAPYs();
+  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -41,7 +42,11 @@ const SavingCard = ({ className }: SavingCardProps) => {
         address: user?.safeAddress?.toLowerCase() ?? '',
       },
     });
-  const { data: balance, refetch: refetchBalance } = useVaultBalance(user?.safeAddress as Address);
+  const {
+    data: balance,
+    refetch: refetchBalance,
+    isLoading: isBalanceLoading,
+  } = useVaultBalance(user?.safeAddress as Address);
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
@@ -73,31 +78,35 @@ const SavingCard = ({ className }: SavingCardProps) => {
         <View className="flex-row justify-between items-center">
           <View className="flex-row items-center gap-2">
             <View className="flex-row items-center">
-              <SavingCountUp
-                prefix="$"
-                balance={balance ?? 0}
-                apy={apys?.allTime ?? 0}
-                lastTimestamp={firstDepositTimestamp ?? 0}
-                classNames={{
-                  wrapper: 'text-foreground',
-                  decimalSeparator: 'text-2xl md:text-3xl font-semibold',
-                }}
-                styles={{
-                  wholeText: {
-                    fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
-                    fontWeight: '500',
-                    //fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                    marginRight: -1,
-                  },
-                  decimalText: {
-                    fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
-                    fontWeight: '500',
-                    //fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                  },
-                }}
-              />
+              {isBalanceLoading || isAPYsLoading || firstDepositTimestamp === undefined ? (
+                <Skeleton className="w-36 h-11" />
+              ) : (
+                <SavingCountUp
+                  prefix="$"
+                  balance={balance ?? 0}
+                  apy={apys?.allTime ?? 0}
+                  lastTimestamp={firstDepositTimestamp ?? 0}
+                  classNames={{
+                    wrapper: 'text-foreground',
+                    decimalSeparator: 'text-2xl md:text-3xl font-semibold',
+                  }}
+                  styles={{
+                    wholeText: {
+                      fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
+                      fontWeight: '500',
+                      //fontFamily: 'MonaSans_600SemiBold',
+                      color: '#ffffff',
+                      marginRight: -1,
+                    },
+                    decimalText: {
+                      fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
+                      fontWeight: '500',
+                      //fontFamily: 'MonaSans_600SemiBold',
+                      color: '#ffffff',
+                    },
+                  }}
+                />
+              )}
             </View>
             <TooltipPopover text="Balance + Yield of soUSD" />
           </View>
