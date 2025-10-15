@@ -12,11 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useUser from '@/hooks/useUser';
 import ERC20_ABI from '@/lib/abis/ERC20';
-import getTokenIcon from '@/lib/getTokenIcon';
 import { getChain } from '@/lib/thirdweb';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
@@ -33,7 +33,7 @@ export default function CardDepositExternalForm() {
   const switchChain = useSwitchActiveWalletChain();
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivity();
-  const { setTransaction } = useCardDepositStore();
+  const { setTransaction, setModal } = useCardDepositStore();
   const { data: cardDetails } = useCardDetails();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
 
@@ -121,13 +121,6 @@ export default function CardDepositExternalForm() {
       const fundingAddress = arbitrumFundingAddress.address as Address;
       const amountWei = parseUnits(data.amount, 6);
 
-      // Switch to Arbitrum network first
-      Toast.show({
-        type: 'info',
-        text1: 'Switching to Arbitrum',
-        text2: 'Please approve the network switch in your wallet',
-      });
-
       try {
         const arbitrumChain = getChain(arbitrum.id);
         if (arbitrumChain) {
@@ -161,12 +154,6 @@ export default function CardDepositExternalForm() {
         },
       });
 
-      Toast.show({
-        type: 'info',
-        text1: 'Processing transaction',
-        text2: 'Please approve the USDC transfer in your wallet',
-      });
-
       // Send USDC transfer transaction from external wallet directly to card funding address
       const tx = await account.sendTransaction({
         chainId: arbitrum.id, // Arbitrum
@@ -192,18 +179,7 @@ export default function CardDepositExternalForm() {
 
       setSendStatus(Status.SUCCESS);
       setTransaction({ amount: Number(data.amount) });
-
-      Toast.show({
-        type: 'success',
-        text1: 'Card deposit initiated',
-        text2: `${data.amount} USDC sent to card`,
-        props: {
-          link: `https://arbiscan.io/tx/${tx.transactionHash}`,
-          linkText: 'View on Arbiscan',
-          image: getTokenIcon({ tokenSymbol: 'USDC' }),
-        },
-      });
-
+      setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
       reset();
 
       setTimeout(() => {
