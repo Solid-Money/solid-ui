@@ -1,6 +1,8 @@
 import { Image } from 'expo-image';
 import { useMemo } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { router } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import TooltipPopover from '@/components/Tooltip';
@@ -10,6 +12,10 @@ import { ADDRESSES } from '@/lib/config';
 import { VaultBreakdown } from '@/lib/types';
 import { cn, eclipseAddress } from '@/lib/utils';
 import { useDimension } from '@/hooks/useDimension';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import { buttonVariants } from '@/components/ui/button';
+import useUser from '@/hooks/useUser';
+import { path } from '@/constants/path';
 
 interface VaultInfoProps {
   vaultBreakdown: VaultBreakdown[];
@@ -77,23 +83,38 @@ const Protocols = ({ vaultBreakdown }: VaultBreakdownProps) => {
   );
 };
 
-const Chain = () => {
-  return (
-    <View className="gap-1 md:gap-2">
-      <View className="flex-row items-center gap-2">
-        <Text className="md:text-lg text-muted-foreground font-medium">Chain</Text>
-        <TooltipPopover text="Blockchain network hosting the token" />
+const Deposit = () => {
+  const { user } = useUser();
+
+  const getTrigger = () => {
+    return (
+      <View
+        className={buttonVariants({
+          variant: 'brand',
+          className: 'h-12 pl-4 pr-6 md:pl-8 md:pr-10 rounded-xl',
+        })}
+      >
+        <View className="flex-row items-center gap-1 md:gap-2.5">
+          <Plus color="black" />
+          <Text className="text-primary-foreground font-bold">Deposit</Text>
+        </View>
       </View>
-      <View className="flex-row items-center gap-1">
-        <Image
-          source={require('@/assets/images/eth.png')}
-          style={{ width: 24, height: 24 }}
-          contentFit="contain"
-        />
-        <Text className="text-lg md:text-xl font-semibold">Ethereum</Text>
-      </View>
-    </View>
-  );
+    );
+  };
+
+  if (!user) {
+    return (
+      <Pressable
+        onPress={() => {
+          router.push(path.HOME);
+        }}
+      >
+        {getTrigger()}
+      </Pressable>
+    );
+  }
+
+  return <DepositOptionModal trigger={getTrigger()} />;
 };
 
 const Address = () => {
@@ -121,8 +142,8 @@ const VaultInfo = ({ vaultBreakdown, className }: VaultInfoProps) => {
       <View className={cn('flex-row justify-between items-center gap-2', className)}>
         <Asset />
         <Protocols vaultBreakdown={vaultBreakdown} />
-        <Chain />
         <Address />
+        <Deposit />
       </View>
     );
   }
@@ -137,12 +158,12 @@ const VaultInfo = ({ vaultBreakdown, className }: VaultInfoProps) => {
           <Protocols vaultBreakdown={vaultBreakdown} />
         </View>
       </View>
-      <View className="flex-row justify-between gap-2">
-        <View className="flex-1 min-w-0">
-          <Chain />
-        </View>
+      <View className="flex-row justify-between items-center gap-2">
         <View className="flex-1 min-w-0">
           <Address />
+        </View>
+        <View className="flex-1 min-w-0">
+          <Deposit />
         </View>
       </View>
     </View>
