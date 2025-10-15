@@ -2,23 +2,18 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
-import { CreditCard, Landmark, Wallet } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { Image } from 'expo-image';
+import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
-import { useActiveAccount, useConnectModal } from 'thirdweb/react';
-import { createWallet } from 'thirdweb/wallets';
+import { useActiveAccount } from 'thirdweb/react';
 import DepositOption from './DepositOption';
 
 const DepositOptions = () => {
   const activeAccount = useActiveAccount();
-  const { connect } = useConnectModal();
   const { setModal } = useDepositStore();
   const { user } = useUser();
   const address = activeAccount?.address;
-
-  const [isWalletOpen, setIsWalletOpen] = useState(false);
 
   // Track when deposit options are viewed
   useEffect(() => {
@@ -30,86 +25,63 @@ const DepositOptions = () => {
     });
   }, [user?.userId, user?.safeAddress, user?.isDeposited, address]);
 
-  const openWallet = useCallback(async () => {
-    try {
-      if (isWalletOpen) return;
-
-      // If wallet is already connected, go directly to form
-      if (address) {
-        track(TRACKING_EVENTS.DEPOSIT_WALLET_ALREADY_CONNECTED, {
-          wallet_address: address,
-          deposit_method: 'wallet',
-        });
-        setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
-        return;
-      }
-
-      track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_STARTED, {
-        deposit_method: 'wallet',
-      });
-
-      setIsWalletOpen(true);
-      const wallet = await connect({
-        client,
-        showThirdwebBranding: false,
-        size: 'compact',
-        wallets: [
-          // createWallet('walletConnect'),
-          createWallet('io.rabby'),
-          createWallet('io.metamask'),
-        ],
-      });
-
-      // Only proceed to form if wallet connection was successful
-      if (wallet) {
-        track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_SUCCESS, {
-          wallet_type: wallet.id,
-          deposit_method: 'wallet',
-        });
-        setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
-      }
-    } catch (error) {
-      console.error(error);
-      track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_FAILED, {
-        error: String(error),
-        deposit_method: 'wallet',
-      });
-
-      // Don't change modal state on error - user can try again
-    } finally {
-      setIsWalletOpen(false);
-    }
-  }, [isWalletOpen, connect, address, setModal]);
-
-  const handleBankDepositPress = useCallback(async () => {
+  const handleExternalWalletPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'bank_transfer',
+      deposit_method: 'external_wallet',
     });
-    setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
+    setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
+  }, [setModal]);
+
+  const handleBuyCryptoPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'buy_crypto',
+    });
+    setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+  }, [setModal]);
+
+  const handlePublicAddressPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'public_address',
+    });
+    setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   }, [setModal]);
 
   const DEPOSIT_OPTIONS = [
     {
-      text: 'Connect Wallet',
-      icon: <Wallet color="white" size={26} />,
-      onPress: openWallet,
-      isLoading: isWalletOpen,
+      text: 'Deposit from external wallet',
+      subtitle: 'Transfer from any crypto wallet\nor exchange',
+      icon: (
+        <Image
+          source={require('@/assets/images/deposit_from_external_wallet.png')}
+          style={{ width: 28, height: 12 }}
+          contentFit="contain"
+        />
+      ),
+      onPress: handleExternalWalletPress,
     },
     {
-      text: 'Debit/Credit Card',
-      icon: <CreditCard color="white" size={26} />,
-      onPress: () => {
-        track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-          deposit_method: 'credit_card',
-        });
-        setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
-      },
+      text: 'Buy crypto',
+      subtitle: 'Google Pay, card or bank account',
+      icon: (
+        <Image
+          source={require('@/assets/images/buy_crypto.png')}
+          style={{ width: 22, height: 17 }}
+          contentFit="contain"
+        />
+      ),
+      onPress: handleBuyCryptoPress,
     },
     {
-      text: 'Bank Deposit',
-      icon: <Landmark color="white" size={26} />,
-      onPress: handleBankDepositPress,
-      isComingSoon: false,
+      text: 'Public address',
+      subtitle: 'Receive crypto directly to your wallet',
+      icon: (
+        <Image
+          source={require('@/assets/images/public_address.png')}
+          style={{ width: 26, height: 26 }}
+          contentFit="contain"
+        />
+      ),
+      onPress: handlePublicAddressPress,
     },
   ];
 
@@ -119,10 +91,9 @@ const DepositOptions = () => {
         <DepositOption
           key={option.text}
           text={option.text}
+          subtitle={option.subtitle}
           icon={option.icon}
           onPress={option.onPress}
-          isLoading={option.isLoading}
-          isComingSoon={option.isComingSoon}
         />
       ))}
     </View>

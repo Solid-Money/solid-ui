@@ -20,6 +20,9 @@ import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
 import DepositOptions from './DepositOptions';
+import DepositPublicAddress from './DepositPublicAddress';
+import DepositExternalWalletOptions from './DepositExternalWalletOptions.web';
+import DepositBuyCryptoOptions from './DepositBuyCryptoOptions.web';
 
 interface DepositOptionModalProps {
   buttonText?: string;
@@ -51,6 +54,11 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const isBankTransferKyc = isBankTransferKycInfo || isBankTransferKycFrame;
   const isBankTransfer =
     isBankTransferAmount || isBankTransferPayment || isBankTransferPreview || isBankTransferKyc;
+  const isExternalWalletOptions =
+    currentModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name;
+  const isBuyCryptoOptions = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS.name;
+  const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
+  const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -111,6 +119,23 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       return <BankTransferModalContent />;
     }
 
+    if (isExternalWalletOptions) {
+      return <DepositExternalWalletOptions />;
+    }
+
+    if (isBuyCryptoOptions) {
+      return <DepositBuyCryptoOptions />;
+    }
+
+    if (isPublicAddress) {
+      return <DepositPublicAddress />;
+    }
+
+    if (isDepositDirectly) {
+      // TODO: Implement deposit directly flow
+      return <DepositNetworks />;
+    }
+
     return <DepositOptions />;
   };
 
@@ -125,6 +150,10 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     if (isBankTransferAmount) return 'bank-transfer-amount';
     if (isBankTransferPayment) return 'bank-transfer-payment';
     if (isBankTransferPreview) return 'bank-transfer-preview';
+    if (isExternalWalletOptions) return 'external-wallet-options';
+    if (isBuyCryptoOptions) return 'buy-crypto-options';
+    if (isPublicAddress) return 'public-address';
+    if (isDepositDirectly) return 'deposit-directly';
     return 'deposit-options';
   };
 
@@ -135,6 +164,10 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     if (isBankTransferAmount) return 'Amount to buy';
     if (isBankTransferPayment) return 'Choose payment method';
     if (isBankTransferPreview) return 'Transfer Details';
+    if (isExternalWalletOptions) return 'Deposit from external wallet';
+    if (isBuyCryptoOptions) return 'Buy crypto';
+    if (isPublicAddress) return 'Solid address';
+    if (isDepositDirectly) return 'Choose network';
     return 'Deposit';
   };
 
@@ -161,7 +194,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       !isTransactionStatus &&
       !isEmailGate &&
       !isNetworks &&
-      !isBankTransfer
+      !isBankTransfer &&
+      !isDepositDirectly
     ) {
       return 'min-h-[40rem]';
     }
@@ -200,11 +234,21 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     } else if (isBankTransferKycInfo) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
     } else if (isBankTransferAmount) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
     } else if (isBankTransferPayment) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
     } else if (isBankTransferPreview) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
+    } else if (isExternalWalletOptions) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isBuyCryptoOptions) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isPublicAddress) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isDepositDirectly) {
+      setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
+    } else if (isBuyCrypto) {
+      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
     } else {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
@@ -234,7 +278,11 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
         isBankTransferPayment ||
         (isBankTransferPreview && !bankTransfer.fromActivity) ||
         isBankTransferKycInfo ||
-        isBankTransferKycFrame
+        isBankTransferKycFrame ||
+        isExternalWalletOptions ||
+        isBuyCryptoOptions ||
+        isPublicAddress ||
+        isDepositDirectly
       }
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}
