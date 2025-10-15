@@ -6,11 +6,12 @@ import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
 import WalletTabs from '@/components/Wallet/WalletTabs';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { useCalculateSavings } from '@/hooks/useFinancial';
@@ -45,7 +46,7 @@ export default function Savings() {
     chainId: mainnet.id,
   });
 
-  const { data: totalAPY } = useTotalAPY();
+  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
   const {
     isLoading: isLoadingTokens,
     hasTokens,
@@ -84,7 +85,7 @@ export default function Savings() {
 
   const { savings } = useCalculateSavings(
     balance ?? 0,
-    totalAPY ?? 0,
+    apys?.allTime ?? 0,
     firstDepositTimestamp ?? 0,
     Math.floor(Date.now() / 1000),
     SavingMode.TOTAL_USD,
@@ -139,37 +140,45 @@ export default function Savings() {
             <View className="flex-row justify-between items-center">
               <View className="flex-row items-center gap-2">
                 <View className="flex-row items-center">
-                  <CountUp
-                    prefix="$"
-                    count={totalUSDExcludingSoUSD + savings}
-                    isTrailingZero={false}
-                    classNames={{
-                      wrapper: 'text-foreground',
-                      decimalSeparator: 'text-5xl font-semibold',
-                    }}
-                    styles={{
-                      wholeText: {
-                        fontSize: fontSize(3),
-                        fontWeight: '600',
-                        //fontFamily: 'MonaSans_600SemiBold',
-                        color: '#ffffff',
-                        marginRight: -1,
-                      },
-                      decimalText: {
-                        fontSize: fontSize(3),
-                        fontWeight: '200',
-                        //fontFamily: 'MonaSans_600SemiBold',
-                        color: '#ffffff',
-                      },
-                    }}
-                  />
+                  {isLoadingTokens ||
+                  isBalanceLoading ||
+                  isAPYsLoading ||
+                  firstDepositTimestamp === undefined ||
+                  savings === undefined ? (
+                    <Skeleton className="w-56 h-[4.5rem]" />
+                  ) : (
+                    <CountUp
+                      prefix="$"
+                      count={totalUSDExcludingSoUSD + savings}
+                      isTrailingZero={false}
+                      classNames={{
+                        wrapper: 'text-foreground',
+                        decimalSeparator: 'text-5xl font-semibold',
+                      }}
+                      styles={{
+                        wholeText: {
+                          fontSize: fontSize(3),
+                          fontWeight: '600',
+                          //fontFamily: 'MonaSans_600SemiBold',
+                          color: '#ffffff',
+                          marginRight: -1,
+                        },
+                        decimalText: {
+                          fontSize: fontSize(3),
+                          fontWeight: '200',
+                          //fontFamily: 'MonaSans_600SemiBold',
+                          color: '#ffffff',
+                        },
+                      }}
+                    />
+                  )}
                 </View>
               </View>
               <DashboardHeaderButtons hasTokens={hasTokens} />
             </View>
           ) : (
             <DashboardHeaderMobile
-              balance={totalUSDExcludingSoUSD + savings}
+              balance={totalUSDExcludingSoUSD + (savings ?? 0)}
               mode={SavingMode.BALANCE_ONLY}
             />
           )}
@@ -179,6 +188,7 @@ export default function Savings() {
                 balance={totalUSDExcludingSoUSD}
                 className="flex-1"
                 tokens={topThreeTokens}
+                isLoading={isLoadingTokens}
               />
               <SavingCard className="flex-1" />
             </View>

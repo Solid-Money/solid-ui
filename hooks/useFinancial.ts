@@ -13,7 +13,7 @@ export const useCalculateSavings = (
   userDepositTransactions?: any,
   safeAddress?: string,
 ) => {
-  const [savings, setSavings] = useState(0);
+  const [savings, setSavings] = useState<number | undefined>(undefined);
   const queryClient = useQueryClient();
 
   // Memoize the calculation parameters to prevent unnecessary recalculations

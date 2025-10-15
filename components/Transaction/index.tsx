@@ -128,7 +128,8 @@ const Transaction = ({
       </View>
       <View className="flex-row items-center gap-2 md:gap-4 flex-shrink-0">
         <Text className={cn('text-lg font-medium text-right', statusTextColor)}>
-          {statusSign}${formatNumber(Number(amount))}
+          {statusSign}
+          {formatNumber(Number(amount))} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
         </Text>
       </View>
     </Pressable>

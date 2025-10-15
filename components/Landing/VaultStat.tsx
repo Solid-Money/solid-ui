@@ -1,15 +1,12 @@
 import { View } from 'react-native';
-import { formatUnits } from 'viem';
 
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useAPYs, useTVL } from '@/hooks/useAnalytics';
-import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
-import { compactNumberFormat, formatNumber } from '@/lib/utils';
+import { compactNumberFormat } from '@/lib/utils';
 
 const poolCap = 1_000_000;
-const soUSD = '1';
 
 const CurrentYield = () => {
   const { data } = useAPYs();
@@ -50,38 +47,27 @@ const TVL = () => {
     <View className="gap-1 md:gap-2">
       <View className="flex-row items-center gap-1">
         <Text className="md:text-lg text-muted-foreground font-medium">TVL</Text>
-        <TooltipPopover
-          text={`TVL: Total value locked in the Solid vault.\n\nPool cap: The maximum amount that can be deposited into this Solid vault. Once the cap is reached, it may be raised to allow more deposits.`}
-        />
+        <TooltipPopover text="Total value locked in the Solid vault" />
       </View>
       <View className="flex-row items-center">
         <Text className="text-2xl md:text-4.5xl font-semibold">
           {data ? `${compactNumberFormat(data)}$` : <Skeleton className="w-20 h-8" />}
-        </Text>
-        <Text className="text-2xl md:text-4.5xl text-muted-foreground font-light">
-          /{compactNumberFormat(poolCap)}$
         </Text>
       </View>
     </View>
   );
 };
 
-const SoUSDPrice = () => {
-  const { exchangeRate } = usePreviewDeposit(soUSD);
-
+const TVLCap = () => {
   return (
     <View className="gap-1 md:gap-2">
       <View className="flex-row items-center gap-1">
-        <Text className="md:text-lg text-muted-foreground font-medium">Price per soUSD</Text>
+        <Text className="md:text-lg text-muted-foreground font-medium">TVL Cap</Text>
+        <TooltipPopover text="The maximum amount that can be deposited into this Solid vault. Once the cap is reached, it may be raised to allow more deposits." />
       </View>
       <View className="flex-row items-center">
         <Text className="text-2xl md:text-4.5xl font-semibold">
-          {exchangeRate ? (
-            formatNumber(Number(formatUnits(exchangeRate, 6)), 2)
-          ) : (
-            <Skeleton className="w-20 h-8" />
-          )}{' '}
-          USD
+          {compactNumberFormat(poolCap)}$
         </Text>
       </View>
     </View>
@@ -90,7 +76,7 @@ const SoUSDPrice = () => {
 
 const VaultStat = () => {
   return (
-    <View className="md:flex-1 justify-between bg-card rounded-twice p-5 md:p-8 gap-6">
+    <View className="md:flex-1 md:basis-1/2 justify-between bg-card rounded-twice p-5 md:p-8 gap-6">
       <View className="flex-row justify-between gap-2">
         <View className="w-7/12 min-w-0">
           <CurrentYield />
@@ -104,7 +90,7 @@ const VaultStat = () => {
           <TVL />
         </View>
         <View className="w-5/12 min-w-0">
-          <SoUSDPrice />
+          <TVLCap />
         </View>
       </View>
     </View>

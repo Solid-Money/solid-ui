@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useAPYs, useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -45,7 +45,6 @@ export default function Savings() {
     chainId: mainnet.id,
   });
 
-  const { data: totalAPY } = useTotalAPY();
   const { hasTokens } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',

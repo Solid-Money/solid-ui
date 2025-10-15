@@ -17,8 +17,10 @@ const SwitchStuckTransaction = ({ showStuck, onToggle }: SwitchStuckTransactionP
     <TooltipPopover
       trigger={
         <View className="flex-row items-center gap-2">
+          <Text className="text-sm md:text-base text-muted-foreground">
+            {showStuck ? 'Hide inactive' : 'Show all'}
+          </Text>
           <Switch checked={showStuck} onCheckedChange={handleToggle} />
-          <Text className="text-sm md:text-base text-muted-foreground">Hidden transactions</Text>
         </View>
       }
       text="Display transactions which are in pending state for more than 24 hours or cancelled"
