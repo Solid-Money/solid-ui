@@ -10,7 +10,7 @@ import { Text } from '@/components/ui/text';
 import { SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
 import WalletTabs from '@/components/Wallet/WalletTabs';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { useCalculateSavings } from '@/hooks/useFinancial';
@@ -45,7 +45,7 @@ export default function Savings() {
     chainId: mainnet.id,
   });
 
-  const { data: totalAPY } = useTotalAPY();
+  const { data: apys } = useAPYs();
   const {
     isLoading: isLoadingTokens,
     hasTokens,
@@ -84,7 +84,7 @@ export default function Savings() {
 
   const { savings } = useCalculateSavings(
     balance ?? 0,
-    totalAPY ?? 0,
+    apys?.allTime ?? 0,
     firstDepositTimestamp ?? 0,
     Math.floor(Date.now() / 1000),
     SavingMode.TOTAL_USD,

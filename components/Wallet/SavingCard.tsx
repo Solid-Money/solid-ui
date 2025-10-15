@@ -13,7 +13,7 @@ import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -29,7 +29,7 @@ const SavingCard = ({ className }: SavingCardProps) => {
   const router = useRouter();
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
-  const { data: totalAPY } = useTotalAPY();
+  const { data: apys } = useAPYs();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -76,7 +76,7 @@ const SavingCard = ({ className }: SavingCardProps) => {
               <SavingCountUp
                 prefix="$"
                 balance={balance ?? 0}
-                apy={totalAPY ?? 0}
+                apy={apys?.allTime ?? 0}
                 lastTimestamp={firstDepositTimestamp ?? 0}
                 classNames={{
                   wrapper: 'text-foreground',
