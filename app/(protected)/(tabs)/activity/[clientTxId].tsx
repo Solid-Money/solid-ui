@@ -43,7 +43,12 @@ type BackProps = {
 
 const Row = ({ label, value, className }: RowProps) => {
   return (
-    <View className={cn('flex-row justify-between items-center p-5 border-b border-border/50', className)}>
+    <View
+      className={cn(
+        'flex-row justify-between items-center p-5 border-b border-border/50',
+        className,
+      )}
+    >
       {label}
       {value}
     </View>
@@ -241,7 +246,9 @@ export default function ActivityDetail() {
 
             <View className="items-center">
               <Text className={cn('text-2xl font-bold', statusTextColor)}>
-                {statusSign}${formatNumber(Number(activity.amount))}
+                {statusSign}
+                {formatNumber(Number(activity.amount))}{' '}
+                {activity.symbol?.toLowerCase() === 'sousd' ? 'soUSD' : activity.symbol}
               </Text>
               <Text className="text-muted-foreground font-semibold">
                 {format(Number(activity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}
