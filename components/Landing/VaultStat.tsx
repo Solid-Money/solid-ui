@@ -90,7 +90,7 @@ const SoUSDPrice = () => {
 
 const VaultStat = () => {
   return (
-    <View className="md:flex-1 justify-between bg-card rounded-twice p-5 md:p-8 gap-6">
+    <View className="md:flex-1 md:basis-1/2 justify-between bg-card rounded-twice p-5 md:p-8 gap-6">
       <View className="flex-row justify-between gap-2">
         <View className="w-7/12 min-w-0">
           <CurrentYield />
