@@ -43,7 +43,7 @@ type BackProps = {
 
 const Row = ({ label, value, className }: RowProps) => {
   return (
-    <View className={cn('flex-row justify-between p-5 border-b border-border/50', className)}>
+    <View className={cn('flex-row justify-between items-center p-5 border-b border-border/50', className)}>
       {label}
       {value}
     </View>
