@@ -19,6 +19,11 @@ const savings: MenuItem = {
   href: path.SAVINGS,
 };
 
+const card: MenuItem = {
+  label: 'Card',
+  href: path.CARD_WAITLIST,
+};
+
 const activity: MenuItem = {
   label: 'Activity',
   href: path.ACTIVITY,
@@ -30,9 +35,9 @@ const useNav = () => {
 
   const menuItems = useMemo<MenuItem[]>(() => {
     if (hasDeposited) {
-      return [home, savings, activity];
+      return [home, savings, card, activity];
     }
-    return [home, activity];
+    return [home, card, activity];
   }, [hasDeposited]);
 
   return {
