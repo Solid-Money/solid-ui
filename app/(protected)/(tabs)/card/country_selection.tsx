@@ -17,6 +17,7 @@ import {
   addToCardWaitlist,
   addToCardWaitlistToNotify,
   checkCardAccess,
+  checkCardWaitlistToNotifyStatus,
   getClientIp,
   getCountryFromIp,
 } from '@/lib/api';
@@ -46,6 +47,8 @@ export default function CountrySelection() {
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [confirmedAvailableCountry, setConfirmedAvailableCountry] = useState(false);
   const [processingWaitlist, setProcessingWaitlist] = useState(false);
+  const [isInNotifyWaitlist, setIsInNotifyWaitlist] = useState(false);
+  const [checkingWaitlist, setCheckingWaitlist] = useState(false);
 
   const {
     countryInfo,
@@ -156,6 +159,38 @@ export default function CountrySelection() {
     setCountryInfo,
   ]);
 
+  // Check if user is already in notify waitlist
+  useEffect(() => {
+    const checkNotifyWaitlistStatus = async () => {
+      // Only check if country is loaded and unavailable
+      if (!countryInfo) {
+        return;
+      }
+
+      if (user?.email && !countryInfo.isAvailable) {
+        setCheckingWaitlist(true);
+        try {
+          const response = await checkCardWaitlistToNotifyStatus(user.email);
+          setIsInNotifyWaitlist(response.isInWaitlist);
+
+          if (response.isInWaitlist) {
+            setNotifyClicked(true);
+            setShowCountrySelector(false);
+          }
+        } catch (error) {
+          console.error('Error checking notify waitlist status:', error);
+          setIsInNotifyWaitlist(false);
+        } finally {
+          setCheckingWaitlist(false);
+        }
+      } else {
+        setCheckingWaitlist(false);
+      }
+    };
+
+    checkNotifyWaitlistStatus();
+  }, [user?.email, countryInfo]);
+
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
     return COUNTRIES.filter(country =>
@@ -260,7 +295,7 @@ export default function CountrySelection() {
     }
   };
 
-  if (loading) {
+  if (loading || checkingWaitlist) {
     return <LoadingView isScreenMedium={isScreenMedium} />;
   }
 
@@ -348,6 +383,7 @@ export default function CountrySelection() {
                 countryCode={countryInfo.countryCode}
                 onChangeCountry={handleChangeCountry}
                 onNotifyByMail={handleNotifyByMail}
+                isInNotifyWaitlist={isInNotifyWaitlist}
               />
             </View>
           </View>
@@ -483,6 +519,7 @@ interface CountryUnavailableViewProps {
   countryCode: string;
   onChangeCountry: () => void;
   onNotifyByMail: () => void;
+  isInNotifyWaitlist: boolean;
 }
 
 function CountryUnavailableView({
@@ -490,6 +527,7 @@ function CountryUnavailableView({
   countryCode,
   onChangeCountry,
   onNotifyByMail,
+  isInNotifyWaitlist,
 }: CountryUnavailableViewProps) {
   return (
     <>
@@ -503,9 +541,11 @@ function CountryUnavailableView({
       <Pressable onPress={onChangeCountry} className="mb-6 web:hover:opacity-70">
         <Text className="text-white font-bold text-base">Change country</Text>
       </Pressable>
-      <Button className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]" onPress={onNotifyByMail}>
-        <Text className="text-base font-bold text-black">Notify by mail</Text>
-      </Button>
+      {!isInNotifyWaitlist && (
+        <Button className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]" onPress={onNotifyByMail}>
+          <Text className="text-base font-bold text-black">Notify by mail</Text>
+        </Button>
+      )}
     </>
   );
 }

@@ -58,7 +58,7 @@ import {
   TokenPriceUsd,
   UpdateActivityEvent,
   User,
-  VaultBreakdown
+  VaultBreakdown,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 
@@ -567,6 +567,24 @@ export const addToCardWaitlistToNotify = async (
 export const checkCardWaitlistStatus = async (email: string): Promise<CardWaitlistResponse> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist/check?email=${encodeURIComponent(email)}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const checkCardWaitlistToNotifyStatus = async (
+  email: string,
+): Promise<CardWaitlistResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist-to-notify/check?email=${encodeURIComponent(email)}`,
     {
       credentials: 'include',
       headers: {
