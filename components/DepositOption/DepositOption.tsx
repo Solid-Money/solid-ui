@@ -7,13 +7,21 @@ import DepositComingSoon from './DepositComingSoon';
 
 type DepositOptionProps = {
   text: string;
+  subtitle?: string;
   icon: React.ReactNode;
   onPress: () => void;
   isLoading?: boolean;
   isComingSoon?: boolean;
 };
 
-const DepositOption = ({ text, icon, onPress, isLoading, isComingSoon }: DepositOptionProps) => {
+const DepositOption = ({
+  text,
+  subtitle,
+  icon,
+  onPress,
+  isLoading,
+  isComingSoon,
+}: DepositOptionProps) => {
   const isDisabled = isComingSoon || isLoading;
 
   return (
@@ -23,9 +31,20 @@ const DepositOption = ({ text, icon, onPress, isLoading, isComingSoon }: Deposit
       onPress={onPress}
       disabled={isDisabled}
     >
-      <View className="flex-row items-center gap-x-2">
+      <View className="flex-row items-center gap-x-4">
         {icon}
-        <Text className="text-primary text-lg font-semibold">{text}</Text>
+        <View className="flex-col gap-y-0.5">
+          <Text className="text-primary text-lg font-semibold">{text}</Text>
+          {subtitle && (
+            <Text
+              className="text-muted-foreground text-sm"
+              // Web-only: Preserve newline characters (\n) in subtitle text
+              style={{ whiteSpace: 'pre-line' } as any}
+            >
+              {subtitle}
+            </Text>
+          )}
+        </View>
       </View>
       {isComingSoon ? (
         <DepositComingSoon />
