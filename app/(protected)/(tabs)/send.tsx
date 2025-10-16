@@ -20,24 +20,11 @@ import useSend from '@/hooks/useSend';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { Status } from '@/lib/types';
+import { Status, TokenBalance, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 import Toast from 'react-native-toast-message';
-
-interface TokenBalance {
-  contractTickerSymbol: string;
-  contractName: string;
-  contractAddress: string;
-  balance: string;
-  quoteRate?: number;
-  logoUrl?: string;
-  contractDecimals: number;
-  type: string;
-  verified?: boolean;
-  chainId: number;
-}
 
 const SendPage = () => {
   const router = useRouter();
@@ -102,6 +89,7 @@ const SendPage = () => {
     tokenDecimals: selectedToken?.contractDecimals || 18,
     tokenSymbol: selectedToken?.contractTickerSymbol || 'TOKEN',
     chainId: selectedToken?.chainId || 1,
+    tokenType: selectedToken?.type || TokenType.ERC20,
   });
 
   // Reset form and status after 5 seconds of success

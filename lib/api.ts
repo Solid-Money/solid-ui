@@ -34,8 +34,8 @@ import {
   CardStatusResponse,
   CardTransactionsResponse,
   CardWaitlistResponse,
+  ChartPayload,
   CoinHistoricalChart,
-  CoinPayload,
   CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
@@ -1277,7 +1277,7 @@ export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1
 };
 
 export const fetchHistoricalAPY = async (days: string = '30') => {
-  const response = await axios.get<CoinPayload[]>(
+  const response = await axios.get<ChartPayload[]>(
     `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/historical-apy?days=${days}`,
   );
   return response.data;

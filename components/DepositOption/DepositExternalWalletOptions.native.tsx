@@ -8,7 +8,7 @@ import { ConnectButton, useActiveAccount } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
 import DepositOption from './DepositOption';
 
-const DepositOptions = () => {
+const DepositExternalWalletOptions = () => {
   const activeAccount = useActiveAccount();
   const { setModal } = useDepositStore();
   const address = activeAccount?.address;
@@ -20,43 +20,37 @@ const DepositOptions = () => {
     }
   }, [address, setModal]);
 
-  const handleBuyCryptoPress = useCallback(() => {
-    setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+  const handleDepositDirectly = useCallback(async () => {
+    // TODO: Implement deposit directly flow with API
+    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
   }, [setModal]);
 
-  const handlePublicAddressPress = useCallback(() => {
-    setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
-  }, [setModal]);
-
-  const DEPOSIT_OPTIONS = [
+  const EXTERNAL_WALLET_OPTIONS = [
     {
-      text: 'Buy crypto',
-      subtitle: 'Google Pay, card or bank account',
+      text: 'Deposit directly',
+      subtitle: 'Send USDC directly from any network',
       icon: (
         <Image
-          source={require('@/assets/images/buy_crypto.png')}
-          style={{ width: 22, height: 17 }}
+          source={require('@/assets/images/deposit_from_external_wallet.png')}
+          style={{ width: 28, height: 12 }}
           contentFit="contain"
         />
       ),
-      onPress: handleBuyCryptoPress,
-    },
-    {
-      text: 'Public address',
-      subtitle: 'Receive crypto directly to your wallet',
-      icon: (
-        <Image
-          source={require('@/assets/images/public_address.png')}
-          style={{ width: 26, height: 26 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: handlePublicAddressPress,
+      onPress: handleDepositDirectly,
     },
   ];
 
   return (
     <View className="gap-y-2.5">
+      {EXTERNAL_WALLET_OPTIONS.map(option => (
+        <DepositOption
+          key={option.text}
+          text={option.text}
+          subtitle={option.subtitle}
+          icon={option.icon}
+          onPress={option.onPress}
+        />
+      ))}
       <ConnectButton
         client={client}
         wallets={[
@@ -65,7 +59,7 @@ const DepositOptions = () => {
           createWallet('io.metamask'),
         ]}
         connectButton={{
-          label: address ? 'Wallet Connected' : 'Deposit from external wallet',
+          label: address ? 'Wallet Connected' : 'Wallet connect',
           className:
             'flex-row items-center justify-between bg-primary/10 rounded-2xl p-6 disabled:opacity-100 disabled:web:hover:opacity-100',
           style: {
@@ -80,17 +74,8 @@ const DepositOptions = () => {
           url: 'https://app.solid.xyz',
         }}
       />
-      {DEPOSIT_OPTIONS.map(option => (
-        <DepositOption
-          key={option.text}
-          text={option.text}
-          subtitle={option.subtitle}
-          icon={option.icon}
-          onPress={option.onPress}
-        />
-      ))}
     </View>
   );
 };
 
-export default DepositOptions;
+export default DepositExternalWalletOptions;

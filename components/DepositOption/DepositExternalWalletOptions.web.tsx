@@ -1,40 +1,36 @@
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
 import DepositOption from './DepositOption';
 
-const DepositOptions = () => {
+const DepositExternalWalletOptions = () => {
   const activeAccount = useActiveAccount();
   const { connect } = useConnectModal();
   const { setModal } = useDepositStore();
-  const { user } = useUser();
   const address = activeAccount?.address;
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
 
-  // Track when deposit options are viewed
-  useEffect(() => {
-    track(TRACKING_EVENTS.DEPOSIT_OPTIONS_VIEWED, {
-      user_id: user?.userId,
-      safe_address: user?.safeAddress,
-      has_wallet_connected: !!address,
-      is_first_deposit: !user?.isDeposited,
+  const handleDepositDirectly = useCallback(async () => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'deposit_directly',
     });
-  }, [user?.userId, user?.safeAddress, user?.isDeposited, address]);
+    // TODO: Implement deposit directly flow with API
+    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+  }, [setModal]);
 
-  const handleExternalWalletPress = useCallback(async () => {
+  const openWallet = useCallback(async () => {
     try {
       if (isWalletOpen) return;
 
-      // If wallet is already connected, go directly to networks
+      // If wallet is already connected, go directly to form
       if (address) {
         track(TRACKING_EVENTS.DEPOSIT_WALLET_ALREADY_CONNECTED, {
           wallet_address: address,
@@ -49,7 +45,6 @@ const DepositOptions = () => {
       });
 
       setIsWalletOpen(true);
-
       const wallet = await connect({
         client,
         showThirdwebBranding: false,
@@ -67,12 +62,10 @@ const DepositOptions = () => {
           wallet_type: wallet.id,
           deposit_method: 'wallet',
         });
-
         setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
       }
     } catch (error) {
       console.error(error);
-
       track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_FAILED, {
         error: String(error),
         deposit_method: 'wallet',
@@ -84,24 +77,10 @@ const DepositOptions = () => {
     }
   }, [isWalletOpen, connect, address, setModal]);
 
-  const handleBuyCryptoPress = useCallback(() => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'buy_crypto',
-    });
-    setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
-  }, [setModal]);
-
-  const handlePublicAddressPress = useCallback(() => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'public_address',
-    });
-    setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
-  }, [setModal]);
-
-  const DEPOSIT_OPTIONS = [
+  const EXTERNAL_WALLET_OPTIONS = [
     {
-      text: 'Deposit from external wallet',
-      subtitle: 'Transfer from any crypto wallet\nor exchange',
+      text: 'Deposit directly',
+      subtitle: 'Send USDC directly from any network',
       icon: (
         <Image
           source={require('@/assets/images/deposit_from_external_wallet.png')}
@@ -109,38 +88,26 @@ const DepositOptions = () => {
           contentFit="contain"
         />
       ),
-      onPress: handleExternalWalletPress,
-      isLoading: isWalletOpen,
+      onPress: handleDepositDirectly,
     },
     {
-      text: 'Buy crypto',
-      subtitle: 'Google Pay, card or bank account',
+      text: 'Wallet connect',
+      subtitle: 'Transfer from you favorite wallet',
       icon: (
         <Image
-          source={require('@/assets/images/buy_crypto.png')}
-          style={{ width: 22, height: 17 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: handleBuyCryptoPress,
-    },
-    {
-      text: 'Public address',
-      subtitle: 'Receive crypto directly to your wallet',
-      icon: (
-        <Image
-          source={require('@/assets/images/public_address.png')}
+          source={require('@/assets/images/wallet_connect.png')}
           style={{ width: 26, height: 26 }}
           contentFit="contain"
         />
       ),
-      onPress: handlePublicAddressPress,
+      onPress: openWallet,
+      isLoading: isWalletOpen,
     },
   ];
 
   return (
     <View className="gap-y-2.5">
-      {DEPOSIT_OPTIONS.map(option => (
+      {EXTERNAL_WALLET_OPTIONS.map(option => (
         <DepositOption
           key={option.text}
           text={option.text}
@@ -154,4 +121,4 @@ const DepositOptions = () => {
   );
 };
 
-export default DepositOptions;
+export default DepositExternalWalletOptions;

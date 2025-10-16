@@ -9,7 +9,7 @@ import { useActivity } from '@/hooks/useActivity';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { track } from '@/lib/analytics';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status, TransactionType } from '@/lib/types';
+import { Status, TokenType, TransactionType } from '@/lib/types';
 import { getChain } from '@/lib/wagmi';
 import useUser from './useUser';
 
@@ -18,6 +18,7 @@ type SendProps = {
   tokenDecimals: number;
   tokenSymbol: string;
   chainId: number;
+  tokenType: TokenType;
 };
 
 type SendResult = {
@@ -27,7 +28,7 @@ type SendResult = {
   resetSendStatus: () => void;
 };
 
-const useSend = ({ tokenAddress, tokenDecimals, chainId, tokenSymbol }: SendProps): SendResult => {
+const useSend = ({ tokenAddress, tokenDecimals, chainId, tokenSymbol, tokenType }: SendProps): SendResult => {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivity();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
@@ -57,17 +58,25 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId, tokenSymbol }: SendProp
 
       const amountWei = parseUnits(amount, tokenDecimals);
 
-      const transactions = [
-        {
-          to: tokenAddress,
-          data: encodeFunctionData({
-            abi: ERC20_ABI,
-            functionName: 'transfer',
-            args: [to, amountWei],
-          }),
-          value: 0n,
-        },
-      ];
+      const transactions = tokenType === TokenType.NATIVE
+        ? [
+            {
+              to: to,
+              data: '0x' as const,
+              value: amountWei,
+            },
+          ]
+        : [
+            {
+              to: tokenAddress,
+              data: encodeFunctionData({
+                abi: ERC20_ABI,
+                functionName: 'transfer',
+                args: [to, amountWei],
+              }),
+              value: 0n,
+            },
+          ];
 
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 

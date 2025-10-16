@@ -47,6 +47,22 @@ export const DEPOSIT_MODAL = {
     name: 'open_bank_transfer_kyc_frame',
     number: 10,
   },
+  OPEN_EXTERNAL_WALLET_OPTIONS: {
+    name: 'open_external_wallet_options',
+    number: 11,
+  },
+  OPEN_BUY_CRYPTO_OPTIONS: {
+    name: 'open_buy_crypto_options',
+    number: 12,
+  },
+  OPEN_PUBLIC_ADDRESS: {
+    name: 'open_public_address',
+    number: 13,
+  },
+  OPEN_DEPOSIT_DIRECTLY: {
+    name: 'open_deposit_directly',
+    number: 14,
+  },
 };
 
 export const SEND_MODAL = {
