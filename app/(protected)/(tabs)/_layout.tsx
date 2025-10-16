@@ -70,6 +70,16 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="card-waitlist"
+        options={{
+          title: 'Card',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <CreditCard size={28} color={color} />,
+          href: path.CARD_WAITLIST,
+        }}
+      />
+
+      <Tabs.Screen
         name="activity"
         options={{
           title: 'Activity',
@@ -167,13 +177,6 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="card-waitlist"
-        options={{
-          title: 'Card Waitlist',
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }
