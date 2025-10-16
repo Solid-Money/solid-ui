@@ -26,6 +26,12 @@ export default function CardWaitlistLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen
+        name="country_selection"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="success"
         options={{
           title: 'Card Waitlist Success',
