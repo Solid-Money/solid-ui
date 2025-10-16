@@ -6,20 +6,8 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Text } from '@/components/ui/text';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
-
-interface TokenBalance {
-  contractTickerSymbol: string;
-  contractName: string;
-  contractAddress: string;
-  balance: string;
-  quoteRate?: number;
-  logoUrl?: string;
-  contractDecimals: number;
-  type: string;
-  verified?: boolean;
-  chainId: number;
-}
 
 interface TokenSelectorModalProps {
   isOpen: boolean;

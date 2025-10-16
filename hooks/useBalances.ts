@@ -137,7 +137,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
           : 0,
       logoUrl: isSoUSDToken(address) ? undefined : item.token.icon_url,
       contractDecimals: parseInt(item.token.decimals),
-      type: item.token.type,
+      type: item.token.type as TokenType,
       verified: true,
       chainId,
     };

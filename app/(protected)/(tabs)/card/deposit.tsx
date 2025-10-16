@@ -15,21 +15,8 @@ import { useDimension } from '@/hooks/useDimension';
 import useSend from '@/hooks/useSend';
 import useUser from '@/hooks/useUser';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { Status, TransactionStatus, TransactionType } from '@/lib/types';
+import { Status, TokenBalance, TokenType, TransactionStatus, TransactionType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
-
-interface TokenBalance {
-  contractTickerSymbol: string;
-  contractName: string;
-  contractAddress: string;
-  balance: string;
-  quoteRate?: number;
-  logoUrl?: string;
-  contractDecimals: number;
-  type: string;
-  verified?: boolean;
-  chainId: number;
-}
 
 const DepositToCard = () => {
   const router = useRouter();
@@ -82,6 +69,7 @@ const DepositToCard = () => {
     tokenDecimals: selectedToken?.contractDecimals || 18,
     tokenSymbol: selectedToken?.contractTickerSymbol || 'TOKEN',
     chainId: selectedToken?.chainId || 1,
+    tokenType: selectedToken?.type || TokenType.ERC20,
   });
 
   const handleContinue = async () => {
