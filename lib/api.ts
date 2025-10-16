@@ -33,9 +33,9 @@ import {
   CardResponse,
   CardStatusResponse,
   CardTransactionsResponse,
-  CoinHistoricalChart,
-  CountryInfo,
   CardWaitlistResponse,
+  CoinHistoricalChart,
+  CoinPayload,
   CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
@@ -58,8 +58,7 @@ import {
   TokenPriceUsd,
   UpdateActivityEvent,
   User,
-  VaultBreakdown,
-  CoinPayload,
+  VaultBreakdown
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 
@@ -534,6 +533,31 @@ export const addToCardWaitlist = async (
     },
     body: JSON.stringify({ email, countryCode }),
   });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const addToCardWaitlistToNotify = async (
+  email: string,
+  countryCode: string,
+): Promise<CardWaitlistResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist-to-notify`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        'Content-Type': 'application/json',
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify({ email, countryCode }),
+    },
+  );
 
   if (!response.ok) throw response;
 
