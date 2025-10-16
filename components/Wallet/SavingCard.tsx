@@ -19,8 +19,9 @@ import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { ADDRESSES } from '@/lib/config';
-import { cn, fontSize } from '@/lib/utils';
+import { cn, fontSize, formatNumber } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import Ping from '@/components/Ping';
 
 type SavingCardProps = {
   className?: string;
@@ -70,9 +71,22 @@ const SavingCard = ({ className }: SavingCardProps) => {
         colors={['rgb(41, 21, 59)', 'rgb(29, 15, 41)']}
         className={cn('bg-card rounded-twice p-6 justify-between w-full h-full', className)}
       >
-        <View className="flex-row items-center gap-2 opacity-50">
-          <Leaf size={18} />
-          <Text className="text-lg font-medium">Savings</Text>
+        <View className="flex-row justify-between items-center">
+          <View className="flex-row items-center gap-2 opacity-50">
+            <Leaf size={18} />
+            <Text className="text-lg font-medium">Savings</Text>
+          </View>
+
+          <View className="flex-row items-center gap-2">
+            {isAPYsLoading ? (
+              <Skeleton className="w-24 h-6 rounded-md bg-purple/50" />
+            ) : (
+              <Text className="text-sm text-brand font-semibold">
+                Earning {apys?.thirtyDay ? `${formatNumber(apys.thirtyDay, 2)}%` : '0%'} yield
+              </Text>
+            )}
+            <Ping />
+          </View>
         </View>
 
         <View className="flex-row justify-between items-center">
