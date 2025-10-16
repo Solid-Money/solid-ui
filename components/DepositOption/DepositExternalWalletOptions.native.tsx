@@ -71,7 +71,7 @@ const DepositExternalWalletOptions = () => {
         theme={'dark'}
         appMetadata={{
           name: 'Solid',
-          url: 'https://beta.solid.xyz',
+          url: 'https://app.solid.xyz',
         }}
       />
     </View>
