@@ -108,7 +108,13 @@ const Send = ({
     },
   });
 
-  const { send, sendStatus } = useSend({ tokenAddress, tokenDecimals, chainId, tokenSymbol });
+  const { send, sendStatus } = useSend({
+    tokenAddress,
+    tokenDecimals,
+    chainId,
+    tokenSymbol,
+    tokenType,
+  });
   const isSendLoading = sendStatus === Status.PENDING;
 
   const getSendText = () => {
