@@ -25,6 +25,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { USDC_STARGATE } from '@/constants/addresses';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useBalances } from '@/hooks/useBalances';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
@@ -34,7 +35,6 @@ import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { ADDRESSES } from '@/lib/config';
-import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
@@ -261,7 +261,7 @@ function SubmitButton({ disabled, bridgeStatus, swapAndBridgeStatus, onPress }: 
 export default function CardDepositInternalForm() {
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivity();
-  const { setTransaction } = useCardDepositStore();
+  const { setTransaction, setModal } = useCardDepositStore();
   const { data: cardDetails } = useCardDetails();
 
   // Get all token balances including soUSD
@@ -386,18 +386,8 @@ export default function CardDepositInternalForm() {
         },
       });
 
-      Toast.show({
-        type: 'success',
-        text1: 'Card deposit initiated',
-        text2: `${data.amount} ${sourceSymbol} bridged to card`,
-        props: {
-          link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
-          linkText: 'View on LayerZeroScan',
-          image: getTokenIcon({ tokenSymbol: watchedFrom === 'savings' ? 'SOUSD' : 'USDC' }),
-        },
-      });
-
       setTransaction({ amount: Number(data.amount) });
+      setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
       reset();
     } catch (error) {
       console.error('Bridge error:', error);

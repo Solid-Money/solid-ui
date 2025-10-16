@@ -13,7 +13,14 @@ import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { addToCardWaitlist, checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
+import {
+  addToCardWaitlist,
+  addToCardWaitlistToNotify,
+  checkCardAccess,
+  checkCardWaitlistToNotifyStatus,
+  getClientIp,
+  getCountryFromIp,
+} from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -40,6 +47,8 @@ export default function CountrySelection() {
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [confirmedAvailableCountry, setConfirmedAvailableCountry] = useState(false);
   const [processingWaitlist, setProcessingWaitlist] = useState(false);
+  const [isInNotifyWaitlist, setIsInNotifyWaitlist] = useState(false);
+  const [checkingWaitlist, setCheckingWaitlist] = useState(false);
 
   const {
     countryInfo,
@@ -150,6 +159,38 @@ export default function CountrySelection() {
     setCountryInfo,
   ]);
 
+  // Check if user is already in notify waitlist
+  useEffect(() => {
+    const checkNotifyWaitlistStatus = async () => {
+      // Only check if country is loaded and unavailable
+      if (!countryInfo) {
+        return;
+      }
+
+      if (user?.email && !countryInfo.isAvailable) {
+        setCheckingWaitlist(true);
+        try {
+          const response = await checkCardWaitlistToNotifyStatus(user.email);
+          setIsInNotifyWaitlist(response.isInWaitlist);
+
+          if (response.isInWaitlist) {
+            setNotifyClicked(true);
+            setShowCountrySelector(false);
+          }
+        } catch (error) {
+          console.error('Error checking notify waitlist status:', error);
+          setIsInNotifyWaitlist(false);
+        } finally {
+          setCheckingWaitlist(false);
+        }
+      } else {
+        setCheckingWaitlist(false);
+      }
+    };
+
+    checkNotifyWaitlistStatus();
+  }, [user?.email, countryInfo]);
+
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return COUNTRIES;
     return COUNTRIES.filter(country =>
@@ -162,14 +203,14 @@ export default function CountrySelection() {
     if (user && !user.email) {
       setShowEmailModal(true);
     } else {
-      // User already has email, add to waitlist directly
+      // User already has email, add to notify waitlist directly
       if (user?.email && countryInfo?.countryCode) {
         try {
           await withRefreshToken(() =>
-            addToCardWaitlist(user.email!, countryInfo.countryCode.toUpperCase()),
+            addToCardWaitlistToNotify(user.email!, countryInfo.countryCode.toUpperCase()),
           );
         } catch (error) {
-          console.error('Error adding to card waitlist:', error);
+          console.error('Error adding to card waitlist to notify:', error);
         }
       }
       setNotifyClicked(true);
@@ -212,7 +253,7 @@ export default function CountrySelection() {
         // Update store
         setCountryInfo(updatedCountryInfo);
 
-        // If selected country is available, show confirmation instead of navigating
+        // If selected country is available, add to reserve waitlist and show confirmation
         if (accessCheck.hasAccess) {
           // Check if user has email and add to waitlist
           if (user && !user.email) {
@@ -254,7 +295,7 @@ export default function CountrySelection() {
     }
   };
 
-  if (loading) {
+  if (loading || checkingWaitlist) {
     return <LoadingView isScreenMedium={isScreenMedium} />;
   }
 
@@ -272,16 +313,20 @@ export default function CountrySelection() {
         }}
         onSuccess={async () => {
           setShowEmailModal(false);
-          // Add user to waitlist
-          if (user?.email && selectedCountry) {
+          // Add user to waitlist or notify list based on country availability
+          if (user?.email && selectedCountry && countryInfo) {
             try {
-              await withRefreshToken(() =>
-                addToCardWaitlist(user.email!, selectedCountry.code.toUpperCase()),
-              );
-              // If we're in country selector, show confirmation for available country
-              if (showCountrySelector) {
+              // If country is available, add to reserve waitlist
+              // Otherwise, add to notify waitlist
+              if (countryInfo.isAvailable) {
+                await withRefreshToken(() =>
+                  addToCardWaitlist(user.email!, selectedCountry.code.toUpperCase()),
+                );
                 setConfirmedAvailableCountry(true);
               } else {
+                await withRefreshToken(() =>
+                  addToCardWaitlistToNotify(user.email!, selectedCountry.code.toUpperCase()),
+                );
                 setNotifyClicked(true);
               }
             } catch (error) {
@@ -327,7 +372,6 @@ export default function CountrySelection() {
               <NotifyConfirmationView
                 countryName={countryInfo.countryName}
                 countryCode={countryInfo.countryCode}
-                onOk={() => router.replace(path.CARD_WAITLIST_SUCCESS)}
               />
             </View>
           </View>
@@ -339,6 +383,7 @@ export default function CountrySelection() {
                 countryCode={countryInfo.countryCode}
                 onChangeCountry={handleChangeCountry}
                 onNotifyByMail={handleNotifyByMail}
+                isInNotifyWaitlist={isInNotifyWaitlist}
               />
             </View>
           </View>
@@ -427,7 +472,7 @@ function CountrySelector({
           Country of residence
         </Text>
         <Text className="text-white/60 text-sm mb-6 text-center">
-          Check to see which Membership features are available to you today
+          Please select your country of residence to see if the Solid card is available there
         </Text>
 
         {selectedCountry && (
@@ -474,6 +519,7 @@ interface CountryUnavailableViewProps {
   countryCode: string;
   onChangeCountry: () => void;
   onNotifyByMail: () => void;
+  isInNotifyWaitlist: boolean;
 }
 
 function CountryUnavailableView({
@@ -481,6 +527,7 @@ function CountryUnavailableView({
   countryCode,
   onChangeCountry,
   onNotifyByMail,
+  isInNotifyWaitlist,
 }: CountryUnavailableViewProps) {
   return (
     <>
@@ -494,9 +541,11 @@ function CountryUnavailableView({
       <Pressable onPress={onChangeCountry} className="mb-6 web:hover:opacity-70">
         <Text className="text-white font-bold text-base">Change country</Text>
       </Pressable>
-      <Button className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]" onPress={onNotifyByMail}>
-        <Text className="text-base font-bold text-black">Notify by mail</Text>
-      </Button>
+      {!isInNotifyWaitlist && (
+        <Button className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]" onPress={onNotifyByMail}>
+          <Text className="text-base font-bold text-black">Notify by mail</Text>
+        </Button>
+      )}
     </>
   );
 }
@@ -505,10 +554,9 @@ function CountryUnavailableView({
 interface NotifyConfirmationViewProps {
   countryName: string;
   countryCode: string;
-  onOk: () => void;
 }
 
-function NotifyConfirmationView({ countryName, countryCode, onOk }: NotifyConfirmationViewProps) {
+function NotifyConfirmationView({ countryName, countryCode }: NotifyConfirmationViewProps) {
   return (
     <>
       <CountryFlagImage isoCode={countryCode} size={110} className="mb-6" />
@@ -516,9 +564,6 @@ function NotifyConfirmationView({ countryName, countryCode, onOk }: NotifyConfir
       <Text className="text-[#ACACAC] text-center mb-8 leading-6">
         {`We'll let you know as soon as Cash cards become available in ${countryName}. Hopefully very soon!`}
       </Text>
-      <Button className="rounded-xl h-11 w-full mt-6 mb-4 bg-[#94F27F]" onPress={onOk}>
-        <Text className="text-base font-bold text-black">Ok</Text>
-      </Button>
     </>
   );
 }

@@ -33,9 +33,9 @@ import {
   CardResponse,
   CardStatusResponse,
   CardTransactionsResponse,
-  CoinHistoricalChart,
-  CountryInfo,
   CardWaitlistResponse,
+  CoinHistoricalChart,
+  CoinPayload,
   CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
@@ -59,7 +59,6 @@ import {
   UpdateActivityEvent,
   User,
   VaultBreakdown,
-  CoinPayload,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 
@@ -540,9 +539,52 @@ export const addToCardWaitlist = async (
   return response.json();
 };
 
+export const addToCardWaitlistToNotify = async (
+  email: string,
+  countryCode: string,
+): Promise<CardWaitlistResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist-to-notify`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        'Content-Type': 'application/json',
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify({ email, countryCode }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const checkCardWaitlistStatus = async (email: string): Promise<CardWaitlistResponse> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist/check?email=${encodeURIComponent(email)}`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const checkCardWaitlistToNotifyStatus = async (
+  email: string,
+): Promise<CardWaitlistResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist-to-notify/check?email=${encodeURIComponent(email)}`,
     {
       credentials: 'include',
       headers: {
