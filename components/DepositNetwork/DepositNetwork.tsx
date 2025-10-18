@@ -10,6 +10,7 @@ type DepositNetworkProps = {
   description: string;
   icon: ImageSourcePropType;
   isComingSoon?: boolean;
+  disabled?: boolean;
   onPress: () => void;
 };
 
@@ -19,13 +20,14 @@ const DepositNetwork = ({
   icon,
   onPress,
   isComingSoon,
+  disabled,
 }: DepositNetworkProps) => {
   return (
     <Button
       className="flex-row items-center justify-between bg-primary/10 rounded-2xl p-6 disabled:opacity-100 disabled:web:hover:opacity-100"
       style={{ height: 88 }}
       onPress={onPress}
-      disabled={isComingSoon}
+      disabled={isComingSoon || disabled}
     >
       <View className="flex-row items-center gap-x-2">
         <Image source={icon} style={{ width: 34, height: 34 }} />
