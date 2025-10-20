@@ -14,10 +14,12 @@ import {
   getCashbackAmount,
   getInitials,
 } from '@/lib/utils/cardHelpers';
-import { groupTransactionsByTime, TimeGroup, TimeGroupHeaderData } from '@/lib/utils/timeGrouping';
+import { groupByTime, TimeGroup } from '@/lib/utils/timeGrouping';
+
+type CardTransactionWithTimestamp = CardTransaction & { timestamp: number };
 
 type RenderItemProps = {
-  item: TimeGroup;
+  item: TimeGroup<CardTransactionWithTimestamp>;
   index: number;
 };
 
@@ -29,13 +31,19 @@ export default function CardTransactions() {
     return data?.pages.flatMap(page => page.data) ?? [];
   }, [data]);
 
-  const isFirstInGroup = (groupedData: TimeGroup[], currentIndex: number) => {
+  const isFirstInGroup = (
+    groupedData: TimeGroup<CardTransactionWithTimestamp>[],
+    currentIndex: number,
+  ) => {
     // Check if previous item is a header
     if (currentIndex === 0) return true;
     return groupedData[currentIndex - 1]?.type === ActivityGroup.HEADER;
   };
 
-  const isLastInGroup = (groupedData: TimeGroup[], currentIndex: number) => {
+  const isLastInGroup = (
+    groupedData: TimeGroup<CardTransactionWithTimestamp>[],
+    currentIndex: number,
+  ) => {
     // Check if next item is a header or if this is the last item
     if (currentIndex === groupedData.length - 1) return true;
     return (
@@ -53,20 +61,20 @@ export default function CardTransactions() {
   }, [transactions]);
 
   const groupedTransactions = useMemo(() => {
-    return groupTransactionsByTime(formattedTransactions as any[]);
+    return groupByTime(formattedTransactions);
   }, [formattedTransactions]);
 
   const renderItem = ({ item, index }: RenderItemProps) => {
     if (item.type === ActivityGroup.HEADER) {
-      const headerData = item.data as TimeGroupHeaderData;
       return (
         <View className="pt-6 pb-3">
-          <Text className="text-base text-[#8E8E93] font-medium">{headerData.title}</Text>
+          <Text className="text-base text-[#8E8E93] font-medium">{item.data.title}</Text>
         </View>
       );
     }
 
-    const transaction = item.data as unknown as CardTransaction & { timestamp: number };
+    // TypeScript now knows item.data is CardTransactionWithTimestamp
+    const transaction = item.data;
     const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
     const initials = getInitials(merchantName);
     const avatarColor = getAvatarColor(merchantName);
@@ -167,10 +175,9 @@ export default function CardTransactions() {
         renderItem={renderItem}
         keyExtractor={(item, index) => {
           if (item.type === ActivityGroup.HEADER) {
-            return (item.data as TimeGroupHeaderData).key;
+            return item.data.key;
           }
-          const transaction = item.data as unknown as CardTransaction;
-          return transaction.id || `${index}`;
+          return item.data.id || `${index}`;
         }}
         estimatedItemSize={88}
         ListEmptyComponent={renderEmpty}

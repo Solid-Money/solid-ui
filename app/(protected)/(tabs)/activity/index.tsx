@@ -12,7 +12,8 @@ export default function Activity() {
   const { isScreenMedium } = useDimension();
   const { data: cardStatus } = useCardStatus();
 
-  const hasCard = cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN;
+  const hasCard =
+    cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN;
 
   return (
     <SafeAreaView className="bg-background text-foreground flex-1">
