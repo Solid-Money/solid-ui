@@ -1,4 +1,4 @@
-import AreaChart from '@/components/AreaChart.web';
+import BarChart from '@/components/BarChart.web';
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { useHistoricalAPY } from '@/hooks/useAnalytics';
@@ -26,7 +26,7 @@ const APYChart = () => {
         {isLoading ? (
           <ActivityIndicator size="large" color="white" />
         ) : data && data.length > 0 ? (
-          <AreaChart data={data} formatToolTip={formatToolTip} />
+          <BarChart data={data} formatToolTip={formatToolTip} />
         ) : (
           <Text>No data available</Text>
         )}
