@@ -21,7 +21,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
 import DepositOptions from './DepositOptions';
 import DepositPublicAddress from './DepositPublicAddress';
-import DepositExternalWalletOptions from './DepositExternalWalletOptions.web';
+import DepositExternalWalletOptions from './DepositExternalWalletOptions';
 import DepositBuyCryptoOptions from './DepositBuyCryptoOptions.web';
 import DepositDirectlyNetworks from './DepositDirectlyNetworks.web';
 import DepositDirectlyAddress from './DepositDirectlyAddress.web';
@@ -265,10 +265,10 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   };
 
   useEffect(() => {
-    if (status === 'disconnected' && !isClose) {
+    if (status === 'disconnected' && !isClose && !isDepositDirectly && !isDepositDirectlyAddress) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
-  }, [status, setModal, isClose]);
+  }, [status, setModal, isClose, isDepositDirectly, isDepositDirectlyAddress]);
 
   return (
     <ResponsiveModal

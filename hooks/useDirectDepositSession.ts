@@ -6,6 +6,7 @@ import {
 } from '@/lib/api';
 import { DirectDepositSessionResponse } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
+import { withRefreshToken } from '@/lib/utils';
 
 export const useDirectDepositSession = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,7 +18,9 @@ export const useDirectDepositSession = () => {
       setIsLoading(true);
       setError(null);
 
-      const data = await createDirectDepositSessionApi(chainId);
+      const data = await withRefreshToken(() => createDirectDepositSessionApi(chainId));
+
+      if (!data) throw new Error('Failed to create direct deposit session');
 
       // Store in zustand
       setDirectDepositSession(data);
@@ -34,7 +37,7 @@ export const useDirectDepositSession = () => {
 
   const getDirectDepositSession = async (sessionId: string) => {
     try {
-      const data = await getDirectDepositSessionApi(sessionId);
+      const data = await withRefreshToken(() => getDirectDepositSessionApi(sessionId));
       return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -66,7 +69,9 @@ export const useDirectDepositSessionPolling = (
     queryFn: async () => {
       if (!sessionId) return null;
 
-      const data = await getDirectDepositSessionApi(sessionId);
+      const data = await withRefreshToken(() => getDirectDepositSessionApi(sessionId));
+
+      if (!data) return null;
 
       // Update zustand store
       setDirectDepositSession(data);
