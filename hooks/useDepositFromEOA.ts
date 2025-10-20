@@ -34,6 +34,7 @@ import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { Status, StatusInfo, TransactionStatus, TransactionType, User } from '@/lib/types';
 import { useActivity } from '@/hooks/useActivity';
 import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
+import { ERRORS } from '@/constants/errors';
 
 type DepositResult = {
   balance: bigint | undefined;
@@ -152,9 +153,13 @@ const useDepositFromEOA = (): DepositResult => {
 
     setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2 min)' });
 
-    await waitForTransactionReceipt(publicClient(mainnet.id), {
-      hash: transaction?.transactionHash as `0x${string}`,
-    });
+    try {
+      await waitForTransactionReceipt(publicClient(mainnet.id), {
+        hash: transaction?.transactionHash as `0x${string}`,
+      });
+    } catch (error) {
+      throw new Error(`${ERRORS.WAIT_TRANSACTION_RECEIPT}: ${error}`)
+    }
 
     return transaction;
   };
@@ -507,7 +512,7 @@ const useDepositFromEOA = (): DepositResult => {
           });
 
           const bridgeTxHash = await sendTransaction(srcChainId, quote.transactionRequest);
-          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 15 min)' });
+          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 5 min)' });
 
           Sentry.addBreadcrumb({
             message: 'Recording bridge transaction',
@@ -634,7 +639,6 @@ const useDepositFromEOA = (): DepositResult => {
         error: errorMessage,
       });
 
-
       const msg = errorMessage?.toLowerCase();
       let status = TransactionStatus.FAILED;
       let errMsg = '';
@@ -646,6 +650,8 @@ const useDepositFromEOA = (): DepositResult => {
       ) {
         errMsg = 'User rejected transaction';
         status = TransactionStatus.CANCELLED;
+      } else if (errorMessage?.includes(ERRORS.WAIT_TRANSACTION_RECEIPT)) {
+        errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
       }
 
       if (clientTxId) {
@@ -656,7 +662,6 @@ const useDepositFromEOA = (): DepositResult => {
           },
         });
       }
-
 
       setDepositStatus({ status: Status.ERROR });
       setError(errMsg);

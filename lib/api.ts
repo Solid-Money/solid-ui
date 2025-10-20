@@ -48,6 +48,7 @@ import {
   KycLinkFromBridgeResponse,
   LayerZeroTransaction,
   LeaderboardResponse,
+  LifiOrder,
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
@@ -914,6 +915,7 @@ export const getLifiQuote = async ({
   fromToken = 'USDC',
   toAddress,
   toToken = 'USDC',
+  order = LifiOrder.FASTEST
 }: GetLifiQuoteParams): Promise<LifiQuoteResponse> => {
   const response = await axios.get<LifiQuoteResponse>(`${EXPO_PUBLIC_LIFI_API_URL}/quote`, {
     params: {
@@ -924,6 +926,7 @@ export const getLifiQuote = async ({
       fromToken,
       toAddress,
       toToken,
+      order
     },
   });
 
