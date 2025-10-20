@@ -176,6 +176,13 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="coins"
+        options={{
+          title: 'Coins',
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
