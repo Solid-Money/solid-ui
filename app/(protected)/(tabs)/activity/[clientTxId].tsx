@@ -21,6 +21,12 @@ import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction, TransactionDirection, TransactionStatus } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
+import {
+  formatCardAmount,
+  getAvatarColor,
+  getCashbackAmount,
+  getInitials,
+} from '@/lib/utils/cardHelpers';
 
 type RowProps = {
   label: React.ReactNode;
@@ -89,29 +95,6 @@ type CardTransactionDetailProps = {
 
 const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
   const { isScreenMedium } = useDimension();
-
-  const getInitials = (name: string) => {
-    if (!name) return '?';
-    const words = name.split(' ');
-    if (words.length === 1) return name.substring(0, 2).toUpperCase();
-    return (words[0][0] + (words[1]?.[0] || '')).toUpperCase();
-  };
-
-  const getAvatarColor = (name: string) => {
-    const colors = ['bg-[#5B7C8D]', 'bg-[#8B5A5A]', 'bg-[#6B5B8B]', 'bg-[#8B7A5A]', 'bg-[#5A8B6B]'];
-    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  };
-
-  const formatAmount = (amount: string) => {
-    const numAmount = parseFloat(amount);
-    const sign = numAmount >= 0 ? '' : '-';
-    return `${sign}$${Math.abs(numAmount).toFixed(2)}`;
-  };
-
-  const getCashbackAmount = () => {
-    return '+$0.34';
-  };
 
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
   const initials = getInitials(merchantName);
@@ -190,7 +173,7 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
 
             <View className="items-center">
               <Text className="text-4xl font-bold text-white">
-                {formatAmount(transaction.amount)}
+                {formatCardAmount(transaction.amount)}
               </Text>
               <Text className="text-muted-foreground font-semibold mt-2">
                 {format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}

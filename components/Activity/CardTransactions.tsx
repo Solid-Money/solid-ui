@@ -8,6 +8,12 @@ import { Text } from '@/components/ui/text';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { ActivityGroup, ActivityTab, CardTransaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import {
+  formatCardAmount,
+  getAvatarColor,
+  getCashbackAmount,
+  getInitials,
+} from '@/lib/utils/cardHelpers';
 import { groupTransactionsByTime, TimeGroup, TimeGroupHeaderData } from '@/lib/utils/timeGrouping';
 
 type RenderItemProps = {
@@ -22,35 +28,6 @@ export default function CardTransactions() {
   const transactions = useMemo(() => {
     return data?.pages.flatMap(page => page.data) ?? [];
   }, [data]);
-
-  const getInitials = (name: string) => {
-    if (!name) return '?';
-    const words = name.split(' ');
-    if (words.length === 1) return name.substring(0, 2).toUpperCase();
-    return (words[0][0] + (words[1]?.[0] || '')).toUpperCase();
-  };
-
-  const getAvatarColor = (name: string) => {
-    const colors = [
-      'bg-[#5B7C8D]', // teal/blue
-      'bg-[#8B5A5A]', // red/brown
-      'bg-[#6B5B8B]', // purple
-      'bg-[#8B7A5A]', // brown/tan
-      'bg-[#5A8B6B]', // green
-    ];
-    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  };
-
-  const formatAmount = (amount: string) => {
-    const numAmount = parseFloat(amount);
-    const sign = numAmount >= 0 ? '' : '-';
-    return `${sign}$${Math.abs(numAmount).toFixed(2)}`;
-  };
-
-  const getCashbackAmount = () => {
-    return '+$0.34';
-  };
 
   const isFirstInGroup = (groupedData: TimeGroup[], currentIndex: number) => {
     // Check if previous item is a header
@@ -128,7 +105,7 @@ export default function CardTransactions() {
         {/* Amount and cashback */}
         <View className="items-end">
           <Text className="text-xl font-semibold text-white">
-            {formatAmount(transaction.amount)}
+            {formatCardAmount(transaction.amount)}
           </Text>
           <Text className="text-sm font-medium text-[#34C759] mt-0.5">{getCashbackAmount()}</Text>
         </View>
