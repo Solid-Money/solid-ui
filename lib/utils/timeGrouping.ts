@@ -11,10 +11,15 @@ export type TimeGroupHeaderData = {
   hasActivePendingTransactions?: boolean;
 };
 
-export type TimeGroup = {
-  type: ActivityGroup;
-  data: ActivityEvent | TimeGroupHeaderData;
-};
+export type TimeGroup<T = ActivityEvent> =
+  | {
+      type: ActivityGroup.HEADER;
+      data: TimeGroupHeaderData;
+    }
+  | {
+      type: ActivityGroup.TRANSACTION;
+      data: T;
+    };
 
 export const formatTimeGroup = (timestamp: string): string => {
   if (!timestamp) return '';
@@ -73,6 +78,38 @@ export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGrou
   let currentGroup: string | null = null;
   completedTransactions.forEach((transaction) => {
     const groupTitle = formatTimeGroup(transaction?.timestamp);
+
+    // Add group header if this is a new group
+    if (currentGroup !== groupTitle) {
+      grouped.push({
+        type: ActivityGroup.HEADER,
+        data: {
+          title: groupTitle,
+          key: `header-${groupTitle}`,
+        },
+      });
+      currentGroup = groupTitle;
+    }
+
+    // Add the transaction
+    grouped.push({
+      type: ActivityGroup.TRANSACTION,
+      data: transaction,
+    });
+  });
+
+  return grouped;
+};
+
+// Generic grouping function for any transaction type with timestamp
+export const groupByTime = <T extends { timestamp: string | number }>(
+  transactions: T[],
+): TimeGroup<T>[] => {
+  const grouped: TimeGroup<T>[] = [];
+  let currentGroup: string | null = null;
+
+  transactions.forEach((transaction) => {
+    const groupTitle = formatTimeGroup(String(transaction.timestamp));
 
     // Add group header if this is a new group
     if (currentGroup !== groupTitle) {

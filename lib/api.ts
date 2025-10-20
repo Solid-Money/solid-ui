@@ -32,6 +32,7 @@ import {
   CardDetailsRevealResponse,
   CardResponse,
   CardStatusResponse,
+  CardTransaction,
   CardTransactionsResponse,
   CardWaitlistResponse,
   ChartPayload,
@@ -1029,6 +1030,24 @@ export const getCardTransactions = async (
   if (paginationToken) {
     url.searchParams.append('pagination_token', paginationToken);
   }
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getCardTransaction = async (transactionId: string): Promise<CardTransaction> => {
+  const jwt = getJWTToken();
+
+  const url = new URL(`/accounts/v1/cards/transactions/${transactionId}`, EXPO_PUBLIC_FLASH_API_BASE_URL);
 
   const response = await fetch(url.toString(), {
     headers: {

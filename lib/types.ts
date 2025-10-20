@@ -514,8 +514,9 @@ export interface BridgeTransaction {
 }
 
 export enum ActivityTab {
-  ALL = 'all',
+  WALLET = 'wallet',
   PROGRESS = 'progress',
+  CARD = 'card',
 }
 
 export interface SourceDepositInstructions {

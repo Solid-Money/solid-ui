@@ -17,6 +17,7 @@ import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { formatCardAmountWithCurrency } from '@/lib/utils/cardHelpers';
 
 export default function CardTransactions() {
   const { isScreenMedium } = useDimension();
@@ -33,11 +34,6 @@ export default function CardTransactions() {
     refetch,
     isFetching,
   } = useCardTransactions();
-
-  const formatAmount = (amount: string, currency: string) => {
-    const numAmount = parseFloat(amount);
-    return `${numAmount >= 0 ? '+' : ''}${numAmount.toFixed(2)} ${currency.toUpperCase()}`;
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -96,7 +92,7 @@ export default function CardTransactions() {
         </View>
         <View className="flex-row items-center gap-2 md:gap-10 flex-shrink-0">
           <Text className={`font-bold text-right text-white`}>
-            {formatAmount(item.amount, item.currency)}
+            {formatCardAmountWithCurrency(item.amount, item.currency)}
           </Text>
           {Platform.OS === 'web' ? (
             <TransactionDropdown url={transactionUrl} />
