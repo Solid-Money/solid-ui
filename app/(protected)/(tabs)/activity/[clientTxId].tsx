@@ -127,7 +127,7 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
         <Pressable
           onPress={() =>
             Linking.openURL(
-              `https://etherscan.io/tx/${transaction.crypto_transaction_details?.tx_hash}`,
+              `https://arbiscan.io/tx/${transaction.crypto_transaction_details?.tx_hash}`,
             )
           }
           className="hover:opacity-70"
