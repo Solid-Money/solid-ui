@@ -1,3 +1,4 @@
+import Diamond from '@/assets/images/diamond';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -16,10 +17,16 @@ import { path } from '@/constants/path';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useDimension } from '@/hooks/useDimension';
-import { fetchActivityEvent } from '@/lib/api';
+import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { TransactionDirection, TransactionStatus } from '@/lib/types';
+import { CardTransaction, TransactionDirection, TransactionStatus } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
+import {
+  formatCardAmount,
+  getAvatarColor,
+  getCashbackAmount,
+  getInitials,
+} from '@/lib/utils/cardHelpers';
 
 type RowProps = {
   label: React.ReactNode;
@@ -43,12 +50,7 @@ type BackProps = {
 
 const Row = ({ label, value, className }: RowProps) => {
   return (
-    <View
-      className={cn(
-        'flex-row justify-between items-center p-5 border-b border-border/50',
-        className,
-      )}
-    >
+    <View className={cn('flex-row justify-between p-5 border-b border-[#2C2C2E]', className)}>
       {label}
       {value}
     </View>
@@ -56,7 +58,7 @@ const Row = ({ label, value, className }: RowProps) => {
 };
 
 const Label = ({ children }: LabelProps) => {
-  return <Text className="text-muted-foreground font-medium">{children}</Text>;
+  return <Text className="text-[#8E8E93] font-medium">{children}</Text>;
 };
 
 const Value = ({ children, className }: ValueProps) => {
@@ -65,12 +67,14 @@ const Value = ({ children, className }: ValueProps) => {
 
 const Back = ({ title, className }: BackProps) => {
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string }>();
 
   const handleBackPress = () => {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace(path.ACTIVITY);
+      const tabParam = params.tab ? `?tab=${params.tab}` : '';
+      router.replace(`${path.ACTIVITY}${tabParam}` as any);
     }
   };
 
@@ -85,20 +89,147 @@ const Back = ({ title, className }: BackProps) => {
   );
 };
 
+type CardTransactionDetailProps = {
+  transaction: CardTransaction;
+};
+
+const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
+  const { isScreenMedium } = useDimension();
+
+  const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
+  const initials = getInitials(merchantName);
+  const avatarColor = getAvatarColor(merchantName);
+
+  const rows = [
+    {
+      label: <Label>Sent from</Label>,
+      value: <Value>Card</Value>,
+      enabled: true,
+    },
+    {
+      label: <Label>Status</Label>,
+      value: <Value>Confirmed</Value>,
+      enabled: true,
+    },
+    {
+      label: (
+        <View className="flex-row items-center gap-1.5">
+          <Diamond />
+          <Label>Cashback</Label>
+        </View>
+      ),
+      value: <Value className="text-[#34C759]">{getCashbackAmount()}</Value>,
+      enabled: true,
+    },
+    {
+      label: <Label>Explorer</Label>,
+      value: transaction.crypto_transaction_details?.tx_hash && (
+        <Pressable
+          onPress={() =>
+            Linking.openURL(
+              `https://arbiscan.io/tx/${transaction.crypto_transaction_details?.tx_hash}`,
+            )
+          }
+          className="hover:opacity-70"
+        >
+          <View className="flex-row items-center gap-1">
+            <Value className="underline">
+              {eclipseAddress(transaction.crypto_transaction_details.tx_hash)}
+            </Value>
+            <ArrowUpRight color="white" size={16} />
+          </View>
+        </Pressable>
+      ),
+      enabled: !!transaction.crypto_transaction_details?.tx_hash,
+    },
+  ];
+
+  const isLastRow = (index: number) => {
+    const lastEnabledIndex = rows.findLastIndex(row => row.enabled);
+    return index === lastEnabledIndex;
+  };
+
+  return (
+    <SafeAreaView
+      className="bg-background text-foreground flex-1"
+      edges={['right', 'left', 'bottom', 'top']}
+    >
+      <ScrollView className="flex-1">
+        {isScreenMedium && <Navbar />}
+
+        <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+          <Back title={merchantName} className="text-xl md:text-3xl" />
+
+          <View className="items-center gap-4">
+            {/* Avatar with initials */}
+            <View
+              className={cn(
+                'w-[120px] h-[120px] rounded-full items-center justify-center',
+                avatarColor,
+              )}
+            >
+              <Text className="text-white text-5xl font-semibold">{initials}</Text>
+            </View>
+
+            <View className="items-center">
+              <Text className="text-4xl font-bold text-white">
+                {formatCardAmount(transaction.amount)}
+              </Text>
+              <Text className="text-muted-foreground font-semibold mt-2">
+                {format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}
+              </Text>
+            </View>
+          </View>
+
+          <View className="bg-[#1C1C1E] rounded-[20px]">
+            {rows.map(
+              (row, index) =>
+                row.enabled && (
+                  <Row
+                    key={index}
+                    label={row.label}
+                    value={row.value}
+                    className={cn(isLastRow(index) && 'border-b-0')}
+                  />
+                ),
+            )}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
 export default function ActivityDetail() {
   const { clientTxId } = useLocalSearchParams<{ clientTxId: string }>();
   const { isScreenMedium } = useDimension();
   const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
 
+  // Check if this is a card transaction
+  const isCardTransaction = clientTxId?.startsWith('card-');
+  const cardTxId = isCardTransaction ? clientTxId.replace('card-', '') : null;
+
+  // Fetch card transaction from API
+  const { data: cardTransaction, isLoading: isCardTransactionLoading } = useQuery({
+    queryKey: ['card-transaction', cardTxId],
+    queryFn: () => withRefreshToken(() => getCardTransaction(cardTxId!)),
+    enabled: !!cardTxId && isCardTransaction,
+  });
+
   const { data: activity, isLoading } = useQuery({
     queryKey: ['activity-event', clientTxId],
     queryFn: () => withRefreshToken(() => fetchActivityEvent(clientTxId!)),
-    enabled: !!clientTxId,
+    enabled: !!clientTxId && !isCardTransaction,
   });
 
-  if (isLoading) return <Loading />;
+  if (isLoading || isCardTransactionLoading) return <Loading />;
 
-  if (!activity)
+  // Show card transaction detail if it's a card transaction
+  if (isCardTransaction && cardTransaction) {
+    return <CardTransactionDetail transaction={cardTransaction} />;
+  }
+
+  if (!activity && !isCardTransaction)
     return (
       <SafeAreaView className="bg-background text-foreground flex-1">
         <ScrollView className="flex-1">
@@ -109,6 +240,8 @@ export default function ActivityDetail() {
         </ScrollView>
       </SafeAreaView>
     );
+
+  if (!activity) return null;
 
   const isFailed = activity.status === TransactionStatus.FAILED;
   const isCancelled = activity.status === TransactionStatus.CANCELLED;

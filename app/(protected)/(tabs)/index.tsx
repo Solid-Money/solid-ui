@@ -151,6 +151,7 @@ export default function Savings() {
                       prefix="$"
                       count={totalUSDExcludingSoUSD + savings}
                       isTrailingZero={false}
+                      decimalPlaces={2}
                       classNames={{
                         wrapper: 'text-foreground',
                         decimalSeparator: 'text-5xl font-semibold',
@@ -189,8 +190,9 @@ export default function Savings() {
                 className="flex-1"
                 tokens={topThreeTokens}
                 isLoading={isLoadingTokens}
+                decimalPlaces={2}
               />
-              <SavingCard className="flex-1" />
+              <SavingCard className="flex-1" decimalPlaces={2} />
             </View>
           ) : (
             <HomeBanners />

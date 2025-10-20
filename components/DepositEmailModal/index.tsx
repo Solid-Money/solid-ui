@@ -89,9 +89,11 @@ const DepositEmailModal: React.FC = () => {
       </View>
 
       {currentStep === 'email' && (
-        <Text className="text-muted-foreground text-center font-medium max-w-[23rem]">
-          This email will be used for account recovery if you lose access to your passkey.
-        </Text>
+        <View className="items-center">
+          <Text className="text-muted-foreground text-center font-medium max-w-[23rem]">
+            This email will be used for account recovery if you lose access to your passkey.
+          </Text>
+        </View>
       )}
 
       {rateLimitError && (

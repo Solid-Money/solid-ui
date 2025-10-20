@@ -43,7 +43,9 @@ type RenderItemProps = {
   index: number;
 };
 
-export default function ActivityTransactions({ tab = ActivityTab.ALL }: ActivityTransactionsProps) {
+export default function ActivityTransactions({
+  tab = ActivityTab.WALLET,
+}: ActivityTransactionsProps) {
   const { user } = useUser();
   const { setModal, setBankTransferData } = useDepositStore();
   const { storeEvents } = useActivityStore();
@@ -370,7 +372,7 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
 
   const filteredTransactions = useMemo(() => {
     const filtered = fetchedEvents.filter(transaction => {
-      if (tab === ActivityTab.ALL) return true;
+      if (tab === ActivityTab.WALLET) return true;
       if (tab === ActivityTab.PROGRESS) {
         return transaction.status === TransactionStatus.PENDING;
       }
@@ -417,7 +419,7 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
             });
             setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
           } else {
-            router.push(`/activity/${transaction.clientTxId}`);
+            router.push(`/activity/${transaction.clientTxId}?tab=${tab}`);
           }
         }}
         classNames={{
@@ -456,7 +458,7 @@ export default function ActivityTransactions({ tab = ActivityTab.ALL }: Activity
       <Text className="text-muted-foreground text-center text-lg">
         {tab === ActivityTab.PROGRESS ? 'No pending transactions' : 'No transactions found'}
       </Text>
-      {tab === ActivityTab.ALL && (
+      {tab === ActivityTab.WALLET && (
         <Text className="text-muted-foreground text-center text-sm mt-2">
           Start by making a swap or sending tokens
         </Text>
