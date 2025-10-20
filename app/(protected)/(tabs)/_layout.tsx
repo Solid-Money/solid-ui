@@ -1,7 +1,6 @@
 import { Tabs } from 'expo-router';
 import { ArrowUpDown, CreditCard, Leaf, Plus, Send, Star } from 'lucide-react-native';
 import React from 'react';
-import { Platform } from 'react-native';
 
 import ActivityNavBarIcon from '@/assets/images/activity-nav-bar-icon';
 import AssetsNavBarIcon from '@/assets/images/assets-nav-bar-icon';
@@ -32,19 +31,10 @@ export default function TabLayout() {
           display: isDesktop ? 'none' : 'flex',
           height: 85,
           paddingTop: 8,
-          ...Platform.select({
-            ios: {
-              // Use a transparent background on iOS to show the blur effect
-              position: 'absolute',
-            },
-            default: {
-              borderColor: '#3D3D3D',
-              backdropFilter: 'blur(20px)',
-              backgroundColor: 'rgba(0, 0, 0, 0.4)',
-              position: 'absolute',
-              borderTop: '1px solid hsl(344.55 3.72% 39.49% / .4)',
-            },
-          }),
+          paddingBottom: 8,
+          borderTopWidth: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          borderTopColor: 'rgba(61, 61, 61, 0.8)',
         },
       }}
       backBehavior="history"

@@ -1,4 +1,4 @@
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { ReactNode, useCallback, useRef } from 'react';
 import { Platform, Pressable, View } from 'react-native';
@@ -213,8 +213,8 @@ const ResponsiveModal = ({
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
       >
-        <BottomSheetView
-          style={{
+        <BottomSheetScrollView
+          contentContainerStyle={{
             paddingHorizontal: 16,
             paddingBottom: insets.bottom + 24,
             paddingTop: 12,
@@ -246,7 +246,7 @@ const ResponsiveModal = ({
             )}
             <View key={contentKey}>{children}</View>
           </View>
-        </BottomSheetView>
+        </BottomSheetScrollView>
       </BottomSheetModal>
     </View>
   );
