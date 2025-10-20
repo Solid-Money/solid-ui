@@ -507,7 +507,7 @@ const useDepositFromEOA = (): DepositResult => {
           });
 
           const bridgeTxHash = await sendTransaction(srcChainId, quote.transactionRequest);
-          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 15 min)' });
+          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 5 min)' });
 
           Sentry.addBreadcrumb({
             message: 'Recording bridge transaction',
