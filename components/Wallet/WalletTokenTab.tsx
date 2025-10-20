@@ -257,7 +257,9 @@ const WalletTokenTab = () => {
                         <Text className="font-bold">
                           {format(balance)} {isScreenMedium ? token.contractTickerSymbol : ''}
                         </Text>
-                        <Text className="text-sm text-muted-foreground">${format(balanceUSD)}</Text>
+                        <Text className="text-sm text-muted-foreground">
+                          ${format(balanceUSD, 2)}
+                        </Text>
                       </View>
                     </TableCell>
                     <TableCell
@@ -265,7 +267,7 @@ const WalletTokenTab = () => {
                       style={{ width: columnWidths[2] }}
                     >
                       <View className="items-start">
-                        <Text className="font-bold">${format(token.quoteRate || 0)}</Text>
+                        <Text className="font-bold">${format(token.quoteRate || 0, 2)}</Text>
                       </View>
                     </TableCell>
                     <TableCell className="p-3 pl-0 md:p-6" style={{ width: columnWidths[3] }}>

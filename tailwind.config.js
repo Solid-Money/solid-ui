@@ -19,6 +19,7 @@ module.exports = {
         'twice': '1.25rem',
       },
       fontSize: {
+        '3.5xl': '2.125rem',
         '4.5xl': '2.5rem',
       },
       colors: {

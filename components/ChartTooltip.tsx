@@ -14,6 +14,7 @@ interface ChartTooltipProps {
   payload?: TooltipPayload[];
   data?: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
+  isPriceChange?: boolean;
 }
 
 export function calculatePercentageChange(oldValue: number, newValue: number) {
@@ -32,7 +33,13 @@ const formatTimestamp = (timestamp: number) => {
   });
 };
 
-const ChartTooltip = ({ active, payload, data, formatToolTip }: ChartTooltipProps) => {
+const ChartTooltip = ({
+  active,
+  payload,
+  data,
+  formatToolTip,
+  isPriceChange,
+}: ChartTooltipProps) => {
   const { selectedPrice, selectedPriceChange, setSelectedPriceChange, setSelectedPrice } =
     useCoinStore();
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
@@ -92,7 +99,7 @@ const ChartTooltip = ({ active, payload, data, formatToolTip }: ChartTooltipProp
           {formatToolTip ? formatToolTip(selectedPrice) : format(selectedPrice)}
         </Text>
         <View className="flex-row gap-2">
-          {selectedPriceChange && (
+          {isPriceChange && selectedPriceChange && (
             <Text
               className={cn(
                 'text-sm font-semibold',
