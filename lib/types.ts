@@ -79,6 +79,7 @@ export interface User {
   turnkeyUserId?: string;
   leaderboardPosition?: number;
   points?: number;
+  credentialId?: string;
 }
 
 export type BlockscoutTransaction = {

@@ -1,14 +1,17 @@
+import { base64urlToUint8Array } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { TurnkeyClient } from '@turnkey/http';
 import { PasskeyStamper } from '@turnkey/sdk-react-native';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Platform } from 'react-native';
-import { z } from 'zod';
 import Toast from 'react-native-toast-message';
+import { z } from 'zod';
 
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { initGenericOtp, verifyGenericOtp } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
@@ -16,8 +19,6 @@ import {
 } from '@/lib/config';
 import { withRefreshToken } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
-import { track } from '@/lib/analytics';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 
 const emailSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -134,7 +135,18 @@ export const useEmailManagement = (
         rpId: getRuntimeRpId(),
       });
 
-      const passkeyClient = turnkey.passkeyClient();
+      const allowCredentials = user?.credentialId
+        ? [
+          {
+            id: base64urlToUint8Array(user.credentialId) as BufferSource,
+            type: 'public-key' as const,
+          },
+        ]
+        : undefined;
+
+      const passkeyClient = turnkey.passkeyClient(
+        allowCredentials ? { allowCredentials } : undefined
+      );
       const indexedDbClient = await turnkey.indexedDbClient();
       await indexedDbClient?.init();
       await indexedDbClient!.resetKeyPair();
@@ -147,6 +159,14 @@ export const useEmailManagement = (
     } else {
       const stamper = new PasskeyStamper({
         rpId: getRuntimeRpId(),
+        allowCredentials: user?.credentialId
+          ? [
+            {
+              id: user.credentialId,
+              type: 'public-key' as const,
+            },
+          ]
+          : undefined
       });
 
       const turnkeyClient = new TurnkeyClient(
