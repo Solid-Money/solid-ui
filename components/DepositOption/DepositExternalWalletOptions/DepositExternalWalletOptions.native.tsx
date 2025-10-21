@@ -1,3 +1,4 @@
+import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -6,7 +7,6 @@ import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { ConnectButton, useActiveAccount } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
-import DepositOption from './DepositOption';
 
 const DepositExternalWalletOptions = () => {
   const activeAccount = useActiveAccount();

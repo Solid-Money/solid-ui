@@ -1,7 +1,6 @@
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { SvgProps } from 'react-native-svg';
 
-import { Button } from './ui/button';
 import { Text } from './ui/text';
 import { cn } from '@/lib/utils';
 
@@ -34,12 +33,8 @@ const CircleButton = ({
   const { width, height } = getDimensions();
 
   return (
-    <View className="gap-2 items-center">
-      <Button
-        size="icon"
-        className={cn('h-14 w-14 rounded-full', backgroundColor)}
-        onPress={onPress}
-      >
+    <Pressable className="gap-2 items-center" onPress={onPress}>
+      <View className={cn('h-14 w-14 rounded-full items-center justify-center', backgroundColor)}>
         <Icon
           width={width}
           height={height}
@@ -47,9 +42,9 @@ const CircleButton = ({
           viewBox={viewBox}
           preserveAspectRatio="xMidYMid meet"
         />
-      </Button>
+      </View>
       <Text className="text-muted-foreground font-medium">{label}</Text>
-    </View>
+    </Pressable>
   );
 };
 

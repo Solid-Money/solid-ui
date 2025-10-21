@@ -9,7 +9,7 @@ import Toast from 'react-native-toast-message';
 import { formatUnits } from 'viem';
 import { fuse } from 'viem/chains';
 
-import { DepositOptionModal } from '@/components/DepositOption';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';

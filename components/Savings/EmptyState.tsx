@@ -3,7 +3,7 @@ import React from 'react';
 import { FlatList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DepositOptionModal } from '@/components/DepositOption';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { FAQs } from '@/components/FAQ';
 import Navbar from '@/components/Navbar';
 import NavbarMobile from '@/components/Navbar/NavbarMobile';
