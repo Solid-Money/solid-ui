@@ -1,8 +1,8 @@
 import { type ClassValue, clsx } from 'clsx';
+import { formatDistanceToNow, isBefore, subDays } from 'date-fns';
 import { Platform } from 'react-native';
 import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
-import { formatDistanceToNow, isBefore, subDays } from 'date-fns';
 
 import { refreshToken } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
@@ -214,3 +214,21 @@ export const isTransactionStuck = (timestamp: string): boolean => {
   const oneDayAgo = subDays(new Date(), 1);
   return isBefore(transactionDate, oneDayAgo);
 };
+
+// Convert base64url string to Uint8Array for WebAuthn API
+export const base64urlToUint8Array = (base64url: string): Uint8Array => {
+  // Convert base64url to base64
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  // Decode base64 string to binary string
+  const binaryString = atob(base64);
+  // Convert binary string to Uint8Array
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+export const parseStampHeaderValueCredentialId = (stampHeaderValue: string) => {
+  return JSON.parse(stampHeaderValue).credentialId;
+}

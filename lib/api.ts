@@ -179,9 +179,11 @@ export const signUp = async (
   attestation: any,
   inviteCode: string,
   referralCode?: string,
+  credentialId?: string,
 ) => {
   let body: any = { username, challenge, attestation, inviteCode };
   if (referralCode) body.referralCode = referralCode;
+  if (credentialId) body.credentialId = credentialId;
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/sign-up`, {
     method: 'POST',
     headers: {
@@ -208,6 +210,25 @@ export const updateSafeAddress = async (safeAddress: string) => {
       },
       credentials: 'include',
       body: JSON.stringify({ safeAddress }),
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const updateUserCredentialId = async (credentialId: string) => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/update-credential-id`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ credentialId }),
     },
   );
   if (!response.ok) throw response;
