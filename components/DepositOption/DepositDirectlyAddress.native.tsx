@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
-import { View } from 'react-native';
+import { Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,17 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import useUser from '@/hooks/useUser';
+import { Fuel, QrCode, Share2 } from 'lucide-react-native';
+import ResponsiveDialog from '@/components/ResponsiveDialog';
+import TooltipPopover from '@/components/Tooltip';
+
+const USDC_ICON = require('@/assets/images/usdc.png');
 
 const DepositDirectlyAddress = () => {
   const { user } = useUser();
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
+  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState<'error' | null>(null);
 
   // Poll for session status updates
   const { session } = useDirectDepositSessionPolling(directDepositSession.sessionId, true);
@@ -54,9 +61,32 @@ const DepositDirectlyAddress = () => {
     user,
   ]);
 
+  useEffect(() => {
+    if (!shareFeedback) return;
+
+    const timer = setTimeout(() => setShareFeedback(null), 2500);
+
+    return () => clearTimeout(timer);
+  }, [shareFeedback]);
+
   const handleDone = () => {
     setModal(DEPOSIT_MODAL.CLOSE);
     clearDirectDepositSession();
+  };
+
+  const handleShare = async () => {
+    const address = directDepositSession.walletAddress;
+    if (!address) return;
+
+    try {
+      await Share.share({
+        message: address,
+        title: 'Solid deposit address',
+      });
+    } catch (error) {
+      console.error('Failed to share deposit address:', error);
+      setShareFeedback('error');
+    }
   };
 
   // Get network info
@@ -87,130 +117,199 @@ const DepositDirectlyAddress = () => {
     session?.status === 'completed' || directDepositSession.status === 'completed';
   const isExpired = session?.status === 'expired' || directDepositSession.status === 'expired';
 
+  const statusToneClass = useMemo(() => {
+    if (isCompleted) return 'text-[#5BFF6C]';
+    if (isExpired || session?.status === 'failed' || directDepositSession.status === 'failed') {
+      return 'text-red-400';
+    }
+    if (
+      session?.status === 'processing' ||
+      session?.status === 'detected' ||
+      directDepositSession.status === 'processing'
+    ) {
+      return 'text-[#F9D270]';
+    }
+    return 'text-foreground';
+  }, [directDepositSession.status, isCompleted, isExpired, session?.status]);
+
   // TODO: Calculate estimated time based on chainId
   const estimatedTime = chainId === 1 ? '5 minutes' : '30 minutes';
 
-  return (
-    <View className="flex items-center justify-center gap-6 px-4">
-      {/* Title Text */}
-      <Text className="text-xl font-semibold text-center">
-        Transfer USDC to this {network?.name || 'Ethereum'} address
-      </Text>
+  const infoRows = [
+    {
+      label: 'APY',
+      value: `${session?.apy || directDepositSession.apy || '4.50'}%`,
+      valueClassName: 'text-[#5BFF6C] font-semibold text-lg',
+      extra: (
+        <TooltipPopover
+          text="Annual percentage yield for this deposited amount. Actual yield may vary slightly once the transfer clears."
+          analyticsContext="deposit_directly_apy"
+          side="top"
+        />
+      ),
+    },
+    {
+      label: 'Min deposit',
+      value: `< ${session?.minDeposit || directDepositSession.minDeposit || '0.0001'} USDC`,
+    },
+    {
+      label: 'Max deposit',
+      value: `${session?.maxDeposit || directDepositSession.maxDeposit || '500,000'} USDC`,
+    },
+    {
+      label: 'Estimated time',
+      value: estimatedTime,
+    },
+    {
+      label: 'Status',
+      value: getStatusText(),
+      valueClassName: `${statusToneClass} font-semibold`,
+    },
+    {
+      label: 'Fee',
+      value: `${session?.fee || directDepositSession.fee || '2.3'} USDC`,
+      icon: <Fuel size={16} color="#A1A1AA" />,
+    },
+  ];
 
-      {/* QR Code and Address */}
-      <View className="bg-primary/10 rounded-xl w-full max-w-md">
-        <View className="justify-center items-center px-4 pt-14 pb-4 border-border/50">
-          <View className="rounded-xl bg-white p-4">
-            <QRCode value={directDepositSession.walletAddress || ''} size={200} />
+  return (
+    <View className="flex items-center gap-8 px-4 py-6">
+      <View className="items-center gap-3">
+        <View className="flex-row flex-wrap items-center justify-center gap-2">
+          <Text className="text-lg text-[#ACACAC]">Transfer</Text>
+          <View className="flex-row items-center gap-2 px-3 py-1.5">
+            <Image source={USDC_ICON} style={{ width: 18, height: 18 }} contentFit="cover" />
+            <Text className="text-sm font-semibold text-white">USDC</Text>
+          </View>
+          <Text className="text-lg font-semibold text-[#ACACAC]">to this</Text>
+          <View className="flex-row items-center gap-2 px-3 py-1.5">
+            <Image source={network?.icon} style={{ width: 18, height: 18 }} contentFit="contain" />
+            <Text className="text-sm font-semibold text-[#ACACAC]">
+              {network?.name || 'Ethereum'} address
+            </Text>
           </View>
         </View>
+        <Text className="mt-2 text-center text-sm text-[#ACACAC]">
+          Use the deposit details below to transfer USDC from any wallet or exchange.
+        </Text>
+      </View>
 
-        <View className="flex-col items-center justify-center gap-2">
-          {/* Network Badge */}
-          <View className="flex-row items-center gap-1.5 bg-primary/20 px-3 py-1.5 mt-4 rounded-full">
-            <Image source={network?.icon} style={{ width: 20, height: 20 }} contentFit="contain" />
-            <Text className="text-lg font-medium">{network?.name} network</Text>
-          </View>
-
-          {/* Divider */}
-          <View className="w-full h-[1px] bg-[#303030] mt-4" />
-
-          {/* Address */}
-          <View className="flex-row items-center gap-2 mb-4 mt-2">
-            <Text className="text-base">
-              {directDepositSession.walletAddress
-                ? eclipseAddress(directDepositSession.walletAddress, 6, 6)
-                : ''}
-            </Text>
+      <View className="w-full rounded-[20px] bg-card/95 p-6" style={{ maxWidth: 400 }}>
+        <View className="gap-5">
+          <View className="flex-row items-start justify-between gap-3">
+            <View className="flex-1">
+              <Text className="font-mono text-[1.05rem] tracking-wide text-foreground">
+                {directDepositSession.walletAddress
+                  ? eclipseAddress(directDepositSession.walletAddress, 6, 6)
+                  : '—'}
+              </Text>
+            </View>
             <CopyToClipboard
               text={directDepositSession.walletAddress || ''}
-              className="text-primary"
+              className="h-12 w-12 bg-transparent"
+              iconClassName="text-white"
             />
           </View>
+
+          <View className="flex-row gap-3">
+            <Button
+              onPress={() => setIsQrDialogOpen(true)}
+              className="h-10 flex-1 rounded-[14px] bg-white/10"
+            >
+              <QrCode size={18} color="white" />
+              <Text className="font-semibold text-white">Show QR</Text>
+            </Button>
+            <Button onPress={handleShare} className="h-10 flex-1 rounded-[14px] bg-white/10">
+              <Share2 size={18} color="white" />
+              <Text className="font-semibold text-white">Share</Text>
+            </Button>
+          </View>
+
+          {shareFeedback && (
+            <Text className="text-xs text-red-400">
+              Sharing is unavailable right now. Please try again later.
+            </Text>
+          )}
         </View>
       </View>
 
-      {/* Info Section */}
       {!isExpired && (
-        <View className="bg-primary/10 rounded-xl p-4 w-full max-w-md gap-y-3">
-          {/* APY - TODO: Replace with actual value */}
-          <View className="flex-row justify-between items-center">
-            <Text className="text-muted-foreground">APY</Text>
-            <Text className="text-primary font-semibold">
-              {session?.apy || directDepositSession.apy || '4.50'}%
-            </Text>
-          </View>
-
-          {/* Min Deposit - TODO: Replace with actual value */}
-          <View className="flex-row justify-between items-center">
-            <Text className="text-muted-foreground">Min deposit</Text>
-            <Text className="font-medium">
-              {'< '}
-              {session?.minDeposit || directDepositSession.minDeposit || '0.0001'} USDC
-            </Text>
-          </View>
-
-          {/* Max Deposit - TODO: Replace with actual value */}
-          <View className="flex-row justify-between items-center">
-            <Text className="text-muted-foreground">Max deposit</Text>
-            <Text className="font-medium">
-              {session?.maxDeposit || directDepositSession.maxDeposit || '500,000'} USDC
-            </Text>
-          </View>
-
-          {/* Estimated Time - TODO: Calculate based on chainId */}
-          <View className="flex-row justify-between items-center">
-            <Text className="text-muted-foreground">Estimated time</Text>
-            <Text className="font-medium">{estimatedTime}</Text>
-          </View>
-
-          {/* Status */}
-          <View className="flex-row justify-between items-center">
-            <Text className="text-muted-foreground">Status</Text>
-            <Text
-              className={`font-medium ${
-                isCompleted
-                  ? 'text-green-500'
-                  : session?.status === 'failed'
-                    ? 'text-red-500'
-                    : 'text-yellow-500'
-              }`}
-            >
-              {getStatusText()}
-            </Text>
-          </View>
-
-          {/* Fee - TODO: Replace with actual value */}
-          <View className="flex-row justify-between items-center">
-            <Text className="text-muted-foreground">Fee</Text>
-            <Text className="font-medium">
-              {session?.fee || directDepositSession.fee || '2.3'} USDC
-            </Text>
+        <View className="w-full rounded-[20px] bg-card/95 p-6" style={{ maxWidth: 400 }}>
+          <View className="gap-4">
+            {infoRows.map(row => (
+              <View
+                key={row.label}
+                className="flex-row items-center justify-between gap-3 px-1 py-1.5"
+              >
+                <View className="flex-row items-center gap-2">
+                  {row.icon}
+                  <Text className="text-sm font-medium text-muted-foreground">{row.label}</Text>
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <Text
+                    className={`text-sm font-medium text-foreground ${
+                      row.valueClassName ? row.valueClassName : ''
+                    }`}
+                  >
+                    {row.value}
+                  </Text>
+                  {row.extra}
+                </View>
+              </View>
+            ))}
           </View>
         </View>
       )}
 
-      {/* Expired Message */}
       {isExpired && (
-        <View className="bg-red-500/10 rounded-xl p-4 w-full max-w-md">
-          <Text className="text-red-500 text-center font-medium">
+        <View
+          className="w-full rounded-[32px] border border-red-500/20 bg-red-500/10 px-6 py-5"
+          style={{ maxWidth: 400 }}
+        >
+          <Text className="text-center font-medium text-red-400">
             Session expired. Please create a new deposit session.
           </Text>
         </View>
       )}
 
-      {/* Done Button */}
       <Button
         onPress={handleDone}
         disabled={!isCompleted && !isExpired}
-        className={`w-full max-w-md ${
-          isCompleted || isExpired ? 'bg-green-500' : 'bg-gray-500 opacity-50'
+        className={`h-12 w-full rounded-full ${
+          isCompleted || isExpired ? 'bg-[#52FF3F]' : 'bg-white/10'
         }`}
+        style={{ maxWidth: 400 }}
       >
-        <Text className={`font-bold ${isCompleted || isExpired ? 'text-white' : 'text-gray-400'}`}>
+        <Text
+          className={`text-base font-semibold ${
+            isCompleted || isExpired ? 'text-black' : 'text-muted-foreground'
+          }`}
+        >
           Done
         </Text>
       </Button>
+
+      <ResponsiveDialog
+        open={isQrDialogOpen}
+        onOpenChange={setIsQrDialogOpen}
+        title="Scan to deposit"
+        contentClassName="px-6 py-8"
+      >
+        <View className="items-center gap-5">
+          <View className="rounded-3xl bg-white p-5">
+            <QRCode
+              value={directDepositSession.walletAddress || ''}
+              size={220}
+              backgroundColor="white"
+              color="black"
+            />
+          </View>
+          <Text className="text-center text-sm text-muted-foreground">
+            Share this QR code with the sender or scan it from another device to populate the wallet
+            address automatically.
+          </Text>
+        </View>
+      </ResponsiveDialog>
     </View>
   );
 };

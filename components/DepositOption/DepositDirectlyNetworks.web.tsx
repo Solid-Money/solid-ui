@@ -77,6 +77,7 @@ const DepositDirectlyNetworks = () => {
                 icon={network.icon}
                 isComingSoon={isComingSoon}
                 onPress={() => handlePress(chainId)}
+                isLoading={isLoading && isSelected}
                 disabled={isLoading && isSelected}
               />
             );
