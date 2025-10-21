@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react-native';
-import { Image, ImageSourcePropType, View } from 'react-native';
+import { ActivityIndicator, Image, ImageSourcePropType, View } from 'react-native';
 
 import DepositComingSoon from '@/components/DepositOption/DepositComingSoon';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ type DepositNetworkProps = {
   icon: ImageSourcePropType;
   isComingSoon?: boolean;
   disabled?: boolean;
+  isLoading?: boolean;
   onPress: () => void;
 };
 
@@ -21,6 +22,7 @@ const DepositNetwork = ({
   onPress,
   isComingSoon,
   disabled,
+  isLoading,
 }: DepositNetworkProps) => {
   return (
     <Button
@@ -36,7 +38,13 @@ const DepositNetwork = ({
           <Text className="text-muted-foreground leading-4">{description}</Text>
         </View>
       </View>
-      {isComingSoon ? <DepositComingSoon /> : <ChevronRight color="white" size={20} />}
+      {isComingSoon ? (
+        <DepositComingSoon />
+      ) : isLoading ? (
+        <ActivityIndicator color="white" size="small" />
+      ) : (
+        <ChevronRight color="white" size={20} />
+      )}
     </Button>
   );
 };
