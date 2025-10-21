@@ -25,9 +25,10 @@ import Ping from '@/components/Ping';
 
 type SavingCardProps = {
   className?: string;
+  decimalPlaces?: number;
 };
 
-const SavingCard = ({ className }: SavingCardProps) => {
+const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
   const router = useRouter();
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
@@ -100,6 +101,7 @@ const SavingCard = ({ className }: SavingCardProps) => {
                   balance={balance ?? 0}
                   apy={apys?.allTime ?? 0}
                   lastTimestamp={firstDepositTimestamp ?? 0}
+                  decimalPlaces={decimalPlaces}
                   classNames={{
                     wrapper: 'text-foreground',
                     decimalSeparator: 'text-2xl md:text-3xl font-semibold',

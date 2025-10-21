@@ -17,7 +17,7 @@ const CurrentYield = () => {
         <Text className="md:text-lg text-muted-foreground font-medium">15D APY</Text>
         <TooltipPopover text="Last 15 days yield of the vault" />
       </View>
-      <Text className="text-2xl md:text-4.5xl text-brand font-semibold">
+      <Text className="text-2xl md:text-3.5xl text-brand font-semibold">
         {data ? `${data.fifteenDay.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
       </Text>
     </View>
@@ -33,7 +33,7 @@ const AllTimeYield = () => {
         <Text className="md:text-lg text-muted-foreground font-medium">30D APY</Text>
         <TooltipPopover text="Last 30 days yield of the vault" />
       </View>
-      <Text className="text-2xl md:text-4.5xl font-semibold">
+      <Text className="text-2xl md:text-3.5xl font-semibold">
         {data ? `${data.thirtyDay.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
       </Text>
     </View>
@@ -50,7 +50,7 @@ const TVL = () => {
         <TooltipPopover text="Total value locked in the Solid vault" />
       </View>
       <View className="flex-row items-center">
-        <Text className="text-2xl md:text-4.5xl font-semibold">
+        <Text className="text-2xl md:text-3.5xl font-semibold">
           {data ? `${compactNumberFormat(data)}$` : <Skeleton className="w-20 h-8" />}
         </Text>
       </View>
@@ -66,7 +66,7 @@ const TVLCap = () => {
         <TooltipPopover text="The maximum amount that can be deposited into this Solid vault. Once the cap is reached, it may be raised to allow more deposits." />
       </View>
       <View className="flex-row items-center">
-        <Text className="text-2xl md:text-4.5xl font-semibold">
+        <Text className="text-2xl md:text-3.5xl font-semibold">
           {compactNumberFormat(poolCap)}$
         </Text>
       </View>

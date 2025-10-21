@@ -15,9 +15,10 @@ type WalletCardProps = {
   className?: string;
   tokens: TokenBalance[];
   isLoading?: boolean;
+  decimalPlaces?: number;
 };
 
-const WalletCard = ({ balance, className, tokens, isLoading }: WalletCardProps) => {
+const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: WalletCardProps) => {
   const { isScreenMedium } = useDimension();
 
   return (
@@ -37,6 +38,7 @@ const WalletCard = ({ balance, className, tokens, isLoading }: WalletCardProps) 
                 prefix="$"
                 count={balance ?? 0}
                 isTrailingZero={false}
+                decimalPlaces={decimalPlaces}
                 classNames={{
                   wrapper: 'text-foreground',
                   decimalSeparator: 'text-2xl md:text-3xl font-semibold',

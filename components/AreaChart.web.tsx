@@ -28,7 +28,9 @@ const Chart = ({ data, formatToolTip }: AreaChartProps) => {
           </linearGradient>
         </defs>
 
-        <Tooltip content={<ChartTooltip data={data} formatToolTip={formatToolTip} />} />
+        <Tooltip
+          content={<ChartTooltip data={data} formatToolTip={formatToolTip} isPriceChange />}
+        />
 
         <Area
           type="linear"
