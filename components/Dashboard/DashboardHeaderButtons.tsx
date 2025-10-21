@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { DepositOptionModal } from '@/components/DepositOption';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';

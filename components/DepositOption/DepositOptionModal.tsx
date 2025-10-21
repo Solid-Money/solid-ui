@@ -19,10 +19,10 @@ import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
+import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
+import DepositExternalWalletOptions from './DepositExternalWalletOptions';
 import DepositOptions from './DepositOptions';
 import DepositPublicAddress from './DepositPublicAddress';
-import DepositExternalWalletOptions from './DepositExternalWalletOptions.web';
-import DepositBuyCryptoOptions from './DepositBuyCryptoOptions.web';
 
 interface DepositOptionModalProps {
   buttonText?: string;

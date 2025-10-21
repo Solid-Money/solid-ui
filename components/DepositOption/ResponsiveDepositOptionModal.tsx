@@ -19,7 +19,9 @@ import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
+import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
 import DepositOptions from './DepositOptions';
+import DepositPublicAddress from './DepositPublicAddress';
 
 interface ResponsiveDepositOptionModalProps {
   buttonText?: string;
@@ -40,6 +42,8 @@ const ResponsiveDepositOptionModal = ({
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(isForm && address);
   const isBuyCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
+  const isBuyCryptoOptions = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS.name;
+  const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
   const isTransactionStatus = currentModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isNetworks = currentModal.name === DEPOSIT_MODAL.OPEN_NETWORKS.name;
   const isEmailGate = currentModal.name === DEPOSIT_MODAL.OPEN_EMAIL_GATE.name;
@@ -101,6 +105,14 @@ const ResponsiveDepositOptionModal = ({
       return <BuyCrypto />;
     }
 
+    if (isBuyCryptoOptions) {
+      return <DepositBuyCryptoOptions />;
+    }
+
+    if (isPublicAddress) {
+      return <DepositPublicAddress />;
+    }
+
     if (isNetworks) {
       return <DepositNetworks />;
     }
@@ -121,6 +133,8 @@ const ResponsiveDepositOptionModal = ({
     if (isEmailGate) return 'email-gate';
     if (isFormAndAddress) return 'deposit-form';
     if (isBuyCrypto) return 'buy-crypto';
+    if (isBuyCryptoOptions) return 'buy-crypto-options';
+    if (isPublicAddress) return 'public-address';
     if (isNetworks) return 'networks';
     if (isBankTransferKycInfo) return 'bank-transfer-kyc-info';
     if (isBankTransferKycFrame) return 'bank-transfer-kyc-frame';
@@ -207,6 +221,10 @@ const ResponsiveDepositOptionModal = ({
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
     } else if (isBankTransferPreview) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
+    } else if (isBuyCryptoOptions) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isPublicAddress) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
@@ -231,6 +249,8 @@ const ResponsiveDepositOptionModal = ({
       showBackButton={
         isFormAndAddress ||
         isBuyCrypto ||
+        isBuyCryptoOptions ||
+        isPublicAddress ||
         isNetworks ||
         isBankTransferAmount ||
         isBankTransferPayment ||

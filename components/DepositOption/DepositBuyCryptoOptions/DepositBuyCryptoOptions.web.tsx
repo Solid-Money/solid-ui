@@ -1,18 +1,26 @@
+import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { useCallback } from 'react';
 import { View } from 'react-native';
-import DepositOption from './DepositOption';
 
 const DepositBuyCryptoOptions = () => {
   const { setModal } = useDepositStore();
 
   const handleBankDepositPress = useCallback(async () => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'bank_transfer',
+    });
     setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
   }, [setModal]);
 
   const handleCreditCardPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'credit_card',
+    });
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
   }, [setModal]);
 
