@@ -1,4 +1,9 @@
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetView,
+} from '@gorhom/bottom-sheet';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { ReactNode, useCallback, useRef } from 'react';
 import { Platform, Pressable, View } from 'react-native';
@@ -192,10 +197,17 @@ const ResponsiveModal = ({
     );
   }
 
+  // Clone trigger and inject onPress for bottom sheet
+  const triggerWithPress = React.isValidElement(trigger)
+    ? React.cloneElement(trigger as React.ReactElement<any>, {
+        onPress: handlePresentModalPress,
+      })
+    : trigger;
+
   // Use bottom sheet for mobile web and native
   return (
     <View>
-      <Pressable onPress={handlePresentModalPress}>{trigger}</Pressable>
+      {triggerWithPress}
       <BottomSheetModal
         ref={bottomSheetModalRef}
         onChange={handleBottomSheetOpenChange}
@@ -213,8 +225,8 @@ const ResponsiveModal = ({
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
       >
-        <BottomSheetView
-          style={{
+        <BottomSheetScrollView
+          contentContainerStyle={{
             paddingHorizontal: 16,
             paddingBottom: insets.bottom + 24,
             paddingTop: 12,
@@ -246,7 +258,7 @@ const ResponsiveModal = ({
             )}
             <View key={contentKey}>{children}</View>
           </View>
-        </BottomSheetView>
+        </BottomSheetScrollView>
       </BottomSheetModal>
     </View>
   );

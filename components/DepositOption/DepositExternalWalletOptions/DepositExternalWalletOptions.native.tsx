@@ -6,7 +6,7 @@ import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { ConnectButton, useActiveAccount } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
-import DepositOption from './DepositOption';
+import DepositOption from '../DepositOption';
 
 const DepositExternalWalletOptions = () => {
   const activeAccount = useActiveAccount();
