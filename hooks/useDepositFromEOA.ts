@@ -1,7 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { useEffect, useState } from 'react';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
-import { mainnet as thirdwebMainnet } from 'thirdweb/chains';
 import {
   type Address,
   encodeAbiParameters,
@@ -53,6 +52,7 @@ const useDepositFromEOA = (): DepositResult => {
   const account = useActiveAccount();
   const chainId = useChainId();
   const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
+  const [permitChainId, setPermitChainId] = useState<number>(mainnet.id);
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<Address | undefined>();
   const eoaAddress = account?.address;
@@ -98,22 +98,22 @@ const useDepositFromEOA = (): DepositResult => {
 
   const { data: nonce } = useReadContract({
     abi: FiatTokenV2_2,
-    address: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
+    address: BRIDGE_TOKENS[permitChainId]?.tokens?.USDC?.address,
     functionName: 'nonces',
     args: [eoaAddress as Address],
-    chainId: srcChainId,
+    chainId: permitChainId,
     query: {
-      enabled: !!eoaAddress && !!srcChainId,
+      enabled: !!eoaAddress && !!permitChainId,
     },
   });
 
   const { data: tokenName } = useReadContract({
     abi: ERC20_ABI,
-    address: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
+    address: BRIDGE_TOKENS[permitChainId]?.tokens?.USDC?.address,
     functionName: 'name',
-    chainId: srcChainId,
+    chainId: permitChainId,
     query: {
-      enabled: !!eoaAddress && !!srcChainId,
+      enabled: !!eoaAddress && !!permitChainId,
     },
   });
 
@@ -166,6 +166,7 @@ const useDepositFromEOA = (): DepositResult => {
 
   const deposit = async (amount: string) => {
     let clientTxId: string | undefined;
+    let permitChain: number = mainnet.id;
     try {
       // Track deposit initiation
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
@@ -201,7 +202,7 @@ const useDepositFromEOA = (): DepositResult => {
             step: 'validation',
             reason: 'no_nonce',
           },
-          extra: { amount, eoaAddress, srcChainId, isEthereum },
+          extra: { amount, eoaAddress, permitChainId, isEthereum },
         });
         throw error;
       }
@@ -214,7 +215,7 @@ const useDepositFromEOA = (): DepositResult => {
             step: 'validation',
             reason: 'no_token_name',
           },
-          extra: { amount, eoaAddress, srcChainId, isEthereum },
+          extra: { amount, eoaAddress, permitChainId, isEthereum },
         });
         throw error;
       }
@@ -236,6 +237,11 @@ const useDepositFromEOA = (): DepositResult => {
       const spender = isSponsor ? EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS : ADDRESSES.ethereum.vault;
       const isDeposit = isEthereum || !isSponsor;
       const explorerUrl = isDeposit ? explorerUrls[layerzero.id].layerzeroscan : explorerUrls[lifi.id].lifiscan;
+
+      if(!isDeposit) {
+        permitChain = srcChainId;
+        setPermitChainId(srcChainId);
+      }
 
       // Track deposit validation passed
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
@@ -276,8 +282,8 @@ const useDepositFromEOA = (): DepositResult => {
         },
       });
 
-      if (chainId !== srcChainId) {
-        const chain = getChain(srcChainId);
+      if (chainId !== permitChain) {
+        const chain = getChain(permitChain);
         if (!chain) {
           const error = new Error('Chain not found');
           Sentry.captureException(error, {
@@ -288,7 +294,7 @@ const useDepositFromEOA = (): DepositResult => {
             extra: {
               amount,
               currentChainId: chainId,
-              targetChainId: srcChainId,
+              targetChainId: permitChain,
               eoaAddress,
             },
           });
@@ -300,7 +306,7 @@ const useDepositFromEOA = (): DepositResult => {
           category: 'deposit',
           data: {
             from: chainId,
-            to: srcChainId,
+            to: permitChain,
           },
         });
 
@@ -313,8 +319,8 @@ const useDepositFromEOA = (): DepositResult => {
       const domain = {
         name: tokenName,
         version: '2',
-        chainId: srcChainId,
-        verifyingContract: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
+        chainId: permitChainId,
+        verifyingContract: BRIDGE_TOKENS[permitChainId]?.tokens?.USDC?.address,
       };
 
       const types = {
@@ -469,6 +475,16 @@ const useDepositFromEOA = (): DepositResult => {
             data: { amount, eoaAddress, srcChainId, isEthereum: false, isSponsor: false },
           });
 
+          try {
+            const chain = getChain(srcChainId);
+            if (!chain) {
+              throw new Error('Chain not found');
+            }
+            await wallet?.switchChain(chain);
+          } catch (error) {
+            throw new Error(`${ERRORS.ERROR_SWITCHING_SOURCE_CHAIN}: ${error}`);
+          }
+
           const fromToken = getUsdcAddress(srcChainId);
           const quote = await getLifiQuote({
             fromAddress: eoaAddress,
@@ -539,9 +555,13 @@ const useDepositFromEOA = (): DepositResult => {
           const bridgeStatus = await waitForBridgeTransactionReceipt(bridgeTxHash);
 
           try {
-            await wallet?.switchChain(thirdwebMainnet);
+            const chain = getChain(mainnet.id);
+            if (!chain) {
+              throw new Error('Chain not found');
+            }
+            await wallet?.switchChain(chain);
           } catch (error) {
-            throw new Error(ERRORS.ERROR_SWITCHING_MAINNET);
+            throw new Error(`${ERRORS.ERROR_SWITCHING_MAINNET}: ${error}`);
           }
 
           setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2 min)' });
