@@ -39,7 +39,6 @@ export interface DirectDepositSessionResponse {
   chainId: number;
   status: 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
   expiresAt: number;
-  apy: string;
   minDeposit: string;
   maxDeposit: string;
   fee: string;

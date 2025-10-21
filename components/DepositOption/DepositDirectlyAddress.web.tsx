@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
 import QRCode from 'react-native-qrcode-svg';
 import { Fuel, QrCode, Share2 } from 'lucide-react-native';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useDirectDepositSessionPolling } from '@/hooks/useDirectDepositSession';
+import { useTotalAPY } from '@/hooks/useAnalytics';
 import { eclipseAddress } from '@/lib/utils';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -23,6 +25,7 @@ const DepositDirectlyAddress = () => {
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<'copied' | 'error' | null>(null);
+  const { data: totalAPY, isLoading: isTotalAPYLoading } = useTotalAPY();
 
   // Poll for session status updates
   const { session } = useDirectDepositSessionPolling(directDepositSession.sessionId, true);
@@ -149,11 +152,26 @@ const DepositDirectlyAddress = () => {
   // TODO: Calculate estimated time based on chainId
   const estimatedTime = chainId === 1 ? '5 minutes' : '30 minutes';
 
-  const infoRows = [
+  type InfoRow = {
+    label: string;
+    value?: string;
+    valueClassName?: string;
+    extra?: ReactNode;
+    icon?: ReactNode;
+    valueContent?: ReactNode;
+  };
+
+  const formattedAPY = totalAPY !== undefined ? `${totalAPY.toFixed(2)}%` : '—';
+
+  const infoRows: InfoRow[] = [
     {
       label: 'APY',
-      value: `${session?.apy || directDepositSession.apy || '4.50'}%`,
       valueClassName: 'text-[#5BFF6C] text-lg',
+      valueContent: isTotalAPYLoading ? (
+        <Skeleton className="h-5 w-16 bg-white/20" />
+      ) : (
+        <Text className="font-medium text-[#5BFF6C] text-lg">{formattedAPY}</Text>
+      ),
       extra: (
         <TooltipPopover
           text="Annual percentage yield for this deposited amount. Actual yield may vary slightly once the transfer clears."
@@ -265,13 +283,17 @@ const DepositDirectlyAddress = () => {
                   <Text className="font-medium text-muted-foreground">{row.label}</Text>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Text
-                    className={`font-medium text-foreground ${
-                      row.valueClassName ? row.valueClassName : ''
-                    }`}
-                  >
-                    {row.value}
-                  </Text>
+                  {row.valueContent ? (
+                    row.valueContent
+                  ) : (
+                    <Text
+                      className={`font-medium text-foreground ${
+                        row.valueClassName ? row.valueClassName : ''
+                      }`}
+                    >
+                      {row.value}
+                    </Text>
+                  )}
                   {row.extra}
                 </div>
               </div>
