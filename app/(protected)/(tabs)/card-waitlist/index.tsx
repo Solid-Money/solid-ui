@@ -13,8 +13,10 @@ import useUser from '@/hooks/useUser';
 import { checkCardWaitlistStatus } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { path } from '@/constants/path';
+import { useDimension } from '@/hooks/useDimension';
 
 type ClassNames = {
+  container?: string;
   title?: string;
   description?: string;
 };
@@ -28,16 +30,13 @@ type FeatureProps = {
 
 const Feature = ({ icon, title, description, classNames }: FeatureProps) => {
   return (
-    <View className="flex-row items-center gap-2 w-[17rem]">
+    <View className={cn('flex-row md:items-center gap-2 md:w-[17rem]', classNames?.container)}>
       <Image source={icon} style={{ width: 50, height: 50 }} contentFit="contain" />
       <View>
-        <Text className={cn('md:text-lg leading-5 font-bold', classNames?.title)}>{title}</Text>
+        <Text className={cn('text-lg leading-5 font-bold', classNames?.title)}>{title}</Text>
         {typeof description === 'string' ? (
           <Text
-            className={cn(
-              'text-sm md:text-base text-muted-foreground max-w-40 md:max-w-56',
-              classNames?.description,
-            )}
+            className={cn('text-muted-foreground max-w-48 md:max-w-56', classNames?.description)}
           >
             {description}
           </Text>
@@ -54,13 +53,17 @@ const features = [
     icon: require('@/assets/images/card-global.png'),
     title: 'Global acceptance',
     description: '200M+ Visa merchants',
+    classNames: {
+      container: 'items-center',
+    },
   },
   {
     icon: require('@/assets/images/card-earn.png'),
     title: 'Earn while you spend',
     description: '2% cashback for every purchase',
     classNames: {
-      description: 'md:max-w-full',
+      container: 'items-center',
+      description: 'max-w-full md:max-w-full',
     },
   },
   {
@@ -73,7 +76,7 @@ const features = [
     title: 'Effortless setup',
     description: (
       <View>
-        <Text className="text-sm md:text-base text-muted-foreground">Start using instantly.</Text>
+        <Text className="text-muted-foreground">Start using instantly.</Text>
         <View className="flex-row items-center gap-1.5">
           <Image
             source={require('@/assets/images/apple-google-pay.png')}
@@ -81,7 +84,7 @@ const features = [
             style={{ width: 82, height: 19 }}
             contentFit="contain"
           />
-          <Text className="text-sm md:text-base text-muted-foreground">support</Text>
+          <Text className="text-muted-foreground">support</Text>
         </View>
       </View>
     ),
@@ -92,6 +95,7 @@ const CardWaitlist = () => {
   const { user } = useUser();
   const [isInWaitlist, setIsInWaitlist] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { isScreenMedium } = useDimension();
 
   useEffect(() => {
     const checkWaitlistStatus = async () => {
@@ -119,9 +123,9 @@ const CardWaitlist = () => {
     return (
       <CardWaitlistHeader
         content={
-          <View className="flex-row justify-between items-center">
+          <View className="md:flex-row md:justify-between md:items-center">
             <CardWaitlistHeaderTitle />
-            <CardWaitlistHeaderButtons />
+            {isScreenMedium && <CardWaitlistHeaderButtons />}
           </View>
         }
       >
@@ -137,19 +141,21 @@ const CardWaitlist = () => {
   return (
     <CardWaitlistHeader
       content={
-        <View className="flex-row justify-between items-center">
+        <View className="md:flex-row md:justify-between md:items-center">
           <CardWaitlistHeaderTitle />
-          <CardWaitlistHeaderButtons />
+          {isScreenMedium && <CardWaitlistHeaderButtons />}
         </View>
       }
     >
       <CardWaitlistContainer>
-        <View className="flex-1 gap-14 bg-transparent p-5 md:px-12 md:py-10">
+        <View className="flex-1 gap-8 md:gap-14 bg-transparent p-5 py-7 md:px-12 md:py-10">
           <View className="items-start gap-4">
             <View className="bg-brand/10 rounded-full px-5 py-1.5">
               <Text className="text-brand font-bold">Coming soon</Text>
             </View>
-            <Text className="text-2xl md:text-4.5xl font-semibold">Introducing the Solid Card</Text>
+            <Text className="text-3.5xl md:text-4.5xl font-semibold">
+              Introducing the Solid Card
+            </Text>
           </View>
 
           <View className="flex-row flex-wrap gap-10 max-w-2xl">
@@ -158,7 +164,15 @@ const CardWaitlist = () => {
             ))}
           </View>
 
-          <View className="items-start">
+          {!isScreenMedium && (
+            <Image
+              source={require('@/assets/images/cards.png')}
+              style={{ width: 289, height: 305 }}
+              contentFit="contain"
+            />
+          )}
+
+          <View className="md:items-start">
             <ReserveCardButton />
           </View>
         </View>
