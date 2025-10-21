@@ -1,9 +1,9 @@
+import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { useCallback } from 'react';
 import { View } from 'react-native';
-import DepositOption from '../DepositOption';
 
 const DepositBuyCryptoOptions = () => {
   const { setModal } = useDepositStore();
