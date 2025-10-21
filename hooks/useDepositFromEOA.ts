@@ -1,10 +1,12 @@
 import * as Sentry from '@sentry/react-native';
 import { useEffect, useState } from 'react';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
+import { mainnet as thirdwebMainnet } from 'thirdweb/chains';
 import {
   type Address,
   encodeAbiParameters,
   encodeFunctionData,
+  formatUnits,
   parseAbiParameters,
   parseSignature,
   parseUnits,
@@ -115,10 +117,8 @@ const useDepositFromEOA = (): DepositResult => {
     },
   });
 
-  const depositOnEthereum = async (amount: string, signatureData: Signature, deadline: bigint, user: User) => {
+  const depositOnEthereum = async (amount: string, amountWei: bigint, signatureData: Signature, deadline: bigint, user: User) => {
     setDepositStatus({ status: Status.PENDING, message: 'Check Wallet' });
-
-    const amountWei = parseUnits(amount, 6);
 
     Sentry.addBreadcrumb({
       message: 'Executing direct deposit and bridge on Ethereum',
@@ -423,7 +423,7 @@ const useDepositFromEOA = (): DepositResult => {
             }),
           );
         } else {
-          transaction = await depositOnEthereum(amount, signatureData, deadline, user);
+          transaction = await depositOnEthereum(amount, amountWei, signatureData, deadline, user);
         }
       } else {
         if (isSponsor) {
@@ -538,8 +538,16 @@ const useDepositFromEOA = (): DepositResult => {
 
           const bridgeStatus = await waitForBridgeTransactionReceipt(bridgeTxHash);
 
+          try {
+            await wallet?.switchChain(thirdwebMainnet);
+          } catch (error) {
+            throw new Error(ERRORS.ERROR_SWITCHING_MAINNET);
+          }
+
           setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2 min)' });
-          transaction = await depositOnEthereum(bridgeStatus.receiving.amount, signatureData, deadline, user);
+          const bridgeAmountWei = BigInt(bridgeStatus.receiving.amount);
+          const bridgeAmount = formatUnits(bridgeAmountWei, 6);
+          transaction = await depositOnEthereum(bridgeAmount, bridgeAmountWei, signatureData, deadline, user);
         }
       }
 
@@ -652,6 +660,8 @@ const useDepositFromEOA = (): DepositResult => {
         status = TransactionStatus.CANCELLED;
       } else if (errorMessage?.includes(ERRORS.WAIT_TRANSACTION_RECEIPT)) {
         errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
+      } else if (errorMessage?.includes(ERRORS.ERROR_SWITCHING_MAINNET)) {
+        errMsg = ERRORS.ERROR_SWITCHING_MAINNET;
       }
 
       if (clientTxId) {
