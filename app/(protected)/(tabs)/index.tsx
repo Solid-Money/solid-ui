@@ -2,7 +2,6 @@ import CountUp from '@/components/CountUp';
 import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
-import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -117,16 +116,12 @@ export default function Savings() {
     });
   }, [user, intercom]);
 
-  if (isBalanceLoading || isTransactionsLoading) {
-    return <Loading />;
-  }
-
-  if (!balance && !isDeposited) {
+  if (!balance && !isDeposited && !isBalanceLoading && !isTransactionsLoading) {
     return <SavingsEmptyState />;
   }
 
   return (
-    <PageLayout>
+    <PageLayout isLoading={isBalanceLoading || isTransactionsLoading}>
       <View className="gap-8 md:gap-12 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center">

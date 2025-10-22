@@ -7,7 +7,6 @@ import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
 import { Linking, Pressable, View } from 'react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
-import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
@@ -210,14 +209,14 @@ export default function ActivityDetail() {
     enabled: !!clientTxId && !isCardTransaction,
   });
 
-  if (isLoading || isCardTransactionLoading) return <Loading />;
+  const isAnyLoading = isLoading || isCardTransactionLoading;
 
   // Show card transaction detail if it's a card transaction
-  if (isCardTransaction && cardTransaction) {
+  if (isCardTransaction && cardTransaction && !isAnyLoading) {
     return <CardTransactionDetail transaction={cardTransaction} />;
   }
 
-  if (!activity && !isCardTransaction)
+  if (!activity && !isCardTransaction && !isAnyLoading) {
     return (
       <PageLayout desktopOnly>
         <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
@@ -225,6 +224,9 @@ export default function ActivityDetail() {
         </View>
       </PageLayout>
     );
+  }
+
+  if (!activity && !isAnyLoading) return null;
 
   if (!activity) return null;
 
@@ -349,7 +351,7 @@ export default function ActivityDetail() {
   };
 
   return (
-    <PageLayout desktopOnly>
+    <PageLayout desktopOnly isLoading={isAnyLoading}>
       <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
         <Back title={activity.title} className="text-xl md:text-3xl" />
 
