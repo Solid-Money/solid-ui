@@ -9,7 +9,7 @@ import UsernameIcon from '@/assets/images/username';
 import WalletIcon from '@/assets/images/wallet';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';

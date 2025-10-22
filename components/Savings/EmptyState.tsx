@@ -4,7 +4,7 @@ import { FlatList, View } from 'react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { FAQs } from '@/components/FAQ';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import PoolBanners from '@/components/Savings/PoolBanners';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';

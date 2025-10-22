@@ -6,12 +6,10 @@ import { Pressable, View } from 'react-native';
 
 import { AnimatedStepContent } from '@/components/Card/AnimatedStepContent';
 import { StepIndicator } from '@/components/Card/StepIndicator';
-import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardSteps } from '@/hooks/useCardSteps';
-import { useDimension } from '@/hooks/useDimension';
 import { KycStatus } from '@/lib/types';
 
 export default function ActivateMobile() {
@@ -22,7 +20,6 @@ export default function ActivateMobile() {
 
   const { steps, activeStepId, isStepButtonEnabled, toggleStep, activatingCard } = useCardSteps();
 
-  const { isScreenMedium } = useDimension();
   const router = useRouter();
 
   return (

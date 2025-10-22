@@ -8,7 +8,7 @@ import LegalIcon from '@/assets/images/legal';
 import LifebuoyIcon from '@/assets/images/lifebuoy';
 import LogoutIcon from '@/assets/images/logout';
 import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { accounts, supports } from '@/constants/settings';
 import { useDimension } from '@/hooks/useDimension';

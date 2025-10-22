@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';

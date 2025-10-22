@@ -5,22 +5,19 @@ import React from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, View } from 'react-native';
 
 import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
 import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { cardTransactionsQueryKey, useCardTransactions } from '@/hooks/useCardTransactions';
-import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { formatCardAmountWithCurrency } from '@/lib/utils/cardHelpers';
 
 export default function CardTransactions() {
-  const { isScreenMedium } = useDimension();
   const router = useRouter();
   const queryClient = useQueryClient();
 

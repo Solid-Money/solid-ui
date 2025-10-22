@@ -8,15 +8,13 @@ import { Linking, Pressable, View } from 'react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
-import { useDimension } from '@/hooks/useDimension';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction, TransactionDirection, TransactionStatus } from '@/lib/types';
@@ -193,7 +191,6 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
 
 export default function ActivityDetail() {
   const { clientTxId } = useLocalSearchParams<{ clientTxId: string }>();
-  const { isScreenMedium } = useDimension();
   const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
 
   // Check if this is a card transaction

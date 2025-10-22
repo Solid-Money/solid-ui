@@ -3,14 +3,14 @@ import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import SwapButton from '@/components/Swap/SwapButton';
 import SwapModal from '@/components/Swap/SwapModal';
 import SwapPair from '@/components/Swap/SwapPair';
 import SwapParams from '@/components/Swap/SwapParams';
 import { Text } from '@/components/ui/text';
-import { track } from '@/lib/analytics';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 
 export default function SwapPage() {
   const router = useRouter();

@@ -1,6 +1,5 @@
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
-import { useDimension } from '@/hooks/useDimension';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -21,7 +20,6 @@ export default function UserKycInfo() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { setKycLinkId } = useKycStore();
-  const { isScreenMedium } = useDimension();
 
   // redirectUri tells where to resume after KYC.
   const params = useLocalSearchParams<{

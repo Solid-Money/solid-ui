@@ -1,5 +1,5 @@
 import Loading from '@/components/Loading';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import PointsTitle from '@/components/Points/PointsTitle';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';

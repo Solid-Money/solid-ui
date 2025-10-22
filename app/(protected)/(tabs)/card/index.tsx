@@ -6,8 +6,7 @@ import { FlatList, View } from 'react-native';
 
 import ActivateCardImageDesktop from '@/components/Card/ActivateCardImageDesktop';
 import CardBenefits from '@/components/Card/CardBenefits';
-import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';

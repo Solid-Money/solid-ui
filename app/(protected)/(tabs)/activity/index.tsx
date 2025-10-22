@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 
 import { ActivityTabs, ActivityTransactions } from '@/components/Activity';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { ActivityTab, CardStatus } from '@/lib/types';

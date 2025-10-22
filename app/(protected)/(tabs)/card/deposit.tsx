@@ -5,13 +5,11 @@ import { ActivityIndicator, Image, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Address, formatUnits } from 'viem';
 
-import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';
 import { useCardDetails } from '@/hooks/useCardDetails';
-import { useDimension } from '@/hooks/useDimension';
 import useSend from '@/hooks/useSend';
 import useUser from '@/hooks/useUser';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
@@ -20,7 +18,6 @@ import { formatNumber } from '@/lib/utils';
 
 const DepositToCard = () => {
   const router = useRouter();
-  const { isScreenMedium } = useDimension();
   const { ethereumTokens } = useWalletTokens();
   const { data: cardDetails } = useCardDetails();
   const { createActivity, updateActivity } = useActivity();

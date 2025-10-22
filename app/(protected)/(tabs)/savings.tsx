@@ -3,7 +3,7 @@ import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButton
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import { FAQs } from '@/components/FAQ';
 import Loading from '@/components/Loading';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';

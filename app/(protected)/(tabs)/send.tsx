@@ -7,14 +7,13 @@ import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } fro
 import { Address, formatUnits, isAddress } from 'viem';
 import { z } from 'zod';
 
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TokenSelectorModal from '@/components/SendModal/TokenSelectorModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useDimension } from '@/hooks/useDimension';
 import useSend from '@/hooks/useSend';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { track } from '@/lib/analytics';
@@ -30,7 +29,6 @@ const SendPage = () => {
   const [selectedToken, setSelectedToken] = useState<TokenBalance | null>(null);
   const [showTokenSelector, setShowTokenSelector] = useState(false);
   const { setModal, setTransaction } = useSendStore();
-  const { isScreenMedium } = useDimension();
   const { ethereumTokens, fuseTokens } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)

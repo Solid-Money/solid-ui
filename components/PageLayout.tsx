@@ -1,7 +1,7 @@
+import { useDimension } from '@/hooks/useDimension';
 import { ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
-import { useDimension } from '@/hooks/useDimension';
 import Navbar from './Navbar';
 import NavbarMobile from './Navbar/NavbarMobile';
 
@@ -66,7 +66,7 @@ interface PageLayoutProps {
  *   <ScrollView>Content</ScrollView>
  * </PageLayout>
  */
-export const PageLayout = ({
+export default function PageLayout({
   children,
   showNavbar = true,
   desktopOnly = false,
@@ -78,7 +78,7 @@ export const PageLayout = ({
   additionalContent,
   className = '',
   contentClassName = '',
-}: PageLayoutProps) => {
+}: PageLayoutProps) {
   const { isScreenMedium, isDesktop } = useDimension();
 
   // Determine which breakpoint to use
@@ -118,4 +118,4 @@ export const PageLayout = ({
       {additionalContent}
     </SafeAreaView>
   );
-};
+}

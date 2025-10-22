@@ -1,6 +1,5 @@
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
-import { useDimension } from '@/hooks/useDimension';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import type { ClientOptions } from 'persona';
@@ -18,7 +17,6 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
   const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  const { isScreenMedium } = useDimension();
 
   // Parse the provided KYC link into Persona Client options
   const parseKycUrlToOptions = (

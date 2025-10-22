@@ -9,11 +9,10 @@ import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinChartTime from '@/components/Coin/CoinChartTime';
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import Loading from '@/components/Loading';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { times } from '@/constants/coins';
 import { useSearchCoinHistoricalChart } from '@/hooks/useAnalytics';
-import { useDimension } from '@/hooks/useDimension';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -24,7 +23,6 @@ const MAX_SAMPLE_SIZE = 20;
 export default function Coin() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [chainId, contractAddress] = id.split('-');
-  const { isScreenMedium } = useDimension();
   const { tokens, isLoading } = useWalletTokens();
   const { selectedTime, selectedPrice, selectedPriceChange } = useCoinStore();
 

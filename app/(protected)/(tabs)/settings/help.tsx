@@ -6,7 +6,7 @@ import EmailIcon from '@/assets/images/email';
 import LegalIcon from '@/assets/images/legal';
 import LifebuoyIcon from '@/assets/images/lifebuoy';
 import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
 import { cn } from '@/lib/utils';

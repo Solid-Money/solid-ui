@@ -6,13 +6,11 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from
 import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
 
 import CountryFlagImage from '@/components/CountryFlagImage';
-import Navbar from '@/components/Navbar';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
-import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import {
   addToCardWaitlist,

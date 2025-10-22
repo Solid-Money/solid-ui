@@ -1,23 +1,22 @@
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 
 import { FAQ } from '@/components/FAQ';
+import APYChart from '@/components/Landing/APYChart';
 import Audits from '@/components/Landing/Audits';
 import HowItWorks from '@/components/Landing/HowItWorks';
+import SolidImage from '@/components/Landing/SolidImage';
 import VaultBreakdownChart from '@/components/Landing/VaultBreakdownChart.web';
 import VaultBreakdownTable from '@/components/Landing/VaultBreakdownTable';
 import VaultInfo from '@/components/Landing/VaultInfo';
 import VaultStat from '@/components/Landing/VaultStat';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { howItWorks } from '@/constants/how-it-works';
 import { useVaultBreakdown } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { VaultBreakdown } from '@/lib/types';
-import SolidImage from '@/components/Landing/SolidImage';
-import APYChart from '@/components/Landing/APYChart';
 
 interface SoUSDSectionProps {
   vaultBreakdown: VaultBreakdown[];
@@ -121,7 +120,6 @@ const FAQSection = () => {
 };
 
 const Landing = () => {
-  const { isScreenMedium } = useDimension();
   const { data: vaultBreakdown } = useVaultBreakdown();
 
   return (

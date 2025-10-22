@@ -1,7 +1,6 @@
 import CopyToClipboard from '@/components/CopyToClipboard';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
-import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -10,7 +9,6 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 
 export default function Savings() {
-  const { isScreenMedium } = useDimension();
   const { user } = useUser();
 
   return (

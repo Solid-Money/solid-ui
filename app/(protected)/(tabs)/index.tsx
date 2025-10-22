@@ -3,7 +3,7 @@ import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import Loading from '@/components/Loading';
-import { PageLayout } from '@/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
