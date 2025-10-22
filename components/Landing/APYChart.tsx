@@ -16,17 +16,17 @@ const APYChart = () => {
   };
 
   return (
-    <View className="md:flex-1 md:basis-1/2 bg-card rounded-twice overflow-hidden">
-      <View className="flex-row items-center gap-1 p-5 md:p-6 pb-0 md:pb-0">
+    <View className="md:flex-1 md:basis-1/2 bg-card rounded-twice overflow-hidden p-5 md:p-8">
+      <View className="flex-row items-center gap-1">
         <Text className="text-lg text-muted-foreground font-semibold">Yield history</Text>
         <TooltipPopover text="Historical yield of last 30 days" />
       </View>
 
-      <View className="h-[200px] items-center justify-center">
+      <View className="h-[150px] items-center justify-center">
         {isLoading ? (
           <ActivityIndicator size="large" color="white" />
         ) : data && data.length > 0 ? (
-          <BarChart data={data} formatToolTip={formatToolTip} />
+          <BarChart data={data} height={150} formatToolTip={formatToolTip} />
         ) : (
           <Text>No data available</Text>
         )}

@@ -1,6 +1,5 @@
-import Navbar from '@/components/Navbar';
+import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
-import { useDimension } from '@/hooks/useDimension';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import type { ClientOptions } from 'persona';
@@ -18,7 +17,6 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
   const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  const { isScreenMedium } = useDimension();
 
   // Parse the provided KYC link into Persona Client options
   const parseKycUrlToOptions = (
@@ -141,9 +139,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
   }, [onSuccess, router, url]);
 
   return (
-    <View className="flex-1 bg-background">
-      {isScreenMedium && <Navbar />}
-
+    <PageLayout desktopOnly>
       <View className="flex-1 max-w-lg mx-auto pt-8 w-full">
         <View className="flex-row items-center justify-between">
           <Pressable
@@ -164,7 +160,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           <iframe ref={iframeRef} style={styles.inlineIframe as any} title="Persona KYC" />
         </View>
       </View>
-    </View>
+    </PageLayout>
   );
 }
 

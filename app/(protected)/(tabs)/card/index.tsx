@@ -3,11 +3,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { FlatList, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ActivateCardImageDesktop from '@/components/Card/ActivateCardImageDesktop';
 import CardBenefits from '@/components/Card/CardBenefits';
-import Navbar from '@/components/Navbar';
+import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -33,24 +32,17 @@ export default function Card() {
     router.push(path.CARD_COUNTRY_SELECTION);
   };
 
-  // Show loading state while checking card status
-  if (isLoading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-lg">Loading...</Text>
-      </View>
-    );
-  }
-
   // Show error state for non-404 errors
-  if (error && (error as any)?.status !== 404) {
+  if (error && (error as any)?.status !== 404 && !isLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-lg text-red-500">Error loading card status</Text>
-        <Button className="mt-4" onPress={() => refetch()}>
-          <Text>Retry</Text>
-        </Button>
-      </View>
+      <PageLayout>
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-lg text-red-500">Error loading card status</Text>
+          <Button className="mt-4" onPress={() => refetch()}>
+            <Text>Retry</Text>
+          </Button>
+        </View>
+      </PageLayout>
     );
   }
 
@@ -87,61 +79,55 @@ export default function Card() {
 
   // Desktop UI (following EmptyState pattern)
   const renderContent = () => (
-    <>
-      <Navbar />
-      <View className="w-full max-w-7xl mx-auto gap-8 md:gap-16 px-4 py-8">
-        <View className="md:flex-row justify-between md:items-center gap-y-4">
-          <View className="gap-3">
-            <Text className="text-3xl font-semibold">Solid Card</Text>
-            <Text className="max-w-lg">
-              <Text className="opacity-70">
-                Our Solid vault will automatically manage your funds to maximize your yield without
-                exposing you to unnecessary risk.
-              </Text>
+    <View className="w-full max-w-7xl mx-auto gap-8 md:gap-16 px-4 py-8">
+      <View className="md:flex-row justify-between md:items-center gap-y-4">
+        <View className="gap-3">
+          <Text className="text-3xl font-semibold">Solid Card</Text>
+          <Text className="max-w-lg">
+            <Text className="opacity-70">
+              Our Solid vault will automatically manage your funds to maximize your yield without
+              exposing you to unnecessary risk.
             </Text>
-          </View>
-
-          <View className="flex-row items-center gap-5">
-            <Button
-              className="rounded-xl h-12 px-10"
-              style={{ backgroundColor: '#94F27F' }}
-              onPress={activateCard}
-            >
-              <Text className="text-base font-bold text-black">Order Card</Text>
-            </Button>
-          </View>
+          </Text>
         </View>
 
-        <LinearGradient
-          colors={['rgba(148, 242, 127, 0.23)', 'rgba(148, 242, 127, 0.05)']}
-          style={{
-            borderRadius: 20,
-            padding: 40,
-            paddingBottom: 0,
-            gap: 96,
-          }}
-        >
-          <View className="flex-col md:flex-row justify-between gap-10 md:gap-0">
-            <View className="justify-between gap-10 md:gap-0 w-full max-w-2xl">
-              <Text className="text-center md:text-start text-2xl md:text-4.5xl md:leading-10 font-semibold max-w-sm md:max-w-lg mx-auto md:mx-0">
-                Introducing the Solid card
-              </Text>
-              <View className="pb-10">
-                <CardBenefits />
-              </View>
-            </View>
-            <ActivateCardImageDesktop />
-          </View>
-        </LinearGradient>
+        <View className="flex-row items-center gap-5">
+          <Button
+            className="rounded-xl h-12 px-10"
+            style={{ backgroundColor: '#94F27F' }}
+            onPress={activateCard}
+          >
+            <Text className="text-base font-bold text-black">Order Card</Text>
+          </Button>
+        </View>
       </View>
-    </>
+
+      <LinearGradient
+        colors={['rgba(148, 242, 127, 0.23)', 'rgba(148, 242, 127, 0.05)']}
+        style={{
+          borderRadius: 20,
+          padding: 40,
+          paddingBottom: 0,
+          gap: 96,
+        }}
+      >
+        <View className="flex-col md:flex-row justify-between gap-10 md:gap-0">
+          <View className="justify-between gap-10 md:gap-0 w-full max-w-2xl">
+            <Text className="text-center md:text-start text-2xl md:text-4.5xl md:leading-10 font-semibold max-w-sm md:max-w-lg mx-auto md:mx-0">
+              Introducing the Solid card
+            </Text>
+            <View className="pb-10">
+              <CardBenefits />
+            </View>
+          </View>
+          <ActivateCardImageDesktop />
+        </View>
+      </LinearGradient>
+    </View>
   );
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
+    <PageLayout desktopOnly scrollable={false} isLoading={isLoading}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}
@@ -149,6 +135,6 @@ export default function Card() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
       />
-    </SafeAreaView>
+    </PageLayout>
   );
 }

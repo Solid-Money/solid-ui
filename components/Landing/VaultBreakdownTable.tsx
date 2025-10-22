@@ -39,7 +39,7 @@ interface BodyProps {
 }
 
 const isProtocol = (name: string) => {
-  return Object.values(protocols).some(protocol =>
+  return Object.keys(protocols).some(protocol =>
     name.toLowerCase().includes(protocol.toLowerCase()),
   );
 };
@@ -48,13 +48,13 @@ const formatPercent = (percent: string | number) => {
   return `${formatNumber(Number(percent), 2)}%`;
 };
 
-const formatName = (name: string, isScreenMedium: boolean) => {
+const formatName = (name: string, type: string, isScreenMedium: boolean) => {
   const nameLength = {
     max: isScreenMedium ? 25 : 10,
     protocolStart: 2,
   };
 
-  if (isProtocol(name)) {
+  if (isProtocol(type)) {
     const formattedName = name.split('_').slice(nameLength.protocolStart).join('_');
     return eclipseUsername(formattedName, nameLength.max);
   }
@@ -107,7 +107,7 @@ const Body = ({ data, columns, setSelectedBreakdown }: BodyProps) => {
                     {c.key === 'name' && (
                       <Image
                         source={protocolsImages[d['type']]}
-                        style={{ width: 24, height: 24 }}
+                        style={{ width: 24, height: 24, borderRadius: 999 }}
                         contentFit="contain"
                       />
                     )}
@@ -115,7 +115,7 @@ const Body = ({ data, columns, setSelectedBreakdown }: BodyProps) => {
                       {c.percent
                         ? formatPercent(d[c.key])
                         : c.key === 'name'
-                          ? formatName(d[c.key], isScreenMedium)
+                          ? formatName(d[c.key], d['type'], isScreenMedium)
                           : d[c.key]}
                     </Text>
                   </View>
