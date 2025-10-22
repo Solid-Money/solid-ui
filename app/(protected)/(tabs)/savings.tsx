@@ -2,7 +2,6 @@ import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import { FAQs } from '@/components/FAQ';
-import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
@@ -71,11 +70,9 @@ export default function Savings() {
     refetchTransactions();
   }, [blockNumber, refetchBalance, refetchTransactions]);
 
-  if (isBalanceLoading || isTransactionsLoading) {
-    return <Loading />;
-  }
+  const isLoading = isBalanceLoading || isTransactionsLoading;
 
-  if (!balance && !userDepositTransactions?.deposits?.length) {
+  if (!balance && !userDepositTransactions?.deposits?.length && !isLoading) {
     return <SavingsEmptyState />;
   }
 
@@ -234,7 +231,7 @@ export default function Savings() {
   );
 
   return (
-    <PageLayout desktopOnly>
+    <PageLayout desktopOnly isLoading={isLoading}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}

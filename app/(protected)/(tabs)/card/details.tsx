@@ -9,7 +9,6 @@ import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { CardDetailsReveal } from '@/components/Card/CardDetailsReveal';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
-import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
@@ -62,10 +61,8 @@ export default function CardDetails() {
     }
   };
 
-  if (isLoading) return <Loading />;
-
   return (
-    <PageLayout desktopOnly contentClassName="px-4">
+    <PageLayout desktopOnly contentClassName="px-4" isLoading={isLoading}>
       <View className="w-full max-w-lg mx-auto pt-8">
         <CardHeader onBackPress={handleBackPress} />
 
