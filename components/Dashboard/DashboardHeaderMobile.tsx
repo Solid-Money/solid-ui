@@ -35,14 +35,13 @@ const DashboardHeaderMobile = ({
           styles={{
             wholeText: {
               fontSize: fontSize(3),
-              fontWeight: '600',
+              fontWeight: '500',
               //fontFamily: 'MonaSans_600SemiBold',
               color: '#ffffff',
-              marginRight: -1,
             },
             decimalText: {
               fontSize: fontSize(3),
-              fontWeight: '200',
+              fontWeight: '500',
               //fontFamily: 'MonaSans_600SemiBold',
               color: '#ffffff',
             },

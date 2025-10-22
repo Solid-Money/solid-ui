@@ -1,9 +1,8 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import { Pressable, SafeAreaView, View } from 'react-native';
-import { Image } from 'expo-image';
 
-import UserAvatar from '@/assets/images/user';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
@@ -23,7 +22,7 @@ const NavbarMobile = () => {
         <Image
           source={require('@/assets/images/solid-logo-4x.png')}
           alt="Solid logo"
-          style={{ width: 33, height: 36 }}
+          style={{ width: 30, height: 30 }}
           contentFit="contain"
         />
         {user ? (
@@ -31,8 +30,8 @@ const NavbarMobile = () => {
             onPress={handleAvatarPress}
             className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-transform"
           >
-            <UserAvatar width={24} height={24} />
-            <Text className="text-white font-medium text-sm ml-2 mr-1">
+            
+            <Text className="text-white font-medium text-sm ml-1 mr-1">
               {eclipseUsername(user.username)}
             </Text>
             <ChevronDown size={16} color="white" />

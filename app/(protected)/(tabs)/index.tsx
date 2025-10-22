@@ -2,9 +2,7 @@ import CountUp from '@/components/CountUp';
 import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
-import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import PageLayout from '@/components/PageLayout';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -24,8 +22,7 @@ import { SavingMode } from '@/lib/types';
 import { fontSize } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 import React, { useEffect } from 'react';
-import { ScrollView, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { TouchableOpacity, View } from 'react-native';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
@@ -119,112 +116,104 @@ export default function Savings() {
     });
   }, [user, intercom]);
 
-  if (isBalanceLoading || isTransactionsLoading) {
-    return <Loading />;
-  }
-
-  if (!balance && !isDeposited) {
+  if (!balance && !isDeposited && !isBalanceLoading && !isTransactionsLoading) {
     return <SavingsEmptyState />;
   }
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {!isScreenMedium && <NavbarMobile />}
-        {isScreenMedium && <Navbar />}
-        <View className="gap-8 md:gap-16 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
-          {isScreenMedium ? (
-            <View className="flex-row justify-between items-center">
-              <View className="flex-row items-center gap-2">
-                <View className="flex-row items-center">
-                  {isLoadingTokens ||
-                  isBalanceLoading ||
-                  isAPYsLoading ||
-                  firstDepositTimestamp === undefined ||
-                  savings === undefined ? (
-                    <Skeleton className="w-56 h-[4.5rem]" />
-                  ) : (
-                    <CountUp
-                      prefix="$"
-                      count={totalUSDExcludingSoUSD + savings}
-                      isTrailingZero={false}
-                      decimalPlaces={2}
-                      classNames={{
-                        wrapper: 'text-foreground',
-                        decimalSeparator: 'text-5xl font-semibold',
-                      }}
-                      styles={{
-                        wholeText: {
-                          fontSize: fontSize(3),
-                          fontWeight: '600',
-                          //fontFamily: 'MonaSans_600SemiBold',
-                          color: '#ffffff',
-                          marginRight: -1,
-                        },
-                        decimalText: {
-                          fontSize: fontSize(3),
-                          fontWeight: '200',
-                          //fontFamily: 'MonaSans_600SemiBold',
-                          color: '#ffffff',
-                        },
-                      }}
-                    />
-                  )}
-                </View>
+    <PageLayout isLoading={isBalanceLoading || isTransactionsLoading}>
+      <View className="gap-8 md:gap-12 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
+        {isScreenMedium ? (
+          <View className="flex-row justify-between items-center">
+            <View className="flex-row items-center gap-2">
+              <View className="flex-row items-center">
+                {isLoadingTokens ||
+                isBalanceLoading ||
+                isAPYsLoading ||
+                firstDepositTimestamp === undefined ||
+                savings === undefined ? (
+                  <Skeleton className="w-56 h-[4.5rem] rounded-xl" />
+                ) : (
+                  <CountUp
+                    prefix="$"
+                    count={totalUSDExcludingSoUSD + savings}
+                    isTrailingZero={false}
+                    decimalPlaces={2}
+                    classNames={{
+                      wrapper: 'text-foreground',
+                      decimalSeparator: 'text-5xl font-semibold',
+                    }}
+                    styles={{
+                      wholeText: {
+                        fontSize: fontSize(3),
+                        fontWeight: '500',
+                        //fontFamily: 'MonaSans_600SemiBold',
+                        color: '#ffffff',
+                        marginRight: -1,
+                      },
+                      decimalText: {
+                        fontSize: fontSize(3),
+                        fontWeight: '500',
+                        //fontFamily: 'MonaSans_600SemiBold',
+                        color: '#ffffff',
+                      },
+                    }}
+                  />
+                )}
               </View>
-              <DashboardHeaderButtons hasTokens={hasTokens} />
             </View>
-          ) : (
-            <DashboardHeaderMobile
-              balance={totalUSDExcludingSoUSD + (savings ?? 0)}
-              mode={SavingMode.BALANCE_ONLY}
+            <DashboardHeaderButtons hasTokens={hasTokens} />
+          </View>
+        ) : (
+          <DashboardHeaderMobile
+            balance={totalUSDExcludingSoUSD + (savings ?? 0)}
+            mode={SavingMode.BALANCE_ONLY}
+          />
+        )}
+        {isScreenMedium ? (
+          <View className="md:flex-row gap-8 min-h-44">
+            <WalletCard
+              balance={totalUSDExcludingSoUSD}
+              className="flex-1"
+              tokens={topThreeTokens}
+              isLoading={isLoadingTokens}
+              decimalPlaces={2}
             />
-          )}
-          {isScreenMedium ? (
-            <View className="md:flex-row gap-8 min-h-44">
-              <WalletCard
-                balance={totalUSDExcludingSoUSD}
-                className="flex-1"
-                tokens={topThreeTokens}
-                isLoading={isLoadingTokens}
-                decimalPlaces={2}
-              />
-              <SavingCard className="flex-1" decimalPlaces={2} />
-            </View>
-          ) : (
-            <HomeBanners />
-          )}
+            <SavingCard className="flex-1" decimalPlaces={2} />
+          </View>
+        ) : (
+          <HomeBanners />
+        )}
 
-          <View className="gap-4">
+        <View className="gap-4">
+          {/*
             <Text className="md:text-2xl text-muted-foreground md:text-foreground font-semibold md:font-medium">
               Coins
             </Text>
-            <View>
-              {tokenError ? (
-                <View className="flex-1 justify-center items-center p-4">
-                  <WalletInfo text="Failed to load tokens" />
-                  <Text className="text-sm text-muted-foreground mt-2">{tokenError}</Text>
-                  <TouchableOpacity
-                    onPress={retryTokens}
-                    className="mt-4 px-4 py-2 bg-primary rounded-lg"
-                  >
-                    <Text className="text-primary-foreground">Retry</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : isLoadingTokens ? (
-                <WalletInfo text="Loading tokens..." />
-              ) : hasTokens ? (
-                <WalletTabs />
-              ) : (
-                <WalletInfo text="No tokens found" />
-              )}
-            </View>
+            */}
+
+          <View className="mt-10">
+            {tokenError ? (
+              <View className="flex-1 justify-center items-center p-4">
+                <WalletInfo text="Failed to load tokens" />
+                <Text className="text-sm text-muted-foreground mt-2">{tokenError}</Text>
+                <TouchableOpacity
+                  onPress={retryTokens}
+                  className="mt-4 px-4 py-2 bg-primary rounded-lg"
+                >
+                  <Text className="text-primary-foreground">Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : isLoadingTokens ? (
+              <WalletInfo text="Loading tokens..." />
+            ) : hasTokens ? (
+              <WalletTabs />
+            ) : (
+              <WalletInfo text="No tokens found" />
+            )}
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </PageLayout>
   );
 }

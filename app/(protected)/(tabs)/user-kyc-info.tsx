@@ -1,6 +1,5 @@
-import Navbar from '@/components/Navbar';
+import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
-import { useDimension } from '@/hooks/useDimension';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -21,7 +20,6 @@ export default function UserKycInfo() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { setKycLinkId } = useKycStore();
-  const { isScreenMedium } = useDimension();
 
   // redirectUri tells where to resume after KYC.
   const params = useLocalSearchParams<{
@@ -96,8 +94,7 @@ export default function UserKycInfo() {
   };
 
   return (
-    <View className="flex-1 bg-[#262624]">
-      {isScreenMedium && <Navbar />}
+    <PageLayout desktopOnly>
       <View className="flex-1 w-full max-w-lg mx-auto pt-8 px-6">
         <View className="flex-row items-center justify-between">
           <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
@@ -124,7 +121,7 @@ export default function UserKycInfo() {
           />
         </View>
       </View>
-    </View>
+    </PageLayout>
   );
 
   async function getKycLink(

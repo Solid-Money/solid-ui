@@ -6,9 +6,9 @@ import AccountCenterModal from '@/components/AccountCenter/AccountCenterModal';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
+import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { NavMenu } from './NavMenu';
-import useUser from '@/hooks/useUser';
 import RegisterButtons from './RegisterButtons';
 
 const Navbar = () => {
@@ -31,14 +31,14 @@ const Navbar = () => {
             source={require('@/assets/images/solid-logo.png')}
             alt="Solid logo"
             contentFit="contain"
-            style={{ width: 20, height: 20 }}
+            style={{ width: 26, height: 30 }}
           />
           <Image
             source={require('@/assets/images/solid-4x.png')}
             alt="Solid"
             contentFit="contain"
-            style={{ width: 68, height: 23 }}
-            className="hidden md:block"
+            style={{ width: 72, height: 33, marginTop: -3 }}
+            className="hidden md:block mt-[-3px]"
           />
         </Link>
         {user && isScreenMedium && <NavMenu />}

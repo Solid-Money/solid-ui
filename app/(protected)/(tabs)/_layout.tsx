@@ -4,6 +4,7 @@ import React from 'react';
 
 import ActivityNavBarIcon from '@/assets/images/activity-nav-bar-icon';
 import AssetsNavBarIcon from '@/assets/images/assets-nav-bar-icon';
+import CardNavBarIcon from '@/assets/images/card-nav-bar-icon';
 import SavingsNavBarIcon from '@/assets/images/savings-nav-bar-icon';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
@@ -26,15 +27,17 @@ export default function TabLayout() {
         tabBarBackground: TabBarBackground,
         tabBarLabelStyle: {
           fontSize: 12,
+          marginTop: 5,
         },
         tabBarStyle: {
           display: isDesktop ? 'none' : 'flex',
-          height: 85,
-          paddingTop: 8,
-          paddingBottom: 8,
+          height: 75,
+          paddingTop: 6,
+          paddingBottom: 5,
           borderTopWidth: 1,
           backgroundColor: 'rgba(0, 0, 0, 0.9)',
           borderTopColor: 'rgba(61, 61, 61, 0.8)',
+          position: 'absolute',
         },
       }}
       backBehavior="history"
@@ -64,7 +67,7 @@ export default function TabLayout() {
         options={{
           title: 'Card',
           headerShown: false,
-          tabBarIcon: ({ color }) => <CreditCard size={28} color={color} />,
+          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} />,
           href: path.CARD_WAITLIST,
         }}
       />
