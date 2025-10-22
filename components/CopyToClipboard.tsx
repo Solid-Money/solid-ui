@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
-import { useEffect, useState } from 'react';
 import { Check, Copy } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

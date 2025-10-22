@@ -3,14 +3,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { CardDetailsReveal } from '@/components/Card/CardDetailsReveal';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
+import PageLayout from '@/components/PageLayout';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -65,28 +65,24 @@ export default function CardDetails() {
   if (isLoading) return <Loading />;
 
   return (
-    <View className="flex-1 bg-background px-4">
-      {isScreenMedium && <Navbar />}
+    <PageLayout desktopOnly contentClassName="px-4">
+      <View className="w-full max-w-lg mx-auto pt-8">
+        <CardHeader onBackPress={handleBackPress} />
 
-      <ScrollView className="flex-1" contentContainerClassName="flex-grow">
-        <View className="w-full max-w-lg mx-auto pt-8">
-          <CardHeader onBackPress={handleBackPress} />
-
-          <View className="flex-1">
-            <BalanceDisplay amount={availableAmount} />
-            <CardImageSection isScreenMedium={isScreenMedium} isCardFrozen={isCardFrozen} />
-            <CardActions
-              isCardFrozen={isCardFrozen}
-              isFreezing={isFreezing}
-              onCardDetails={() => setIsCardImageModalOpen(true)}
-              onFreezeToggle={handleFreezeToggle}
-            />
-            <CashbackDisplay cashback={cardDetails?.cashback} />
-            <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
-            <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
-          </View>
+        <View className="flex-1">
+          <BalanceDisplay amount={availableAmount} />
+          <CardImageSection isScreenMedium={isScreenMedium} isCardFrozen={isCardFrozen} />
+          <CardActions
+            isCardFrozen={isCardFrozen}
+            isFreezing={isFreezing}
+            onCardDetails={() => setIsCardImageModalOpen(true)}
+            onFreezeToggle={handleFreezeToggle}
+          />
+          <CashbackDisplay cashback={cardDetails?.cashback} />
+          <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
+          <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
         </View>
-      </ScrollView>
+      </View>
 
       <CardImageModal isOpen={isCardImageModalOpen} onOpenChange={setIsCardImageModalOpen} />
 
@@ -95,7 +91,7 @@ export default function CardDetails() {
         onOpenChange={setIsAddToWalletModalOpen}
         trigger={<></>}
       />
-    </View>
+    </PageLayout>
   );
 }
 

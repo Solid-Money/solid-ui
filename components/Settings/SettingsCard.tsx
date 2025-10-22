@@ -97,11 +97,11 @@ const SettingsCard = ({
           <View className="flex-1">
             <Text className={cn('font-bold', textSize, titleStyle || 'text-white')}>{title}</Text>
             {description && (
-              <View className="flex-row items-center mt-1">
+              <View className="flex-row items-center">
                 <Text className={cn(descTextSize, 'text-[#acacac] font-medium')}>
                   {description}
                 </Text>
-                {inlineAction && <View className="ml-2">{inlineAction}</View>}
+                {inlineAction && <View className="ml-0.5">{inlineAction}</View>}
               </View>
             )}
           </View>

@@ -205,10 +205,7 @@ const ResponsiveModal = ({
     <View>
       <Pressable
         onPress={handlePresentModalPress}
-        style={({ pressed }) => [
-          { alignSelf: 'flex-start' },
-          pressed && { opacity: 0.8 }
-        ]}
+        style={({ pressed }) => [{ alignSelf: 'flex-start' }, pressed && { opacity: 0.8 }]}
       >
         {triggerElement}
       </Pressable>
