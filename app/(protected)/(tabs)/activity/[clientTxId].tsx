@@ -4,19 +4,16 @@ import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Linking, Pressable, View } from 'react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
-import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
+import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
-import { useDimension } from '@/hooks/useDimension';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction, TransactionDirection, TransactionStatus } from '@/lib/types';
@@ -94,8 +91,6 @@ type CardTransactionDetailProps = {
 };
 
 const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
-  const { isScreenMedium } = useDimension();
-
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
   const initials = getInitials(merchantName);
   const avatarColor = getAvatarColor(merchantName);
@@ -150,59 +145,51 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
   };
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {isScreenMedium && <Navbar />}
+    <PageLayout desktopOnly>
+      <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+        <Back title={merchantName} className="text-xl md:text-3xl" />
 
-        <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
-          <Back title={merchantName} className="text-xl md:text-3xl" />
-
-          <View className="items-center gap-4">
-            {/* Avatar with initials */}
-            <View
-              className={cn(
-                'w-[120px] h-[120px] rounded-full items-center justify-center',
-                avatarColor,
-              )}
-            >
-              <Text className="text-white text-5xl font-semibold">{initials}</Text>
-            </View>
-
-            <View className="items-center">
-              <Text className="text-4xl font-bold text-white">
-                {formatCardAmount(transaction.amount)}
-              </Text>
-              <Text className="text-muted-foreground font-semibold mt-2">
-                {format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}
-              </Text>
-            </View>
+        <View className="items-center gap-4">
+          {/* Avatar with initials */}
+          <View
+            className={cn(
+              'w-[120px] h-[120px] rounded-full items-center justify-center',
+              avatarColor,
+            )}
+          >
+            <Text className="text-white text-5xl font-semibold">{initials}</Text>
           </View>
 
-          <View className="bg-[#1C1C1E] rounded-[20px]">
-            {rows.map(
-              (row, index) =>
-                row.enabled && (
-                  <Row
-                    key={index}
-                    label={row.label}
-                    value={row.value}
-                    className={cn(isLastRow(index) && 'border-b-0')}
-                  />
-                ),
-            )}
+          <View className="items-center">
+            <Text className="text-4xl font-bold text-white">
+              {formatCardAmount(transaction.amount)}
+            </Text>
+            <Text className="text-muted-foreground font-semibold mt-2">
+              {format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}
+            </Text>
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        <View className="bg-[#1C1C1E] rounded-[20px]">
+          {rows.map(
+            (row, index) =>
+              row.enabled && (
+                <Row
+                  key={index}
+                  label={row.label}
+                  value={row.value}
+                  className={cn(isLastRow(index) && 'border-b-0')}
+                />
+              ),
+          )}
+        </View>
+      </View>
+    </PageLayout>
   );
 };
 
 export default function ActivityDetail() {
   const { clientTxId } = useLocalSearchParams<{ clientTxId: string }>();
-  const { isScreenMedium } = useDimension();
   const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
 
   // Check if this is a card transaction
@@ -222,24 +209,24 @@ export default function ActivityDetail() {
     enabled: !!clientTxId && !isCardTransaction,
   });
 
-  if (isLoading || isCardTransactionLoading) return <Loading />;
+  const isAnyLoading = isLoading || isCardTransactionLoading;
 
   // Show card transaction detail if it's a card transaction
-  if (isCardTransaction && cardTransaction) {
+  if (isCardTransaction && cardTransaction && !isAnyLoading) {
     return <CardTransactionDetail transaction={cardTransaction} />;
   }
 
-  if (!activity && !isCardTransaction)
+  if (!activity && !isCardTransaction && !isAnyLoading) {
     return (
-      <SafeAreaView className="bg-background text-foreground flex-1">
-        <ScrollView className="flex-1">
-          {isScreenMedium && <Navbar />}
-          <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
-            <Back title={`Transaction ${eclipseAddress(clientTxId)} not found`} />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+      <PageLayout desktopOnly>
+        <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+          <Back title={`Transaction ${eclipseAddress(clientTxId)} not found`} />
+        </View>
+      </PageLayout>
     );
+  }
+
+  if (!activity && !isAnyLoading) return null;
 
   if (!activity) return null;
 
@@ -364,57 +351,50 @@ export default function ActivityDetail() {
   };
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {isScreenMedium && <Navbar />}
+    <PageLayout desktopOnly isLoading={isAnyLoading}>
+      <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+        <Back title={activity.title} className="text-xl md:text-3xl" />
 
-        <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
-          <Back title={activity.title} className="text-xl md:text-3xl" />
+        <View className="items-center gap-4">
+          <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
 
-          <View className="items-center gap-4">
-            <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
-
-            <View className="items-center">
-              <Text className={cn('text-2xl font-bold', statusTextColor)}>
-                {statusSign}
-                {formatNumber(Number(activity.amount))}{' '}
-                {activity.symbol?.toLowerCase() === 'sousd' ? 'soUSD' : activity.symbol}
-              </Text>
-              <Text className="text-muted-foreground font-semibold">
-                {format(Number(activity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}
-              </Text>
-            </View>
+          <View className="items-center">
+            <Text className={cn('text-2xl font-bold', statusTextColor)}>
+              {statusSign}
+              {formatNumber(Number(activity.amount))}{' '}
+              {activity.symbol?.toLowerCase() === 'sousd' ? 'soUSD' : activity.symbol}
+            </Text>
+            <Text className="text-muted-foreground font-semibold">
+              {format(Number(activity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}
+            </Text>
           </View>
+        </View>
 
-          <View className="bg-card rounded-twice">
-            {rows.map(
-              (row, index) =>
-                row.enabled && (
-                  <Row
-                    key={index}
-                    label={row.label}
-                    value={row.value}
-                    className={cn(isLastRow(index) && 'border-b-0')}
-                  />
-                ),
-            )}
-          </View>
-
-          {isCancelWithdraw && (
-            <Button
-              onPress={handleCancelWithdraw}
-              variant="secondary"
-              className="rounded-xl h-14 border-0"
-            >
-              <X color="white" size={16} />
-              <Text>Cancel Withdraw</Text>
-            </Button>
+        <View className="bg-card rounded-twice">
+          {rows.map(
+            (row, index) =>
+              row.enabled && (
+                <Row
+                  key={index}
+                  label={row.label}
+                  value={row.value}
+                  className={cn(isLastRow(index) && 'border-b-0')}
+                />
+              ),
           )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        {isCancelWithdraw && (
+          <Button
+            onPress={handleCancelWithdraw}
+            variant="secondary"
+            className="rounded-xl h-14 border-0"
+          >
+            <X color="white" size={16} />
+            <Text>Cancel Withdraw</Text>
+          </Button>
+        )}
+      </View>
+    </PageLayout>
   );
 }

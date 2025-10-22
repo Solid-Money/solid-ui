@@ -2,8 +2,7 @@ import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import { FAQs } from '@/components/FAQ';
-import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
+import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
@@ -25,7 +24,6 @@ import { fontSize, formatNumber } from '@/lib/utils';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
 import { FlatList, ImageBackground, Platform, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
@@ -72,17 +70,14 @@ export default function Savings() {
     refetchTransactions();
   }, [blockNumber, refetchBalance, refetchTransactions]);
 
-  if (isBalanceLoading || isTransactionsLoading) {
-    return <Loading />;
-  }
+  const isLoading = isBalanceLoading || isTransactionsLoading;
 
-  if (!balance && !userDepositTransactions?.deposits?.length) {
+  if (!balance && !userDepositTransactions?.deposits?.length && !isLoading) {
     return <SavingsEmptyState />;
   }
 
   const renderContent = () => (
     <>
-      {isScreenMedium && <Navbar />}
       <View className="gap-8 md:gap-9 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center">
@@ -236,10 +231,7 @@ export default function Savings() {
   );
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
+    <PageLayout desktopOnly isLoading={isLoading}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}
@@ -247,6 +239,6 @@ export default function Savings() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
       />
-    </SafeAreaView>
+    </PageLayout>
   );
 }

@@ -31,14 +31,17 @@ module.exports = {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
+          hover: 'color-mix(in srgb, hsl(var(--primary)) 90%, white 10%)',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',
+          hover: 'color-mix(in srgb, hsl(var(--secondary)) 90%, white 10%)',
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
+          hover: 'color-mix(in srgb, hsl(var(--destructive)) 90%, white 10%)',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',
@@ -47,6 +50,7 @@ module.exports = {
         accent: {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
+          hover: 'color-mix(in srgb, hsl(var(--accent)) 90%, white 10%)',
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
@@ -59,6 +63,7 @@ module.exports = {
         brand: {
           DEFAULT: 'hsl(var(--brand))',
           foreground: 'hsl(var(--brand-foreground))',
+          hover: 'color-mix(in srgb, hsl(var(--brand)) 90%, white 30%)',
         },
         points: {
           DEFAULT: 'hsl(var(--points))',
@@ -84,9 +89,11 @@ module.exports = {
         },
         purple: {
           DEFAULT: 'hsl(var(--purple))',
+          hover: 'color-mix(in srgb, hsl(var(--purple)) 90%, white 10%)',
         },
         rewards: {
           DEFAULT: 'hsl(var(--rewards))',
+          hover: 'color-mix(in srgb, hsl(var(--rewards)) 90%, white 10%)',
         },
       },
       borderWidth: {
