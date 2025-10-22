@@ -1,8 +1,9 @@
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
+import { ERRORS } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track, trackIdentity } from '@/lib/analytics';
-import { deleteAccount, getSubOrgIdByUsername, login, signUp, updateSafeAddress, usernameExists } from '@/lib/api';
+import { deleteAccount, getSubOrgIdByUsername, login, signUp, updateSafeAddress, updateUserCredentialId, usernameExists } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -11,9 +12,11 @@ import {
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
-import { getNonce, isHTTPError, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
+import { base64urlToUint8Array, getNonce, isHTTPError, parseStampHeaderValueCredentialId, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { publicClient, rpcUrls } from '@/lib/wagmi';
+import { useActivityStore } from '@/store/useActivityStore';
+import { useBalanceStore } from '@/store/useBalanceStore';
 import { useKycStore } from '@/store/useKycStore';
 import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -33,9 +36,6 @@ import { Chain, createWalletClient, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
-import { ERRORS } from '@/constants/errors';
-import { useActivityStore } from '@/store/useActivityStore';
-import { useBalanceStore } from '@/store/useBalanceStore';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -81,10 +81,26 @@ const useUser = (): UseUserReturn => {
       stamper = new WebauthnStamper({
         rpId: getRuntimeRpId(),
         timeout: 60000,
+        allowCredentials: user?.credentialId
+          ? [
+            {
+              id: base64urlToUint8Array(user.credentialId) as BufferSource,
+              type: 'public-key' as const,
+            },
+          ]
+          : undefined
       });
     } else {
       stamper = new PasskeyStamper({
         rpId: getRuntimeRpId(),
+        allowCredentials: user?.credentialId
+          ? [
+            {
+              id: user.credentialId,
+              type: 'public-key' as const,
+            },
+          ]
+          : undefined
       });
     }
 
@@ -233,6 +249,7 @@ const useUser = (): UseUserReturn => {
         const passkeyName = username;
         let challenge: any;
         let attestation: any;
+        let credentialId: string;
 
         if (Platform.OS === 'web') {
           // Dynamically import browser SDK only when needed
@@ -255,6 +272,7 @@ const useUser = (): UseUserReturn => {
           });
           challenge = passkey.encodedChallenge;
           attestation = passkey.attestation;
+          credentialId = passkey.attestation.credentialId;
         } else {
           // Use the already imported React Native passkey stamper
           //@ts-ignore
@@ -273,6 +291,7 @@ const useUser = (): UseUserReturn => {
           });
           challenge = passkey.challenge;
           attestation = passkey.attestation;
+          credentialId = passkey.attestation.credentialId;
         }
 
         if (!challenge || !attestation) {
@@ -292,7 +311,14 @@ const useUser = (): UseUserReturn => {
         // Get referral code from storage (if any)
         const referralCode = getReferralCodeForSignup() || undefined;
 
-        const user = await signUp(username, challenge, attestation, inviteCode, referralCode);
+        const user = await signUp(
+          username,
+          challenge,
+          attestation,
+          inviteCode,
+          referralCode,
+          credentialId,
+        );
 
         const smartAccountClient = await safeAA(
           mainnet,
@@ -311,6 +337,7 @@ const useUser = (): UseUserReturn => {
             tokens: user.tokens || null,
             referralCode: user.referralCode,
             turnkeyUserId: user.turnkeyUserId,
+            credentialId,
           };
           storeUser(selectedUser);
           await checkBalance(selectedUser);
@@ -441,6 +468,7 @@ const useUser = (): UseUserReturn => {
     try {
       setLoginInfo({ status: Status.PENDING });
       let stamp: any;
+      let credentialId: string | undefined;
 
       if (Platform.OS === 'web') {
         // Dynamically import browser SDK only when needed
@@ -456,6 +484,9 @@ const useUser = (): UseUserReturn => {
         stamp = await passkeyClient.stampGetWhoami({
           organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
         });
+        if (stamp?.stamp?.stampHeaderValue) {
+          credentialId = parseStampHeaderValueCredentialId(stamp.stamp.stampHeaderValue);
+        }
       } else {
         const stamper = new PasskeyStamper({
           rpId: getRuntimeRpId(),
@@ -467,6 +498,9 @@ const useUser = (): UseUserReturn => {
         stamp = await turnkeyClient.stampGetWhoami({
           organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
         });
+        if (stamp?.stamp?.stampHeaderValue) {
+          credentialId = parseStampHeaderValueCredentialId(stamp.stamp.stampHeaderValue);
+        }
       }
 
       const user = await login(stamp);
@@ -487,6 +521,15 @@ const useUser = (): UseUserReturn => {
         }
       }
 
+      // For backward compatibility: if user doesn't have credentialId stored, update it
+      if (credentialId && !user.credentialId) {
+        try {
+          await withRefreshToken(() => updateUserCredentialId(credentialId));
+        } catch (error) {
+          console.error('Failed to update credentialId for existing user:', error);
+        }
+      }
+
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
         username: user.username,
@@ -498,6 +541,7 @@ const useUser = (): UseUserReturn => {
         email: user.email,
         referralCode: user.referralCode,
         turnkeyUserId: user.turnkeyUserId,
+        credentialId: credentialId || user.credentialId,
       };
       storeUser(selectedUser);
       await checkBalance(selectedUser);
@@ -670,11 +714,40 @@ const useUser = (): UseUserReturn => {
               defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
               rpId: getRuntimeRpId(),
             });
-            const passkeyClient = turnkey.passkeyClient();
-            const stamp = await passkeyClient.stampGetWhoami({
+
+            // Prepare allowCredentials if we have a credential ID for this user
+            const allowCredentials = selectedUser?.credentialId
+              ? [
+                {
+                  id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
+                  type: 'public-key' as const,
+                },
+              ]
+              : undefined;
+
+            const passkeyClient = turnkey.passkeyClient(
+              allowCredentials ? { allowCredentials } : undefined
+            );
+
+            const result = await passkeyClient.stampGetWhoami({
               organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
             });
-            const authedUser = await login(stamp);
+            let credentialId: string | undefined;
+            if (result?.stamp?.stampHeaderValue) {
+              credentialId = parseStampHeaderValueCredentialId(result.stamp.stampHeaderValue);
+            }
+            const authedUser = await login(result);
+
+            // For backward compatibility: if user doesn't have credentialId stored, update it
+            if (credentialId && !authedUser.credentialId) {
+              try {
+                await withRefreshToken(() => updateUserCredentialId(credentialId));
+                await updateUser({ ...selectedUser!, credentialId });
+              } catch (error) {
+                console.error('Failed to update credentialId for existing user:', error);
+              }
+            }
+
             if (authedUser?.username && authedUser.username !== username) {
               selectUser(authedUser.username);
             }
