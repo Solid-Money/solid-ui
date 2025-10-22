@@ -1,4 +1,3 @@
-import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
 import PointsTitle from '@/components/Points/PointsTitle';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -21,12 +20,8 @@ export default function Savings() {
   const { isScreenMedium } = useDimension();
   const countdownTime = useCountdownTimer(points.nextRewardTime);
 
-  if (isPointsLoading) {
-    return <Loading />;
-  }
-
   return (
-    <PageLayout desktopOnly>
+    <PageLayout desktopOnly isLoading={isPointsLoading}>
       <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center mt-5">

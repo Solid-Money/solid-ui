@@ -32,24 +32,17 @@ export default function Card() {
     router.push(path.CARD_COUNTRY_SELECTION);
   };
 
-  // Show loading state while checking card status
-  if (isLoading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-lg">Loading...</Text>
-      </View>
-    );
-  }
-
   // Show error state for non-404 errors
-  if (error && (error as any)?.status !== 404) {
+  if (error && (error as any)?.status !== 404 && !isLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-lg text-red-500">Error loading card status</Text>
-        <Button className="mt-4" onPress={() => refetch()}>
-          <Text>Retry</Text>
-        </Button>
-      </View>
+      <PageLayout>
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-lg text-red-500">Error loading card status</Text>
+          <Button className="mt-4" onPress={() => refetch()}>
+            <Text>Retry</Text>
+          </Button>
+        </View>
+      </PageLayout>
     );
   }
 
@@ -134,7 +127,7 @@ export default function Card() {
   );
 
   return (
-    <PageLayout desktopOnly scrollable={false}>
+    <PageLayout desktopOnly scrollable={false} isLoading={isLoading}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}

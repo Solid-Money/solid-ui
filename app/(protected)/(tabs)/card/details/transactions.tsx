@@ -101,9 +101,9 @@ export default function CardTransactions() {
     );
   };
 
-  if (isLoading) return <Loading />;
+  const allTransactions = data?.pages.flatMap(page => page.data) ?? [];
 
-  if (isError) {
+  if (isError && !isLoading) {
     return (
       <PageLayout desktopOnly scrollable={false}>
         <View className="flex-1 items-center justify-center">
@@ -120,10 +120,8 @@ export default function CardTransactions() {
     );
   }
 
-  const allTransactions = data?.pages.flatMap(page => page.data) ?? [];
-
   return (
-    <PageLayout desktopOnly scrollable={false}>
+    <PageLayout desktopOnly scrollable={false} isLoading={isLoading}>
       <View className="flex-1 w-full max-w-[600px] mx-auto">
         <View className="px-8 pt-8">
           <View className="flex-row items-center justify-between mb-8">

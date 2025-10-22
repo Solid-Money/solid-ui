@@ -8,7 +8,6 @@ import AreaChart from '@/components/AreaChart.web';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinChartTime from '@/components/Coin/CoinChartTime';
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
-import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { times } from '@/constants/coins';
@@ -64,34 +63,30 @@ export default function Coin() {
     }));
   }, [coinHistoricalChart]);
 
-  if (isLoading) return <Loading />;
+  const balance = token
+    ? Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals))
+    : 0;
+  const balanceUSD = token ? balance * (token.quoteRate || 0) : 0;
 
-  if (!token)
-    return (
-      <PageLayout desktopOnly>
+  return (
+    <PageLayout desktopOnly isLoading={isLoading}>
+      {!token && !isLoading ? (
         <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
           <CoinBackButton title={`Coin ${eclipseAddress(contractAddress)} not found`} />
         </View>
-      </PageLayout>
-    );
-
-  const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
-  const balanceUSD = balance * (token.quoteRate || 0);
-
-  return (
-    <PageLayout desktopOnly>
-      <View className="flex-1 gap-12 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
-        <View className="gap-6">
-          <CoinBackButton
-            tokenSymbol={token.contractTickerSymbol}
-            className="text-xl md:text-3xl"
-          />
+      ) : (
+        <View className="flex-1 gap-12 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+          <View className="gap-6">
+            <CoinBackButton
+              tokenSymbol={token?.contractTickerSymbol}
+              className="text-xl md:text-3xl"
+            />
 
           <View className="gap-2">
             <View className="flex-row items-center gap-2">
-              <Text className="text-xl md:text-3xl font-bold">{token.contractName}</Text>
+              <Text className="text-xl md:text-3xl font-bold">{token?.contractName}</Text>
               <Text className="text-xl md:text-3xl font-medium text-muted-foreground">
-                {token.contractTickerSymbol}
+                {token?.contractTickerSymbol}
               </Text>
             </View>
 
@@ -140,7 +135,7 @@ export default function Coin() {
           <Text className="text-lg font-bold">Balance</Text>
           <View className="items-end">
             <Text className="text-xl font-bold">
-              {formatNumber(balance)} {token.contractTickerSymbol}
+              {formatNumber(balance)} {token?.contractTickerSymbol}
             </Text>
             <Text className="text-sm text-muted-foreground font-bold">
               ${formatNumber(balanceUSD)}
@@ -148,6 +143,7 @@ export default function Coin() {
           </View>
         </View>
       </View>
+      )}
     </PageLayout>
   );
 }

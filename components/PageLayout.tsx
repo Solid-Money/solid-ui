@@ -2,11 +2,15 @@ import { useDimension } from '@/hooks/useDimension';
 import { ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
+import Loading from './Loading';
 import Navbar from './Navbar';
 import NavbarMobile from './Navbar/NavbarMobile';
 
 interface PageLayoutProps {
   children: ReactNode;
+
+  // Loading state
+  isLoading?: boolean;
 
   // Navbar options
   showNavbar?: boolean;
@@ -68,6 +72,7 @@ interface PageLayoutProps {
  */
 export default function PageLayout({
   children,
+  isLoading = false,
   showNavbar = true,
   desktopOnly = false,
   useDesktopBreakpoint = false,
@@ -98,6 +103,16 @@ export default function PageLayout({
       {!isLargeScreen && (customMobileHeader || (shouldShowMobileNavbar && <NavbarMobile />))}
     </>
   );
+
+  // Show loading state with navbar
+  if (isLoading) {
+    return (
+      <SafeAreaView className={`bg-background text-foreground flex-1 ${className}`} edges={edges}>
+        {navbarContent}
+        <Loading />
+      </SafeAreaView>
+    );
+  }
 
   // Build the main content
   const mainContent = scrollable ? (
