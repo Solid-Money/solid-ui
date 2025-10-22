@@ -135,7 +135,7 @@ export default function Savings() {
       <ScrollView className="flex-1">
         {!isScreenMedium && <NavbarMobile />}
         {isScreenMedium && <Navbar />}
-        <View className="gap-8 md:gap-16 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
+        <View className="gap-8 md:gap-12 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
           {isScreenMedium ? (
             <View className="flex-row justify-between items-center">
               <View className="flex-row items-center gap-2">
@@ -145,7 +145,7 @@ export default function Savings() {
                   isAPYsLoading ||
                   firstDepositTimestamp === undefined ||
                   savings === undefined ? (
-                    <Skeleton className="w-56 h-[4.5rem]" />
+                    <Skeleton className="w-56 h-[4.5rem] rounded-xl" />
                   ) : (
                     <CountUp
                       prefix="$"
@@ -159,14 +159,14 @@ export default function Savings() {
                       styles={{
                         wholeText: {
                           fontSize: fontSize(3),
-                          fontWeight: '600',
+                          fontWeight: '500',
                           //fontFamily: 'MonaSans_600SemiBold',
                           color: '#ffffff',
                           marginRight: -1,
                         },
                         decimalText: {
                           fontSize: fontSize(3),
-                          fontWeight: '200',
+                          fontWeight: '500',
                           //fontFamily: 'MonaSans_600SemiBold',
                           color: '#ffffff',
                         },
@@ -199,10 +199,13 @@ export default function Savings() {
           )}
 
           <View className="gap-4">
+            {/*
             <Text className="md:text-2xl text-muted-foreground md:text-foreground font-semibold md:font-medium">
               Coins
             </Text>
-            <View>
+            */}
+            
+            <View className="mt-10">
               {tokenError ? (
                 <View className="flex-1 justify-center items-center p-4">
                   <WalletInfo text="Failed to load tokens" />
