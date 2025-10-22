@@ -4,12 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Linking, Pressable, View } from 'react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -94,8 +94,6 @@ type CardTransactionDetailProps = {
 };
 
 const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
-  const { isScreenMedium } = useDimension();
-
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
   const initials = getInitials(merchantName);
   const avatarColor = getAvatarColor(merchantName);
@@ -150,15 +148,9 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
   };
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {isScreenMedium && <Navbar />}
-
-        <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
-          <Back title={merchantName} className="text-xl md:text-3xl" />
+    <PageLayout desktopOnly>
+      <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+        <Back title={merchantName} className="text-xl md:text-3xl" />
 
           <View className="items-center gap-4">
             {/* Avatar with initials */}
@@ -195,8 +187,7 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
             )}
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </PageLayout>
   );
 };
 
@@ -231,14 +222,11 @@ export default function ActivityDetail() {
 
   if (!activity && !isCardTransaction)
     return (
-      <SafeAreaView className="bg-background text-foreground flex-1">
-        <ScrollView className="flex-1">
-          {isScreenMedium && <Navbar />}
-          <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
-            <Back title={`Transaction ${eclipseAddress(clientTxId)} not found`} />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+      <PageLayout desktopOnly>
+        <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+          <Back title={`Transaction ${eclipseAddress(clientTxId)} not found`} />
+        </View>
+      </PageLayout>
     );
 
   if (!activity) return null;
@@ -364,15 +352,9 @@ export default function ActivityDetail() {
   };
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {isScreenMedium && <Navbar />}
-
-        <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
-          <Back title={activity.title} className="text-xl md:text-3xl" />
+    <PageLayout desktopOnly>
+      <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+        <Back title={activity.title} className="text-xl md:text-3xl" />
 
           <View className="items-center gap-4">
             <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
@@ -414,7 +396,6 @@ export default function ActivityDetail() {
             </Button>
           )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </PageLayout>
   );
 }

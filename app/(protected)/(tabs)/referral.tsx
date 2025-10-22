@@ -1,5 +1,5 @@
 import CopyToClipboard from '@/components/CopyToClipboard';
-import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -7,21 +7,15 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, View } from 'react-native';
 
 export default function Savings() {
   const { isScreenMedium } = useDimension();
   const { user } = useUser();
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {isScreenMedium && <Navbar />}
-        <View className="flex-1 justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
+    <PageLayout desktopOnly>
+      <View className="flex-1 justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
           <View className="gap-10 md:gap-20 w-full mx-auto">
             <View className="flex-row items-center justify-between md:mt-16">
               <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
@@ -50,7 +44,6 @@ export default function Savings() {
             </View>
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </PageLayout>
   );
 }

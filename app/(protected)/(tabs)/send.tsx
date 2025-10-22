@@ -4,11 +4,10 @@ import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Address, formatUnits, isAddress } from 'viem';
 import { z } from 'zod';
 
-import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TokenSelectorModal from '@/components/SendModal/TokenSelectorModal';
 import { Button } from '@/components/ui/button';
@@ -177,11 +176,7 @@ const SendPage = () => {
   };
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      {isScreenMedium && <Navbar />}
+    <PageLayout desktopOnly>
       <View className="flex-1 px-4 py-8 md:py-12">
         {/* Form Fields */}
         <View className="max-w-md mx-auto w-full gap-2">
@@ -333,7 +328,7 @@ const SendPage = () => {
         }}
         selectedToken={selectedToken}
       />
-    </SafeAreaView>
+    </PageLayout>
   );
 };
 

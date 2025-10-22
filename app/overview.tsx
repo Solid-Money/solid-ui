@@ -9,8 +9,7 @@ import VaultBreakdownChart from '@/components/Landing/VaultBreakdownChart.web';
 import VaultBreakdownTable from '@/components/Landing/VaultBreakdownTable';
 import VaultInfo from '@/components/Landing/VaultInfo';
 import VaultStat from '@/components/Landing/VaultStat';
-import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import { PageLayout } from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { howItWorks } from '@/constants/how-it-works';
@@ -126,22 +125,15 @@ const Landing = () => {
   const { data: vaultBreakdown } = useVaultBreakdown();
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {!isScreenMedium && <NavbarMobile />}
-        {isScreenMedium && <Navbar />}
-        <View className="gap-8 md:gap-24 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
+    <PageLayout>
+      <View className="gap-8 md:gap-24 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
           <SoUSDSection vaultBreakdown={vaultBreakdown || []} />
           <HowSection />
           <VaultBreakdownSection vaultBreakdown={vaultBreakdown || []} />
           <AuditSection />
           <FAQSection />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </PageLayout>
   );
 };
 

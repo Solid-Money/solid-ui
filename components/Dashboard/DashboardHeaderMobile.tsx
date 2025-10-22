@@ -38,7 +38,6 @@ const DashboardHeaderMobile = ({
               fontWeight: '500',
               //fontFamily: 'MonaSans_600SemiBold',
               color: '#ffffff',
-              marginRight: -1,
             },
             decimalText: {
               fontSize: fontSize(3),

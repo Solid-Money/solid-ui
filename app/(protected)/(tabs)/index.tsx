@@ -3,8 +3,7 @@ import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import { PageLayout } from '@/components/PageLayout';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -128,14 +127,8 @@ export default function Savings() {
   }
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {!isScreenMedium && <NavbarMobile />}
-        {isScreenMedium && <Navbar />}
-        <View className="gap-8 md:gap-12 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
+    <PageLayout>
+      <View className="gap-8 md:gap-12 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
           {isScreenMedium ? (
             <View className="flex-row justify-between items-center">
               <View className="flex-row items-center gap-2">
@@ -226,8 +219,7 @@ export default function Savings() {
               )}
             </View>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </PageLayout>
   );
 }

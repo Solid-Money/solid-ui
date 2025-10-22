@@ -7,6 +7,7 @@ import { NotificationEmailModalDialog } from '@/components/NotificationEmailModa
 
 import CountryFlagImage from '@/components/CountryFlagImage';
 import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
@@ -27,7 +28,6 @@ import { useCountryStore } from '@/store/useCountryStore';
 export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
-  const { isScreenMedium } = useDimension();
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -296,15 +296,15 @@ export default function CountrySelection() {
   };
 
   if (loading || checkingWaitlist) {
-    return <LoadingView isScreenMedium={isScreenMedium} />;
+    return <LoadingView />;
   }
 
   if (error || !countryInfo) {
-    return <ErrorView isScreenMedium={isScreenMedium} onBack={goBack} />;
+    return <ErrorView onBack={goBack} />;
   }
 
   return (
-    <View className="flex-1 bg-background">
+    <PageLayout desktopOnly>
       {/* Email collection modal */}
       <NotificationEmailModalDialog
         open={showEmailModal}
@@ -335,8 +335,6 @@ export default function CountrySelection() {
           }
         }}
       />
-      {isScreenMedium && <Navbar />}
-
       <View className="w-full max-w-lg mx-auto pt-12 px-4">
         <View className="flex-row items-center justify-between mb-10">
           <Pressable onPress={goBack} className="web:hover:opacity-70">
@@ -389,7 +387,7 @@ export default function CountrySelection() {
           </View>
         )}
       </View>
-    </View>
+    </PageLayout>
   );
 }
 
@@ -569,23 +567,21 @@ function NotifyConfirmationView({ countryName, countryCode }: NotifyConfirmation
 }
 
 // Loading View
-function LoadingView({ isScreenMedium }: { isScreenMedium: boolean }) {
+function LoadingView() {
   return (
-    <View className="flex-1 bg-background">
-      {isScreenMedium && <Navbar />}
+    <PageLayout desktopOnly scrollable={false}>
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" color="#94F27F" />
         <Text className="mt-4 text-white/70">Loading...</Text>
       </View>
-    </View>
+    </PageLayout>
   );
 }
 
 // Error View
-function ErrorView({ isScreenMedium, onBack }: { isScreenMedium: boolean; onBack: () => void }) {
+function ErrorView({ onBack }: { onBack: () => void }) {
   return (
-    <View className="flex-1 bg-background">
-      {isScreenMedium && <Navbar />}
+    <PageLayout desktopOnly>
       <View className="w-full max-w-lg mx-auto pt-8 px-4">
         <View className="flex-row items-center justify-between mb-8">
           <Pressable onPress={onBack} className="web:hover:opacity-70">
@@ -608,6 +604,6 @@ function ErrorView({ isScreenMedium, onBack }: { isScreenMedium: boolean; onBack
           </Button>
         </View>
       </View>
-    </View>
+    </PageLayout>
   );
 }

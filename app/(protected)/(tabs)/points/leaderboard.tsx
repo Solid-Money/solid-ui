@@ -3,16 +3,16 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { fetchLeaderboardUsers } from '@/lib/api';
 import { LeaderboardResponse, LeaderboardUser } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
 
 type PositionStar = {
   name: string;
@@ -147,11 +147,7 @@ const Leaderboard = () => {
   );
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      {isScreenMedium && <Navbar />}
+    <PageLayout desktopOnly scrollable={false}>
       <FlashList
         data={leaderboardUsers}
         ListEmptyComponent={renderLoading}
@@ -168,7 +164,7 @@ const Leaderboard = () => {
         ListFooterComponent={() => (isFetchingNextPage ? renderLoading() : null)}
         contentContainerStyle={{ paddingVertical: isScreenMedium ? 48 : 32 }}
       />
-    </SafeAreaView>
+    </PageLayout>
   );
 };
 

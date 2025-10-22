@@ -2,11 +2,11 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { Address, formatUnits } from 'viem';
 
 import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';
@@ -158,13 +158,7 @@ const DepositToCard = () => {
   ];
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      {isScreenMedium && <Navbar />}
-
-      <View className="flex-1 px-4 py-8">
+    <PageLayout desktopOnly contentClassName="px-4 py-8">
         <View className="max-w-md mx-auto w-full h-full">
           {/* Header */}
           <View className="flex-row items-center justify-between mb-8">
@@ -261,8 +255,7 @@ const DepositToCard = () => {
             {isDepositing && <ActivityIndicator color="gray" size="small" />}
           </Button>
         </View>
-      </View>
-    </SafeAreaView>
+    </PageLayout>
   );
 };
 

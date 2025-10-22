@@ -3,10 +3,10 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, RotateCw } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
 import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
@@ -108,25 +108,25 @@ export default function CardTransactions() {
 
   if (isError) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <Text className="text-gray-400 mb-4">Failed to load transactions</Text>
-        <Pressable
-          onPress={() => refetch()}
-          className="flex-row items-center bg-[#2E2E2E] rounded-lg px-4 py-2"
-        >
-          <RotateCw size={16} color="white" className="mr-2" />
-          <Text className="text-white">Try Again</Text>
-        </Pressable>
-      </SafeAreaView>
+      <PageLayout desktopOnly scrollable={false}>
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-gray-400 mb-4">Failed to load transactions</Text>
+          <Pressable
+            onPress={() => refetch()}
+            className="flex-row items-center bg-[#2E2E2E] rounded-lg px-4 py-2"
+          >
+            <RotateCw size={16} color="white" className="mr-2" />
+            <Text className="text-white">Try Again</Text>
+          </Pressable>
+        </View>
+      </PageLayout>
     );
   }
 
   const allTransactions = data?.pages.flatMap(page => page.data) ?? [];
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      {isScreenMedium && <Navbar />}
-
+    <PageLayout desktopOnly scrollable={false}>
       <View className="flex-1 w-full max-w-[600px] mx-auto">
         <View className="px-8 pt-8">
           <View className="flex-row items-center justify-between mb-8">
@@ -185,6 +185,6 @@ export default function CardTransactions() {
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </PageLayout>
   );
 }

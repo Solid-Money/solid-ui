@@ -1,5 +1,5 @@
 import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import PointsTitle from '@/components/Points/PointsTitle';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -14,8 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
-import { ImageBackground, Platform, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ImageBackground, Platform, Pressable, View } from 'react-native';
 
 export default function Savings() {
   const { points, isLoading: isPointsLoading } = usePoints();
@@ -27,13 +26,8 @@ export default function Savings() {
   }
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {isScreenMedium && <Navbar />}
-        <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
+    <PageLayout desktopOnly>
+      <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
           {isScreenMedium ? (
             <View className="flex-row justify-between items-center mt-5">
               <PointsTitle />
@@ -202,7 +196,6 @@ export default function Savings() {
             </View>
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </PageLayout>
   );
 }

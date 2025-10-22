@@ -1,12 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { FlatList, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { FAQs } from '@/components/FAQ';
-import Navbar from '@/components/Navbar';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import { PageLayout } from '@/components/PageLayout';
 import PoolBanners from '@/components/Savings/PoolBanners';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
@@ -19,10 +17,7 @@ export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
 
   const renderContent = () => (
-    <>
-      {!isScreenMedium && <NavbarMobile />}
-      {isScreenMedium && <Navbar />}
-      <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 py-8">
+    <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 py-8">
         {isScreenMedium ? (
           <View className="md:flex-row justify-between md:items-center gap-y-4">
             <View className="flex-row items-center">
@@ -119,14 +114,10 @@ export default function SavingsEmptyState() {
         <PoolBanners />
         <FAQs faqs={faqs} className="md:mt-16" />
       </View>
-    </>
   );
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
+    <PageLayout scrollable={false}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}
@@ -134,6 +125,6 @@ export default function SavingsEmptyState() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
       />
-    </SafeAreaView>
+    </PageLayout>
   );
 }

@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
@@ -46,38 +47,37 @@ export default function Email() {
     }
   };
 
+  const mobileHeader = (
+    <View className="flex-row items-center justify-between px-4 py-3">
+      <Pressable onPress={() => router.back()} className="p-2">
+        <ChevronLeft size={24} color="#ffffff" />
+      </Pressable>
+      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Email</Text>
+    </View>
+  );
+
+  const desktopHeader = (
+    <>
+      <Navbar />
+      <View className="max-w-[512px] mx-auto w-full px-4 pt-8 pb-8">
+        <View className="flex-row items-center justify-between mb-8">
+          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+            <ArrowLeft color="white" />
+          </Pressable>
+          <Text className="text-3xl font-semibold text-white">Email</Text>
+          <View className="w-6" />
+        </View>
+      </View>
+    </>
+  );
+
   return (
-    <SafeAreaView
-      className="bg-black text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
+    <PageLayout
+      customMobileHeader={mobileHeader}
+      customDesktopHeader={desktopHeader}
+      useDesktopBreakpoint
     >
       <View className="flex-1">
-        <ScrollView className="flex-1">
-          {/* Desktop Navbar */}
-          {isDesktop && <Navbar />}
-
-          {/* Mobile Header */}
-          {!isDesktop && (
-            <View className="flex-row items-center justify-between px-4 py-3">
-              <Pressable onPress={() => router.back()} className="p-2">
-                <ChevronLeft size={24} color="#ffffff" />
-              </Pressable>
-              <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Email</Text>
-            </View>
-          )}
-
-          {/* Desktop Header */}
-          {isDesktop && (
-            <View className="max-w-[512px] mx-auto w-full px-4 pt-8 pb-8">
-              <View className="flex-row items-center justify-between mb-8">
-                <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-                  <ArrowLeft color="white" />
-                </Pressable>
-                <Text className="text-3xl font-semibold text-white">Email</Text>
-                <View className="w-6" />
-              </View>
-            </View>
-          )}
 
           <View
             className={cn('w-full mx-auto px-4 py-4', {
@@ -204,7 +204,6 @@ export default function Email() {
               </View>
             )}
           </View>
-        </ScrollView>
 
         {/* Mobile buttons - at bottom */}
         {!isDesktop && (
@@ -241,6 +240,6 @@ export default function Email() {
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </PageLayout>
   );
 }

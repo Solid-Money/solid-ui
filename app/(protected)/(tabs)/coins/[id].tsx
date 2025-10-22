@@ -1,8 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { useMemo } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, View } from 'react-native';
 import { formatUnits } from 'viem';
 
 import AreaChart from '@/components/AreaChart.web';
@@ -10,7 +9,7 @@ import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinChartTime from '@/components/Coin/CoinChartTime';
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { times } from '@/constants/coins';
 import { useSearchCoinHistoricalChart } from '@/hooks/useAnalytics';
@@ -71,28 +70,19 @@ export default function Coin() {
 
   if (!token)
     return (
-      <SafeAreaView className="bg-background text-foreground flex-1">
-        <ScrollView className="flex-1">
-          {isScreenMedium && <Navbar />}
-          <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
-            <CoinBackButton title={`Coin ${eclipseAddress(contractAddress)} not found`} />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+      <PageLayout desktopOnly>
+        <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+          <CoinBackButton title={`Coin ${eclipseAddress(contractAddress)} not found`} />
+        </View>
+      </PageLayout>
     );
 
   const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
   const balanceUSD = balance * (token.quoteRate || 0);
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
-      <ScrollView className="flex-1">
-        {isScreenMedium && <Navbar />}
-
-        <View className="flex-1 gap-12 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+    <PageLayout desktopOnly>
+      <View className="flex-1 gap-12 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
           <View className="gap-6">
             <CoinBackButton
               tokenSymbol={token.contractTickerSymbol}
@@ -160,7 +150,6 @@ export default function Coin() {
             </View>
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </PageLayout>
   );
 }

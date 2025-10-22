@@ -3,11 +3,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { FlatList, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import ActivateCardImageDesktop from '@/components/Card/ActivateCardImageDesktop';
 import CardBenefits from '@/components/Card/CardBenefits';
 import Navbar from '@/components/Navbar';
+import { PageLayout } from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -87,9 +87,7 @@ export default function Card() {
 
   // Desktop UI (following EmptyState pattern)
   const renderContent = () => (
-    <>
-      <Navbar />
-      <View className="w-full max-w-7xl mx-auto gap-8 md:gap-16 px-4 py-8">
+    <View className="w-full max-w-7xl mx-auto gap-8 md:gap-16 px-4 py-8">
         <View className="md:flex-row justify-between md:items-center gap-y-4">
           <View className="gap-3">
             <Text className="text-3xl font-semibold">Solid Card</Text>
@@ -134,14 +132,10 @@ export default function Card() {
           </View>
         </LinearGradient>
       </View>
-    </>
   );
 
   return (
-    <SafeAreaView
-      className="bg-background text-foreground flex-1"
-      edges={['right', 'left', 'bottom', 'top']}
-    >
+    <PageLayout desktopOnly scrollable={false}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}
@@ -149,6 +143,6 @@ export default function Card() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
       />
-    </SafeAreaView>
+    </PageLayout>
   );
 }
