@@ -5,22 +5,22 @@ import * as React from 'react';
 import { Pressable } from 'react-native';
 
 const buttonVariants = cva(
-  'group flex flex-row items-center justify-center gap-2 rounded-md web:transition-colors web:focus-visible:outline-none web:focus-visible:ring-none',
+  'group flex flex-row items-center justify-center gap-2 rounded-md web:transition-all duration-200 web:focus-visible:outline-none web:focus-visible:ring-none',
   {
     variants: {
       variant: {
-        default: 'bg-primary web:hover:opacity-90 active:opacity-90',
+        default: 'bg-primary web:hover:bg-primary-hover active:opacity-90 active:scale-95',
         destructive:
-          'bg-destructive/60 border border-destructive shadow-md web:hover:opacity-90 active:opacity-90',
+          'bg-destructive/60 border border-destructive shadow-md web:hover:bg-destructive-hover active:opacity-90',
         outline:
           'border border-border bg-foreground/10 web:hover:bg-foreground/5 active:bg-foreground/5',
-        secondary: 'bg-secondary border border-border web:hover:opacity-80 active:opacity-80',
+        secondary: 'bg-secondary border border-border web:hover:bg-secondary-hover active:opacity-80 active:scale-95',
         ghost: 'web:hover:bg-accent web:hover:text-accent-foreground active:bg-accent',
         link: 'web:underline-offset-4 web:hover:underline web:focus:underline',
-        brand: 'bg-brand web:hover:opacity-90 active:opacity-90',
-        accent: 'bg-accent web:hover:opacity-90 active:opacity-90',
-        purple: 'bg-purple/60 web:hover:opacity-90 active:opacity-90',
-        rewards: 'bg-rewards/20 web:hover:opacity-90 active:opacity-90',
+        brand: 'bg-brand web:hover:bg-brand-hover active:opacity-90 active:scale-95',
+        accent: 'bg-accent web:hover:bg-accent-hover active:opacity-90',
+        purple: 'bg-purple/60 web:hover:bg-purple-hover active:opacity-90',
+        rewards: 'bg-rewards/20 web:hover:bg-rewards-hover active:opacity-90',
       },
       size: {
         default: 'h-10 px-4 py-2 native:h-12 native:px-5 native:py-3',
@@ -91,3 +91,4 @@ Button.displayName = 'Button';
 
 export { Button, buttonTextVariants, buttonVariants };
 export type { ButtonProps };
+

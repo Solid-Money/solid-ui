@@ -1,7 +1,7 @@
+import { TextClassContext } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 import * as TablePrimitive from '@rn-primitives/table';
 import * as React from 'react';
-import { cn } from '@/lib/utils';
-import { TextClassContext } from '@/components/ui/text';
 
 function Table({
   className,
@@ -64,7 +64,7 @@ function TableRow({
   return (
     <TablePrimitive.Row
       className={cn(
-        'flex-row border-border border-b web:transition-colors web:hover:bg-muted/50 web:data-[state=selected]:bg-muted',
+        'flex-row border-border border-b web:transition-colors web:hover:bg-[#2B2B2B] web:data-[state=selected]:bg-muted',
         className,
       )}
       {...props}
@@ -106,3 +106,4 @@ function TableCell({
 }
 
 export { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow };
+
