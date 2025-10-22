@@ -8,7 +8,6 @@ import { formatUnits } from 'viem';
 import AreaChart from '@/components/AreaChart.web';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinChartTime from '@/components/Coin/CoinChartTime';
-import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import Loading from '@/components/Loading';
 import Navbar from '@/components/Navbar';
 import { Text } from '@/components/ui/text';
@@ -19,6 +18,8 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useCoinStore } from '@/store/useCoinStore';
+import ActivityTransactions from '@/components/Activity/ActivityTransactions';
+import CoinButtons from '@/components/Coin/CoinButtons';
 
 const MAX_SAMPLE_SIZE = 20;
 
@@ -146,7 +147,7 @@ export default function Coin() {
             <CoinChartTime />
           </View>
 
-          <DashboardHeaderButtonsMobile />
+          <CoinButtons contractAddress={contractAddress} />
 
           <View className="bg-card rounded-twice p-5 flex-row items-center justify-between">
             <Text className="text-lg font-bold">Balance</Text>
@@ -158,6 +159,11 @@ export default function Coin() {
                 ${formatNumber(balanceUSD)}
               </Text>
             </View>
+          </View>
+
+          <View className="gap-4">
+            <Text className="text-muted-foreground font-semibold">Recent activity</Text>
+            <ActivityTransactions symbol={token.contractTickerSymbol} />
           </View>
         </View>
       </ScrollView>
