@@ -192,10 +192,26 @@ const ResponsiveModal = ({
     );
   }
 
-  // Use bottom sheet for mobile web and native
+  // Wrap trigger in Pressable for bottom sheet
+  // This ensures touch events are properly captured on mobile
+  // We disable pointer events on the child to let the parent Pressable handle them
+  const triggerElement = React.isValidElement(trigger) ? (
+    <View pointerEvents="none">{trigger}</View>
+  ) : (
+    trigger
+  );
+
   return (
     <View>
-      {trigger && <Pressable onPress={handlePresentModalPress}>{trigger}</Pressable>}
+      <Pressable
+        onPress={handlePresentModalPress}
+        style={({ pressed }) => [
+          { alignSelf: 'flex-start' },
+          pressed && { opacity: 0.8 }
+        ]}
+      >
+        {triggerElement}
+      </Pressable>
       <BottomSheetModal
         ref={bottomSheetModalRef}
         onChange={handleBottomSheetOpenChange}
