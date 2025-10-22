@@ -1,7 +1,7 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { ReactNode, useCallback, useRef } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInLeft,
@@ -192,17 +192,26 @@ const ResponsiveModal = ({
     );
   }
 
-  // Clone trigger and inject onPress for bottom sheet
-  const triggerWithPress = React.isValidElement(trigger)
-    ? React.cloneElement(trigger as React.ReactElement<any>, {
-        onPress: handlePresentModalPress,
-      })
-    : trigger;
+  // Wrap trigger in Pressable for bottom sheet
+  // This ensures touch events are properly captured on mobile
+  // We disable pointer events on the child to let the parent Pressable handle them
+  const triggerElement = React.isValidElement(trigger) ? (
+    <View pointerEvents="none">{trigger}</View>
+  ) : (
+    trigger
+  );
 
-  // Use bottom sheet for mobile web and native
   return (
     <View>
-      {triggerWithPress}
+      <Pressable
+        onPress={handlePresentModalPress}
+        style={({ pressed }) => [
+          { alignSelf: 'flex-start' },
+          pressed && { opacity: 0.8 }
+        ]}
+      >
+        {triggerElement}
+      </Pressable>
       <BottomSheetModal
         ref={bottomSheetModalRef}
         onChange={handleBottomSheetOpenChange}
