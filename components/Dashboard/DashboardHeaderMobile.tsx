@@ -27,6 +27,7 @@ const DashboardHeaderMobile = ({
           apy={totalAPY ?? 0}
           lastTimestamp={lastTimestamp ?? 0}
           mode={mode}
+          decimalPlaces={2}
           classNames={{
             wrapper: 'text-foreground',
             decimalSeparator: 'text-2xl sm:text-lg font-medium',

@@ -1,21 +1,21 @@
 import { Image } from 'expo-image';
-import { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { Plus } from 'lucide-react-native';
+import { useMemo } from 'react';
+import { Pressable, View } from 'react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import TooltipPopover from '@/components/Tooltip';
+import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { protocolsImages } from '@/constants/protocols';
+import { path } from '@/constants/path';
+import { protocols, protocolsImages } from '@/constants/protocols';
+import { useDimension } from '@/hooks/useDimension';
+import useUser from '@/hooks/useUser';
 import { ADDRESSES } from '@/lib/config';
 import { VaultBreakdown } from '@/lib/types';
 import { cn, eclipseAddress } from '@/lib/utils';
-import { useDimension } from '@/hooks/useDimension';
-import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
-import { buttonVariants } from '@/components/ui/button';
-import useUser from '@/hooks/useUser';
-import { path } from '@/constants/path';
 
 interface VaultInfoProps {
   vaultBreakdown: VaultBreakdown[];
@@ -70,12 +70,14 @@ const Protocols = ({ vaultBreakdown }: VaultBreakdownProps) => {
               >
                 <Image
                   source={protocolsImages[protocol]}
-                  style={{ width: 24, height: 24 }}
+                  style={{ width: 24, height: 24, borderRadius: 999 }}
                   contentFit="contain"
                 />
               </View>
             }
-            content={<Text className="text-sm">{protocol}</Text>}
+            content={
+              <Text className="text-sm">{protocols[protocol as keyof typeof protocols]}</Text>
+            }
           />
         ))}
       </View>

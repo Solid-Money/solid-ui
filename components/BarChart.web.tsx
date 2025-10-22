@@ -4,12 +4,13 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface BarChartProps {
   data: ChartPayload[];
+  height?: number;
   formatToolTip?: (value: number | null) => string;
 }
 
-const Chart = ({ data, formatToolTip }: BarChartProps) => {
+const Chart = ({ data, height = 150, formatToolTip }: BarChartProps) => {
   return (
-    <ResponsiveContainer height={200}>
+    <ResponsiveContainer height={height}>
       <BarChart
         width={500}
         height={420}
@@ -30,7 +31,7 @@ const Chart = ({ data, formatToolTip }: BarChartProps) => {
 
         <Tooltip content={<ChartTooltip data={data} formatToolTip={formatToolTip} />} />
 
-        <Bar dataKey={'value'} fill="url(#colorBar)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey={'value'} fill="url(#colorBar)" barSize={7} />
       </BarChart>
     </ResponsiveContainer>
   );
