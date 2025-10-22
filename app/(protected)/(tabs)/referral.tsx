@@ -16,34 +16,32 @@ export default function Savings() {
   return (
     <PageLayout desktopOnly>
       <View className="flex-1 justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
-          <View className="gap-10 md:gap-20 w-full mx-auto">
-            <View className="flex-row items-center justify-between md:mt-16">
-              <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-                <ArrowLeft color="white" />
-              </Pressable>
-              <Text className="text-white text-xl md:text-3xl font-semibold text-center">
-                Refer a Friend
-              </Text>
-              <View className="w-10" />
-            </View>
-            <View className="flex-col items-center justify-center w-full">
-              <Image
-                source={require('@/assets/images/referral_large.png')}
-                style={{ width: 250, height: 250 }}
-              />
-              <Text className="text-white/70 text-center mt-8">
-                Earn 10% of your referral&apos;s points when <br />
-                they use Solid App
-              </Text>
-              <View className="flex-row w-[400px] justify-between items-center p-4 ps-6 bg-primary/10 rounded-2xl text-primary font-medium mt-6">
-                <Text>https://app.solid.xyz/?referralCode={user?.referralCode}</Text>
-                <CopyToClipboard
-                  text={`https://app.solid.xyz/?referralCode=${user?.referralCode}`}
-                />
-              </View>
+        <View className="gap-10 md:gap-20 w-full mx-auto">
+          <View className="flex-row items-center justify-between md:mt-16">
+            <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+              <ArrowLeft color="white" />
+            </Pressable>
+            <Text className="text-white text-xl md:text-3xl font-semibold text-center">
+              Refer a Friend
+            </Text>
+            <View className="w-10" />
+          </View>
+          <View className="flex-col items-center justify-center w-full">
+            <Image
+              source={require('@/assets/images/referral_large.png')}
+              style={{ width: 250, height: 250 }}
+            />
+            <Text className="text-white/70 text-center mt-8">
+              Earn 10% of your referral&apos;s points when <br />
+              they use Solid App
+            </Text>
+            <View className="flex-row w-[400px] justify-between items-center p-4 ps-6 bg-primary/10 rounded-2xl text-primary font-medium mt-6">
+              <Text>https://app.solid.xyz/?referralCode={user?.referralCode}</Text>
+              <CopyToClipboard text={`https://app.solid.xyz/?referralCode=${user?.referralCode}`} />
             </View>
           </View>
         </View>
+      </View>
     </PageLayout>
   );
 }

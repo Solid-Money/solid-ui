@@ -72,9 +72,14 @@ const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
       onHoverOut={() => setIsHovered(false)}
       className="flex-1"
     >
-      <View className={cn('rounded-twice overflow-hidden relative p-[30px] pb-[21px] justify-between w-full h-full', className)}>
+      <View
+        className={cn(
+          'rounded-twice overflow-hidden relative p-[30px] pb-[21px] justify-between w-full h-full',
+          className,
+        )}
+      >
         {/* Base gradient */}
-        
+
         {/* Lighter gradient (5%) revealed on hover */}
         <LinearGradient
           start={{ x: 0.5, y: 0 }}

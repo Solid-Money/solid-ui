@@ -67,23 +67,23 @@ export default function CardDetails() {
 
   return (
     <PageLayout desktopOnly contentClassName="px-4">
-        <View className="w-full max-w-lg mx-auto pt-8">
-          <CardHeader onBackPress={handleBackPress} />
+      <View className="w-full max-w-lg mx-auto pt-8">
+        <CardHeader onBackPress={handleBackPress} />
 
-          <View className="flex-1">
-            <BalanceDisplay amount={availableAmount} />
-            <CardImageSection isScreenMedium={isScreenMedium} isCardFrozen={isCardFrozen} />
-            <CardActions
-              isCardFrozen={isCardFrozen}
-              isFreezing={isFreezing}
-              onCardDetails={() => setIsCardImageModalOpen(true)}
-              onFreezeToggle={handleFreezeToggle}
-            />
-            <CashbackDisplay cashback={cardDetails?.cashback} />
-            <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
-            <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
-          </View>
+        <View className="flex-1">
+          <BalanceDisplay amount={availableAmount} />
+          <CardImageSection isScreenMedium={isScreenMedium} isCardFrozen={isCardFrozen} />
+          <CardActions
+            isCardFrozen={isCardFrozen}
+            isFreezing={isFreezing}
+            onCardDetails={() => setIsCardImageModalOpen(true)}
+            onFreezeToggle={handleFreezeToggle}
+          />
+          <CashbackDisplay cashback={cardDetails?.cashback} />
+          <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
+          <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
         </View>
+      </View>
 
       <CardImageModal isOpen={isCardImageModalOpen} onOpenChange={setIsCardImageModalOpen} />
 

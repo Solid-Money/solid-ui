@@ -71,9 +71,7 @@ export default function Account() {
       <Pressable onPress={() => router.back()} className="p-2">
         <ChevronLeft size={24} color="#ffffff" />
       </Pressable>
-      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">
-        Account details
-      </Text>
+      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Account details</Text>
     </View>
   );
 
@@ -155,57 +153,54 @@ export default function Account() {
       useDesktopBreakpoint
       additionalContent={deleteModal}
     >
+      <View
+        className={cn('w-full mx-auto gap-3 px-4 py-4', {
+          'max-w-[512px]': isDesktop,
+          'max-w-7xl': !isDesktop,
+        })}
+      >
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
+          {details.map((detail, index) => (
+            <View key={`detail-${index}`}>
+              <SettingsCard
+                title={detail.title}
+                description={
+                  detail.isAddress
+                    ? eclipseAddress(detail.description as Address)
+                    : detail.description
+                }
+                icon={detail.icon}
+                link={detail.link}
+                isDesktop={isDesktop}
+                inlineAction={
+                  detail.isAddress && user?.safeAddress ? (
+                    <CopyToClipboard text={user.safeAddress} />
+                  ) : null
+                }
+                customAction={detail.link ? <ChevronRight size={20} color="#ffffff" /> : null}
+              />
+              {index < details.length - 1 && <View className="border-t border-[#2a2a2a]" />}
+            </View>
+          ))}
+        </View>
 
-          <View
-            className={cn('w-full mx-auto gap-3 px-4 py-4', {
-              'max-w-[512px]': isDesktop,
-              'max-w-7xl': !isDesktop,
-            })}
+        {/* Delete Account Section */}
+        <View className="mt-4">
+          <Pressable
+            onPress={handleDeletePress}
+            className="bg-[#1c1c1c] rounded-xl overflow-hidden"
           >
-            <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
-              {details.map((detail, index) => (
-                <View key={`detail-${index}`}>
-                  <SettingsCard
-                    title={detail.title}
-                    description={
-                      detail.isAddress
-                        ? eclipseAddress(detail.description as Address)
-                        : detail.description
-                    }
-                    icon={detail.icon}
-                    link={detail.link}
-                    isDesktop={isDesktop}
-                    inlineAction={
-                      detail.isAddress && user?.safeAddress ? (
-                        <CopyToClipboard text={user.safeAddress} />
-                      ) : null
-                    }
-                    customAction={detail.link ? <ChevronRight size={20} color="#ffffff" /> : null}
-                  />
-                  {index < details.length - 1 && (
-                    <View className="border-t border-[#2a2a2a]" />
-                  )}
-                </View>
-              ))}
-            </View>
-
-            {/* Delete Account Section */}
-            <View className="mt-4">
-              <Pressable
-                onPress={handleDeletePress}
-                className="bg-[#1c1c1c] rounded-xl overflow-hidden"
-              >
-                <SettingsCard
-                  title="Delete account"
-                  icon={<DeleteAccountIcon />}
-                  isDesktop={isDesktop}
-                  customAction={<ChevronRight size={20} color="#ff7d7d" />}
-                  titleStyle="text-[#ff7d7d]"
-                  hideIconBackground={true}
-                />
-              </Pressable>
-            </View>
-          </View>
+            <SettingsCard
+              title="Delete account"
+              icon={<DeleteAccountIcon />}
+              isDesktop={isDesktop}
+              customAction={<ChevronRight size={20} color="#ff7d7d" />}
+              titleStyle="text-[#ff7d7d]"
+              hideIconBackground={true}
+            />
+          </Pressable>
+        </View>
+      </View>
     </PageLayout>
   );
 }

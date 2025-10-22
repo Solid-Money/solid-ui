@@ -152,41 +152,41 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
       <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
         <Back title={merchantName} className="text-xl md:text-3xl" />
 
-          <View className="items-center gap-4">
-            {/* Avatar with initials */}
-            <View
-              className={cn(
-                'w-[120px] h-[120px] rounded-full items-center justify-center',
-                avatarColor,
-              )}
-            >
-              <Text className="text-white text-5xl font-semibold">{initials}</Text>
-            </View>
-
-            <View className="items-center">
-              <Text className="text-4xl font-bold text-white">
-                {formatCardAmount(transaction.amount)}
-              </Text>
-              <Text className="text-muted-foreground font-semibold mt-2">
-                {format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}
-              </Text>
-            </View>
+        <View className="items-center gap-4">
+          {/* Avatar with initials */}
+          <View
+            className={cn(
+              'w-[120px] h-[120px] rounded-full items-center justify-center',
+              avatarColor,
+            )}
+          >
+            <Text className="text-white text-5xl font-semibold">{initials}</Text>
           </View>
 
-          <View className="bg-[#1C1C1E] rounded-[20px]">
-            {rows.map(
-              (row, index) =>
-                row.enabled && (
-                  <Row
-                    key={index}
-                    label={row.label}
-                    value={row.value}
-                    className={cn(isLastRow(index) && 'border-b-0')}
-                  />
-                ),
-            )}
+          <View className="items-center">
+            <Text className="text-4xl font-bold text-white">
+              {formatCardAmount(transaction.amount)}
+            </Text>
+            <Text className="text-muted-foreground font-semibold mt-2">
+              {format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}
+            </Text>
           </View>
         </View>
+
+        <View className="bg-[#1C1C1E] rounded-[20px]">
+          {rows.map(
+            (row, index) =>
+              row.enabled && (
+                <Row
+                  key={index}
+                  label={row.label}
+                  value={row.value}
+                  className={cn(isLastRow(index) && 'border-b-0')}
+                />
+              ),
+          )}
+        </View>
+      </View>
     </PageLayout>
   );
 };
@@ -356,46 +356,46 @@ export default function ActivityDetail() {
       <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
         <Back title={activity.title} className="text-xl md:text-3xl" />
 
-          <View className="items-center gap-4">
-            <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
+        <View className="items-center gap-4">
+          <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
 
-            <View className="items-center">
-              <Text className={cn('text-2xl font-bold', statusTextColor)}>
-                {statusSign}
-                {formatNumber(Number(activity.amount))}{' '}
-                {activity.symbol?.toLowerCase() === 'sousd' ? 'soUSD' : activity.symbol}
-              </Text>
-              <Text className="text-muted-foreground font-semibold">
-                {format(Number(activity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}
-              </Text>
-            </View>
+          <View className="items-center">
+            <Text className={cn('text-2xl font-bold', statusTextColor)}>
+              {statusSign}
+              {formatNumber(Number(activity.amount))}{' '}
+              {activity.symbol?.toLowerCase() === 'sousd' ? 'soUSD' : activity.symbol}
+            </Text>
+            <Text className="text-muted-foreground font-semibold">
+              {format(Number(activity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}
+            </Text>
           </View>
+        </View>
 
-          <View className="bg-card rounded-twice">
-            {rows.map(
-              (row, index) =>
-                row.enabled && (
-                  <Row
-                    key={index}
-                    label={row.label}
-                    value={row.value}
-                    className={cn(isLastRow(index) && 'border-b-0')}
-                  />
-                ),
-            )}
-          </View>
-
-          {isCancelWithdraw && (
-            <Button
-              onPress={handleCancelWithdraw}
-              variant="secondary"
-              className="rounded-xl h-14 border-0"
-            >
-              <X color="white" size={16} />
-              <Text>Cancel Withdraw</Text>
-            </Button>
+        <View className="bg-card rounded-twice">
+          {rows.map(
+            (row, index) =>
+              row.enabled && (
+                <Row
+                  key={index}
+                  label={row.label}
+                  value={row.value}
+                  className={cn(isLastRow(index) && 'border-b-0')}
+                />
+              ),
           )}
         </View>
+
+        {isCancelWithdraw && (
+          <Button
+            onPress={handleCancelWithdraw}
+            variant="secondary"
+            className="rounded-xl h-14 border-0"
+          >
+            <X color="white" size={16} />
+            <Text>Cancel Withdraw</Text>
+          </Button>
+        )}
+      </View>
     </PageLayout>
   );
 }

@@ -74,4 +74,3 @@ const AccountCenterFooter = () => {
 };
 
 export { AccountCenter, AccountCenterFooter, AccountCenterTitle, AccountCenterTrigger };
-

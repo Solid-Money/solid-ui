@@ -18,11 +18,11 @@ export default function SavingsEmptyState() {
 
   const renderContent = () => (
     <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 py-8">
-        {isScreenMedium ? (
-          <View className="md:flex-row justify-between md:items-center gap-y-4">
-            <View className="flex-row items-center">
-              <Text className="text-5xl font-semibold">$0</Text>
-              {/*
+      {isScreenMedium ? (
+        <View className="md:flex-row justify-between md:items-center gap-y-4">
+          <View className="flex-row items-center">
+            <Text className="text-5xl font-semibold">$0</Text>
+            {/*
               <CountUp
                 count={0}
                 isTrailingZero={false}
@@ -48,7 +48,7 @@ export default function SavingsEmptyState() {
               />
               */}
 
-              {/*}
+            {/*}
               <SavingCountUp
                 balance={0}
                 apy={0}
@@ -74,46 +74,46 @@ export default function SavingsEmptyState() {
                 }}
               />
               */}
-            </View>
-
-            <View className="flex-row items-center gap-5">
-              <DepositOptionModal />
-            </View>
           </View>
-        ) : (
-          <></>
-        )}
 
-        <LinearGradient
-          colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
-          style={{
-            borderRadius: 20,
-            padding: isScreenMedium ? 60 : 20,
-            gap: isScreenMedium ? 96 : 40,
-          }}
-        >
-          {isScreenMedium ? (
-            <View className="flex-col md:flex-row justify-between gap-10 md:gap-0">
-              <View className="justify-between gap-10 md:gap-0 w-full max-w-2xl">
-                <SavingDepositTitle />
-                <SavingDepositBenefits />
-              </View>
-              <View>
-                <SavingDepositImage />
-              </View>
-            </View>
-          ) : (
-            <View className="justify-between gap-y-6">
-              <SavingDepositImage />
+          <View className="flex-row items-center gap-5">
+            <DepositOptionModal />
+          </View>
+        </View>
+      ) : (
+        <></>
+      )}
+
+      <LinearGradient
+        colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
+        style={{
+          borderRadius: 20,
+          padding: isScreenMedium ? 60 : 20,
+          gap: isScreenMedium ? 96 : 40,
+        }}
+      >
+        {isScreenMedium ? (
+          <View className="flex-col md:flex-row justify-between gap-10 md:gap-0">
+            <View className="justify-between gap-10 md:gap-0 w-full max-w-2xl">
               <SavingDepositTitle />
               <SavingDepositBenefits />
             </View>
-          )}
-        </LinearGradient>
-        {!isScreenMedium && <DepositOptionModal />}
-        <PoolBanners />
-        <FAQs faqs={faqs} className="md:mt-16" />
-      </View>
+            <View>
+              <SavingDepositImage />
+            </View>
+          </View>
+        ) : (
+          <View className="justify-between gap-y-6">
+            <SavingDepositImage />
+            <SavingDepositTitle />
+            <SavingDepositBenefits />
+          </View>
+        )}
+      </LinearGradient>
+      {!isScreenMedium && <DepositOptionModal />}
+      <PoolBanners />
+      <FAQs faqs={faqs} className="md:mt-16" />
+    </View>
   );
 
   return (

@@ -127,11 +127,11 @@ const Landing = () => {
   return (
     <PageLayout>
       <View className="gap-8 md:gap-24 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
-          <SoUSDSection vaultBreakdown={vaultBreakdown || []} />
-          <HowSection />
-          <VaultBreakdownSection vaultBreakdown={vaultBreakdown || []} />
-          <AuditSection />
-          <FAQSection />
+        <SoUSDSection vaultBreakdown={vaultBreakdown || []} />
+        <HowSection />
+        <VaultBreakdownSection vaultBreakdown={vaultBreakdown || []} />
+        <AuditSection />
+        <FAQSection />
       </View>
     </PageLayout>
   );

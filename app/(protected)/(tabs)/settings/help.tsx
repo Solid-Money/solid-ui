@@ -47,9 +47,7 @@ export default function Help() {
       <Pressable onPress={() => router.back()} className="p-2">
         <ChevronLeft size={24} color="#ffffff" />
       </Pressable>
-      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">
-        Help & Support
-      </Text>
+      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Help & Support</Text>
     </View>
   );
 
@@ -91,9 +89,7 @@ export default function Help() {
                 link={option.link as any}
                 isDesktop={isDesktop}
               />
-              {index < supportOptions.length - 1 && (
-                <View className="border-t border-[#2a2a2a]" />
-              )}
+              {index < supportOptions.length - 1 && <View className="border-t border-[#2a2a2a]" />}
             </View>
           ))}
         </View>
@@ -101,8 +97,7 @@ export default function Help() {
         {/* Additional Help Text */}
         <View className="px-4 pt-6 pb-2">
           <Text className="text-muted-foreground text-sm text-center">
-            Need more help? Email{' '}
-            <Text className="text-white font-medium">support@solid.xyz</Text>
+            Need more help? Email <Text className="text-white font-medium">support@solid.xyz</Text>
           </Text>
         </View>
       </View>

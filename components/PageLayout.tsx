@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
-import { SafeAreaView, Edge } from 'react-native-safe-area-context';
+import { Edge, SafeAreaView } from 'react-native-safe-area-context';
 import { useDimension } from '@/hooks/useDimension';
 import Navbar from './Navbar';
 import NavbarMobile from './Navbar/NavbarMobile';
@@ -77,7 +77,7 @@ export const PageLayout = ({
   edges = ['right', 'left', 'bottom', 'top'],
   additionalContent,
   className = '',
-  contentClassName = ''
+  contentClassName = '',
 }: PageLayoutProps) => {
   const { isScreenMedium, isDesktop } = useDimension();
 
@@ -92,14 +92,10 @@ export const PageLayout = ({
   const navbarContent = (
     <>
       {/* Desktop navbar/header */}
-      {isLargeScreen && (
-        customDesktopHeader || (shouldShowDesktopNavbar && <Navbar />)
-      )}
+      {isLargeScreen && (customDesktopHeader || (shouldShowDesktopNavbar && <Navbar />))}
 
       {/* Mobile navbar/header */}
-      {!isLargeScreen && (
-        customMobileHeader || (shouldShowMobileNavbar && <NavbarMobile />)
-      )}
+      {!isLargeScreen && (customMobileHeader || (shouldShowMobileNavbar && <NavbarMobile />))}
     </>
   );
 
@@ -117,10 +113,7 @@ export const PageLayout = ({
   );
 
   return (
-    <SafeAreaView
-      className={`bg-background text-foreground flex-1 ${className}`}
-      edges={edges}
-    >
+    <SafeAreaView className={`bg-background text-foreground flex-1 ${className}`} edges={edges}>
       {mainContent}
       {additionalContent}
     </SafeAreaView>

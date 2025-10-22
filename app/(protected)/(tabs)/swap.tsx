@@ -16,11 +16,7 @@ export default function SwapPage() {
   const router = useRouter();
 
   return (
-    <PageLayout
-      desktopOnly
-      scrollable={false}
-      additionalContent={<SwapModal />}
-    >
+    <PageLayout desktopOnly scrollable={false} additionalContent={<SwapModal />}>
       <ScrollView className="flex-1">
         <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
           <View className="flex-row items-center justify-between">

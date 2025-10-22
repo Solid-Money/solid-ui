@@ -68,68 +68,68 @@ export default function Settings() {
           'max-w-7xl': !isDesktop,
         })}
       >
-          {/* Account Details Card */}
-          <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
-            {accountsWithIcons.slice(0, 1).map((account, index) => (
+        {/* Account Details Card */}
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
+          {accountsWithIcons.slice(0, 1).map((account, index) => (
+            <SettingsCard
+              key={`account-${index}`}
+              title={account.title}
+              description={account.description}
+              icon={account.icon}
+              link={account.link}
+              isDesktop={isDesktop}
+            />
+          ))}
+        </View>
+
+        {/* Help & Support and Legal Cards */}
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
+          <View>
+            {supportsWithIcons.slice(0, 1).map((support, index) => (
               <SettingsCard
-                key={`account-${index}`}
-                title={account.title}
-                description={account.description}
-                icon={account.icon}
-                link={account.link}
+                key={`support-${index}`}
+                title={support.title}
+                icon={support.icon}
+                link={support.link}
                 isDesktop={isDesktop}
               />
             ))}
           </View>
-
-          {/* Help & Support and Legal Cards */}
-          <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
-            <View>
-              {supportsWithIcons.slice(0, 1).map((support, index) => (
-                <SettingsCard
-                  key={`support-${index}`}
-                  title={support.title}
-                  icon={support.icon}
-                  link={support.link}
-                  isDesktop={isDesktop}
-                />
-              ))}
-            </View>
-            <View className="border-t border-[#2a2a2a]">
-              {supportsWithIcons.slice(1, 2).map((support, index) => (
-                <SettingsCard
-                  key={`support-legal-${index}`}
-                  title={support.title}
-                  icon={support.icon}
-                  link={support.link}
-                  isDesktop={isDesktop}
-                />
-              ))}
-            </View>
+          <View className="border-t border-[#2a2a2a]">
+            {supportsWithIcons.slice(1, 2).map((support, index) => (
+              <SettingsCard
+                key={`support-legal-${index}`}
+                title={support.title}
+                icon={support.icon}
+                link={support.link}
+                isDesktop={isDesktop}
+              />
+            ))}
           </View>
-
-          {/* Logout Card */}
-          <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
-            <SettingsCard
-              key="logout"
-              title="Logout"
-              icon={<LogoutIcon color="#ffffff" />}
-              onPress={handleLogout}
-              isDesktop={isDesktop}
-            />
-          </View>
-
-          {/* Build Information */}
-          {Platform.OS !== 'web' && (
-            <View className="px-4 pt-8 pb-2 items-center">
-              <Text className="text-muted-foreground text-xs">
-                {Application.applicationName || 'Solid'} v
-                {Application.nativeApplicationVersion || 'Unknown'} - Build{' '}
-                {Application.nativeBuildVersion || 'Unknown'}
-              </Text>
-            </View>
-          )}
         </View>
+
+        {/* Logout Card */}
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
+          <SettingsCard
+            key="logout"
+            title="Logout"
+            icon={<LogoutIcon color="#ffffff" />}
+            onPress={handleLogout}
+            isDesktop={isDesktop}
+          />
+        </View>
+
+        {/* Build Information */}
+        {Platform.OS !== 'web' && (
+          <View className="px-4 pt-8 pb-2 items-center">
+            <Text className="text-muted-foreground text-xs">
+              {Application.applicationName || 'Solid'} v
+              {Application.nativeApplicationVersion || 'Unknown'} - Build{' '}
+              {Application.nativeBuildVersion || 'Unknown'}
+            </Text>
+          </View>
+        )}
+      </View>
     </PageLayout>
   );
 }
