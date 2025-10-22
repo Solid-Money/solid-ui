@@ -95,7 +95,7 @@ export default function Settings() {
               />
             ))}
           </View>
-          <View className="border-t border-[#2a2a2a]">
+          <View className="border-t border-[#3B3B3B]">
             {supportsWithIcons.slice(1, 2).map((support, index) => (
               <SettingsCard
                 key={`support-legal-${index}`}

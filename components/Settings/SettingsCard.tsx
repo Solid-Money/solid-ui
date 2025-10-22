@@ -39,7 +39,7 @@ const CardContainer = ({ link, onPress, children }: CardContainerProps) => {
     }
   };
 
-  const pressableClass = 'active:opacity-70 transition-opacity';
+  const pressableClass = 'active:opacity-70 transition-all web:hover:bg-[#2A2A2A]';
 
   if (isExternalUrl) {
     return (
