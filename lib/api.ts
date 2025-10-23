@@ -40,7 +40,6 @@ import {
   CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
-  DirectDepositSessionResponse,
   EphemeralKeyResponse,
   ExchangeRateResponse,
   FromCurrency,
@@ -1282,52 +1281,6 @@ export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEv
 
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/${clientTxId}`,
-    {
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-// Direct Deposit Session API
-export const createDirectDepositSession = async (
-  chainId: number,
-): Promise<DirectDepositSessionResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify({ chainId }),
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-export const getDirectDepositSession = async (
-  sessionId: string,
-): Promise<DirectDepositSessionResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session/${sessionId}`,
     {
       headers: {
         ...getPlatformHeaders(),

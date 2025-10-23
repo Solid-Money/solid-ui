@@ -11,11 +11,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { useStakeStore } from '@/store/useStakeStore';
 import { Stake, StakeTrigger } from '.';
 
-type StakeModalProps = {
-  trigger?: React.ReactNode;
-};
-
-const StakeModal = ({ trigger }: StakeModalProps) => {
+const StakeModal = () => {
   const router = useRouter();
   const { currentModal, previousModal, setModal, transaction } = useStakeStore();
 
@@ -76,7 +72,7 @@ const StakeModal = ({ trigger }: StakeModalProps) => {
       previousModal={previousModal}
       isOpen={!isClose}
       onOpenChange={handleOpenChange}
-      trigger={trigger || <StakeTrigger />}
+      trigger={<StakeTrigger />}
       title={getTitle()}
       titleClassName="justify-center"
       contentKey={getContentKey()}

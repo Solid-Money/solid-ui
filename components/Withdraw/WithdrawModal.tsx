@@ -11,11 +11,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { useWithdrawStore } from '@/store/useWithdrawStore';
 import { Withdraw, WithdrawTrigger } from '.';
 
-type WithdrawModalProps = {
-  trigger?: React.ReactNode;
-};
-
-const WithdrawModal = ({ trigger }: WithdrawModalProps) => {
+const WithdrawModal = () => {
   const router = useRouter();
   const { currentModal, previousModal, setModal, transaction } = useWithdrawStore();
 
@@ -76,7 +72,7 @@ const WithdrawModal = ({ trigger }: WithdrawModalProps) => {
       previousModal={previousModal}
       isOpen={!isClose}
       onOpenChange={handleOpenChange}
-      trigger={trigger || <WithdrawTrigger />}
+      trigger={<WithdrawTrigger />}
       title={getTitle()}
       titleClassName="justify-center"
       contentKey={getContentKey()}
