@@ -7,8 +7,6 @@ import { formatUnits } from 'viem';
 import AreaChart from '@/components/AreaChart.web';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinChartTime from '@/components/Coin/CoinChartTime';
-import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { times } from '@/constants/coins';
@@ -85,81 +83,74 @@ export default function Coin() {
               className="text-xl md:text-3xl"
             />
 
-          <View className="gap-2">
-            <View className="flex-row items-center gap-2">
-              <Text className="text-xl md:text-3xl font-bold">{token?.contractName}</Text>
-              <Text className="text-xl md:text-3xl font-medium text-muted-foreground">
-                {token?.contractTickerSymbol}
+            <View className="gap-2">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-xl md:text-3xl font-bold">{token?.contractName}</Text>
+                <Text className="text-xl md:text-3xl font-medium text-muted-foreground">
+                  {token?.contractTickerSymbol}
+                </Text>
+              </View>
+
+              <Text className="text-4xl md:text-5xl font-semibold">
+                {selectedPrice
+                  ? `$${formatNumber(selectedPrice)}`
+                  : formattedChartData.length > 0
+                    ? `$${formatNumber(formattedChartData[formattedChartData.length - 1].value)}`
+                    : '$0.00'}
               </Text>
-            </View>
 
-            <Text className="text-4xl md:text-5xl font-semibold">
-              {selectedPrice
-                ? `$${formatNumber(selectedPrice)}`
-                : formattedChartData.length > 0
-                  ? `$${formatNumber(formattedChartData[formattedChartData.length - 1].value)}`
-                  : '$0.00'}
-            </Text>
-
-            <View className="flex-row items-center">
-              <Text
-                className={cn(
-                  'text-sm font-medium',
-                  isPriceIncrease ? 'text-brand' : 'text-red-500',
+              <View className="flex-row items-center">
+                <Text
+                  className={cn(
+                    'text-sm font-medium',
+                    isPriceIncrease ? 'text-brand' : 'text-red-500',
+                  )}
+                >
+                  {isPriceIncrease ? '+' : '-'}
+                  {selectedPriceChange
+                    ? `$${formatNumber(Math.abs(selectedPriceChange), 2)}%`
+                    : '0.00%'}
+                </Text>
+                {isPriceIncrease ? (
+                  <ArrowUp color="#94F27F" size={14} strokeWidth={3} />
+                ) : (
+                  <ArrowDown color="#EF4444" size={14} strokeWidth={3} />
                 )}
-              >
-                {isPriceIncrease ? '+' : '-'}
-                {selectedPriceChange
-                  ? `$${formatNumber(Math.abs(selectedPriceChange), 2)}%`
-                  : '0.00%'}
-              </Text>
-              {isPriceIncrease ? (
-                <ArrowUp color="#94F27F" size={14} strokeWidth={3} />
-              ) : (
-                <ArrowDown color="#EF4444" size={14} strokeWidth={3} />
-              )}
+              </View>
             </View>
+
+            {isLoadingCoinHistoricalChart ? (
+              <View className="h-[200px] items-center justify-center">
+                <ActivityIndicator size="large" color="white" />
+              </View>
+            ) : formattedChartData.length > 0 ? (
+              <AreaChart data={formattedChartData} />
+            ) : null}
+
+            <CoinChartTime />
           </View>
+
+          <CoinButtons contractAddress={contractAddress} />
 
           <View className="bg-card rounded-twice p-5 flex-row items-center justify-between">
             <Text className="text-lg font-bold">Balance</Text>
             <View className="items-end">
               <Text className="text-xl font-bold">
-                {formatNumber(balance)} {token.contractTickerSymbol}
+                {formatNumber(balance)} {token?.contractTickerSymbol}
               </Text>
               <Text className="text-sm text-muted-foreground font-bold">
                 ${formatNumber(balanceUSD)}
               </Text>
-          {isLoadingCoinHistoricalChart ? (
-            <View className="h-[200px] items-center justify-center">
-              <ActivityIndicator size="large" color="white" />
             </View>
-          ) : formattedChartData.length > 0 ? (
-            <AreaChart data={formattedChartData} />
-          ) : null}
-
-          <CoinChartTime />
-        </View>
-
-        <CoinButtons contractAddress={contractAddress} />
-
-        <View className="bg-card rounded-twice p-5 flex-row items-center justify-between">
-          <Text className="text-lg font-bold">Balance</Text>
-          <View className="items-end">
-            <Text className="text-xl font-bold">
-              {formatNumber(balance)} {token?.contractTickerSymbol}
-            </Text>
-            <Text className="text-sm text-muted-foreground font-bold">
-              ${formatNumber(balanceUSD)}
-            </Text>
           </View>
 
-          <View className="gap-4">
-            <Text className="text-muted-foreground font-semibold">Recent activity</Text>
-            <ActivityTransactions symbol={token.contractTickerSymbol} />
-          </View>
+          {token?.contractTickerSymbol && (
+            <View className="gap-4">
+              <Text className="text-muted-foreground font-semibold">Recent activity</Text>
+              <ActivityTransactions symbol={token.contractTickerSymbol} />
+            </View>
+          )}
         </View>
-      </View>
       )}
     </PageLayout>
   );
