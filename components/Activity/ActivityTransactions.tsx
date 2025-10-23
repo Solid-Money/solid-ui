@@ -36,7 +36,6 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 type ActivityTransactionsProps = {
   tab?: ActivityTab;
-  symbol?: string;
 };
 
 type RenderItemProps = {
@@ -46,7 +45,6 @@ type RenderItemProps = {
 
 export default function ActivityTransactions({
   tab = ActivityTab.WALLET,
-  symbol,
 }: ActivityTransactionsProps) {
   const { user } = useUser();
   const { setModal, setBankTransferData } = useDepositStore();
@@ -374,12 +372,7 @@ export default function ActivityTransactions({
 
   const filteredTransactions = useMemo(() => {
     const filtered = fetchedEvents.filter(transaction => {
-      if (tab === ActivityTab.WALLET) {
-        if (symbol) {
-          return transaction.symbol?.toLowerCase() === symbol?.toLowerCase();
-        }
-        return true;
-      }
+      if (tab === ActivityTab.WALLET) return true;
       if (tab === ActivityTab.PROGRESS) {
         return transaction.status === TransactionStatus.PENDING;
       }
@@ -387,7 +380,7 @@ export default function ActivityTransactions({
     });
 
     return groupTransactionsByTime(filtered);
-  }, [fetchedEvents, tab, symbol]);
+  }, [fetchedEvents, tab]);
 
   const renderItem = ({ item, index }: RenderItemProps) => {
     if (item.type === ActivityGroup.HEADER) {

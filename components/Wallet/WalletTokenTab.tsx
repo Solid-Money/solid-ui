@@ -128,6 +128,39 @@ const WalletTokenTab = () => {
                       ${compactNumberFormat(balanceUSD)}
                     </Text>
                   </View>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger>
+                      <TransactionCredenzaTrigger />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="bg-card border-none rounded-xl p-1 min-w-[10rem]"
+                    >
+                      <View className="gap-2">
+                        {!isSoUSDEthereum(token.contractAddress) && (
+                          <SendModal
+                            tokenAddress={token.contractAddress as Address}
+                            tokenDecimals={token.contractDecimals}
+                            tokenIcon={tokenIcon}
+                            tokenSymbol={token.contractTickerSymbol || 'Unknown'}
+                            chainId={token.chainId}
+                            tokenType={token.type}
+                          />
+                        )}
+                        {isSoUSDFuse(token.contractAddress) ? (
+                          <UnstakeModal />
+                        ) : (
+                          isSoUSDEthereum(token.contractAddress) && (
+                            <>
+                              <WithdrawModal />
+                              <StakeModal />
+                            </>
+                          )
+                        )}
+                        {isUSDCEthereum(token.contractAddress) && <DepositModal />}
+                      </View>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </View>
               </Pressable>
             );

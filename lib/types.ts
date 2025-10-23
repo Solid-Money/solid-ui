@@ -33,19 +33,6 @@ export interface CardWaitlistResponse {
   joinedAt?: Date;
 }
 
-export interface DirectDepositSessionResponse {
-  sessionId: string;
-  walletAddress: string;
-  chainId: number;
-  status: 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
-  expiresAt: number;
-  minDeposit: string;
-  maxDeposit: string;
-  fee: string;
-  detectedAmount?: string;
-  transactionHash?: string;
-}
-
 export enum Status {
   IDLE = 'idle',
   PENDING = 'pending',

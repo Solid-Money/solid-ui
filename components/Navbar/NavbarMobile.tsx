@@ -30,6 +30,7 @@ const NavbarMobile = () => {
             onPress={handleAvatarPress}
             className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-transform"
           >
+            
             <Text className="text-white font-medium text-sm ml-1 mr-1">
               {eclipseUsername(user.username)}
             </Text>

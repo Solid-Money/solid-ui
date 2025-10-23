@@ -63,10 +63,6 @@ export const DEPOSIT_MODAL = {
     name: 'open_deposit_directly',
     number: 14,
   },
-  OPEN_DEPOSIT_DIRECTLY_ADDRESS: {
-    name: 'open_deposit_directly_address',
-    number: 15,
-  },
 };
 
 export const SEND_MODAL = {
