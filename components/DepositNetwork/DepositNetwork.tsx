@@ -22,7 +22,7 @@ const DepositNetwork = ({
 }: DepositNetworkProps) => {
   return (
     <Button
-      className="flex-row items-center justify-between bg-primary/10 rounded-2xl p-6 disabled:opacity-100 disabled:web:hover:opacity-100"
+      className="flex-row items-center justify-between bg-primary/10 rounded-2xl p-6 web:hover:bg-accent disabled:opacity-100 disabled:web:hover:opacity-100"
       style={{ height: 88 }}
       onPress={onPress}
       disabled={isComingSoon}
