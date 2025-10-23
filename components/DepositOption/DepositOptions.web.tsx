@@ -2,87 +2,31 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
-import { useActiveAccount, useConnectModal } from 'thirdweb/react';
-import { createWallet } from 'thirdweb/wallets';
 import DepositOption from './DepositOption';
 
 const DepositOptions = () => {
-  const activeAccount = useActiveAccount();
-  const { connect } = useConnectModal();
   const { setModal } = useDepositStore();
   const { user } = useUser();
-  const address = activeAccount?.address;
-
-  const [isWalletOpen, setIsWalletOpen] = useState(false);
 
   // Track when deposit options are viewed
   useEffect(() => {
     track(TRACKING_EVENTS.DEPOSIT_OPTIONS_VIEWED, {
       user_id: user?.userId,
       safe_address: user?.safeAddress,
-      has_wallet_connected: !!address,
       is_first_deposit: !user?.isDeposited,
     });
-  }, [user?.userId, user?.safeAddress, user?.isDeposited, address]);
+  }, [user?.userId, user?.safeAddress, user?.isDeposited]);
 
-  const handleExternalWalletPress = useCallback(async () => {
-    try {
-      if (isWalletOpen) return;
-
-      // If wallet is already connected, go directly to networks
-      if (address) {
-        track(TRACKING_EVENTS.DEPOSIT_WALLET_ALREADY_CONNECTED, {
-          wallet_address: address,
-          deposit_method: 'wallet',
-        });
-        setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
-        return;
-      }
-
-      track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_STARTED, {
-        deposit_method: 'wallet',
-      });
-
-      setIsWalletOpen(true);
-
-      const wallet = await connect({
-        client,
-        showThirdwebBranding: false,
-        size: 'compact',
-        wallets: [
-          // createWallet('walletConnect'),
-          createWallet('io.rabby'),
-          createWallet('io.metamask'),
-        ],
-      });
-
-      // Only proceed to form if wallet connection was successful
-      if (wallet) {
-        track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_SUCCESS, {
-          wallet_type: wallet.id,
-          deposit_method: 'wallet',
-        });
-
-        setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
-      }
-    } catch (error) {
-      console.error(error);
-
-      track(TRACKING_EVENTS.DEPOSIT_WALLET_CONNECTION_FAILED, {
-        error: String(error),
-        deposit_method: 'wallet',
-      });
-
-      // Don't change modal state on error - user can try again
-    } finally {
-      setIsWalletOpen(false);
-    }
-  }, [isWalletOpen, connect, address, setModal]);
+  const handleExternalWalletPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'external_wallet',
+    });
+    setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
+  }, [setModal]);
 
   const handleBuyCryptoPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -110,7 +54,6 @@ const DepositOptions = () => {
         />
       ),
       onPress: handleExternalWalletPress,
-      isLoading: isWalletOpen,
     },
     {
       text: 'Buy crypto',
@@ -147,7 +90,6 @@ const DepositOptions = () => {
           subtitle={option.subtitle}
           icon={option.icon}
           onPress={option.onPress}
-          isLoading={option.isLoading}
         />
       ))}
     </View>

@@ -1,34 +1,60 @@
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { client } from '@/lib/thirdweb';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
-import { ConnectButton, useActiveAccount } from 'thirdweb/react';
-import { createWallet } from 'thirdweb/wallets';
 import DepositOption from './DepositOption';
 
 const DepositOptions = () => {
-  const activeAccount = useActiveAccount();
   const { setModal } = useDepositStore();
-  const address = activeAccount?.address;
+  const { user } = useUser();
 
-  // Navigate to networks when wallet is connected
+  // Track when deposit options are viewed
   useEffect(() => {
-    if (address) {
-      setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
-    }
-  }, [address, setModal]);
+    track(TRACKING_EVENTS.DEPOSIT_OPTIONS_VIEWED, {
+      user_id: user?.userId,
+      safe_address: user?.safeAddress,
+      is_first_deposit: !user?.isDeposited,
+    });
+  }, [user?.userId, user?.safeAddress, user?.isDeposited]);
+
+  const handleExternalWalletPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'external_wallet',
+    });
+    setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
+  }, [setModal]);
 
   const handleBuyCryptoPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'buy_crypto',
+    });
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
   }, [setModal]);
 
   const handlePublicAddressPress = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'public_address',
+    });
     setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   }, [setModal]);
 
   const DEPOSIT_OPTIONS = [
+    {
+      text: 'Deposit from external wallet',
+      subtitle: 'Transfer from any crypto wallet\nor exchange',
+      icon: (
+        <Image
+          source={require('@/assets/images/deposit_from_external_wallet.png')}
+          style={{ width: 28, height: 12 }}
+          contentFit="contain"
+        />
+      ),
+      onPress: handleExternalWalletPress,
+    },
     {
       text: 'Buy crypto',
       subtitle: 'Google Pay, card or bank account',
@@ -57,29 +83,6 @@ const DepositOptions = () => {
 
   return (
     <View className="gap-y-2.5">
-      <ConnectButton
-        client={client}
-        wallets={[
-          // createWallet('walletConnect'),
-          createWallet('io.rabby'),
-          createWallet('io.metamask'),
-        ]}
-        connectButton={{
-          label: address ? 'Wallet Connected' : 'Deposit from external wallet',
-          className:
-            'flex-row items-center justify-between bg-primary/10 rounded-2xl p-6 disabled:opacity-100 disabled:web:hover:opacity-100',
-          style: {
-            height: 88,
-            textAlign: 'left',
-            color: 'red',
-          },
-        }}
-        theme={'dark'}
-        appMetadata={{
-          name: 'Solid',
-          url: 'https://app.solid.xyz',
-        }}
-      />
       {DEPOSIT_OPTIONS.map(option => (
         <DepositOption
           key={option.text}

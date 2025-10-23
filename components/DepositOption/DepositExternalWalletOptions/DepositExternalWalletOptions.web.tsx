@@ -22,7 +22,7 @@ const DepositExternalWalletOptions = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'deposit_directly',
     });
-    // TODO: Implement deposit directly flow with API
+
     setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
   }, [setModal]);
 

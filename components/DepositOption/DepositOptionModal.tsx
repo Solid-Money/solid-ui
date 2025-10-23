@@ -19,10 +19,12 @@ import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
-import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
-import DepositExternalWalletOptions from './DepositExternalWalletOptions';
 import DepositOptions from './DepositOptions';
 import DepositPublicAddress from './DepositPublicAddress';
+import DepositExternalWalletOptions from './DepositExternalWalletOptions';
+import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
+import DepositDirectlyNetworks from './DepositDirectlyNetworks.web';
+import DepositDirectlyAddress from './DepositDirectlyAddress.web';
 
 interface DepositOptionModalProps {
   buttonText?: string;
@@ -59,6 +61,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const isBuyCryptoOptions = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS.name;
   const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
+  const isDepositDirectlyAddress =
+    currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -132,8 +136,11 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     }
 
     if (isDepositDirectly) {
-      // TODO: Implement deposit directly flow
-      return <DepositNetworks />;
+      return <DepositDirectlyNetworks />;
+    }
+
+    if (isDepositDirectlyAddress) {
+      return <DepositDirectlyAddress />;
     }
 
     return <DepositOptions />;
@@ -153,12 +160,13 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     if (isExternalWalletOptions) return 'external-wallet-options';
     if (isBuyCryptoOptions) return 'buy-crypto-options';
     if (isPublicAddress) return 'public-address';
-    if (isDepositDirectly) return 'deposit-directly';
+    if (isDepositDirectly) return 'deposit-directly-networks';
+    if (isDepositDirectlyAddress) return 'deposit-directly-address';
     return 'deposit-options';
   };
 
   const getTitle = () => {
-    if (isTransactionStatus || isEmailGate) return undefined;
+    if (isTransactionStatus || isEmailGate || isDepositDirectlyAddress) return undefined;
     if (isBankTransferKycInfo) return 'Identity Verification';
     if (isBankTransferKycFrame) return 'Identity Verification';
     if (isBankTransferAmount) return 'Amount to buy';
@@ -247,6 +255,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isDepositDirectly) {
       setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
+    } else if (isDepositDirectlyAddress) {
+      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
     } else if (isBuyCrypto) {
       setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
     } else {
@@ -255,10 +265,10 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   };
 
   useEffect(() => {
-    if (status === 'disconnected' && !isClose) {
+    if (status === 'disconnected' && !isClose && !isDepositDirectly && !isDepositDirectlyAddress) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
-  }, [status, setModal, isClose]);
+  }, [status, setModal, isClose, isDepositDirectly, isDepositDirectlyAddress]);
 
   return (
     <ResponsiveModal
@@ -282,7 +292,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
         isExternalWalletOptions ||
         isBuyCryptoOptions ||
         isPublicAddress ||
-        isDepositDirectly
+        isDepositDirectly ||
+        isDepositDirectlyAddress
       }
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}
