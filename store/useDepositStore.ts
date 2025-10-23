@@ -32,6 +32,19 @@ interface KycData {
   kycLinkId?: string;
 }
 
+interface DirectDepositSession {
+  sessionId?: string;
+  walletAddress?: string;
+  chainId?: number;
+  status?: 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
+  expiresAt?: number;
+  minDeposit?: string;
+  maxDeposit?: string;
+  fee?: string;
+  detectedAmount?: string;
+  transactionHash?: string;
+}
+
 interface DepositState {
   currentModal: DepositModal;
   previousModal: DepositModal;
@@ -39,6 +52,7 @@ interface DepositState {
   srcChainId: number;
   bankTransfer: BankTransferData;
   kyc: KycData;
+  directDepositSession: DirectDepositSession;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
@@ -46,6 +60,8 @@ interface DepositState {
   setKycData: (data: Partial<KycData>) => void;
   clearKycData: () => void;
   setSrcChainId: (srcChainId: number) => void;
+  setDirectDepositSession: (data: Partial<DirectDepositSession>) => void;
+  clearDirectDepositSession: () => void;
 }
 
 export const useDepositStore = create<DepositState>()(
@@ -57,6 +73,7 @@ export const useDepositStore = create<DepositState>()(
       srcChainId: mainnet.id,
       bankTransfer: {},
       kyc: {},
+      directDepositSession: {},
 
       setModal: modal =>
         set({
@@ -69,6 +86,9 @@ export const useDepositStore = create<DepositState>()(
       setKycData: data => set({ kyc: { ...get().kyc, ...data } }),
       clearKycData: () => set({ kyc: {} }),
       setSrcChainId: srcChainId => set({ srcChainId }),
+      setDirectDepositSession: data =>
+        set({ directDepositSession: { ...get().directDepositSession, ...data } }),
+      clearDirectDepositSession: () => set({ directDepositSession: {} }),
     }),
     {
       name: USER.depositStorageKey,
@@ -79,6 +99,7 @@ export const useDepositStore = create<DepositState>()(
         srcChainId: state.srcChainId,
         bankTransfer: state.bankTransfer,
         kyc: state.kyc,
+        directDepositSession: state.directDepositSession,
       }),
       // Ignore any legacy stored modal fields
       merge: (persisted, current) => {
