@@ -1,14 +1,23 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Hash } from 'viem';
+import { mainnet } from 'viem/chains';
+import { useBlockNumber } from 'wagmi';
 
-import { createActivityEvent, updateActivityEvent } from '@/lib/api';
+import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
+import {
+  formatTransactions,
+  useBankTransferTransactions,
+  useBridgeDepositTransactions,
+  useSendTransactions,
+} from '@/hooks/useAnalytics';
+import useUser from '@/hooks/useUser';
+import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
-import useUser from './useUser';
 
 // Get explorer URL for a transaction hash based on chain ID
 function getExplorerUrl(chainId: number, txHash: string): string {
@@ -54,30 +63,206 @@ export type TrackTransaction = <TransactionResult>(params: CreateActivityParams,
 
 export function useActivity() {
   const { user } = useUser();
-  const { events, storeEvents } = useActivityStore();
-  const queryClient = useQueryClient();
+  const { events, upsertEvent, setEvents } = useActivityStore();
+
+  const { data: blockNumber } = useBlockNumber({
+    watch: true,
+    chainId: mainnet.id,
+  });
+
+  // Helper to get unique key for event
+  const getKey = useCallback((event: ActivityEvent): string => {
+    return event.hash || event.userOpHash || event.clientTxId;
+  }, []);
+
+  // 1. Fetch from backend first (cached data for instant display)
+  const activityEvents = useInfiniteQuery({
+    queryKey: ['activity-events', user?.userId],
+    queryFn: ({ pageParam = 1 }) => withRefreshToken(() => fetchActivityEvents(pageParam)),
+    getNextPageParam: lastPage => {
+      if (!lastPage) return undefined;
+      if (lastPage.hasNextPage) {
+        return lastPage.page + 1;
+      }
+    },
+    initialPageParam: 1,
+    enabled: !!user?.userId,
+  });
+
+  const { data: activityData, refetch: refetchActivityEvents } = activityEvents;
+
+  // 2. Fetch from third-party services
+  const { data: userDepositTransactions, refetch: refetchTransactions } =
+    useGetUserTransactionsQuery({
+      variables: {
+        address: user?.safeAddress?.toLowerCase() ?? '',
+      },
+    });
+
+  const { data: sendTransactions, refetch: refetchSendTransactions } = useSendTransactions(
+    user?.safeAddress ?? '',
+  );
+
+  const { data: bridgeDepositTransactions, refetch: refetchBridgeDepositTransactions } =
+    useBridgeDepositTransactions(user?.safeAddress ?? '');
+
+  const { data: bankTransferTransactions, refetch: refetchBankTransfers } =
+    useBankTransferTransactions();
+
+  // 3. Format third-party transactions
+  const { data: transactions } = useQuery({
+    queryKey: [
+      'formatted-transactions',
+      user?.safeAddress,
+      userDepositTransactions?.deposits?.length,
+      sendTransactions?.fuse?.length,
+      sendTransactions?.ethereum?.length,
+      bridgeDepositTransactions?.length,
+      bankTransferTransactions?.length,
+    ],
+    queryFn: () =>
+      formatTransactions(
+        userDepositTransactions,
+        sendTransactions,
+        bridgeDepositTransactions,
+        bankTransferTransactions,
+      ),
+  });
+
+  // Refetch all data sources
+  const refetchAll = useCallback(() => {
+    refetchActivityEvents();
+    refetchTransactions();
+    refetchSendTransactions();
+    refetchBridgeDepositTransactions();
+    refetchBankTransfers();
+  }, [refetchActivityEvents, refetchTransactions, refetchSendTransactions, refetchBridgeDepositTransactions, refetchBankTransfers]);
 
   // Get user's activities
-  const userActivities = useMemo(() => {
+  const activities = useMemo(() => {
     if (!user?.userId || !events[user.userId]) return [];
     return [...events[user.userId]].sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
   }, [events, user?.userId]);
 
   // Get pending activities
   const pendingActivities = useMemo(() => {
-    return userActivities.filter(activity =>
+    return activities.filter(activity =>
       activity.status === TransactionStatus.PENDING ||
       activity.status === TransactionStatus.PROCESSING
     );
-  }, [userActivities]);
+  }, [activities]);
 
-  // Create new activity and track immediately
+  // 4. Sync third-party transactions to backend (create new + update status changes)
+  useEffect(() => {
+    if (!user?.userId || !transactions?.length) return;
+
+    const serverEvents = activityData?.pages.flatMap(page => page?.docs || []) || [];
+
+    transactions.forEach(tx => {
+      if (!tx.hash) return;
+
+      const existingLocal = activities.find(e => getKey(e) === tx.hash);
+      const existingServer = serverEvents.find(e => getKey(e) === tx.hash);
+
+      // Check if transaction exists anywhere
+      if (!existingServer && !existingLocal) {
+        // New transaction - create it
+        withRefreshToken(() =>
+          createActivityEvent({
+            clientTxId: `${tx.type}-${tx.hash}`,
+            title: tx.title || `${tx.type} Transaction`,
+            timestamp: tx.timestamp,
+            type: tx.type,
+            status: tx.status,
+            amount: tx.amount.toString(),
+            symbol: tx.symbol || 'USDC',
+            chainId: tx.chainId,
+            fromAddress: tx.fromAddress || user.safeAddress,
+            toAddress: tx.toAddress,
+            hash: tx.hash,
+            url: tx.url,
+            metadata: {
+              description: tx.title || `External ${tx.type} transaction`,
+              source: 'external-sync',
+            },
+          }),
+        ).catch(error => console.error(`Failed to create transaction ${tx.hash}:`, error));
+      } else if (existingLocal || existingServer) {
+        // Transaction exists - check if status changed to final state
+        const existing = existingLocal || existingServer;
+        if (!existing) {
+          console.warn(`Transaction ${tx.hash} not found`);
+          return;
+        }
+
+        const isPending = existing.status === TransactionStatus.PENDING || existing.status === TransactionStatus.PROCESSING;
+        const isFinal = tx.status === TransactionStatus.SUCCESS || tx.status === TransactionStatus.FAILED;
+
+        if (isPending && isFinal && existing.status !== tx.status) {
+          // Status changed from pending to final - update it
+          withRefreshToken(() =>
+            updateActivityEvent(existing.clientTxId, {
+              status: tx.status,
+              metadata: {
+                ...existing.metadata,
+                updatedAt: new Date().toISOString(),
+                source: 'external-sync',
+              },
+            }),
+          ).catch(error => console.error(`Failed to update transaction ${tx.hash}:`, error));
+        }
+      }
+    });
+  }, [transactions, activityData, activities, user?.userId, user?.safeAddress]);
+
+  // 5. Merge backend + local data (simple deduplication)
+  const allEvents = useMemo(() => {
+    const serverEvents = activityData?.pages.flatMap(page => page?.docs || []) || [];
+    const seen = new Map<string, ActivityEvent>();
+
+    // Server events first (source of truth)
+    serverEvents.forEach(event => {
+      const key = getKey(event);
+      if (key && !seen.has(key)) {
+        seen.set(key, event);
+      }
+    });
+
+    // Local events (for pending/immediate feedback)
+    activities.forEach(event => {
+      const key = getKey(event);
+      if (!key) return;
+
+      const existing = seen.get(key);
+      // Prefer server version if confirmed, otherwise use local
+      if (!existing || (existing.status === TransactionStatus.PENDING && event.status !== TransactionStatus.PENDING)) {
+        seen.set(key, event);
+      }
+    });
+
+    return Array.from(seen.values()).sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
+  }, [activityData, activities]);
+
+  // Sync confirmed server events to local store
+  useEffect(() => {
+    if (!user?.userId || !activityData?.pages.length) return;
+
+    const serverEvents = activityData.pages.flatMap(page => page?.docs || []);
+    const confirmedEvents = serverEvents.filter(
+      e => e.status === TransactionStatus.SUCCESS || e.status === TransactionStatus.FAILED
+    );
+
+    if (confirmedEvents.length) {
+      setEvents(user.userId, confirmedEvents);
+    }
+  }, [activityData, user?.userId, setEvents]);
+
+  // Create new activity
   const createActivity = useCallback(async (params: CreateActivityParams): Promise<string> => {
     if (!user?.userId) {
       throw new Error('User not authenticated');
     }
 
-    // Use userOpHash as clientTxId for AA transactions, fall back to generated ID for legacy
     const clientTxId = params.userOpHash || generateId();
     const timestamp = Math.floor(Date.now() / 1000).toString();
 
@@ -101,24 +286,18 @@ export function useActivity() {
       },
     };
 
-    // Store immediately in local state for instant UI feedback
-    storeEvents(user.userId, [activityEvent]);
+    // Update local state immediately for instant UI feedback
+    upsertEvent(user.userId, activityEvent);
 
-    // Also send to backend immediately using existing API functions
-    try {
-      await withRefreshToken(() => createActivityEvent(activityEvent));
-    } catch (error) {
+    // Send to backend for caching (non-blocking)
+    withRefreshToken(() => createActivityEvent(activityEvent)).catch(error => {
       console.error('Failed to create activity on server:', error);
-      // Don't throw - we want local state to work even if server fails
-    }
-
-    // Invalidate queries to trigger refresh
-    queryClient.invalidateQueries({ queryKey: ['activity-events', user.userId] });
+    });
 
     return clientTxId;
-  }, [user?.userId, storeEvents, queryClient]);
+  }, [user?.userId, upsertEvent]);
 
-  // Update activity status
+  // Update activity
   const updateActivity = useCallback(async (
     clientTxId: string,
     updates: {
@@ -131,45 +310,35 @@ export function useActivity() {
   ) => {
     if (!user?.userId) return;
 
-    // Get the most current state from the store
     const currentState = useActivityStore.getState();
     const existingActivities = currentState.events[user.userId] || [];
-    const activityIndex = existingActivities.findIndex(a => a.clientTxId === clientTxId);
+    const existing = existingActivities.find(a => a.clientTxId === clientTxId);
 
-    if (activityIndex === -1) return;
+    if (!existing) return;
 
     const updatedActivity: ActivityEvent = {
-      ...existingActivities[activityIndex],
+      ...existing,
       ...updates,
       metadata: {
-        ...existingActivities[activityIndex].metadata,
+        ...existing.metadata,
         ...updates.metadata,
         updatedAt: new Date().toISOString(),
       },
     };
 
-    const updatedActivities = [...existingActivities];
-    updatedActivities[activityIndex] = updatedActivity;
-
     // Update local state immediately
-    storeEvents(user.userId, updatedActivities);
+    upsertEvent(user.userId, updatedActivity);
 
-    // Also update on server using existing API functions
-    try {
-      await withRefreshToken(() => updateActivityEvent(clientTxId, {
-        status: updates.status,
-        txHash: updates.hash, // Note: API expects 'txHash', not 'hash'
-        userOpHash: updates.userOpHash,
-        metadata: updates.metadata,
-      }));
-    } catch (error) {
+    // Send to backend for caching (non-blocking)
+    withRefreshToken(() => updateActivityEvent(clientTxId, {
+      status: updates.status,
+      txHash: updates.hash,
+      userOpHash: updates.userOpHash,
+      metadata: updates.metadata,
+    })).catch(error => {
       console.error('Failed to update activity on server:', error);
-      // Don't throw - we want local updates to work even if server fails
-    }
-
-    // Invalidate queries to trigger refresh
-    queryClient.invalidateQueries({ queryKey: ['activity-events', user.userId] });
-  }, [user?.userId, events, storeEvents, queryClient]);
+    });
+  }, [user?.userId, upsertEvent]);
 
   // Wrapper function to track transactions
   const trackTransaction = useCallback(async <T>(
@@ -257,20 +426,24 @@ export function useActivity() {
     }
   }, [createActivity, updateActivity]);
 
-  // Force refresh activities from server
-  const refreshActivities = useCallback(() => {
-    if (user?.userId) {
-      queryClient.invalidateQueries({ queryKey: ['activity-events', user.userId] });
-    }
-  }, [user?.userId, queryClient]);
+  useEffect(() => {
+    if (pendingActivities.length === 0) return;
+
+    const interval = setInterval(refetchAll, 3000);
+
+    return () => clearInterval(interval);
+  }, [blockNumber, refetchAll]);
 
   return {
-    activities: userActivities,
+    activities,
     pendingActivities,
     pendingCount: pendingActivities.length,
+    activityEvents,
+    allEvents,
+    getKey,
     createActivity,
     updateActivity,
     trackTransaction,
-    refreshActivities,
+    refetchAll,
   };
 }

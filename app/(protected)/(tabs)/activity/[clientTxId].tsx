@@ -24,6 +24,7 @@ import {
   getCashbackAmount,
   getInitials,
 } from '@/lib/utils/cardHelpers';
+import { useActivity } from '@/hooks/useActivity';
 
 type RowProps = {
   label: React.ReactNode;
@@ -191,6 +192,8 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
 export default function ActivityDetail() {
   const { clientTxId } = useLocalSearchParams<{ clientTxId: string }>();
   const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
+  // Refetch activity
+  useActivity();
 
   // Check if this is a card transaction
   const isCardTransaction = clientTxId?.startsWith('card-');
