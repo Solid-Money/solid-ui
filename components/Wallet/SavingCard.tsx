@@ -2,14 +2,16 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Leaf } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
 
+import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import TooltipPopover from '@/components/Tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
@@ -19,18 +21,19 @@ import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { ADDRESSES } from '@/lib/config';
-import { cn, fontSize } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
+import { cn, fontSize, formatNumber } from '@/lib/utils';
 
 type SavingCardProps = {
   className?: string;
+  decimalPlaces?: number;
 };
 
-const SavingCard = ({ className }: SavingCardProps) => {
+const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
   const router = useRouter();
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
   const { data: apys, isLoading: isAPYsLoading } = useAPYs();
+  const [isHovered, setIsHovered] = useState(false);
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -63,29 +66,74 @@ const SavingCard = ({ className }: SavingCardProps) => {
   }, [blockNumber, refetchBalance, refetchTransactions]);
 
   return (
-    <Pressable onPress={() => router.push(path.SAVINGS)} className="flex-1 web:hover:opacity-95">
-      <LinearGradient
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        colors={['rgb(41, 21, 59)', 'rgb(29, 15, 41)']}
-        className={cn('bg-card rounded-twice p-6 justify-between w-full h-full', className)}
+    <Pressable
+      onPress={() => router.push(path.SAVINGS)}
+      onHoverIn={() => setIsHovered(true)}
+      onHoverOut={() => setIsHovered(false)}
+      className="flex-1"
+    >
+      <View
+        className={cn(
+          'rounded-twice overflow-hidden relative p-[30px] pb-[21px] justify-between w-full h-full',
+          className,
+        )}
       >
-        <View className="flex-row items-center gap-2 opacity-50">
-          <Leaf size={18} />
-          <Text className="text-lg font-medium">Savings</Text>
+        {/* Base gradient */}
+
+        {/* Lighter gradient (5%) revealed on hover */}
+        <LinearGradient
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          colors={['rgba(156, 48, 235, 0.1)', 'rgba(156, 48, 235, 0.1)']}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 0,
+            opacity: isHovered ? 1 : 0,
+          }}
+          className="transition-opacity duration-200"
+        />
+        <LinearGradient
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
+          pointerEvents="none"
+          style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: -1 }}
+        />
+        <View className="relative flex-row justify-between items-center">
+          <View className="flex-row items-center gap-2 opacity-50">
+            <Leaf size={18} />
+            <Text className="text-lg font-medium">Savings</Text>
+          </View>
+
+          <View className="flex-row items-center gap-2 pr-[5px]">
+            {isAPYsLoading ? (
+              <Skeleton className="w-24 h-6 rounded-xl bg-purple/50" />
+            ) : (
+              <Text className="text-base text-brand font-semibold">
+                Earning {apys?.thirtyDay ? `${formatNumber(apys.thirtyDay, 2)}%` : '0%'} yield
+              </Text>
+            )}
+            <Ping />
+          </View>
         </View>
 
-        <View className="flex-row justify-between items-center">
+        <View className="relative flex-row justify-between items-center">
           <View className="flex-row items-center gap-2">
             <View className="flex-row items-center">
               {isBalanceLoading || isAPYsLoading || firstDepositTimestamp === undefined ? (
-                <Skeleton className="w-36 h-11" />
+                <Skeleton className="w-36 h-11 rounded-xl bg-purple/50" />
               ) : (
                 <SavingCountUp
                   prefix="$"
                   balance={balance ?? 0}
                   apy={apys?.allTime ?? 0}
                   lastTimestamp={firstDepositTimestamp ?? 0}
+                  decimalPlaces={decimalPlaces}
                   classNames={{
                     wrapper: 'text-foreground',
                     decimalSeparator: 'text-2xl md:text-3xl font-semibold',
@@ -115,7 +163,7 @@ const SavingCard = ({ className }: SavingCardProps) => {
             style={{ width: 28, height: 28 }}
           />
         </View>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 };

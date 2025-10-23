@@ -22,7 +22,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 import DepositOptions from './DepositOptions';
 import DepositPublicAddress from './DepositPublicAddress';
 import DepositExternalWalletOptions from './DepositExternalWalletOptions';
-import DepositBuyCryptoOptions from './DepositBuyCryptoOptions.web';
+import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
 import DepositDirectlyNetworks from './DepositDirectlyNetworks.web';
 import DepositDirectlyAddress from './DepositDirectlyAddress.web';
 

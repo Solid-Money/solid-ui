@@ -92,6 +92,7 @@ export interface User {
   turnkeyUserId?: string;
   leaderboardPosition?: number;
   points?: number;
+  credentialId?: string;
 }
 
 export type BlockscoutTransaction = {
@@ -527,8 +528,9 @@ export interface BridgeTransaction {
 }
 
 export enum ActivityTab {
-  ALL = 'all',
+  WALLET = 'wallet',
   PROGRESS = 'progress',
+  CARD = 'card',
 }
 
 export interface SourceDepositInstructions {
@@ -609,6 +611,11 @@ export interface Points {
   };
 }
 
+export enum LifiOrder {
+  FASTEST = 'FASTEST',
+  CHEAPEST = 'CHEAPEST'
+}
+
 export interface GetLifiQuoteParams {
   fromAddress: string;
   fromChain: number;
@@ -617,6 +624,7 @@ export interface GetLifiQuoteParams {
   toAddress: string;
   toChain?: number;
   toToken?: string;
+  order?: LifiOrder
 }
 
 export interface LifiQuoteResponse {

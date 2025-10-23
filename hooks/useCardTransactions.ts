@@ -17,7 +17,7 @@ export const useCardTransactions = () => {
     string[],
     string | undefined
   >({
-    queryKey: ['cardTransactions'],
+    queryKey: cardTransactionsQueryKey,
     queryFn: async ({ pageParam }) => {
       const response = await getCardTransactions(pageParam);
       return {

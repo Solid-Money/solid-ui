@@ -1,7 +1,7 @@
-import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { ReactNode, useCallback, useRef } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInLeft,
@@ -103,6 +103,19 @@ const ResponsiveModal = ({
     [onOpenChange],
   );
 
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+        pressBehavior="close"
+      />
+    ),
+    [],
+  );
+
   const dialogAnimatedStyle = useAnimatedStyle(() => {
     if (!shouldAnimate) {
       return {
@@ -179,10 +192,23 @@ const ResponsiveModal = ({
     );
   }
 
-  // Use bottom sheet for mobile web and native
+  // Wrap trigger in Pressable for bottom sheet
+  // This ensures touch events are properly captured on mobile
+  // We disable pointer events on the child to let the parent Pressable handle them
+  const triggerElement = React.isValidElement(trigger) ? (
+    <View pointerEvents="none">{trigger}</View>
+  ) : (
+    trigger
+  );
+
   return (
     <View>
-      <View onTouchEnd={handlePresentModalPress}>{trigger}</View>
+      <Pressable
+        onPress={handlePresentModalPress}
+        style={({ pressed }) => [{ alignSelf: 'flex-start' }, pressed && { opacity: 0.8 }]}
+      >
+        {triggerElement}
+      </Pressable>
       <BottomSheetModal
         ref={bottomSheetModalRef}
         onChange={handleBottomSheetOpenChange}
@@ -193,14 +219,15 @@ const ResponsiveModal = ({
         handleIndicatorStyle={{
           backgroundColor: 'white',
         }}
+        backdropComponent={renderBackdrop}
         onDismiss={() => onOpenChange(false)}
         enablePanDownToClose
         keyboardBehavior="extend"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
       >
-        <BottomSheetView
-          style={{
+        <BottomSheetScrollView
+          contentContainerStyle={{
             paddingHorizontal: 16,
             paddingBottom: insets.bottom + 24,
             paddingTop: 12,
@@ -232,7 +259,7 @@ const ResponsiveModal = ({
             )}
             <View key={contentKey}>{children}</View>
           </View>
-        </BottomSheetView>
+        </BottomSheetScrollView>
       </BottomSheetModal>
     </View>
   );

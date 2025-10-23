@@ -3,23 +3,21 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, RotateCw } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Loading from '@/components/Loading';
-import Navbar from '@/components/Navbar';
+import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
 import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { cardTransactionsQueryKey, useCardTransactions } from '@/hooks/useCardTransactions';
-import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { formatCardAmountWithCurrency } from '@/lib/utils/cardHelpers';
 
 export default function CardTransactions() {
-  const { isScreenMedium } = useDimension();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -33,11 +31,6 @@ export default function CardTransactions() {
     refetch,
     isFetching,
   } = useCardTransactions();
-
-  const formatAmount = (amount: string, currency: string) => {
-    const numAmount = parseFloat(amount);
-    return `${numAmount >= 0 ? '+' : ''}${numAmount.toFixed(2)} ${currency.toUpperCase()}`;
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -96,7 +89,7 @@ export default function CardTransactions() {
         </View>
         <View className="flex-row items-center gap-2 md:gap-10 flex-shrink-0">
           <Text className={`font-bold text-right text-white`}>
-            {formatAmount(item.amount, item.currency)}
+            {formatCardAmountWithCurrency(item.amount, item.currency)}
           </Text>
           {Platform.OS === 'web' ? (
             <TransactionDropdown url={transactionUrl} />
@@ -108,29 +101,27 @@ export default function CardTransactions() {
     );
   };
 
-  if (isLoading) return <Loading />;
+  const allTransactions = data?.pages.flatMap(page => page.data) ?? [];
 
-  if (isError) {
+  if (isError && !isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <Text className="text-gray-400 mb-4">Failed to load transactions</Text>
-        <Pressable
-          onPress={() => refetch()}
-          className="flex-row items-center bg-[#2E2E2E] rounded-lg px-4 py-2"
-        >
-          <RotateCw size={16} color="white" className="mr-2" />
-          <Text className="text-white">Try Again</Text>
-        </Pressable>
-      </SafeAreaView>
+      <PageLayout desktopOnly scrollable={false}>
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-gray-400 mb-4">Failed to load transactions</Text>
+          <Pressable
+            onPress={() => refetch()}
+            className="flex-row items-center bg-[#2E2E2E] rounded-lg px-4 py-2"
+          >
+            <RotateCw size={16} color="white" className="mr-2" />
+            <Text className="text-white">Try Again</Text>
+          </Pressable>
+        </View>
+      </PageLayout>
     );
   }
 
-  const allTransactions = data?.pages.flatMap(page => page.data) ?? [];
-
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      {isScreenMedium && <Navbar />}
-
+    <PageLayout desktopOnly scrollable={false} isLoading={isLoading}>
       <View className="flex-1 w-full max-w-[600px] mx-auto">
         <View className="px-8 pt-8">
           <View className="flex-row items-center justify-between mb-8">
@@ -189,6 +180,6 @@ export default function CardTransactions() {
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </PageLayout>
   );
 }

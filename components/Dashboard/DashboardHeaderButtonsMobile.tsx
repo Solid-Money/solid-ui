@@ -9,27 +9,20 @@ import ResponsiveDepositOptionModal from '@/components/DepositOption/ResponsiveD
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
 
-type DepositButtonProps = {
-  onPress?: () => void;
-};
-
-const DepositButton = ({ onPress }: DepositButtonProps) => {
-  return (
-    <CircleButton
-      icon={Plus}
-      label="Fund"
-      backgroundColor="bg-[#94F27F]"
-      iconColor="#000000"
-      onPress={onPress}
-    />
-  );
-};
-
 const DashboardHeaderButtonsMobile = () => {
   const router = useRouter();
   return (
     <View className="flex-row justify-between gap-8 items-center mx-auto">
-      <ResponsiveDepositOptionModal trigger={<DepositButton />} />
+      <ResponsiveDepositOptionModal
+        trigger={
+          <CircleButton
+            icon={Plus}
+            label="Fund"
+            backgroundColor="bg-[#94F27F]"
+            iconColor="#000000"
+          />
+        }
+      />
 
       <CircleButton
         icon={HomeSend}

@@ -15,13 +15,19 @@ type WalletCardProps = {
   className?: string;
   tokens: TokenBalance[];
   isLoading?: boolean;
+  decimalPlaces?: number;
 };
 
-const WalletCard = ({ balance, className, tokens, isLoading }: WalletCardProps) => {
+const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: WalletCardProps) => {
   const { isScreenMedium } = useDimension();
 
   return (
-    <View className={cn('bg-card rounded-twice p-6 justify-between w-full h-full', className)}>
+    <View
+      className={cn(
+        'bg-card rounded-twice p-[30px] pb-[21px] justify-between w-full h-full',
+        className,
+      )}
+    >
       <View className="flex-row items-center gap-2 opacity-50">
         <Wallet size={18} />
         <Text className="text-lg font-medium">Wallet</Text>
@@ -31,12 +37,13 @@ const WalletCard = ({ balance, className, tokens, isLoading }: WalletCardProps) 
         <View className="flex-row items-center gap-2">
           <View className="flex-row items-center">
             {isLoading ? (
-              <Skeleton className="w-36 h-11" />
+              <Skeleton className="w-36 h-11 rounded-xl" />
             ) : (
               <CountUp
                 prefix="$"
                 count={balance ?? 0}
                 isTrailingZero={false}
+                decimalPlaces={decimalPlaces}
                 classNames={{
                   wrapper: 'text-foreground',
                   decimalSeparator: 'text-2xl md:text-3xl font-semibold',

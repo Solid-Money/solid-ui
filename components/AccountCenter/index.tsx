@@ -42,7 +42,7 @@ const AccountCenterTrigger = () => {
   return (
     <Pressable
       onPress={handleAvatarPress}
-      className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-transform"
+      className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-all web:hover:bg-secondary-hover active:opacity-80"
     >
       <UserAvatar width={24} height={24} />
       <Text className="text-white font-medium text-sm flex-1 text-center ml-2 mr-1">
@@ -74,3 +74,4 @@ const AccountCenterFooter = () => {
 };
 
 export { AccountCenter, AccountCenterFooter, AccountCenterTitle, AccountCenterTrigger };
+

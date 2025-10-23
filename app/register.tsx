@@ -155,8 +155,8 @@ export default function Register() {
         <View className="gap-[60px]">
           <View className="flex-col gap-2">
             <Text className="text-3xl font-semibold text-center">Welcome!</Text>
-            <Text className="text-muted-foreground text-center max-w-[300px] items-center mx-auto">
-              Invite-only access. Please use a referral from a friend to access the app
+            <Text className="text-muted-foreground text-center font-medium max-w-64 items-center mx-auto">
+              {`Please enter a username and click on the "Create account" button`}
             </Text>
           </View>
 
