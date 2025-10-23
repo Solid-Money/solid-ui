@@ -9,7 +9,11 @@ import { useUnstakeStore } from '@/store/useUnstakeStore';
 import { Unstake, UnstakeTrigger } from '.';
 import { path } from '@/constants/path';
 
-const UnstakeModal = () => {
+type UnstakeModalProps = {
+  trigger?: React.ReactNode;
+};
+
+const UnstakeModal = ({ trigger }: UnstakeModalProps) => {
   const router = useRouter();
   const { currentModal, previousModal, setModal, transaction } = useUnstakeStore();
 
@@ -60,7 +64,7 @@ const UnstakeModal = () => {
       previousModal={previousModal}
       isOpen={!isClose}
       onOpenChange={handleOpenChange}
-      trigger={<UnstakeTrigger />}
+      trigger={trigger || <UnstakeTrigger />}
       title={getTitle()}
       titleClassName="justify-center"
       contentKey={getContentKey()}
