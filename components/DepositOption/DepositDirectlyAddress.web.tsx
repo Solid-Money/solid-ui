@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
 import QRCode from 'react-native-qrcode-svg';
 import { Fuel, QrCode, Share2 } from 'lucide-react-native';
+import { router } from 'expo-router';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { track } from '@/lib/analytics';
 import useUser from '@/hooks/useUser';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import TooltipPopover from '@/components/Tooltip';
+import { path } from '@/constants/path';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
 
@@ -74,6 +76,7 @@ const DepositDirectlyAddress = () => {
   const handleDone = () => {
     setModal(DEPOSIT_MODAL.CLOSE);
     clearDirectDepositSession();
+    router.push(path.ACTIVITY);
   };
 
   const handleShare = async () => {
