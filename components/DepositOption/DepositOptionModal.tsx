@@ -192,6 +192,9 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     if (isEmailGate) {
       return 'pb-4 md:pb-4';
     }
+    if (isDepositDirectlyAddress) {
+      return 'w-[450px] max-h-[95vh]';
+    }
     return '';
   };
 
