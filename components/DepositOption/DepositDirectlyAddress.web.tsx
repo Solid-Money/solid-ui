@@ -173,7 +173,7 @@ const DepositDirectlyAddress = () => {
       valueContent: isTotalAPYLoading ? (
         <Skeleton className="h-5 w-16 bg-white/20" />
       ) : (
-        <Text className="font-medium text-[#5BFF6C] text-lg">{formattedAPY}</Text>
+        <Text className="font-medium text-[#94F27F] text-lg">{formattedAPY}</Text>
       ),
       extra: (
         <TooltipPopover
@@ -202,20 +202,20 @@ const DepositDirectlyAddress = () => {
     },
     {
       label: 'Fee',
-      value: `${session?.fee || directDepositSession.fee || '2.3'} USDC`,
+      value: `${session?.fee || directDepositSession.fee || '0'} USDC`,
       icon: <Fuel size={16} color="#A1A1AA" />,
     },
   ];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 -mt-8">
       <div className="flex flex-row flex-wrap items-center justify-center">
-        <Text className="text-xl font-bold text-[#ACACAC]">Transfer</Text>
+        <Text className="text-2xl font-bold text-[#ACACAC]">Transfer</Text>
         <div className="flex items-center gap-1 px-1">
           <Image source={USDC_ICON} style={{ width: 21, height: 21 }} contentFit="cover" />
-          <Text className="text-xl font-bold text-white">USDC</Text>
+          <Text className="text-2xl font-bold text-white">USDC</Text>
         </div>
-        <Text className="text-xl font-semibold text-[#ACACAC]">to this</Text>
+        <Text className="text-2xl font-semibold text-[#ACACAC]">to this</Text>
         <div className="flex items-center gap-1 px-3">
           {network?.icon && typeof network.icon === 'string' ? (
             <img src={network.icon} alt={network?.name} className="h-[18px] w-[18px]" />
@@ -226,7 +226,7 @@ const DepositDirectlyAddress = () => {
               contentFit="cover"
             />
           )}
-          <Text className="text-xl font-semibold text-[#ACACAC]">
+          <Text className="text-2xl font-semibold text-[#ACACAC]">
             {network?.name || 'Ethereum'} address
           </Text>
         </div>
@@ -314,7 +314,7 @@ const DepositDirectlyAddress = () => {
 
       <Button
         onPress={handleDone}
-        className="h-12 w-full rounded-2xl bg-[#52FF3F] web:hover:bg-[#52FF3F]/90"
+        className="h-12 w-full rounded-2xl bg-[#94F27F] web:hover:bg-[#94F27F]/90"
       >
         <Text className="text-base font-semibold text-black">Done</Text>
       </Button>

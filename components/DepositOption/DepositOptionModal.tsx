@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { Plus } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { Plus, Trash2 } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
@@ -19,6 +19,7 @@ import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import DepositOptions from './DepositOptions';
 import DepositPublicAddress from './DepositPublicAddress';
 import DepositExternalWalletOptions from './DepositExternalWalletOptions';
@@ -33,12 +34,21 @@ interface DepositOptionModalProps {
 
 const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOptionModalProps) => {
   const { user } = useUser();
-  const { currentModal, previousModal, transaction, setModal, srcChainId, bankTransfer } =
-    useDepositStore();
+  const {
+    currentModal,
+    previousModal,
+    transaction,
+    setModal,
+    srcChainId,
+    bankTransfer,
+    directDepositSession,
+  } = useDepositStore();
   const activeAccount = useActiveAccount();
   const status = useActiveWalletConnectionStatus();
   const address = activeAccount?.address;
   const router = useRouter();
+  const { deleteDirectDepositSession } = useDirectDepositSession();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(isForm && address);
@@ -210,6 +220,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     ) {
       return 'min-h-[40rem]';
     }
+
     return '';
   };
 
@@ -267,6 +278,34 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     }
   };
 
+  const handleDeleteDeposit = async () => {
+    if (!directDepositSession.sessionId) return;
+
+    try {
+      setIsDeleting(true);
+      await deleteDirectDepositSession(directDepositSession.sessionId);
+      setModal(DEPOSIT_MODAL.CLOSE);
+    } catch (error) {
+      console.error('Failed to delete deposit session:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const getActionButton = () => {
+    if (
+      isDepositDirectlyAddress &&
+      (directDepositSession.status === 'pending' || !directDepositSession.status)
+    ) {
+      return (
+        <button onClick={handleDeleteDeposit} disabled={isDeleting}>
+          <Trash2 size={20} color="white" />
+        </button>
+      );
+    }
+    return undefined;
+  };
+
   useEffect(() => {
     if (status === 'disconnected' && !isClose && !isDepositDirectly && !isDepositDirectlyAddress) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
@@ -299,6 +338,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
         isDepositDirectlyAddress
       }
       onBackPress={handleBackPress}
+      actionButton={getActionButton()}
       shouldAnimate={shouldAnimate}
       isForward={isForward}
       contentKey={getContentKey()}
