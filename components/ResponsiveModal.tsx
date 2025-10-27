@@ -143,7 +143,7 @@ const ResponsiveModal = ({
                 dialogHeight.value = event.nativeEvent.layout.height;
               }}
             >
-              {title && (
+              {(title || (showBackButton && onBackPress)) && (
                 <DialogHeader
                   className={cn(
                     'flex-row items-center gap-2',
@@ -162,9 +162,11 @@ const ResponsiveModal = ({
                       </Button>
                     </Animated.View>
                   )}
-                  <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
-                    <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
-                  </Animated.View>
+                  {title && (
+                    <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
+                      <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
+                    </Animated.View>
+                  )}
                   {showBackButton && <View className="w-10" />}
                 </DialogHeader>
               )}
@@ -234,7 +236,7 @@ const ResponsiveModal = ({
           }}
         >
           <View className={cn('gap-6', containerClassName)}>
-            {title && (
+            {(title || (showBackButton && onBackPress)) && (
               <View
                 className={cn(
                   'flex-row items-center gap-2 pb-2',
@@ -251,9 +253,11 @@ const ResponsiveModal = ({
                     <ArrowLeft color="white" size={20} />
                   </Button>
                 )}
-                <View className="flex-1 items-center">
-                  <Text className="text-2xl font-semibold text-white text-center">{title}</Text>
-                </View>
+                {title && (
+                  <View className="flex-1 items-center">
+                    <Text className="text-2xl font-semibold text-white text-center">{title}</Text>
+                  </View>
+                )}
                 {showBackButton && <View className="w-10" />}
               </View>
             )}

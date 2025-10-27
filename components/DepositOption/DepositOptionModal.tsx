@@ -210,6 +210,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     ) {
       return 'min-h-[40rem]';
     }
+
     return '';
   };
 
