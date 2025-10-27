@@ -127,7 +127,7 @@ Sentry.init({
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from 'expo-router';
 
 if (Platform.OS !== 'web') {
@@ -302,6 +302,13 @@ export default Sentry.wrap(function RootLayout() {
         name="onboarding"
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="recovery"
+        options={{
+          headerShown: false,
+          animation: 'none',
         }}
       />
     </Stack>
