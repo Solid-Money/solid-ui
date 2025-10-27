@@ -52,6 +52,7 @@ export interface ResponsiveModalProps {
   titleClassName?: string;
   showBackButton?: boolean;
   onBackPress?: () => void;
+  actionButton?: ReactNode;
 
   // Animation
   shouldAnimate?: boolean;
@@ -72,6 +73,7 @@ const ResponsiveModal = ({
   titleClassName,
   showBackButton = false,
   onBackPress,
+  actionButton,
   shouldAnimate = previousModal.name !== 'close',
   isForward = currentModal.number > previousModal.number,
   contentKey,
@@ -167,7 +169,14 @@ const ResponsiveModal = ({
                       <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
                     </Animated.View>
                   )}
-                  {showBackButton && <View className="w-10" />}
+                  {showBackButton &&
+                    (actionButton ? (
+                      <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
+                        {actionButton}
+                      </Animated.View>
+                    ) : (
+                      <View className="w-10" />
+                    ))}
                 </DialogHeader>
               )}
               <Animated.View
@@ -258,7 +267,7 @@ const ResponsiveModal = ({
                     <Text className="text-2xl font-semibold text-white text-center">{title}</Text>
                   </View>
                 )}
-                {showBackButton && <View className="w-10" />}
+                {showBackButton && (actionButton ? actionButton : <View className="w-10" />)}
               </View>
             )}
             <View key={contentKey}>{children}</View>

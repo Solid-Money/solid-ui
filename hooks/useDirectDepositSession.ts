@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   createDirectDepositSession as createDirectDepositSessionApi,
+  deleteDirectDepositSession as deleteDirectDepositSessionApi,
   getDirectDepositSession as getDirectDepositSessionApi,
 } from '@/lib/api';
 import { DirectDepositSessionResponse } from '@/lib/types';
@@ -11,7 +12,7 @@ import { withRefreshToken } from '@/lib/utils';
 export const useDirectDepositSession = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setDirectDepositSession } = useDepositStore();
+  const { setDirectDepositSession, clearDirectDepositSession } = useDepositStore();
 
   const createDirectDepositSession = async (chainId: number) => {
     try {
@@ -45,11 +46,32 @@ export const useDirectDepositSession = () => {
     }
   };
 
+  const deleteDirectDepositSession = async (sessionId: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const data = await withRefreshToken(() => deleteDirectDepositSessionApi(sessionId));
+
+      // Clear from zustand store
+      clearDirectDepositSession();
+
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     isLoading,
     error,
     createDirectDepositSession,
     getDirectDepositSession,
+    deleteDirectDepositSession,
   };
 };
 
