@@ -35,6 +35,7 @@ type Path = {
   OVERVIEW: Href;
   CARD_WAITLIST: Href;
   CARD_WAITLIST_SUCCESS: Href;
+  RECOVERY: Route;
 };
 
 export const path: Path = {
@@ -71,4 +72,5 @@ export const path: Path = {
   OVERVIEW: '/overview',
   CARD_WAITLIST: '/card-waitlist',
   CARD_WAITLIST_SUCCESS: '/card-waitlist/success',
+  RECOVERY: '/recovery',
 };
