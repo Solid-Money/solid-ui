@@ -19,18 +19,17 @@ import { readContract } from "wagmi/actions";
 
 import { BRIDGE_TOKENS, getUsdcAddress } from '@/constants/bridge';
 import { ERRORS } from '@/constants/errors';
-import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
-import { bridgeDeposit, bridgeTransaction, createDeposit, getLifiQuote } from '@/lib/api';
+import { bridgeDeposit, createDeposit, getLifiQuote } from '@/lib/api';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { getChain } from '@/lib/thirdweb';
-import { Status, StatusInfo, TransactionStatus, TransactionType, User } from '@/lib/types';
+import { Status, StatusInfo, TransactionType, User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { checkAndSetAllowance, sendTransaction } from '@/lib/utils/contract';
 import { config, publicClient } from '@/lib/wagmi';
@@ -40,7 +39,7 @@ import useUser from './useUser';
 
 type DepositResult = {
   balance: bigint | undefined;
-  deposit: (amount: string) => Promise<void>;
+  deposit: (amount: string) => Promise<string | undefined>;
   depositStatus: StatusInfo;
   error: string | null;
   hash: Address | undefined;
@@ -59,7 +58,7 @@ const useDepositFromEOA = (): DepositResult => {
   const { updateUser } = useUserStore();
   const { srcChainId } = useDepositStore();
   const isEthereum = srcChainId === mainnet.id;
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity } = useActivity();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -255,6 +254,20 @@ const useDepositFromEOA = (): DepositResult => {
     };
   };
 
+  const createEvent = async (amount: string, spender: Address) => {
+    const clientTxId = await createActivity({
+      title: 'Staked USDC',
+      amount,
+      symbol: 'soUsd',
+      chainId: srcChainId,
+      fromAddress: eoaAddress,
+      toAddress: spender,
+      type: TransactionType.DEPOSIT,
+    });
+
+    return clientTxId;
+  };
+
   const depositOnEthereum = async (amount: string, amountWei: bigint, signatureData: Signature, deadline: bigint, user: User, fee: bigint) => {
     setDepositStatus({ status: Status.PENDING, message: 'Check Wallet' });
 
@@ -303,7 +316,7 @@ const useDepositFromEOA = (): DepositResult => {
   };
 
   const deposit = async (amount: string) => {
-    let clientTxId: string | undefined;
+    let trackingId: string | undefined;
     try {
       // Track deposit initiation
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
@@ -346,8 +359,6 @@ const useDepositFromEOA = (): DepositResult => {
 
       const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
       const spender = isSponsor ? EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS : ADDRESSES.ethereum.vault;
-      const isDeposit = isEthereum || !isSponsor;
-      const explorerUrl = isDeposit ? explorerUrls[layerzero.id].layerzeroscan : explorerUrls[lifi.id].lifiscan;
 
       // Track deposit validation passed
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
@@ -377,17 +388,6 @@ const useDepositFromEOA = (): DepositResult => {
 
       const amountWei = parseUnits(amount, 6);
 
-      clientTxId = await createActivity({
-        title: isDeposit ? 'Staked USDC' : 'Bridge USDC to Ethereum',
-        shortTitle: isDeposit ? undefined : 'Bridge USDC',
-        amount,
-        symbol: isDeposit ? 'soUsd' : 'USDC',
-        chainId: srcChainId,
-        fromAddress: eoaAddress,
-        toAddress: spender,
-        type: isDeposit ? TransactionType.DEPOSIT : TransactionType.BRIDGE,
-      });
-
       let txHash: Address | undefined;
       let transaction: { transactionHash: Address } | undefined = { transactionHash: '' };
       if (isEthereum) {
@@ -410,14 +410,15 @@ const useDepositFromEOA = (): DepositResult => {
         const { signatureData, deadline } = await signPermit(eoaAddress, spender, amount, amountWei, mainnet.id, nonce, tokenName, user, isSponsor);
 
         if (isSponsor) {
-          setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2 min)' });
           Sentry.addBreadcrumb({
             message: 'Creating sponsored deposit on Ethereum',
             category: 'deposit',
             data: { amount, eoaAddress, isEthereum: true, isSponsor: true },
           });
 
-          transaction = await withRefreshToken(() =>
+          trackingId = await createEvent(amount, spender);
+
+          withRefreshToken(() =>
             createDeposit({
               eoaAddress,
               amount,
@@ -427,6 +428,7 @@ const useDepositFromEOA = (): DepositResult => {
                 s: signatureData.s,
                 deadline: Number(deadline),
               },
+              trackingId,
             }),
           );
         } else {
@@ -440,8 +442,6 @@ const useDepositFromEOA = (): DepositResult => {
           await switchChain(srcChainId);
 
           const { signatureData, deadline } = await signPermit(eoaAddress, spender, amount, amountWei, srcChainId, nonce, tokenName, user, isSponsor);
-
-          setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 2 min)' });
 
           // Track bridge deposit start
           track(TRACKING_EVENTS.DEPOSIT_BRIDGE_STARTED, {
@@ -463,7 +463,9 @@ const useDepositFromEOA = (): DepositResult => {
             data: { amount, eoaAddress, srcChainId, isEthereum: false, isSponsor: true },
           });
 
-          transaction = await withRefreshToken(() =>
+          trackingId = await createEvent(amount, spender);
+
+          withRefreshToken(() =>
             bridgeDeposit({
               eoaAddress,
               srcChainId,
@@ -474,6 +476,7 @@ const useDepositFromEOA = (): DepositResult => {
                 s: signatureData.s,
                 deadline: Number(deadline),
               },
+              trackingId,
             }),
           );
         } else {
@@ -540,18 +543,6 @@ const useDepositFromEOA = (): DepositResult => {
             },
           });
 
-          await withRefreshToken(() =>
-            bridgeTransaction({
-              eoaAddress,
-              srcChainId,
-              amount,
-              fromAmount: quote.estimate.fromAmount,
-              toAmount: quote.estimate.toAmount,
-              toAmountMin: quote.estimate.toAmountMin,
-              bridgeTxHash,
-            }),
-          );
-
           const bridgeStatus = await waitForBridgeTransactionReceipt(bridgeTxHash);
 
           await switchChain(mainnet.id);
@@ -613,15 +604,8 @@ const useDepositFromEOA = (): DepositResult => {
         last_deposit_chain: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
       });
 
-      await updateActivity(clientTxId, {
-        hash: txHash,
-        url: `${explorerUrl}/tx/${txHash}`,
-        metadata: {
-          substatus: isDeposit ? 'awaiting_deposit' : 'awaiting_bridge',
-        },
-      });
-
       setDepositStatus({ status: Status.SUCCESS });
+      return trackingId;
     } catch (error: any) {
       console.error(error);
       const errorMessage = error?.message || 'Unknown error';
@@ -660,7 +644,6 @@ const useDepositFromEOA = (): DepositResult => {
       });
 
       const msg = errorMessage?.toLowerCase();
-      let status = TransactionStatus.FAILED;
       let errMsg = '';
       if (
         msg.includes('user rejected') ||
@@ -669,20 +652,10 @@ const useDepositFromEOA = (): DepositResult => {
         msg.includes('user cancelled')
       ) {
         errMsg = 'User rejected transaction';
-        status = TransactionStatus.CANCELLED;
       } else if (errorMessage?.includes(ERRORS.WAIT_TRANSACTION_RECEIPT)) {
         errMsg = ERRORS.WAIT_TRANSACTION_RECEIPT;
       } else if (errorMessage?.includes(ERRORS.ERROR_SWITCHING_CHAIN)) {
         errMsg = ERRORS.ERROR_SWITCHING_CHAIN;
-      }
-
-      if (clientTxId) {
-        await updateActivity(clientTxId, {
-          status,
-          metadata: {
-            error: errMsg || errorMessage,
-          },
-        });
       }
 
       setDepositStatus({ status: Status.ERROR });

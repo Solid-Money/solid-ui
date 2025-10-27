@@ -1,22 +1,31 @@
 import Diamond from '@/assets/images/diamond';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, minutesToSeconds } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
+import { mainnet } from 'viem/chains';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
+import EstimatedTime from '@/components/EstimatedTime';
 import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
+import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { CardTransaction, TransactionDirection, TransactionStatus } from '@/lib/types';
+import {
+  CardTransaction,
+  TransactionDirection,
+  TransactionStatus,
+  TransactionType,
+} from '@/lib/types';
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
 import {
   formatCardAmount,
@@ -24,7 +33,6 @@ import {
   getCashbackAmount,
   getInitials,
 } from '@/lib/utils/cardHelpers';
-import { useActivity } from '@/hooks/useActivity';
 
 type RowProps = {
   label: React.ReactNode;
@@ -68,12 +76,8 @@ const Back = ({ title, className }: BackProps) => {
   const params = useLocalSearchParams<{ tab?: string }>();
 
   const handleBackPress = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      const tabParam = params.tab ? `?tab=${params.tab}` : '';
-      router.replace(`${path.ACTIVITY}${tabParam}` as any);
-    }
+    const tabParam = params.tab ? `?tab=${params.tab}` : '';
+    router.replace(`${path.ACTIVITY}${tabParam}` as any);
   };
 
   return (
@@ -192,6 +196,7 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
 export default function ActivityDetail() {
   const { clientTxId } = useLocalSearchParams<{ clientTxId: string }>();
   const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
+  const [currentTime, setCurrentTime] = useState(minutesToSeconds(5));
   // Refetch activity
   useActivity();
 
@@ -211,6 +216,23 @@ export default function ActivityDetail() {
     queryFn: () => withRefreshToken(() => fetchActivityEvent(clientTxId!)),
     enabled: !!clientTxId && !isCardTransaction,
   });
+
+  const isDeposit = activity?.type === TransactionType.DEPOSIT;
+  const isEthereum = activity?.chainId === mainnet.id;
+  const createdAt = useMemo(
+    () => (activity?.timestamp ? new Date(Number(activity.timestamp) * 1000) : null),
+    [activity],
+  );
+
+  useEffect(() => {
+    if (!activity || !isDeposit || !isEthereum || !createdAt) return;
+
+    const estimatedDuration = isEthereum ? minutesToSeconds(5) : minutesToSeconds(20);
+    const createdAtTime = createdAt.getTime();
+    const elapsedSeconds = Math.floor((Date.now() - createdAtTime) / 1000);
+    const remainingTime = Math.max(0, estimatedDuration - elapsedSeconds);
+    setCurrentTime(remainingTime);
+  }, [activity, isDeposit, isEthereum, createdAt]);
 
   const isAnyLoading = isLoading || isCardTransactionLoading;
 
@@ -345,6 +367,11 @@ export default function ActivityDetail() {
         </Pressable>
       ),
       enabled: !!activity.url && !!activity.hash,
+    },
+    {
+      label: <Label>Estimated time</Label>,
+      value: <EstimatedTime currentTime={currentTime} setCurrentTime={setCurrentTime} />,
+      enabled: isDeposit && isPending,
     },
   ];
 

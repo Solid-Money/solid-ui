@@ -384,6 +384,7 @@ export type Transaction = {
   fromAddress?: string;
   toAddress?: string;
   sourceDepositInstructions?: SourceDepositInstructions;
+  trackingId?: string;
 };
 
 export type Faq = {
@@ -408,6 +409,7 @@ export type DepositFromSafeAccountModal =
 export type TransactionStatusModal = {
   amount?: number;
   address?: Address;
+  trackingId?: string;
 };
 
 export type TokenIcon = {
@@ -442,6 +444,7 @@ export type BridgeDeposit = {
     s: string;
     deadline: number;
   };
+  trackingId?: string;
 };
 
 export type BridgeTransactionRequest = {
@@ -463,10 +466,31 @@ export type Deposit = {
     s: string;
     deadline: number;
   };
+  trackingId?: string;
 };
+
+export enum DepositTransactionStatus {
+  PENDING = 'pending',
+  FAILED = 'failed',
+  PERMIT_COMPLETED = 'permit_completed',
+  TRANSFER_COMPLETED = 'transfer_completed',
+  DEPOSIT_INITIATED = 'deposit_initiated',
+  DEPOSIT_COMPLETED = 'deposit_completed',
+  DEPOSIT_FAILED = 'deposit_failed',
+}
+
+export interface DepositTransaction {
+  amount: string;
+  decimals: number;
+  depositTxHash?: string;
+  status: DepositTransactionStatus;
+  createdAt: Date;
+  trackingId?: string;
+}
 
 export enum BridgeTransactionStatus {
   PENDING = 'pending',
+  FAILED = 'failed',
   PERMIT_COMPLETED = 'permit_completed',
   TRANSFER_COMPLETED = 'transfer_completed',
   APPROVAL_COMPLETED = 'approval_completed',
@@ -512,19 +536,16 @@ export type BankTransferActivityItem = {
 };
 
 export interface BridgeTransaction {
-  eoaAddress: string;
   srcChainId: number;
   dstChainId: number;
   fromAmount: string;
   toAmount: string;
   decimals: number;
-  permitTxHash?: string;
-  transferTxHash?: string;
-  approvalTxHash?: string;
   bridgeTxHash?: string;
   depositTxHash?: string;
   status: BridgeTransactionStatus;
   createdAt: Date;
+  trackingId?: string;
 }
 
 export enum ActivityTab {

@@ -40,6 +40,7 @@ import {
   CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
+  DepositTransaction,
   DirectDepositSessionResponse,
   EphemeralKeyResponse,
   ExchangeRateResponse,
@@ -882,6 +883,27 @@ export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash
     credentials: 'include',
     body: JSON.stringify(deposit),
   });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const depositTransactions = async (
+  safeAddress: string,
+): Promise<DepositTransaction[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/transactions/${safeAddress}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
 
   if (!response.ok) throw response;
 

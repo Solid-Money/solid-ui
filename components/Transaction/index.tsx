@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { Image } from 'expo-image';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
@@ -42,6 +42,7 @@ const Transaction = ({
   onPress,
   type,
 }: TransactionProps) => {
+  const isPending = status === TransactionStatus.PENDING;
   const isFailed = status === TransactionStatus.FAILED;
   const isCancelled = status === TransactionStatus.CANCELLED;
   const transactionDetails = TRANSACTION_DETAILS[type];
@@ -70,6 +71,7 @@ const Transaction = ({
 
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
   const isReward = transactionDetails?.category === TransactionCategory.REWARD;
+  const isDeposit = type === TransactionType.DEPOSIT;
 
   const statusTextColor = isFailed
     ? 'text-red-400'
@@ -90,6 +92,13 @@ const Transaction = ({
     tokenSymbol: symbol,
     size: 34,
   });
+
+  const getDescription = () => {
+    if (isDeposit && isPending) {
+      return 'Deposit in progress';
+    }
+    return transactionDetails?.category ?? 'Unknown';
+  };
 
   return (
     <Pressable
@@ -117,12 +126,10 @@ const Transaction = ({
                 contentFit="contain"
               />
             )}
-            <Text
-              className={cn('text-sm text-muted-foreground font-medium', isReward && 'text-brand')}
-              numberOfLines={1}
-            >
-              {transactionDetails?.category ?? 'Unknown'}
-            </Text>
+            <View className="flex-row items-center gap-1">
+              {isPending && <ActivityIndicator color="gray" size={14} />}
+              <Text className="text-sm text-muted-foreground font-medium">{getDescription()}</Text>
+            </View>
           </View>
         </View>
       </View>

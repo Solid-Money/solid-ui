@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
@@ -19,12 +19,12 @@ import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
+import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
+import DepositDirectlyAddress from './DepositDirectlyAddress.web';
+import DepositDirectlyNetworks from './DepositDirectlyNetworks.web';
+import DepositExternalWalletOptions from './DepositExternalWalletOptions';
 import DepositOptions from './DepositOptions';
 import DepositPublicAddress from './DepositPublicAddress';
-import DepositExternalWalletOptions from './DepositExternalWalletOptions';
-import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
-import DepositDirectlyNetworks from './DepositDirectlyNetworks.web';
-import DepositDirectlyAddress from './DepositDirectlyAddress.web';
 
 interface DepositOptionModalProps {
   buttonText?: string;
@@ -67,10 +67,15 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
 
-  const handleTransactionStatusPress = () => {
+  const handleTransactionStatusPress = useCallback(() => {
+    const { transaction } = useDepositStore.getState();
+    if (transaction.trackingId) {
+      router.push(`/activity/${transaction.trackingId}`);
+    } else {
+      router.push(path.ACTIVITY);
+    }
     setModal(DEPOSIT_MODAL.CLOSE);
-    router.push(path.ACTIVITY);
-  };
+  }, [router, setModal]);
 
   const getTrigger = () => {
     return (
