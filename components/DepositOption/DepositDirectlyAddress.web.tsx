@@ -202,7 +202,7 @@ const DepositDirectlyAddress = () => {
     },
     {
       label: 'Fee',
-      value: `${session?.fee || directDepositSession.fee || '2.3'} USDC`,
+      value: `${session?.fee || directDepositSession.fee || '0'} USDC`,
       icon: <Fuel size={16} color="#A1A1AA" />,
     },
   ];
