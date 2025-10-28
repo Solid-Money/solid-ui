@@ -62,14 +62,14 @@ const ResponsiveDepositOptionModal = ({
   const isForward = currentModal.number > previousModal.number;
 
   const handleTransactionStatusPress = useCallback(() => {
-    const { transaction } = useDepositStore.getState();
-    if (transaction.trackingId) {
-      router.push(`/activity/${transaction.trackingId}`);
+    const trackingId = useDepositStore.getState().transaction.trackingId;
+    if (trackingId && isTransactionStatus) {
+      router.push(`/activity/${trackingId}`);
     } else {
       router.push(path.ACTIVITY);
     }
     setModal(DEPOSIT_MODAL.CLOSE);
-  }, [router, setModal]);
+  }, [router, setModal, isTransactionStatus]);
 
   const getTrigger = () => {
     return (

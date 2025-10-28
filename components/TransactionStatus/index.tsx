@@ -1,4 +1,5 @@
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { useState } from 'react';
 import { Address } from 'viem';
 
 import Checkmark from '@/assets/images/checkmark';
@@ -31,6 +32,13 @@ const TransactionStatus = ({
   token = 'USDC',
   buttonText = 'View recent activity',
 }: TransactionStatusProps) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handlePress = () => {
+    setIsLoading(true);
+    onPress();
+  };
+
   return (
     <View className="gap-8">
       <View className="items-center">
@@ -61,8 +69,14 @@ const TransactionStatus = ({
           </View>
           <Text className="text-muted-foreground font-medium">{status}</Text>
         </View>
-        <Button variant="brand" className="rounded-2xl h-12" onPress={onPress}>
+        <Button
+          variant="brand"
+          className="rounded-2xl h-12"
+          onPress={handlePress}
+          disabled={isLoading}
+        >
           <Text className="text-lg font-semibold">{buttonText}</Text>
+          {isLoading && <ActivityIndicator color="white" />}
         </Button>
       </View>
     </View>

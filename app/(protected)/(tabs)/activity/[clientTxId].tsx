@@ -225,7 +225,7 @@ export default function ActivityDetail() {
   );
 
   useEffect(() => {
-    if (!activity || !isDeposit || !isEthereum || !createdAt) return;
+    if (!activity || !isDeposit || !createdAt) return;
 
     const estimatedDuration = isEthereum ? minutesToSeconds(5) : minutesToSeconds(20);
     const createdAtTime = createdAt.getTime();
