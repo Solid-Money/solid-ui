@@ -7,7 +7,7 @@ export const usePoints = () => {
   const { points, isLoading, error, fetchPoints } = usePointsStore();
 
   useEffect(() => {
-    if (user && points.userRewardsSummary.totalPoints === 0) {
+    if (user) {
       fetchPoints();
     }
   }, [user, fetchPoints]);
