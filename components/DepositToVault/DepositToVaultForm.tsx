@@ -50,6 +50,10 @@ function DepositToVaultForm() {
         .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
         .refine(val => Number(val) > 0, 'Amount must be greater than 0')
         .refine(
+          val => Number(val) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT),
+          `Minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} USDC`,
+        )
+        .refine(
           val => Number(val) <= balanceAmount,
           `Available balance is ${formatNumber(balanceAmount)} USDC`,
         )
@@ -208,15 +212,6 @@ function DepositToVaultForm() {
           <View className="p-4 pr-6 md:p-5 md:flex-row md:items-center md:justify-between gap-2 md:gap-10">
             <View className="flex-row items-center gap-2">
               <Text className="text-lg text-muted-foreground">You will receive</Text>
-              {!isSponsor && !isEthereum && (
-                <TooltipPopover
-                  content={
-                    <Text className="max-w-52">
-                      Bridge gas fee may significantly reduce received amount
-                    </Text>
-                  }
-                />
-              )}
             </View>
             <View className="flex-row items-center gap-2 ml-auto flex-shrink-0">
               <Image
