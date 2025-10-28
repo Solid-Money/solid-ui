@@ -634,7 +634,7 @@ export interface Points {
 
 export enum LifiOrder {
   FASTEST = 'FASTEST',
-  CHEAPEST = 'CHEAPEST'
+  CHEAPEST = 'CHEAPEST',
 }
 
 export interface GetLifiQuoteParams {
@@ -645,7 +645,7 @@ export interface GetLifiQuoteParams {
   toAddress: string;
   toChain?: number;
   toToken?: string;
-  order?: LifiOrder
+  order?: LifiOrder;
 }
 
 export interface LifiQuoteResponse {

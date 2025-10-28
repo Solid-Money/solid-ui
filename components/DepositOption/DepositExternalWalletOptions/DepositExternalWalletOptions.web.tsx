@@ -92,7 +92,7 @@ const DepositExternalWalletOptions = () => {
     },
     {
       text: 'Wallet connect',
-      subtitle: 'Transfer from you favorite wallet',
+      subtitle: 'Transfer from your favorite wallet',
       icon: (
         <Image
           source={require('@/assets/images/wallet_connect.png')}

@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { router } from 'expo-router';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import useUser from '@/hooks/useUser';
 import { Fuel, QrCode, Share2 } from 'lucide-react-native';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import TooltipPopover from '@/components/Tooltip';
+import { path } from '@/constants/path';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
 
@@ -75,6 +77,7 @@ const DepositDirectlyAddress = () => {
   const handleDone = () => {
     setModal(DEPOSIT_MODAL.CLOSE);
     clearDirectDepositSession();
+    router.push(path.ACTIVITY);
   };
 
   const handleShare = async () => {
@@ -185,7 +188,7 @@ const DepositDirectlyAddress = () => {
     },
     {
       label: 'Fee',
-      value: `${session?.fee || directDepositSession.fee || '2.3'} USDC`,
+      value: `${session?.fee || directDepositSession.fee || '0'} USDC`,
       icon: <Fuel size={16} color="#A1A1AA" />,
     },
   ];

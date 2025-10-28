@@ -29,6 +29,7 @@ interface TransactionProps {
   symbol?: string;
   logoUrl?: string;
   onPress?: () => void;
+  clientTxId?: string;
 }
 
 const Transaction = ({
@@ -41,11 +42,19 @@ const Transaction = ({
   logoUrl,
   onPress,
   type,
+  clientTxId,
 }: TransactionProps) => {
   const isPending = status === TransactionStatus.PENDING;
   const isFailed = status === TransactionStatus.FAILED;
   const isCancelled = status === TransactionStatus.CANCELLED;
   const transactionDetails = TRANSACTION_DETAILS[type];
+
+  // Check if this is a direct deposit with no amount yet
+  const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
+  const isPending = status === TransactionStatus.PENDING;
+  const hasNoAmount = !amount || amount === '0' || parseFloat(amount) === 0;
+  const shouldShowWaitingMessage = isDirectDeposit && isPending && hasNoAmount;
+  const shouldShowFailedMessage = isDirectDeposit && isFailed && hasNoAmount;
 
   if (!transactionDetails) {
     console.error('[Transaction] Unknown transaction type:', type, {
@@ -134,10 +143,18 @@ const Transaction = ({
         </View>
       </View>
       <View className="flex-row items-center gap-2 md:gap-4 flex-shrink-0">
-        <Text className={cn('text-lg font-medium text-right', statusTextColor)}>
-          {statusSign}
-          {formatNumber(Number(amount))} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
-        </Text>
+        {shouldShowWaitingMessage ? (
+          <Text className="text-sm text-muted-foreground font-medium text-right">
+            Waiting for transfer
+          </Text>
+        ) : shouldShowFailedMessage ? (
+          <Text className="text-sm text-red-400 font-medium text-right">Failed</Text>
+        ) : (
+          <Text className={cn('text-lg font-medium text-right', statusTextColor)}>
+            {statusSign}
+            {formatNumber(Number(amount))} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
+          </Text>
+        )}
       </View>
     </Pressable>
   );

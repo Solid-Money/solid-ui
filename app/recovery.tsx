@@ -1,11 +1,12 @@
+import InfoError from '@/assets/images/info-error';
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { startPasskeyRecovery } from '@/lib/api';
 import {
-    EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-    EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
 import { Turnkey, TurnkeyIframeClient } from '@turnkey/sdk-browser';
 import { useRouter } from 'expo-router';
@@ -27,6 +28,7 @@ export default function RecoveryPasskey() {
     SUCCESS: 'success',
   };
   const [step, setStep] = useState(steps.USERNAME_INPUT);
+  const [error, setError] = useState('');
 
   const router = useRouter();
   const iframeContainerId = 'turnkey-auth-iframe-container-id';
@@ -49,60 +51,80 @@ export default function RecoveryPasskey() {
 
   const handleSubmitUsername = async () => {
     setLoading(true);
+    setError('');
     const iframeClient = await turnkey.iframeClient({
       iframeContainer: iframeContainer as HTMLElement,
       iframeUrl: 'https://auth.turnkey.com',
     });
     setIframeClient(iframeClient);
-    const recoveryResponse = await startPasskeyRecovery(
-      username,
-      iframeClient.iframePublicKey ?? '',
-    );
-    if (recoveryResponse.success) {
-      setUserId(recoveryResponse.userId);
-      setSubOrganizationId(recoveryResponse.subOrganizationId);
-      setStep(steps.BUNDLE_SUBMIT);
+    try {
+      const recoveryResponse = await startPasskeyRecovery(
+        username,
+        iframeClient.iframePublicKey ?? '',
+      );
+      if (recoveryResponse.success) {
+        setUserId(recoveryResponse.userId);
+        setSubOrganizationId(recoveryResponse.subOrganizationId);
+        setStep(steps.BUNDLE_SUBMIT);
+      }
+    } catch {
+      setError('Invalid username or not found');
+      setLoading(false);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSubmitBundle = async () => {
     setLoading(true);
-    const authenticationResponse = await iframeClient?.injectCredentialBundle(bundle);
-    if (authenticationResponse) {
-      setStep(steps.ADD_PASSKEY);
+    setError('');
+    try {
+      const authenticationResponse = await iframeClient?.injectCredentialBundle(bundle);
+      if (authenticationResponse) {
+        setStep(steps.ADD_PASSKEY);
+      }
+    } catch {
+      setError('Invalid code');
+      setLoading(false);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSubmitAddPasskey = async () => {
     setLoading(true);
-    const passkeyClient = turnkey.passkeyClient();
-    const passkey = await passkeyClient.createUserPasskey({
-      publicKey: {
-        user: {
-          name: username,
-          displayName: username,
-        },
-      },
-    });
-    if (passkey) {
-      const authenticatorsResponse = await iframeClient?.createAuthenticators({
-        authenticators: [
-          {
-            authenticatorName: 'New Passkey Authenticator',
-            challenge: passkey.encodedChallenge,
-            attestation: passkey.attestation,
+    setError('');
+    try {
+      const passkeyClient = turnkey.passkeyClient();
+      const passkey = await passkeyClient.createUserPasskey({
+        publicKey: {
+          user: {
+            name: username,
+            displayName: username,
           },
-        ],
-        userId: userId,
-        organizationId: subOrganizationId,
+        },
       });
-      if (authenticatorsResponse?.activity.id) {
-        setStep(steps.SUCCESS);
+      if (passkey) {
+        const authenticatorsResponse = await iframeClient?.createAuthenticators({
+          authenticators: [
+            {
+              authenticatorName: 'New Passkey Authenticator',
+              challenge: passkey.encodedChallenge,
+              attestation: passkey.attestation,
+            },
+          ],
+          userId: userId,
+          organizationId: subOrganizationId,
+        });
+        if (authenticatorsResponse?.activity.id) {
+          setStep(steps.SUCCESS);
+        }
       }
+    } catch {
+      setError('Invalid code');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -125,6 +147,7 @@ export default function RecoveryPasskey() {
             onChangeUsername={setUsername}
             onSubmit={handleSubmitUsername}
             loading={loading}
+            error={error}
           />
         )}
         {step === steps.BUNDLE_SUBMIT && (
@@ -133,10 +156,11 @@ export default function RecoveryPasskey() {
             onChangeBundle={setBundle}
             onSubmit={handleSubmitBundle}
             loading={loading}
+            error={error}
           />
         )}
         {step === steps.ADD_PASSKEY && (
-          <AddPasskey onSubmit={handleSubmitAddPasskey} loading={loading} />
+          <AddPasskey onSubmit={handleSubmitAddPasskey} loading={loading} error={error} />
         )}
         {step === steps.SUCCESS && <Success />}
       </View>
@@ -150,6 +174,7 @@ interface UsernameSelectorProps {
   onChangeUsername: (text: string) => void;
   onSubmit: () => void;
   loading: boolean;
+  error: string;
 }
 
 function UsernameSelector({
@@ -157,6 +182,7 @@ function UsernameSelector({
   onChangeUsername,
   onSubmit,
   loading,
+  error,
 }: UsernameSelectorProps) {
   return (
     <View className="flex-1 justify-center">
@@ -174,6 +200,12 @@ function UsernameSelector({
           onChangeText={onChangeUsername}
           autoFocus
         />
+        {error && (
+          <View className="flex-row items-center gap-2 mb-4">
+            <InfoError />
+            <Text className="text-sm text-red-400">{error}</Text>
+          </View>
+        )}
         <Button
           className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
           onPress={onSubmit}
@@ -195,9 +227,10 @@ interface BundleSubmitProps {
   onChangeBundle: (text: string) => void;
   onSubmit: () => Promise<void>;
   loading: boolean;
+  error: string;
 }
 
-function BundleSubmit({ bundle, onChangeBundle, onSubmit, loading }: BundleSubmitProps) {
+function BundleSubmit({ bundle, onChangeBundle, onSubmit, loading, error }: BundleSubmitProps) {
   return (
     <View className="flex-1 justify-center">
       <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
@@ -214,6 +247,12 @@ function BundleSubmit({ bundle, onChangeBundle, onSubmit, loading }: BundleSubmi
           onChangeText={onChangeBundle}
           autoFocus
         />
+        {error && (
+          <View className="flex-row items-center gap-2 mb-4">
+            <InfoError />
+            <Text className="text-sm text-red-400">{error}</Text>
+          </View>
+        )}
         <Button
           className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
           onPress={onSubmit}
@@ -233,9 +272,10 @@ function BundleSubmit({ bundle, onChangeBundle, onSubmit, loading }: BundleSubmi
 interface AddPasskeyProps {
   onSubmit: () => Promise<void>;
   loading: boolean;
+  error: string;
 }
 
-function AddPasskey({ onSubmit, loading }: AddPasskeyProps) {
+function AddPasskey({ onSubmit, loading, error }: AddPasskeyProps) {
   return (
     <View className="flex-1 justify-center">
       <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
@@ -255,6 +295,12 @@ function AddPasskey({ onSubmit, loading }: AddPasskeyProps) {
             <Text className="text-base font-bold text-black">Create Passkey</Text>
           )}
         </Button>
+        {error && (
+          <View className="flex-row items-center gap-2 mb-4">
+            <InfoError />
+            <Text className="text-sm text-red-400">{error}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
