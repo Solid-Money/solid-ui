@@ -57,6 +57,10 @@ export const isHTTPError = (error: any, status: number) => {
   );
 };
 
+export const isAnyHTTPError = (error: any, statuses: number[]) => {
+  return statuses.some((status) => isHTTPError(error, status));
+};
+
 export const withRefreshToken = async <T>(
   apiCall: () => Promise<T>,
   { onError }: { onError?: () => void } = {},
@@ -89,7 +93,7 @@ export const withRefreshToken = async <T>(
       console.error(refreshTokenError);
       if (onError) {
         onError();
-      } else if (isHTTPError(refreshTokenError, 401)) {
+      } else if (isAnyHTTPError(refreshTokenError, [401, 403, 404])) {
         globalLogoutHandler?.();
       }
     }

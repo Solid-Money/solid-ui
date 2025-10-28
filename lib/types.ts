@@ -33,6 +33,19 @@ export interface CardWaitlistResponse {
   joinedAt?: Date;
 }
 
+export interface DirectDepositSessionResponse {
+  sessionId: string;
+  walletAddress: string;
+  chainId: number;
+  status: 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
+  expiresAt: number;
+  minDeposit: string;
+  maxDeposit: string;
+  fee: string;
+  detectedAmount?: string;
+  transactionHash?: string;
+}
+
 export enum Status {
   IDLE = 'idle',
   PENDING = 'pending',
@@ -600,7 +613,7 @@ export interface Points {
 
 export enum LifiOrder {
   FASTEST = 'FASTEST',
-  CHEAPEST = 'CHEAPEST'
+  CHEAPEST = 'CHEAPEST',
 }
 
 export interface GetLifiQuoteParams {
@@ -611,7 +624,7 @@ export interface GetLifiQuoteParams {
   toAddress: string;
   toChain?: number;
   toToken?: string;
-  order?: LifiOrder
+  order?: LifiOrder;
 }
 
 export interface LifiQuoteResponse {

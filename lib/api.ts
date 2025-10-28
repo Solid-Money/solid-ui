@@ -40,6 +40,7 @@ import {
   CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
+  DirectDepositSessionResponse,
   EphemeralKeyResponse,
   ExchangeRateResponse,
   FromCurrency,
@@ -937,7 +938,7 @@ export const getLifiQuote = async ({
   fromToken = 'USDC',
   toAddress,
   toToken = 'USDC',
-  order = LifiOrder.FASTEST
+  order = LifiOrder.FASTEST,
 }: GetLifiQuoteParams): Promise<LifiQuoteResponse> => {
   const response = await axios.get<LifiQuoteResponse>(`${EXPO_PUBLIC_LIFI_API_URL}/quote`, {
     params: {
@@ -948,7 +949,7 @@ export const getLifiQuote = async ({
       fromToken,
       toAddress,
       toToken,
-      order
+      order,
     },
   });
 
@@ -1068,7 +1069,10 @@ export const getCardTransactions = async (
 export const getCardTransaction = async (transactionId: string): Promise<CardTransaction> => {
   const jwt = getJWTToken();
 
-  const url = new URL(`/accounts/v1/cards/transactions/${transactionId}`, EXPO_PUBLIC_FLASH_API_BASE_URL);
+  const url = new URL(
+    `/accounts/v1/cards/transactions/${transactionId}`,
+    EXPO_PUBLIC_FLASH_API_BASE_URL,
+  );
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -1295,6 +1299,74 @@ export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEv
   return response.json();
 };
 
+// Direct Deposit Session API
+export const createDirectDepositSession = async (
+  chainId: number,
+): Promise<DirectDepositSessionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ chainId }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getDirectDepositSession = async (
+  sessionId: string,
+): Promise<DirectDepositSessionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session/${sessionId}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const deleteDirectDepositSession = async (
+  sessionId: string,
+): Promise<{ success: boolean; message: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session/${sessionId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const searchCoin = async (query: string) => {
   const response = await axios.get<SearchCoin>(
     `https://pro-api.coingecko.com/api/v3/search?query=${query}`,
@@ -1322,6 +1394,17 @@ export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1
 export const fetchHistoricalAPY = async (days: string = '30') => {
   const response = await axios.get<ChartPayload[]>(
     `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/historical-apy?days=${days}`,
+  );
+  return response.data;
+};
+
+export const startPasskeyRecovery = async (username: string, targetPublicKey: string) => {
+  const response = await axios.post(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-user-email-recovery`,
+    {
+      username,
+      targetPublicKey,
+    },
   );
   return response.data;
 };

@@ -5,7 +5,15 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-const CopyToClipboard = ({ text, className }: { text: string; className?: string }) => {
+const CopyToClipboard = ({
+  text,
+  className,
+  iconClassName,
+}: {
+  text: string;
+  className?: string;
+  iconClassName?: string;
+}) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -26,12 +34,18 @@ const CopyToClipboard = ({ text, className }: { text: string; className?: string
       variant="ghost"
       size="icon"
       onPress={handleCopy}
-      className={cn('transition-all duration-200 hover:bg-primary/10 active:scale-95', className)}
+      className={cn(
+        'transition-all duration-200 web:hover:bg-primary/10 active:scale-95',
+        className,
+      )}
     >
       {copied ? (
         <Check size={14} className="text-green-500" />
       ) : (
-        <Copy size={14} className="text-muted-foreground/60 hover:text-primary" />
+        <Copy
+          size={14}
+          className={cn('text-muted-foreground/60 hover:text-primary', iconClassName)}
+        />
       )}
     </Button>
   );
