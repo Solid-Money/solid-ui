@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -48,6 +49,11 @@ const DepositDirectlyNetworks = () => {
     } catch (error) {
       console.error('Failed to create direct deposit session:', error);
       setSelectedChainId(null);
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to create deposit session',
+        text2: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
     }
   };
 
