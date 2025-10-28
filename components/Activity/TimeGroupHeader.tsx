@@ -1,7 +1,6 @@
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { View } from 'react-native';
-import SwitchStuckTransaction from './SwitchStuckTransaction';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
@@ -33,8 +32,6 @@ export default function TimeGroupHeader({
   index,
   title,
   isPending,
-  showStuck,
-  onToggleStuck,
   hasActivePendingTransactions,
 }: TimeGroupHeaderProps) {
   return (
@@ -51,9 +48,6 @@ export default function TimeGroupHeader({
               trigger={<Header title={title} isPending={isPending} />}
               text="Updates automatically every few seconds"
             />
-          )}
-          {isPending && onToggleStuck && (
-            <SwitchStuckTransaction showStuck={showStuck || false} onToggle={onToggleStuck} />
           )}
         </View>
       ) : (
