@@ -1,5 +1,5 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Hash } from 'viem';
 
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
@@ -11,12 +11,13 @@ import {
   useSendTransactions,
 } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
-import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
-import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
+import { bulkUpsertActivityEvent, createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
+import { ActivityEvent, Transaction, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
+import { secondsToMilliseconds } from 'date-fns';
 
 // Get explorer URL for a transaction hash based on chain ID
 function getExplorerUrl(chainId: number, txHash: string): string {
@@ -36,6 +37,27 @@ function getTransactionHash(transaction: any): string {
   }
 
   return '';
+}
+
+function contructActivity(tx: Transaction | ActivityEvent, safeAddress: string): ActivityEvent {
+  let clientTxId = tx.hash;
+  if ('trackingId' in tx && tx.trackingId) {
+    clientTxId = tx.trackingId;
+  } else if ('clientTxId' in tx && tx.clientTxId) {
+    clientTxId = tx.clientTxId;
+  } else {
+    clientTxId = `${tx.type}-${tx.timestamp}`;
+  }
+
+  return {
+    ...tx,
+    clientTxId,
+    title: tx.title || `${tx.type} Transaction`,
+    timestamp: tx.timestamp || Math.floor(Date.now() / 1000).toString(),
+    amount: tx.amount.toString(),
+    symbol: tx.symbol || 'USDC',
+    fromAddress: tx.fromAddress || safeAddress,
+  };
 }
 
 export interface CreateActivityParams {
@@ -70,7 +92,7 @@ export type TrackTransaction = <TransactionResult>(params: CreateActivityParams,
 
 export function useActivity() {
   const { user } = useUser();
-  const { events, upsertEvent } = useActivityStore();
+  const { events, bulkUpsertEvent, upsertEvent } = useActivityStore();
 
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
@@ -145,6 +167,20 @@ export function useActivity() {
     refetchBankTransfers();
   }, [refetchActivityEvents, refetchTransactions, refetchSendTransactions, refetchDepositTransactions, refetchBridgeDepositTransactions, refetchBankTransfers]);
 
+  const { mutateAsync: bulkUpsertActivities } = useMutation({
+    mutationKey: ['bulk-upsert-activity'],
+    mutationFn: async (payload: ActivityEvent[]) => {
+      const result = await withRefreshToken(() => bulkUpsertActivityEvent(payload));
+      if (!result) throw new Error('Failed to bulk upsert activities');
+      return result;
+    },
+    onSuccess: (serverEvents: ActivityEvent[]) => {
+      if (!user?.userId) return;
+      // Merge server-confirmed events locally
+      bulkUpsertEvent(user.userId, serverEvents);
+    },
+  });
+
   // Get user's activities from local storage
   const activities = useMemo(() => {
     if (!user?.userId || !events[user.userId]) return [];
@@ -159,125 +195,20 @@ export function useActivity() {
     );
   }, [activities]);
 
-  // Merge events
-  const allEvents = useMemo(() => {
-    const serverEvents = activityData?.pages.flatMap(page => page?.docs || []) || [];
-    const seen = new Map<string, ActivityEvent>();
-
-    // Server events first (source of truth)
-    serverEvents.forEach(event => {
-      const key = getKey(event);
-      if (key && !seen.has(key)) {
-        seen.set(key, event);
-      }
-    });
-
-    // Local events (for pending/immediate feedback)
-    activities.forEach(event => {
-      const key = getKey(event);
-      if (!key) return;
-
-      const existing = seen.get(key);
-      // Prefer server version if confirmed, otherwise use local
-      if (!existing || (existing.status === TransactionStatus.PENDING && event.status !== TransactionStatus.PENDING)) {
-        seen.set(key, event);
-      }
-    });
-
-    return Array.from(seen.values()).sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-  }, [activityData, activities, getKey]);
-
-  // Step 1: Sync server events to local storage
   useEffect(() => {
-    if (!user?.userId || !activityData?.pages.length) return;
+    if (!user?.userId || !activityData) return;
 
-    const serverEvents = activityData.pages.flatMap(page => page?.docs || []);
+    const events = activityData.pages.flatMap(page => page?.docs.map(tx => contructActivity(tx, user.safeAddress))).filter((event): event is ActivityEvent => event !== undefined);
+    if (!events.length) return;
 
-    serverEvents.forEach(event => {
-      upsertEvent(user.userId!, event);
-    });
-  }, [activityData?.pages, user?.userId]); // Only depend on pages data and userId
+    bulkUpsertEvent(user.userId, events);
+  }, [activityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
 
-  // Track processed transactions to avoid re-processing
-  const processedTxsRef = useRef(new Set<string>());
-
-  // Steps 2-4: Sync third-party transactions
   useEffect(() => {
     if (!user?.userId || !transactions?.length) return;
 
-    const serverEvents = activityData?.pages.flatMap(page => page?.docs || []) || [];
-    const serverEventsMap = new Map<string, ActivityEvent>();
-
-    serverEvents.forEach(event => {
-      const key = event.hash || event.clientTxId;
-      if (key) serverEventsMap.set(key, event);
-    });
-
-    transactions.forEach(tx => {
-      const txKey = tx.hash || tx.trackingId;
-      if (!txKey || processedTxsRef.current.has(txKey)) return;
-
-      const existingServer = (tx.hash && serverEventsMap.get(tx.hash)) ||
-        (tx.trackingId && serverEventsMap.get(tx.trackingId));
-
-      // Step 2: Upsert to local storage immediately
-      const localEvent: ActivityEvent = {
-        clientTxId: tx.trackingId || generateId(),
-        title: tx.title || `${tx.type} Transaction`,
-        shortTitle: tx.title,
-        timestamp: tx.timestamp || Math.floor(Date.now() / 1000).toString(),
-        type: tx.type,
-        status: tx.status,
-        amount: tx.amount.toString(),
-        symbol: tx.symbol || 'USDC',
-        chainId: tx.chainId,
-        fromAddress: tx.fromAddress || user.safeAddress,
-        toAddress: tx.toAddress,
-        hash: tx.hash,
-        url: tx.url,
-        metadata: {
-          description: tx.title || `External ${tx.type} transaction`,
-          source: 'external-sync',
-        },
-      };
-
-      upsertEvent(user.userId, localEvent);
-
-      // Step 3: Create on server if doesn't exist
-      if (!existingServer) {
-        withRefreshToken(() => createActivityEvent(localEvent)).catch(error =>
-          console.error('Failed to create activity on server:', error)
-        );
-        processedTxsRef.current.add(txKey);
-      } else {
-        // Step 4: Update on server if there's a difference
-        const hasChange =
-          existingServer.status !== tx.status ||
-          existingServer.hash !== tx.hash ||
-          existingServer.url !== tx.url;
-
-        if (hasChange) {
-          withRefreshToken(() => updateActivityEvent(existingServer.clientTxId, {
-            status: tx.status,
-            txHash: tx.hash,
-            metadata: {
-              ...existingServer.metadata,
-              source: 'external-sync',
-              updatedAt: new Date().toISOString(),
-            },
-          })).catch(error =>
-            console.error('Failed to update activity on server:', error)
-          );
-          processedTxsRef.current.add(txKey);
-        }
-      }
-    });
-  }, [
-    transactions?.length,
-    activityData?.pages?.length,
-    user?.userId,
-    user?.safeAddress,
-  ]);
+    bulkUpsertActivities(transactions.map(tx => contructActivity(tx, user.safeAddress)));
+  }, [transactions, user?.userId, user?.safeAddress, bulkUpsertActivities]);
 
   // Create new activity
   const createActivity = useCallback(async (params: CreateActivityParams): Promise<string> => {
@@ -443,23 +374,21 @@ export function useActivity() {
   }, [createActivity, updateActivity]);
 
   useEffect(() => {
-    if (pendingActivities.length === 0) return;
-
-    const interval = setInterval(refetchAll, 3000);
+    const interval = setInterval(refetchAll, secondsToMilliseconds(5));
 
     return () => clearInterval(interval);
-  }, [pendingActivities.length, refetchAll]);
+  }, [refetchAll]);
 
   return {
     activities,
     pendingActivities,
     pendingCount: pendingActivities.length,
     activityEvents,
-    allEvents,
     getKey,
     createActivity,
     updateActivity,
     trackTransaction,
     refetchAll,
+    bulkUpsertActivities,
   };
 }

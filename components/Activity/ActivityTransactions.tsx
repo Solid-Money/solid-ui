@@ -36,14 +36,14 @@ export default function ActivityTransactions({
   symbol,
 }: ActivityTransactionsProps) {
   const { setModal, setBankTransferData } = useDepositStore();
-  const { activityEvents, allEvents, getKey, refetchAll } = useActivity();
+  const { activityEvents, activities, getKey, refetchAll } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
 
   useCardDepositPoller();
 
   const filteredTransactions = useMemo(() => {
-    const filtered = allEvents.filter(transaction => {
+    const filtered = activities.filter(transaction => {
       if (tab === ActivityTab.WALLET) {
         if (symbol) {
           return transaction.symbol?.toLowerCase() === symbol?.toLowerCase();
@@ -57,7 +57,7 @@ export default function ActivityTransactions({
     });
 
     return groupTransactionsByTime(filtered);
-  }, [allEvents, tab, symbol]);
+  }, [activities, tab, symbol]);
 
   const getTransactionClassName = (groupedData: TimeGroup[], currentIndex: number) => {
     const classNames = ['bg-card overflow-hidden'];
