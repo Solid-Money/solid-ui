@@ -22,9 +22,13 @@ const DepositOptions = () => {
   }, [user?.userId, user?.safeAddress, user?.isDeposited]);
 
   const handleExternalWalletPress = useCallback(() => {
+    // eslint-disable-next-line no-console
+    console.log('[DepositOptions] External wallet button pressed');
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'external_wallet',
     });
+    // eslint-disable-next-line no-console
+    console.log('[DepositOptions] Setting modal to OPEN_EXTERNAL_WALLET_OPTIONS');
     setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
   }, [setModal]);
 
