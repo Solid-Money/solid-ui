@@ -389,7 +389,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
         isBuyCryptoOptions ||
         isPublicAddress ||
         isDepositDirectly ||
-        isDepositDirectlyAddress
+        (isDepositDirectlyAddress && !directDepositSession.fromActivity)
       }
       onBackPress={handleBackPress}
       actionButton={getActionButton()}

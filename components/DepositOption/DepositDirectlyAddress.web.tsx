@@ -210,7 +210,7 @@ const DepositDirectlyAddress = () => {
   ];
 
   return (
-    <div className="flex flex-col gap-3 md:gap-4 2xl:gap-6 -mt-2 md:-mt-4 2xl:-mt-8">
+    <div className="flex flex-col gap-3 md:gap-4 2xl:gap-6">
       <div className="flex flex-row flex-wrap items-center justify-center">
         <Text className="text-base md:text-lg 2xl:text-2xl font-bold text-[#ACACAC]">Transfer</Text>
         <div className="flex items-center gap-1 px-1">
