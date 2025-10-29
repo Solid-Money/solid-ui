@@ -3,8 +3,8 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import {
-  BridgeTransferCryptoCurrency,
-  BridgeTransferFiatCurrency,
+    BridgeTransferCryptoCurrency,
+    BridgeTransferFiatCurrency,
 } from '@/components/BankTransfer/enums';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { USER } from '@/lib/config';
@@ -75,11 +75,17 @@ export const useDepositStore = create<DepositState>()(
       kyc: {},
       directDepositSession: {},
 
-      setModal: modal =>
+      setModal: modal => {
+        // eslint-disable-next-line no-console
+        console.log('[DepositStore] Modal change:', {
+          from: get().currentModal.name,
+          to: modal.name,
+        });
         set({
           previousModal: get().currentModal,
           currentModal: modal,
-        }),
+        });
+      },
       setTransaction: transaction => set({ transaction }),
       setBankTransferData: data => set({ bankTransfer: { ...get().bankTransfer, ...data } }),
       clearBankTransferData: () => set({ bankTransfer: {} }),

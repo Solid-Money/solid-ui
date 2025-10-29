@@ -1,10 +1,16 @@
 import * as Sentry from '@sentry/react-native';
 import { Image } from 'expo-image';
+import { Trash2 } from 'lucide-react-native';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import ResponsiveDialog from '@/components/ResponsiveDialog';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
+import { useActivity } from '@/hooks/useActivity';
+import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
   TransactionCategory,
@@ -30,6 +36,7 @@ interface TransactionProps {
   logoUrl?: string;
   onPress?: () => void;
   clientTxId?: string;
+  metadata?: Record<string, any>;
 }
 
 const Transaction = ({
@@ -43,7 +50,13 @@ const Transaction = ({
   onPress,
   type,
   clientTxId,
+  metadata,
 }: TransactionProps) => {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { deleteDirectDepositSession } = useDirectDepositSession();
+  const { refetchAll } = useActivity();
+
   const isPending = status === TransactionStatus.PENDING;
   const isFailed = status === TransactionStatus.FAILED;
   const isCancelled = status === TransactionStatus.CANCELLED;
@@ -53,8 +66,59 @@ const Transaction = ({
   const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
   const isPending = status === TransactionStatus.PENDING;
   const hasNoAmount = !amount || amount === '0' || parseFloat(amount) === 0;
-  const shouldShowWaitingMessage = isDirectDeposit && isPending && hasNoAmount;
-  const shouldShowFailedMessage = isDirectDeposit && isFailed && hasNoAmount;
+  const isProcessing = status === TransactionStatus.PROCESSING;
+
+  // Determine status message for direct deposits with no amount
+  const getDirectDepositStatusMessage = () => {
+    if (!isDirectDeposit || !hasNoAmount) return null;
+    if (isFailed) return 'Failed';
+    if (isProcessing) return 'Processing deposit...';
+    // For pending, check metadata for more specific status
+    if (isPending) {
+      const depositStatus = metadata?.directDepositStatus;
+      if (depositStatus === 'detected') return 'Transfer detected';
+      return 'Waiting for transfer';
+    }
+    return null;
+  };
+
+  const directDepositStatusMessage = getDirectDepositStatusMessage();
+
+  // Determine if we should show progress indicator (for pending/processing direct deposits)
+  const isPendingOrProcessing = isPending || isProcessing;
+  const directDepositIsPendingOrProcessing = isDirectDeposit && isPendingOrProcessing;
+
+  // Extract session ID from clientTxId (format: direct_deposit_{sessionId})
+  const sessionId =
+    isDirectDeposit && clientTxId ? clientTxId.replace('direct_deposit_', '') : null;
+
+  const handleDeleteConfirm = async () => {
+    if (!sessionId) return;
+
+    try {
+      setIsDeleting(true);
+      await deleteDirectDepositSession(sessionId);
+      setIsDeleteDialogOpen(false);
+
+      // Refresh the activity list
+      refetchAll();
+    } catch (error) {
+      console.error('Failed to delete direct deposit session:', error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'delete_direct_deposit_error',
+          sessionId,
+        },
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeletePress = (e: any) => {
+    e.stopPropagation();
+    setIsDeleteDialogOpen(true);
+  };
 
   if (!transactionDetails) {
     console.error('[Transaction] Unknown transaction type:', type, {
@@ -143,19 +207,62 @@ const Transaction = ({
         </View>
       </View>
       <View className="flex-row items-center gap-2 md:gap-4 flex-shrink-0">
-        {shouldShowWaitingMessage ? (
-          <Text className="text-sm text-muted-foreground font-medium text-right">
-            Waiting for transfer
+        {directDepositIsPendingOrProcessing && <ActivityIndicator size="small" color="#A1A1AA" />}
+        {directDepositStatusMessage ? (
+          <Text
+            className={cn(
+              'text-sm font-medium text-right',
+              isFailed ? 'text-red-400' : 'text-muted-foreground',
+            )}
+          >
+            {directDepositStatusMessage}
           </Text>
-        ) : shouldShowFailedMessage ? (
-          <Text className="text-sm text-red-400 font-medium text-right">Failed</Text>
         ) : (
           <Text className={cn('text-lg font-medium text-right', statusTextColor)}>
             {statusSign}
             {formatNumber(Number(amount))} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
         )}
+        {directDepositIsPendingOrProcessing && (
+          <Pressable onPress={handleDeletePress} className="p-1 hover:opacity-70">
+            <Trash2 size={18} color="#A1A1AA" />
+          </Pressable>
+        )}
       </View>
+
+      <ResponsiveDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Delete direct deposit?"
+        contentClassName="px-6 py-6"
+      >
+        <View className="flex flex-col gap-6">
+          <Text className="text-base text-muted-foreground">
+            Are you sure you want to delete this direct deposit session? This action cannot be
+            undone.
+          </Text>
+          <View className="flex flex-row gap-3">
+            <Button
+              onPress={() => setIsDeleteDialogOpen(false)}
+              className="flex-1 h-12 rounded-2xl bg-white/10 web:hover:bg-white/15"
+              disabled={isDeleting}
+            >
+              <Text className="text-base font-semibold text-white">Cancel</Text>
+            </Button>
+            <Button
+              onPress={handleDeleteConfirm}
+              className="flex-1 h-12 rounded-2xl bg-red-500 web:hover:bg-red-600"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-base font-semibold text-white">Delete</Text>
+              )}
+            </Button>
+          </View>
+        </View>
+      </ResponsiveDialog>
     </Pressable>
   );
 };

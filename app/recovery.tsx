@@ -5,14 +5,13 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { startPasskeyRecovery } from '@/lib/api';
 import {
-  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+    EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+    EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
 import { Turnkey, TurnkeyIframeClient } from '@turnkey/sdk-browser';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function RecoveryPasskey() {
@@ -132,15 +131,9 @@ export default function RecoveryPasskey() {
       <View id={iframeContainerId} className="hidden" />
       {/* Email modal */}
       <View className="w-full max-w-lg mx-auto pt-12 px-4">
-        <View className="flex-row items-center justify-between mb-10">
-          <Pressable onPress={goBack} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
-          <Text className="text-white text-xl md:text-2xl font-semibold text-center">
-            Passkey Recovery
-          </Text>
-          <View className="w-10" />
-        </View>
+        <Text className="text-white text-xl md:text-2xl font-semibold text-center mb-8">
+          Passkey Recovery
+        </Text>
         {step === steps.USERNAME_INPUT && (
           <UsernameSelector
             username={username}

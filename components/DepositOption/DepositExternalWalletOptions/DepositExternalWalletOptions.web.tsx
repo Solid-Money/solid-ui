@@ -91,8 +91,8 @@ const DepositExternalWalletOptions = () => {
       onPress: handleDepositDirectly,
     },
     {
-      text: 'Wallet connect',
-      subtitle: 'Transfer from your favorite wallet',
+      text: 'WalletConnect',
+      subtitle: 'Connect your external crypto wallet',
       icon: (
         <Image
           source={require('@/assets/images/wallet_connect.png')}
