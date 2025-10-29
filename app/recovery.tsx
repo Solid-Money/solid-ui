@@ -5,8 +5,8 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { startPasskeyRecovery } from '@/lib/api';
 import {
-    EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-    EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
 import { Turnkey, TurnkeyIframeClient } from '@turnkey/sdk-browser';
 import { useRouter } from 'expo-router';
@@ -29,18 +29,9 @@ export default function RecoveryPasskey() {
   const [step, setStep] = useState(steps.USERNAME_INPUT);
   const [error, setError] = useState('');
 
-  const router = useRouter();
   const iframeContainerId = 'turnkey-auth-iframe-container-id';
   const iframeContainer = document.getElementById(iframeContainerId);
   const [iframeClient, setIframeClient] = useState<TurnkeyIframeClient | null>(null);
-
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push(path.CARD);
-    }
-  };
 
   const [username, setUsername] = useState('');
   const [bundle, setBundle] = useState('');
