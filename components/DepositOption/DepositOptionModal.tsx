@@ -84,6 +84,9 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     } else {
       router.push(path.ACTIVITY);
     }
+    setModal(DEPOSIT_MODAL.CLOSE);
+  }, [router, setModal, isTransactionStatus]);
+
   // eslint-disable-next-line no-console
   console.log('[DepositOptionModal] Component render:', {
     currentModal: currentModal.name,

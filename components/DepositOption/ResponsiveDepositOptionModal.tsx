@@ -72,7 +72,7 @@ const ResponsiveDepositOptionModal = ({
   const handleTransactionStatusPress = useCallback(() => {
     const trackingId = useDepositStore.getState().transaction.trackingId;
     if (trackingId && isTransactionStatus) {
-      router.push(`/activity/${trackingId}`);
+      router.navigate(`/activity/${trackingId}`, { dangerouslySingular: true });
     } else {
       router.push(path.ACTIVITY);
     }
