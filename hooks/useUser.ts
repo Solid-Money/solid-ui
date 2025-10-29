@@ -3,7 +3,15 @@ import { ERRORS } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track, trackIdentity } from '@/lib/analytics';
-import { deleteAccount, getSubOrgIdByUsername, login, signUp, updateSafeAddress, updateUserCredentialId, usernameExists } from '@/lib/api';
+import {
+  deleteAccount,
+  getSubOrgIdByUsername,
+  login,
+  signUp,
+  updateSafeAddress,
+  updateUserCredentialId,
+  usernameExists,
+} from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -12,7 +20,14 @@ import {
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
-import { base64urlToUint8Array, getNonce, isHTTPError, parseStampHeaderValueCredentialId, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
+import {
+  base64urlToUint8Array,
+  getNonce,
+  isHTTPError,
+  parseStampHeaderValueCredentialId,
+  setGlobalLogoutHandler,
+  withRefreshToken,
+} from '@/lib/utils';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { publicClient, rpcUrls } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
@@ -83,24 +98,24 @@ const useUser = (): UseUserReturn => {
         timeout: 60000,
         allowCredentials: user?.credentialId
           ? [
-            {
-              id: base64urlToUint8Array(user.credentialId) as BufferSource,
-              type: 'public-key' as const,
-            },
-          ]
-          : undefined
+              {
+                id: base64urlToUint8Array(user.credentialId) as BufferSource,
+                type: 'public-key' as const,
+              },
+            ]
+          : undefined,
       });
     } else {
       stamper = new PasskeyStamper({
         rpId: getRuntimeRpId(),
         allowCredentials: user?.credentialId
           ? [
-            {
-              id: user.credentialId,
-              type: 'public-key' as const,
-            },
-          ]
-          : undefined
+              {
+                id: user.credentialId,
+                type: 'public-key' as const,
+              },
+            ]
+          : undefined,
       });
     }
 
@@ -194,47 +209,50 @@ const useUser = (): UseUserReturn => {
     [queryClient, updateUser],
   );
 
-  const handleSignupStarted = useCallback(async (username: string, inviteCode: string) => {
-    try {
-      setSignupInfo({ status: Status.PENDING });
-      track(TRACKING_EVENTS.SIGNUP_STARTED, {
-        username,
-      });
-
-      const response = await usernameExists(username);
-      if (!isHTTPError(response, 404)) {
-        throw response;
-      }
-
-      setSignupUser({ username, inviteCode });
-      router.push(path.INVITE);
-    } catch (error: any) {
-      let message = 'Error checking username exists';
-
-      if (isHTTPError(error, 200)) {
-        message = ERRORS.USERNAME_ALREADY_EXISTS;
-        Sentry.captureMessage(message, {
-          level: 'warning',
-          extra: {
-            username,
-            inviteCode,
-            error,
-          },
+  const handleSignupStarted = useCallback(
+    async (username: string, inviteCode: string) => {
+      try {
+        setSignupInfo({ status: Status.PENDING });
+        track(TRACKING_EVENTS.SIGNUP_STARTED, {
+          username,
         });
-      } else {
-        Sentry.captureException(new Error(message), {
-          extra: {
-            username,
-            inviteCode,
-            error,
-          },
-        });
-      }
 
-      setSignupInfo({ status: Status.ERROR, message });
-      console.error(message, error);
-    }
-  }, [setSignupInfo, setSignupUser, router]);
+        const response = await usernameExists(username);
+        if (!isHTTPError(response, 404)) {
+          throw response;
+        }
+
+        setSignupUser({ username, inviteCode });
+        // router.push(path.INVITE);
+      } catch (error: any) {
+        let message = 'Error checking username exists';
+
+        if (isHTTPError(error, 200)) {
+          message = ERRORS.USERNAME_ALREADY_EXISTS;
+          Sentry.captureMessage(message, {
+            level: 'warning',
+            extra: {
+              username,
+              inviteCode,
+              error,
+            },
+          });
+        } else {
+          Sentry.captureException(new Error(message), {
+            extra: {
+              username,
+              inviteCode,
+              error,
+            },
+          });
+        }
+
+        setSignupInfo({ status: Status.ERROR, message });
+        console.error(message, error);
+      }
+    },
+    [setSignupInfo, setSignupUser, router],
+  );
 
   const handleSignup = useCallback(
     async (username: string, inviteCode: string) => {
@@ -309,7 +327,7 @@ const useUser = (): UseUserReturn => {
         }
 
         // Get referral code from storage (if any)
-        const referralCode = getReferralCodeForSignup() || undefined;
+        const referralCode = getReferralCodeForSignup() || '';
 
         const user = await signUp(
           username,
@@ -604,7 +622,10 @@ const useUser = (): UseUserReturn => {
 
       router.replace(path.HOME);
     } catch (error: any) {
-      let errorMessage = error?.status === 404 ? 'User not found, please sign up' : error?.message || 'Network request timed out';
+      let errorMessage =
+        error?.status === 404
+          ? 'User not found, please sign up'
+          : error?.message || 'Network request timed out';
 
       if (error?.name === 'NotAllowedError') {
         errorMessage = 'User cancelled login';
@@ -718,15 +739,15 @@ const useUser = (): UseUserReturn => {
             // Prepare allowCredentials if we have a credential ID for this user
             const allowCredentials = selectedUser?.credentialId
               ? [
-                {
-                  id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
-                  type: 'public-key' as const,
-                },
-              ]
+                  {
+                    id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
+                    type: 'public-key' as const,
+                  },
+                ]
               : undefined;
 
             const passkeyClient = turnkey.passkeyClient(
-              allowCredentials ? { allowCredentials } : undefined
+              allowCredentials ? { allowCredentials } : undefined,
             );
 
             const result = await passkeyClient.stampGetWhoami({

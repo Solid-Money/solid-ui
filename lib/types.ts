@@ -609,6 +609,7 @@ export interface Points {
       totalPoints: number;
     }[];
   };
+  userRefferer: string;
 }
 
 export enum LifiOrder {
