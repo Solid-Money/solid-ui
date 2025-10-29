@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
@@ -77,6 +77,16 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
 
+  const handleTransactionStatusPress = useCallback(() => {
+    const trackingId = useDepositStore.getState().transaction.trackingId;
+    if (trackingId && isTransactionStatus) {
+      router.navigate(`/activity/${trackingId}`, { dangerouslySingular: true });
+    } else {
+      router.push(path.ACTIVITY);
+    }
+    setModal(DEPOSIT_MODAL.CLOSE);
+  }, [router, setModal, isTransactionStatus]);
+
   // eslint-disable-next-line no-console
   console.log('[DepositOptionModal] Component render:', {
     currentModal: currentModal.name,
@@ -87,11 +97,6 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     isClose,
     walletStatus: status,
   });
-
-  const handleTransactionStatusPress = () => {
-    setModal(DEPOSIT_MODAL.CLOSE);
-    router.push(path.ACTIVITY);
-  };
 
   const getTrigger = () => {
     return (

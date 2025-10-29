@@ -1,12 +1,10 @@
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { View } from 'react-native';
-import SwitchStuckTransaction from './SwitchStuckTransaction';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   title: string;
-  isPending: boolean;
 }
 
 interface TimeGroupHeaderProps {
@@ -18,12 +16,11 @@ interface TimeGroupHeaderProps {
   hasActivePendingTransactions?: boolean;
 }
 
-const Header = ({ title, isPending }: HeaderProps) => {
+const Header = ({ title }: HeaderProps) => {
   return (
     <View className="flex-row items-center justify-between">
       <View className="flex-row items-center gap-2">
         <Text className="font-semibold text-muted-foreground">{title}</Text>
-        {isPending && <View className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />}
       </View>
     </View>
   );
@@ -33,8 +30,6 @@ export default function TimeGroupHeader({
   index,
   title,
   isPending,
-  showStuck,
-  onToggleStuck,
   hasActivePendingTransactions,
 }: TimeGroupHeaderProps) {
   return (
@@ -48,16 +43,13 @@ export default function TimeGroupHeader({
         >
           {hasActivePendingTransactions && (
             <TooltipPopover
-              trigger={<Header title={title} isPending={isPending} />}
+              trigger={<Header title={title} />}
               text="Updates automatically every few seconds"
             />
           )}
-          {isPending && onToggleStuck && (
-            <SwitchStuckTransaction showStuck={showStuck || false} onToggle={onToggleStuck} />
-          )}
         </View>
       ) : (
-        <Header title={title} isPending={isPending} />
+        <Header title={title} />
       )}
     </View>
   );

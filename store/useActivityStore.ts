@@ -10,6 +10,7 @@ interface ActivityState {
   events: Record<string, ActivityEvent[]>;
   setEvents: (userId: string, events: ActivityEvent[]) => void;
   upsertEvent: (userId: string, event: ActivityEvent) => void;
+  bulkUpsertEvent: (userId: string, events: ActivityEvent[]) => void;
   removeEvents: () => void;
 }
 
@@ -50,6 +51,26 @@ export const useActivityStore = create<ActivityState>()(
                 ...state.events[userId][existingIndex],
                 ...event,
               };
+            }
+          })
+        );
+      },
+
+      bulkUpsertEvent: (userId: string, events: ActivityEvent[]) => {
+        set(
+          produce(state => {
+            state.events[userId] = state.events[userId] || [];
+            for (const event of events) {
+              const existingIndex = state.events[userId].findIndex((e: ActivityEvent) => isSameEvent(e, event));
+
+              if (existingIndex === -1) {
+                state.events[userId].push(event);
+              } else {
+                state.events[userId][existingIndex] = {
+                  ...state.events[userId][existingIndex],
+                  ...event,
+                };
+              }
             }
           })
         );

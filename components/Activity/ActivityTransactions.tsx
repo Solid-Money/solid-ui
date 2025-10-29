@@ -38,9 +38,8 @@ export default function ActivityTransactions({
   tab = ActivityTab.WALLET,
   symbol,
 }: ActivityTransactionsProps) {
-  const { setModal, setBankTransferData, setDirectDepositSession, currentModal } =
-    useDepositStore();
-  const { activityEvents, allEvents, getKey, refetchAll } = useActivity();
+  const { setModal, setBankTransferData, setDirectDepositSession, currentModal } = useDepositStore();
+  const { activityEvents, activities, getKey, refetchAll } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
   const [isDirectDepositModalOpen, setIsDirectDepositModalOpen] = useState(false);
@@ -55,7 +54,7 @@ export default function ActivityTransactions({
   }, [currentModal.name, isDirectDepositModalOpen]);
 
   const filteredTransactions = useMemo(() => {
-    const filtered = allEvents.filter(transaction => {
+    const filtered = activities.filter(transaction => {
       if (tab === ActivityTab.WALLET) {
         if (symbol) {
           return transaction.symbol?.toLowerCase() === symbol?.toLowerCase();
@@ -69,7 +68,7 @@ export default function ActivityTransactions({
     });
 
     return groupTransactionsByTime(filtered);
-  }, [allEvents, tab, symbol]);
+  }, [activities, tab, symbol]);
 
   const getTransactionClassName = (groupedData: TimeGroup[], currentIndex: number) => {
     const classNames = ['bg-card overflow-hidden'];

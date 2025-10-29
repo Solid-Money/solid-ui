@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
 import { Fuel, Wallet } from 'lucide-react-native';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -17,18 +17,18 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
-import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
+import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useAPYs } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
+import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { track } from '@/lib/analytics';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
+import { Status } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useDimension } from '@/hooks/useDimension';
-import { Status } from '@/lib/types';
 
 function DepositToVaultForm() {
   const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA();
@@ -49,6 +49,10 @@ function DepositToVaultForm() {
         .string()
         .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
         .refine(val => Number(val) > 0, 'Amount must be greater than 0')
+        .refine(
+          val => Number(val) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT),
+          `Minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} USDC`,
+        )
         .refine(
           val => Number(val) <= balanceAmount,
           `Available balance is ${formatNumber(balanceAmount)} USDC`,
@@ -77,7 +81,6 @@ function DepositToVaultForm() {
 
   const watchedAmount = watch('amount');
   const isSponsor = Number(watchedAmount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
-  const isDeposit = isEthereum || !isSponsor;
 
   const {
     amountOut,
@@ -89,11 +92,34 @@ function DepositToVaultForm() {
     if (errors.amount) return errors.amount.message;
     if (!isValid || !watchedAmount) return 'Enter an amount';
     if (depositStatus.status === Status.PENDING) return depositStatus.message;
-    if (depositStatus.status === Status.SUCCESS)
-      return isDeposit ? 'Successfully deposited!' : 'Successfully bridged!';
-    if (depositStatus.status === Status.ERROR)
-      return error || (isDeposit ? 'Error while depositing' : 'Error while bridging');
+    if (depositStatus.status === Status.SUCCESS) return 'Successfully deposited!';
+    if (depositStatus.status === Status.ERROR) return error || 'Error while depositing';
     return 'Deposit';
+  };
+
+  const handleSuccess = () => {
+    track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
+      chain_id: srcChainId,
+      is_ethereum: isEthereum,
+      hash: hash,
+    });
+
+    reset(); // Reset form after successful transaction
+    setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+    if (!hash) return;
+
+    const explorerUrl = explorerUrls[layerzero.id]?.layerzeroscan;
+
+    Toast.show({
+      type: 'success',
+      text1: 'Depositing USDC',
+      text2: 'Staking USDC to the protocol',
+      props: {
+        link: `${explorerUrl}/tx/${hash}`,
+        linkText: eclipseAddress(hash),
+        image: require('@/assets/images/usdc.png'),
+      },
+    });
   };
 
   const onSubmit = async (data: DepositFormData) => {
@@ -107,10 +133,12 @@ function DepositToVaultForm() {
         exchange_rate: exchangeRate,
       });
 
-      await deposit(data.amount.toString());
+      const trackingId = await deposit(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
+        trackingId,
       });
+      handleSuccess();
     } catch (error) {
       track(TRACKING_EVENTS.DEPOSIT_FAILED, {
         amount: data.amount,
@@ -121,35 +149,6 @@ function DepositToVaultForm() {
       // handled by hook
     }
   };
-
-  useEffect(() => {
-    if (depositStatus.status === Status.SUCCESS) {
-      track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-        chain_id: srcChainId,
-        is_ethereum: isEthereum,
-        hash: hash,
-      });
-
-      reset(); // Reset form after successful transaction
-      setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
-      if (!hash) return;
-
-      const explorerUrl = isDeposit
-        ? explorerUrls[layerzero.id]?.layerzeroscan
-        : explorerUrls[lifi.id]?.lifiscan;
-
-      Toast.show({
-        type: 'success',
-        text1: isDeposit ? 'Depositing USDC' : 'Bridged USDC',
-        text2: isDeposit ? 'Staking USDC to the protocol' : 'Deposit will start soon',
-        props: {
-          link: `${explorerUrl}/tx/${hash}`,
-          linkText: eclipseAddress(hash),
-          image: require('@/assets/images/usdc.png'),
-        },
-      });
-    }
-  }, [reset, setModal, depositStatus, isEthereum, hash, srcChainId, isDeposit]);
 
   const isFormDisabled = () => {
     return isLoading || !isValid || !watchedAmount;
@@ -213,15 +212,6 @@ function DepositToVaultForm() {
           <View className="p-4 pr-6 md:p-5 md:flex-row md:items-center md:justify-between gap-2 md:gap-10">
             <View className="flex-row items-center gap-2">
               <Text className="text-lg text-muted-foreground">You will receive</Text>
-              {!isSponsor && !isEthereum && (
-                <TooltipPopover
-                  content={
-                    <Text className="max-w-52">
-                      Bridge gas fee may significantly reduce received amount
-                    </Text>
-                  }
-                />
-              )}
             </View>
             <View className="flex-row items-center gap-2 ml-auto flex-shrink-0">
               <Image
