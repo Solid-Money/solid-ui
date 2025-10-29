@@ -3,8 +3,8 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import {
-    BridgeTransferCryptoCurrency,
-    BridgeTransferFiatCurrency,
+  BridgeTransferCryptoCurrency,
+  BridgeTransferFiatCurrency,
 } from '@/components/BankTransfer/enums';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { USER } from '@/lib/config';
@@ -43,6 +43,8 @@ interface DirectDepositSession {
   fee?: string;
   detectedAmount?: string;
   transactionHash?: string;
+  // If opened from the Activity screen, we hide back navigation in the UI
+  fromActivity?: boolean;
 }
 
 interface DepositState {
