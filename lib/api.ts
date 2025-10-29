@@ -40,6 +40,7 @@ import {
   CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
+  DepositTransaction,
   DirectDepositSessionResponse,
   EphemeralKeyResponse,
   ExchangeRateResponse,
@@ -888,6 +889,27 @@ export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash
   return response.json();
 };
 
+export const depositTransactions = async (
+  safeAddress: string,
+): Promise<DepositTransaction[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/transactions/${safeAddress}`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const deleteAccount = async (): Promise<{ success: boolean; message?: string }> => {
   const jwt = getJWTToken();
 
@@ -1170,6 +1192,27 @@ export const updateActivityEvent = async (
       body: JSON.stringify(event),
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const bulkUpsertActivityEvent = async (
+  events: ActivityEvent[],
+): Promise<ActivityEvent[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/bulk`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(events),
+  });
 
   if (!response.ok) throw response;
 

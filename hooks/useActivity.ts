@@ -1,23 +1,23 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
 import { Hash } from 'viem';
-import { mainnet } from 'viem/chains';
-import { useBlockNumber } from 'wagmi';
 
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import {
   formatTransactions,
   useBankTransferTransactions,
   useBridgeDepositTransactions,
+  useDepositTransactions,
   useSendTransactions,
+  useUserTransactions,
 } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
-import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
-import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
+import { bulkUpsertActivityEvent, createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
+import { ActivityEvent, Transaction, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
+import { secondsToMilliseconds } from 'date-fns';
 
 // Get explorer URL for a transaction hash based on chain ID
 function getExplorerUrl(chainId: number, txHash: string): string {
@@ -37,6 +37,27 @@ function getTransactionHash(transaction: any): string {
   }
 
   return '';
+}
+
+function contructActivity(tx: Transaction | ActivityEvent, safeAddress: string): ActivityEvent {
+  let clientTxId = tx.hash;
+  if ('trackingId' in tx && tx.trackingId) {
+    clientTxId = tx.trackingId;
+  } else if ('clientTxId' in tx && tx.clientTxId) {
+    clientTxId = tx.clientTxId;
+  } else {
+    clientTxId = `${tx.type}-${tx.timestamp}`;
+  }
+
+  return {
+    ...tx,
+    clientTxId,
+    title: tx.title || `${tx.type} Transaction`,
+    timestamp: tx.timestamp || Math.floor(Date.now() / 1000).toString(),
+    amount: tx.amount.toString(),
+    symbol: tx.symbol || 'USDC',
+    fromAddress: tx.fromAddress || safeAddress,
+  };
 }
 
 export interface CreateActivityParams {
@@ -59,16 +80,20 @@ export interface CreateActivityParams {
   };
 }
 
+export interface UpdateActivityParams {
+  status?: TransactionStatus;
+  hash?: string;
+  url?: string;
+  userOpHash?: string;
+  metadata?: Record<string, any>;
+}
+
 export type TrackTransaction = <TransactionResult>(params: CreateActivityParams, executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<TransactionResult>) => Promise<TransactionResult>
 
 export function useActivity() {
   const { user } = useUser();
-  const { events, upsertEvent, setEvents } = useActivityStore();
-
-  const { data: blockNumber } = useBlockNumber({
-    watch: true,
-    chainId: mainnet.id,
-  });
+  const { events, bulkUpsertEvent, upsertEvent } = useActivityStore();
+  const queryClient = useQueryClient();
 
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
@@ -92,16 +117,13 @@ export function useActivity() {
   const { data: activityData, refetch: refetchActivityEvents } = activityEvents;
 
   // 2. Fetch from third-party services
-  const { data: userDepositTransactions, refetch: refetchTransactions } =
-    useGetUserTransactionsQuery({
-      variables: {
-        address: user?.safeAddress?.toLowerCase() ?? '',
-      },
-    });
+  const { data: userDepositTransactions, refetch: refetchTransactions } = useUserTransactions(user?.safeAddress ?? '');
 
   const { data: sendTransactions, refetch: refetchSendTransactions } = useSendTransactions(
     user?.safeAddress ?? '',
   );
+
+  const { data: depositTransactions, refetch: refetchDepositTransactions } = useDepositTransactions(user?.safeAddress ?? '');
 
   const { data: bridgeDepositTransactions, refetch: refetchBridgeDepositTransactions } =
     useBridgeDepositTransactions(user?.safeAddress ?? '');
@@ -110,13 +132,14 @@ export function useActivity() {
     useBankTransferTransactions();
 
   // 3. Format third-party transactions
-  const { data: transactions } = useQuery({
+  const { data: transactions, dataUpdatedAt: transactionsUpdatedAt } = useQuery({
     queryKey: [
       'formatted-transactions',
       user?.safeAddress,
       userDepositTransactions?.deposits?.length,
       sendTransactions?.fuse?.length,
       sendTransactions?.ethereum?.length,
+      depositTransactions?.length,
       bridgeDepositTransactions?.length,
       bankTransferTransactions?.length,
     ],
@@ -124,9 +147,12 @@ export function useActivity() {
       formatTransactions(
         userDepositTransactions,
         sendTransactions,
+        depositTransactions,
         bridgeDepositTransactions,
         bankTransferTransactions,
       ),
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 
   // Refetch all data sources
@@ -134,11 +160,32 @@ export function useActivity() {
     refetchActivityEvents();
     refetchTransactions();
     refetchSendTransactions();
+    refetchDepositTransactions();
     refetchBridgeDepositTransactions();
     refetchBankTransfers();
-  }, [refetchActivityEvents, refetchTransactions, refetchSendTransactions, refetchBridgeDepositTransactions, refetchBankTransfers]);
+  }, [refetchActivityEvents, refetchTransactions, refetchSendTransactions, refetchDepositTransactions, refetchBridgeDepositTransactions, refetchBankTransfers]);
 
-  // Get user's activities
+  const { mutateAsync: bulkUpsertActivitiesMutation } = useMutation({
+    mutationKey: ['bulk-upsert-activity'],
+    mutationFn: async (payload: ActivityEvent[]) => {
+      const result = await withRefreshToken(() => bulkUpsertActivityEvent(payload));
+      if (!result) throw new Error('Failed to bulk upsert activities');
+      return result;
+    },
+    onSuccess: (serverEvents: ActivityEvent[]) => {
+      if (!user?.userId) return;
+      // Merge server-confirmed events locally
+      bulkUpsertEvent(user.userId, serverEvents);
+    },
+  });
+
+  const bulkUpsertActivities = useCallback(async (payload: ActivityEvent[]) => {
+    const inFlight = queryClient.isMutating({ mutationKey: ['bulk-upsert-activity'] });
+    if (inFlight) return;
+    return bulkUpsertActivitiesMutation(payload);
+  }, [queryClient, bulkUpsertActivitiesMutation]);
+
+  // Get user's activities from local storage
   const activities = useMemo(() => {
     if (!user?.userId || !events[user.userId]) return [];
     return [...events[user.userId]].sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
@@ -152,110 +199,19 @@ export function useActivity() {
     );
   }, [activities]);
 
-  // 4. Sync third-party transactions to backend (create new + update status changes)
+  useEffect(() => {
+    if (!user?.userId || !activityData) return;
+
+    const events = activityData.pages.flatMap(page => page?.docs.map(tx => contructActivity(tx, user.safeAddress))).filter((event): event is ActivityEvent => event !== undefined);
+    if (!events.length) return;
+
+    bulkUpsertEvent(user.userId, events);
+  }, [activityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
+
   useEffect(() => {
     if (!user?.userId || !transactions?.length) return;
-
-    const serverEvents = activityData?.pages.flatMap(page => page?.docs || []) || [];
-
-    transactions.forEach(tx => {
-      if (!tx.hash) return;
-
-      const existingLocal = activities.find(e => getKey(e) === tx.hash);
-      const existingServer = serverEvents.find(e => getKey(e) === tx.hash);
-
-      // Check if transaction exists anywhere
-      if (!existingServer && !existingLocal) {
-        // New transaction - create it
-        withRefreshToken(() =>
-          createActivityEvent({
-            clientTxId: `${tx.type}-${tx.hash}`,
-            title: tx.title || `${tx.type} Transaction`,
-            timestamp: tx.timestamp,
-            type: tx.type,
-            status: tx.status,
-            amount: tx.amount.toString(),
-            symbol: tx.symbol || 'USDC',
-            chainId: tx.chainId,
-            fromAddress: tx.fromAddress || user.safeAddress,
-            toAddress: tx.toAddress,
-            hash: tx.hash,
-            url: tx.url,
-            metadata: {
-              description: tx.title || `External ${tx.type} transaction`,
-              source: 'external-sync',
-            },
-          }),
-        ).catch(error => console.error(`Failed to create transaction ${tx.hash}:`, error));
-      } else if (existingLocal || existingServer) {
-        // Transaction exists - check if status changed to final state
-        const existing = existingLocal || existingServer;
-        if (!existing) {
-          console.warn(`Transaction ${tx.hash} not found`);
-          return;
-        }
-
-        const isPending = existing.status === TransactionStatus.PENDING || existing.status === TransactionStatus.PROCESSING;
-        const isFinal = tx.status === TransactionStatus.SUCCESS || tx.status === TransactionStatus.FAILED;
-
-        if (isPending && isFinal && existing.status !== tx.status) {
-          // Status changed from pending to final - update it
-          withRefreshToken(() =>
-            updateActivityEvent(existing.clientTxId, {
-              status: tx.status,
-              metadata: {
-                ...existing.metadata,
-                updatedAt: new Date().toISOString(),
-                source: 'external-sync',
-              },
-            }),
-          ).catch(error => console.error(`Failed to update transaction ${tx.hash}:`, error));
-        }
-      }
-    });
-  }, [transactions, activityData, activities, user?.userId, user?.safeAddress]);
-
-  // 5. Merge backend + local data (simple deduplication)
-  const allEvents = useMemo(() => {
-    const serverEvents = activityData?.pages.flatMap(page => page?.docs || []) || [];
-    const seen = new Map<string, ActivityEvent>();
-
-    // Server events first (source of truth)
-    serverEvents.forEach(event => {
-      const key = getKey(event);
-      if (key && !seen.has(key)) {
-        seen.set(key, event);
-      }
-    });
-
-    // Local events (for pending/immediate feedback)
-    activities.forEach(event => {
-      const key = getKey(event);
-      if (!key) return;
-
-      const existing = seen.get(key);
-      // Prefer server version if confirmed, otherwise use local
-      if (!existing || (existing.status === TransactionStatus.PENDING && event.status !== TransactionStatus.PENDING)) {
-        seen.set(key, event);
-      }
-    });
-
-    return Array.from(seen.values()).sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-  }, [activityData, activities]);
-
-  // Sync confirmed server events to local store
-  useEffect(() => {
-    if (!user?.userId || !activityData?.pages.length) return;
-
-    const serverEvents = activityData.pages.flatMap(page => page?.docs || []);
-    const confirmedEvents = serverEvents.filter(
-      e => e.status === TransactionStatus.SUCCESS || e.status === TransactionStatus.FAILED
-    );
-
-    if (confirmedEvents.length) {
-      setEvents(user.userId, confirmedEvents);
-    }
-  }, [activityData, user?.userId, setEvents]);
+    bulkUpsertActivities(transactions.map(tx => contructActivity(tx, user.safeAddress)));
+  }, [transactionsUpdatedAt, user?.userId, user?.safeAddress, bulkUpsertActivities]);
 
   // Create new activity
   const createActivity = useCallback(async (params: CreateActivityParams): Promise<string> => {
@@ -300,13 +256,7 @@ export function useActivity() {
   // Update activity
   const updateActivity = useCallback(async (
     clientTxId: string,
-    updates: {
-      status?: TransactionStatus;
-      hash?: string;
-      url?: string;
-      userOpHash?: string;
-      metadata?: Record<string, any>;
-    }
+    updates: UpdateActivityParams
   ) => {
     if (!user?.userId) return;
 
@@ -426,24 +376,16 @@ export function useActivity() {
     }
   }, [createActivity, updateActivity]);
 
-  useEffect(() => {
-    if (pendingActivities.length === 0) return;
-
-    const interval = setInterval(refetchAll, 3000);
-
-    return () => clearInterval(interval);
-  }, [blockNumber, refetchAll]);
-
   return {
     activities,
     pendingActivities,
     pendingCount: pendingActivities.length,
     activityEvents,
-    allEvents,
     getKey,
     createActivity,
     updateActivity,
     trackTransaction,
     refetchAll,
+    bulkUpsertActivities,
   };
 }

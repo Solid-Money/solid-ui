@@ -57,13 +57,13 @@ const Transaction = ({
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const { refetchAll } = useActivity();
 
+  const isPending = status === TransactionStatus.PENDING;
   const isFailed = status === TransactionStatus.FAILED;
   const isCancelled = status === TransactionStatus.CANCELLED;
   const transactionDetails = TRANSACTION_DETAILS[type];
 
   // Check if this is a direct deposit with no amount yet
   const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
-  const isPending = status === TransactionStatus.PENDING;
   const hasNoAmount = !amount || amount === '0' || parseFloat(amount) === 0;
   const isProcessing = status === TransactionStatus.PROCESSING;
 
@@ -143,6 +143,7 @@ const Transaction = ({
 
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
   const isReward = transactionDetails?.category === TransactionCategory.REWARD;
+  const isDeposit = type === TransactionType.DEPOSIT;
 
   const statusTextColor = isFailed
     ? 'text-red-400'
@@ -163,6 +164,13 @@ const Transaction = ({
     tokenSymbol: symbol,
     size: 34,
   });
+
+  const getDescription = () => {
+    if (isDeposit && isPending) {
+      return 'Deposit in progress';
+    }
+    return transactionDetails?.category ?? 'Unknown';
+  };
 
   return (
     <Pressable
@@ -190,12 +198,10 @@ const Transaction = ({
                 contentFit="contain"
               />
             )}
-            <Text
-              className={cn('text-sm text-muted-foreground font-medium', isReward && 'text-brand')}
-              numberOfLines={1}
-            >
-              {transactionDetails?.category ?? 'Unknown'}
-            </Text>
+            <View className="flex-row items-center gap-1">
+              {isPending && <ActivityIndicator color="gray" size={14} />}
+              <Text className="text-sm text-muted-foreground font-medium">{getDescription()}</Text>
+            </View>
           </View>
         </View>
       </View>

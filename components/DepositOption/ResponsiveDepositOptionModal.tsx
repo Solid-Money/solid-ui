@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
@@ -69,10 +69,15 @@ const ResponsiveDepositOptionModal = ({
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
 
-  const handleTransactionStatusPress = () => {
+  const handleTransactionStatusPress = useCallback(() => {
+    const trackingId = useDepositStore.getState().transaction.trackingId;
+    if (trackingId && isTransactionStatus) {
+      router.navigate(`/activity/${trackingId}`, { dangerouslySingular: true });
+    } else {
+      router.push(path.ACTIVITY);
+    }
     setModal(DEPOSIT_MODAL.CLOSE);
-    router.push(path.ACTIVITY);
-  };
+  }, [router, setModal, isTransactionStatus]);
 
   const getTrigger = () => {
     return (

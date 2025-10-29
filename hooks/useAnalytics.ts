@@ -3,13 +3,14 @@ import { QueryClient, useQuery } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
-import { explorerUrls, layerzero, lifi } from '@/constants/explorers';
+import { explorerUrls, layerzero } from '@/constants/explorers';
 import {
   GetUserTransactionsDocument,
   GetUserTransactionsQuery,
 } from '@/graphql/generated/user-info';
 import {
   bridgeDepositTransactions,
+  depositTransactions,
   fetchAPYs,
   fetchCoinHistoricalChart,
   fetchHistoricalAPY,
@@ -21,7 +22,7 @@ import {
   getBankTransfers,
   searchCoin,
 } from '@/lib/api';
-import { ADDRESSES } from '@/lib/config';
+import { ADDRESSES, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import {
   BankTransferActivityItem,
   BankTransferStatus,
@@ -29,6 +30,8 @@ import {
   BlockscoutTransactions,
   BridgeTransaction,
   BridgeTransactionStatus,
+  DepositTransaction,
+  DepositTransactionStatus,
   LayerZeroTransactionStatus,
   Transaction,
   TransactionStatus,
@@ -36,9 +39,21 @@ import {
 } from '@/lib/types';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
-import { hoursToMilliseconds } from 'date-fns';
+import { secondsToMilliseconds } from 'date-fns';
 
 const ANALYTICS = 'analytics';
+
+const safeFormatUnits = (
+  value: string | number | bigint | null | undefined,
+  decimals: number,
+): string => {
+  try {
+    const asBigInt = typeof value === 'bigint' ? value : BigInt(String(value ?? '0'));
+    return formatUnits(asBigInt, decimals);
+  } catch {
+    return '0';
+  }
+};
 
 const mapToTransactionStatus = (
   status: LayerZeroTransactionStatus | BankTransferStatus,
@@ -102,6 +117,25 @@ const filterTransfers = (transfers: BlockscoutTransactions) => {
   });
 };
 
+export const useUserTransactions = (safeAddress: string) => {
+  return useQuery({
+    queryKey: ['user-transactions', safeAddress?.toLowerCase()],
+    queryFn: async () => {
+      if (!safeAddress) return undefined;
+      const { data } = await infoClient.query({
+        query: GetUserTransactionsDocument,
+        variables: {
+          address: safeAddress.toLowerCase(),
+        },
+      });
+      return data;
+    },
+    enabled: !!safeAddress,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
+  });
+};
+
 export const useSendTransactions = (address: string) => {
   return useQuery({
     queryKey: [ANALYTICS, 'sendTransactions', address],
@@ -126,6 +160,8 @@ export const useSendTransactions = (address: string) => {
       };
     },
     enabled: !!address,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -140,7 +176,7 @@ const constructSendTransaction = (
   return {
     title: `Send ${symbol}`,
     timestamp: (new Date(transfer.timestamp).getTime() / 1000).toString(),
-    amount: Number(formatUnits(BigInt(transfer.total.value), Number(transfer.total.decimals))),
+    amount: safeFormatUnits(transfer.total.value, Number(transfer.total.decimals)),
     symbol,
     status: mapToTransactionStatus(rawStatus),
     hash,
@@ -150,13 +186,27 @@ const constructSendTransaction = (
   };
 };
 
+export const useDepositTransactions = (safeAddress: string) => {
+  return useQuery({
+    queryKey: [ANALYTICS, 'depositTransactions', safeAddress],
+    queryFn: async () => {
+      return await depositTransactions(safeAddress);
+    },
+    enabled: !!safeAddress,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
+  });
+};
+
 export const useBridgeDepositTransactions = (safeAddress: string) => {
   return useQuery({
-    queryKey: [ANALYTICS, 'bridgeDepositTransactions'],
+    queryKey: [ANALYTICS, 'bridgeDepositTransactions', safeAddress],
     queryFn: async () => {
       return await bridgeDepositTransactions(safeAddress);
     },
     enabled: !!safeAddress,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -179,33 +229,68 @@ export const useBankTransferTransactions = () => {
       return items;
     },
     enabled: true,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
-const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
-  const isBridgeCompleted = transaction.status === BridgeTransactionStatus.BRIDGE_COMPLETED;
-  const isBridgeFailed = transaction.status === BridgeTransactionStatus.BRIDGE_FAILED;
-  const isDeposit = transaction.status.includes('deposit');
+const constructDepositTransaction = (transaction: DepositTransaction) => {
+  const isCompleted = transaction.status === DepositTransactionStatus.DEPOSIT_COMPLETED;
+  const isFailed = transaction.status === DepositTransactionStatus.FAILED || transaction.status === DepositTransactionStatus.DEPOSIT_FAILED;
+
+  const hash = transaction.depositTxHash;
+  const explorerUrl = explorerUrls[layerzero.id].layerzeroscan;
+  const url = hash ? `${explorerUrl}/tx/${hash}` : undefined;
 
   const rawStatus =
-    isBridgeCompleted || isDeposit
+    isCompleted
       ? LayerZeroTransactionStatus.DELIVERED
-      : isBridgeFailed
+      : isFailed
         ? LayerZeroTransactionStatus.FAILED
         : LayerZeroTransactionStatus.INFLIGHT;
 
   const status = mapToTransactionStatus(rawStatus);
 
   return {
-    title: 'Bridge USDC to Ethereum',
-    shortTitle: 'Bridge USDC',
-    timestamp: (new Date(transaction.createdAt).getTime() / 1000).toString(),
-    amount: Number(formatUnits(BigInt(transaction.toAmount), transaction.decimals)),
-    symbol: 'USDC',
+    title: 'Staked USDC',
+    timestamp: Math.floor(new Date(transaction.createdAt).getTime() / 1000).toString(),
+    amount: safeFormatUnits(transaction.amount, transaction.decimals),
+    symbol: 'soUsd',
     status,
-    hash: transaction.bridgeTxHash,
-    url: `${explorerUrls[lifi.id].lifiscan}/tx/${transaction.bridgeTxHash}`,
-    type: TransactionType.BRIDGE,
+    hash,
+    url,
+    type: TransactionType.DEPOSIT,
+    trackingId: transaction.trackingId,
+  };
+};
+
+const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
+  const isCompleted = transaction.status === BridgeTransactionStatus.DEPOSIT_COMPLETED;
+  const isFailed = transaction.status === BridgeTransactionStatus.FAILED || transaction.status === BridgeTransactionStatus.BRIDGE_FAILED || transaction.status === BridgeTransactionStatus.DEPOSIT_FAILED;
+
+  const hash = transaction.depositTxHash;
+  const explorerUrl = explorerUrls[layerzero.id].layerzeroscan;
+  const url = hash ? `${explorerUrl}/tx/${hash}` : undefined;
+
+  const rawStatus =
+    isCompleted
+      ? LayerZeroTransactionStatus.DELIVERED
+      : isFailed
+        ? LayerZeroTransactionStatus.FAILED
+        : LayerZeroTransactionStatus.INFLIGHT;
+
+  const status = mapToTransactionStatus(rawStatus);
+
+  return {
+    title: 'Staked USDC',
+    timestamp: Math.floor(new Date(transaction.createdAt).getTime() / 1000).toString(),
+    amount: safeFormatUnits(transaction.toAmount, transaction.decimals),
+    symbol: 'soUsd',
+    status,
+    hash,
+    url,
+    type: TransactionType.DEPOSIT,
+    trackingId: transaction.trackingId,
   };
 };
 
@@ -213,15 +298,23 @@ export const formatTransactions = async (
   transactions: GetUserTransactionsQuery | undefined,
   sendTransactions:
     | {
-        fuse: BlockscoutTransaction[];
-        ethereum: BlockscoutTransaction[];
-      }
+      fuse: BlockscoutTransaction[];
+      ethereum: BlockscoutTransaction[];
+    }
     | undefined,
+  depositTransactions: DepositTransaction[] | undefined,
   bridgeDepositTransactions: BridgeTransaction[] | undefined,
   bankTransfers: BankTransferActivityItem[] | undefined,
 ): Promise<Transaction[]> => {
-  const depositTransactionPromises = transactions?.deposits?.map(async internalTransaction => {
+  const unsponsorDepositTransactionPromises = transactions?.deposits?.map(async internalTransaction => {
     const hash = internalTransaction.transactionHash;
+    const amount = safeFormatUnits(internalTransaction.depositAmount, 6);
+
+    const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
+    if (isSponsor) {
+      return;
+    }
+
     try {
       const lzTransactions = await fetchLayerZeroBridgeTransactions(hash);
 
@@ -232,7 +325,7 @@ export const formatTransactions = async (
       return {
         title: 'Staked USDC',
         timestamp: internalTransaction.depositTimestamp,
-        amount: Number(formatUnits(BigInt(internalTransaction.depositAmount), 6)),
+        amount,
         symbol: 'soUsd',
         status,
         hash,
@@ -244,7 +337,7 @@ export const formatTransactions = async (
       return {
         title: 'Staked USDC',
         timestamp: internalTransaction.depositTimestamp,
-        amount: Number(formatUnits(BigInt(internalTransaction.depositAmount), 6)),
+        amount,
         symbol: 'soUsd',
         status: mapToTransactionStatus(
           error.response.status === 404
@@ -270,7 +363,7 @@ export const formatTransactions = async (
       return {
         title: 'Unstake soUSD',
         timestamp: internalTransaction.blockTimestamp,
-        amount: Number(formatUnits(BigInt(internalTransaction.shareAmount), 6)),
+        amount: safeFormatUnits(internalTransaction.shareAmount, 6),
         symbol: 'soUSD',
         status,
         hash,
@@ -282,7 +375,7 @@ export const formatTransactions = async (
       return {
         title: 'Unstake soUSD',
         timestamp: internalTransaction.blockTimestamp,
-        amount: Number(formatUnits(BigInt(internalTransaction.shareAmount), 6)),
+        amount: safeFormatUnits(internalTransaction.shareAmount, 6),
         symbol: 'soUSD',
         status: mapToTransactionStatus(
           error.response.status === 404
@@ -305,7 +398,7 @@ export const formatTransactions = async (
     return {
       title: 'Withdraw soUSD',
       timestamp: internalTransaction.creationTime,
-      amount: Number(formatUnits(BigInt(internalTransaction.amountOfAssets), 6)),
+      amount: safeFormatUnits(internalTransaction.amountOfAssets, 6),
       symbol: 'soUSD',
       status: mapToTransactionStatus(
         internalTransaction.requestStatus === 'SOLVED'
@@ -350,6 +443,10 @@ export const formatTransactions = async (
     }) || []),
   ];
 
+  const depositTransactionPromises = depositTransactions?.map(async transaction => {
+    return constructDepositTransaction(transaction);
+  });
+
   const bridgeDepositTransactionPromises = bridgeDepositTransactions?.map(async transaction => {
     return constructBridgeDepositTransaction(transaction);
   });
@@ -369,17 +466,27 @@ export const formatTransactions = async (
       };
     }) || [];
 
-  const formattedTransactions = await Promise.all([
-    ...(depositTransactionPromises || []),
+  const allPromises: Promise<Transaction | undefined>[] = [
+    ...(unsponsorDepositTransactionPromises || []),
     ...(bridgeTransactionPromises || []),
     ...(withdrawTransactionPromises || []),
     ...(sendTransactionPromises || []),
     ...(bridgeDepositTransactionPromises || []),
+    ...(depositTransactionPromises || []),
     ...bankTransferTransactionPromises,
-  ]);
+  ] as unknown as Promise<Transaction | undefined>[];
+
+  const results = await Promise.allSettled(allPromises);
+
+  const formattedTransactions: Transaction[] = results.reduce((acc: Transaction[], r) => {
+    if (r.status === 'fulfilled' && r.value) {
+      acc.push(r.value);
+    }
+    return acc;
+  }, []);
 
   // Sort by timestamp (newest first)
-  return formattedTransactions.sort((a, b) => b.timestamp - a.timestamp);
+  return formattedTransactions.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
 };
 
 export const isDepositedQueryOptions = (safeAddress: string) => {
@@ -433,7 +540,6 @@ export const useSearchCoinHistoricalChart = (query: string, days: string = '1') 
       return fetchCoinHistoricalChart(coin.id, days)
     },
     enabled: !!query,
-    staleTime: hoursToMilliseconds(1),
   });
 };
 
@@ -443,6 +549,5 @@ export const useHistoricalAPY = (days: string = '30') => {
     queryFn: async () => {
       return fetchHistoricalAPY(days);
     },
-    staleTime: hoursToMilliseconds(1),
   });
 };
