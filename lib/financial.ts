@@ -4,9 +4,9 @@ import { formatUnits, zeroAddress } from 'viem';
 import { infoClient } from '@/graphql/clients/index';
 import { GetExchangeRateUpdatesDocument } from '@/graphql/generated/user-info';
 import { fetchExchangeRate } from '@/hooks/usePreviewDeposit';
+import { useBalanceStore } from '@/store/useBalanceStore';
 import { ADDRESSES } from './config';
 import { SavingMode } from './types';
-import { useBalanceStore } from '@/store/useBalanceStore';
 
 export const SECONDS_PER_YEAR = 31_557_600;
 
@@ -214,7 +214,10 @@ export const calculateActualDepositedAmount = async (
   // Fetch Fuse transfers and collect their timestamps
   const fuseTransfers = await fetchSoUSDTransfers(safeAddress);
   const filteredFuseTransfers = fuseTransfers.filter(
-    transfer => transfer.from !== zeroAddress && transfer.to !== zeroAddress && transfer.to !== ADDRESSES.fuse.bridgePaymasterAddress,
+    transfer =>
+      transfer.from !== zeroAddress &&
+      transfer.to !== zeroAddress &&
+      transfer.to !== ADDRESSES.fuse.bridgePaymasterAddress,
   );
 
   // Collect Fuse transfer timestamps

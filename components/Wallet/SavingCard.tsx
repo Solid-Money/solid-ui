@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
+import { useAPYs, useLatestTokenTransfer, useMaxAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -32,7 +32,8 @@ const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
   const router = useRouter();
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
+  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
+  const { data: apys } = useAPYs();
   const [isHovered, setIsHovered] = useState(false);
 
   const { data: blockNumber } = useBlockNumber({
@@ -111,11 +112,11 @@ const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
           </View>
 
           <View className="flex-row items-center gap-2 pr-[5px]">
-            {isAPYsLoading ? (
+            {isMaxAPYsLoading ? (
               <Skeleton className="w-24 h-6 rounded-xl bg-purple/50" />
             ) : (
               <Text className="text-base text-brand font-semibold">
-                Earning {apys?.thirtyDay ? `${formatNumber(apys.thirtyDay, 2)}%` : '0%'} yield
+                Earning {maxAPY ? `${formatNumber(maxAPY, 2)}%` : '0%'} yield
               </Text>
             )}
             <Ping />
@@ -125,7 +126,7 @@ const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
         <View className="relative flex-row justify-between items-center">
           <View className="flex-row items-center gap-2">
             <View className="flex-row items-center">
-              {isBalanceLoading || isAPYsLoading || firstDepositTimestamp === undefined ? (
+              {isBalanceLoading || isMaxAPYsLoading || firstDepositTimestamp === undefined ? (
                 <Skeleton className="w-36 h-11 rounded-xl bg-purple/50" />
               ) : (
                 <SavingCountUp

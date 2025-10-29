@@ -42,6 +42,11 @@ import { withRefreshToken } from '@/lib/utils';
 import { secondsToMilliseconds } from 'date-fns';
 
 const ANALYTICS = 'analytics';
+const ApyToDays = {
+  sevenDay: 7,
+  fifteenDay: 15,
+  thirtyDay: 30,
+};
 
 const safeFormatUnits = (
   value: string | number | bigint | null | undefined,
@@ -236,18 +241,19 @@ export const useBankTransferTransactions = () => {
 
 const constructDepositTransaction = (transaction: DepositTransaction) => {
   const isCompleted = transaction.status === DepositTransactionStatus.DEPOSIT_COMPLETED;
-  const isFailed = transaction.status === DepositTransactionStatus.FAILED || transaction.status === DepositTransactionStatus.DEPOSIT_FAILED;
+  const isFailed =
+    transaction.status === DepositTransactionStatus.FAILED ||
+    transaction.status === DepositTransactionStatus.DEPOSIT_FAILED;
 
   const hash = transaction.depositTxHash;
   const explorerUrl = explorerUrls[layerzero.id].layerzeroscan;
   const url = hash ? `${explorerUrl}/tx/${hash}` : undefined;
 
-  const rawStatus =
-    isCompleted
-      ? LayerZeroTransactionStatus.DELIVERED
-      : isFailed
-        ? LayerZeroTransactionStatus.FAILED
-        : LayerZeroTransactionStatus.INFLIGHT;
+  const rawStatus = isCompleted
+    ? LayerZeroTransactionStatus.DELIVERED
+    : isFailed
+      ? LayerZeroTransactionStatus.FAILED
+      : LayerZeroTransactionStatus.INFLIGHT;
 
   const status = mapToTransactionStatus(rawStatus);
 
@@ -266,18 +272,20 @@ const constructDepositTransaction = (transaction: DepositTransaction) => {
 
 const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
   const isCompleted = transaction.status === BridgeTransactionStatus.DEPOSIT_COMPLETED;
-  const isFailed = transaction.status === BridgeTransactionStatus.FAILED || transaction.status === BridgeTransactionStatus.BRIDGE_FAILED || transaction.status === BridgeTransactionStatus.DEPOSIT_FAILED;
+  const isFailed =
+    transaction.status === BridgeTransactionStatus.FAILED ||
+    transaction.status === BridgeTransactionStatus.BRIDGE_FAILED ||
+    transaction.status === BridgeTransactionStatus.DEPOSIT_FAILED;
 
   const hash = transaction.depositTxHash;
   const explorerUrl = explorerUrls[layerzero.id].layerzeroscan;
   const url = hash ? `${explorerUrl}/tx/${hash}` : undefined;
 
-  const rawStatus =
-    isCompleted
-      ? LayerZeroTransactionStatus.DELIVERED
-      : isFailed
-        ? LayerZeroTransactionStatus.FAILED
-        : LayerZeroTransactionStatus.INFLIGHT;
+  const rawStatus = isCompleted
+    ? LayerZeroTransactionStatus.DELIVERED
+    : isFailed
+      ? LayerZeroTransactionStatus.FAILED
+      : LayerZeroTransactionStatus.INFLIGHT;
 
   const status = mapToTransactionStatus(rawStatus);
 
@@ -298,58 +306,60 @@ export const formatTransactions = async (
   transactions: GetUserTransactionsQuery | undefined,
   sendTransactions:
     | {
-      fuse: BlockscoutTransaction[];
-      ethereum: BlockscoutTransaction[];
-    }
+        fuse: BlockscoutTransaction[];
+        ethereum: BlockscoutTransaction[];
+      }
     | undefined,
   depositTransactions: DepositTransaction[] | undefined,
   bridgeDepositTransactions: BridgeTransaction[] | undefined,
   bankTransfers: BankTransferActivityItem[] | undefined,
 ): Promise<Transaction[]> => {
-  const unsponsorDepositTransactionPromises = transactions?.deposits?.map(async internalTransaction => {
-    const hash = internalTransaction.transactionHash;
-    const amount = safeFormatUnits(internalTransaction.depositAmount, 6);
+  const unsponsorDepositTransactionPromises = transactions?.deposits?.map(
+    async internalTransaction => {
+      const hash = internalTransaction.transactionHash;
+      const amount = safeFormatUnits(internalTransaction.depositAmount, 6);
 
-    const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
-    if (isSponsor) {
-      return;
-    }
+      const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
+      if (isSponsor) {
+        return;
+      }
 
-    try {
-      const lzTransactions = await fetchLayerZeroBridgeTransactions(hash);
+      try {
+        const lzTransactions = await fetchLayerZeroBridgeTransactions(hash);
 
-      const rawStatus =
-        lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
-      const status = mapToTransactionStatus(rawStatus);
+        const rawStatus =
+          lzTransactions?.data?.[0]?.status?.name || LayerZeroTransactionStatus.INFLIGHT;
+        const status = mapToTransactionStatus(rawStatus);
 
-      return {
-        title: 'Staked USDC',
-        timestamp: internalTransaction.depositTimestamp,
-        amount,
-        symbol: 'soUsd',
-        status,
-        hash,
-        url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
-        type: TransactionType.DEPOSIT,
-      };
-    } catch (error: any) {
-      console.error('Failed to fetch LZ transaction:', error);
-      return {
-        title: 'Staked USDC',
-        timestamp: internalTransaction.depositTimestamp,
-        amount,
-        symbol: 'soUsd',
-        status: mapToTransactionStatus(
-          error.response.status === 404
-            ? LayerZeroTransactionStatus.INFLIGHT
-            : LayerZeroTransactionStatus.FAILED,
-        ),
-        hash,
-        url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
-        type: TransactionType.DEPOSIT,
-      };
-    }
-  });
+        return {
+          title: 'Staked USDC',
+          timestamp: internalTransaction.depositTimestamp,
+          amount,
+          symbol: 'soUsd',
+          status,
+          hash,
+          url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
+          type: TransactionType.DEPOSIT,
+        };
+      } catch (error: any) {
+        console.error('Failed to fetch LZ transaction:', error);
+        return {
+          title: 'Staked USDC',
+          timestamp: internalTransaction.depositTimestamp,
+          amount,
+          symbol: 'soUsd',
+          status: mapToTransactionStatus(
+            error.response.status === 404
+              ? LayerZeroTransactionStatus.INFLIGHT
+              : LayerZeroTransactionStatus.FAILED,
+          ),
+          hash,
+          url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
+          type: TransactionType.DEPOSIT,
+        };
+      }
+    },
+  );
 
   const bridgeTransactionPromises = transactions?.bridges?.map(async internalTransaction => {
     const hash = internalTransaction.transactionHash;
@@ -531,13 +541,28 @@ export const useAPYs = () => {
   });
 };
 
+export const useMaxAPY = () => {
+  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
+  const maxAPY = Object.keys(ApyToDays).reduce((maxAPY, day) => {
+    return Math.max(maxAPY, apys?.[day as keyof typeof ApyToDays] ?? 0);
+  }, 0);
+  const maxAPYDays = Object.keys(ApyToDays).find(
+    day => apys?.[day as keyof typeof ApyToDays] === maxAPY,
+  );
+  return {
+    maxAPY,
+    maxAPYDays: ApyToDays[maxAPYDays as keyof typeof ApyToDays],
+    isAPYsLoading,
+  };
+};
+
 export const useSearchCoinHistoricalChart = (query: string, days: string = '1') => {
   return useQuery({
     queryKey: [ANALYTICS, 'coinHistoricalChart', query, days],
     queryFn: async () => {
       const searchedCoin = await searchCoin(query);
       const coin = searchedCoin.coins[0];
-      return fetchCoinHistoricalChart(coin.id, days)
+      return fetchCoinHistoricalChart(coin.id, days);
     },
     enabled: !!query,
   });
