@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
+import { useAPYs, useLatestTokenTransfer, useMaxAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -36,6 +36,7 @@ export default function Savings() {
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
   } = useVaultBalance(user?.safeAddress as Address);
+  const { maxAPY, maxAPYDays, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
   const { data: apys, isLoading: isAPYsLoading } = useAPYs();
 
   const { data: blockNumber } = useBlockNumber({
@@ -174,14 +175,14 @@ export default function Savings() {
             <View className="p-6 md:p-7">
               <View className="flex-row items-center gap-1">
                 <Text className="md:text-lg text-primary/50">Current Yield</Text>
-                <TooltipPopover text="Last 30 days yield of the vault" />
+                <TooltipPopover text={`Last ${maxAPYDays} days yield of the vault`} />
               </View>
               <View className="flex-row items-center gap-2">
                 <Text className="text-2xl text-brand font-semibold">
-                  {isAPYsLoading ? (
+                  {isMaxAPYsLoading ? (
                     <Skeleton className="w-20 h-8 rounded-md bg-purple/50" />
-                  ) : apys ? (
-                    `${formatNumber(apys.thirtyDay, 2)}%`
+                  ) : maxAPY ? (
+                    `${formatNumber(maxAPY, 2)}%`
                   ) : (
                     '0%'
                   )}

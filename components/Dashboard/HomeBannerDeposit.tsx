@@ -4,12 +4,11 @@ import { Platform, View } from 'react-native';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { useAPYs } from '@/hooks/useAnalytics';
+import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import { cn } from '@/lib/utils';
 
 const HomeBannerDeposit = () => {
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
-
+  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
   return (
     <LinearGradient
       colors={['rgba(41, 20, 58, 1)', 'rgba(28, 14, 41, 1)']}
@@ -34,7 +33,7 @@ const HomeBannerDeposit = () => {
         />
         <Text className="font-semibold max-w-52 leading-tight font-medium">
           Deposit your stablecoins and earn{' '}
-          {isAPYsLoading ? (
+          {isMaxAPYsLoading ? (
             <Skeleton className="w-14 h-4 bg-purple/50" />
           ) : (
             <Text
@@ -42,7 +41,7 @@ const HomeBannerDeposit = () => {
                 underline: Platform.OS === 'web',
               })}
             >
-              {apys?.thirtyDay?.toFixed(2)}%
+              {maxAPY?.toFixed(2)}%
             </Text>
           )}{' '}
           per year

@@ -5,12 +5,12 @@ import { ChevronRight } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAPYs, useTVL } from '@/hooks/useAnalytics';
+import { useAPYs, useMaxAPY, useTVL } from '@/hooks/useAnalytics';
 import { compactNumberFormat, formatNumber } from '@/lib/utils';
 import { path } from '@/constants/path';
 
 const PoolStat = () => {
-  const { data: apys } = useAPYs();
+  const { maxAPY, isAPYsLoading: isMaxAPYsLoading, maxAPYDays } = useMaxAPY();
   const { data: tvl } = useTVL();
 
   return (
@@ -47,10 +47,12 @@ const PoolStat = () => {
           <View>
             <View className="flex-row items-center gap-1">
               <Text className="text-lg text-muted-foreground font-medium">Pool APY</Text>
-              <TooltipPopover text="Annual Percentage Yield (APY): the projected yearly return on your funds based on the vault's performance over the last 30 days." />
+              <TooltipPopover
+                text={`Annual Percentage Yield (APY): the projected yearly return on your funds based on the vault's performance over the last ${maxAPYDays} days.`}
+              />
             </View>
             <Text className="text-2xl text-brand font-semibold">
-              {apys ? `${formatNumber(apys.thirtyDay, 2)}%` : <Skeleton className="w-20 h-8" />}
+              {maxAPY ? `${formatNumber(maxAPY, 2)}%` : <Skeleton className="w-20 h-8" />}
             </Text>
           </View>
         </View>

@@ -1,4 +1,4 @@
-import { base64urlToUint8Array } from '@/lib/utils';
+import { base64urlToUint8Array, withRefreshToken } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { TurnkeyClient } from '@turnkey/http';
 import { PasskeyStamper } from '@turnkey/sdk-react-native';
@@ -17,7 +17,6 @@ import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
-import { withRefreshToken } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 
 const emailSchema = z.object({
@@ -137,15 +136,15 @@ export const useEmailManagement = (
 
       const allowCredentials = user?.credentialId
         ? [
-          {
-            id: base64urlToUint8Array(user.credentialId) as BufferSource,
-            type: 'public-key' as const,
-          },
-        ]
+            {
+              id: base64urlToUint8Array(user.credentialId) as BufferSource,
+              type: 'public-key' as const,
+            },
+          ]
         : undefined;
 
       const passkeyClient = turnkey.passkeyClient(
-        allowCredentials ? { allowCredentials } : undefined
+        allowCredentials ? { allowCredentials } : undefined,
       );
       const indexedDbClient = await turnkey.indexedDbClient();
       await indexedDbClient?.init();
@@ -161,12 +160,12 @@ export const useEmailManagement = (
         rpId: getRuntimeRpId(),
         allowCredentials: user?.credentialId
           ? [
-            {
-              id: user.credentialId,
-              type: 'public-key' as const,
-            },
-          ]
-          : undefined
+              {
+                id: user.credentialId,
+                type: 'public-key' as const,
+              },
+            ]
+          : undefined,
       });
 
       const turnkeyClient = new TurnkeyClient(

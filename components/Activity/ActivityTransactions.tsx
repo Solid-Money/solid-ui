@@ -38,7 +38,8 @@ export default function ActivityTransactions({
   tab = ActivityTab.WALLET,
   symbol,
 }: ActivityTransactionsProps) {
-  const { setModal, setBankTransferData, setDirectDepositSession, currentModal } = useDepositStore();
+  const { setModal, setBankTransferData, setDirectDepositSession, currentModal } =
+    useDepositStore();
   const { activityEvents, activities, getKey, refetchAll } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
