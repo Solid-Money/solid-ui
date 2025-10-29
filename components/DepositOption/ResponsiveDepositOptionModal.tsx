@@ -20,6 +20,7 @@ import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
 import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
+import DepositExternalWalletOptions from './DepositExternalWalletOptions';
 import DepositOptions from './DepositOptions';
 import DepositPublicAddress from './DepositPublicAddress';
 
@@ -43,6 +44,8 @@ const ResponsiveDepositOptionModal = ({
   const isFormAndAddress = Boolean(isForm && address);
   const isBuyCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
   const isBuyCryptoOptions = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS.name;
+  const isExternalWalletOptions =
+    currentModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name;
   const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
   const isTransactionStatus = currentModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isNetworks = currentModal.name === DEPOSIT_MODAL.OPEN_NETWORKS.name;
@@ -109,6 +112,10 @@ const ResponsiveDepositOptionModal = ({
       return <DepositBuyCryptoOptions />;
     }
 
+    if (isExternalWalletOptions) {
+      return <DepositExternalWalletOptions />;
+    }
+
     if (isPublicAddress) {
       return <DepositPublicAddress />;
     }
@@ -134,6 +141,7 @@ const ResponsiveDepositOptionModal = ({
     if (isFormAndAddress) return 'deposit-form';
     if (isBuyCrypto) return 'buy-crypto';
     if (isBuyCryptoOptions) return 'buy-crypto-options';
+    if (isExternalWalletOptions) return 'external-wallet-options';
     if (isPublicAddress) return 'public-address';
     if (isNetworks) return 'networks';
     if (isBankTransferKycInfo) return 'bank-transfer-kyc-info';
@@ -151,6 +159,9 @@ const ResponsiveDepositOptionModal = ({
     if (isBankTransferAmount) return 'Amount to buy';
     if (isBankTransferPayment) return 'Choose payment method';
     if (isBankTransferPreview) return 'Transfer Details';
+    if (isExternalWalletOptions) return 'Deposit from external wallet';
+    if (isBuyCryptoOptions) return 'Buy crypto';
+    if (isPublicAddress) return 'Solid address';
     return 'Deposit';
   };
 
@@ -221,6 +232,8 @@ const ResponsiveDepositOptionModal = ({
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
     } else if (isBankTransferPreview) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
+    } else if (isExternalWalletOptions) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isBuyCryptoOptions) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isPublicAddress) {
@@ -231,10 +244,23 @@ const ResponsiveDepositOptionModal = ({
   };
 
   useEffect(() => {
-    if (status === 'disconnected' && !isClose) {
+    // eslint-disable-next-line no-console
+    console.log('[ResponsiveDepositOptionModal] Wallet status effect:', {
+      status,
+      isClose,
+      isExternalWalletOptions,
+      isBuyCryptoOptions,
+      currentModal: currentModal.name,
+    });
+
+    if (status === 'disconnected' && !isClose && !isExternalWalletOptions && !isBuyCryptoOptions) {
+      // eslint-disable-next-line no-console
+      console.log(
+        '[ResponsiveDepositOptionModal] Resetting modal to OPEN_OPTIONS due to disconnected wallet',
+      );
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
-  }, [status, setModal, isClose]);
+  }, [status, setModal, isClose, isExternalWalletOptions, isBuyCryptoOptions, currentModal.name]);
 
   return (
     <ResponsiveModal
@@ -250,6 +276,7 @@ const ResponsiveDepositOptionModal = ({
         isFormAndAddress ||
         isBuyCrypto ||
         isBuyCryptoOptions ||
+        isExternalWalletOptions ||
         isPublicAddress ||
         isNetworks ||
         isBankTransferAmount ||
