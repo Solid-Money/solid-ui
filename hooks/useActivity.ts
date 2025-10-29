@@ -1,14 +1,14 @@
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
 import { Hash } from 'viem';
 
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import {
   formatTransactions,
   useBankTransferTransactions,
   useBridgeDepositTransactions,
   useDepositTransactions,
   useSendTransactions,
+  useUserTransactions,
 } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
 import { bulkUpsertActivityEvent, createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
@@ -93,6 +93,7 @@ export type TrackTransaction = <TransactionResult>(params: CreateActivityParams,
 export function useActivity() {
   const { user } = useUser();
   const { events, bulkUpsertEvent, upsertEvent } = useActivityStore();
+  const queryClient = useQueryClient();
 
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
@@ -116,12 +117,7 @@ export function useActivity() {
   const { data: activityData, refetch: refetchActivityEvents } = activityEvents;
 
   // 2. Fetch from third-party services
-  const { data: userDepositTransactions, refetch: refetchTransactions } =
-    useGetUserTransactionsQuery({
-      variables: {
-        address: user?.safeAddress?.toLowerCase() ?? '',
-      },
-    });
+  const { data: userDepositTransactions, refetch: refetchTransactions } = useUserTransactions(user?.safeAddress ?? '');
 
   const { data: sendTransactions, refetch: refetchSendTransactions } = useSendTransactions(
     user?.safeAddress ?? '',
@@ -136,7 +132,7 @@ export function useActivity() {
     useBankTransferTransactions();
 
   // 3. Format third-party transactions
-  const { data: transactions } = useQuery({
+  const { data: transactions, dataUpdatedAt: transactionsUpdatedAt } = useQuery({
     queryKey: [
       'formatted-transactions',
       user?.safeAddress,
@@ -155,6 +151,8 @@ export function useActivity() {
         bridgeDepositTransactions,
         bankTransferTransactions,
       ),
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 
   // Refetch all data sources
@@ -167,7 +165,7 @@ export function useActivity() {
     refetchBankTransfers();
   }, [refetchActivityEvents, refetchTransactions, refetchSendTransactions, refetchDepositTransactions, refetchBridgeDepositTransactions, refetchBankTransfers]);
 
-  const { mutateAsync: bulkUpsertActivities } = useMutation({
+  const { mutateAsync: bulkUpsertActivitiesMutation } = useMutation({
     mutationKey: ['bulk-upsert-activity'],
     mutationFn: async (payload: ActivityEvent[]) => {
       const result = await withRefreshToken(() => bulkUpsertActivityEvent(payload));
@@ -180,6 +178,12 @@ export function useActivity() {
       bulkUpsertEvent(user.userId, serverEvents);
     },
   });
+
+  const bulkUpsertActivities = useCallback(async (payload: ActivityEvent[]) => {
+    const inFlight = queryClient.isMutating({ mutationKey: ['bulk-upsert-activity'] });
+    if (inFlight) return;
+    return bulkUpsertActivitiesMutation(payload);
+  }, [queryClient, bulkUpsertActivitiesMutation]);
 
   // Get user's activities from local storage
   const activities = useMemo(() => {
@@ -206,9 +210,8 @@ export function useActivity() {
 
   useEffect(() => {
     if (!user?.userId || !transactions?.length) return;
-
     bulkUpsertActivities(transactions.map(tx => contructActivity(tx, user.safeAddress)));
-  }, [transactions, user?.userId, user?.safeAddress, bulkUpsertActivities]);
+  }, [transactionsUpdatedAt, user?.userId, user?.safeAddress, bulkUpsertActivities]);
 
   // Create new activity
   const createActivity = useCallback(async (params: CreateActivityParams): Promise<string> => {
@@ -372,12 +375,6 @@ export function useActivity() {
       throw error; // Re-throw to maintain existing error handling
     }
   }, [createActivity, updateActivity]);
-
-  useEffect(() => {
-    const interval = setInterval(refetchAll, secondsToMilliseconds(5));
-
-    return () => clearInterval(interval);
-  }, [refetchAll]);
 
   return {
     activities,

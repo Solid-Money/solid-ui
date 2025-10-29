@@ -1,7 +1,7 @@
 import Diamond from '@/assets/images/diamond';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
-import { format, minutesToSeconds } from 'date-fns';
+import { format, minutesToSeconds, secondsToMilliseconds } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
@@ -215,6 +215,8 @@ export default function ActivityDetail() {
     queryKey: ['activity-event', clientTxId],
     queryFn: () => withRefreshToken(() => fetchActivityEvent(clientTxId!)),
     enabled: !!clientTxId && !isCardTransaction,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 
   const isDeposit = activity?.type === TransactionType.DEPOSIT;

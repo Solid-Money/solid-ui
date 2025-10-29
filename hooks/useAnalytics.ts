@@ -39,7 +39,7 @@ import {
 } from '@/lib/types';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
-import { hoursToMilliseconds } from 'date-fns';
+import { secondsToMilliseconds } from 'date-fns';
 
 const ANALYTICS = 'analytics';
 
@@ -117,6 +117,25 @@ const filterTransfers = (transfers: BlockscoutTransactions) => {
   });
 };
 
+export const useUserTransactions = (safeAddress: string) => {
+  return useQuery({
+    queryKey: ['user-transactions', safeAddress?.toLowerCase()],
+    queryFn: async () => {
+      if (!safeAddress) return undefined;
+      const { data } = await infoClient.query({
+        query: GetUserTransactionsDocument,
+        variables: {
+          address: safeAddress.toLowerCase(),
+        },
+      });
+      return data;
+    },
+    enabled: !!safeAddress,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
+  });
+};
+
 export const useSendTransactions = (address: string) => {
   return useQuery({
     queryKey: [ANALYTICS, 'sendTransactions', address],
@@ -141,6 +160,8 @@ export const useSendTransactions = (address: string) => {
       };
     },
     enabled: !!address,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -172,6 +193,8 @@ export const useDepositTransactions = (safeAddress: string) => {
       return await depositTransactions(safeAddress);
     },
     enabled: !!safeAddress,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -182,6 +205,8 @@ export const useBridgeDepositTransactions = (safeAddress: string) => {
       return await bridgeDepositTransactions(safeAddress);
     },
     enabled: !!safeAddress,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -204,6 +229,8 @@ export const useBankTransferTransactions = () => {
       return items;
     },
     enabled: true,
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -240,7 +267,7 @@ const constructDepositTransaction = (transaction: DepositTransaction) => {
 const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
   const isCompleted = transaction.status === BridgeTransactionStatus.DEPOSIT_COMPLETED;
   const isFailed = transaction.status === BridgeTransactionStatus.FAILED || transaction.status === BridgeTransactionStatus.BRIDGE_FAILED || transaction.status === BridgeTransactionStatus.DEPOSIT_FAILED;
-  
+
   const hash = transaction.depositTxHash;
   const explorerUrl = explorerUrls[layerzero.id].layerzeroscan;
   const url = hash ? `${explorerUrl}/tx/${hash}` : undefined;
@@ -513,7 +540,6 @@ export const useSearchCoinHistoricalChart = (query: string, days: string = '1') 
       return fetchCoinHistoricalChart(coin.id, days)
     },
     enabled: !!query,
-    staleTime: hoursToMilliseconds(1),
   });
 };
 
@@ -523,6 +549,5 @@ export const useHistoricalAPY = (days: string = '30') => {
     queryFn: async () => {
       return fetchHistoricalAPY(days);
     },
-    staleTime: hoursToMilliseconds(1),
   });
 };
