@@ -237,6 +237,24 @@ export default function ActivityTransactions({
         }
         showsVerticalScrollIndicator={false}
       />
+      {/* Direct deposit address modal when opened from Activity */}
+      <ResponsiveModal
+        currentModal={DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS}
+        previousModal={DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS}
+        isOpen={isDirectDepositModalOpen}
+        onOpenChange={open => {
+          setIsDirectDepositModalOpen(open);
+          if (!open) setModal(DEPOSIT_MODAL.CLOSE);
+        }}
+        trigger={<View className="hidden" />}
+        title={undefined}
+        contentClassName="w-[450px] max-h-[95vh]"
+        containerClassName=""
+        showBackButton={false}
+        contentKey="deposit-directly-address-activity"
+      >
+        {Platform.OS === 'web' ? <DepositDirectlyAddressWeb /> : <DepositDirectlyAddressNative />}
+      </ResponsiveModal>
     </View>
   );
 }
