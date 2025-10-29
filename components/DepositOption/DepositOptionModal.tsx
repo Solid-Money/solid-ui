@@ -84,8 +84,16 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     } else {
       router.push(path.ACTIVITY);
     }
-    setModal(DEPOSIT_MODAL.CLOSE);
-  }, [router, setModal, isTransactionStatus]);
+  // eslint-disable-next-line no-console
+  console.log('[DepositOptionModal] Component render:', {
+    currentModal: currentModal.name,
+    previousModal: previousModal.name,
+    isExternalWalletOptions,
+    isBuyCryptoOptions,
+    isPublicAddress,
+    isClose,
+    walletStatus: status,
+  });
 
   const getTrigger = () => {
     return (
@@ -104,6 +112,14 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   };
 
   const getContent = () => {
+    // eslint-disable-next-line no-console
+    console.log('[DepositOptionModal] getContent called:', {
+      currentModal: currentModal.name,
+      isExternalWalletOptions,
+      isBuyCryptoOptions,
+      isPublicAddress,
+    });
+
     if (isTransactionStatus) {
       return (
         <TransactionStatus
@@ -139,6 +155,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     }
 
     if (isExternalWalletOptions) {
+      // eslint-disable-next-line no-console
+      console.log('[DepositOptionModal] Rendering DepositExternalWalletOptions');
       return <DepositExternalWalletOptions />;
     }
 
@@ -158,6 +176,8 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       return <DepositDirectlyAddress />;
     }
 
+    // eslint-disable-next-line no-console
+    console.log('[DepositOptionModal] Returning default DepositOptions');
     return <DepositOptions />;
   };
 
@@ -371,7 +391,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
         isBuyCryptoOptions ||
         isPublicAddress ||
         isDepositDirectly ||
-        isDepositDirectlyAddress
+        (isDepositDirectlyAddress && !directDepositSession.fromActivity)
       }
       onBackPress={handleBackPress}
       actionButton={getActionButton()}
