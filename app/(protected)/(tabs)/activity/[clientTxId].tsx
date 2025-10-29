@@ -1,7 +1,7 @@
 import Diamond from '@/assets/images/diamond';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
-import { format, minutesToSeconds, secondsToMilliseconds } from 'date-fns';
+import { format, minutesToSeconds } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
@@ -18,7 +18,7 @@ import { path } from '@/constants/path';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
-import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
+import { getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
   CardTransaction,
@@ -197,8 +197,8 @@ export default function ActivityDetail() {
   const { clientTxId } = useLocalSearchParams<{ clientTxId: string }>();
   const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
   const [currentTime, setCurrentTime] = useState(minutesToSeconds(5));
-  // Refetch activity
-  useActivity();
+  const { activities } = useActivity();
+  const activity = activities.find(activity => activity.clientTxId === clientTxId);
 
   // Check if this is a card transaction
   const isCardTransaction = clientTxId?.startsWith('card-');
@@ -209,14 +209,6 @@ export default function ActivityDetail() {
     queryKey: ['card-transaction', cardTxId],
     queryFn: () => withRefreshToken(() => getCardTransaction(cardTxId!)),
     enabled: !!cardTxId && isCardTransaction,
-  });
-
-  const { data: activity, isLoading } = useQuery({
-    queryKey: ['activity-event', clientTxId],
-    queryFn: () => withRefreshToken(() => fetchActivityEvent(clientTxId!)),
-    enabled: !!clientTxId && !isCardTransaction,
-    staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 
   const isDeposit = activity?.type === TransactionType.DEPOSIT;
@@ -236,7 +228,7 @@ export default function ActivityDetail() {
     setCurrentTime(remainingTime);
   }, [activity, isDeposit, isEthereum, createdAt]);
 
-  const isAnyLoading = isLoading || isCardTransactionLoading;
+  const isAnyLoading = isCardTransactionLoading;
 
   // Show card transaction detail if it's a card transaction
   if (isCardTransaction && cardTransaction && !isAnyLoading) {
