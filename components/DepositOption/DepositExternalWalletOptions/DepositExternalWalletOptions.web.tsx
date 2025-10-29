@@ -11,12 +11,18 @@ import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
 
 const DepositExternalWalletOptions = () => {
+  // eslint-disable-next-line no-console
+  console.log('[DepositExternalWalletOptions] Component mounting/rendering');
+
   const activeAccount = useActiveAccount();
   const { connect } = useConnectModal();
   const { setModal } = useDepositStore();
   const address = activeAccount?.address;
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
+
+  // eslint-disable-next-line no-console
+  console.log('[DepositExternalWalletOptions] State:', { address, isWalletOpen });
 
   const handleDepositDirectly = useCallback(async () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -104,6 +110,12 @@ const DepositExternalWalletOptions = () => {
       isLoading: isWalletOpen,
     },
   ];
+
+  // eslint-disable-next-line no-console
+  console.log(
+    '[DepositExternalWalletOptions] Rendering with options:',
+    EXTERNAL_WALLET_OPTIONS.length,
+  );
 
   return (
     <View className="gap-y-2.5">
