@@ -80,7 +80,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   const handleTransactionStatusPress = useCallback(() => {
     const trackingId = useDepositStore.getState().transaction.trackingId;
     if (trackingId && isTransactionStatus) {
-      router.push(`/activity/${trackingId}`);
+      router.navigate(`/activity/${trackingId}`, { dangerouslySingular: true });
     } else {
       router.push(path.ACTIVITY);
     }
