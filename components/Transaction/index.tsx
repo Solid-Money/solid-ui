@@ -64,7 +64,6 @@ const Transaction = ({
 
   // Check if this is a direct deposit with no amount yet
   const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
-  const isPending = status === TransactionStatus.PENDING;
   const hasNoAmount = !amount || amount === '0' || parseFloat(amount) === 0;
   const isProcessing = status === TransactionStatus.PROCESSING;
 
