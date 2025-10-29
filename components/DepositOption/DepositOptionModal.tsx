@@ -16,16 +16,16 @@ import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
+import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
+import DepositDirectlyAddress from './DepositDirectlyAddress.web';
+import DepositDirectlyNetworks from './DepositDirectlyNetworks.web';
+import DepositExternalWalletOptions from './DepositExternalWalletOptions';
 import DepositOptions from './DepositOptions';
 import DepositPublicAddress from './DepositPublicAddress';
-import DepositExternalWalletOptions from './DepositExternalWalletOptions';
-import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
-import DepositDirectlyNetworks from './DepositDirectlyNetworks.web';
-import DepositDirectlyAddress from './DepositDirectlyAddress.web';
 
 interface DepositOptionModalProps {
   buttonText?: string;
@@ -307,10 +307,41 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   };
 
   useEffect(() => {
-    if (status === 'disconnected' && !isClose && !isDepositDirectly && !isDepositDirectlyAddress) {
+    // eslint-disable-next-line no-console
+    console.log('[DepositOptionModal] Wallet status effect:', {
+      status,
+      isClose,
+      isDepositDirectly,
+      isDepositDirectlyAddress,
+      isExternalWalletOptions,
+      isBuyCryptoOptions,
+      currentModal: currentModal.name,
+    });
+
+    if (
+      status === 'disconnected' &&
+      !isClose &&
+      !isDepositDirectly &&
+      !isDepositDirectlyAddress &&
+      !isExternalWalletOptions &&
+      !isBuyCryptoOptions
+    ) {
+      // eslint-disable-next-line no-console
+      console.log(
+        '[DepositOptionModal] Resetting modal to OPEN_OPTIONS due to disconnected wallet',
+      );
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
-  }, [status, setModal, isClose, isDepositDirectly, isDepositDirectlyAddress]);
+  }, [
+    status,
+    setModal,
+    isClose,
+    isDepositDirectly,
+    isDepositDirectlyAddress,
+    isExternalWalletOptions,
+    isBuyCryptoOptions,
+    currentModal.name,
+  ]);
 
   return (
     <ResponsiveModal

@@ -58,7 +58,7 @@ export const isHTTPError = (error: any, status: number) => {
 };
 
 export const isAnyHTTPError = (error: any, statuses: number[]) => {
-  return statuses.some((status) => isHTTPError(error, status));
+  return statuses.some(status => isHTTPError(error, status));
 };
 
 export const withRefreshToken = async <T>(
@@ -93,7 +93,7 @@ export const withRefreshToken = async <T>(
       console.error(refreshTokenError);
       if (onError) {
         onError();
-      } else if (isAnyHTTPError(refreshTokenError, [401, 403, 404])) {
+      } else if (isAnyHTTPError(refreshTokenError, [401, 403, 404, 500])) {
         globalLogoutHandler?.();
       }
     }
@@ -181,7 +181,7 @@ export const safeStringify = (value: any) => {
     console.error('Error stringifying value:', error);
     return value;
   }
-}
+};
 
 export const safeParse = (value: any) => {
   try {
@@ -190,21 +190,24 @@ export const safeParse = (value: any) => {
     console.error('Error parsing value:', error);
     return value;
   }
-}
+};
 
 export const sanitize = (data: Record<string, any>) => {
   try {
     return Object.entries(data)
       .filter(([_, value]) => value !== undefined && value !== null)
-      .reduce((acc, [key, value]) => {
-        acc[key] = safeParse(safeStringify(value));
-        return acc;
-      }, {} as Record<string, any>);
+      .reduce(
+        (acc, [key, value]) => {
+          acc[key] = safeParse(safeStringify(value));
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
   } catch (error) {
     console.error('Error sanitizing data:', error);
     return data;
   }
-}
+};
 
 export const oneMinute = 60 * 1000;
 
@@ -231,8 +234,8 @@ export const base64urlToUint8Array = (base64url: string): Uint8Array => {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
-}
+};
 
 export const parseStampHeaderValueCredentialId = (stampHeaderValue: string) => {
   return JSON.parse(stampHeaderValue).credentialId;
-}
+};
