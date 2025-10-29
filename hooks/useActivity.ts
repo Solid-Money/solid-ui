@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Hash } from 'viem';
 
 import {
@@ -94,6 +94,7 @@ export function useActivity() {
   const { user } = useUser();
   const { events, bulkUpsertEvent, upsertEvent } = useActivityStore();
   const queryClient = useQueryClient();
+  const [cachedActivities, setCachedActivities] = useState<ActivityEvent[]>([]);
 
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
@@ -132,7 +133,7 @@ export function useActivity() {
     useBankTransferTransactions();
 
   // 3. Format third-party transactions
-  const { data: transactions, dataUpdatedAt: transactionsUpdatedAt } = useQuery({
+  const { data: transactions, dataUpdatedAt: transactionsUpdatedAt, isLoading } = useQuery({
     queryKey: [
       'formatted-transactions',
       user?.safeAddress,
@@ -190,6 +191,11 @@ export function useActivity() {
     if (!user?.userId || !events[user.userId]) return [];
     return [...events[user.userId]].sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
   }, [events, user?.userId]);
+
+  useEffect(() => {
+    if(!activities?.length) return;
+    setCachedActivities(activities);
+  }, [activities, setCachedActivities]);
 
   // Get pending activities
   const pendingActivities = useMemo(() => {
@@ -378,9 +384,11 @@ export function useActivity() {
 
   return {
     activities,
+    cachedActivities,
     pendingActivities,
     pendingCount: pendingActivities.length,
     activityEvents,
+    isLoading,
     getKey,
     createActivity,
     updateActivity,

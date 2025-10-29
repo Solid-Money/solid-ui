@@ -197,8 +197,8 @@ export default function ActivityDetail() {
   const { clientTxId } = useLocalSearchParams<{ clientTxId: string }>();
   const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
   const [currentTime, setCurrentTime] = useState(minutesToSeconds(5));
-  const { activities } = useActivity();
-  const activity = activities.find(activity => activity.clientTxId === clientTxId);
+  const { cachedActivities, isLoading: isActivitiesLoading } = useActivity();
+  const activity = cachedActivities.find(activity => activity.clientTxId === clientTxId);
 
   // Check if this is a card transaction
   const isCardTransaction = clientTxId?.startsWith('card-');
@@ -228,7 +228,7 @@ export default function ActivityDetail() {
     setCurrentTime(remainingTime);
   }, [activity, isDeposit, isEthereum, createdAt]);
 
-  const isAnyLoading = isCardTransactionLoading;
+  const isAnyLoading = isActivitiesLoading || isCardTransactionLoading;
 
   // Show card transaction detail if it's a card transaction
   if (isCardTransaction && cardTransaction && !isAnyLoading) {
