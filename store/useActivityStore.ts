@@ -20,8 +20,8 @@ function isSameEvent(a: ActivityEvent, b: ActivityEvent): boolean {
     a.clientTxId === b.clientTxId ||
     (a.userOpHash && a.userOpHash === b.userOpHash) ||
     (a.hash && a.hash === b.hash) ||
-    (a.clientTxId === b.userOpHash) ||
-    (a.clientTxId === b.hash)
+    a.clientTxId === b.userOpHash ||
+    a.clientTxId === b.hash
   );
 }
 
@@ -34,7 +34,7 @@ export const useActivityStore = create<ActivityState>()(
         set(
           produce(state => {
             state.events[userId] = events;
-          })
+          }),
         );
       },
 
@@ -42,7 +42,9 @@ export const useActivityStore = create<ActivityState>()(
         set(
           produce(state => {
             state.events[userId] = state.events[userId] || [];
-            const existingIndex = state.events[userId].findIndex((e: ActivityEvent) => isSameEvent(e, event));
+            const existingIndex = state.events[userId].findIndex((e: ActivityEvent) =>
+              isSameEvent(e, event),
+            );
 
             if (existingIndex === -1) {
               state.events[userId].push(event);
@@ -52,7 +54,7 @@ export const useActivityStore = create<ActivityState>()(
                 ...event,
               };
             }
-          })
+          }),
         );
       },
 
@@ -61,7 +63,9 @@ export const useActivityStore = create<ActivityState>()(
           produce(state => {
             state.events[userId] = state.events[userId] || [];
             for (const event of events) {
-              const existingIndex = state.events[userId].findIndex((e: ActivityEvent) => isSameEvent(e, event));
+              const existingIndex = state.events[userId].findIndex((e: ActivityEvent) =>
+                isSameEvent(e, event),
+              );
 
               if (existingIndex === -1) {
                 state.events[userId].push(event);
@@ -72,7 +76,7 @@ export const useActivityStore = create<ActivityState>()(
                 };
               }
             }
-          })
+          }),
         );
       },
 
@@ -80,7 +84,7 @@ export const useActivityStore = create<ActivityState>()(
         set(
           produce(state => {
             state.events = {};
-          })
+          }),
         );
       },
     }),
