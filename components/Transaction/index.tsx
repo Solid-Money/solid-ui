@@ -76,7 +76,6 @@ const Transaction = ({
     if (isPending) {
       const depositStatus = metadata?.directDepositStatus;
       if (depositStatus === 'detected') return 'Transfer detected';
-      return 'Waiting for transfer';
     }
     return null;
   };
@@ -206,8 +205,7 @@ const Transaction = ({
         </View>
       </View>
       <View className="flex-row items-center gap-2 md:gap-4 flex-shrink-0">
-        {directDepositIsPendingOrProcessing && <ActivityIndicator size="small" color="#A1A1AA" />}
-        {directDepositStatusMessage ? (
+        {directDepositStatusMessage || amount === '0' ? (
           <Text
             className={cn(
               'text-sm font-medium text-right',
