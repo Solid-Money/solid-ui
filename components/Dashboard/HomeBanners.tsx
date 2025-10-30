@@ -1,18 +1,37 @@
-import React, { useRef } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Dimensions, LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 
-import HomeBannerDeposit from './HomeBannerDeposit';
+import { useDimension } from '@/hooks/useDimension';
+import PoolStat from '@/components/Savings/PoolStat';
+import DepositBanner from './DepositBanner';
+import CardBanner from './CardBanner';
+
+type BannerData = React.ReactElement[];
+
+type BannerItem = {
+  item: BannerData[number];
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BANNER_HEIGHT = 90;
+
+const data: BannerData = [
+  <DepositBanner key="deposit" />,
+  <CardBanner key="card" />,
+  <PoolStat key="pool" />,
+];
 
 // Won't be used until we have more than one banner
 export const HomeBanners = () => {
   const ref = useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);
-  const data = [1];
+  const { isScreenMedium } = useDimension();
+  const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - 32);
+
+  const GAP = 16;
+  const ITEM_WIDTH = isScreenMedium ? (containerWidth - GAP) / 2 : containerWidth;
+  const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
 
   const onPressPagination = (index: number) => {
     ref.current?.scrollTo({
@@ -21,25 +40,31 @@ export const HomeBanners = () => {
     });
   };
 
-  const renderItem = () => {
-    return <HomeBannerDeposit />;
+  const renderItem = ({ item }: BannerItem) => {
+    return <View className="flex-1 w-full h-full">{item}</View>;
+  };
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    setContainerWidth(width);
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={onLayout}>
       <Carousel
         ref={ref}
-        width={SCREEN_WIDTH - 32}
+        width={ITEM_WIDTH}
         height={BANNER_HEIGHT}
         data={data}
         loop={false}
         autoPlay={false}
         scrollAnimationDuration={1000}
+        windowSize={2}
+        customConfig={() => ({ type: 'positive', viewCount: 2 })}
         onProgressChange={progress}
         renderItem={renderItem}
-        modeConfig={{
-          parallaxScrollingScale: 0.9,
-          parallaxScrollingOffset: 50,
+        style={{
+          width: '100%',
         }}
       />
       {data.length > 1 && (
@@ -61,16 +86,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   paginationContainer: {
-    gap: SCREEN_WIDTH * 0.012,
+    gap: 4,
+    marginTop: 34,
   },
   dotStyle: {
     backgroundColor: '#C2C2C2',
-    width: SCREEN_WIDTH * 0.015,
-    height: SCREEN_WIDTH * 0.015,
+    width: 10,
+    height: 10,
     borderRadius: 50,
   },
   activeDot: {
     backgroundColor: '#C2C2C2',
-    width: SCREEN_WIDTH * 0.03,
+    width: 20,
   },
 });
