@@ -8,7 +8,7 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useAPYs } from '@/hooks/useAnalytics';
+import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDirectDepositSessionPolling } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
@@ -28,7 +28,7 @@ const DepositDirectlyAddress = () => {
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<'error' | null>(null);
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
+  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
 
   // Poll for session status updates
   const { session } = useDirectDepositSessionPolling(directDepositSession.sessionId, true);
@@ -150,13 +150,13 @@ const DepositDirectlyAddress = () => {
     valueContent?: ReactNode;
   };
 
-  const formattedAPY = apys?.thirtyDay !== undefined ? `${apys.thirtyDay.toFixed(2)}%` : '—';
+  const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
 
   const infoRows: InfoRow[] = [
     {
       label: 'APY',
       valueClassName: 'text-[#5BFF6C] font-semibold text-lg',
-      valueContent: isAPYsLoading ? (
+      valueContent: isMaxAPYsLoading ? (
         <Skeleton className="h-5 w-16 bg-white/20" />
       ) : (
         <Text className="font-semibold text-[#5BFF6C] text-lg">{formattedAPY}</Text>

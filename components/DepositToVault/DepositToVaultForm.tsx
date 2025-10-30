@@ -20,7 +20,7 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useAPYs } from '@/hooks/useAnalytics';
+import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
@@ -37,6 +37,7 @@ function DepositToVaultForm() {
 
   const isLoading = depositStatus.status === Status.PENDING;
   const { data: apys } = useAPYs();
+  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
 
   const formattedBalance = balance ? formatUnits(balance, 6) : '0';
 
@@ -248,11 +249,7 @@ function DepositToVaultForm() {
             <Text className="text-base text-muted-foreground">APY</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
               <Text className="text-lg font-semibold text-[#94F27F]">
-                {apys?.thirtyDay ? (
-                  `${apys.thirtyDay.toFixed(2)}%`
-                ) : (
-                  <Skeleton className="w-20 h-8" />
-                )}
+                {maxAPY ? `${maxAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
               </Text>
               {/* <Text className="text-base opacity-40">
                   {totalAPY ? (

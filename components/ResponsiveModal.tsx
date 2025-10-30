@@ -122,13 +122,6 @@ const ResponsiveModal = ({
     }
   }, [isOpen, isDesktop]);
 
-  const handleBottomSheetOpenChange = useCallback(
-    (index: number) => {
-      onOpenChange(index >= 0);
-    },
-    [onOpenChange],
-  );
-
   const renderBackdrop = useCallback(
     (props: any) => (
       <BottomSheetBackdrop
@@ -246,7 +239,6 @@ const ResponsiveModal = ({
       </Pressable>
       <BottomSheetModal
         ref={bottomSheetModalRef}
-        onChange={handleBottomSheetOpenChange}
         snapPoints={['90%']}
         backgroundStyle={{
           backgroundColor: 'black',
@@ -260,6 +252,8 @@ const ResponsiveModal = ({
         keyboardBehavior="extend"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
+        enableDynamicSizing={false}
+        enableContentPanningGesture={false}
       >
         <BottomSheetScrollView
           contentContainerStyle={{

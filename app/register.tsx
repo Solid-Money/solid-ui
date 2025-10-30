@@ -30,9 +30,8 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function Register() {
-  const { handleLogin, handleDummyLogin, handleSignupStarted } = useUser();
+  const { handleLogin, handleDummyLogin, handleSignup } = useUser();
   const { signupInfo, loginInfo, setSignupInfo, setLoginInfo } = useUserStore();
-  const { code } = useLocalSearchParams<{ code: string }>();
   const { session } = useLocalSearchParams<{ session: string }>();
   // TODO: Add recovery flow
   // const [showRecoveryFlow, setShowRecoveryFlow] = useState(false);
@@ -79,7 +78,7 @@ export default function Register() {
   }, [signupInfo.status, reset]);
 
   const handleSignupForm = async (data: RegisterFormData) => {
-    handleSignupStarted(data.username, code);
+    handleSignup(data.username, '');
   };
 
   const getSignupButtonText = () => {

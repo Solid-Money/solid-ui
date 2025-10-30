@@ -11,7 +11,12 @@ import {
   useUserTransactions,
 } from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
-import { bulkUpsertActivityEvent, createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
+import {
+  bulkUpsertActivityEvent,
+  createActivityEvent,
+  fetchActivityEvents,
+  updateActivityEvent,
+} from '@/lib/api';
 import { ActivityEvent, Transaction, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
@@ -88,7 +93,10 @@ export interface UpdateActivityParams {
   metadata?: Record<string, any>;
 }
 
-export type TrackTransaction = <TransactionResult>(params: CreateActivityParams, executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<TransactionResult>) => Promise<TransactionResult>
+export type TrackTransaction = <TransactionResult>(
+  params: CreateActivityParams,
+  executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<TransactionResult>,
+) => Promise<TransactionResult>;
 
 export function useActivity() {
   const { user } = useUser();
@@ -118,13 +126,17 @@ export function useActivity() {
   const { data: activityData, refetch: refetchActivityEvents } = activityEvents;
 
   // 2. Fetch from third-party services
-  const { data: userDepositTransactions, refetch: refetchTransactions } = useUserTransactions(user?.safeAddress ?? '');
+  const { data: userDepositTransactions, refetch: refetchTransactions } = useUserTransactions(
+    user?.safeAddress ?? '',
+  );
 
   const { data: sendTransactions, refetch: refetchSendTransactions } = useSendTransactions(
     user?.safeAddress ?? '',
   );
 
-  const { data: depositTransactions, refetch: refetchDepositTransactions } = useDepositTransactions(user?.safeAddress ?? '');
+  const { data: depositTransactions, refetch: refetchDepositTransactions } = useDepositTransactions(
+    user?.safeAddress ?? '',
+  );
 
   const { data: bridgeDepositTransactions, refetch: refetchBridgeDepositTransactions } =
     useBridgeDepositTransactions(user?.safeAddress ?? '');
@@ -164,7 +176,14 @@ export function useActivity() {
     refetchDepositTransactions();
     refetchBridgeDepositTransactions();
     refetchBankTransfers();
-  }, [refetchActivityEvents, refetchTransactions, refetchSendTransactions, refetchDepositTransactions, refetchBridgeDepositTransactions, refetchBankTransfers]);
+  }, [
+    refetchActivityEvents,
+    refetchTransactions,
+    refetchSendTransactions,
+    refetchDepositTransactions,
+    refetchBridgeDepositTransactions,
+    refetchBankTransfers,
+  ]);
 
   const { mutateAsync: bulkUpsertActivitiesMutation } = useMutation({
     mutationKey: ['bulk-upsert-activity'],
@@ -180,16 +199,21 @@ export function useActivity() {
     },
   });
 
-  const bulkUpsertActivities = useCallback(async (payload: ActivityEvent[]) => {
-    const inFlight = queryClient.isMutating({ mutationKey: ['bulk-upsert-activity'] });
-    if (inFlight) return;
-    return bulkUpsertActivitiesMutation(payload);
-  }, [queryClient, bulkUpsertActivitiesMutation]);
+  const bulkUpsertActivities = useCallback(
+    async (payload: ActivityEvent[]) => {
+      const inFlight = queryClient.isMutating({ mutationKey: ['bulk-upsert-activity'] });
+      if (inFlight) return;
+      return bulkUpsertActivitiesMutation(payload);
+    },
+    [queryClient, bulkUpsertActivitiesMutation],
+  );
 
   // Get user's activities from local storage
   const activities = useMemo(() => {
     if (!user?.userId || !events[user.userId]) return [];
-    return [...events[user.userId]].sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
+    return [...events[user.userId]]
+      .filter(activity => !activity.deleted)
+      .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
   }, [events, user?.userId]);
 
   useEffect(() => {
@@ -199,16 +223,19 @@ export function useActivity() {
 
   // Get pending activities
   const pendingActivities = useMemo(() => {
-    return activities.filter(activity =>
-      activity.status === TransactionStatus.PENDING ||
-      activity.status === TransactionStatus.PROCESSING
+    return activities.filter(
+      activity =>
+        activity.status === TransactionStatus.PENDING ||
+        activity.status === TransactionStatus.PROCESSING,
     );
   }, [activities]);
 
   useEffect(() => {
     if (!user?.userId || !activityData) return;
 
-    const events = activityData.pages.flatMap(page => page?.docs.map(tx => contructActivity(tx, user.safeAddress))).filter((event): event is ActivityEvent => event !== undefined);
+    const events = activityData.pages
+      .flatMap(page => page?.docs.map(tx => contructActivity(tx, user.safeAddress)))
+      .filter((event): event is ActivityEvent => event !== undefined);
     if (!events.length) return;
 
     bulkUpsertEvent(user.userId, events);
@@ -220,167 +247,176 @@ export function useActivity() {
   }, [transactionsUpdatedAt, user?.userId, user?.safeAddress, bulkUpsertActivities]);
 
   // Create new activity
-  const createActivity = useCallback(async (params: CreateActivityParams): Promise<string> => {
-    if (!user?.userId) {
-      throw new Error('User not authenticated');
-    }
+  const createActivity = useCallback(
+    async (params: CreateActivityParams): Promise<string> => {
+      if (!user?.userId) {
+        throw new Error('User not authenticated');
+      }
 
-    const clientTxId = params.userOpHash || generateId();
-    const timestamp = Math.floor(Date.now() / 1000).toString();
+      const clientTxId = params.userOpHash || generateId();
+      const timestamp = Math.floor(Date.now() / 1000).toString();
 
-    const activityEvent: ActivityEvent = {
-      clientTxId,
-      title: params.title,
-      shortTitle: params.shortTitle,
-      timestamp,
-      type: params.type,
-      status: params.status || TransactionStatus.PENDING,
-      amount: params.amount,
-      symbol: params.symbol,
-      chainId: params.chainId,
-      fromAddress: params.fromAddress,
-      toAddress: params.toAddress,
-      userOpHash: params.userOpHash,
-      metadata: {
-        description: params.metadata?.description || params.title,
-        source: 'transaction-hook',
-        ...params.metadata,
-      },
-    };
+      const activityEvent: ActivityEvent = {
+        clientTxId,
+        title: params.title,
+        shortTitle: params.shortTitle,
+        timestamp,
+        type: params.type,
+        status: params.status || TransactionStatus.PENDING,
+        amount: params.amount,
+        symbol: params.symbol,
+        chainId: params.chainId,
+        fromAddress: params.fromAddress,
+        toAddress: params.toAddress,
+        userOpHash: params.userOpHash,
+        metadata: {
+          description: params.metadata?.description || params.title,
+          source: 'transaction-hook',
+          ...params.metadata,
+        },
+      };
 
-    // Update local state immediately for instant UI feedback
-    upsertEvent(user.userId, activityEvent);
+      // Update local state immediately for instant UI feedback
+      upsertEvent(user.userId, activityEvent);
 
-    // Send to backend for caching (non-blocking)
-    withRefreshToken(() => createActivityEvent(activityEvent)).catch(error => {
-      console.error('Failed to create activity on server:', error);
-    });
-
-    return clientTxId;
-  }, [user?.userId, upsertEvent]);
-
-  // Update activity
-  const updateActivity = useCallback(async (
-    clientTxId: string,
-    updates: UpdateActivityParams
-  ) => {
-    if (!user?.userId) return;
-
-    const currentState = useActivityStore.getState();
-    const existingActivities = currentState.events[user.userId] || [];
-    const existing = existingActivities.find(a => a.clientTxId === clientTxId);
-
-    if (!existing) return;
-
-    const updatedActivity: ActivityEvent = {
-      ...existing,
-      ...updates,
-      metadata: {
-        ...existing.metadata,
-        ...updates.metadata,
-        updatedAt: new Date().toISOString(),
-      },
-    };
-
-    // Update local state immediately
-    upsertEvent(user.userId, updatedActivity);
-
-    // Send to backend for caching (non-blocking)
-    withRefreshToken(() => updateActivityEvent(clientTxId, {
-      status: updates.status,
-      txHash: updates.hash,
-      userOpHash: updates.userOpHash,
-      metadata: updates.metadata,
-    })).catch(error => {
-      console.error('Failed to update activity on server:', error);
-    });
-  }, [user?.userId, upsertEvent]);
-
-  // Wrapper function to track transactions
-  const trackTransaction = useCallback(async <T>(
-    params: CreateActivityParams,
-    executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<T>,
-  ): Promise<T> => {
-    let clientTxId: string | null = null;
-    const isSuccess = params.status === TransactionStatus.SUCCESS;
-
-    try {
-      // Execute the transaction with callback for immediate userOpHash
-      const result = await executeTransaction(async (userOpHash) => {
-        // Create activity IMMEDIATELY when we get userOpHash (before waiting for receipt)
-        clientTxId = await createActivity({
-          ...params,
-          userOpHash,
-        });
+      // Send to backend for caching (non-blocking)
+      withRefreshToken(() => createActivityEvent(activityEvent)).catch(error => {
+        console.error('Failed to create activity on server:', error);
       });
 
-      // Extract transaction data
-      const transaction = result && typeof result === 'object' && 'transaction' in result
-        ? (result as any).transaction
-        : result;
+      return clientTxId;
+    },
+    [user?.userId, upsertEvent],
+  );
 
-      if (isSuccess && !getTransactionHash(transaction)) {
-        return result;
-      }
+  // Update activity
+  const updateActivity = useCallback(
+    async (clientTxId: string, updates: UpdateActivityParams) => {
+      if (!user?.userId) return;
 
-      // If activity wasn't created (no userOpHash callback), create it now
-      if (!clientTxId) {
-        clientTxId = await createActivity(params);
-      }
+      const currentState = useActivityStore.getState();
+      const existingActivities = currentState.events[user.userId] || [];
+      const existing = existingActivities.find(a => a.clientTxId === clientTxId);
 
-      // Update with transaction hash when available
-      if (transaction && typeof transaction === 'object') {
-        const updateData: {
-          status: TransactionStatus;
-          hash?: string;
-          url?: string;
-          metadata: Record<string, any>;
-        } = {
-          status: params.status || TransactionStatus.PROCESSING,
-          metadata: {
-            submittedAt: new Date().toISOString(),
-          },
-        };
+      if (!existing) return;
 
-        updateData.hash = getTransactionHash(transaction);
+      const updatedActivity: ActivityEvent = {
+        ...existing,
+        ...updates,
+        metadata: {
+          ...existing.metadata,
+          ...updates.metadata,
+          updatedAt: new Date().toISOString(),
+        },
+      };
 
-        if (updateData.hash && params.chainId) {
-          updateData.url = getExplorerUrl(params.chainId, updateData.hash);
-          updateActivity(clientTxId, updateData);
+      // Update local state immediately
+      upsertEvent(user.userId, updatedActivity);
+
+      // Send to backend for caching (non-blocking)
+      withRefreshToken(() =>
+        updateActivityEvent(clientTxId, {
+          status: updates.status,
+          txHash: updates.hash,
+          userOpHash: updates.userOpHash,
+          metadata: updates.metadata,
+        }),
+      ).catch(error => {
+        console.error('Failed to update activity on server:', error);
+      });
+    },
+    [user?.userId, upsertEvent],
+  );
+
+  // Wrapper function to track transactions
+  const trackTransaction = useCallback(
+    async <T>(
+      params: CreateActivityParams,
+      executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<T>,
+    ): Promise<T> => {
+      let clientTxId: string | null = null;
+      const isSuccess = params.status === TransactionStatus.SUCCESS;
+
+      try {
+        // Execute the transaction with callback for immediate userOpHash
+        const result = await executeTransaction(async userOpHash => {
+          // Create activity IMMEDIATELY when we get userOpHash (before waiting for receipt)
+          clientTxId = await createActivity({
+            ...params,
+            userOpHash,
+          });
+        });
+
+        // Extract transaction data
+        const transaction =
+          result && typeof result === 'object' && 'transaction' in result
+            ? (result as any).transaction
+            : result;
+
+        if (isSuccess && !getTransactionHash(transaction)) {
+          return result;
         }
-      }
 
-      return result;
-    } catch (error: any) {
-      if (isSuccess) {
-        // If status is success, don't create failed activity
-        throw error;
-      }
+        // If activity wasn't created (no userOpHash callback), create it now
+        if (!clientTxId) {
+          clientTxId = await createActivity(params);
+        }
 
-      // If activity was created, update it as failed
-      if (clientTxId) {
-        updateActivity(clientTxId, {
-          status: TransactionStatus.FAILED,
-          metadata: {
-            error: error?.message || 'Transaction failed',
-            failedAt: new Date().toISOString(),
-          },
-        });
-      } else {
-        // Create activity to show failure
-        const failedClientTxId = await createActivity(params);
-        updateActivity(failedClientTxId, {
-          status: TransactionStatus.FAILED,
-          metadata: {
-            error: error?.message || 'Transaction failed',
-            failedAt: new Date().toISOString(),
-          },
-        });
-      }
+        // Update with transaction hash when available
+        if (transaction && typeof transaction === 'object') {
+          const updateData: {
+            status: TransactionStatus;
+            hash?: string;
+            url?: string;
+            metadata: Record<string, any>;
+          } = {
+            status: params.status || TransactionStatus.PROCESSING,
+            metadata: {
+              submittedAt: new Date().toISOString(),
+            },
+          };
 
-      throw error; // Re-throw to maintain existing error handling
-    }
-  }, [createActivity, updateActivity]);
+          updateData.hash = getTransactionHash(transaction);
+
+          if (updateData.hash && params.chainId) {
+            updateData.url = getExplorerUrl(params.chainId, updateData.hash);
+            updateActivity(clientTxId, updateData);
+          }
+        }
+
+        return result;
+      } catch (error: any) {
+        if (isSuccess) {
+          // If status is success, don't create failed activity
+          throw error;
+        }
+
+        // If activity was created, update it as failed
+        if (clientTxId) {
+          updateActivity(clientTxId, {
+            status: TransactionStatus.FAILED,
+            metadata: {
+              error: error?.message || 'Transaction failed',
+              failedAt: new Date().toISOString(),
+            },
+          });
+        } else {
+          // Create activity to show failure
+          const failedClientTxId = await createActivity(params);
+          updateActivity(failedClientTxId, {
+            status: TransactionStatus.FAILED,
+            metadata: {
+              error: error?.message || 'Transaction failed',
+              failedAt: new Date().toISOString(),
+            },
+          });
+        }
+
+        throw error; // Re-throw to maintain existing error handling
+      }
+    },
+    [createActivity, updateActivity],
+  );
 
   return {
     activities,

@@ -64,36 +64,43 @@ export default function Savings() {
                   </Text>
                 </View>
               </View>
-              <View className="flex-col md:flex-row gap-6 md:gap-28">
-                <View className="gap-1">
-                  <Text className="md:text-lg text-rewards/70">From deposits</Text>
-                  <View className="flex-row items-center">
-                    <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
-                      {points.userRewardsSummary.rewardsByType.find(
-                        r => r.type === RewardsType.DEPOSIT,
-                      )?.totalPoints || 0}
-                    </Text>
+              <View className="flex-col gap-4">
+                <View className="flex-col md:flex-row gap-6 md:gap-28">
+                  <View className="gap-1">
+                    <Text className="md:text-lg text-rewards/70">From deposits</Text>
+                    <View className="flex-row items-center">
+                      <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
+                        {points.userRewardsSummary.rewardsByType.find(
+                          r => r.type === RewardsType.DEPOSIT,
+                        )?.totalPoints || 0}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="gap-1">
+                    <Text className="md:text-lg text-rewards/70">From referrals</Text>
+                    <View className="flex-row items-end">
+                      <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
+                        {points.userRewardsSummary.rewardsByType.find(
+                          r => r.type === RewardsType.REFERRAL_SIGNUP,
+                        )?.totalPoints || 0}
+                      </Text>
+                      <Text className="text-base text-rewards/70 ml-2">
+                        {points.userRewardsSummary.rewardsByType.find(
+                          r => r.type === RewardsType.REFERRAL_SIGNUP,
+                        )?.count || 0}{' '}
+                        referred |{' '}
+                        {points.userRewardsSummary.rewardsByType.find(
+                          r => r.type === RewardsType.REFERRAL_SIGNUP,
+                        )?.count || 0}{' '}
+                        deposited
+                      </Text>
+                    </View>
                   </View>
                 </View>
-                <View className="gap-1">
-                  <Text className="md:text-lg text-rewards/70">From referrals</Text>
-                  <View className="flex-row items-end">
-                    <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
-                      {points.userRewardsSummary.rewardsByType.find(
-                        r => r.type === RewardsType.REFERRAL_SIGNUP,
-                      )?.totalPoints || 0}
-                    </Text>
-                    <Text className="text-base text-rewards/70 ml-2">
-                      {points.userRewardsSummary.rewardsByType.find(
-                        r => r.type === RewardsType.REFERRAL_SIGNUP,
-                      )?.count || 0}{' '}
-                      referred |{' '}
-                      {points.userRewardsSummary.rewardsByType.find(
-                        r => r.type === RewardsType.REFERRAL_SIGNUP,
-                      )?.count || 0}{' '}
-                      deposited
-                    </Text>
-                  </View>
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-base text-rewards/70">
+                    You were referred by: {points.userRefferer}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -101,13 +108,11 @@ export default function Savings() {
 
           <View className="flex-col web:md:w-80 bg-transparent justify-between">
             <View className="p-6 md:p-7">
-              <Text className="text-lg text-rewards/70">Next drop in</Text>
+              <Text className="text-lg text-rewards/70">Next points drop in</Text>
               <View className="flex-row items-center gap-2">
                 <Text className="text-3xl text-rewards font-semibold mt-2">{countdownTime}</Text>
               </View>
               <Text className="mt-4 text-rewards/70 text-sm">
-                Earning 4 points per $1 per hour
-                <br />
                 Earned yesterday: {points.pointsLast24Hours} points
               </Text>
             </View>
@@ -142,10 +147,10 @@ export default function Savings() {
               </LinearGradient>
               <View className="flex-col flex-1 md:ml-5 ml-2">
                 <Text className="md:text-2xl text-xl font-semibold">
-                  Deposit and earn 10x points
+                  Deposit and earn points automatically
                 </Text>
                 <Text className="md:text-lg text-base text-white/70">
-                  Earn 4 points per $1 per hour
+                  Earn 1 points per $1 per hour
                 </Text>
               </View>
             </View>
@@ -169,7 +174,7 @@ export default function Savings() {
                 contentFit="contain"
               />
               <View className="flex-col flex-1 md:ml-5 ml-2">
-                <Text className="md:text-2xl text-xl font-semibold">Refer a Friend</Text>
+                <Text className="md:text-2xl text-xl font-semibold">Share your referral code</Text>
                 <Text className="md:text-lg text-base text-white/70">
                   Earn 10% of their daily points.
                 </Text>

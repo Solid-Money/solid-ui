@@ -42,6 +42,15 @@
       Roboto, Helvetica, Arial, sans-serif;
   }
 
+  /* Fill the viewport and keep a dark background under any bounce/overscroll */
+  html, body, #root, #__next {
+    height: 100%;
+    background-color: #000;
+    overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
+    color-scheme: dark;
+  }
+
   /* React Native Web generates classes like .css-text-xxxxx for Text elements.
    * Ensure they use Mona Sans regardless of the default system stack. */
   /* React Native Web renders Text as span.css-xxxx. Force Mona on those. */
