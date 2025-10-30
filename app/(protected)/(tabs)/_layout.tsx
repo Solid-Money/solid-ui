@@ -176,6 +176,13 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="add-referrer"
+        options={{
+          title: 'Add Referrer',
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
