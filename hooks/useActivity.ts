@@ -45,13 +45,13 @@ function getTransactionHash(transaction: any): string {
 }
 
 function contructActivity(tx: Transaction | ActivityEvent, safeAddress: string): ActivityEvent {
-  let clientTxId = tx.hash;
+  let clientTxId = `${tx.type}-${tx.timestamp}`;
   if ('trackingId' in tx && tx.trackingId) {
     clientTxId = tx.trackingId;
   } else if ('clientTxId' in tx && tx.clientTxId) {
     clientTxId = tx.clientTxId;
-  } else {
-    clientTxId = `${tx.type}-${tx.timestamp}`;
+  } else if ('hash' in tx && tx.hash) {
+    clientTxId = `${tx.type}-${tx.hash}`;
   }
 
   return {
