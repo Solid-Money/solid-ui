@@ -3,21 +3,34 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { updateExternalWalletAddress } from '@/lib/api';
+import { useUserStore } from '@/store/useUserStore';
 import * as Sentry from '@sentry/react-native';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { isAddress } from 'viem';
 
 export default function QuestWallet() {
   const router = useRouter();
+  const { user } = useUser();
+  const { updateUser } = useUserStore();
   const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [initialAddressExists] = useState(() => !!user?.externalWalletAddress);
+
+  // Prefill with existing address if available (only on mount)
+  useEffect(() => {
+    if (user?.externalWalletAddress) {
+      setWalletAddress(user.externalWalletAddress);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -36,13 +49,24 @@ export default function QuestWallet() {
 
     track(TRACKING_EVENTS.QUEST_WALLET_ADDRESS_SUBMITTED, {
       addressLength: walletAddress.length,
+      isUpdate: initialAddressExists,
     });
 
     try {
       await updateExternalWalletAddress(walletAddress);
+
+      // Update the user store with the new address
+      if (user) {
+        updateUser({
+          ...user,
+          externalWalletAddress: walletAddress,
+        });
+      }
+
       setSuccess(true);
       track(TRACKING_EVENTS.QUEST_WALLET_UPDATE_SUCCESS, {
         address: walletAddress,
+        isUpdate: initialAddressExists,
       });
     } catch (err) {
       console.error(err);
@@ -69,9 +93,10 @@ export default function QuestWallet() {
             onSubmit={handleSubmit}
             loading={loading}
             error={error}
+            isUpdate={initialAddressExists}
           />
         ) : (
-          <Success onClose={() => router.push(path.HOME)} />
+          <Success onClose={() => router.push(path.HOME)} isUpdate={initialAddressExists} />
         )}
       </View>
     </SafeAreaView>
@@ -84,6 +109,7 @@ interface WalletAddressInputProps {
   onSubmit: () => void;
   loading: boolean;
   error: string;
+  isUpdate: boolean;
 }
 
 function WalletAddressInput({
@@ -92,6 +118,7 @@ function WalletAddressInput({
   onSubmit,
   loading,
   error,
+  isUpdate,
 }: WalletAddressInputProps) {
   return (
     <View className="flex-1 justify-center">
@@ -100,8 +127,9 @@ function WalletAddressInput({
           External Wallet Address
         </Text>
         <Text className="text-white/60 text-sm mb-6 text-center">
-          Enter your external wallet address (EOA) that you&apos;ll use to complete quests on our
-          partner platform
+          {isUpdate
+            ? 'Update your external wallet address (EOA) for completing quests on our partner platform'
+            : "Enter your external wallet address (EOA) that you'll use to complete quests on our partner platform"}
         </Text>
 
         <TextInput
@@ -128,7 +156,9 @@ function WalletAddressInput({
           {loading ? (
             <ActivityIndicator color="gray" />
           ) : (
-            <Text className="text-base font-bold text-black">Save Address</Text>
+            <Text className="text-base font-bold text-black">
+              {isUpdate ? 'Update Address' : 'Save Address'}
+            </Text>
           )}
         </Button>
       </View>
@@ -138,16 +168,18 @@ function WalletAddressInput({
 
 interface SuccessProps {
   onClose: () => void;
+  isUpdate: boolean;
 }
 
-function Success({ onClose }: SuccessProps) {
+function Success({ onClose, isUpdate }: SuccessProps) {
   return (
     <View className="flex-1 justify-center">
       <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
         <Text className="text-white text-2xl font-semibold mb-2 text-center">Success</Text>
         <Text className="text-white/60 text-sm mb-6 text-center">
-          Your external wallet address has been saved successfully. You can now use it to complete
-          quests on our partner platform.
+          {isUpdate
+            ? 'Your external wallet address has been updated successfully.'
+            : 'Your external wallet address has been saved successfully. You can now use it to complete quests on our partner platform.'}
         </Text>
 
         <Button className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]" onPress={onClose}>
