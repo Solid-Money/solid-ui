@@ -43,7 +43,6 @@ import { secondsToMilliseconds } from 'date-fns';
 
 const ANALYTICS = 'analytics';
 const ApyToDays = {
-  sevenDay: 7,
   fifteenDay: 15,
   thirtyDay: 30,
 };
