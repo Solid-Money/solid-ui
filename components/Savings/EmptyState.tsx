@@ -5,13 +5,13 @@ import { FlatList, View } from 'react-native';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
-import PoolBanners from '@/components/Savings/PoolBanners';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useDimension } from '@/hooks/useDimension';
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
+import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
@@ -111,7 +111,7 @@ export default function SavingsEmptyState() {
         )}
       </LinearGradient>
       {!isScreenMedium && <DepositOptionModal />}
-      <PoolBanners />
+      <HomeBanners />
       <FAQs faqs={faqs} className="md:mt-16" />
     </View>
   );
