@@ -117,6 +117,14 @@ export const TRACKING_EVENTS = {
   EMAIL_VERIFICATION_FAILED: 'email_verification_failed',
   EMAIL_SKIPPED: 'email_skipped',
 
+  // Quest Wallet Events
+  QUEST_WALLET_PAGE_VIEWED: 'quest_wallet_page_viewed',
+  QUEST_WALLET_ADDRESS_SUBMITTED: 'quest_wallet_address_submitted',
+  QUEST_WALLET_ADDRESS_UPDATED: 'quest_wallet_address_updated',
+  QUEST_WALLET_VALIDATION_ERROR: 'quest_wallet_validation_error',
+  QUEST_WALLET_UPDATE_SUCCESS: 'quest_wallet_update_success',
+  QUEST_WALLET_UPDATE_FAILED: 'quest_wallet_update_failed',
+
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',
 } as const;

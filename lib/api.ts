@@ -256,6 +256,25 @@ export const updateUserCredentialId = async (credentialId: string) => {
   return response.json();
 };
 
+export const updateExternalWalletAddress = async (externalWalletAddress: string) => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/update-external-wallet-address`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ externalWalletAddress }),
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const fetchTotalAPY = async () => {
   const response = await axios.get<number>(
     `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/yields/total-apy`,
@@ -908,9 +927,7 @@ export const createDeposit = async (deposit: Deposit): Promise<{ transactionHash
   return response.json();
 };
 
-export const depositTransactions = async (
-  safeAddress: string,
-): Promise<DepositTransaction[]> => {
+export const depositTransactions = async (safeAddress: string): Promise<DepositTransaction[]> => {
   const jwt = getJWTToken();
 
   const response = await fetch(

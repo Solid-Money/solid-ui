@@ -1,11 +1,11 @@
 import {
-    DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
-    DEPOSIT_MODAL,
-    SEND_MODAL,
-    STAKE_MODAL,
-    SWAP_MODAL,
-    UNSTAKE_MODAL,
-    WITHDRAW_MODAL,
+  DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
+  DEPOSIT_MODAL,
+  SEND_MODAL,
+  STAKE_MODAL,
+  SWAP_MODAL,
+  UNSTAKE_MODAL,
+  WITHDRAW_MODAL,
 } from '@/constants/modals';
 import { Reward } from '@merkl/api';
 import { Address, Hex } from 'viem';
@@ -93,6 +93,7 @@ export interface User {
   leaderboardPosition?: number;
   points?: number;
   credentialId?: string;
+  externalWalletAddress?: string;
 }
 
 export type BlockscoutTransaction = {

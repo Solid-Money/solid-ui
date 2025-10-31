@@ -107,6 +107,12 @@ export default function ProtectedLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="quest-wallet"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
