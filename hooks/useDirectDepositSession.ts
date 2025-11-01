@@ -23,8 +23,11 @@ export const useDirectDepositSession = () => {
 
       if (!data) throw new Error('Failed to create direct deposit session');
 
-      // Store in zustand
-      setDirectDepositSession(data);
+      // Store in zustand (explicitly clear fromActivity flag)
+      setDirectDepositSession({
+        ...data,
+        fromActivity: false,
+      });
 
       return data;
     } catch (err) {

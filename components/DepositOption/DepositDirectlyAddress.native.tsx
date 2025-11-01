@@ -77,7 +77,11 @@ const DepositDirectlyAddress = () => {
   const handleDone = () => {
     setModal(DEPOSIT_MODAL.CLOSE);
     clearDirectDepositSession();
-    router.push(path.ACTIVITY);
+
+    // Only navigate to activity if not opened from activity
+    if (!directDepositSession.fromActivity) {
+      router.push(path.ACTIVITY);
+    }
   };
 
   const handleShare = async () => {

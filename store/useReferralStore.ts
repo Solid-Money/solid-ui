@@ -1,7 +1,7 @@
+import * as Sentry from '@sentry/react-native';
 import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import * as Sentry from '@sentry/react-native';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
@@ -40,7 +40,8 @@ export const useReferralStore = create<ReferralState>()(
 
         try {
           const urlParams = new URLSearchParams(window.location.search);
-          const code = urlParams.get('referralCode');
+          // Check for both 'refCode' (new) and 'referralCode' (legacy)
+          const code = urlParams.get('refCode') || urlParams.get('referralCode');
 
           if (code && code.trim()) {
             const trimmedCode = code.trim();
@@ -65,7 +66,8 @@ export const useReferralStore = create<ReferralState>()(
         if (Platform.OS === 'web') {
           try {
             const urlParams = new URLSearchParams(window.location.search);
-            const urlReferralCode = urlParams.get('referralCode');
+            // Check for both 'refCode' (new) and 'referralCode' (legacy)
+            const urlReferralCode = urlParams.get('refCode') || urlParams.get('referralCode');
             if (urlReferralCode && urlReferralCode.trim()) {
               const trimmedCode = urlReferralCode.trim();
               // Save it to storage for future use
