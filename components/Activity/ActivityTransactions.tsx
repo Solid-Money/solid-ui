@@ -136,11 +136,12 @@ export default function ActivityTransactions({
 
           if (isDirectDeposit) {
             const sessionId = clientTxId.replace('direct_deposit_', '');
-            // Seed the store for the address screen
+            // Seed the store for the address screen and mark it as coming from activity
             setDirectDepositSession({
               sessionId,
               chainId: transaction.chainId,
               status: 'pending',
+              fromActivity: true,
             });
             // Open global modal
             setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);

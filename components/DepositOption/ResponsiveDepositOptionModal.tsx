@@ -327,11 +327,15 @@ const ResponsiveDepositOptionModal = ({
     currentModal.name,
   ]);
 
+  // Don't open this global modal if we're showing the address screen from activity
+  // (there's a local modal in ActivityTransactions that handles it)
+  const shouldOpen = !isClose && !(isDepositDirectlyAddress && directDepositSession.fromActivity);
+
   return (
     <ResponsiveModal
       currentModal={currentModal}
       previousModal={previousModal}
-      isOpen={!isClose}
+      isOpen={shouldOpen}
       onOpenChange={handleOpenChange}
       trigger={trigger ?? getTrigger()}
       title={getTitle()}
