@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { Plus } from 'lucide-react-native';
-import { useCallback, useEffect } from 'react';
+import { Plus, Trash2 } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
@@ -12,10 +12,11 @@ import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import { DepositToVaultForm } from '@/components/DepositToVault';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -36,11 +37,14 @@ const ResponsiveDepositOptionModal = ({
   trigger,
 }: ResponsiveDepositOptionModalProps) => {
   const { user } = useUser();
-  const { currentModal, previousModal, transaction, setModal, srcChainId } = useDepositStore();
+  const { currentModal, previousModal, transaction, setModal, srcChainId, directDepositSession } =
+    useDepositStore();
   const activeAccount = useActiveAccount();
   const status = useActiveWalletConnectionStatus();
   const address = activeAccount?.address;
   const router = useRouter();
+  const { deleteDirectDepositSession } = useDirectDepositSession();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(isForm && address);
@@ -268,18 +272,40 @@ const ResponsiveDepositOptionModal = ({
     }
   };
 
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[ResponsiveDepositOptionModal] Wallet status effect:', {
-      status,
-      isClose,
-      isDepositDirectly,
-      isDepositDirectlyAddress,
-      isExternalWalletOptions,
-      isBuyCryptoOptions,
-      currentModal: currentModal.name,
-    });
+  const handleDeleteDeposit = useCallback(async () => {
+    if (!directDepositSession.sessionId) return;
 
+    try {
+      setIsDeleting(true);
+      await deleteDirectDepositSession(directDepositSession.sessionId);
+      setModal(DEPOSIT_MODAL.CLOSE);
+    } catch (error) {
+      console.error('Failed to delete deposit session:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [directDepositSession.sessionId, deleteDirectDepositSession, setModal]);
+
+  const actionButton = useMemo(() => {
+    if (
+      isDepositDirectlyAddress &&
+      (directDepositSession.status === 'pending' || !directDepositSession.status)
+    ) {
+      return (
+        <Button
+          variant="ghost"
+          className="rounded-full p-0 web:hover:bg-transparent web:hover:opacity-70"
+          onPress={handleDeleteDeposit}
+          disabled={isDeleting}
+        >
+          <Trash2 size={20} color="white" />
+        </Button>
+      );
+    }
+    return undefined;
+  }, [isDepositDirectlyAddress, directDepositSession.status, handleDeleteDeposit, isDeleting]);
+
+  useEffect(() => {
     if (
       status === 'disconnected' &&
       !isClose &&
@@ -288,10 +314,6 @@ const ResponsiveDepositOptionModal = ({
       !isExternalWalletOptions &&
       !isBuyCryptoOptions
     ) {
-      // eslint-disable-next-line no-console
-      console.log(
-        '[ResponsiveDepositOptionModal] Resetting modal to OPEN_OPTIONS due to disconnected wallet',
-      );
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
   }, [
@@ -331,6 +353,7 @@ const ResponsiveDepositOptionModal = ({
         isBankTransferKycFrame
       }
       onBackPress={handleBackPress}
+      actionButton={actionButton}
       shouldAnimate={shouldAnimate}
       isForward={isForward}
       contentKey={getContentKey()}

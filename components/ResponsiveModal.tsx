@@ -83,7 +83,6 @@ const ResponsiveModal = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dialogHeight = useSharedValue(0);
 
-
   const handlePresentModalPress = useCallback(() => {
     onOpenChange(true);
   }, [onOpenChange]);
