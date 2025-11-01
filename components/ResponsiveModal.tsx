@@ -83,17 +83,6 @@ const ResponsiveModal = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dialogHeight = useSharedValue(0);
 
-  // eslint-disable-next-line no-console
-  console.log('[ResponsiveModal] Render:', {
-    currentModal: currentModal.name,
-    previousModal: previousModal.name,
-    isOpen,
-    contentKey,
-    title,
-    showBackButton,
-    isDesktop,
-    platform: Platform.OS,
-  });
 
   const handlePresentModalPress = useCallback(() => {
     onOpenChange(true);
@@ -101,22 +90,10 @@ const ResponsiveModal = ({
 
   // Handle bottom sheet presentation when isOpen changes
   React.useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[ResponsiveModal] isOpen effect:', {
-      isOpen,
-      isDesktop,
-      platform: Platform.OS,
-      shouldControlBottomSheet: Platform.OS !== 'web' || !isDesktop,
-    });
-
     if (Platform.OS !== 'web' || !isDesktop) {
       if (isOpen) {
-        // eslint-disable-next-line no-console
-        console.log('[ResponsiveModal] Calling bottomSheet.present()');
         bottomSheetModalRef.current?.present();
       } else {
-        // eslint-disable-next-line no-console
-        console.log('[ResponsiveModal] Calling bottomSheet.dismiss()');
         bottomSheetModalRef.current?.dismiss();
       }
     }

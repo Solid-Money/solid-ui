@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
@@ -12,7 +12,7 @@ import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import { DepositToVaultForm } from '@/components/DepositToVault';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
@@ -87,17 +87,6 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     setModal(DEPOSIT_MODAL.CLOSE);
   }, [router, setModal, isTransactionStatus]);
 
-  // eslint-disable-next-line no-console
-  console.log('[DepositOptionModal] Component render:', {
-    currentModal: currentModal.name,
-    previousModal: previousModal.name,
-    isExternalWalletOptions,
-    isBuyCryptoOptions,
-    isPublicAddress,
-    isClose,
-    walletStatus: status,
-  });
-
   const getTrigger = () => {
     return (
       <View
@@ -115,14 +104,6 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
   };
 
   const getContent = () => {
-    // eslint-disable-next-line no-console
-    console.log('[DepositOptionModal] getContent called:', {
-      currentModal: currentModal.name,
-      isExternalWalletOptions,
-      isBuyCryptoOptions,
-      isPublicAddress,
-    });
-
     if (isTransactionStatus) {
       return (
         <TransactionStatus
@@ -158,8 +139,6 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     }
 
     if (isExternalWalletOptions) {
-      // eslint-disable-next-line no-console
-      console.log('[DepositOptionModal] Rendering DepositExternalWalletOptions');
       return <DepositExternalWalletOptions />;
     }
 
@@ -179,8 +158,6 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       return <DepositDirectlyAddress />;
     }
 
-    // eslint-disable-next-line no-console
-    console.log('[DepositOptionModal] Returning default DepositOptions');
     return <DepositOptions />;
   };
 
@@ -306,7 +283,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     }
   };
 
-  const handleDeleteDeposit = async () => {
+  const handleDeleteDeposit = useCallback(async () => {
     if (!directDepositSession.sessionId) return;
 
     try {
@@ -318,34 +295,28 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [directDepositSession.sessionId, deleteDirectDepositSession, setModal]);
 
-  const getActionButton = () => {
+  const actionButton = useMemo(() => {
     if (
       isDepositDirectlyAddress &&
       (directDepositSession.status === 'pending' || !directDepositSession.status)
     ) {
       return (
-        <button onClick={handleDeleteDeposit} disabled={isDeleting}>
+        <Button
+          variant="ghost"
+          className="rounded-full p-0 web:hover:bg-transparent web:hover:opacity-70"
+          onPress={handleDeleteDeposit}
+          disabled={isDeleting}
+        >
           <Trash2 size={20} color="white" />
-        </button>
+        </Button>
       );
     }
     return undefined;
-  };
+  }, [isDepositDirectlyAddress, directDepositSession.status, handleDeleteDeposit, isDeleting]);
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[DepositOptionModal] Wallet status effect:', {
-      status,
-      isClose,
-      isDepositDirectly,
-      isDepositDirectlyAddress,
-      isExternalWalletOptions,
-      isBuyCryptoOptions,
-      currentModal: currentModal.name,
-    });
-
     if (
       status === 'disconnected' &&
       !isClose &&
@@ -354,10 +325,6 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
       !isExternalWalletOptions &&
       !isBuyCryptoOptions
     ) {
-      // eslint-disable-next-line no-console
-      console.log(
-        '[DepositOptionModal] Resetting modal to OPEN_OPTIONS due to disconnected wallet',
-      );
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
   }, [
@@ -394,10 +361,10 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
         isBuyCryptoOptions ||
         isPublicAddress ||
         isDepositDirectly ||
-        (isDepositDirectlyAddress && !directDepositSession.fromActivity)
+        isDepositDirectlyAddress
       }
       onBackPress={handleBackPress}
-      actionButton={getActionButton()}
+      actionButton={actionButton}
       shouldAnimate={shouldAnimate}
       isForward={isForward}
       contentKey={getContentKey()}
