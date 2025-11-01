@@ -36,7 +36,7 @@ export default function Referral() {
             </Text>
             <Text className="text-white/70 text-center mt-1">
               Know who referred you?&nbsp;
-              <Link href={path.ADD_REFERRER} target="_blank" className="hover:opacity-70">
+              <Link href={path.ADD_REFERRER} className="hover:opacity-70">
                 <Text className="underline leading-4">
                   Add them so <br />
                   you both get credit
