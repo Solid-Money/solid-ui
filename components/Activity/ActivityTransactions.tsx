@@ -1,12 +1,9 @@
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Platform, RefreshControl, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { RefreshControl, View } from 'react-native';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
-import DepositDirectlyAddressNative from '@/components/DepositOption/DepositDirectlyAddress.native';
-import DepositDirectlyAddressWeb from '@/components/DepositOption/DepositDirectlyAddress.web';
-import ResponsiveModal from '@/components/ResponsiveModal';
 import Transaction from '@/components/Transaction';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -38,21 +35,12 @@ export default function ActivityTransactions({
   tab = ActivityTab.WALLET,
   symbol,
 }: ActivityTransactionsProps) {
-  const { setModal, setBankTransferData, setDirectDepositSession, currentModal } =
-    useDepositStore();
+  const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore();
   const { activityEvents, activities, getKey, refetchAll } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
-  const [isDirectDepositModalOpen, setIsDirectDepositModalOpen] = useState(false);
 
   useCardDepositPoller();
-
-  // Close local modal if the global deposit modal is closed by inner components (e.g., Done button)
-  useEffect(() => {
-    if (isDirectDepositModalOpen && currentModal.name === DEPOSIT_MODAL.CLOSE.name) {
-      setIsDirectDepositModalOpen(false);
-    }
-  }, [currentModal.name, isDirectDepositModalOpen]);
 
   const filteredTransactions = useMemo(() => {
     const filtered = activities.filter(transaction => {
@@ -148,16 +136,14 @@ export default function ActivityTransactions({
 
           if (isDirectDeposit) {
             const sessionId = clientTxId.replace('direct_deposit_', '');
-            // Seed the store for the address screen and mark it as coming from activity
+            // Seed the store for the address screen
             setDirectDepositSession({
               sessionId,
               chainId: transaction.chainId,
               status: 'pending',
-              fromActivity: true,
             });
-            // Keep store modal state in sync for internal handlers (like Done)
+            // Open global modal
             setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);
-            setIsDirectDepositModalOpen(true);
           } else if (transaction.type === TransactionType.BANK_TRANSFER) {
             setBankTransferData({
               instructions: transaction.sourceDepositInstructions,
@@ -237,24 +223,6 @@ export default function ActivityTransactions({
         }
         showsVerticalScrollIndicator={false}
       />
-      {/* Direct deposit address modal when opened from Activity */}
-      <ResponsiveModal
-        currentModal={DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS}
-        previousModal={DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS}
-        isOpen={isDirectDepositModalOpen}
-        onOpenChange={open => {
-          setIsDirectDepositModalOpen(open);
-          if (!open) setModal(DEPOSIT_MODAL.CLOSE);
-        }}
-        trigger={<View className="hidden" />}
-        title={undefined}
-        contentClassName="w-[450px] max-h-[95vh]"
-        containerClassName=""
-        showBackButton={false}
-        contentKey="deposit-directly-address-activity"
-      >
-        {Platform.OS === 'web' ? <DepositDirectlyAddressWeb /> : <DepositDirectlyAddressNative />}
-      </ResponsiveModal>
     </View>
   );
 }
