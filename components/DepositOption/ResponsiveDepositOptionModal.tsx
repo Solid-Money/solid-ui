@@ -203,6 +203,9 @@ const ResponsiveDepositOptionModal = ({
     if (isEmailGate) {
       return 'pb-4 md:pb-4';
     }
+    if (isDepositDirectlyAddress) {
+      return 'w-[450px] !pb-4';
+    }
     return '';
   };
 
@@ -217,6 +220,7 @@ const ResponsiveDepositOptionModal = ({
     ) {
       return 'min-h-[40rem]';
     }
+
     return '';
   };
 
