@@ -10,6 +10,7 @@ interface DashboardHeaderMobileProps {
   totalAPY?: number;
   lastTimestamp?: number;
   mode?: SavingMode;
+  decimalPlaces?: number;
 }
 
 const DashboardHeaderMobile = ({
@@ -17,6 +18,7 @@ const DashboardHeaderMobile = ({
   totalAPY,
   lastTimestamp,
   mode,
+  decimalPlaces = 2,
 }: DashboardHeaderMobileProps) => {
   return (
     <View className="gap-10 mt-10">
@@ -27,7 +29,7 @@ const DashboardHeaderMobile = ({
           apy={totalAPY ?? 0}
           lastTimestamp={lastTimestamp ?? 0}
           mode={mode}
-          decimalPlaces={2}
+          decimalPlaces={decimalPlaces}
           classNames={{
             wrapper: 'text-foreground',
             decimalSeparator: 'text-2xl sm:text-lg font-medium',
