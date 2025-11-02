@@ -43,7 +43,7 @@ const DepositBanner = () => {
           }}
         >
           <View className="flex-row justify-between items-center">
-            <View className="max-w-56 md:max-w-72 h-full justify-between items-start gap-4">
+            <View className="max-w-52 md:max-w-72 h-full justify-between items-start gap-4">
               <Text className="text-xl md:text-3xl font-semibold">
                 Deposit from your bank or debit card
               </Text>
@@ -53,7 +53,7 @@ const DepositBanner = () => {
               <Image
                 source={require('@/assets/images/fund-wallet-tokens.png')}
                 contentFit="contain"
-                style={{ width: isScreenMedium ? 156 : 120, height: isScreenMedium ? 156 : 120 }}
+                style={{ width: isScreenMedium ? 156 : 130, height: isScreenMedium ? 156 : 130 }}
               />
             </View>
           </View>

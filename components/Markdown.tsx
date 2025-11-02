@@ -11,7 +11,7 @@ const Markdown = ({ value }: MarkdownProps) => {
       flatListProps={{
         initialNumToRender: 8,
         style: {
-          backgroundColor: '#212121',
+          backgroundColor: '#000000',
         },
       }}
       styles={{

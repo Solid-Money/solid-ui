@@ -47,7 +47,7 @@ const AccountCenterDropdown = () => {
         >
           <AccountCenterUsername />
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-border/50" />
         <DropdownMenuItem
           className={cn(dropdownMenuItemClassName)}
           onPress={onAccountCenterSettingsPress}
