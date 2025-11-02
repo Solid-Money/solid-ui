@@ -37,15 +37,15 @@ const CardBanner = () => {
               <Text className="text-base text-primary font-bold">Reserve your card</Text>
             </Button>
           </View>
-          <View className="-mt-14 -ml-4 md:-mt-6">
+          <View className="-mt-14 -ml-4 md:-mt-4">
             <Image
               source={
                 isScreenMedium
-                  ? require('@/assets/images/cards-desktop.png')
+                  ? require('@/assets/images/cards-banner.png')
                   : require('@/assets/images/cards-mobile.png')
               }
               contentFit="contain"
-              style={{ width: isScreenMedium ? 200 : 250, height: isScreenMedium ? 250 : 280 }}
+              style={{ width: isScreenMedium ? 250 : 250, height: isScreenMedium ? 250 : 280 }}
             />
           </View>
         </View>
