@@ -24,7 +24,7 @@ export const HomeBanners = () => {
   const [containerWidth, setContainerWidth] = useState(0);
 
   const GAP = 16;
-  const ITEM_WIDTH = isScreenMedium ? (containerWidth - GAP) / 2 : containerWidth;
+  const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
   const VIEW_COUNT = isScreenMedium ? 2 : 1;
   const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
 

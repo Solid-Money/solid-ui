@@ -13,7 +13,11 @@ const Intercom = ({ children }: IntercomProps) => {
   }
 
   return (
-    <IntercomProvider appId={EXPO_PUBLIC_INTERCOM_APP_ID} autoBoot>
+    <IntercomProvider
+      appId={EXPO_PUBLIC_INTERCOM_APP_ID}
+      autoBoot
+      autoBootProps={{ hideDefaultLauncher: true }}
+    >
       {children}
     </IntercomProvider>
   );

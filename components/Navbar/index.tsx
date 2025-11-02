@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Platform, SafeAreaView, View } from 'react-native';
 
-import AccountCenterModal from '@/components/AccountCenter/AccountCenterModal';
+import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
@@ -10,6 +10,7 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { NavMenu } from './NavMenu';
 import RegisterButtons from './RegisterButtons';
+import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
 
 const Navbar = () => {
   const { isScreenMedium } = useDimension();
@@ -42,7 +43,12 @@ const Navbar = () => {
           />
         </Link>
         {user && isScreenMedium && <NavMenu />}
-        {user && Platform.OS === 'web' && <AccountCenterModal />}
+        {user && Platform.OS === 'web' && (
+          <View className="flex-row items-center gap-2">
+            <InfoCenterDropdown />
+            <AccountCenterDropdown />
+          </View>
+        )}
         {!user && <RegisterButtons />}
       </View>
     </SafeAreaView>

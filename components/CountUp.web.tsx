@@ -51,21 +51,25 @@ const CountUp = ({
         className={cn('font-variant-numeric-tabular', classNames?.decimalSeparator)}
         style={styles?.wholeText as any}
       />
-      <span className={classNames?.decimalSeparator} style={styles?.decimalText as any}>
-        .
-      </span>
-      <NumberFlow
-        value={Number(trailingZero ?? '0')}
-        plugins={[continuous]}
-        // Render exact decimals without grouping
-        format={{
-          useGrouping: false,
-          minimumIntegerDigits: decimalPlaces,
-          maximumFractionDigits: 0,
-        }}
-        className={cn('font-variant-numeric-tabular', classNames?.decimalSeparator)}
-        style={styles?.decimalText as any}
-      />
+      {decimalPlaces > 0 ? (
+        <>
+          <span className={classNames?.decimalSeparator} style={styles?.decimalText as any}>
+            .
+          </span>
+          <NumberFlow
+            value={Number(trailingZero ?? '0')}
+            plugins={[continuous]}
+            // Render exact decimals without grouping
+            format={{
+              useGrouping: false,
+              minimumIntegerDigits: Math.max(1, decimalPlaces),
+              maximumFractionDigits: 0,
+            }}
+            className={cn('font-variant-numeric-tabular', classNames?.decimalSeparator)}
+            style={styles?.decimalText as any}
+          />
+        </>
+      ) : null}
       {suffix ? (
         <span
           className={classNames?.decimalSeparator}

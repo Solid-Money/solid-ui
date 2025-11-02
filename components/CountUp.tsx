@@ -52,13 +52,17 @@ const CountUp = ({
         spinningAnimationConfig={{ duration: DURATION }}
         useGrouping
       />
-      <Text className={classNames?.decimalSeparator}>.</Text>
-      <AnimatedRollingNumber
-        value={Number(formattedText)}
-        formattedText={formattedText}
-        textStyle={styles?.decimalText}
-        spinningAnimationConfig={{ duration: DURATION }}
-      />
+      {decimalPlaces > 0 ? (
+        <>
+          <Text className={classNames?.decimalSeparator}>.</Text>
+          <AnimatedRollingNumber
+            value={Number(formattedText)}
+            formattedText={formattedText}
+            textStyle={styles?.decimalText}
+            spinningAnimationConfig={{ duration: DURATION }}
+          />
+        </>
+      ) : null}
       {suffix ? (
         <Text style={[{ marginLeft: 6 }, styles?.wholeText, styles?.suffixText]}>{suffix}</Text>
       ) : null}

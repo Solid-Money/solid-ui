@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { FlatList, View } from 'react-native';
+import { Plus } from 'lucide-react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { FAQs } from '@/components/FAQ';
@@ -12,9 +13,27 @@ import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
+import { DashboardHeaderMobile } from '@/components/Dashboard';
+import { buttonVariants } from '@/components/ui/button';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
+
+  const getTrigger = () => {
+    return (
+      <View
+        className={buttonVariants({
+          variant: 'purple',
+          className: 'h-12 pr-6 rounded-xl',
+        })}
+      >
+        <View className="flex-row items-center gap-1">
+          <Plus color="white" />
+          <Text className="font-bold">Add funds</Text>
+        </View>
+      </View>
+    );
+  };
 
   const renderContent = () => (
     <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 py-8">
@@ -81,7 +100,7 @@ export default function SavingsEmptyState() {
           </View>
         </View>
       ) : (
-        <></>
+        <DashboardHeaderMobile balance={0} decimalPlaces={0} />
       )}
 
       <LinearGradient
@@ -107,10 +126,10 @@ export default function SavingsEmptyState() {
             <SavingDepositImage />
             <SavingDepositTitle />
             <SavingDepositBenefits />
+            <DepositOptionModal trigger={getTrigger()} />
           </View>
         )}
       </LinearGradient>
-      {!isScreenMedium && <DepositOptionModal />}
       <HomeBanners />
       <FAQs faqs={faqs} className="md:mt-16" />
     </View>
