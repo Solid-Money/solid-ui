@@ -270,6 +270,11 @@ const useUser = (): UseUserReturn => {
         let credentialId: string;
 
         if (Platform.OS === 'web') {
+          // Check if we're in an iframe or third-party context
+          if (window.self !== window.top) {
+            throw new Error('Passkey creation is not supported in embedded context');
+          }
+
           // Dynamically import browser SDK only when needed
           //@ts-ignore
           const { Turnkey } = await import('@turnkey/sdk-browser');
@@ -286,6 +291,7 @@ const useUser = (): UseUserReturn => {
                 name: passkeyName,
                 displayName: passkeyName,
               },
+              timeout: 120000, // 2 minutes timeout to give users more time
             },
           });
           challenge = passkey.encodedChallenge;
@@ -358,7 +364,6 @@ const useUser = (): UseUserReturn => {
             credentialId,
           };
           storeUser(selectedUser);
-          await checkBalance(selectedUser);
 
           // Identify user in analytics
           trackIdentity(user.userId, {
@@ -367,55 +372,20 @@ const useUser = (): UseUserReturn => {
             has_referral_code: !!user.referralCode,
             signup_method: 'passkey',
             platform: Platform.OS,
-            is_deposited: !!user.isDeposited,
           });
 
-          const resp = await withRefreshToken(() =>
-            updateSafeAddress(smartAccountClient.account.address),
-          );
-          if (!resp) {
-            const error = new Error('Error updating safe address on signup');
-            Sentry.captureException(error, {
-              tags: {
-                type: 'safe_address_update_error',
-              },
-              extra: {
-                username,
-              },
-              user: {
-                id: user?.userId,
-                address: user?.safeAddress,
-              },
-            });
-            throw error;
-          }
-
-          // Fetch points after successful signup
-          try {
-            const { fetchPoints } = usePointsStore.getState();
-            await fetchPoints();
-          } catch (error) {
-            console.warn('Failed to fetch points:', error);
-            Sentry.captureException(error, {
-              tags: {
-                type: 'points_fetch_error_signup',
-              },
-              user: {
-                id: user?.userId,
-                address: user?.safeAddress,
-              },
-              level: 'warning',
-            });
-            Sentry.captureException(new Error('Error fetching points on signup'), {
-              extra: {
-                error,
-              },
-            });
-            // Don't fail signup if points fetch fails
-          }
+          // Track successful signup completion
+          track(TRACKING_EVENTS.SIGNUP_COMPLETED, {
+            user_id: user._id,
+            username,
+            invite_code: inviteCode,
+            referral_code: referralCode,
+            safe_address: smartAccountClient.account.address,
+          });
 
           setSignupInfo({ status: Status.SUCCESS });
 
+          // Navigate immediately - let usePostSignupInit handle the rest
           // On mobile, navigate to notifications for new signups
           if (Platform.OS === 'web') {
             router.replace(path.HOME);
@@ -435,16 +405,21 @@ const useUser = (): UseUserReturn => {
           });
           throw error;
         }
-        track(TRACKING_EVENTS.SIGNUP_COMPLETED, {
-          user_id: user?.userId,
-          username,
-          invite_code: inviteCode,
-          referral_code: referralCode,
-          safe_address: smartAccountClient?.account?.address,
-        });
       } catch (error: any) {
         let message = '';
-        if (error?.status === 409 || error.message?.includes(ERRORS.USERNAME_ALREADY_EXISTS)) {
+
+        // Check for WebAuthn-specific errors first
+        if (error?.name === 'NotAllowedError' || error?.message?.includes('not allowed')) {
+          message = 'Passkey creation was cancelled or blocked by your browser. Please try again.';
+        } else if (error?.name === 'TimeoutError' || error?.message?.includes('timeout') || error?.message?.includes('timed out')) {
+          message = 'Passkey creation timed out. Please try again and complete the authentication prompt.';
+        } else if (error?.name === 'InvalidStateError') {
+          message = 'This passkey already exists. Please try logging in instead.';
+        } else if (error?.name === 'NotSupportedError' || error?.message?.includes('not supported')) {
+          message = 'Passkeys are not supported in your current browser or context.';
+        } else if (error?.message?.includes('embedded context')) {
+          message = 'Passkey creation is not supported in embedded or iframe context.';
+        } else if (error?.status === 409 || error.message?.includes(ERRORS.USERNAME_ALREADY_EXISTS)) {
           message = ERRORS.USERNAME_ALREADY_EXISTS;
         } else if ((await error?.text?.())?.toLowerCase()?.includes('invite')) {
           message = ERRORS.INVALID_INVITE_CODE;
@@ -457,6 +432,8 @@ const useUser = (): UseUserReturn => {
               username,
               inviteCode,
               error,
+              errorName: error?.name,
+              errorMessage: error?.message,
             },
           });
         } else {
@@ -465,6 +442,8 @@ const useUser = (): UseUserReturn => {
               username,
               inviteCode,
               error,
+              errorName: error?.name,
+              errorMessage: error?.message,
             },
           });
         }
@@ -472,7 +451,7 @@ const useUser = (): UseUserReturn => {
         track(TRACKING_EVENTS.SIGNUP_FAILED, {
           username,
           invite_code: inviteCode,
-          error: error.message,
+          error: error.message || error.name || 'Unknown error',
         });
 
         setSignupInfo({ status: Status.ERROR, message });
