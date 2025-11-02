@@ -1,14 +1,6 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  AccountCenterSettings,
-  AccountCenterSignOut,
-  AccountCenterTrigger,
-  AccountCenterUsername,
-  onAccountCenterSettingsPress,
-  onAccountCenterSignOutPress,
-} from '.';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,6 +8,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import {
+  AccountCenterSettings,
+  AccountCenterSignOut,
+  AccountCenterTrigger,
+  AccountCenterUsername,
+  onAccountCenterSettingsPress,
+  useAccountCenterSignOutPress,
+} from '.';
 
 const dropdownMenuItemClassName = 'h-12 flex-row items-center gap-2 px-4 web:cursor-pointer';
 const cursorDefaultClassName =
@@ -23,6 +23,8 @@ const cursorDefaultClassName =
 
 const AccountCenterDropdown = () => {
   const insets = useSafeAreaInsets();
+  const onAccountCenterSignOutPress = useAccountCenterSignOutPress();
+
   const contentInsets = {
     top: insets.top,
     bottom: insets.bottom,

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
+import { useCallback } from 'react';
 import { Pressable, View } from 'react-native';
 
 import ProfileIcon from '@/assets/images/profile';
@@ -65,16 +66,18 @@ const AccountCenterSignOut = () => {
   );
 };
 
-const onAccountCenterSignOutPress = () => {
+const useAccountCenterSignOutPress = () => {
   const { handleLogout } = useUser();
-  handleLogout();
+  return useCallback(() => {
+    handleLogout();
+  }, [handleLogout]);
 };
 
 export {
-  AccountCenterUsername,
   AccountCenterSettings,
   AccountCenterSignOut,
   AccountCenterTrigger,
+  AccountCenterUsername,
   onAccountCenterSettingsPress,
-  onAccountCenterSignOutPress,
+  useAccountCenterSignOutPress,
 };

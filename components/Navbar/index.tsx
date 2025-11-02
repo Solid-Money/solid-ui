@@ -10,6 +10,7 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { NavMenu } from './NavMenu';
 import RegisterButtons from './RegisterButtons';
+import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
 
 const Navbar = () => {
   const { isScreenMedium } = useDimension();
@@ -42,7 +43,12 @@ const Navbar = () => {
           />
         </Link>
         {user && isScreenMedium && <NavMenu />}
-        {user && Platform.OS === 'web' && <AccountCenterDropdown />}
+        {user && Platform.OS === 'web' && (
+          <View className="flex-row items-center gap-2">
+            <InfoCenterDropdown />
+            <AccountCenterDropdown />
+          </View>
+        )}
         {!user && <RegisterButtons />}
       </View>
     </SafeAreaView>
