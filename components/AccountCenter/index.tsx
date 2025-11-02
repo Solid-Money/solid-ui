@@ -2,38 +2,17 @@ import { router } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
-import UserAvatar from '@/assets/images/user';
-import CopyToClipboard from '@/components/CopyToClipboard';
+import ProfileIcon from '@/assets/images/profile';
+import SettingsIcon from '@/assets/images/settings';
+import SignOutIcon from '@/assets/images/sign-out';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
-import { eclipseAddress, eclipseUsername } from '@/lib/utils';
+import { eclipseUsername } from '@/lib/utils';
 
-const AccountCenter = () => {
+const AccountCenterTrigger = (props: any) => {
   const { user } = useUser();
-
-  return (
-    <View className="flex-col gap-2 min-h-64">
-      <Text className="text-sm text-muted-foreground">Safe Address</Text>
-      <View className="flex-row justify-between items-center px-4 py-2 bg-primary/10 rounded-2xl text-primary font-medium">
-        <Text>{user?.safeAddress ? eclipseAddress(user?.safeAddress) : ''}</Text>
-        <CopyToClipboard text={user?.safeAddress || ''} />
-      </View>
-    </View>
-  );
-};
-
-const AccountCenterTrigger = () => {
-  const { user } = useUser();
-
-  const handleAvatarPress = () => {
-    router.push(path.SETTINGS);
-  };
-
-  // const handleUsernamePress = () => {
-  //   onModalOpen?.();
-  // };
 
   if (!user?.safeAddress) {
     return <Button size="sm" className="w-full rounded-full animate-pulse" disabled />;
@@ -41,36 +20,61 @@ const AccountCenterTrigger = () => {
 
   return (
     <Pressable
-      onPress={handleAvatarPress}
-      className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-all web:hover:bg-secondary-hover active:opacity-80"
+      className="flex-row items-center justify-between bg-button-secondary rounded-full px-3 py-2 active:scale-95 transition-all web:hover:bg-secondary-hover active:opacity-80 gap-1"
+      {...props}
     >
-      <UserAvatar width={24} height={24} />
-      <Text className="text-white font-medium text-sm flex-1 text-center ml-2 mr-1">
-        {eclipseUsername(user.username)}
-      </Text>
+      <ProfileIcon width={20} height={20} />
       <ChevronDown size={20} color="white" />
     </Pressable>
   );
 };
 
-const AccountCenterTitle = () => {
+const AccountCenterUsername = () => {
   const { user } = useUser();
+  const username = user?.username || '';
 
   return (
-    <Text className="text-lg font-semibold">
-      Hello{user?.username ? `, ${user?.username}` : ''}
-    </Text>
+    <>
+      <View className="size-8 bg-black rounded-full flex items-center justify-center">
+        {username?.charAt(0).toUpperCase()}
+      </View>
+      <Text className="font-semibold">{eclipseUsername(username)}</Text>
+    </>
   );
 };
 
-const AccountCenterFooter = () => {
+const AccountCenterSettings = () => {
+  return (
+    <>
+      <SettingsIcon width={20} height={20} />
+      <Text className="font-semibold">Settings</Text>
+    </>
+  );
+};
+
+const onAccountCenterSettingsPress = () => {
+  router.push(path.SETTINGS);
+};
+
+const AccountCenterSignOut = () => {
+  return (
+    <>
+      <SignOutIcon width={20} height={20} />
+      <Text className="font-semibold">Sign Out</Text>
+    </>
+  );
+};
+
+const onAccountCenterSignOutPress = () => {
   const { handleLogout } = useUser();
-
-  return (
-    <Button variant="destructive" className="w-full" onPress={handleLogout}>
-      <Text>Logout</Text>
-    </Button>
-  );
+  handleLogout();
 };
 
-export { AccountCenter, AccountCenterFooter, AccountCenterTitle, AccountCenterTrigger };
+export {
+  AccountCenterUsername,
+  AccountCenterSettings,
+  AccountCenterSignOut,
+  AccountCenterTrigger,
+  onAccountCenterSettingsPress,
+  onAccountCenterSignOutPress,
+};
