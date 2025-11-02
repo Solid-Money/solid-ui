@@ -1,16 +1,16 @@
-import { View } from 'react-native';
 import { Link } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
+import { View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAPYs, useMaxAPY, useTVL } from '@/hooks/useAnalytics';
-import { compactNumberFormat, formatNumber } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useMaxAPY, useTVL } from '@/hooks/useAnalytics';
+import { compactNumberFormat, formatNumber } from '@/lib/utils';
 
 const PoolStat = () => {
-  const { maxAPY, isAPYsLoading: isMaxAPYsLoading, maxAPYDays } = useMaxAPY();
+  const { maxAPY, maxAPYDays } = useMaxAPY();
   const { data: tvl } = useTVL();
 
   return (
