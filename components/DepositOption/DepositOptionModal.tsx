@@ -26,13 +26,19 @@ import DepositDirectlyNetworks from './DepositDirectlyNetworks.web';
 import DepositExternalWalletOptions from './DepositExternalWalletOptions';
 import DepositOptions from './DepositOptions';
 import DepositPublicAddress from './DepositPublicAddress';
+import { DepositModal } from '@/lib/types';
 
 interface DepositOptionModalProps {
   buttonText?: string;
   trigger?: React.ReactNode;
+  modal?: DepositModal;
 }
 
-const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOptionModalProps) => {
+const DepositOptionModal = ({
+  buttonText = 'Add funds',
+  trigger,
+  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+}: DepositOptionModalProps) => {
   const { user } = useUser();
   const {
     currentModal,
@@ -246,7 +252,7 @@ const DepositOptionModal = ({ buttonText = 'Add funds', trigger }: DepositOption
           setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
         }
       } else {
-        setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+        setModal(modal);
       }
     } else {
       setModal(DEPOSIT_MODAL.CLOSE);
