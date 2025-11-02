@@ -20,6 +20,8 @@ export default function Savings() {
   const { isScreenMedium } = useDimension();
   const countdownTime = useCountdownTimer(points.nextRewardTime);
 
+  const referrer = points.userRefferer;
+
   return (
     <PageLayout desktopOnly isLoading={isPointsLoading}>
       <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
@@ -97,11 +99,13 @@ export default function Savings() {
                     </View>
                   </View>
                 </View>
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-base text-rewards/70">
-                    You were referred by: {points.userRefferer}
-                  </Text>
-                </View>
+                {referrer && (
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-base text-rewards/70">
+                      You were referred by: {referrer}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           </ImageBackground>

@@ -36,7 +36,7 @@ export default function Referral() {
             </Text>
             <Text className="text-white/70 text-center mt-1">
               Know who referred you?&nbsp;
-              <Link href={path.ADD_REFERRER} target="_blank" className="hover:opacity-70">
+              <Link href={path.ADD_REFERRER} className="hover:opacity-70">
                 <Text className="underline leading-4">
                   Add them so <br />
                   you both get credit
@@ -54,8 +54,8 @@ export default function Referral() {
               <Text className="text-white/70 text-left mt-8">Direct register link</Text>
             </View>
             <View className="flex-row w-full justify-between items-center p-4 ps-6 bg-primary/10 rounded-2xl text-primary font-medium mt-4">
-              <Text>https://app.solid.xyz/?referralCode={user?.referralCode}</Text>
-              <CopyToClipboard text={`https://app.solid.xyz/?referralCode=${user?.referralCode}`} />
+              <Text>https://app.solid.xyz/?refCode={user?.referralCode}</Text>
+              <CopyToClipboard text={`https://app.solid.xyz/?refCode=${user?.referralCode}`} />
             </View>
           </View>
         </View>
