@@ -9,6 +9,7 @@ import {
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
+import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import { trackIdentity } from '@/lib/analytics';
 import { isPasskeySupported } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -20,6 +21,9 @@ export default function ProtectedLayout() {
   const { users } = useUserStore();
   const { hasSeenOnboarding } = useOnboardingStore();
   const searchParams = useLocalSearchParams();
+
+  // Run post-signup/login initialization (lazy loading of balance, points, etc.)
+  usePostSignupInit(user);
 
   useEffect(() => {
     if (!user) return;
