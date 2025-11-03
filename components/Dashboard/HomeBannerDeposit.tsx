@@ -4,7 +4,7 @@ import { Platform, View } from 'react-native';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
+import { useMaxAPY } from '@/hooks/useAnalytics';
 import { cn } from '@/lib/utils';
 
 const HomeBannerDeposit = () => {
