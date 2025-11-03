@@ -20,7 +20,7 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useMaxAPY } from '@/hooks/useAnalytics';
+import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
@@ -36,7 +36,8 @@ function DepositToVaultForm() {
   const { isScreenMedium } = useDimension();
 
   const isLoading = depositStatus.status === Status.PENDING;
-  const { maxAPY } = useMaxAPY();
+  const { data: apys } = useAPYs();
+  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
 
   const formattedBalance = balance ? formatUnits(balance, 6) : '0';
 
