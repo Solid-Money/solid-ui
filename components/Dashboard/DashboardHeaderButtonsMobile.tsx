@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react-native';
 
 import { path } from '@/constants/path';
 import CircleButton from '@/components/CircleButton';
-import ResponsiveDepositOptionModal from '@/components/DepositOption/ResponsiveDepositOptionModal';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -13,7 +13,7 @@ const DashboardHeaderButtonsMobile = () => {
   const router = useRouter();
   return (
     <View className="flex-row justify-between gap-8 items-center mx-auto">
-      <ResponsiveDepositOptionModal
+      <DepositOptionModal
         trigger={
           <CircleButton
             icon={Plus}

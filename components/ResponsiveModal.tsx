@@ -1,7 +1,7 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { ReactNode, useCallback, useRef } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInLeft,
@@ -23,9 +23,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import useResponsiveModal from '@/hooks/useResponsiveModal';
 import { cn } from '@/lib/utils';
+import ResponsiveModalMobile from './ResponsiveModalMobile';
 
 const ANIMATION_DURATION = 150;
 
@@ -78,10 +79,11 @@ const ResponsiveModal = ({
   isForward = currentModal.number > previousModal.number,
   contentKey,
 }: ResponsiveModalProps) => {
-  const { isDesktop } = useDimension();
+  const { isScreenMedium } = useDimension();
   const insets = useSafeAreaInsets();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dialogHeight = useSharedValue(0);
+  const { triggerElement } = useResponsiveModal();
 
   const handlePresentModalPress = useCallback(() => {
     onOpenChange(true);
@@ -89,14 +91,14 @@ const ResponsiveModal = ({
 
   // Handle bottom sheet presentation when isOpen changes
   React.useEffect(() => {
-    if (Platform.OS !== 'web' || !isDesktop) {
+    if (!isScreenMedium) {
       if (isOpen) {
         bottomSheetModalRef.current?.present();
       } else {
         bottomSheetModalRef.current?.dismiss();
       }
     }
-  }, [isOpen, isDesktop]);
+  }, [isOpen, isScreenMedium]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -126,7 +128,7 @@ const ResponsiveModal = ({
   });
 
   // Use modal for desktop web, bottom sheet for mobile web and native
-  if (Platform.OS === 'web' && isDesktop) {
+  if (isScreenMedium) {
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -196,22 +198,13 @@ const ResponsiveModal = ({
     );
   }
 
-  // Wrap trigger in Pressable for bottom sheet
-  // This ensures touch events are properly captured on mobile
-  // We disable pointer events on the child to let the parent Pressable handle them
-  const triggerElement = React.isValidElement(trigger) ? (
-    <View pointerEvents="none">{trigger}</View>
-  ) : (
-    trigger
-  );
-
   return (
     <View>
       <Pressable
         onPress={handlePresentModalPress}
         style={({ pressed }) => [pressed && { opacity: 0.8 }]}
       >
-        {triggerElement}
+        {triggerElement(trigger)}
       </Pressable>
       <BottomSheetModal
         ref={bottomSheetModalRef}
@@ -238,34 +231,17 @@ const ResponsiveModal = ({
             paddingTop: 12,
           }}
         >
-          <View className={cn('gap-6', containerClassName)}>
-            {(title || (showBackButton && onBackPress)) && (
-              <View
-                className={cn(
-                  'flex-row items-center gap-2 pb-2',
-                  showBackButton ? 'justify-between' : 'justify-center',
-                  titleClassName,
-                )}
-              >
-                {showBackButton && onBackPress && (
-                  <Button
-                    variant="ghost"
-                    className="rounded-full p-0 web:hover:bg-transparent web:hover:opacity-70"
-                    onPress={onBackPress}
-                  >
-                    <ArrowLeft color="white" size={20} />
-                  </Button>
-                )}
-                {title && (
-                  <View className="flex-1 items-center">
-                    <Text className="text-2xl font-semibold text-white text-center">{title}</Text>
-                  </View>
-                )}
-                {showBackButton && (actionButton ? actionButton : <View className="w-10" />)}
-              </View>
-            )}
-            <View key={contentKey}>{children}</View>
-          </View>
+          <ResponsiveModalMobile
+            containerClassName={containerClassName}
+            title={title}
+            showBackButton={showBackButton}
+            onBackPress={onBackPress}
+            titleClassName={titleClassName}
+            actionButton={actionButton}
+            contentKey={contentKey}
+          >
+            {children}
+          </ResponsiveModalMobile>
         </BottomSheetScrollView>
       </BottomSheetModal>
     </View>

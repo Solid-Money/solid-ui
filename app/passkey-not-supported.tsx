@@ -23,7 +23,7 @@ const PasskeyNotSupported = () => {
             </Text>
 
             <Text className="text-base text-center leading-6">
-              We recommend switching to Chrome to create your account.
+              We recommend switching to Chrome or Safari to create your account.
             </Text>
           </View>
         </View>
