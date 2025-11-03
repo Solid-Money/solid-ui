@@ -74,7 +74,7 @@ export default function ProtectedLayout() {
     }
   }, [resumeParams, handleResumeBankTransferParams]);
 
-  if (Platform.OS === 'web' && !isPasskeySupported()) {
+  if (Platform.OS === 'web' && (!isPasskeySupported() || window.self !== window.top)) {
     return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
   }
 
