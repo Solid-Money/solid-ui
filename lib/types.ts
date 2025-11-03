@@ -592,7 +592,7 @@ export interface TokenBalance {
 }
 
 export enum RewardsType {
-  DEPOSIT = 'deposit',
+  DEPOSIT = 'holding_deposited_funds',
   REFERRAL_SIGNUP = 'referral_signup',
   DAILY_LOGIN = 'daily_login',
 }
