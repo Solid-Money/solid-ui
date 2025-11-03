@@ -1,5 +1,5 @@
 // Amplitude imports
-import { Identify, identify, init as initAmplitudeSDK, setUserId as setAmplitudeUserId, track as trackAmplitude } from '@amplitude/analytics-react-native';
+import { Identify, add, identify, init as initAmplitudeSDK, setUserId as setAmplitudeUserId, track as trackAmplitude } from '@amplitude/analytics-react-native';
 // Firebase imports
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAnalytics, logEvent, setUserId as setFirebaseUserId, setUserProperties } from '@react-native-firebase/analytics';
@@ -29,9 +29,27 @@ export const formatAmplitudeEvent = (str: string) => {
 };
 
 // Initialize Amplitude
-const initAmplitude = () => {
+const initAmplitude = async () => {
   try {
-    initAmplitudeSDK(EXPO_PUBLIC_AMPLITUDE_API_KEY);
+    await initAmplitudeSDK(EXPO_PUBLIC_AMPLITUDE_API_KEY).promise;
+
+    // Initialize Session Replay plugin
+    const sampleRate = 0.2;
+
+    if (Platform.OS === 'web') {
+      const { sessionReplayPlugin } = await import('@amplitude/plugin-session-replay-browser');
+      await add(sessionReplayPlugin({
+        sampleRate,
+      })).promise;
+    } else {
+      // Native platforms (iOS/Android) - use React Native plugin
+      const { SessionReplayPlugin } = await import('@amplitude/plugin-session-replay-react-native');
+      await add(new SessionReplayPlugin({
+        sampleRate,
+        enableRemoteConfig: true,
+        autoStart: true,
+      })).promise;
+    }
   } catch (error) {
     console.error('Error initializing Amplitude:', error);
   }
@@ -63,7 +81,7 @@ const initFirebase = async () => {
 // Initialize all analytics providers
 export const initAnalytics = async () => {
   try {
-    initAmplitude();
+    await initAmplitude();
     await initFirebase();
   } catch (error) {
     console.error('Failed to initialize analytics:', error);
