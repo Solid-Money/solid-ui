@@ -31,18 +31,20 @@ export const formatAmplitudeEvent = (str: string) => {
 // Initialize Amplitude
 const initAmplitude = async () => {
   try {
-    await initAmplitudeSDK(EXPO_PUBLIC_AMPLITUDE_API_KEY).promise;
-
-    // Initialize Session Replay plugin
     const sampleRate = 0.2;
 
     if (Platform.OS === 'web') {
+      // Web: add plugin BEFORE init
       const { sessionReplayPlugin } = await import('@amplitude/plugin-session-replay-browser');
       await add(sessionReplayPlugin({
         sampleRate,
       })).promise;
-    } else {
-      // Native platforms (iOS/Android) - use React Native plugin
+    }
+
+    await initAmplitudeSDK(EXPO_PUBLIC_AMPLITUDE_API_KEY).promise;
+
+    if (Platform.OS !== 'web') {
+      // Native: add plugin AFTER init
       const { SessionReplayPlugin } = await import('@amplitude/plugin-session-replay-react-native');
       await add(new SessionReplayPlugin({
         sampleRate,
