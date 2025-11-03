@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, PressableProps, View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
@@ -9,53 +9,59 @@ import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
+import DepositBuyCryptoOptions from '@/components/DepositOption/DepositBuyCryptoOptions';
+import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress.web';
+import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks.web';
+import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
+import DepositOptions from '@/components/DepositOption/DepositOptions';
+import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import { DepositToVaultForm } from '@/components/DepositToVault';
-import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { DepositModal } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
-import DepositBuyCryptoOptions from './DepositBuyCryptoOptions';
-import DepositDirectlyAddress from './DepositDirectlyAddress.web';
-import DepositDirectlyNetworks from './DepositDirectlyNetworks.web';
-import DepositExternalWalletOptions from './DepositExternalWalletOptions';
-import DepositOptions from './DepositOptions';
-import DepositPublicAddress from './DepositPublicAddress';
+import useResponsiveModal from './useResponsiveModal';
 
-interface ResponsiveDepositOptionModalProps {
+export interface DepositOptionProps {
   buttonText?: string;
   trigger?: React.ReactNode;
+  modal?: DepositModal;
 }
 
-const ResponsiveDepositOptionModal = ({
+const useDepositOption = ({
   buttonText = 'Add funds',
   trigger,
-}: ResponsiveDepositOptionModalProps) => {
+  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+}: DepositOptionProps = {}) => {
   const { user } = useUser();
-  const { currentModal, previousModal, transaction, setModal, srcChainId, directDepositSession } =
-    useDepositStore();
+  const {
+    currentModal,
+    previousModal,
+    transaction,
+    setModal,
+    srcChainId,
+    bankTransfer,
+    directDepositSession,
+  } = useDepositStore();
   const activeAccount = useActiveAccount();
   const status = useActiveWalletConnectionStatus();
   const address = activeAccount?.address;
   const router = useRouter();
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const [isDeleting, setIsDeleting] = useState(false);
+  const { isScreenMedium } = useDimension();
+  const { triggerElement } = useResponsiveModal();
 
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(isForm && address);
   const isBuyCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
-  const isBuyCryptoOptions = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS.name;
-  const isExternalWalletOptions =
-    currentModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name;
-  const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
-  const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
-  const isDepositDirectlyAddress =
-    currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
   const isTransactionStatus = currentModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isNetworks = currentModal.name === DEPOSIT_MODAL.OPEN_NETWORKS.name;
   const isEmailGate = currentModal.name === DEPOSIT_MODAL.OPEN_EMAIL_GATE.name;
@@ -69,6 +75,13 @@ const ResponsiveDepositOptionModal = ({
   const isBankTransferKyc = isBankTransferKycInfo || isBankTransferKycFrame;
   const isBankTransfer =
     isBankTransferAmount || isBankTransferPayment || isBankTransferPreview || isBankTransferKyc;
+  const isExternalWalletOptions =
+    currentModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name;
+  const isBuyCryptoOptions = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS.name;
+  const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
+  const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
+  const isDepositDirectlyAddress =
+    currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -83,21 +96,44 @@ const ResponsiveDepositOptionModal = ({
     setModal(DEPOSIT_MODAL.CLOSE);
   }, [router, setModal, isTransactionStatus]);
 
-  const getTrigger = () => {
+  const Trigger = ({ children, ...props }: PressableProps & { children?: React.ReactNode }) => {
     return (
-      <View
-        className={buttonVariants({
-          variant: 'brand',
-          className: 'h-12 pr-6 rounded-xl',
-        })}
+      <Pressable
+        {...props}
+        onPress={(e) => {
+          if (isScreenMedium) {
+            props?.onPress?.(e);
+          } else {
+            router.push(path.DEPOSIT);
+          }
+        }}
       >
-        <View className="flex-row items-center gap-4">
-          <Plus color="black" />
-          <Text className="text-primary-foreground font-bold">{buttonText}</Text>
-        </View>
-      </View>
+        {triggerElement(children)}
+      </Pressable>
     );
   };
+
+  const getTrigger = useCallback((props?: PressableProps) => {
+    if (trigger) {
+      return <Trigger {...props}>{trigger}</Trigger>;
+    }
+
+    return (
+      <Trigger {...props}>
+        <View
+          className={buttonVariants({
+            variant: 'brand',
+            className: 'h-12 pr-6 rounded-xl',
+          })}
+        >
+          <View className="flex-row items-center gap-1">
+            <Plus color="black" />
+            <Text className="text-primary-foreground font-bold">{buttonText}</Text>
+          </View>
+        </View>
+      </Trigger>
+    );
+  }, [trigger, buttonText]);
 
   const getContent = () => {
     if (isTransactionStatus) {
@@ -122,12 +158,24 @@ const ResponsiveDepositOptionModal = ({
       return <BuyCrypto />;
     }
 
-    if (isBuyCryptoOptions) {
-      return <DepositBuyCryptoOptions />;
+    if (isNetworks) {
+      return <DepositNetworks />;
+    }
+
+    if (isBankTransferKyc) {
+      return <KycModalContent />;
+    }
+
+    if (isBankTransfer) {
+      return <BankTransferModalContent />;
     }
 
     if (isExternalWalletOptions) {
       return <DepositExternalWalletOptions />;
+    }
+
+    if (isBuyCryptoOptions) {
+      return <DepositBuyCryptoOptions />;
     }
 
     if (isPublicAddress) {
@@ -142,18 +190,6 @@ const ResponsiveDepositOptionModal = ({
       return <DepositDirectlyAddress />;
     }
 
-    if (isNetworks) {
-      return <DepositNetworks />;
-    }
-
-    if (isBankTransferKyc) {
-      return <KycModalContent />;
-    }
-
-    if (isBankTransfer) {
-      return <BankTransferModalContent />;
-    }
-
     return <DepositOptions />;
   };
 
@@ -162,17 +198,17 @@ const ResponsiveDepositOptionModal = ({
     if (isEmailGate) return 'email-gate';
     if (isFormAndAddress) return 'deposit-form';
     if (isBuyCrypto) return 'buy-crypto';
-    if (isBuyCryptoOptions) return 'buy-crypto-options';
-    if (isExternalWalletOptions) return 'external-wallet-options';
-    if (isPublicAddress) return 'public-address';
-    if (isDepositDirectly) return 'deposit-directly-networks';
-    if (isDepositDirectlyAddress) return 'deposit-directly-address';
     if (isNetworks) return 'networks';
     if (isBankTransferKycInfo) return 'bank-transfer-kyc-info';
     if (isBankTransferKycFrame) return 'bank-transfer-kyc-frame';
     if (isBankTransferAmount) return 'bank-transfer-amount';
     if (isBankTransferPayment) return 'bank-transfer-payment';
     if (isBankTransferPreview) return 'bank-transfer-preview';
+    if (isExternalWalletOptions) return 'external-wallet-options';
+    if (isBuyCryptoOptions) return 'buy-crypto-options';
+    if (isPublicAddress) return 'public-address';
+    if (isDepositDirectly) return 'deposit-directly-networks';
+    if (isDepositDirectlyAddress) return 'deposit-directly-address';
     return 'deposit-options';
   };
 
@@ -204,7 +240,7 @@ const ResponsiveDepositOptionModal = ({
       return 'pb-4 md:pb-4';
     }
     if (isDepositDirectlyAddress) {
-      return 'w-[450px] !pb-4 xl:!pb-3';
+      return 'w-[450px] max-h-[95vh]';
     }
     return '';
   };
@@ -216,7 +252,8 @@ const ResponsiveDepositOptionModal = ({
       !isTransactionStatus &&
       !isEmailGate &&
       !isNetworks &&
-      !isBankTransfer
+      !isBankTransfer &&
+      !isDepositDirectly
     ) {
       return 'min-h-[40rem]';
     }
@@ -241,7 +278,7 @@ const ResponsiveDepositOptionModal = ({
           setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
         }
       } else {
-        setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+        setModal(modal);
       }
     } else {
       setModal(DEPOSIT_MODAL.CLOSE);
@@ -256,7 +293,7 @@ const ResponsiveDepositOptionModal = ({
     } else if (isBankTransferKycInfo) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
     } else if (isBankTransferAmount) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
     } else if (isBankTransferPayment) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
     } else if (isBankTransferPreview) {
@@ -271,8 +308,13 @@ const ResponsiveDepositOptionModal = ({
       setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
     } else if (isDepositDirectlyAddress) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
-    } else {
+    } else if (isBuyCrypto) {
+      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+    } else if (isScreenMedium) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else {
+      router.back();
+      setModal(DEPOSIT_MODAL.CLOSE);
     }
   };
 
@@ -335,40 +377,38 @@ const ResponsiveDepositOptionModal = ({
   // (there's a local modal in ActivityTransactions that handles it)
   const shouldOpen = !isClose && !(isDepositDirectlyAddress && directDepositSession.fromActivity);
 
-  return (
-    <ResponsiveModal
-      currentModal={currentModal}
-      previousModal={previousModal}
-      isOpen={shouldOpen}
-      onOpenChange={handleOpenChange}
-      trigger={trigger ?? getTrigger()}
-      title={getTitle()}
-      contentClassName={getContentClassName()}
-      containerClassName={getContainerClassName()}
-      showBackButton={
-        isFormAndAddress ||
-        isBuyCrypto ||
-        isBuyCryptoOptions ||
-        isExternalWalletOptions ||
-        isPublicAddress ||
-        isDepositDirectly ||
-        isDepositDirectlyAddress ||
-        isNetworks ||
-        isBankTransferAmount ||
-        isBankTransferPayment ||
-        isBankTransferPreview ||
-        isBankTransferKycInfo ||
-        isBankTransferKycFrame
-      }
-      onBackPress={handleBackPress}
-      actionButton={actionButton}
-      shouldAnimate={shouldAnimate}
-      isForward={isForward}
-      contentKey={getContentKey()}
-    >
-      {getContent()}
-    </ResponsiveModal>
-  );
-};
 
-export default ResponsiveDepositOptionModal;
+  const showBackButton = (
+    isFormAndAddress ||
+    isBuyCrypto ||
+    isNetworks ||
+    isBankTransferAmount ||
+    isBankTransferPayment ||
+    (isBankTransferPreview && !bankTransfer.fromActivity) ||
+    isBankTransferKycInfo ||
+    isBankTransferKycFrame ||
+    isExternalWalletOptions ||
+    isBuyCryptoOptions ||
+    isPublicAddress ||
+    isDepositDirectly ||
+    isDepositDirectlyAddress
+  )
+
+  return {
+    shouldOpen,
+    showBackButton,
+    actionButton,
+    shouldAnimate,
+    isForward,
+    getTrigger,
+    getContent,
+    getContentKey,
+    getTitle,
+    getContentClassName,
+    getContainerClassName,
+    handleOpenChange,
+    handleBackPress,
+  }
+}
+
+export default useDepositOption;
