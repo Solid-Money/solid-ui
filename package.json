@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@amplitude/analytics-react-native": "^1.5.9",
+    "@amplitude/plugin-session-replay-browser": "^1.23.1",
+    "@amplitude/plugin-session-replay-react-native": "^0.4.3",
     "@apollo/client": "^3.13.8",
     "@coinbase/wallet-mobile-sdk": "^1.1.2",
     "@cryptoalgebra/fuse-sdk": "npm:@cryptoalgebra/fuse-sdk@latest",
