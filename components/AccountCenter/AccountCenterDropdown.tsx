@@ -34,7 +34,7 @@ const AccountCenterDropdown = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
+      <DropdownMenuTrigger asChild>
         <AccountCenterTrigger />
       </DropdownMenuTrigger>
       <DropdownMenuContent

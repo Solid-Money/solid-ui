@@ -1,6 +1,6 @@
-import { ImageSourcePropType, Platform, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ImageSourcePropType, Platform, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 
@@ -17,10 +17,10 @@ const HowItWorks = ({ index, title, description, image }: HowItWorksProps) => {
       colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      className="web:flex-1 rounded-twice overflow-hidden"
+      className="flex-1 rounded-twice overflow-hidden"
       style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
     >
-      <View className="flex-1 md:min-h-96 p-5 md:p-6">
+      <View className="md:min-h-96 p-5 md:p-6">
         <View className="w-10 h-10 bg-white/70 rounded-full items-center justify-center">
           <Text className="text-xl text-primary-foreground font-bold">{index}</Text>
         </View>

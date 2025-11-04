@@ -148,7 +148,7 @@ const CardWaitlist = () => {
       }
     >
       <CardWaitlistContainer>
-        <View className="flex-1 gap-8 md:gap-14 bg-transparent p-5 py-7 md:px-12 md:py-10">
+        <View className="flex-1 gap-8 md:gap-14 bg-transparent p-5 py-7 pb-20 md:px-12 md:py-10 md:pb-20">
           <View className="items-start gap-4">
             <View className="bg-brand/10 rounded-full px-5 py-1.5">
               <Text className="text-brand font-bold">Coming soon</Text>

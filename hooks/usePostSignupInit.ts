@@ -1,13 +1,13 @@
-import { useEffect, useRef } from 'react';
 import * as Sentry from '@sentry/react-native';
+import { useEffect, useRef } from 'react';
 
 import { updateSafeAddress } from '@/lib/api';
+import { User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { usePointsStore } from '@/store/usePointsStore';
-import { User } from '@/lib/types';
-import { fetchIsDeposited } from './useAnalytics';
-import { useQueryClient } from '@tanstack/react-query';
 import { useUserStore } from '@/store/useUserStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchIsDeposited } from './useAnalytics';
 
 /**
  * Hook to handle post-signup/post-login initialization tasks that don't need to block
@@ -16,23 +16,28 @@ import { useUserStore } from '@/store/useUserStore';
  */
 export const usePostSignupInit = (user: User | undefined) => {
   const queryClient = useQueryClient();
-  const { updateUser } = useUserStore();
   const hasInitialized = useRef(false);
+  const lastUserId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!user || hasInitialized.current) return;
+    // Only run when we have a new user (different userId)
+    if (!user || user.userId === lastUserId.current) return;
 
     const initializeUser = async () => {
       try {
         // Mark as initialized immediately to prevent duplicate runs
         hasInitialized.current = true;
+        lastUserId.current = user.userId;
 
         // 1. Update safe address if needed (non-blocking failure)
         if (user.safeAddress) {
           try {
             await withRefreshToken(() => updateSafeAddress(user.safeAddress));
-          } catch (error) {
-            console.warn('Failed to update safe address:', error);
+          } catch (error: any) {
+            // 409 means safe address is already registered - this is expected, not an error
+            if (error?.status === 409) {
+              return;
+            }
             Sentry.captureException(error, {
               tags: {
                 type: 'safe_address_update_error_lazy',
@@ -50,7 +55,7 @@ export const usePostSignupInit = (user: User | undefined) => {
         try {
           const isDeposited = await fetchIsDeposited(queryClient, user.safeAddress);
           if (isDeposited && !user.isDeposited) {
-            updateUser({
+            useUserStore.getState().updateUser({
               ...user,
               isDeposited: true,
             });
@@ -102,10 +107,6 @@ export const usePostSignupInit = (user: User | undefined) => {
 
     // Run initialization in background
     void initializeUser();
-  }, [user, queryClient, updateUser]);
-
-  // Reset flag when user changes
-  useEffect(() => {
-    hasInitialized.current = false;
-  }, [user?.userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId]); // Only depend on userId, not the entire user object or queryClient
 };
