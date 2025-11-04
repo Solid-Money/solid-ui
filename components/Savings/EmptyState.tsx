@@ -36,7 +36,7 @@ export default function SavingsEmptyState() {
   };
 
   const renderContent = () => (
-    <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 py-8">
+    <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 pt-12 pb-8 md:pt-8">
       {isScreenMedium ? (
         <View className="md:flex-row justify-between md:items-center gap-y-4">
           <View className="flex-row items-center">
@@ -103,34 +103,36 @@ export default function SavingsEmptyState() {
         <DashboardHeaderMobile balance={0} decimalPlaces={0} />
       )}
 
-      <LinearGradient
-        colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
-        style={{
-          borderRadius: 20,
-          padding: isScreenMedium ? 60 : 20,
-          gap: isScreenMedium ? 96 : 40,
-        }}
-      >
-        {isScreenMedium ? (
-          <View className="flex-col md:flex-row justify-between gap-10 md:gap-0">
-            <View className="justify-between gap-10 md:gap-0 w-full max-w-2xl">
+      <View className="gap-[1.875rem]">
+        <LinearGradient
+          colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
+          style={{
+            borderRadius: 20,
+            padding: isScreenMedium ? 60 : 20,
+            gap: isScreenMedium ? 96 : 40,
+          }}
+        >
+          {isScreenMedium ? (
+            <View className="flex-col md:flex-row justify-between gap-10 md:gap-0">
+              <View className="justify-between gap-10 md:gap-0 w-full max-w-2xl">
+                <SavingDepositTitle />
+                <SavingDepositBenefits />
+              </View>
+              <View>
+                <SavingDepositImage />
+              </View>
+            </View>
+          ) : (
+            <View className="justify-between gap-y-6">
+              <SavingDepositImage />
               <SavingDepositTitle />
               <SavingDepositBenefits />
+              <DepositOptionModal trigger={getTrigger()} />
             </View>
-            <View>
-              <SavingDepositImage />
-            </View>
-          </View>
-        ) : (
-          <View className="justify-between gap-y-6">
-            <SavingDepositImage />
-            <SavingDepositTitle />
-            <SavingDepositBenefits />
-            <DepositOptionModal trigger={getTrigger()} />
-          </View>
-        )}
-      </LinearGradient>
-      <HomeBanners />
+          )}
+        </LinearGradient>
+        <HomeBanners />
+      </View>
       <FAQs faqs={faqs} className="md:mt-16" />
     </View>
   );

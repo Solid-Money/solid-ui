@@ -127,6 +127,10 @@ export const TRACKING_EVENTS = {
 
   // Feature Discovery Events
   TOOLTIP_OPENED: 'tooltip_opened',
+
+  // Card Waitlist Events
+  CARD_WAITLIST_STARTED: 'card_waitlist_started',
+  CARD_WAITLIST_COMPLETED: 'card_waitlist_completed',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

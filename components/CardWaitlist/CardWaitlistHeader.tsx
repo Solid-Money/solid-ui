@@ -19,7 +19,7 @@ const CardWaitlistHeader = ({ children, content }: CardWaitlistHeaderProps) => {
     >
       <ScrollView className="flex-1">
         {isScreenMedium && <Navbar />}
-        <View className="gap-8 md:gap-9 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
+        <View className="gap-8 md:gap-9 px-4 pt-8 pb-24 md:py-12 w-full max-w-7xl mx-auto">
           {content}
           {children}
         </View>
