@@ -76,7 +76,7 @@ const features = [
     title: 'Effortless setup',
     description: (
       <View>
-        <Text className="text-muted-foreground">Start using instantly.</Text>
+        <Text className="text-muted-foreground">Start using instantly</Text>
         <View className="flex-row items-center gap-1.5">
           <Image
             source={require('@/assets/images/apple-google-pay.png')}
