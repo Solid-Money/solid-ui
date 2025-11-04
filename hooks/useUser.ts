@@ -98,11 +98,11 @@ const useUser = (): UseUserReturn => {
         timeout: 60000,
         allowCredentials: user?.credentialId
           ? [
-              {
-                id: base64urlToUint8Array(user.credentialId) as BufferSource,
-                type: 'public-key' as const,
-              },
-            ]
+            {
+              id: base64urlToUint8Array(user.credentialId) as BufferSource,
+              type: 'public-key' as const,
+            },
+          ]
           : undefined,
       });
     } else {
@@ -110,11 +110,11 @@ const useUser = (): UseUserReturn => {
         rpId: getRuntimeRpId(),
         allowCredentials: user?.credentialId
           ? [
-              {
-                id: user.credentialId,
-                type: 'public-key' as const,
-              },
-            ]
+            {
+              id: user.credentialId,
+              type: 'public-key' as const,
+            },
+          ]
           : undefined,
       });
     }
@@ -256,6 +256,9 @@ const useUser = (): UseUserReturn => {
 
   const handleSignup = useCallback(
     async (username: string, inviteCode: string) => {
+      track(TRACKING_EVENTS.SIGNUP_STARTED, {
+        username,
+      });
       try {
         setSignupInfo({ status: Status.PENDING });
         const subOrgId = await getSubOrgIdByUsername(username);
@@ -718,11 +721,11 @@ const useUser = (): UseUserReturn => {
             // Prepare allowCredentials if we have a credential ID for this user
             const allowCredentials = selectedUser?.credentialId
               ? [
-                  {
-                    id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
-                    type: 'public-key' as const,
-                  },
-                ]
+                {
+                  id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
+                  type: 'public-key' as const,
+                },
+              ]
               : undefined;
 
             const passkeyClient = turnkey.passkeyClient(
@@ -780,10 +783,7 @@ const useUser = (): UseUserReturn => {
 
   const handleSessionExpired = useCallback(() => {
     clearKycLinkId(); // Clear KYC data when session expires
-    router.replace({
-      pathname: path.REGISTER,
-      params: { session: 'expired' },
-    });
+    router.replace(`${path.REGISTER}?session=expired`);
   }, [clearKycLinkId, router]);
 
   const handleDeleteAccount = useCallback(async () => {
