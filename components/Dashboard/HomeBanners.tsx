@@ -4,18 +4,13 @@ import { useSharedValue } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
 
-import PoolStat from '@/components/Savings/PoolStat';
 import { useDimension } from '@/hooks/useDimension';
 import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';
 
 type BannerData = React.ReactElement[];
 
-const data: BannerData = [
-  <DepositBanner key="deposit" />,
-  <CardBanner key="card" />,
-  <PoolStat key="pool" />,
-];
+const data: BannerData = [<DepositBanner key="deposit" />, <CardBanner key="card" />];
 
 export const HomeBanners = () => {
   const ref = useRef<ICarouselInstance>(null);
@@ -28,6 +23,7 @@ export const HomeBanners = () => {
   const VIEW_COUNT = isScreenMedium ? 2 : 1;
   const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
   const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
+  const IS_PAGINATION = data.length > VIEW_COUNT;
 
   const onPressPagination = (index: number) => {
     ref.current?.scrollTo({
@@ -39,10 +35,13 @@ export const HomeBanners = () => {
   const renderItem = ({ item, index }: CarouselRenderItemInfo<BannerData[number]>) => {
     const i = ref.current?.getCurrentIndex() ?? 0;
     const isCurrentItem = HAS_MULTIPLE_VIEWS && index === i;
-    const isNextItem = HAS_MULTIPLE_VIEWS && index === ((i + 1) % data.length);
+    const isNextItem = HAS_MULTIPLE_VIEWS && index === (i + 1) % data.length;
 
     return (
-      <View className="flex-1 h-full" style={{ marginRight: isCurrentItem ? (GAP / 2) : 0, marginLeft: isNextItem ? (GAP / 2) : 0 }}>
+      <View
+        className="flex-1 h-full"
+        style={{ marginRight: isCurrentItem ? GAP / 2 : 0, marginLeft: isNextItem ? GAP / 2 : 0 }}
+      >
         {item}
       </View>
     );
@@ -59,6 +58,7 @@ export const HomeBanners = () => {
         <>
           <Carousel
             key={containerWidth}
+            enabled={IS_PAGINATION}
             ref={ref}
             width={ITEM_WIDTH}
             height={BANNER_HEIGHT}
@@ -71,7 +71,7 @@ export const HomeBanners = () => {
               width: containerWidth,
             }}
           />
-          {data.length > 1 && (
+          {IS_PAGINATION && (
             <Pagination.Custom
               progress={progress}
               data={data}
