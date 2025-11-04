@@ -122,7 +122,7 @@ export default function Savings() {
 
   return (
     <PageLayout isLoading={isBalanceLoading || isTransactionsLoading}>
-      <View className="gap-8 md:gap-12 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
+      <View className="gap-8 md:gap-12 px-4 pt-10 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center">
             <View className="flex-row items-center gap-2">

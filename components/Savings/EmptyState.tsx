@@ -36,7 +36,7 @@ export default function SavingsEmptyState() {
   };
 
   const renderContent = () => (
-    <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 py-8">
+    <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 pt-12 pb-8 md:pt-8">
       {isScreenMedium ? (
         <View className="md:flex-row justify-between md:items-center gap-y-4">
           <View className="flex-row items-center">
