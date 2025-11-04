@@ -68,7 +68,7 @@ const features = [
   },
   {
     icon: require('@/assets/images/card-safe.png'),
-    title: 'Safe by design',
+    title: 'Secure by design',
     description: 'Non-custodial, secured by passkeys',
   },
   {
