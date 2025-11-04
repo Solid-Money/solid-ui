@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
 
@@ -10,20 +11,70 @@ import DepositBanner from './DepositBanner';
 
 type BannerData = React.ReactElement[];
 
-const data: BannerData = [<DepositBanner key="deposit" />, <CardBanner key="card" />];
+type BannerItemProps = {
+  index: number;
+  item: React.ReactElement;
+  dataLen: number;
+  hasMultipleViews: boolean;
+  progress: SharedValue<number>;
+  gapPadding: SharedValue<number>;
+};
+
+const BannerItem = ({
+  index,
+  item,
+  dataLen,
+  hasMultipleViews,
+  progress,
+  gapPadding,
+}: BannerItemProps) => {
+  const animatedStyle = useAnimatedStyle(() => {
+    const currentIndex = Math.round(progress.value);
+    const nextIndex = (currentIndex + 1) % dataLen;
+
+    if (hasMultipleViews) {
+      const isCurrent = index === currentIndex;
+      const isNext = index === nextIndex;
+      return {
+        paddingRight: isCurrent ? gapPadding.value : 0,
+        paddingLeft: isNext ? gapPadding.value : 0,
+      };
+    }
+
+    return {
+      paddingRight: gapPadding.value,
+      paddingLeft: gapPadding.value,
+    };
+  }, [index, dataLen, hasMultipleViews]);
+
+  return (
+    <Animated.View className="flex-1 h-full" style={animatedStyle}>
+      {item}
+    </Animated.View>
+  );
+};
 
 export const HomeBanners = () => {
   const ref = useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);
   const { isScreenMedium } = useDimension();
   const [containerWidth, setContainerWidth] = useState(0);
+  const gapPadding = useSharedValue(0);
 
-  const GAP = 40;
+  const data = useMemo(() => [<DepositBanner key="deposit" />, <CardBanner key="card" />], []);
+
+  const GAP = isScreenMedium ? 30 : 8;
   const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
   const VIEW_COUNT = isScreenMedium ? 2 : 1;
   const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
   const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
   const IS_PAGINATION = data.length > VIEW_COUNT;
+
+  useEffect(() => {
+    const target = HAS_MULTIPLE_VIEWS ? GAP / 2 : 0;
+    // immediate update to avoid mount/responsive flicker
+    gapPadding.value = withTiming(target, { duration: 0 });
+  }, [HAS_MULTIPLE_VIEWS, GAP, gapPadding]);
 
   const onPressPagination = (index: number) => {
     ref.current?.scrollTo({
@@ -33,17 +84,16 @@ export const HomeBanners = () => {
   };
 
   const renderItem = ({ item, index }: CarouselRenderItemInfo<BannerData[number]>) => {
-    const i = ref.current?.getCurrentIndex() ?? 0;
-    const isCurrentItem = HAS_MULTIPLE_VIEWS && index === i;
-    const isNextItem = HAS_MULTIPLE_VIEWS && index === (i + 1) % data.length;
-
     return (
-      <View
-        className="flex-1 h-full"
-        style={{ marginRight: isCurrentItem ? GAP / 2 : 0, marginLeft: isNextItem ? GAP / 2 : 0 }}
-      >
-        {item}
-      </View>
+      <BannerItem
+        key={index}
+        index={index}
+        item={item}
+        dataLen={data.length}
+        hasMultipleViews={HAS_MULTIPLE_VIEWS}
+        progress={progress}
+        gapPadding={gapPadding}
+      />
     );
   };
 
@@ -57,15 +107,24 @@ export const HomeBanners = () => {
       {containerWidth > 0 && (
         <>
           <Carousel
-            key={containerWidth}
+            key={`carousel-${containerWidth}`}
             enabled={IS_PAGINATION}
             ref={ref}
             width={ITEM_WIDTH}
             height={BANNER_HEIGHT}
             data={data}
-            loop={true}
+            loop={IS_PAGINATION}
             autoPlay={false}
             onProgressChange={progress}
+            scrollAnimationDuration={200}
+            onScrollStart={() => {
+              if (HAS_MULTIPLE_VIEWS) return;
+              gapPadding.value = withTiming(GAP / 2, { duration: 100 });
+            }}
+            onScrollEnd={() => {
+              if (HAS_MULTIPLE_VIEWS) return;
+              gapPadding.value = withTiming(0, { duration: 100 });
+            }}
             renderItem={renderItem}
             style={{
               width: containerWidth,
