@@ -10,6 +10,8 @@ import useUser from '@/hooks/useUser';
 import { addToCardWaitlist, checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 
 export type DetectedCountryInfo = {
   countryCode: string;
@@ -31,6 +33,11 @@ const ReserveCardButton = () => {
     if (user?.email) {
       try {
         await withRefreshToken(() => addToCardWaitlist(user.email!, countryCode.toUpperCase()));
+        track(TRACKING_EVENTS.CARD_WAITLIST_COMPLETED, {
+          user_id: user?.userId,
+          email: user?.email,
+          country_code: countryCode.toUpperCase(),
+        });
         router.push(path.CARD_WAITLIST_SUCCESS);
       } catch (error) {
         console.error('Error adding to card waitlist:', error);
@@ -40,6 +47,10 @@ const ReserveCardButton = () => {
 
   const handleReserveCard = async () => {
     setLoading(true);
+    track(TRACKING_EVENTS.CARD_WAITLIST_STARTED, {
+      user_id: user?.userId,
+      email: user?.email,
+    });
 
     try {
       // First, check if we have a cached IP address

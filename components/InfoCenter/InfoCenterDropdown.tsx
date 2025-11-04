@@ -32,7 +32,7 @@ const InfoCenterDropdown = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
+      <DropdownMenuTrigger className="rounded-full">
         <InfoCenterTrigger />
       </DropdownMenuTrigger>
       <DropdownMenuContent
