@@ -16,7 +16,7 @@ const PoolStat = () => {
   return (
     <Link href={path.OVERVIEW} className="md:flex-1 web:hover:opacity-95">
       <View className="w-full h-full justify-between bg-card rounded-twice p-5 md:px-10 md:py-8 gap-10">
-        <View className="flex-row justify-between items-center gap-4">
+        <View className="flex-row justify-between items-center gap-2 xs:gap-4">
           <Text className="text-lg text-muted-foreground font-medium">USDC pool stats</Text>
 
           <View className="flex-row items-center gap-1 web:hover:opacity-70">
@@ -25,7 +25,7 @@ const PoolStat = () => {
           </View>
         </View>
 
-        <View className="flex-row justify-between items-center gap-4">
+        <View className="xs:flex-row justify-between xs:items-center gap-4">
           <View>
             <View className="flex-row items-center gap-1">
               <Text className="text-lg text-muted-foreground font-medium">TVL</Text>
