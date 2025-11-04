@@ -4,7 +4,7 @@ import { useDimension } from '@/hooks/useDimension';
 
 const SavingDepositImage = () => {
   const { isScreenMedium } = useDimension();
-  
+
   return (
     <Image
       source={require('@/assets/images/solid-purple-large.png')}
