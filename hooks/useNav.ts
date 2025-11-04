@@ -29,15 +29,20 @@ const activity: MenuItem = {
   href: path.ACTIVITY,
 };
 
+const points: MenuItem = {
+  label: 'Points',
+  href: path.POINTS,
+};
+
 const useNav = () => {
   const { user } = useUser();
   const hasDeposited = user?.isDeposited;
 
   const menuItems = useMemo<MenuItem[]>(() => {
     if (hasDeposited) {
-      return [home, savings, card, activity];
+      return [home, savings, card, activity, points];
     }
-    return [home, card, activity];
+    return [home, card, activity, points];
   }, [hasDeposited]);
 
   return {
