@@ -111,9 +111,11 @@ const AuditSection = () => {
 const FAQSection = () => {
   return (
     <View className="md:flex-row justify-between gap-6">
-      <Text className="text-xl md:text-3xl font-semibold max-w-40">Frequently asked questions</Text>
-      <View className="bg-card rounded-twice p-2 md:p-6 max-w-3xl">
-        <FAQ faqs={faqs} />
+      <Text className="text-xl md:text-3xl font-semibold md:max-w-40">
+        Frequently asked questions
+      </Text>
+      <View className="bg-card rounded-twice p-2 md:p-6 w-full max-w-3xl">
+        <FAQ faqs={faqs} markdownStyle={{ backgroundColor: '#212121' }} />
       </View>
     </View>
   );
