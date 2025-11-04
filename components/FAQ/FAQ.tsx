@@ -7,28 +7,24 @@ import {
 import { Text } from '@/components/ui/text';
 import { Faq } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import Markdown from '@/components/Markdown';
+import Markdown, { MarkdownStyle } from '@/components/Markdown';
 
 type FAQProps = {
   faqs: Faq[];
   className?: string;
+  markdownStyle?: MarkdownStyle;
 };
 
-const FAQ = ({ faqs, className }: FAQProps) => {
+const FAQ = ({ faqs, className, markdownStyle }: FAQProps) => {
   return (
-    <Accordion
-      type="multiple"
-      collapsible
-      defaultValue={['item-1']}
-      className={cn('w-full', className)}
-    >
+    <Accordion type="multiple" collapsible className={cn('w-full', className)}>
       {faqs.map((faq, index) => (
         <AccordionItem key={index} value={`item-${index + 1}`}>
           <AccordionTrigger>
             <Text className="text-lg font-medium">{faq.question}</Text>
           </AccordionTrigger>
           <AccordionContent>
-            <Markdown value={faq.answer} />
+            <Markdown value={faq.answer} style={markdownStyle} />
           </AccordionContent>
         </AccordionItem>
       ))}
