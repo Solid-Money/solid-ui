@@ -23,10 +23,11 @@ export const HomeBanners = () => {
   const { isScreenMedium } = useDimension();
   const [containerWidth, setContainerWidth] = useState(0);
 
-  const GAP = 16;
+  const GAP = 40;
   const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
   const VIEW_COUNT = isScreenMedium ? 2 : 1;
   const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
+  const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
 
   const onPressPagination = (index: number) => {
     ref.current?.scrollTo({
@@ -36,9 +37,12 @@ export const HomeBanners = () => {
   };
 
   const renderItem = ({ item, index }: CarouselRenderItemInfo<BannerData[number]>) => {
-    const isFirstItem = VIEW_COUNT > 1 && index === ref.current?.getCurrentIndex();
+    const i = ref.current?.getCurrentIndex() ?? 0;
+    const isCurrentItem = HAS_MULTIPLE_VIEWS && index === i;
+    const isNextItem = HAS_MULTIPLE_VIEWS && index === ((i + 1) % data.length);
+
     return (
-      <View className="flex-1 h-full" style={{ marginRight: isFirstItem ? GAP : 0 }}>
+      <View className="flex-1 h-full" style={{ marginRight: isCurrentItem ? (GAP / 2) : 0, marginLeft: isNextItem ? (GAP / 2) : 0 }}>
         {item}
       </View>
     );
