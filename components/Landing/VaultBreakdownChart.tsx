@@ -36,7 +36,7 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
   const segments = data.map((item, index) => {
     const segmentAngle = (item.allocation / 100) * availableAngle;
     const segmentLength = (segmentAngle / 360) * circumference;
-    const startAngle = currentAngle + (index * paddingAngle);
+    const startAngle = currentAngle + index * paddingAngle;
     const offset = (startAngle / 360) * circumference;
 
     currentAngle += segmentAngle;
@@ -85,4 +85,3 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
 };
 
 export default VaultBreakdownChart;
-
