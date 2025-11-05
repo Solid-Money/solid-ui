@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import * as Slot from '@rn-primitives/slot';
 import type { SlottableTextProps, TextRef } from '@rn-primitives/types';
 import * as React from 'react';
-import { Text as RNText } from 'react-native';
+import { Platform, Text as RNText } from 'react-native';
 
 const TextClassContext = React.createContext<string | undefined>(undefined);
 
@@ -42,7 +42,9 @@ const Text = React.forwardRef<TextRef, SlottableTextProps>(
   ({ className, asChild = false, ...props }, ref) => {
     const textClass = React.useContext(TextClassContext);
     const Component = asChild ? Slot.Text : RNText;
-    const textClassName = cn('text-base text-foreground web:select-text', textClass, className);
+    const textClassName = cn('text-foreground web:select-text', textClass, className, {
+      'text-base': Platform.OS === 'web',
+    });
 
     return (
       <Component

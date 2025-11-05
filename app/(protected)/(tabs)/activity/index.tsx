@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { ActivityTabs, ActivityTransactions } from '@/components/Activity';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useCardStatus } from '@/hooks/useCardStatus';
@@ -18,6 +19,8 @@ export default function Activity() {
         <Text className="text-xl md:text-3xl font-semibold">Activity</Text>
         {hasCard ? <ActivityTabs /> : <ActivityTransactions tab={ActivityTab.WALLET} />}
       </View>
+      {/* Hidden modal that responds to store state changes from activity clicks */}
+      <DepositOptionModal trigger={null} />
     </PageLayout>
   );
 }

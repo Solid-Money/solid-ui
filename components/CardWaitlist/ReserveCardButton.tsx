@@ -26,8 +26,14 @@ const ReserveCardButton = () => {
 
   const [detectedCountryInfo, setDetectedCountryInfo] = useState<DetectedCountryInfo | null>(null);
 
-  const { setCountryInfo, getIpDetectedCountry, setIpDetectedCountry, getCachedIp, setCachedIp } =
-    useCountryStore();
+  const {
+    setCountryInfo,
+    getIpDetectedCountry,
+    setIpDetectedCountry,
+    getCachedIp,
+    setCachedIp,
+    setCountryDetectionFailed,
+  } = useCountryStore();
 
   const handleAddToWaitlist = async (countryCode: string) => {
     if (user?.email) {
@@ -99,7 +105,8 @@ const ReserveCardButton = () => {
       const countryData = await getCountryFromIp();
 
       if (!countryData) {
-        // If we can't detect country, go to country selection
+        // If we can't detect country, mark as failed and go to country selection
+        setCountryDetectionFailed(true);
         router.push(path.CARD_COUNTRY_SELECTION);
         return;
       }
@@ -110,7 +117,8 @@ const ReserveCardButton = () => {
       const accessCheck = await withRefreshToken(() => checkCardAccess(countryCode));
 
       if (!accessCheck) {
-        // If check fails, go to country selection
+        // If check fails, mark as failed and go to country selection
+        setCountryDetectionFailed(true);
         router.push(path.CARD_COUNTRY_SELECTION);
         return;
       }
@@ -121,8 +129,9 @@ const ReserveCardButton = () => {
         isAvailable: accessCheck.hasAccess,
       };
 
-      // Cache the country info
+      // Cache the country info and clear failure flag
       setIpDetectedCountry(ip, countryInfo);
+      setCountryDetectionFailed(false);
 
       // Navigate based on availability
       if (accessCheck.hasAccess) {
@@ -138,7 +147,8 @@ const ReserveCardButton = () => {
       }
     } catch (error) {
       console.error('Error checking country availability:', error);
-      // On error, go to country selection as fallback
+      // On error, mark as failed and go to country selection as fallback
+      setCountryDetectionFailed(true);
       router.push(path.CARD_COUNTRY_SELECTION);
     } finally {
       setLoading(false);

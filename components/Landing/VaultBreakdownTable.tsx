@@ -138,28 +138,28 @@ const VaultBreakdownTable = ({ data, setSelectedBreakdown, className }: TablePro
     {
       title: 'Destinations',
       key: 'name',
-      width: isScreenMedium ? '50%' : '50%',
+      width: isScreenMedium ? '50%' : '35%',
     },
     {
       title: 'Allocation',
       key: 'allocation',
-      width: isScreenMedium ? '15%' : '25%',
+      width: isScreenMedium ? '15%' : '20%',
       percent: true,
     },
     {
       title: 'Risk',
       key: 'risk',
-      width: isScreenMedium ? '15%' : 0,
+      width: isScreenMedium ? '15%' : '20%',
     },
     {
       title: 'APY',
       tooltip: 'Position APY',
       key: 'positionMaxAPY',
-      width: isScreenMedium ? '15%' : '25%',
+      width: isScreenMedium ? '15%' : '20%',
       percent: true,
     },
     {
-      width: isScreenMedium ? '5%' : 0,
+      width: isScreenMedium ? '5%' : '5%',
     },
   ];
 
