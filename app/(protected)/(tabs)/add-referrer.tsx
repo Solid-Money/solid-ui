@@ -3,16 +3,33 @@ import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { addReferrer } from '@/lib/api';
+import { addReferrer, fetchPoints } from '@/lib/api';
 import { router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 
 export default function AddReferrer() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentReferrer, setCurrentReferrer] = useState<string | null>(null);
+  const [fetchingReferrer, setFetchingReferrer] = useState(true);
+
+  useEffect(() => {
+    const loadCurrentReferrer = async () => {
+      try {
+        const points = await fetchPoints();
+        setCurrentReferrer(points.userRefferer || null);
+      } catch (error) {
+        console.error('Failed to fetch current referrer:', error);
+      } finally {
+        setFetchingReferrer(false);
+      }
+    };
+
+    loadCurrentReferrer();
+  }, []);
 
   const onSubmit = async () => {
     setLoading(true);
@@ -45,39 +62,57 @@ export default function AddReferrer() {
               <ArrowLeft color="white" />
             </Pressable>
             <Text className="text-white text-lg md:text-xl font-semibold text-center">
-              Enter your friend&apos;s referral code
+              {currentReferrer ? 'Update' : "Enter your friend's"} referral code
             </Text>
             <View className="w-10" />
           </View>
           <View className=" w-full">
-            <View className="flex-col justify-center w-full">
-              <Text className="text-white/70 text-left mt-8">Referral code</Text>
-            </View>
-            <TextInput
-              className="bg-[#1A1A1A] rounded-xl px-4 h-14 text-white mt-6"
-              placeholder="Enter your friend's referral code"
-              placeholderTextColor="#666"
-              value={code}
-              onChangeText={onChangeCode}
-              autoFocus
-            />
-            {error && (
-              <View className="flex-row items-center gap-2 my-2">
-                <InfoError />
-                <Text className="text-sm text-red-400">{error}</Text>
+            {fetchingReferrer ? (
+              <View className="flex items-center justify-center py-8">
+                <ActivityIndicator color="white" />
               </View>
+            ) : (
+              <>
+                {currentReferrer && (
+                  <View className="bg-[#1A1A1A] rounded-xl p-4 mb-6">
+                    <Text className="text-white/70 text-sm mb-1">Current referrer</Text>
+                    <Text className="text-white text-base font-semibold">{currentReferrer}</Text>
+                  </View>
+                )}
+                <View className="flex-col justify-center w-full">
+                  <Text className="text-white/70 text-left mt-8">
+                    {currentReferrer ? 'Update referral code' : 'Referral code'}
+                  </Text>
+                </View>
+                <TextInput
+                  className="bg-[#1A1A1A] rounded-xl px-4 h-14 text-white mt-6"
+                  placeholder="Enter your friend's referral code"
+                  placeholderTextColor="#666"
+                  value={code}
+                  onChangeText={onChangeCode}
+                  autoFocus
+                />
+                {error && (
+                  <View className="flex-row items-center gap-2 my-2">
+                    <InfoError />
+                    <Text className="text-sm text-red-400">{error}</Text>
+                  </View>
+                )}
+                <Button
+                  className="rounded-xl h-12 w-full mt-6 bg-[#94F27F]"
+                  onPress={onSubmit}
+                  disabled={!code || loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="gray" />
+                  ) : (
+                    <Text className="text-base font-bold text-black">
+                      {currentReferrer ? 'Update Referrer' : 'Submit'}
+                    </Text>
+                  )}
+                </Button>
+              </>
             )}
-            <Button
-              className="rounded-xl h-12 w-full mt-6 bg-[#94F27F]"
-              onPress={onSubmit}
-              disabled={!code || loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="gray" />
-              ) : (
-                <Text className="text-base font-bold text-black">Submit</Text>
-              )}
-            </Button>
           </View>
         </View>
       </View>
