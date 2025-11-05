@@ -74,9 +74,9 @@ const HowSection = () => {
 };
 
 const VaultBreakdownSection = ({ vaultBreakdown }: VaultBreakdownSectionProps) => {
-  if (!vaultBreakdown.length) return null;
-
   const [selectedBreakdown, setSelectedBreakdown] = useState(-1);
+
+  if (!vaultBreakdown.length) return null;
 
   return (
     <View className="gap-6">

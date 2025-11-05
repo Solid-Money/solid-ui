@@ -5,11 +5,10 @@ import { ChartPayload } from '@/lib/types';
 
 interface BarChartProps {
   data: ChartPayload[];
-  height?: number;
   formatToolTip?: (value: number | null) => string;
 }
 
-const Chart = ({ data, height = 150, formatToolTip }: BarChartProps) => {
+const Chart = ({ data, formatToolTip }: BarChartProps) => {
   if (!data || data.length === 0) {
     return null;
   }
@@ -45,4 +44,3 @@ const Chart = ({ data, height = 150, formatToolTip }: BarChartProps) => {
 };
 
 export default Chart;
-
