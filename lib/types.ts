@@ -941,3 +941,28 @@ export interface ChartPayload {
   time: number;
   value: number;
 }
+
+export interface SwapTokenRequest {
+  chainId?: number;
+  isActive?: boolean;
+  isFeatured?: boolean;
+  symbol?: string;
+  address?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SwapTokenResponse {
+  _id: string;
+  name: string;
+  address: string;
+  symbol: string;
+  decimals: number;
+  chainId: number;
+  logoURI?: string;
+  isActive: boolean;
+  displayOrder?: number;
+  isFeatured: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

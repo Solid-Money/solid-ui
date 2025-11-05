@@ -58,6 +58,8 @@ import {
   SearchCoin,
   StargateQuoteParams,
   StargateQuoteResponse,
+  SwapTokenRequest,
+  SwapTokenResponse,
   ToCurrency,
   TokenPriceUsd,
   UpdateActivityEvent,
@@ -1483,6 +1485,16 @@ export const startPasskeyRecovery = async (username: string, targetPublicKey: st
     {
       username,
       targetPublicKey,
+    },
+  );
+  return response.data;
+};
+
+export const fetchTokenList = async (params: SwapTokenRequest) => {
+  const response = await axios.get<SwapTokenResponse[]>(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/swap-tokens`,
+    {
+      params,
     },
   );
   return response.data;

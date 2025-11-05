@@ -1,7 +1,7 @@
 import { NATIVE_TOKENS } from '@/constants/tokens';
-import { fetchTokenPriceUsd } from '@/lib/api';
+import { fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { PromiseStatus, TokenBalance, TokenType } from '@/lib/types';
+import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import { isSoUSDToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { useQuery } from '@tanstack/react-query';
@@ -85,7 +85,7 @@ const symbols = {
 
 // Fetch function for token balances
 const fetchTokenBalances = async (safeAddress: string) => {
-  const [ethereumResponse, fuseResponse, soUSDRate, ethBalance, fuseBalance, ethPrice, fusePrice] =
+  const [ethereumResponse, fuseResponse, soUSDRate, ethBalance, fuseBalance, ethPrice, fusePrice, tokenList] =
     await Promise.allSettled([
       fetch(`https://eth.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
         headers: { accept: 'application/json' },
@@ -106,6 +106,9 @@ const fetchTokenBalances = async (safeAddress: string) => {
       }),
       fetchTokenPriceUsd(NATIVE_TOKENS[mainnet.id]),
       fetchTokenPriceUsd(NATIVE_TOKENS[fuse.id]),
+      fetchTokenList({
+        isActive: true,
+      })
     ]);
 
   let ethereumTokens: TokenBalance[] = [];
@@ -119,12 +122,16 @@ const fetchTokenBalances = async (safeAddress: string) => {
     console.warn('Failed to fetch soUSD rate:', soUSDRate.reason);
   }
 
+  const getAddress = (item: BlockscoutTokenBalance) => {
+    return item.token.address || item.token.address_hash;
+  }
+
   // Convert Blockscout format to our standard format
   const convertBlockscoutToTokenBalance = (
     item: BlockscoutTokenBalance,
     chainId: number,
   ): TokenBalance => {
-    const address = item.token.address || item.token.address_hash;
+    const address = getAddress(item);
     return {
       contractTickerSymbol: symbols[item.token.symbol as keyof typeof symbols] || item.token.symbol,
       contractName: item.token.name,
@@ -143,13 +150,23 @@ const fetchTokenBalances = async (safeAddress: string) => {
     };
   };
 
+  const tokenListData = tokenList.status === PromiseStatus.FULFILLED ? tokenList.value : [];
+
+  const filterTokenList = (list: SwapTokenResponse[], chainId: number, address: string) => {
+    if (list.length === 0) return true;
+    return list.some(token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase());
+  }
+
   // Process Ethereum response (Blockscout)
   if (ethereumResponse.status === PromiseStatus.FULFILLED && ethereumResponse.value.ok) {
     const ethereumData: BlockscoutResponse = await ethereumResponse.value.json();
     // Filter out NFTs and only include ERC-20 tokens
     ethereumTokens = ethereumData
-      .filter(item => item.token.type === TokenType.ERC20)
-      .map(item => convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID));
+      .filter(item =>
+        item.token.type === TokenType.ERC20
+        && filterTokenList(tokenListData, ETHEREUM_CHAIN_ID, getAddress(item))
+      )
+      .map(item => convertBlockscoutToTokenBalance(item, ETHEREUM_CHAIN_ID))
   } else if (ethereumResponse.status === PromiseStatus.REJECTED) {
     console.warn('Failed to fetch Ethereum balances:', ethereumResponse.reason);
   }
@@ -159,7 +176,10 @@ const fetchTokenBalances = async (safeAddress: string) => {
     const fuseData: BlockscoutResponse = await fuseResponse.value.json();
     // Filter out NFTs and only include ERC-20 tokens
     fuseTokens = fuseData
-      .filter(item => item.token.type === TokenType.ERC20)
+      .filter(item =>
+        item.token.type === TokenType.ERC20
+        && filterTokenList(tokenListData, FUSE_CHAIN_ID, getAddress(item))
+      )
       .map(item => convertBlockscoutToTokenBalance(item, FUSE_CHAIN_ID));
   } else if (fuseResponse.status === PromiseStatus.REJECTED) {
     console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
