@@ -100,7 +100,7 @@ const useDepositOption = ({
     return (
       <Pressable
         {...props}
-        onPress={(e) => {
+        onPress={e => {
           if (isScreenMedium) {
             props?.onPress?.(e);
           } else {
@@ -113,27 +113,30 @@ const useDepositOption = ({
     );
   };
 
-  const getTrigger = useCallback((props?: PressableProps) => {
-    if (trigger) {
-      return <Trigger {...props}>{trigger}</Trigger>;
-    }
+  const getTrigger = useCallback(
+    (props?: PressableProps) => {
+      if (trigger) {
+        return <Trigger {...props}>{trigger}</Trigger>;
+      }
 
-    return (
-      <Trigger {...props}>
-        <View
-          className={buttonVariants({
-            variant: 'brand',
-            className: 'h-12 pr-6 rounded-xl',
-          })}
-        >
-          <View className="flex-row items-center gap-1">
-            <Plus color="black" />
-            <Text className="text-primary-foreground font-bold">{buttonText}</Text>
+      return (
+        <Trigger {...props}>
+          <View
+            className={buttonVariants({
+              variant: 'brand',
+              className: 'h-12 pr-6 rounded-xl',
+            })}
+          >
+            <View className="flex-row items-center gap-1">
+              <Plus color="black" />
+              <Text className="text-primary-foreground font-bold">{buttonText}</Text>
+            </View>
           </View>
-        </View>
-      </Trigger>
-    );
-  }, [trigger, buttonText]);
+        </Trigger>
+      );
+    },
+    [trigger, buttonText],
+  );
 
   const getContent = () => {
     if (isTransactionStatus) {
@@ -373,12 +376,10 @@ const useDepositOption = ({
     currentModal.name,
   ]);
 
-  // Don't open this global modal if we're showing the address screen from activity
-  // (there's a local modal in ActivityTransactions that handles it)
-  const shouldOpen = !isClose && !(isDepositDirectlyAddress && directDepositSession.fromActivity);
+  // Open the modal for all states except when explicitly closed
+  const shouldOpen = !isClose;
 
-
-  const showBackButton = (
+  const showBackButton =
     isFormAndAddress ||
     isBuyCrypto ||
     isNetworks ||
@@ -391,8 +392,7 @@ const useDepositOption = ({
     isBuyCryptoOptions ||
     isPublicAddress ||
     isDepositDirectly ||
-    isDepositDirectlyAddress
-  )
+    isDepositDirectlyAddress;
 
   return {
     shouldOpen,
@@ -408,7 +408,7 @@ const useDepositOption = ({
     getContainerClassName,
     handleOpenChange,
     handleBackPress,
-  }
-}
+  };
+};
 
 export default useDepositOption;

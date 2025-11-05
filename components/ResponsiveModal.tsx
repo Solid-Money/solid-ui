@@ -131,7 +131,7 @@ const ResponsiveModal = ({
   if (isScreenMedium) {
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
         <DialogContent className={cn('p-6 md:p-8 md:max-w-md', contentClassName)}>
           <Animated.View style={dialogAnimatedStyle} className="overflow-hidden">
             <View
@@ -200,12 +200,14 @@ const ResponsiveModal = ({
 
   return (
     <View>
-      <Pressable
-        onPress={handlePresentModalPress}
-        style={({ pressed }) => [pressed && { opacity: 0.8 }]}
-      >
-        {triggerElement(trigger)}
-      </Pressable>
+      {trigger !== null && (
+        <Pressable
+          onPress={handlePresentModalPress}
+          style={({ pressed }) => [pressed && { opacity: 0.8 }]}
+        >
+          {triggerElement(trigger)}
+        </Pressable>
+      )}
       <BottomSheetModal
         ref={bottomSheetModalRef}
         snapPoints={['90%']}
