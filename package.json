@@ -16,6 +16,7 @@
     "@amplitude/plugin-session-replay-browser": "^1.23.1",
     "@amplitude/plugin-session-replay-react-native": "^0.4.3",
     "@apollo/client": "^3.13.8",
+    "@braintree/browser-detection": "^2.1.0",
     "@coinbase/wallet-mobile-sdk": "^1.1.2",
     "@cryptoalgebra/fuse-sdk": "npm:@cryptoalgebra/fuse-sdk@latest",
     "@expo-google-fonts/mona-sans": "^0.3.0",
