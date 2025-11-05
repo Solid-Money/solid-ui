@@ -23,12 +23,16 @@ interface CountryState {
   // Cache for IP address
   cachedIp: IpCache | null;
 
+  // Flag to indicate country detection failed (e.g., in ReserveCardButton)
+  countryDetectionFailed: boolean;
+
   // Store methods
   setCountryInfo: (info: CountryInfo) => void;
   setIpDetectedCountry: (ip: string, info: CountryInfo) => void;
   getIpDetectedCountry: (ip: string) => CountryInfo | null;
   setCachedIp: (ip: string) => void;
   getCachedIp: () => string | null;
+  setCountryDetectionFailed: (failed: boolean) => void;
   clearCountryInfo: () => void;
 }
 
@@ -42,6 +46,7 @@ export const useCountryStore = create<CountryState>()(
       countryInfo: null,
       ipCountryCache: {},
       cachedIp: null,
+      countryDetectionFailed: false,
 
       setCountryInfo: (info: CountryInfo) => {
         set({ countryInfo: info });
@@ -98,11 +103,16 @@ export const useCountryStore = create<CountryState>()(
         return cached.ip;
       },
 
+      setCountryDetectionFailed: (failed: boolean) => {
+        set({ countryDetectionFailed: failed });
+      },
+
       clearCountryInfo: () => {
         set({
           countryInfo: null,
           ipCountryCache: {},
           cachedIp: null,
+          countryDetectionFailed: false,
         });
       },
     }),
