@@ -1,24 +1,10 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
+import { fuse } from 'viem/chains';
 
 import { EXPO_PUBLIC_FLASH_API_BASE_URL } from '@/lib/config';
 import { TokenListItem } from '@/lib/types/tokens';
-
-// Type for the swap token response from backend
-interface SwapTokenResponse {
-  _id: string;
-  name: string;
-  address: string;
-  symbol: string;
-  decimals: number;
-  chainId: number;
-  logoURI?: string;
-  isActive: boolean;
-  displayOrder?: number;
-  isFeatured: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { SwapTokenResponse } from '@/lib/types';
 
 // Fallback to the original URL if backend is not available
 const VOLTAGE_SWAP_DEFAULT_TOKEN_LIST_URL =
@@ -38,6 +24,7 @@ export function useFetchTokenList() {
           {
             params: {
               isActive: true,
+              chainId: fuse.id,
             },
           }
         );
