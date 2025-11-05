@@ -8,10 +8,10 @@ import {
 } from '@/components/BankTransfer/enums';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import useUser from '@/hooks/useUser';
+import { usePasskey } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
+import useUser from '@/hooks/useUser';
 import { trackIdentity } from '@/lib/analytics';
-import { isPasskeySupported } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -21,6 +21,7 @@ export default function ProtectedLayout() {
   const { users } = useUserStore();
   const { hasSeenOnboarding } = useOnboardingStore();
   const searchParams = useLocalSearchParams();
+  const { isPasskeySupported } = usePasskey();
 
   // Run post-signup/login initialization (lazy loading of balance, points, etc.)
   usePostSignupInit(user);
@@ -74,8 +75,9 @@ export default function ProtectedLayout() {
     }
   }, [resumeParams, handleResumeBankTransferParams]);
 
-  if (Platform.OS === 'web' && (!isPasskeySupported() || window.self !== window.top)) {
-    return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
+  if (Platform.OS === 'web') {
+    if (isPasskeySupported === false) return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
+    if (isPasskeySupported === null) return null;
   }
 
   if (!users.length) {

@@ -161,13 +161,6 @@ export const fontSize = (rem: number) => {
   return rem * remToPx;
 };
 
-// see: https://github.com/peterferguson/react-native-passkeys/blob/bff6158dca29382b2068213502adc8f0bf7f253a/src/ReactNativePasskeysModule.web.ts#L28
-export const isPasskeySupported = () => {
-  return (
-    window?.PublicKeyCredential !== undefined && typeof window.PublicKeyCredential === 'function'
-  );
-};
-
 export const toTitleCase = (word: string) => {
   return word.charAt(0).toUpperCase() + word.slice(1);
 };
