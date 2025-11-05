@@ -36,7 +36,6 @@ export default function CountrySelection() {
   };
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [notifyClicked, setNotifyClicked] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showCountrySelector, setShowCountrySelector] = useState(false);
@@ -55,6 +54,8 @@ export default function CountrySelection() {
     setIpDetectedCountry,
     getCachedIp,
     setCachedIp,
+    countryDetectionFailed,
+    setCountryDetectionFailed,
   } = useCountryStore();
 
   // Function to get country from IP and check card access
@@ -98,7 +99,8 @@ export default function CountrySelection() {
           if (ip) {
             setCachedIp(ip);
           } else {
-            setError(true);
+            // If IP detection fails, show country selector instead of error
+            setShowCountrySelector(true);
             setLoading(false);
             return;
           }
@@ -122,11 +124,21 @@ export default function CountrySelection() {
           return;
         }
 
+        // If country detection already failed (e.g., from ReserveCardButton),
+        // skip retry and go straight to manual selection.
+        if (countryDetectionFailed) {
+          setShowCountrySelector(true);
+          setLoading(false);
+          return;
+        }
+
         // Fetch new country info if cache is invalid or missing
         const countryInfo = await getCountryFromIpAndCheckAccess();
 
         if (countryInfo) {
           setIpDetectedCountry(ip, countryInfo);
+          // Clear failure flag on successful detection
+          setCountryDetectionFailed(false);
 
           const country = COUNTRIES.find(c => c.code === countryInfo.countryCode);
 
@@ -137,11 +149,13 @@ export default function CountrySelection() {
           // Always show country selection screen
           setShowCountrySelector(true);
         } else {
-          setError(true);
+          // If country detection fails, show country selector instead of error
+          setShowCountrySelector(true);
         }
       } catch (err) {
         console.error('Error fetching country:', err);
-        setError(true);
+        // If any error occurs, show country selector instead of error
+        setShowCountrySelector(true);
       } finally {
         setLoading(false);
       }
@@ -155,6 +169,8 @@ export default function CountrySelection() {
     getCachedIp,
     setCachedIp,
     setCountryInfo,
+    countryDetectionFailed,
+    setCountryDetectionFailed,
   ]);
 
   // Check if user is already in notify waitlist
@@ -248,8 +264,9 @@ export default function CountrySelection() {
           isAvailable: accessCheck.hasAccess,
         };
 
-        // Update store
+        // Update store and clear failure flag
         setCountryInfo(updatedCountryInfo);
+        setCountryDetectionFailed(false);
 
         // If selected country is available, add to reserve waitlist and show confirmation
         if (accessCheck.hasAccess) {
@@ -295,10 +312,6 @@ export default function CountrySelection() {
 
   if (loading || checkingWaitlist) {
     return <LoadingView />;
-  }
-
-  if (error || !countryInfo) {
-    return <ErrorView onBack={goBack} />;
   }
 
   return (
@@ -362,7 +375,7 @@ export default function CountrySelection() {
               onCountrySelect={handleCountrySelect}
             />
           </>
-        ) : notifyClicked ? (
+        ) : notifyClicked && countryInfo ? (
           <View className="flex-1 justify-center">
             <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full items-center">
               <NotifyConfirmationView
@@ -371,7 +384,7 @@ export default function CountrySelection() {
               />
             </View>
           </View>
-        ) : (
+        ) : countryInfo ? (
           <View className="flex-1 justify-center">
             <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full items-center">
               <CountryUnavailableView
@@ -383,7 +396,7 @@ export default function CountrySelection() {
               />
             </View>
           </View>
-        )}
+        ) : null}
       </View>
     </PageLayout>
   );
@@ -571,36 +584,6 @@ function LoadingView() {
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" color="#94F27F" />
         <Text className="mt-4 text-white/70">Loading...</Text>
-      </View>
-    </PageLayout>
-  );
-}
-
-// Error View
-function ErrorView({ onBack }: { onBack: () => void }) {
-  return (
-    <PageLayout desktopOnly>
-      <View className="w-full max-w-lg mx-auto pt-8 px-4">
-        <View className="flex-row items-center justify-between mb-8">
-          <Pressable onPress={onBack} className="web:hover:opacity-70">
-            <ArrowLeft color="white" />
-          </Pressable>
-          <Text className="text-white text-xl md:text-2xl font-semibold text-center">
-            Solid card
-          </Text>
-          <View className="w-10" />
-        </View>
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-white text-lg text-center mb-4">
-            Unable to detect your location
-          </Text>
-          <Text className="text-white/60 text-center mb-8">
-            Please check your internet connection and try again.
-          </Text>
-          <Button className="rounded-xl h-12 w-full bg-[#94F27F]" onPress={onBack}>
-            <Text className="text-base font-bold text-black">Go Back</Text>
-          </Button>
-        </View>
       </View>
     </PageLayout>
   );
