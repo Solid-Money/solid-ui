@@ -23,11 +23,13 @@ export const usePostSignupInit = (user: User | undefined) => {
     // Only run when we have a new user (different userId)
     if (!user || user.userId === lastUserId.current) return;
 
+    // Set immediately to prevent race condition with async updates
+    lastUserId.current = user.userId;
+
     const initializeUser = async () => {
       try {
         // Mark as initialized immediately to prevent duplicate runs
         hasInitialized.current = true;
-        lastUserId.current = user.userId;
 
         // 1. Update safe address if needed (non-blocking failure)
         if (user.safeAddress) {

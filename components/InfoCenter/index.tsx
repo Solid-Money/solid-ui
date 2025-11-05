@@ -13,7 +13,7 @@ const InfoCenterTrigger = (props: any) => {
       className="w-9 h-9 flex-row items-center justify-center bg-button-secondary rounded-full active:scale-95 transition-all web:hover:bg-secondary-hover active:opacity-80"
       {...props}
     >
-      <QuestionIcon width={20} height={20} />
+      <QuestionIcon width={14} height={14} />
     </Pressable>
   );
 };

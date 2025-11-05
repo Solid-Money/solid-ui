@@ -1,18 +1,26 @@
+import { ColorValue } from 'react-native';
 import RNMarkdown from 'react-native-marked';
+
+export type MarkdownStyle = {
+  text?: ColorValue;
+  strong?: ColorValue;
+  em?: ColorValue;
+  code?: ColorValue;
+  backgroundColor?: ColorValue;
+};
 
 type MarkdownProps = {
   value: string;
+  style?: MarkdownStyle;
 };
 
-const Markdown = ({ value }: MarkdownProps) => {
+const Markdown = ({ value, style = { backgroundColor: '#000000' } }: MarkdownProps) => {
   return (
     <RNMarkdown
       value={value}
       flatListProps={{
         initialNumToRender: 8,
-        style: {
-          backgroundColor: 'transparent',
-        },
+        style,
       }}
       styles={{
         text: {
