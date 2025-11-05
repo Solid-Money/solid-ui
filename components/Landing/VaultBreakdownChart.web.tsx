@@ -45,7 +45,7 @@ function CustomLabel({ viewBox, value1, value2 }: CustomLabelProps) {
         </tspan>
       </text>
       <foreignObject x={cx + 80} y={cy - 22} width="20" height="20" style={{ overflow: 'visible' }}>
-        <TooltipPopover text="Sum of all Effective Position APY" />
+        <TooltipPopover text="Total Effective APY" />
       </foreignObject>
       <text
         x={cx}

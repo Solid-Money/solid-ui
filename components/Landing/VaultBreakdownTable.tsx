@@ -153,8 +153,8 @@ const VaultBreakdownTable = ({ data, setSelectedBreakdown, className }: TablePro
     },
     {
       title: 'APY',
-      tooltip: 'Effective Position APY\n(Position APY * Allocation)',
-      key: 'effectivePositionAPY',
+      tooltip: 'Position APY',
+      key: 'positionMaxAPY',
       width: isScreenMedium ? '15%' : '25%',
       percent: true,
     },
