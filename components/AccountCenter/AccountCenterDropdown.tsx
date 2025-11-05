@@ -34,7 +34,7 @@ const AccountCenterDropdown = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild className="rounded-full">
+      <DropdownMenuTrigger className="rounded-full">
         <AccountCenterTrigger />
       </DropdownMenuTrigger>
       <DropdownMenuContent
