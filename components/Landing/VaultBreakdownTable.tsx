@@ -1,13 +1,13 @@
-import { DimensionValue, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
+import { DimensionValue, Pressable, View } from 'react-native';
 
+import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
-import { VaultBreakdown } from '@/lib/types';
-import { cn, eclipseUsername, formatNumber } from '@/lib/utils';
 import { protocols, protocolsImages } from '@/constants/protocols';
 import { useDimension } from '@/hooks/useDimension';
-import TooltipPopover from '@/components/Tooltip';
+import { VaultBreakdown } from '@/lib/types';
+import { cn, eclipseUsername, formatNumber } from '@/lib/utils';
 
 type Column = {
   width: DimensionValue;
@@ -153,7 +153,7 @@ const VaultBreakdownTable = ({ data, setSelectedBreakdown, className }: TablePro
     },
     {
       title: 'APY',
-      tooltip: 'Effective Position APY',
+      tooltip: 'Effective Position APY\n(Position APY * Allocation)',
       key: 'effectivePositionAPY',
       width: isScreenMedium ? '15%' : '25%',
       percent: true,
