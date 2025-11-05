@@ -40,8 +40,9 @@ export const useReferralStore = create<ReferralState>()(
 
         try {
           const urlParams = new URLSearchParams(window.location.search);
-          // Check for both 'refCode' (new) and 'referralCode' (legacy)
-          const code = urlParams.get('refCode') || urlParams.get('referralCode');
+          // Check for both 'ref', 'refCode' (legacy) and 'referralCode' (legacy)
+          const code =
+            urlParams.get('ref') || urlParams.get('refCode') || urlParams.get('referralCode');
 
           if (code && code.trim()) {
             const trimmedCode = code.trim();
@@ -66,8 +67,10 @@ export const useReferralStore = create<ReferralState>()(
         if (Platform.OS === 'web') {
           try {
             const urlParams = new URLSearchParams(window.location.search);
-            // Check for both 'refCode' (new) and 'referralCode' (legacy)
-            const urlReferralCode = urlParams.get('refCode') || urlParams.get('referralCode');
+            // Check for both 'ref', 'refCode' (legacy) and 'referralCode' (legacy)
+            const urlReferralCode =
+              urlParams.get('ref') || urlParams.get('refCode') || urlParams.get('referralCode');
+
             if (urlReferralCode && urlReferralCode.trim()) {
               const trimmedCode = urlReferralCode.trim();
               // Save it to storage for future use
