@@ -9,7 +9,11 @@
     "web": "expo start --web",
     "lint": "expo lint --fix",
     "codegen": "graphql-codegen --config codegen.ts",
-    "wagmi-generate": "wagmi generate"
+    "wagmi-generate": "wagmi generate",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@amplitude/analytics-react-native": "^1.5.9",
@@ -138,6 +142,7 @@
     "@graphql-codegen/client-preset": "4.8.2",
     "@graphql-codegen/introspection": "4.0.3",
     "@graphql-codegen/typescript-react-apollo": "^4.3.3",
+    "@playwright/test": "^1.56.1",
     "@types/lodash.merge": "^4.6.9",
     "@types/react": "~19.0.10",
     "@types/uuid": "^10.0.0",
