@@ -36,6 +36,7 @@ import {
   Transaction,
   TransactionStatus,
   TransactionType,
+  VaultBreakdown,
 } from '@/lib/types';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
@@ -305,9 +306,9 @@ export const formatTransactions = async (
   transactions: GetUserTransactionsQuery | undefined,
   sendTransactions:
     | {
-        fuse: BlockscoutTransaction[];
-        ethereum: BlockscoutTransaction[];
-      }
+      fuse: BlockscoutTransaction[];
+      ethereum: BlockscoutTransaction[];
+    }
     | undefined,
   depositTransactions: DepositTransaction[] | undefined,
   bridgeDepositTransactions: BridgeTransaction[] | undefined,
@@ -529,7 +530,10 @@ export const useTVL = () => {
 export const useVaultBreakdown = () => {
   return useQuery({
     queryKey: [ANALYTICS, 'vaultBreakdown'],
-    queryFn: fetchVaultBreakdown,
+    queryFn: async () => {
+      const vaultBreakdown = await fetchVaultBreakdown();
+      return formatVaultBreakdown(vaultBreakdown);
+    },
   });
 };
 
@@ -553,6 +557,20 @@ export const useMaxAPY = () => {
     maxAPYDays: ApyToDays[maxAPYDays as keyof typeof ApyToDays],
     isAPYsLoading,
   };
+};
+
+export const formatVaultBreakdown = (vaultBreakdown: VaultBreakdown[]): VaultBreakdown[] => {
+  return vaultBreakdown.map(vault => ({
+    name: vault.name,
+    type: vault.type,
+    expiryDate: vault.expiryDate,
+    amountUSD: vault.amountUSD,
+    allocation: vault.allocation,
+    effectivePositionAPY: vault.effectivePositionAPY < 0 ? 0 : vault.effectivePositionAPY,
+    positionMaxAPY: vault.positionMaxAPY < 0 ? 0 : vault.positionMaxAPY,
+    risk: vault.risk,
+    chain: vault.chain,
+  }));
 };
 
 export const useSearchCoinHistoricalChart = (query: string, days: string = '1') => {
