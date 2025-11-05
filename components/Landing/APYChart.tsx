@@ -1,4 +1,4 @@
-import BarChart from '@/components/BarChart.web';
+import BarChart from '@/components/BarChart';
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { useHistoricalAPY } from '@/hooks/useAnalytics';

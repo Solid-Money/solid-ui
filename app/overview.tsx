@@ -6,7 +6,7 @@ import APYChart from '@/components/Landing/APYChart';
 import Audits from '@/components/Landing/Audits';
 import HowItWorks from '@/components/Landing/HowItWorks';
 import SolidImage from '@/components/Landing/SolidImage';
-import VaultBreakdownChart from '@/components/Landing/VaultBreakdownChart.web';
+import VaultBreakdownChart from '@/components/Landing/VaultBreakdownChart';
 import VaultBreakdownTable from '@/components/Landing/VaultBreakdownTable';
 import VaultInfo from '@/components/Landing/VaultInfo';
 import VaultStat from '@/components/Landing/VaultStat';
@@ -74,14 +74,14 @@ const HowSection = () => {
 };
 
 const VaultBreakdownSection = ({ vaultBreakdown }: VaultBreakdownSectionProps) => {
-  const [selectedBreakdown, setSelectedBreakdown] = useState(-1);
-
   if (!vaultBreakdown.length) return null;
+
+  const [selectedBreakdown, setSelectedBreakdown] = useState(-1);
 
   return (
     <View className="gap-6">
       <Text className="text-xl md:text-3xl font-semibold">Vault breakdown</Text>
-      <View className="md:flex-row md:justify-between gap-4 md:min-h-80 bg-card rounded-twice p-5 md:p-10">
+      <View className="flex-col md:flex-row md:justify-between gap-4 md:min-h-80 bg-card rounded-twice p-5 md:p-10">
         <VaultBreakdownTable
           data={vaultBreakdown}
           setSelectedBreakdown={setSelectedBreakdown}
