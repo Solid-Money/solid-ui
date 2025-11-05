@@ -34,7 +34,7 @@ const DepositOptionModal = ({
         previousModal={previousModal}
         isOpen={shouldOpen}
         onOpenChange={handleOpenChange}
-        trigger={getTrigger()}
+        trigger={trigger === null ? null : getTrigger()}
         title={getTitle()}
         contentClassName={getContentClassName()}
         containerClassName={getContainerClassName()}
@@ -50,7 +50,8 @@ const DepositOptionModal = ({
     );
   }
 
-  return getTrigger();
+  // On mobile, hide trigger if explicitly set to null (for hidden modals)
+  return trigger === null ? null : getTrigger();
 };
 
 export default DepositOptionModal;
