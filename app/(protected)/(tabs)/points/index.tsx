@@ -128,21 +128,6 @@ export default function Savings() {
                 Earned yesterday: {formatNumber(points.pointsLast24Hours, 0, 0)} points
               </Text>
             </View>
-
-            <View className="p-6 md:p-7 flex">
-              <Button
-                variant="rewards"
-                className={buttonVariants({
-                  variant: 'rewards',
-                  className: 'h-12 md:pr-6 rounded-xl',
-                })}
-                onPress={() => router.push(path.POINTS_LEADERBOARD)}
-              >
-                <View className="flex-row items-center gap-4">
-                  <Text className="font-bold">View Leaderboard</Text>
-                </View>
-              </Button>
-            </View>
           </View>
         </LinearGradient>
 
