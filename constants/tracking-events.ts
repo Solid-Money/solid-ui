@@ -131,6 +131,9 @@ export const TRACKING_EVENTS = {
   // Card Waitlist Events
   CARD_WAITLIST_STARTED: 'card_waitlist_started',
   CARD_WAITLIST_COMPLETED: 'card_waitlist_completed',
+
+  // Global / Error Events
+  ERROR_BOUNDARY: 'error_boundary',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];
