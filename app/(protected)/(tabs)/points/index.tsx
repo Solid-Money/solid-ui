@@ -22,9 +22,15 @@ export default function Savings() {
 
   const referrer = points.userRefferer;
 
+  const depositRewards = points.userRewardsSummary.rewardsByType.find(
+    r => r.type === RewardsType.DEPOSIT,
+  );
+
+  const depositPoints = depositRewards?.totalPoints || 0;
+
   return (
     <PageLayout desktopOnly isLoading={isPointsLoading}>
-      <View className="gap-8 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
+      <View className="gap-6 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center mt-5">
             <PointsTitle />
@@ -61,7 +67,11 @@ export default function Savings() {
               <View>
                 <Text className="md:text-lg text-rewards/70">Your Total Points</Text>
                 <View className="flex-row items-center">
-                  <Text className="text-5xl md:text-8xl text-rewards font-semibold">
+                  {/** Used fontSize and lineHeight specifically to have 5rem as font size.*/}
+                  <Text
+                    className="text-rewards font-semibold"
+                    style={{ fontSize: 80, lineHeight: 88 }}
+                  >
                     {formatNumber(points.userRewardsSummary.totalPoints, 0, 0)}
                   </Text>
                 </View>
@@ -72,9 +82,7 @@ export default function Savings() {
                     <Text className="md:text-lg text-rewards/70">From deposits</Text>
                     <View className="flex-row items-center">
                       <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
-                        {points.userRewardsSummary.rewardsByType.find(
-                          r => r.type === RewardsType.DEPOSIT,
-                        )?.totalPoints || 0}
+                        {formatNumber(depositPoints, 0, 0)}
                       </Text>
                     </View>
                   </View>
@@ -117,28 +125,13 @@ export default function Savings() {
                 <Text className="text-3xl text-rewards font-semibold mt-2">{countdownTime}</Text>
               </View>
               <Text className="mt-4 text-rewards/70 text-sm">
-                Earned yesterday: {points.pointsLast24Hours} points
+                Earned yesterday: {formatNumber(points.pointsLast24Hours, 0, 0)} points
               </Text>
-            </View>
-
-            <View className="p-6 md:p-7 flex">
-              <Button
-                variant="rewards"
-                className={buttonVariants({
-                  variant: 'rewards',
-                  className: 'h-12 md:pr-6 rounded-xl',
-                })}
-                onPress={() => router.push(path.POINTS_LEADERBOARD)}
-              >
-                <View className="flex-row items-center gap-4">
-                  <Text className="font-bold">View Leaderboard</Text>
-                </View>
-              </Button>
             </View>
           </View>
         </LinearGradient>
 
-        <View className="md:flex-row gap-10 min-h-44">
+        <View className="md:flex-row gap-6 min-h-44">
           <View className="bg-card rounded-twice p-6 justify-between w-full h-full flex-col flex-1">
             <View className="flex-row items-center gap-2">
               <LinearGradient
