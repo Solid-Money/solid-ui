@@ -13,22 +13,24 @@ export default function AddReferrer() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [currentReferrer, setCurrentReferrer] = useState<string | null>(null);
-  const [fetchingReferrer, setFetchingReferrer] = useState(true);
+  const [hasReferrer, setHasReferrer] = useState(false);
+  const [checkingReferrer, setCheckingReferrer] = useState(true);
 
   useEffect(() => {
-    const loadCurrentReferrer = async () => {
+    const checkReferrer = async () => {
       try {
         const points = await fetchPoints();
-        setCurrentReferrer(points.userRefferer || null);
+        if (points.userRefferer) {
+          setHasReferrer(true);
+        }
       } catch (error) {
-        console.error('Failed to fetch current referrer:', error);
+        console.error('Failed to check referrer:', error);
       } finally {
-        setFetchingReferrer(false);
+        setCheckingReferrer(false);
       }
     };
 
-    loadCurrentReferrer();
+    checkReferrer();
   }, []);
 
   const onSubmit = async () => {
@@ -39,11 +41,18 @@ export default function AddReferrer() {
       router.push(path.POINTS);
     } catch (error: any) {
       console.error(error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Error, check if the code is valid and you have not added it already',
-      );
+      let errorMessage = 'Error, check if the code is valid and you have not added it already';
+      if (error instanceof Response) {
+        try {
+          const errorData = await error.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // If JSON parsing fails, use default message
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -62,27 +71,26 @@ export default function AddReferrer() {
               <ArrowLeft color="white" />
             </Pressable>
             <Text className="text-white text-lg md:text-xl font-semibold text-center">
-              {currentReferrer ? 'Update' : "Enter your friend's"} referral code
+              Enter your friend&apos;s referral code
             </Text>
             <View className="w-10" />
           </View>
           <View className=" w-full">
-            {fetchingReferrer ? (
+            {checkingReferrer ? (
               <View className="flex items-center justify-center py-8">
                 <ActivityIndicator color="white" />
               </View>
+            ) : hasReferrer ? (
+              <View className="bg-[#1A1A1A] rounded-xl p-4">
+                <Text className="text-white/70 text-sm mb-2">
+                  You have already added a referrer
+                </Text>
+                <Text className="text-white text-base">Referrers cannot be changed once set.</Text>
+              </View>
             ) : (
               <>
-                {currentReferrer && (
-                  <View className="bg-[#1A1A1A] rounded-xl p-4 mb-6">
-                    <Text className="text-white/70 text-sm mb-1">Current referrer</Text>
-                    <Text className="text-white text-base font-semibold">{currentReferrer}</Text>
-                  </View>
-                )}
                 <View className="flex-col justify-center w-full">
-                  <Text className="text-white/70 text-left mt-8">
-                    {currentReferrer ? 'Update referral code' : 'Referral code'}
-                  </Text>
+                  <Text className="text-white/70 text-left mt-8">Referral code</Text>
                 </View>
                 <TextInput
                   className="bg-[#1A1A1A] rounded-xl px-4 h-14 text-white mt-6"
@@ -106,9 +114,7 @@ export default function AddReferrer() {
                   {loading ? (
                     <ActivityIndicator color="gray" />
                   ) : (
-                    <Text className="text-base font-bold text-black">
-                      {currentReferrer ? 'Update Referrer' : 'Submit'}
-                    </Text>
+                    <Text className="text-base font-bold text-black">Submit</Text>
                   )}
                 </Button>
               </>
