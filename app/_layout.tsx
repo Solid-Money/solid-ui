@@ -1,3 +1,4 @@
+import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom';
 import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
@@ -23,6 +24,7 @@ import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
+import type { ErrorBoundaryProps } from 'expo-router';
 import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
 import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
@@ -125,10 +127,9 @@ Sentry.init({
   // spotlight: __DEV__,
 });
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  return <AppErrorBoundary {...props} />;
+}
 
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
