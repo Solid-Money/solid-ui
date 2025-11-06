@@ -31,7 +31,7 @@ const CardBanner = () => {
           <View className="max-w-40 md:max-w-64 justify-between items-start gap-4 py-5 md:py-8">
             <Text className="text-xl md:text-3xl font-semibold">Introducing the Solid Card</Text>
             <Button
-              className="rounded-xl h-12 px-6 border-0 bg-button-earning web:hover:bg-button-earning/95"
+              className="rounded-xl h-12 px-6 border-0 bg-button-earning web:hover:bg-button-earning web:hover:brightness-110"
               onPress={() => router.push(path.CARD_WAITLIST)}
             >
               <Text className="text-base text-primary font-bold">Reserve your card</Text>
