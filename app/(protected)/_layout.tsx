@@ -76,8 +76,8 @@ export default function ProtectedLayout() {
   }, [resumeParams, handleResumeBankTransferParams]);
 
   if (Platform.OS === 'web') {
+    // Since we wait for passkey check in root layout, this should never be null
     if (isPasskeySupported === false) return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
-    if (isPasskeySupported === null) return null;
   }
 
   if (!users.length) {
@@ -97,6 +97,9 @@ export default function ProtectedLayout() {
   return (
     <Stack
       screenOptions={{
+        contentStyle: {
+          backgroundColor: '#000',
+        },
         headerStyle: {
           backgroundColor: '#000',
         },
