@@ -209,7 +209,7 @@ function DepositToVaultForm() {
           </View>
         </View>
         <TokenDetails>
-          <View className="p-4 pr-6 md:p-5 md:flex-row md:items-center md:justify-between gap-2 md:gap-10">
+          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
             <View className="flex-row items-center gap-2">
               <Text className="text-lg text-muted-foreground">You will receive</Text>
             </View>
@@ -222,7 +222,7 @@ function DepositToVaultForm() {
               <View className="flex-row items-baseline gap-1">
                 <Text className="text-lg font-semibold">
                   {isPreviewDepositLoading ? (
-                    <Skeleton className="w-20 h-8" />
+                    <Skeleton className="w-20 h-7 bg-white/20" />
                   ) : isScreenMedium ? (
                     compactNumberFormat(amountOut || 0)
                   ) : (
@@ -236,19 +236,23 @@ function DepositToVaultForm() {
                     </Text> */}
             </View>
           </View>
-          <View className="p-4 pr-6 md:p-5 md:flex-row md:items-center md:justify-between gap-2 md:gap-10">
+          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
             <Text className="text-base text-muted-foreground">Exchange rate</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
               <Text className="text-lg font-semibold">
-                {exchangeRate ? formatUnits(exchangeRate, 6) : <Skeleton className="w-20 h-8" />}
+                {exchangeRate ? (
+                  formatUnits(exchangeRate, 6)
+                ) : (
+                  <Skeleton className="w-20 h-7 bg-white/20" />
+                )}
               </Text>
             </View>
           </View>
-          <View className="p-4 pr-6 md:p-5 md:flex-row md:items-center md:justify-between gap-2 md:gap-10">
+          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
             <Text className="text-base text-muted-foreground">APY</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
               <Text className="text-lg font-semibold text-[#94F27F]">
-                {maxAPY ? `${maxAPY.toFixed(2)}%` : <Skeleton className="w-20 h-8" />}
+                {maxAPY ? `${maxAPY.toFixed(2)}%` : <Skeleton className="w-20 h-7 bg-white/20" />}
               </Text>
               {/* <Text className="text-base opacity-40">
                   {totalAPY ? (
