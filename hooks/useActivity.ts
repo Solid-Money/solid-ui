@@ -145,7 +145,11 @@ export function useActivity() {
     useBankTransferTransactions();
 
   // 3. Format third-party transactions
-  const { data: transactions, dataUpdatedAt: transactionsUpdatedAt, isLoading } = useQuery({
+  const {
+    data: transactions,
+    dataUpdatedAt: transactionsUpdatedAt,
+    isLoading,
+  } = useQuery({
     queryKey: [
       'formatted-transactions',
       user?.safeAddress,
@@ -212,12 +216,23 @@ export function useActivity() {
   const activities = useMemo(() => {
     if (!user?.userId || !events[user.userId]) return [];
     return [...events[user.userId]]
-      .filter(activity => !activity.deleted)
+      .filter(activity => {
+        // Filter out deleted activities
+        if (activity.deleted) return false;
+        // Filter out expired direct deposits
+        if (
+          activity.status === TransactionStatus.FAILED &&
+          activity.metadata?.reason === 'expired'
+        ) {
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
   }, [events, user?.userId]);
 
   useEffect(() => {
-    if(!activities?.length) return;
+    if (!activities?.length) return;
     setCachedActivities(activities);
   }, [activities, setCachedActivities]);
 
