@@ -26,11 +26,11 @@ const ResponsiveModalMobile = ({
   children,
 }: ResponsiveModalMobileProps) => {
   return (
-    <View className={cn('gap-6', containerClassName)}>
+    <View className={cn('gap-4 md:gap-6', containerClassName)}>
       {(title || (showBackButton && onBackPress)) && (
         <View
           className={cn(
-            'flex-row items-center gap-2 pb-2',
+            'flex-row items-center gap-2',
             showBackButton ? 'justify-between' : 'justify-center',
             titleClassName,
           )}

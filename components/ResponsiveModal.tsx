@@ -1,7 +1,8 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft } from 'lucide-react-native';
 import React, { ReactNode, useCallback, useRef } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInLeft,
@@ -84,6 +85,9 @@ const ResponsiveModal = ({
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const dialogHeight = useSharedValue(0);
   const { triggerElement } = useResponsiveModal();
+  const [showBottomFade, setShowBottomFade] = React.useState(false);
+  const containerHeightRef = React.useRef(0);
+  const contentHeightRef = React.useRef(0);
 
   const handlePresentModalPress = useCallback(() => {
     onOpenChange(true);
@@ -174,23 +178,63 @@ const ResponsiveModal = ({
                     ))}
                 </DialogHeader>
               )}
-              <Animated.View
-                entering={
-                  shouldAnimate
-                    ? isForward
-                      ? FadeInRight.duration(ANIMATION_DURATION)
-                      : FadeInLeft.duration(ANIMATION_DURATION)
-                    : undefined
-                }
-                exiting={
-                  isForward
-                    ? FadeOutLeft.duration(ANIMATION_DURATION)
-                    : FadeOutRight.duration(ANIMATION_DURATION)
-                }
-                key={contentKey}
-              >
-                {children}
-              </Animated.View>
+              <View className="relative">
+                <ScrollView
+                  className="max-h-[80vh]"
+                  showsVerticalScrollIndicator={false}
+                  onLayout={e => {
+                    containerHeightRef.current = e.nativeEvent.layout.height;
+                    setShowBottomFade(contentHeightRef.current > containerHeightRef.current + 4);
+                  }}
+                  onContentSizeChange={(_, h) => {
+                    contentHeightRef.current = h;
+                    if (containerHeightRef.current > 0) {
+                      setShowBottomFade(h > containerHeightRef.current + 4);
+                    }
+                  }}
+                  onScroll={e => {
+                    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                    const atBottom =
+                      contentOffset.y + layoutMeasurement.height >= contentSize.height - 8;
+                    setShowBottomFade(!atBottom);
+                  }}
+                  scrollEventThrottle={16}
+                >
+                  <Animated.View
+                    entering={
+                      shouldAnimate
+                        ? isForward
+                          ? FadeInRight.duration(ANIMATION_DURATION)
+                          : FadeInLeft.duration(ANIMATION_DURATION)
+                        : undefined
+                    }
+                    exiting={
+                      isForward
+                        ? FadeOutLeft.duration(ANIMATION_DURATION)
+                        : FadeOutRight.duration(ANIMATION_DURATION)
+                    }
+                    key={contentKey}
+                  >
+                    {children}
+                  </Animated.View>
+                </ScrollView>
+                {showBottomFade && (
+                  <View
+                    pointerEvents="none"
+                    style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 24 }}
+                  >
+                    <LinearGradient
+                      colors={[
+                        'rgba(30, 30, 30, 0)',
+                        'rgba(30, 30, 30, 0.5)',
+                        'rgba(30, 30, 30, 0.85)',
+                      ]}
+                      locations={[0, 0.6, 1]}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                )}
+              </View>
             </View>
           </Animated.View>
         </DialogContent>

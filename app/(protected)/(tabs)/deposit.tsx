@@ -20,7 +20,7 @@ export default function Deposit() {
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        <View className="gap-8 md:gap-9 px-4 pt-8 pb-24 md:py-12 w-full max-w-md mx-auto">
+        <View className="gap-8 md:gap-9 px-4 pt-6 pb-24 md:py-12 w-full max-w-md mx-auto">
           <ResponsiveModalMobile
             containerClassName={getContainerClassName()}
             title={getTitle()}
