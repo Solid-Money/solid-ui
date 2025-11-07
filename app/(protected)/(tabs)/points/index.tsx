@@ -30,9 +30,9 @@ export default function Savings() {
 
   return (
     <PageLayout desktopOnly isLoading={isPointsLoading}>
-      <View className="gap-6 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto">
+      <View className="gap-6 md:gap-9 px-4 pt-4 pb-8 md:py-12 w-full max-w-7xl mx-auto">
         {isScreenMedium ? (
-          <View className="flex-row justify-between items-center mt-5">
+          <View className="flex-row justify-between items-center ">
             <PointsTitle />
           </View>
         ) : (
