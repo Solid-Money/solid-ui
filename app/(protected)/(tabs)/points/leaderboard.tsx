@@ -96,11 +96,11 @@ const Leaderboard = () => {
     queryFn: ({ pageParam }) =>
       fetchLeaderboardUsers({
         pageSize: PAGE_SIZE.toString(),
-        userIdToStartAfter: pageParam,
+        page: pageParam.toString(),
       }),
-    getNextPageParam: (lastPage: LeaderboardResponse) =>
-      lastPage.users.length > 0 ? lastPage.users[lastPage.users.length - 1].id : undefined,
-    initialPageParam: undefined,
+    getNextPageParam: (lastPage: LeaderboardResponse, allPages) =>
+      lastPage.users.length === PAGE_SIZE ? allPages.length + 1 : undefined,
+    initialPageParam: 1,
   });
 
   const leaderboardUsers = leaderboardData?.pages.flatMap(page => page.users) || [];
