@@ -717,17 +717,16 @@ export const fetchPoints = async (): Promise<Points> => {
 
 export const fetchLeaderboardUsers = async (params: {
   pageSize?: string;
-  userIdToStartAfter?: string;
+  page?: string;
 }): Promise<LeaderboardResponse> => {
   const jwt = getJWTToken();
   const searchParams = new URLSearchParams();
 
   if (params.pageSize) searchParams.append('pageSize', params.pageSize);
-  if (params.userIdToStartAfter)
-    searchParams.append('userIdToStartAfter', params.userIdToStartAfter);
+  if (params.page) searchParams.append('page', params.page);
 
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/leaderboard?${searchParams.toString()}`,
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/points/leaderboard?${searchParams.toString()}`,
     {
       method: 'GET',
       headers: {
