@@ -8,7 +8,7 @@ import {
 } from '@/components/BankTransfer/enums';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import { usePasskey } from '@/hooks/usePasskey';
+import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
 import { trackIdentity } from '@/lib/analytics';
@@ -21,7 +21,6 @@ export default function ProtectedLayout() {
   const { users } = useUserStore();
   const { hasSeenOnboarding } = useOnboardingStore();
   const searchParams = useLocalSearchParams();
-  const { isPasskeySupported } = usePasskey();
 
   // Run post-signup/login initialization (lazy loading of balance, points, etc.)
   usePostSignupInit(user);
@@ -77,7 +76,7 @@ export default function ProtectedLayout() {
 
   if (Platform.OS === 'web') {
     // Since we wait for passkey check in root layout, this should never be null
-    if (isPasskeySupported === false) return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
+    if (detectPasskeySupported() === false) return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
   }
 
   if (!users.length) {
