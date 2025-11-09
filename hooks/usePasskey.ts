@@ -81,6 +81,37 @@ export function isWebView(): boolean {
   return false
 }
 
+function isNotSupportedPublicKeyCredentialsError(err: unknown): boolean {
+  const e = err as { name?: string; message?: string };
+  const name = (e?.name || '').toLowerCase();
+  const msg = (e?.message || '').toLowerCase();
+  return name === 'notsupportederror' || msg.includes('does not support public key credentials');
+}
+
+async function probeWebAuthnUnsupported(): Promise<boolean> {
+  try {
+    if (navigator.credentials && typeof navigator.credentials.get === 'function') {
+      const abortController = new AbortController();
+      const probe = navigator.credentials.get({
+        publicKey: {
+          challenge: new Uint8Array(16),
+          allowCredentials: [],
+          userVerification: 'preferred',
+        } as PublicKeyCredentialRequestOptions,
+        signal: abortController.signal,
+      } as CredentialRequestOptions);
+      Promise.resolve().then(() => abortController.abort());
+      await probe;
+    }
+    return false;
+  } catch (err) {
+    if (isNotSupportedPublicKeyCredentialsError(err)) {
+      return true;
+    }
+    return false;
+  }
+}
+
 export async function detectPasskeySupported(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   if (!window.isSecureContext) return false;
@@ -127,6 +158,8 @@ export async function detectPasskeySupported(): Promise<boolean> {
 
   const isWV = isWebView();
   if (isWV) return false;
+
+  if (await probeWebAuthnUnsupported()) return false;
 
   return true;
 }
