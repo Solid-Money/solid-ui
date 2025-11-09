@@ -175,7 +175,7 @@ const DepositDirectlyAddress = () => {
     },
     {
       label: 'Min deposit',
-      value: `< ${session?.minDeposit || directDepositSession.minDeposit || '0.0001'} USDC`,
+      value: `${session?.minDeposit || directDepositSession.minDeposit || '0.0001'} USDC`,
     },
     {
       label: 'Max deposit',
