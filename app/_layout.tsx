@@ -5,6 +5,7 @@ import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
 import '@/global.css';
 import { infoClient } from '@/graphql/clients';
+import { usePasskey } from '@/hooks/usePasskey';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
 import { ApolloProvider } from '@apollo/client';
@@ -163,6 +164,7 @@ const queryClient = new QueryClient({
 export default Sentry.wrap(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
+  const { isPasskeySupported } = usePasskey();
   const [loaded, error] = useFonts({
     MonaSans_200ExtraLight,
     MonaSans_300Light,
@@ -203,7 +205,10 @@ export default Sentry.wrap(function RootLayout() {
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
-    if (appIsReady && !splashScreenHidden) {
+    // Wait for BOTH appIsReady AND passkey check (on web only)
+    const shouldWaitForPasskey = Platform.OS === 'web' && isPasskeySupported === null;
+
+    if (appIsReady && !shouldWaitForPasskey && !splashScreenHidden) {
       // This tells the splash screen to hide immediately! If we call this after
       // `setAppIsReady`, then we may see a blank screen while the app is
       // loading its initial state and rendering its first pixels. So instead,
@@ -216,7 +221,7 @@ export default Sentry.wrap(function RootLayout() {
         console.warn('Error hiding splash screen:', error);
       }
     }
-  }, [appIsReady, splashScreenHidden]);
+  }, [appIsReady, isPasskeySupported, splashScreenHidden]);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -230,12 +235,21 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [error]);
 
-  if (!appIsReady || !loaded) {
+  // Don't render until fonts are loaded AND passkey check is done (on web)
+  const shouldWaitForPasskey = Platform.OS === 'web' && isPasskeySupported === null;
+
+  if (!appIsReady || !loaded || shouldWaitForPasskey) {
     return null;
   }
 
   const AppContent = () => (
-    <Stack>
+    <Stack
+      screenOptions={{
+        contentStyle: {
+          backgroundColor: '#000',
+        },
+      }}
+    >
       <Stack.Screen
         name="(protected)"
         options={{
