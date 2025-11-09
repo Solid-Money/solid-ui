@@ -1,5 +1,5 @@
 import { Text } from '@/components/ui/text';
-import { ADDRESS_ZERO, Currency, ExtendedNative, Token } from '@cryptoalgebra/fuse-sdk';
+import { ADDRESS_ZERO, Currency } from '@cryptoalgebra/fuse-sdk';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,12 +11,11 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { Address, erc20Abi, isAddress } from 'viem';
+import { Address, erc20Abi } from 'viem';
 import { useBalance } from 'wagmi';
 
 import { useAllTokens } from '@/hooks/tokens/useAllTokens';
 import { useCurrency } from '@/hooks/tokens/useCurrency';
-import useDebounce from '@/hooks/useDebounce';
 import { useFuse } from '@/hooks/useFuse';
 import { useUSDCPrice } from '@/hooks/useUSDCValue';
 import { TokenListItem } from '@/lib/types/tokens';
@@ -25,14 +24,11 @@ import { multicall3 } from '@/lib/utils/multicall';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import CurrencyLogo from '@/components/CurrencyLogo';
-import { useAlgebraToken } from '@/hooks/tokens/useAlgebraToken';
 import useUser from '@/hooks/useUser';
-import { useTokensState } from '@/store/tokensStore';
 import { fuse } from 'viem/chains';
 
 const TokenSelectorView = {
   DEFAULT_LIST: 'DEFAULT_LIST',
-  IMPORT_TOKEN: 'IMPORT_TOKEN',
   NOT_FOUND: 'NOT_FOUND',
 } as const;
 
@@ -45,10 +41,7 @@ const Search = ({
   onQueryChange,
 }: {
   data: (TokenListItem & { balance: number })[];
-  onSearch: (
-    matchedTokens: (TokenListItem & { balance: number })[],
-    importToken: Token | undefined,
-  ) => void;
+  onSearch: (matchedTokens: (TokenListItem & { balance: number })[]) => void;
   isLoading: boolean;
   onQueryChange?: (query: string | undefined) => void;
 }) => {
@@ -56,11 +49,6 @@ const Search = ({
   const [isFocused, setIsFocused] = useState(false);
   const [searchAnimation] = useState(new Animated.Value(0));
   const [pulseAnimation] = useState(new Animated.Value(1));
-
-  const debouncedQuery = useDebounce(query, 200);
-  const tokenEntity = useAlgebraToken(
-    debouncedQuery && isAddress(debouncedQuery) ? debouncedQuery : undefined,
-  );
 
   const fuseOptions = useMemo(
     () => ({
@@ -123,8 +111,8 @@ const Search = ({
   }, [query, search]);
 
   useEffect(() => {
-    onSearch(result, tokenEntity instanceof ExtendedNative ? undefined : tokenEntity);
-  }, [result, tokenEntity, pattern, onSearch]);
+    onSearch(result);
+  }, [result, pattern, onSearch]);
 
   // Pulse animation for loading
   useEffect(() => {
@@ -173,9 +161,7 @@ const Search = ({
         className="bg-card"
       >
         <TextInput
-          placeholder={
-            isFocused ? "Try 'USDC', 'VOLT' or paste token address..." : 'Search tokens...'
-          }
+          placeholder={isFocused ? "Try 'USDC' or 'VOLT'..." : 'Search tokens...'}
           className="w-full px-4 py-3 text-foreground focus:outline-none"
           onChangeText={handleInput}
           onFocus={handleFocus}
@@ -445,40 +431,6 @@ const TokenRow = ({
   );
 };
 
-const ImportTokenRow = ({
-  token,
-  onImport,
-}: {
-  token: Token;
-  onImport: (token: Token) => void;
-}) => {
-  const handleImport = useCallback(() => {
-    onImport(token);
-  }, [onImport, token]);
-
-  return (
-    <View className="flex flex-row justify-between w-full p-4 bg-card rounded-2xl">
-      <View className="flex flex-row items-center gap-4">
-        <View>
-          <CurrencyLogo currency={token} size={45} />
-        </View>
-        <View>
-          <Text className="text-base font-bold">{token.symbol}</Text>
-          <Text className="text-sm text-muted-foreground">{token.name}</Text>
-        </View>
-      </View>
-      <Pressable
-        className="px-4 py-2 bg-primary rounded-2xl"
-        onPress={handleImport}
-        accessibilityLabel="Import token"
-        accessibilityHint="Tap to import this token to your list"
-      >
-        <Text className="text-primary-foreground font-bold">Import</Text>
-      </Pressable>
-    </View>
-  );
-};
-
 const EmptyState = ({ message, isSearching }: { message: string; isSearching?: boolean }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
@@ -527,7 +479,7 @@ const EmptyState = ({ message, isSearching }: { message: string; isSearching?: b
           </View>
         ) : (
           <Text className="text-muted-foreground/60 text-center text-sm">
-            Connect your wallet to see token balances and start trading
+            No tokens found in your wallet
           </Text>
         )}
       </View>
@@ -611,14 +563,9 @@ const SwapTokenSelector = ({
     TokenSelectorView.DEFAULT_LIST,
   );
 
-  const {
-    actions: { importToken },
-  } = useTokensState();
-
   const { tokens: allTokens, isLoading: allTokensLoading } = useAllTokens(showNativeToken);
 
   const [matchedTokens, setMatchedTokens] = useState<(TokenListItem & { balance: number })[]>([]);
-  const [tokenForImport, setTokenForImport] = useState<Token>();
   const [currentQuery, setCurrentQuery] = useState<string | undefined>();
 
   const filteredTokens = useMemo(
@@ -627,33 +574,15 @@ const SwapTokenSelector = ({
   );
 
   const handleSearch = useCallback(
-    (matchedTokens: (TokenListItem & { balance: number })[], importToken: Token | undefined) => {
+    (matchedTokens: (TokenListItem & { balance: number })[]) => {
       if (matchedTokens.length) {
         setMatchedTokens(matchedTokens);
         setSelectorView(TokenSelectorView.DEFAULT_LIST);
-      } else if (importToken) {
-        setTokenForImport(importToken);
-        setSelectorView(TokenSelectorView.IMPORT_TOKEN);
       } else if (!isLoading) {
         setSelectorView(TokenSelectorView.NOT_FOUND);
       }
     },
     [isLoading],
-  );
-
-  const handleImport = useCallback(
-    (token: Token) => {
-      importToken(
-        token.address as Address,
-        token.symbol || 'Unknown',
-        token.name || 'Unknown',
-        token.decimals,
-        token.chainId,
-      );
-      setSelectorView(TokenSelectorView.DEFAULT_LIST);
-      setTokenForImport(undefined);
-    },
-    [importToken],
   );
 
   const renderTokenRow = useCallback(
@@ -785,8 +714,6 @@ const SwapTokenSelector = ({
             }}
           />
         )
-      ) : selectorView === TokenSelectorView.IMPORT_TOKEN && tokenForImport ? (
-        <ImportTokenRow token={tokenForImport} onImport={handleImport} />
       ) : (
         <EmptyState message="Token not found" />
       )}
