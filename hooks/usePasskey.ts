@@ -128,9 +128,6 @@ export function detectPasskeySupported() {
     browserDetection.isIosWKWebview();
   if (inIosWebview) return 'In iOS webview';
 
-  const isWV = isWebView();
-  if (isWV) return 'In webview';
-
   return '';
 }
 
