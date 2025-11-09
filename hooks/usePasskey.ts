@@ -1,3 +1,4 @@
+import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import * as browserDetection from '@braintree/browser-detection';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
@@ -97,6 +98,7 @@ async function probeWebAuthnUnsupported(): Promise<boolean> {
           challenge: new Uint8Array(16),
           allowCredentials: [],
           userVerification: 'preferred',
+          rpId: getRuntimeRpId(),
         } as PublicKeyCredentialRequestOptions,
         signal: abortController.signal,
       } as CredentialRequestOptions);
@@ -159,7 +161,8 @@ export async function detectPasskeySupported(): Promise<boolean> {
   const isWV = isWebView();
   if (isWV) return false;
 
-  if (await probeWebAuthnUnsupported()) return false;
+  const probe = await probeWebAuthnUnsupported();
+  if (probe) return false;
 
   return true;
 }
