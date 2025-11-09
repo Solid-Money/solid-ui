@@ -76,8 +76,7 @@ export default function ProtectedLayout() {
 
   if (Platform.OS === 'web') {
     // Since we wait for passkey check in root layout, this should never be null
-    if (Boolean(detectPasskeySupported()) === false)
-      return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
+    if (Boolean(detectPasskeySupported())) return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
   }
 
   if (!users.length) {
