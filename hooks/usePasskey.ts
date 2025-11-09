@@ -17,7 +17,7 @@ export async function detectPasskeySupported(): Promise<boolean> {
       const isAuthenticator = caps.passkeyPlatformAuthenticator === true;
 
       const supported = isConditional && isAuthenticator && isRelated;
-      return supported;
+      if (!supported) return false;
     }
   } catch { }
 
