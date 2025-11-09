@@ -12,6 +12,7 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDirectDepositSessionPolling } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { eclipseAddress } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
@@ -189,7 +190,7 @@ const DepositDirectlyAddress = () => {
     },
     {
       label: 'Min deposit',
-      value: `< ${session?.minDeposit || directDepositSession.minDeposit || '0.0001'} USDC`,
+      value: `< ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT || session?.minDeposit || directDepositSession.minDeposit || '0.0001'} USDC`,
     },
     {
       label: 'Max deposit',
