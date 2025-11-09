@@ -190,7 +190,7 @@ const DepositDirectlyAddress = () => {
     },
     {
       label: 'Min deposit',
-      value: `< ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT || session?.minDeposit || directDepositSession.minDeposit || '0.0001'} USDC`,
+      value: `${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT || session?.minDeposit || directDepositSession.minDeposit || '0.0001'} USDC`,
     },
     {
       label: 'Max deposit',

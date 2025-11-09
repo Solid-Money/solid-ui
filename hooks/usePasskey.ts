@@ -1,7 +1,8 @@
-import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import * as browserDetection from '@braintree/browser-detection';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+
+import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 
 // see: https://github.com/stellar/smart-wallet-demo-app/blob/develop/apps/web/src/helpers/browser-environment/index.ts
 export function isWebView(): boolean {
@@ -89,7 +90,7 @@ function isNotSupportedPublicKeyCredentialsError(err: unknown): boolean {
   return name === 'notsupportederror' || msg.includes('does not support public key credentials');
 }
 
-async function probeWebAuthnUnsupported(): Promise<boolean> {
+export async function probeWebAuthnUnsupported(): Promise<boolean> {
   try {
     if (navigator.credentials && typeof navigator.credentials.get === 'function') {
       const abortController = new AbortController();
@@ -114,55 +115,21 @@ async function probeWebAuthnUnsupported(): Promise<boolean> {
   }
 }
 
-export async function detectPasskeySupported(): Promise<boolean> {
+export function detectPasskeySupported() {
   if (typeof window === 'undefined') return false;
   if (!window.isSecureContext) return false;
   if (window.self !== window.top) return false;
   if (!('PublicKeyCredential' in window)) return false;
   if (typeof window.PublicKeyCredential !== 'function') return false;
 
-  try {
-    if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
-      const caps = await PublicKeyCredential.getClientCapabilities();
-
-      const isRelated = caps.relatedOrigins === true;
-      const isConditional = caps.conditionalGet === true;
-      const isAuthenticator = caps.passkeyPlatformAuthenticator === true;
-
-      const supported = isConditional && isAuthenticator && isRelated;
-      if (!supported) return false;
-    }
-  } catch { }
-
-  try {
-    if (typeof PublicKeyCredential.isConditionalMediationAvailable === 'function') {
-      const cond = await PublicKeyCredential.isConditionalMediationAvailable();
-      if (!cond) return false;
-    }
-  } catch {
-    return false;
-  }
-
-  try {
-    const uvpa = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    if (!uvpa) return false;
-  } catch {
-    return false;
-  }
-
-  try {
-    const inIosWebview =
-      browserDetection.isIosWebview() ||
-      browserDetection.isIosUIWebview() ||
-      browserDetection.isIosWKWebview();
-    if (inIosWebview) return false;
-  } catch { }
+  const inIosWebview =
+    browserDetection.isIosWebview() ||
+    browserDetection.isIosUIWebview() ||
+    browserDetection.isIosWKWebview();
+  if (inIosWebview) return false;
 
   const isWV = isWebView();
   if (isWV) return false;
-
-  const probe = await probeWebAuthnUnsupported();
-  if (probe) return false;
 
   return true;
 }
