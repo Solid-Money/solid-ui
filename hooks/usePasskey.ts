@@ -7,6 +7,7 @@ export async function detectPasskeySupported(): Promise<boolean> {
   if (!window.isSecureContext) return false;
   if (window.self !== window.top) return false;
   if (!('PublicKeyCredential' in window)) return false;
+  if (typeof window.PublicKeyCredential !== 'function') return false;
 
   try {
     if (typeof PublicKeyCredential.getClientCapabilities === 'function') {
