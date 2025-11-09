@@ -116,22 +116,19 @@ export async function probeWebAuthnUnsupported(): Promise<boolean> {
 }
 
 export function detectPasskeySupported() {
-  if (typeof window === 'undefined') return false;
-  if (!window.isSecureContext) return false;
-  if (window.self !== window.top) return false;
-  if (!('PublicKeyCredential' in window)) return false;
-  if (typeof window.PublicKeyCredential !== 'function') return false;
+  if (typeof window === 'undefined') return 'No window';
+  if (!window.isSecureContext) return 'Not secure context';
+  if (window.self !== window.top) return 'Not top level window';
+  if (!('PublicKeyCredential' in window)) return 'No PublicKeyCredential';
+  if (typeof window.PublicKeyCredential !== 'function') return 'PublicKeyCredential is not a function';
 
   const inIosWebview =
     browserDetection.isIosWebview() ||
     browserDetection.isIosUIWebview() ||
     browserDetection.isIosWKWebview();
-  if (inIosWebview) return false;
+  if (inIosWebview) return 'In iOS webview';
 
-  const isWV = isWebView();
-  if (isWV) return false;
-
-  return true;
+  return '';
 }
 
 export function usePasskey() {
@@ -143,7 +140,7 @@ export function usePasskey() {
     let cancelled = false;
     (async () => {
       const supported = await detectPasskeySupported();
-      if (!cancelled) setIsPasskeySupported(supported);
+      if (!cancelled) setIsPasskeySupported(Boolean(supported));
     })();
 
     return () => {
