@@ -121,6 +121,23 @@ export function useActivity() {
     },
     initialPageParam: 1,
     enabled: !!user?.userId,
+    refetchInterval: query => {
+      // Check if there are any pending direct deposit activities
+      const allActivities = query.state.data?.pages.flatMap(page => page?.docs || []) || [];
+
+      const hasPendingDirectDeposits = allActivities.some(activity => {
+        const pendingOrProcessing =
+          activity.status === TransactionStatus.PENDING ||
+          activity.status === TransactionStatus.PROCESSING;
+
+        return activity.clientTxId?.startsWith('direct_deposit_') && pendingOrProcessing;
+      });
+
+      // Poll every 15 seconds if there are pending direct deposits
+      // Otherwise, don't poll automatically (rely on manual refresh)
+      return hasPendingDirectDeposits ? secondsToMilliseconds(15) : false;
+    },
+    refetchIntervalInBackground: true,
   });
 
   const { data: activityData, refetch: refetchActivityEvents } = activityEvents;
