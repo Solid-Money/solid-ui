@@ -1,16 +1,26 @@
-import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useEffect } from 'react';
+import { View } from 'react-native';
+
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { useDepositStore } from '@/store/useDepositStore';
-import { Image } from 'expo-image';
-import { useCallback, useEffect } from 'react';
-import { View } from 'react-native';
 import DepositOption from './DepositOption';
+import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
+import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
+
+type DepositOptionProps = {
+  text: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  onPress: () => void;
+  isLoading?: boolean;
+  isComingSoon?: boolean;
+};
 
 const DepositOptions = () => {
-  const { setModal } = useDepositStore();
   const { user } = useUser();
+  const { EXTERNAL_WALLET_OPTIONS } = useDepositExternalWalletOptions();
+  const { BUY_CRYPTO_OPTIONS } = useDepositBuyCryptoOptions();
 
   // Track when deposit options are viewed
   useEffect(() => {
@@ -21,69 +31,7 @@ const DepositOptions = () => {
     });
   }, [user?.userId, user?.safeAddress, user?.isDeposited]);
 
-  const handleExternalWalletPress = useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log('[DepositOptions] External wallet button pressed');
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'external_wallet',
-    });
-    // eslint-disable-next-line no-console
-    console.log('[DepositOptions] Setting modal to OPEN_EXTERNAL_WALLET_OPTIONS');
-    setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
-  }, [setModal]);
-
-  const handleBuyCryptoPress = useCallback(() => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'buy_crypto',
-    });
-    setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
-  }, [setModal]);
-
-  const handlePublicAddressPress = useCallback(() => {
-    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-      deposit_method: 'public_address',
-    });
-    setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
-  }, [setModal]);
-
-  const DEPOSIT_OPTIONS = [
-    {
-      text: 'Deposit from external wallet',
-      subtitle: 'Transfer from any crypto wallet\nor exchange',
-      icon: (
-        <Image
-          source={require('@/assets/images/deposit_from_external_wallet.png')}
-          style={{ width: 28, height: 12 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: handleExternalWalletPress,
-    },
-    {
-      text: 'Buy crypto',
-      subtitle: 'Google Pay, card or bank account',
-      icon: (
-        <Image
-          source={require('@/assets/images/buy_crypto.png')}
-          style={{ width: 22, height: 17 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: handleBuyCryptoPress,
-    },
-    {
-      text: 'Public address',
-      subtitle: 'Receive crypto directly to your wallet',
-      icon: (
-        <Image
-          source={require('@/assets/images/public_address.png')}
-          style={{ width: 26, height: 26 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: handlePublicAddressPress,
-    },
-  ];
+  const DEPOSIT_OPTIONS: DepositOptionProps[] = [...EXTERNAL_WALLET_OPTIONS, ...BUY_CRYPTO_OPTIONS];
 
   return (
     <View className="gap-y-2.5">
@@ -94,6 +42,7 @@ const DepositOptions = () => {
           subtitle={option.subtitle}
           icon={option.icon}
           onPress={option.onPress}
+          isLoading={option.isLoading}
         />
       ))}
     </View>

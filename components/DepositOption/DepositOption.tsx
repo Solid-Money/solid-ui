@@ -26,18 +26,17 @@ const DepositOption = ({
 
   return (
     <Button
-      className="flex-row items-center justify-between bg-primary/10 rounded-2xl p-6 web:hover:bg-accent disabled:opacity-100 disabled:web:hover:opacity-100"
-      style={{ height: 88 }}
+      className="flex-row items-center justify-between bg-primary/10 rounded-2xl px-5 py-6 web:hover:bg-accent disabled:opacity-100 disabled:web:hover:opacity-100 h-auto"
       onPress={onPress}
       disabled={isDisabled}
     >
-      <View className="flex-row items-center gap-x-4">
-        {icon}
+      <View className="flex-row gap-x-4">
+        <View className="mt-1.5">{icon}</View>
         <View className="flex-col gap-y-0.5">
           <Text className="text-primary text-lg font-semibold">{text}</Text>
           {subtitle && (
             <Text
-              className="text-muted-foreground text-sm"
+              className="text-muted-foreground text-sm leading-4"
               // Web-only: Preserve newline characters (\n) in subtitle text
               style={{ whiteSpace: 'pre-line' } as any}
             >
@@ -49,9 +48,9 @@ const DepositOption = ({
       {isComingSoon ? (
         <DepositComingSoon />
       ) : isLoading ? (
-        <ActivityIndicator color="white" size={20} />
+        <ActivityIndicator color="white" size={20} className="shrink-0" />
       ) : (
-        <ChevronRight color="white" size={20} />
+        <ChevronRight color="white" size={20} className="shrink-0" />
       )}
     </Button>
   );

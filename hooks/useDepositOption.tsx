@@ -296,7 +296,7 @@ const useDepositOption = ({
     } else if (isBankTransferKycInfo) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
     } else if (isBankTransferAmount) {
-      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isBankTransferPayment) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
     } else if (isBankTransferPreview) {
@@ -308,12 +308,14 @@ const useDepositOption = ({
     } else if (isPublicAddress) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isDepositDirectly) {
-      setModal(DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS);
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isDepositDirectlyAddress) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
     } else if (isBuyCrypto) {
-      setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
-    } else if (isScreenMedium) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    } else if (isNetworks) {
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
+    }else if (isScreenMedium) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else {
       router.back();
