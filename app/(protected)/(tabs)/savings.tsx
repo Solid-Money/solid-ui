@@ -222,8 +222,6 @@ export default function Savings() {
           </View>
         </LinearGradient>
 
-        {/* <PointsBanner /> */}
-
         {!isScreenMedium && <DashboardHeaderButtonsMobile />}
         <PoolBanners />
         <FAQs faqs={faqs} className="md:mt-20" />

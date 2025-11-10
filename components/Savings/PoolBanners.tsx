@@ -1,13 +1,13 @@
 import { View } from 'react-native';
 
-import ExtraYield from '@/components/Savings/ExtraYield';
+import PointsBanner from '@/components/Points/PointsBanner';
 import PoolStat from '@/components/Savings/PoolStat';
 
 const PoolBanners = () => {
   return (
     <View className="md:flex-row justify-between gap-8">
       <PoolStat />
-      <ExtraYield />
+      <PointsBanner />
     </View>
   );
 };
