@@ -32,6 +32,7 @@ export default function BridgeTermsOfServiceIframe() {
 
       try {
         if (
+          event?.data &&
           typeof event.data === 'object' &&
           event.data.signedAgreementId &&
           event.data.signedAgreementId.length > 0
