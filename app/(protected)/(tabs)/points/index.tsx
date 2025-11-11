@@ -155,7 +155,7 @@ export default function Savings() {
                 end={{ x: 0.7962, y: 1 }}
                 className="md:h-[90px] md:w-[90px] h-[70px] w-[70px] rounded-full flex justify-center items-center"
               >
-                <Text className="md:text-2xl text-xl font-semibold text-[#C693E5]">10X</Text>
+                <Text className="md:text-2xl text-xl font-semibold text-[#C693E5]">5X</Text>
               </LinearGradient>
               <View className="flex-col flex-1 md:ml-5 ml-2">
                 <Text className="md:text-2xl text-xl font-semibold">
