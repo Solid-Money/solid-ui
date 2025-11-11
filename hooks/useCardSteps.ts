@@ -4,7 +4,7 @@ import { path } from '@/constants/path';
 import { createCard, getKycLinkFromBridge } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { startKycFlow } from '@/lib/utils/kyc';
+import { isFinalKycStatus, startKycFlow } from '@/lib/utils/kyc';
 import { useKycStore } from '@/store/useKycStore';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -54,7 +54,7 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
   const [activatingCard, setActivatingCard] = useState(false);
 
   const router = useRouter();
-  const { kycLinkId } = useKycStore();
+  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore();
 
   console.warn('[CardSteps] kycLinkId', kycLinkId);
 
@@ -81,6 +81,54 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
     initialKycStatus,
     computed: kycStatus,
   });
+
+  // Initialize processing window when returning from redirect (optimistic status present)
+  useEffect(() => {
+    if (initialKycStatus && !isFinalKycStatus(kycStatus)) {
+      const now = Date.now();
+      const windowMs = 90_000;
+      const next = now + windowMs;
+      // Only extend if not set or already expired
+      if (!processingUntil || processingUntil < now) {
+        setProcessingUntil(next);
+
+        console.warn('[CardSteps] set processing window', {
+          initialKycStatus,
+          liveStatus: (kycLink as any)?.kyc_status,
+          processingUntil: next,
+        });
+      }
+    }
+  }, [initialKycStatus, kycStatus, processingUntil, setProcessingUntil, kycLink]);
+
+  // Clear processing window on final status
+  useEffect(() => {
+    if (isFinalKycStatus(kycStatus) && processingUntil) {
+      clearProcessingUntil();
+      console.warn('[CardSteps] clear processing window - final status', { kycStatus });
+    }
+  }, [kycStatus, processingUntil, clearProcessingUntil]);
+
+  // UI status override during processing window
+  const uiKycStatus: KycStatus = useMemo(() => {
+    const now = Date.now();
+    const live = (kycLink?.kyc_status as KycStatus) || undefined;
+
+    const activeWindow =
+      Boolean(processingUntil && now < processingUntil) && !isFinalKycStatus(live);
+
+    const ui = activeWindow ? KycStatus.UNDER_REVIEW : kycStatus;
+
+    console.warn('[CardSteps] processing state', {
+      processingUntil,
+      now,
+      live,
+      ui,
+      activeWindow,
+    });
+
+    return ui;
+  }, [processingUntil, kycLink?.kyc_status, kycStatus]);
 
   const rejectionReasonsText = useMemo(() => {
     if (kycStatus !== KycStatus.REJECTED) return undefined;
@@ -194,20 +242,20 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
   }, [router]);
 
   const steps: Step[] = useMemo(() => {
-    const description = getKycDescription(kycStatus, rejectionReasonsText);
-    const buttonText = getKycButtonText(kycStatus);
+    const description = getKycDescription(uiKycStatus, rejectionReasonsText);
+    const buttonText = getKycButtonText(uiKycStatus);
 
     return [
       {
         id: 1,
         title: 'Complete KYC',
         description: description,
-        completed: kycStatus === KycStatus.APPROVED || cardActivated,
-        status: kycStatus === KycStatus.APPROVED || cardActivated ? 'completed' : 'pending',
-        kycStatus: kycStatus,
+        completed: uiKycStatus === KycStatus.APPROVED || cardActivated,
+        status: uiKycStatus === KycStatus.APPROVED || cardActivated ? 'completed' : 'pending',
+        kycStatus: uiKycStatus,
         buttonText: buttonText,
         onPress:
-          kycStatus === KycStatus.UNDER_REVIEW || kycStatus === KycStatus.OFFBOARDED
+          uiKycStatus === KycStatus.UNDER_REVIEW || uiKycStatus === KycStatus.OFFBOARDED
             ? undefined
             : handleProceedToKyc,
       },
@@ -231,7 +279,7 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
       },
     ];
   }, [
-    kycStatus,
+    uiKycStatus,
     cardActivated,
     handleProceedToKyc,
     handleActivateCard,

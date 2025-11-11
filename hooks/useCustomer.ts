@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { createKycLink, getCustomerFromBridge, getKycLink, getKycLinkFromBridge } from '@/lib/api';
-import { KycLinkFromBridgeResponse, KycStatus } from '@/lib/types';
+import { KycLinkFromBridgeResponse } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { isFinalKycStatus } from '@/lib/utils/kyc';
 
 const CUSTOMER = 'customer';
 
@@ -24,15 +25,6 @@ export const useKycLink = (kycLinkId?: string) => {
 };
 
 export const useKycLinkFromBridge = (kycLinkId?: string) => {
-  const isFinalKycStatus = (status?: string) => {
-    const normalized = String(status || '').toLowerCase();
-    return (
-      normalized === KycStatus.APPROVED ||
-      normalized === KycStatus.REJECTED ||
-      normalized === KycStatus.OFFBOARDED
-    );
-  };
-
   return useQuery<KycLinkFromBridgeResponse | undefined>({
     queryKey: [CUSTOMER, 'kycLinkFromBridge', kycLinkId],
     queryFn: () => withRefreshToken(() => getKycLinkFromBridge(kycLinkId!)),
