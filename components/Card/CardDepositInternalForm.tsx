@@ -78,18 +78,18 @@ function SourceSelector({ control, from }: SourceSelectorProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-full min-w-[380px] border-0 rounded-t-none rounded-b-2xl -mt-4">
               <DropdownMenuItem
-                onPress={() => onChange('wallet')}
-                className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
-              >
-                <WalletIcon color="#A1A1A1" size={20} />
-                <Text className="text-lg">Wallet</Text>
-              </DropdownMenuItem>
-              <DropdownMenuItem
                 onPress={() => onChange('savings')}
                 className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
               >
                 <Leaf color="#A1A1A1" size={20} />
                 <Text className="text-lg">Savings</Text>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onPress={() => onChange('wallet')}
+                className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+              >
+                <WalletIcon color="#A1A1A1" size={20} />
+                <Text className="text-lg">Wallet</Text>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -288,7 +288,7 @@ export default function CardDepositInternalForm() {
 
   const { control, handleSubmit, formState, watch, reset, setValue, trigger } = useForm<FormData>({
     mode: 'onChange',
-    defaultValues: { amount: '', from: 'wallet' },
+    defaultValues: { amount: '', from: 'savings' },
   });
 
   const watchedAmount = watch('amount');
