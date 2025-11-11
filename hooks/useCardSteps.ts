@@ -17,7 +17,34 @@ interface Step {
   completed: boolean;
   buttonText?: string;
   onPress?: () => void;
-  status?: 'pending' | 'under_review' | 'completed' | 'rejected';
+  // Generic UI progress state for a step
+  status?: 'pending' | 'completed';
+  // Specific KYC status for step 1
+  kycStatus?: KycStatus;
+}
+
+function getKycDescription(kycStatus: KycStatus, rejectionReasonsText?: string) {
+  if (kycStatus === KycStatus.REJECTED) {
+    return (
+      rejectionReasonsText ||
+      'We couldn’t verify your identity. Please review the issues and try again.'
+    );
+  }
+  if (kycStatus === KycStatus.PAUSED) {
+    return 'KYC paused. Please retry to continue.';
+  }
+  if (kycStatus === KycStatus.OFFBOARDED) {
+    return 'Your account has been offboarded. Please contact support.';
+  }
+  return 'Identity verification required for us to issue your card';
+}
+
+function getKycButtonText(kycStatus: KycStatus): string | undefined {
+  if (kycStatus === KycStatus.UNDER_REVIEW) return 'Under Review';
+  if (kycStatus === KycStatus.REJECTED) return 'Retry KYC';
+  if (kycStatus === KycStatus.PAUSED) return 'Retry KYC';
+  if (kycStatus === KycStatus.OFFBOARDED) return undefined;
+  return 'Complete KYC';
 }
 
 export function useCardSteps(initialKycStatus?: KycStatus) {
@@ -91,6 +118,16 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
           });
           return;
         }
+
+        if (latestStatus === KycStatus.OFFBOARDED) {
+          Toast.show({
+            type: 'error',
+            text1: 'Account offboarded',
+            text2: 'Please contact support for assistance.',
+            props: { badgeText: '' },
+          });
+          return;
+        }
       }
     } catch (_e) {
       // If status check fails, we still allow starting KYC flow
@@ -136,32 +173,23 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
     }
   }, [router]);
 
-  const steps: Step[] = useMemo(
-    () => [
+  const steps: Step[] = useMemo(() => {
+    const description = getKycDescription(kycStatus, rejectionReasonsText);
+    const buttonText = getKycButtonText(kycStatus);
+
+    return [
       {
         id: 1,
         title: 'Complete KYC',
-        description:
-          kycStatus === KycStatus.REJECTED
-            ? rejectionReasonsText ||
-              'We couldn’t verify your identity. Please review the issues and try again.'
-            : 'Identity verification required for us to issue your card',
+        description: description,
         completed: kycStatus === KycStatus.APPROVED || cardActivated,
-        status:
-          kycStatus === KycStatus.UNDER_REVIEW
-            ? 'under_review'
-            : kycStatus === KycStatus.APPROVED
-              ? 'completed'
-              : kycStatus === KycStatus.REJECTED
-                ? 'rejected'
-                : 'pending',
-        buttonText:
-          kycStatus === KycStatus.UNDER_REVIEW
-            ? 'Under Review'
-            : kycStatus === KycStatus.REJECTED
-              ? 'Retry KYC'
-              : 'Complete KYC',
-        onPress: kycStatus === KycStatus.UNDER_REVIEW ? undefined : handleProceedToKyc,
+        status: kycStatus === KycStatus.APPROVED || cardActivated ? 'completed' : 'pending',
+        kycStatus: kycStatus,
+        buttonText: buttonText,
+        onPress:
+          kycStatus === KycStatus.UNDER_REVIEW || kycStatus === KycStatus.OFFBOARDED
+            ? undefined
+            : handleProceedToKyc,
       },
       {
         id: 2,
@@ -181,16 +209,15 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
         status: cardActivated ? 'completed' : 'pending',
         onPress: () => router.push(path.CARD_DETAILS),
       },
-    ],
-    [
-      kycStatus,
-      cardActivated,
-      handleProceedToKyc,
-      handleActivateCard,
-      router,
-      rejectionReasonsText,
-    ],
-  );
+    ];
+  }, [
+    kycStatus,
+    cardActivated,
+    handleProceedToKyc,
+    handleActivateCard,
+    router,
+    rejectionReasonsText,
+  ]);
 
   // Set default active step on mount
   useEffect(() => {
@@ -207,7 +234,10 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
   // Check if a step's button should be enabled
   const isStepButtonEnabled = (_stepIndex: number) => {
     const currentStep = steps[_stepIndex];
-    if (currentStep?.status === 'under_review') {
+    if (
+      currentStep?.kycStatus === KycStatus.UNDER_REVIEW ||
+      currentStep?.kycStatus === KycStatus.OFFBOARDED
+    ) {
       return false;
     }
 
