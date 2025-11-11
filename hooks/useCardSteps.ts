@@ -139,7 +139,7 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
     }
 
     const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
-    const redirectUri = `${baseUrl}${path.CARD_ACTIVATE_MOBILE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
+    const redirectUri = `${baseUrl}${path.CARD_ACTIVATE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
 
     // If we already have an existing KYC link, start the flow directly using it
     if (kycLink?.kyc_link) {

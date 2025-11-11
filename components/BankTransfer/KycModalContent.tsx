@@ -151,6 +151,7 @@ const BankTransferKycFrameModal = () => {
       try {
         // Check for completion events
         if (
+          event?.data &&
           typeof event.data === 'object' &&
           (event.data.status === 'completed' || event.data.event === 'verification.complete')
         ) {

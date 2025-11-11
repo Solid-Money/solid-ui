@@ -4,7 +4,7 @@ export default function CardLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
-      <Stack.Screen name="activate_mobile" />
+      <Stack.Screen name="activate" />
     </Stack>
   );
 }
