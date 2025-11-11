@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { createKycLink, getCustomerFromBridge, getKycLink, getKycLinkFromBridge } from '@/lib/api';
-import { KycStatus } from '@/lib/types';
+import { KycLinkFromBridgeResponse, KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 const CUSTOMER = 'customer';
@@ -33,15 +33,24 @@ export const useKycLinkFromBridge = (kycLinkId?: string) => {
     );
   };
 
-  return useQuery({
+  return useQuery<KycLinkFromBridgeResponse | undefined>({
     queryKey: [CUSTOMER, 'kycLinkFromBridge', kycLinkId],
     queryFn: () => withRefreshToken(() => getKycLinkFromBridge(kycLinkId!)),
     enabled: !!kycLinkId,
     retry: false,
     refetchInterval: data => {
       // Poll every 5s while KYC is in a non-final state; stop when final
-      if (!data) return 5000;
-      return isFinalKycStatus((data as any)?.kyc_status) ? false : 5000;
+      const status = (data as any)?.kyc_status;
+      const next = !data ? 5000 : isFinalKycStatus(status) ? false : 5000;
+      try {
+        console.warn('[KYC Poll] tick', {
+          kycLinkId,
+          status,
+          next,
+          ts: new Date().toISOString(),
+        });
+      } catch {}
+      return next as any;
     },
     refetchIntervalInBackground: true,
   });
