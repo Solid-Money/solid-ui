@@ -162,7 +162,7 @@ export default function Savings() {
                   Deposit and earn points automatically
                 </Text>
                 <Text className="md:text-lg text-base text-white/70">
-                  Earn 1 points per $1 per hour
+                  Earn 5 points per $1 per hour
                 </Text>
               </View>
             </View>
