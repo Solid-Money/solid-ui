@@ -38,18 +38,24 @@ export const useKycLinkFromBridge = (kycLinkId?: string) => {
     queryFn: () => withRefreshToken(() => getKycLinkFromBridge(kycLinkId!)),
     enabled: !!kycLinkId,
     retry: false,
-    refetchInterval: data => {
+    refetchInterval: (query: any) => {
+      // In our TanStack version, refetchInterval receives the Query instance
+      const data = query?.state?.data as any;
+      const status = data?.kyc_status as string | undefined;
+      const hasData = Boolean(data);
       // Poll every 5s while KYC is in a non-final state; stop when final
-      const status = (data as any)?.kyc_status;
-      const next = !data ? 5000 : isFinalKycStatus(status) ? false : 5000;
+      const next = !hasData ? 5000 : isFinalKycStatus(status) ? false : 5000;
+
       try {
         console.warn('[KYC Poll] tick', {
           kycLinkId,
           status,
           next,
           ts: new Date().toISOString(),
+          qState: query?.state?.status,
         });
       } catch {}
+
       return next as any;
     },
     refetchIntervalInBackground: true,
