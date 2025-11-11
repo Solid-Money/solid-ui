@@ -31,8 +31,7 @@ export default function Referral() {
               style={{ width: 250, height: 250 }}
             />
             <Text className="text-white/70 text-center mt-8">
-              Earn 10% of your referral&apos;s points and <br />
-              give your self a 10% boost
+              Earn 10% of your referral&apos;s points
             </Text>
             <Text className="text-white/70 text-center mt-1">
               Know who referred you?&nbsp;

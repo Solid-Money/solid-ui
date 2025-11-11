@@ -26,7 +26,7 @@ export default function KycMobile() {
           // Navigate to success regardless of specific status
           // The backend will validate the actual status
           router.replace({
-            pathname: path.CARD_ACTIVATE_MOBILE,
+            pathname: path.CARD_ACTIVATE,
             params: {
               kycStatus: KycStatus.APPROVED,
               inquiryId: inquiryId || '',

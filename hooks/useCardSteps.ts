@@ -1,9 +1,10 @@
 import { Endorsements } from '@/components/BankTransfer/enums';
 import { KycMode } from '@/components/UserKyc';
 import { path } from '@/constants/path';
-import { createCard } from '@/lib/api';
+import { createCard, getKycLinkFromBridge } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { startKycFlow } from '@/lib/utils/kyc';
 import { useKycStore } from '@/store/useKycStore';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -17,10 +18,37 @@ interface Step {
   completed: boolean;
   buttonText?: string;
   onPress?: () => void;
-  status?: 'pending' | 'under_review' | 'completed';
+  // Generic UI progress state for a step
+  status?: 'pending' | 'completed';
+  // Specific KYC status for step 1
+  kycStatus?: KycStatus;
 }
 
-export function useCardSteps() {
+function getKycDescription(kycStatus: KycStatus, rejectionReasonsText?: string) {
+  if (kycStatus === KycStatus.REJECTED) {
+    return (
+      rejectionReasonsText ||
+      'We couldn’t verify your identity. Please review the issues and try again.'
+    );
+  }
+  if (kycStatus === KycStatus.PAUSED) {
+    return 'KYC paused. Please retry to continue.';
+  }
+  if (kycStatus === KycStatus.OFFBOARDED) {
+    return 'Your account has been offboarded. Please contact support.';
+  }
+  return 'Identity verification required for us to issue your card';
+}
+
+function getKycButtonText(kycStatus: KycStatus): string | undefined {
+  if (kycStatus === KycStatus.UNDER_REVIEW) return 'Under Review';
+  if (kycStatus === KycStatus.REJECTED) return 'Retry KYC';
+  if (kycStatus === KycStatus.PAUSED) return 'Retry KYC';
+  if (kycStatus === KycStatus.OFFBOARDED) return undefined;
+  return 'Complete KYC';
+}
+
+export function useCardSteps(initialKycStatus?: KycStatus) {
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [cardActivated, setCardActivated] = useState(false);
   const [activatingCard, setActivatingCard] = useState(false);
@@ -28,30 +56,105 @@ export function useCardSteps() {
   const router = useRouter();
   const { kycLinkId } = useKycStore();
 
-  console.log('kycLinkId', kycLinkId);
+  console.warn('[CardSteps] kycLinkId', kycLinkId);
 
   // Get KYC link status if KYC link ID exists
   const { data: kycLink } = useKycLinkFromBridge(kycLinkId || undefined);
 
-  console.log('kycLink', kycLink);
+  console.warn('[CardSteps] kycLink', kycLink);
 
-  // Determine KYC status from multiple sources
+  // Determine KYC status from multiple sources.
+  // Prefer live link status; fall back to initial (optimistic) status.
   const kycStatus = useMemo(() => {
-    // If we have a KYC link, check its status first
-    if (kycLink) {
-      // KYC link exists, but we need to determine status based on the link data
-      // This might need adjustment based on what the API returns
-      return kycLink?.kyc_status || KycStatus.UNDER_REVIEW;
+    if (kycLink?.kyc_status) {
+      return (kycLink.kyc_status as KycStatus) || KycStatus.UNDER_REVIEW;
     }
-
+    if (initialKycStatus) {
+      return initialKycStatus;
+    }
     return KycStatus.NOT_STARTED;
-  }, [kycLink]);
+  }, [kycLink?.kyc_status, initialKycStatus]);
 
-  console.log('kycStatus', kycStatus);
+  console.warn('[CardSteps] computed kycStatus', {
+    kycLinkId,
+    linkStatus: (kycLink as any)?.kyc_status,
+    initialKycStatus,
+    computed: kycStatus,
+  });
+
+  const rejectionReasonsText = useMemo(() => {
+    if (kycStatus !== KycStatus.REJECTED) return undefined;
+    const reasons = (kycLink as any)?.rejection_reasons;
+    if (!reasons || !Array.isArray(reasons) || reasons.length === 0) return undefined;
+    try {
+      const items = reasons
+        .map((r: any) => (typeof r === 'string' ? r : r?.reason))
+        .filter((r: any) => typeof r === 'string' && r.trim().length > 0);
+      if (!items.length) return undefined;
+      return `We couldn’t verify your identity:\n- ${items.join('\n- ')}`;
+    } catch {
+      return undefined;
+    }
+  }, [kycStatus, kycLink]);
 
   const handleProceedToKyc = useCallback(async () => {
+    try {
+      // Fetch latest KYC status if we have a link id
+      if (kycLinkId) {
+        const latest = await withRefreshToken(() => getKycLinkFromBridge(kycLinkId));
+        const latestStatus = (latest?.kyc_status as KycStatus) || KycStatus.NOT_STARTED;
+
+        if (latestStatus === KycStatus.UNDER_REVIEW) {
+          Toast.show({
+            type: 'info',
+            text1: 'KYC under review',
+            text2: 'Please wait while we complete the review.',
+            props: { badgeText: '' },
+          });
+          return;
+        }
+
+        if (latestStatus === KycStatus.APPROVED) {
+          Toast.show({
+            type: 'success',
+            text1: 'KYC approved',
+            text2: 'You can proceed to order your card.',
+            props: { badgeText: '' },
+          });
+          return;
+        }
+
+        if (latestStatus === KycStatus.OFFBOARDED) {
+          Toast.show({
+            type: 'error',
+            text1: 'Account offboarded',
+            text2: 'Please contact support for assistance.',
+            props: { badgeText: '' },
+          });
+          return;
+        }
+      }
+    } catch (_e) {
+      // If status check fails, we still allow starting KYC flow
+    }
+
     const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
-    const redirectUri = `${baseUrl}${path.CARD_ACTIVATE_MOBILE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
+    const redirectUri = `${baseUrl}${path.CARD_ACTIVATE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
+
+    // If we already have an existing KYC link, start the flow directly using it
+    if (kycLink?.kyc_link) {
+      try {
+        const urlObj = new URL(kycLink.kyc_link);
+        // Ensure redirect-uri is present for post-completion navigation (mainly for web)
+        if (!urlObj.searchParams.has('redirect-uri') && !urlObj.searchParams.has('redirect_uri')) {
+          urlObj.searchParams.set('redirect-uri', redirectUri);
+        }
+        startKycFlow({ router, kycLink: urlObj.toString() });
+        return;
+      } catch (_e) {
+        // Fall through to user-kyc-info if URL parsing fails
+      }
+    }
 
     const params = new URLSearchParams({
       kycMode: KycMode.CARD,
@@ -60,7 +163,7 @@ export function useCardSteps() {
     }).toString();
 
     router.push(`/user-kyc-info?${params}`);
-  }, [router]);
+  }, [router, kycLinkId, kycLink?.kyc_link]);
 
   const handleActivateCard = useCallback(async () => {
     try {
@@ -90,21 +193,23 @@ export function useCardSteps() {
     }
   }, [router]);
 
-  const steps: Step[] = useMemo(
-    () => [
+  const steps: Step[] = useMemo(() => {
+    const description = getKycDescription(kycStatus, rejectionReasonsText);
+    const buttonText = getKycButtonText(kycStatus);
+
+    return [
       {
         id: 1,
         title: 'Complete KYC',
-        description: 'Identity verification required for us to issue your card',
+        description: description,
         completed: kycStatus === KycStatus.APPROVED || cardActivated,
-        status:
-          kycStatus === KycStatus.UNDER_REVIEW
-            ? 'under_review'
-            : kycStatus === KycStatus.APPROVED
-              ? 'completed'
-              : 'pending',
-        buttonText: kycStatus === KycStatus.UNDER_REVIEW ? 'Under Review' : 'Complete KYC',
-        onPress: kycStatus === KycStatus.UNDER_REVIEW ? undefined : handleProceedToKyc,
+        status: kycStatus === KycStatus.APPROVED || cardActivated ? 'completed' : 'pending',
+        kycStatus: kycStatus,
+        buttonText: buttonText,
+        onPress:
+          kycStatus === KycStatus.UNDER_REVIEW || kycStatus === KycStatus.OFFBOARDED
+            ? undefined
+            : handleProceedToKyc,
       },
       {
         id: 2,
@@ -124,9 +229,15 @@ export function useCardSteps() {
         status: cardActivated ? 'completed' : 'pending',
         onPress: () => router.push(path.CARD_DETAILS),
       },
-    ],
-    [kycStatus, cardActivated, handleProceedToKyc, handleActivateCard, router],
-  );
+    ];
+  }, [
+    kycStatus,
+    cardActivated,
+    handleProceedToKyc,
+    handleActivateCard,
+    router,
+    rejectionReasonsText,
+  ]);
 
   // Set default active step on mount
   useEffect(() => {
@@ -142,7 +253,14 @@ export function useCardSteps() {
 
   // Check if a step's button should be enabled
   const isStepButtonEnabled = (_stepIndex: number) => {
-    // return true;
+    const currentStep = steps[_stepIndex];
+    if (
+      currentStep?.kycStatus === KycStatus.UNDER_REVIEW ||
+      currentStep?.kycStatus === KycStatus.OFFBOARDED
+    ) {
+      return false;
+    }
+
     return steps.slice(0, _stepIndex).every(step => step.completed);
   };
 

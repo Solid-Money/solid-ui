@@ -154,6 +154,8 @@ export type KycLink = {
   tosLink: string;
 };
 
+export type KycRejectionReason = { reason: string };
+
 export type KycLinkFromBridgeResponse = {
   id: string;
   full_name: string;
@@ -162,7 +164,7 @@ export type KycLinkFromBridgeResponse = {
   kyc_link: string;
   tos_link: string;
   kyc_status: string;
-  rejection_reasons: string[];
+  rejection_reasons: KycRejectionReason[];
   tos_status: string;
   customer_id: string;
 };
@@ -201,6 +203,7 @@ export type BridgeCustomerEndorsement = {
 export enum KycStatus {
   NOT_STARTED = 'not_started',
   INCOMPLETE = 'incomplete',
+  AWAITING_QUESTIONNAIRE = 'awaiting_questionnaire',
   AWAITING_UBO = 'awaiting_ubo',
   UNDER_REVIEW = 'under_review',
   APPROVED = 'approved',
