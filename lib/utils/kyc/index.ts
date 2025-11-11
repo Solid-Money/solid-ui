@@ -1,7 +1,8 @@
 import { path } from '@/constants/path';
-import { Platform } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
+import { KycStatus } from '@/lib/types';
 import { Router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 
 type StartKycFlowParams = {
   router: Router;
@@ -27,4 +28,15 @@ export function startKycFlow(params: StartKycFlowParams) {
       params: { url: kycLink },
     });
   }
+}
+
+// Utility: determine if a KYC status is final (approved/rejected/offboarded)
+export function isFinalKycStatus(status?: string | KycStatus): boolean {
+  if (!status) return false;
+  const normalized = String(status).toLowerCase();
+  return (
+    normalized === KycStatus.APPROVED ||
+    normalized === KycStatus.REJECTED ||
+    normalized === KycStatus.OFFBOARDED
+  );
 }
