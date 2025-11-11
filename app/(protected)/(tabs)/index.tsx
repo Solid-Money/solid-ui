@@ -187,33 +187,31 @@ export default function Savings() {
           </View>
         )}
 
-        <View className="gap-4 px-4 md:px-0">
-          {/*
-            <Text className="md:text-2xl text-muted-foreground md:text-foreground font-semibold md:font-medium">
-              Coins
-            </Text>
-            */}
+        <View className="px-4 md:px-0 mt-10 gap-6">
+          <Text className="text-lg text-muted-foreground font-semibold">Your assets</Text>
+          {tokenError ? (
+            <View className="flex-1 justify-center items-center p-4">
+              <WalletInfo text="Failed to load tokens" />
+              <Text className="text-sm text-muted-foreground mt-2">{tokenError}</Text>
+              <TouchableOpacity
+                onPress={retryTokens}
+                className="mt-4 px-4 py-2 bg-primary rounded-lg"
+              >
+                <Text className="text-primary-foreground">Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : isLoadingTokens ? (
+            <WalletInfo text="Loading tokens..." />
+          ) : hasTokens ? (
+            <WalletTabs />
+          ) : (
+            <WalletInfo text="No tokens found" />
+          )}
+        </View>
 
-          <View className="mt-10">
-            {tokenError ? (
-              <View className="flex-1 justify-center items-center p-4">
-                <WalletInfo text="Failed to load tokens" />
-                <Text className="text-sm text-muted-foreground mt-2">{tokenError}</Text>
-                <TouchableOpacity
-                  onPress={retryTokens}
-                  className="mt-4 px-4 py-2 bg-primary rounded-lg"
-                >
-                  <Text className="text-primary-foreground">Retry</Text>
-                </TouchableOpacity>
-              </View>
-            ) : isLoadingTokens ? (
-              <WalletInfo text="Loading tokens..." />
-            ) : hasTokens ? (
-              <WalletTabs />
-            ) : (
-              <WalletInfo text="No tokens found" />
-            )}
-          </View>
+        <View className="hidden md:flex px-4 md:px-0 mt-10 gap-6">
+          <Text className="text-lg text-muted-foreground font-semibold">Promotions</Text>
+          <HomeBanners />
         </View>
       </View>
     </PageLayout>
