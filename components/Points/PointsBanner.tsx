@@ -30,7 +30,7 @@ const PointsBanner = () => {
         }}
       >
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
-          <View className="justify-between items-start gap-2 md:gap-4 py-5 md:py-7">
+          <View className="justify-between items-start md:gap-2 py-4 md:py-6">
             <View className="inline max-w-40 md:max-w-64">
               <Text className="text-xl md:text-3xl font-semibold">Earn</Text>{' '}
               <Text className="text-xl md:text-3xl font-semibold text-rewards">5X</Text>{' '}
@@ -42,7 +42,7 @@ const PointsBanner = () => {
             <View className="flex-row items-center gap-4">
               <Button
                 variant="rewards"
-                className="rounded-xl h-12 pr-6"
+                className="rounded-xl h-11 md:h-12 pr-6"
                 onPress={() => router.push(path.POINTS)}
               >
                 <Plus color="white" />

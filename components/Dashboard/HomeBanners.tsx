@@ -8,6 +8,8 @@ import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typ
 import { useDimension } from '@/hooks/useDimension';
 import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';
+import PointsBanner from '@/components/Points/PointsBanner';
+import ReferBanner from '@/components/Points/ReferBanner';
 
 type BannerData = React.ReactElement[];
 
@@ -61,7 +63,15 @@ export const HomeBanners = () => {
   const [containerWidth, setContainerWidth] = useState(0);
   const gapPadding = useSharedValue(0);
 
-  const data = useMemo(() => [<DepositBanner key="deposit" />, <CardBanner key="card" />], []);
+  const data = useMemo(
+    () => [
+      <ReferBanner key="refer" />,
+      <PointsBanner key="points" />,
+      <DepositBanner key="deposit" />,
+      <CardBanner key="card" />,
+    ],
+    [],
+  );
 
   const GAP = isScreenMedium ? 30 : 8;
   const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
