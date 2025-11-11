@@ -4,6 +4,7 @@ import { path } from '@/constants/path';
 import { createCard, getKycLinkFromBridge } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { startKycFlow } from '@/lib/utils/kyc';
 import { useKycStore } from '@/store/useKycStore';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -55,27 +56,31 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
   const router = useRouter();
   const { kycLinkId } = useKycStore();
 
-  console.log('kycLinkId', kycLinkId);
+  console.warn('[CardSteps] kycLinkId', kycLinkId);
 
   // Get KYC link status if KYC link ID exists
   const { data: kycLink } = useKycLinkFromBridge(kycLinkId || undefined);
 
-  console.log('kycLink', kycLink);
+  console.warn('[CardSteps] kycLink', kycLink);
 
-  // Determine KYC status from multiple sources, preferring an initial override from redirectUri
+  // Determine KYC status from multiple sources.
+  // Prefer live link status; fall back to initial (optimistic) status.
   const kycStatus = useMemo(() => {
-    // Optimistic status passed via redirectUri after finishing KYC
+    if (kycLink?.kyc_status) {
+      return (kycLink.kyc_status as KycStatus) || KycStatus.UNDER_REVIEW;
+    }
     if (initialKycStatus) {
       return initialKycStatus;
     }
-    // If we have a KYC link, check its status
-    if (kycLink) {
-      return (kycLink?.kyc_status as KycStatus) || KycStatus.UNDER_REVIEW;
-    }
     return KycStatus.NOT_STARTED;
-  }, [initialKycStatus, kycLink]);
+  }, [kycLink?.kyc_status, initialKycStatus]);
 
-  console.log('kycStatus', kycStatus);
+  console.warn('[CardSteps] computed kycStatus', {
+    kycLinkId,
+    linkStatus: (kycLink as any)?.kyc_status,
+    initialKycStatus,
+    computed: kycStatus,
+  });
 
   const rejectionReasonsText = useMemo(() => {
     if (kycStatus !== KycStatus.REJECTED) return undefined;
@@ -136,6 +141,21 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
     const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
     const redirectUri = `${baseUrl}${path.CARD_ACTIVATE_MOBILE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
 
+    // If we already have an existing KYC link, start the flow directly using it
+    if (kycLink?.kyc_link) {
+      try {
+        const urlObj = new URL(kycLink.kyc_link);
+        // Ensure redirect-uri is present for post-completion navigation (mainly for web)
+        if (!urlObj.searchParams.has('redirect-uri') && !urlObj.searchParams.has('redirect_uri')) {
+          urlObj.searchParams.set('redirect-uri', redirectUri);
+        }
+        startKycFlow({ router, kycLink: urlObj.toString() });
+        return;
+      } catch (_e) {
+        // Fall through to user-kyc-info if URL parsing fails
+      }
+    }
+
     const params = new URLSearchParams({
       kycMode: KycMode.CARD,
       endorsement: Endorsements.CARDS,
@@ -143,7 +163,7 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
     }).toString();
 
     router.push(`/user-kyc-info?${params}`);
-  }, [router, kycLinkId]);
+  }, [router, kycLinkId, kycLink?.kyc_link]);
 
   const handleActivateCard = useCallback(async () => {
     try {
