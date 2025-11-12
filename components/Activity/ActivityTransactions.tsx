@@ -56,8 +56,22 @@ export default function ActivityTransactions({
       return false;
     });
 
-    return groupTransactionsByTime(filtered);
-  }, [activities, tab, symbol]);
+    const grouped = groupTransactionsByTime(filtered);
+
+    // Filter out stuck/cancelled transactions if not showing them
+    if (!showStuckTransactions) {
+      return grouped.filter(item => {
+        if (item.type === ActivityGroup.HEADER) return true;
+        const transaction = item.data as ActivityEvent;
+        const isPending = transaction.status === TransactionStatus.PENDING;
+        const isCancelled = transaction.status === TransactionStatus.CANCELLED;
+        const isStuck = isTransactionStuck(transaction.timestamp);
+        return !((isPending && isStuck) || isCancelled);
+      });
+    }
+
+    return grouped;
+  }, [activities, tab, symbol, showStuckTransactions]);
 
   const getTransactionClassName = (groupedData: TimeGroup[], currentIndex: number) => {
     const classNames = ['bg-card overflow-hidden'];
@@ -118,17 +132,9 @@ export default function ActivityTransactions({
     }
 
     const transaction = item.data as ActivityEvent;
-    const isPending = transaction.status === TransactionStatus.PENDING;
-    const isCancelled = transaction.status === TransactionStatus.CANCELLED;
-    const isStuck = isTransactionStuck(transaction.timestamp);
-
-    if (!showStuckTransactions && ((isPending && isStuck) || isCancelled)) {
-      return null;
-    }
 
     return (
       <Transaction
-        key={`${transaction.timestamp}-${index}`}
         {...transaction}
         onPress={() => {
           const clientTxId = transaction.clientTxId;
@@ -196,12 +202,26 @@ export default function ActivityTransactions({
         key={`flashlist-${showStuckTransactions}`}
         data={filteredTransactions}
         renderItem={renderItem}
-        keyExtractor={item => {
+        keyExtractor={(item, index) => {
           if (item.type === ActivityGroup.HEADER) {
-            return (item.data as TimeGroupHeaderData).key;
+            const headerKey = (item.data as TimeGroupHeaderData).key;
+            // Ensure header keys are always prefixed and unique
+            return headerKey.startsWith('header-')
+              ? `${headerKey}-${index}`
+              : `header-${headerKey}-${index}`;
           }
           const transaction = item.data as ActivityEvent;
-          return getKey(transaction);
+          // Get base key, ensuring it's never empty
+          const hashKey = getKey(transaction);
+          const baseKey =
+            (hashKey && hashKey.trim()) ||
+            transaction.clientTxId ||
+            transaction.timestamp ||
+            `unknown-${index}`;
+          // Ensure key is always unique and non-empty
+          // Prefix with 'tx-' to avoid collisions with headers, add index for uniqueness
+          // Use a combination of identifiers to ensure uniqueness even if hash/userOpHash/clientTxId are the same
+          return `tx-${baseKey}-${index}`;
         }}
         onEndReached={() => {
           if (hasNextPage && !isFetchingNextPage) {
