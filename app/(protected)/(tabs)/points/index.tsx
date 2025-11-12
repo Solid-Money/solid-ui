@@ -91,18 +91,12 @@ export default function Savings() {
                     <View className="flex-row items-end">
                       <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
                         {points.userRewardsSummary.rewardsByType.find(
-                          r => r.type === RewardsType.REFERRAL_SIGNUP,
+                          r => r.type === RewardsType.RECURRING_REFERRAL,
                         )?.totalPoints || 0}
                       </Text>
                       <Text className="text-base text-rewards/70 ml-2">
-                        {points.userRewardsSummary.rewardsByType.find(
-                          r => r.type === RewardsType.REFERRAL_SIGNUP,
-                        )?.count || 0}{' '}
-                        referred |{' '}
-                        {points.userRewardsSummary.rewardsByType.find(
-                          r => r.type === RewardsType.REFERRAL_SIGNUP,
-                        )?.count || 0}{' '}
-                        deposited
+                        {points.userRewardsSummary.referredUsersCount || 0} referred |{' '}
+                        {points.userRewardsSummary.referredUsersDepositedCount || 0} deposited
                       </Text>
                     </View>
                   </View>

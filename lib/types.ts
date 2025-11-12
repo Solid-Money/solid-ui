@@ -597,6 +597,7 @@ export interface TokenBalance {
 export enum RewardsType {
   DEPOSIT = 'holding_deposited_funds',
   REFERRAL_SIGNUP = 'referral_signup',
+  RECURRING_REFERRAL = 'recurring_referral',
   DAILY_LOGIN = 'daily_login',
 }
 
@@ -633,6 +634,8 @@ export interface Points {
       count: number;
       totalPoints: number;
     }[];
+    referredUsersCount?: number;
+    referredUsersDepositedCount?: number;
   };
   userRefferer: string;
 }
