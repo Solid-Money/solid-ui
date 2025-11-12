@@ -65,10 +65,10 @@ export const HomeBanners = () => {
 
   const data = useMemo(
     () => [
+      <CardBanner key="card" />,
       <ReferBanner key="refer" />,
       <PointsBanner key="points" />,
       <DepositBanner key="deposit" />,
-      <CardBanner key="card" />,
     ],
     [],
   );
