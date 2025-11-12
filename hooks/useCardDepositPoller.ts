@@ -37,25 +37,37 @@ export const useCardDepositPoller = () => {
   useEffect(() => {
     if (!cardTransactions || pendingCardDeposits.length === 0) return;
 
-    pendingCardDeposits.forEach(async activity => {
-      // Match by transaction hash
-      const matchingCardTx = cardTransactions.find(
-        tx => tx.crypto_transaction_details?.tx_hash === activity.hash,
-      );
+    let isMounted = true;
 
-      if (matchingCardTx) {
-        // Check if Bridge has completed processing
-        const isCompleted = matchingCardTx.status.toLowerCase() === 'posted';
+    const checkAndUpdate = async () => {
+      for (const activity of pendingCardDeposits) {
+        if (!isMounted) return;
 
-        if (isCompleted) {
-          // Update activity to SUCCESS
-          await updateActivity(activity.clientTxId, {
-            status: TransactionStatus.SUCCESS,
-            metadata: activity.metadata,
-          });
+        // Match by transaction hash
+        const matchingCardTx = cardTransactions.find(
+          tx => tx.crypto_transaction_details?.tx_hash === activity.hash,
+        );
+
+        if (matchingCardTx) {
+          // Check if Bridge has completed processing
+          const isCompleted = matchingCardTx.status.toLowerCase() === 'posted';
+
+          if (isCompleted && isMounted) {
+            // Update activity to SUCCESS
+            await updateActivity(activity.clientTxId, {
+              status: TransactionStatus.SUCCESS,
+              metadata: activity.metadata,
+            });
+          }
         }
       }
-    });
+    };
+
+    void checkAndUpdate();
+
+    return () => {
+      isMounted = false;
+    };
   }, [cardTransactions, pendingCardDeposits, updateActivity]);
 
   return {
