@@ -66,4 +66,8 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.IN,
     category: TransactionCategory.REWARD,
   },
+  [TransactionType.CARD_WELCOME_BONUS]: {
+    sign: TransactionDirection.IN,
+    category: TransactionCategory.REWARD,
+  },
 };
