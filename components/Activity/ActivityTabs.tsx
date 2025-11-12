@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Text } from '@/components/ui/text';
 import { ActivityTab } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import ActivityTransactions from './ActivityTransactions';
@@ -28,8 +28,15 @@ const ActivityTabs = () => {
   const params = useLocalSearchParams<{ tab?: string }>();
   const tab = (params.tab as ActivityTab) || ActivityTab.WALLET;
   const [layouts, setLayouts] = useState<TabLayouts>({});
+  const layoutsRef = useRef<TabLayouts>({});
   const translateX = useSharedValue(0);
   const width = useSharedValue(0);
+  const isMountedRef = useRef(true);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    layoutsRef.current = layouts;
+  }, [layouts]);
 
   const underlineStyle = useAnimatedStyle(() => {
     return {
@@ -42,23 +49,43 @@ const ActivityTabs = () => {
     };
   });
 
-  const handleLayout = (e: LayoutChangeEvent, element: string, tabValue: ActivityTab) => {
-    const { x, width: w } = e.nativeEvent.layout;
-    setLayouts(prev => ({
-      ...prev,
-      [tabValue]: { ...prev[tabValue], [element]: { x, width: w } },
-    }));
-  };
+  const handleLayout = useCallback(
+    (e: LayoutChangeEvent, element: string, tabValue: ActivityTab) => {
+      if (!isMountedRef.current) return;
+      const { x, width: w } = e.nativeEvent.layout;
+      setLayouts(prev => {
+        const currentLayout = prev[tabValue]?.[element as TabElement];
+        // Only update if layout actually changed to prevent unnecessary re-renders
+        if (currentLayout?.x === x && currentLayout?.width === w) {
+          return prev;
+        }
+        const newLayouts = {
+          ...prev,
+          [tabValue]: { ...prev[tabValue], [element]: { x, width: w } },
+        };
+        layoutsRef.current = newLayouts;
+        return newLayouts;
+      });
+    },
+    [],
+  );
 
   const animateUnderline = useCallback(
-    (tab: ActivityTab) => {
-      if (!layouts[tab]?.[TabElement.TRIGGER] || !layouts[tab]?.[TabElement.TEXT]) return;
-      translateX.value = withTiming(
-        layouts[tab][TabElement.TRIGGER].x + layouts[tab][TabElement.TEXT].x,
-      );
-      width.value = withTiming(layouts[tab][TabElement.TEXT].width);
+    (tabToAnimate: ActivityTab) => {
+      if (!isMountedRef.current) return;
+      const layout = layoutsRef.current[tabToAnimate];
+      if (!layout?.[TabElement.TRIGGER] || !layout?.[TabElement.TEXT]) return;
+
+      const newX = layout[TabElement.TRIGGER].x + layout[TabElement.TEXT].x;
+      const newWidth = layout[TabElement.TEXT].width;
+
+      // Only animate if values actually changed
+      if (translateX.value !== newX || width.value !== newWidth) {
+        translateX.value = withTiming(newX);
+        width.value = withTiming(newWidth);
+      }
     },
-    [layouts, translateX, width],
+    [translateX, width],
   );
 
   const handleTabChange = (newTab: ActivityTab) => {
@@ -66,9 +93,24 @@ const ActivityTabs = () => {
   };
 
   useEffect(() => {
-    if (!layouts[tab]?.[TabElement.TRIGGER] || !layouts[tab]?.[TabElement.TEXT]) return;
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Create a stable key for the current tab's layout to avoid unnecessary re-renders
+  const currentTabLayoutKey = useMemo(() => {
+    const layout = layouts[tab];
+    if (!layout?.[TabElement.TRIGGER] || !layout?.[TabElement.TEXT]) return null;
+    return `${tab}-${layout[TabElement.TRIGGER].x}-${layout[TabElement.TRIGGER].width}-${layout[TabElement.TEXT].x}-${layout[TabElement.TEXT].width}`;
+  }, [layouts, tab]);
+
+  // Animate when tab changes or when layouts for current tab become available
+  useEffect(() => {
+    if (!isMountedRef.current || !currentTabLayoutKey) return;
     animateUnderline(tab);
-  }, [animateUnderline, layouts, tab]);
+  }, [tab, currentTabLayoutKey, animateUnderline]);
 
   return (
     <Tabs
