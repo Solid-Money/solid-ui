@@ -31,7 +31,7 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     category: TransactionCategory.SAVINGS_ACCOUNT,
   },
   [TransactionType.BRIDGE_DEPOSIT]: {
-    sign: TransactionDirection.IN,
+    sign: TransactionDirection.OUT,
     category: TransactionCategory.EXTERNAL_WALLET_TRANSFER,
   },
   [TransactionType.BRIDGE_TRANSFER]: {

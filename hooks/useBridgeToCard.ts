@@ -198,16 +198,17 @@ const useBridgeToCard = (): BridgeResult => {
         const result = await trackTransaction(
           {
             type: TransactionType.BRIDGE_DEPOSIT,
-            title: `Bridge ${amount} USDC to Card`,
-            shortTitle: `Bridge ${amount}`,
+            title: `Bridge USDC to Card`,
+            shortTitle: `Bridge USDC`,
             amount,
-            symbol: 'USDC',
+            symbol: 'USDC.e', // Source symbol - bridging USDC.e
             chainId: fuse.id,
             fromAddress: user.safeAddress,
             toAddress: destinationAddress,
             metadata: {
               description: `Bridge ${amount} USDC from Fuse to Card on Arbitrum`,
               fee: transaction.value,
+              sourceSymbol: 'USDC.e', // Track source symbol for display
             },
           },
           onUserOpHash =>
