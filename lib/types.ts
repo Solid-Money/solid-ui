@@ -282,6 +282,11 @@ interface Freeze {
   created_at: string;
 }
 
+export interface CardHolderName {
+  first_name: string;
+  last_name: string;
+}
+
 export interface CardResponse {
   id: string;
   client_reference_id: string;
@@ -290,6 +295,7 @@ export interface CardResponse {
   status: CardStatus;
   status_reason: string;
   card_details: CardDetails;
+  cardholder_name: CardHolderName;
   balances: Balances;
   freezes: Freeze[];
   crypto_account: CryptoAccount;
