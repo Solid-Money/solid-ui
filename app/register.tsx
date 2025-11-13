@@ -184,7 +184,7 @@ export default function Register() {
               <Button
                 variant="brand"
                 onPress={handleSubmit(handleSignupForm)}
-                //disabled={isSignupDisabled()}
+                disabled={signupInfo.status === Status.PENDING || !isValid || !watchedUsername}
                 className="rounded-xl h-14"
               >
                 <Text className="text-lg font-semibold">{getSignupButtonText()}</Text>
@@ -200,7 +200,7 @@ export default function Register() {
 
             <Button
               onPress={handleLogin}
-              disabled={loginInfo.status === Status.PENDING}
+              disabled={loginInfo.status === Status.PENDING || signupInfo.status === Status.PENDING}
               variant="secondary"
               className="rounded-xl h-14 border-0"
             >
