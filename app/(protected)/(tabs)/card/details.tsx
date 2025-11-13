@@ -109,9 +109,10 @@ interface BalanceDisplayProps {
 }
 
 function BalanceDisplay({ amount }: BalanceDisplayProps) {
+  const formattedAmount = Number.parseFloat(amount).toFixed(2);
   return (
     <View className="items-center mt-10">
-      <Text className="text-[50px] font-semibold">${amount}</Text>
+      <Text className="text-[50px] font-semibold">${formattedAmount}</Text>
       <Text className="text-base opacity-70">Spendable balance</Text>
     </View>
   );
