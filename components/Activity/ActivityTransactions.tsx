@@ -18,6 +18,7 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, isTransactionStuck } from '@/lib/utils';
+import { deduplicateTransactions } from '@/lib/utils/deduplicateTransactions';
 import { groupTransactionsByTime, TimeGroup, TimeGroupHeaderData } from '@/lib/utils/timeGrouping';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -56,7 +57,8 @@ export default function ActivityTransactions({
       return false;
     });
 
-    const grouped = groupTransactionsByTime(filtered);
+    const deduplicated = deduplicateTransactions(filtered);
+    const grouped = groupTransactionsByTime(deduplicated);
 
     // Filter out stuck/cancelled transactions if not showing them
     if (!showStuckTransactions) {
@@ -133,9 +135,24 @@ export default function ActivityTransactions({
 
     const transaction = item.data as ActivityEvent;
 
+    // Normalize title for BRIDGE_DEPOSIT based on symbol (backend may have old title)
+    let displayTitle = transaction.title;
+    let displayShortTitle = transaction.shortTitle;
+    if (transaction.type === TransactionType.BRIDGE_DEPOSIT) {
+      if (transaction.symbol?.toLowerCase() === 'sousd') {
+        displayTitle = 'Bridge soUSD to Card';
+        displayShortTitle = 'Bridge soUSD';
+      } else if (transaction.symbol?.toLowerCase().includes('usdc')) {
+        displayTitle = 'Bridge USDC to Card';
+        displayShortTitle = 'Bridge USDC';
+      }
+    }
+
     return (
       <Transaction
         {...transaction}
+        title={displayTitle}
+        shortTitle={displayShortTitle}
         onPress={() => {
           const clientTxId = transaction.clientTxId;
           const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
