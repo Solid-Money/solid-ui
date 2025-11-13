@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 40,
     fontSize: 16,
   },
   errorText: {
@@ -191,5 +191,6 @@ const styles = StyleSheet.create({
     height: 650,
     borderWidth: 0,
     borderRadius: 4,
+    marginTop: 40,
   },
 });

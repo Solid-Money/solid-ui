@@ -109,9 +109,10 @@ interface BalanceDisplayProps {
 }
 
 function BalanceDisplay({ amount }: BalanceDisplayProps) {
+  const formattedAmount = Number.parseFloat(amount).toFixed(2);
   return (
     <View className="items-center mt-10">
-      <Text className="text-[50px] font-semibold">${amount}</Text>
+      <Text className="text-[50px] font-semibold">${formattedAmount}</Text>
       <Text className="text-base opacity-70">Spendable balance</Text>
     </View>
   );
@@ -131,7 +132,7 @@ function CardImageSection({ isScreenMedium, isCardFrozen }: CardImageSectionProp
 
   return (
     <View
-      className="items-center my-12"
+      className="items-center mt-12 mb-6"
       style={{
         paddingHorizontal: isCardFrozen || !isScreenMedium ? 0 : 9.5,
         paddingVertical: isCardFrozen || !isScreenMedium ? 0 : 11.5,
