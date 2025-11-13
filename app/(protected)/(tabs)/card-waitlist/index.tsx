@@ -1,19 +1,20 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import CardWaitlistContainer from '@/components/CardWaitlist/CardWaitlistContainer';
 import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';
 import CardWaitlistHeaderButtons from '@/components/CardWaitlist/CardWaitlistHeaderButtons';
 import CardWaitlistHeaderTitle from '@/components/CardWaitlist/CardWaitlistHeaderTitle';
+import { CashbackIcon } from '@/components/CardWaitlist/CashbackIcon';
 import ReserveCardButton from '@/components/CardWaitlist/ReserveCardButton';
 import { Text } from '@/components/ui/text';
-import useUser from '@/hooks/useUser';
-import { checkCardWaitlistStatus } from '@/lib/api';
-import { cn } from '@/lib/utils';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
+import useUser from '@/hooks/useUser';
+import { checkCardWaitlistStatus, getCashbackPercentage } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 type ClassNames = {
   container?: string;
@@ -22,7 +23,7 @@ type ClassNames = {
 };
 
 type FeatureProps = {
-  icon: string;
+  icon: number | React.ReactElement;
   title: string;
   description: string | React.ReactNode;
   classNames?: ClassNames;
@@ -31,7 +32,11 @@ type FeatureProps = {
 const Feature = ({ icon, title, description, classNames }: FeatureProps) => {
   return (
     <View className={cn('flex-row md:items-center gap-2 md:w-[17rem]', classNames?.container)}>
-      <Image source={icon} style={{ width: 50, height: 50 }} contentFit="contain" />
+      {React.isValidElement(icon) ? (
+        icon
+      ) : (
+        <Image source={icon} style={{ width: 50, height: 50 }} contentFit="contain" />
+      )}
       <View>
         <Text className={cn('text-lg leading-5 font-bold', classNames?.title)}>{title}</Text>
         {typeof description === 'string' ? (
@@ -48,7 +53,7 @@ const Feature = ({ icon, title, description, classNames }: FeatureProps) => {
   );
 };
 
-const features = [
+const getFeatures = (cashbackPercentage: number) => [
   {
     icon: require('@/assets/images/card-global.png'),
     title: 'Global acceptance',
@@ -58,9 +63,9 @@ const features = [
     },
   },
   {
-    icon: require('@/assets/images/card-earn.png'),
+    icon: <CashbackIcon percentage={cashbackPercentage} />,
     title: 'Earn while you spend',
-    description: '3% cashback for every purchase',
+    description: `${Math.round(cashbackPercentage * 100)}% cashback for every purchase`,
     classNames: {
       container: 'items-center',
       description: 'max-w-full md:max-w-full',
@@ -95,16 +100,21 @@ const CardWaitlist = () => {
   const { user } = useUser();
   const [isInWaitlist, setIsInWaitlist] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [cashbackPercentage, setCashbackPercentage] = useState<number>(0.03); // Default to 3%
   const { isScreenMedium } = useDimension();
 
   useEffect(() => {
     const checkWaitlistStatus = async () => {
       if (user?.email) {
         try {
-          const response = await checkCardWaitlistStatus(user.email);
-          setIsInWaitlist(response.isInWaitlist);
+          const [waitlistResponse, cashbackResponse] = await Promise.all([
+            checkCardWaitlistStatus(user.email),
+            getCashbackPercentage(),
+          ]);
+          setIsInWaitlist(waitlistResponse.isInWaitlist);
+          setCashbackPercentage(cashbackResponse.percentage);
         } catch (error) {
-          console.error('Error checking waitlist status:', error);
+          console.error('Error checking waitlist status or fetching cashback:', error);
         }
       }
       setLoading(false);
@@ -159,7 +169,7 @@ const CardWaitlist = () => {
           </View>
 
           <View className="flex-row flex-wrap gap-10 max-w-2xl">
-            {features.map(feature => (
+            {getFeatures(cashbackPercentage).map(feature => (
               <Feature key={feature.title} {...feature} />
             ))}
           </View>
