@@ -132,7 +132,7 @@ function CardImageSection({ isScreenMedium, isCardFrozen }: CardImageSectionProp
 
   return (
     <View
-      className="items-center my-12"
+      className="items-center mt-12 mb-6"
       style={{
         paddingHorizontal: isCardFrozen || !isScreenMedium ? 0 : 9.5,
         paddingVertical: isCardFrozen || !isScreenMedium ? 0 : 11.5,
