@@ -13,7 +13,7 @@ const CardWaitlistHeaderTitle = () => {
       {isScreenMedium ? (
         <View className="gap-1">
           <Text className="opacity-70 leading-5">
-            Spend with Visa and earn 2% cashback on every purchase.
+            Spend with Visa and earn 3% cashback on every purchase.
           </Text>
           <Text className="opacity-70 leading-5">
             Non-custodial, secure by design, and ready to use with Apple or Google Pay.
@@ -22,7 +22,7 @@ const CardWaitlistHeaderTitle = () => {
       ) : (
         <View className="max-w-xs">
           <Text className="text-sm font-medium opacity-70 leading-5">
-            Spend with Visa and earn 2% cashback on every purchase. Non-custodial, secure by design,
+            Spend with Visa and earn 3% cashback on every purchase. Non-custodial, secure by design,
             and ready to use with Apple or Google Pay.
           </Text>
         </View>

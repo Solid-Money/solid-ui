@@ -60,7 +60,7 @@ const features = [
   {
     icon: require('@/assets/images/card-earn.png'),
     title: 'Earn while you spend',
-    description: '2% cashback for every purchase',
+    description: '3% cashback for every purchase',
     classNames: {
       container: 'items-center',
       description: 'max-w-full md:max-w-full',
