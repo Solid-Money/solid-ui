@@ -33,7 +33,7 @@ const CardBenefits = () => {
           style={{ width: 64, height: 64 }}
         />
         <Text className="leading-4 md:text-2xl max-w-24 md:max-w-32 text-center md:text-start">
-          2% Cashback
+          3% Cashback
         </Text>
       </View>
     </View>

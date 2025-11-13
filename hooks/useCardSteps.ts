@@ -312,8 +312,42 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
     return steps.slice(0, _stepIndex).every(step => step.completed);
   };
 
+  // Find the first incomplete step
+  const getFirstIncompleteStep = useCallback(() => {
+    return steps.find((step, index) => {
+      const allPrecedingCompleted = steps.slice(0, index).every(s => s.completed);
+      return !step.completed && allPrecedingCompleted;
+    });
+  }, [steps]);
+
+  // Check if a step can be toggled
+  const canToggleStep = useCallback(
+    (stepId: number) => {
+      const isActive = activeStepId === stepId;
+      if (isActive) return true;
+
+      if (activeStepId === null) {
+        const firstIncompleteStep = getFirstIncompleteStep();
+        return firstIncompleteStep?.id === stepId;
+      }
+
+      return false;
+    },
+    [activeStepId, getFirstIncompleteStep],
+  );
+
   const toggleStep = (stepId: number) => {
-    setActiveStepId(activeStepId === stepId ? null : stepId);
+    // Only allow toggling the active step
+    if (activeStepId === stepId) {
+      setActiveStepId(null);
+    } else if (activeStepId === null) {
+      // Only allow setting active step if none is active
+      const firstIncompleteStep = getFirstIncompleteStep();
+      // Only allow activating if this is the first incomplete step
+      if (firstIncompleteStep && firstIncompleteStep.id === stepId) {
+        setActiveStepId(stepId);
+      }
+    }
   };
 
   return {
@@ -321,6 +355,7 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
     activeStepId,
     isStepButtonEnabled,
     toggleStep,
+    canToggleStep,
     activatingCard,
   };
 }

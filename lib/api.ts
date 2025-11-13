@@ -525,6 +525,25 @@ export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
   return response.json();
 };
 
+export const getCashbackPercentage = async (): Promise<{ percentage: number }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/cashback-percentage`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const fetchInternalTransactions = async (
   address: string,
 ): Promise<BlockscoutTransactions> => {
