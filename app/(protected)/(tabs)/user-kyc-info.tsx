@@ -106,7 +106,7 @@ export default function UserKycInfo() {
           <View className="w-10" />
         </View>
 
-        <View className="flex-1 mt-8 justify-evenly">
+        <View className="flex-1 mt-8 mb-32 justify-evenly">
           <UserInfoHeader kycMode={kycMode as any} />
 
           <UserInfoForm control={control} errors={errors} />

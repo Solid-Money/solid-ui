@@ -43,7 +43,10 @@
   }
 
   /* Fill the viewport and keep a dark background under any bounce/overscroll */
-  html, body, #root, #__next {
+  html,
+  body,
+  #root,
+  #__next {
     height: 100%;
     background-color: #000;
     overscroll-behavior-y: none;
@@ -63,8 +66,19 @@
   }
 }
 
-/* Raise Intercom launcher by 80px on mobile */
 @media (max-width: 768px) {
+  /* On mobile, prevent the browser body from scrolling.
+   * Scrolling should happen inside React Native Web scroll views instead,
+   * so the bottom tab bar stays fixed and pages like KYC can scroll
+   * independently without Safari dragging the whole document. */
+  html,
+  body,
+  #root,
+  #__next {
+    overflow: hidden;
+  }
+
+  /* Raise Intercom launcher by 80px on mobile */
   .intercom-launcher {
     bottom: 100px !important;
   }
