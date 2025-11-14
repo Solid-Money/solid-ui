@@ -531,7 +531,7 @@ function ViewTransactionsButton({ onPress }: ViewTransactionsButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 mb-8 h-14"
+      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 mb-28 h-14"
     >
       <Text className=" text-base font-bold text-white">View transactions</Text>
       <ChevronRight color="white" size={22} />
