@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Pressable, View } from 'react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
@@ -81,7 +81,7 @@ export default function CardDetails() {
     }
   };
 
-  const handleCardDetailsLoaded = () => {
+  const handleCardDetailsLoaded = useCallback(() => {
     // Once data is loaded, flip the card immediately
     setIsLoadingCardDetails(false);
     setIsCardFlipped(true);
@@ -92,7 +92,7 @@ export default function CardDetails() {
       tension: 10,
       useNativeDriver: true,
     }).start();
-  };
+  }, [flipAnimation]);
 
   return (
     <PageLayout desktopOnly contentClassName="px-4" isLoading={isLoading}>
@@ -297,6 +297,7 @@ function CardDetailsOverlay({
 }: CardDetailsOverlayProps) {
   const { cardDetails, isLoading, error, revealDetails } = useCardDetailsReveal();
   const hasRevealedRef = useRef(false);
+  const hasNotifiedLoadedRef = useRef(false);
 
   useEffect(() => {
     // Only reveal details once when component mounts
@@ -313,7 +314,8 @@ function CardDetailsOverlay({
 
   // Call onDetailsLoaded when details are successfully loaded
   useEffect(() => {
-    if (cardDetails && !isLoading && !error) {
+    if (!hasNotifiedLoadedRef.current && cardDetails && !isLoading && !error) {
+      hasNotifiedLoadedRef.current = true;
       onDetailsLoaded();
     }
   }, [cardDetails, isLoading, error, onDetailsLoaded]);
