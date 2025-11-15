@@ -44,6 +44,7 @@ import { secondsToMilliseconds } from 'date-fns';
 
 const ANALYTICS = 'analytics';
 const ApyToDays = {
+  sevenDay: 7,
   fifteenDay: 15,
   thirtyDay: 30,
 };
@@ -546,15 +547,26 @@ export const useAPYs = () => {
 
 export const useMaxAPY = () => {
   const { data: apys, isLoading: isAPYsLoading } = useAPYs();
-  const maxAPY = Object.keys(ApyToDays).reduce((maxAPY, day) => {
-    return Math.max(maxAPY, apys?.[day as keyof typeof ApyToDays] ?? 0);
-  }, 0);
-  const maxAPYDays = Object.keys(ApyToDays).find(
-    day => apys?.[day as keyof typeof ApyToDays] === maxAPY,
-  );
+  const thirtyDay = apys?.thirtyDay ?? 0;
+  const fifteenDay = apys?.fifteenDay ?? 0;
+  const sevenDay = apys?.sevenDay ?? 0;
+  
+  const maxThirtyFifteen = Math.max(thirtyDay, fifteenDay);
+  
+  // If both thirtyDay and fifteenDay are below 9% and sevenDay is greater than both, use sevenDay
+  const shouldUseSevenDay =
+    thirtyDay < 9 && fifteenDay < 9 && sevenDay > maxThirtyFifteen;
+  
+  const maxAPY = shouldUseSevenDay ? sevenDay : maxThirtyFifteen;
+  const maxAPYDays = shouldUseSevenDay
+    ? ApyToDays.sevenDay
+    : thirtyDay > fifteenDay
+      ? ApyToDays.thirtyDay
+      : ApyToDays.fifteenDay;
+  
   return {
     maxAPY,
-    maxAPYDays: ApyToDays[maxAPYDays as keyof typeof ApyToDays],
+    maxAPYDays,
     isAPYsLoading,
   };
 };
