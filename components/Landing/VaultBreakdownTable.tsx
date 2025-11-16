@@ -4,7 +4,7 @@ import { DimensionValue, Pressable, View } from 'react-native';
 
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
-import { protocols, protocolsImages } from '@/constants/protocols';
+import { protocols, protocolsImages, protocolTypes } from '@/constants/protocols';
 import { useDimension } from '@/hooks/useDimension';
 import { VaultBreakdown } from '@/lib/types';
 import { cn, eclipseUsername, formatNumber } from '@/lib/utils';
@@ -44,6 +44,11 @@ const isProtocol = (name: string) => {
   );
 };
 
+const protocolSplitStart = (type: string) => {
+  if (type === protocolTypes.AvantisLP) return 1;
+  return 2;
+};
+
 const formatPercent = (percent: string | number) => {
   return `${formatNumber(Number(percent), 2)}%`;
 };
@@ -51,7 +56,7 @@ const formatPercent = (percent: string | number) => {
 const formatName = (name: string, type: string, isScreenMedium: boolean) => {
   const nameLength = {
     max: isScreenMedium ? 25 : 10,
-    protocolStart: 2,
+    protocolStart: protocolSplitStart(type),
   };
 
   if (isProtocol(type)) {
