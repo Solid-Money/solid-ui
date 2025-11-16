@@ -182,7 +182,7 @@ function CardImageSection({
     ? require('@/assets/images/card_frozen.png')
     : require('@/assets/images/activate_card_steps.png');
 
-  const desktopImageAspectRatio = isCardFrozen ? 531 / 328 : 512 / 305;
+  const desktopImageAspectRatio = isCardFrozen ? 531 / 328 : 513 / 306;
 
   const frontRotation = flipAnimation.interpolate({
     inputRange: [0, 1],
