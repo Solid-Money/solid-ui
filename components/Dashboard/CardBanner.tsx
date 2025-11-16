@@ -1,11 +1,11 @@
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Link, router } from 'expo-router';
 
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { path } from '@/constants/path';
-import { router } from 'expo-router';
 import { useDimension } from '@/hooks/useDimension';
 
 const CardBanner = () => {
@@ -28,13 +28,28 @@ const CardBanner = () => {
         }}
       >
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
-          <View className="max-w-40 md:max-w-64 justify-between items-start gap-4 py-5 md:py-8">
-            <Text className="text-xl md:text-3xl font-semibold">Introducing the Solid Card</Text>
+          <View className="max-w-40 md:max-w-64 justify-between items-start gap-1 md:gap-4 py-4 md:py-8">
+            <Text className="text-xl md:text-3xl font-semibold">Solid Card is live!</Text>
+            <View className="inline">
+              <Text className="text-muted-foreground font-semibold">
+                Get your card today and receive $50 bonus.
+              </Text>{' '}
+              <Text className="text-muted-foreground font-semibold hover:opacity-70">
+                <Link
+                  target="_blank"
+                  href={'https://docs.solid.xyz/how-solid-works/solid-card-coming-soon'}
+                  className="underline"
+                >
+                  Read more
+                </Link>{' '}
+                {'>'}
+              </Text>
+            </View>
             <Button
-              className="rounded-xl h-12 px-6 border-0 bg-button-earning web:hover:bg-button-earning web:hover:brightness-110"
+              className="rounded-xl h-11 md:h-12 px-6 border-0 bg-button-earning web:hover:bg-button-earning web:hover:brightness-110"
               onPress={() => router.push(path.CARD_WAITLIST)}
             >
-              <Text className="text-base text-primary font-bold">Reserve your card</Text>
+              <Text className="text-base text-primary font-bold">Get your card</Text>
             </Button>
           </View>
           <View className="-mt-14 -ml-4 md:-mt-4">
