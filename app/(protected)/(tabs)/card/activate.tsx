@@ -55,7 +55,7 @@ export default function ActivateMobile() {
           <Image
             source={require('@/assets/images/activate_card_steps.png')}
             alt="Solid Card"
-            style={{ width: '100%', aspectRatio: 512 / 306 }}
+            style={{ width: '100%', aspectRatio: 513 / 306 }}
             contentFit="contain"
           />
         </View>
