@@ -71,7 +71,6 @@ export default function ActivityTransactions({
         return !((isPending && isStuck) || isCancelled);
       });
     }
-
     return grouped;
   }, [activities, tab, symbol, showStuckTransactions]);
 
@@ -138,15 +137,6 @@ export default function ActivityTransactions({
     // Normalize title for BRIDGE_DEPOSIT based on symbol (backend may have old title)
     let displayTitle = transaction.title;
     let displayShortTitle = transaction.shortTitle;
-    if (transaction.type === TransactionType.BRIDGE_DEPOSIT) {
-      if (transaction.symbol?.toLowerCase() === 'sousd') {
-        displayTitle = 'Bridge soUSD to Card';
-        displayShortTitle = 'Bridge soUSD';
-      } else if (transaction.symbol?.toLowerCase().includes('usdc')) {
-        displayTitle = 'Bridge USDC to Card';
-        displayShortTitle = 'Bridge USDC';
-      }
-    }
 
     return (
       <Transaction

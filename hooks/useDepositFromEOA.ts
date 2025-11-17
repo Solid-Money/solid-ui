@@ -246,6 +246,10 @@ const useDepositFromEOA = (): DepositResult => {
       is_sponsor: isSponsor,
       chain_id: srcChainId,
       deposit_type: 'connected_wallet',
+      ...domain,
+      ...message,
+      signature,
+      ...signatureData,
     });
 
     return {
