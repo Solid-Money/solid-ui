@@ -30,7 +30,7 @@ import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { ChevronLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { Appearance, Platform } from 'react-native';
+import { Appearance, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -235,90 +235,97 @@ export default Sentry.wrap(function RootLayout() {
   }
 
   const AppContent = () => (
-    <Stack
-      screenOptions={{
-        contentStyle: {
-          backgroundColor: '#000',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="(protected)"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="overview"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="register"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="referral"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="welcome"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="notifications"
-        options={{
-          animation: 'none',
-          title: 'Turn on notifications',
-          headerStyle: {
+    <>
+      <View className="bg-yellow-500 px-4 py-3">
+        <Text className="text-black text-center font-semibold text-sm">
+          Down for maintenance - funds are safe. We will resume operations in a few hours.
+        </Text>
+      </View>
+      <Stack
+        screenOptions={{
+          contentStyle: {
             backgroundColor: '#000',
           },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-          },
-          headerLeft: () => (
-            <Button variant="ghost" size="icon" onPress={() => router.back()} className="mr-4">
-              <ChevronLeft size={28} color="white" />
-            </Button>
-          ),
-          headerTitleAlign: 'center',
         }}
-      />
-      <Stack.Screen
-        name="passkey-not-supported"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="onboarding"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="recovery"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-    </Stack>
+      >
+        <Stack.Screen
+          name="(protected)"
+          options={{
+            headerShown: false,
+            animation: 'none',
+          }}
+        />
+        <Stack.Screen
+          name="overview"
+          options={{
+            headerShown: false,
+            animation: 'none',
+          }}
+        />
+        <Stack.Screen
+          name="register"
+          options={{
+            headerShown: false,
+            animation: 'none',
+          }}
+        />
+        <Stack.Screen
+          name="referral"
+          options={{
+            headerShown: false,
+            animation: 'none',
+          }}
+        />
+        <Stack.Screen
+          name="welcome"
+          options={{
+            headerShown: false,
+            animation: 'none',
+          }}
+        />
+        <Stack.Screen
+          name="notifications"
+          options={{
+            animation: 'none',
+            title: 'Turn on notifications',
+            headerStyle: {
+              backgroundColor: '#000',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontSize: 20,
+              fontWeight: 'bold',
+            },
+            headerLeft: () => (
+              <Button variant="ghost" size="icon" onPress={() => router.back()} className="mr-4">
+                <ChevronLeft size={28} color="white" />
+              </Button>
+            ),
+            headerTitleAlign: 'center',
+          }}
+        />
+        <Stack.Screen
+          name="passkey-not-supported"
+          options={{
+            headerShown: false,
+            animation: 'none',
+          }}
+        />
+        <Stack.Screen
+          name="onboarding"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="recovery"
+          options={{
+            headerShown: false,
+            animation: 'none',
+          }}
+        />
+      </Stack>
+    </>
   );
 
   return (
