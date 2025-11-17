@@ -1,6 +1,6 @@
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
@@ -73,10 +73,6 @@ export default function ActivityTransactions({
     }
     return grouped;
   }, [activities, tab, symbol, showStuckTransactions]);
-
-  useEffect(() => {
-    console.log('filteredTransactions', filteredTransactions);
-  }, [filteredTransactions]);
 
   const getTransactionClassName = (groupedData: TimeGroup[], currentIndex: number) => {
     const classNames = ['bg-card overflow-hidden'];
