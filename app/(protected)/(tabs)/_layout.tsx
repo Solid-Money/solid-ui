@@ -63,7 +63,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="card-waitlist"
+        name="card-onboard"
         options={{
           title: 'Card',
           headerShown: false,

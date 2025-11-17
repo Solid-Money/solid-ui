@@ -1,5 +1,4 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -8,13 +7,12 @@ import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';
 import CardWaitlistHeaderButtons from '@/components/CardWaitlist/CardWaitlistHeaderButtons';
 import CardWaitlistHeaderTitle from '@/components/CardWaitlist/CardWaitlistHeaderTitle';
 import { CashbackIcon } from '@/components/CardWaitlist/CashbackIcon';
-import ReserveCardButton from '@/components/CardWaitlist/ReserveCardButton';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { checkCardWaitlistStatus, getCashbackPercentage } from '@/lib/api';
+import { getCashbackPercentage } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import GetCardButton from '@/components/CardWaitlist/GetCardButton';
 
 type ClassNames = {
   container?: string;
@@ -98,7 +96,6 @@ const getFeatures = (cashbackPercentage: number) => [
 
 const CardWaitlist = () => {
   const { user } = useUser();
-  const [isInWaitlist, setIsInWaitlist] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cashbackPercentage, setCashbackPercentage] = useState<number>(0.03); // Default to 3%
   const { isScreenMedium } = useDimension();
@@ -107,14 +104,10 @@ const CardWaitlist = () => {
     const checkWaitlistStatus = async () => {
       if (user?.email) {
         try {
-          const [waitlistResponse, cashbackResponse] = await Promise.all([
-            checkCardWaitlistStatus(user.email),
-            getCashbackPercentage(),
-          ]);
-          setIsInWaitlist(waitlistResponse.isInWaitlist);
+          const [cashbackResponse] = await Promise.all([getCashbackPercentage()]);
           setCashbackPercentage(cashbackResponse.percentage);
         } catch (error) {
-          console.error('Error checking waitlist status or fetching cashback:', error);
+          console.error('Error fetching cashback:', error);
         }
       }
       setLoading(false);
@@ -123,13 +116,7 @@ const CardWaitlist = () => {
     checkWaitlistStatus();
   }, [user?.email]);
 
-  useEffect(() => {
-    if (!loading && isInWaitlist) {
-      router.replace(path.CARD_WAITLIST_SUCCESS);
-    }
-  }, [loading, isInWaitlist]);
-
-  if (loading || isInWaitlist) {
+  if (loading) {
     return (
       <CardWaitlistHeader
         content={
@@ -158,11 +145,8 @@ const CardWaitlist = () => {
       }
     >
       <CardWaitlistContainer>
-        <View className="flex-1 gap-8 md:gap-14 bg-transparent p-5 py-7 pb-20 md:px-12 md:py-10 md:pb-20">
+        <View className="flex-1 md:justify-center gap-8 md:gap-14 bg-transparent p-5 py-7 pb-20 md:px-12 md:py-10">
           <View className="items-start gap-4">
-            <View className="bg-brand/10 rounded-full px-5 py-1.5">
-              <Text className="text-brand font-bold">Coming soon</Text>
-            </View>
             <Text className="text-3.5xl md:text-4.5xl font-semibold">
               Introducing the Solid Card
             </Text>
@@ -183,7 +167,7 @@ const CardWaitlist = () => {
           )}
 
           <View className="md:items-start">
-            <ReserveCardButton />
+            <GetCardButton />
           </View>
         </View>
       </CardWaitlistContainer>
