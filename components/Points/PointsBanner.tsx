@@ -1,11 +1,12 @@
-import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { ChevronRight, Plus } from 'lucide-react-native';
+import { View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
+import SwipeableBanner from '@/components/Dashboard/SwipeableBanner';
 import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 
@@ -13,10 +14,7 @@ const PointsBanner = () => {
   const { isScreenMedium } = useDimension();
 
   return (
-    <Pressable
-      onPress={() => router.push(path.POINTS)}
-      className="flex-1 overflow-hidden rounded-twice"
-    >
+    <SwipeableBanner onPress={() => router.push(path.POINTS)}>
       <LinearGradient
         colors={['rgba(255, 209, 81, 0.25)', 'rgba(255, 209, 81, 0.17)']}
         start={{ x: 0.5, y: 0 }}
@@ -65,7 +63,7 @@ const PointsBanner = () => {
           </View>
         </View>
       </LinearGradient>
-    </Pressable>
+    </SwipeableBanner>
   );
 };
 

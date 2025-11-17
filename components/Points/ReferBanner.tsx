@@ -1,21 +1,19 @@
-import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { path } from '@/constants/path';
+import { View } from 'react-native';
 import { router } from 'expo-router';
+
+import SwipeableBanner from '@/components/Dashboard/SwipeableBanner';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 
 const ReferBanner = () => {
   const { isScreenMedium } = useDimension();
 
   return (
-    <Pressable
-      onPress={() => router.push(path.REFERRAL)}
-      className="flex-1 overflow-hidden rounded-twice"
-    >
+    <SwipeableBanner onPress={() => router.push(path.REFERRAL)}>
       <LinearGradient
         colors={['rgba(126, 126, 126, 0.3)', 'rgba(126, 126, 126, 0.2)']}
         style={{
@@ -39,7 +37,7 @@ const ReferBanner = () => {
               <Text className="text-base text-primary font-bold">Refer friends</Text>
             </Button>
           </View>
-          <View className="-ml-6 md:ml-0">
+          <View className="-ml-6 md:ml-0 pointer-events-none">
             <Image
               source={require('@/assets/images/one-percent-cashback.png')}
               contentFit="contain"
@@ -48,7 +46,7 @@ const ReferBanner = () => {
           </View>
         </View>
       </LinearGradient>
-    </Pressable>
+    </SwipeableBanner>
   );
 };
 

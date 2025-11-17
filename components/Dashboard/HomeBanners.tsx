@@ -1,15 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import type { PanGesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
 
+import PointsBanner from '@/components/Points/PointsBanner';
+import ReferBanner from '@/components/Points/ReferBanner';
 import { useDimension } from '@/hooks/useDimension';
 import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';
-import PointsBanner from '@/components/Points/PointsBanner';
-import ReferBanner from '@/components/Points/ReferBanner';
+import { PanGestureProvider, usePanGesture } from './PanGestureContext';
 
 type BannerData = React.ReactElement[];
 
@@ -56,12 +58,13 @@ const BannerItem = ({
   );
 };
 
-export const HomeBanners = () => {
+const HomeBannersContent = () => {
   const ref = useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);
   const { isScreenMedium } = useDimension();
   const [containerWidth, setContainerWidth] = useState(0);
   const gapPadding = useSharedValue(0);
+  const isPanning = usePanGesture();
 
   const data = useMemo(
     () => [
@@ -112,6 +115,10 @@ export const HomeBanners = () => {
     setContainerWidth(width);
   };
 
+  if (!isPanning) {
+    return null;
+  }
+
   return (
     <View style={styles.container} onLayout={onLayout}>
       {containerWidth > 0 && (
@@ -135,6 +142,32 @@ export const HomeBanners = () => {
               if (HAS_MULTIPLE_VIEWS) return;
               gapPadding.value = withTiming(0, { duration: 100 });
             }}
+            onConfigurePanGesture={(panGesture: PanGesture) => {
+              let hasMoved = false;
+              panGesture.onBegin(() => {
+                hasMoved = false;
+                isPanning.current = false;
+              });
+              panGesture.onUpdate(event => {
+                // Only set panning if gesture moved significantly
+                if (Math.abs(event.translationX) > 10 || Math.abs(event.translationY) > 10) {
+                  hasMoved = true;
+                  isPanning.current = true;
+                }
+              });
+              panGesture.onEnd(() => {
+                // Clear flag if gesture ended without significant movement
+                if (!hasMoved) {
+                  isPanning.current = false;
+                }
+              });
+              panGesture.onFinalize(() => {
+                // Clear flag after a short delay to allow press handler to check
+                setTimeout(() => {
+                  isPanning.current = false;
+                }, 100);
+              });
+            }}
             renderItem={renderItem}
             style={{
               width: containerWidth,
@@ -153,6 +186,14 @@ export const HomeBanners = () => {
         </>
       )}
     </View>
+  );
+};
+
+export const HomeBanners = () => {
+  return (
+    <PanGestureProvider>
+      <HomeBannersContent />
+    </PanGestureProvider>
   );
 };
 
