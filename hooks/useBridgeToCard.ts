@@ -198,8 +198,8 @@ const useBridgeToCard = (): BridgeResult => {
         const result = await trackTransaction(
           {
             type: TransactionType.BRIDGE_DEPOSIT,
-            title: `Bridge USDC to Card`,
-            shortTitle: `Bridge USDC`,
+            title: `Deposit USDC to Card`,
+            shortTitle: `Deposit USDC`,
             amount,
             symbol: 'USDC.e', // Source symbol - bridging USDC.e
             chainId: fuse.id,

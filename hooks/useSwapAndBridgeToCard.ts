@@ -199,8 +199,8 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
         const result = await trackTransaction(
           {
             type: TransactionType.BRIDGE_DEPOSIT,
-            title: `Bridge soUSD to Card`,
-            shortTitle: `Bridge soUSD`,
+            title: `Deposit soUSD to Card`,
+            shortTitle: `Deposit soUSD`,
             amount,
             symbol: 'soUSD', // Source symbol - swapping soUSD to USDC
             chainId: fuse.id,
