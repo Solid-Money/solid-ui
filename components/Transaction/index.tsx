@@ -160,7 +160,7 @@ const Transaction = ({
 
   const tokenIcon = getTokenIcon({
     logoUrl,
-    tokenSymbol: symbol,
+    tokenSymbol: symbol?.toLowerCase() === 'usdc.e' ? 'USDC' : symbol,
     size: 34,
   });
 

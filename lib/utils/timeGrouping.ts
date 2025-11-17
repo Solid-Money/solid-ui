@@ -37,13 +37,18 @@ export const formatTimeGroup = (timestamp: string): string => {
 
 export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGroup[] => {
   const grouped: TimeGroup[] = [];
-
   // Separate pending, cancelled and completed transactions
   const pendingTransactions = transactions.filter(tx => tx.status === TransactionStatus.PENDING);
-  const cancelledTransactions = transactions.filter(tx => tx.status === TransactionStatus.CANCELLED);
-  const completedTransactions = transactions.filter(tx => tx.status !== TransactionStatus.PENDING && tx.status !== TransactionStatus.CANCELLED);
+  const cancelledTransactions = transactions.filter(
+    tx => tx.status === TransactionStatus.CANCELLED,
+  );
+  const completedTransactions = transactions.filter(
+    tx => tx.status !== TransactionStatus.PENDING && tx.status !== TransactionStatus.CANCELLED,
+  );
 
-  const hasActivePendingTransactions = pendingTransactions.some(tx => !isTransactionStuck(tx.timestamp));
+  const hasActivePendingTransactions = pendingTransactions.some(
+    tx => !isTransactionStuck(tx.timestamp),
+  );
 
   // Add pending transactions group at the top if there are any pending or cancelled
   if (pendingTransactions.length > 0 || cancelledTransactions.length > 0) {
@@ -59,14 +64,14 @@ export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGrou
       },
     });
 
-    pendingTransactions.forEach((transaction) => {
+    pendingTransactions.forEach(transaction => {
       grouped.push({
         type: ActivityGroup.TRANSACTION,
         data: transaction,
       });
     });
 
-    cancelledTransactions.forEach((transaction) => {
+    cancelledTransactions.forEach(transaction => {
       grouped.push({
         type: ActivityGroup.TRANSACTION,
         data: transaction,
@@ -76,7 +81,7 @@ export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGrou
 
   // Add completed transactions grouped by time
   let currentGroup: string | null = null;
-  completedTransactions.forEach((transaction) => {
+  completedTransactions.forEach(transaction => {
     const groupTitle = formatTimeGroup(transaction?.timestamp);
 
     // Add group header if this is a new group
@@ -108,7 +113,7 @@ export const groupByTime = <T extends { timestamp: string | number }>(
   const grouped: TimeGroup<T>[] = [];
   let currentGroup: string | null = null;
 
-  transactions.forEach((transaction) => {
+  transactions.forEach(transaction => {
     const groupTitle = formatTimeGroup(String(transaction.timestamp));
 
     // Add group header if this is a new group

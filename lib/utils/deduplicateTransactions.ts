@@ -2,24 +2,45 @@ import { ActivityEvent, TransactionType } from '@/lib/types';
 
 /**
  * Helper to get deduplication key - prioritize hash, then userOpHash, then clientTxId
+ * Also check metadata.txHash if hash is not available
  */
 function getDedupKey(tx: ActivityEvent): string | null {
-  return tx.hash || tx.userOpHash || tx.clientTxId || null;
+  // Normalize hash values for consistent key generation
+  const hash = tx.hash?.toLowerCase().trim() || tx.metadata?.txHash?.toLowerCase().trim();
+  const userOpHash = tx.userOpHash?.toLowerCase().trim();
+  const clientTxId = tx.clientTxId;
+
+  return hash || userOpHash || clientTxId || null;
 }
 
 /**
  * Helper to check if two transactions are duplicates
  */
 function isDuplicate(a: ActivityEvent, b: ActivityEvent): boolean {
+  // Normalize hash values for comparison (lowercase, trim)
+  const normalizeHash = (hash: string | undefined) => hash?.toLowerCase().trim();
+  const aHash = normalizeHash(a.hash);
+  const bHash = normalizeHash(b.hash);
+  const aMetadataHash = normalizeHash(a.metadata?.txHash);
+  const bMetadataHash = normalizeHash(b.metadata?.txHash);
+
   // Same hash is always a duplicate
-  if (a.hash && b.hash && a.hash === b.hash) return true;
+  if (aHash && bHash && aHash === bHash) return true;
+  // Hash matches metadata.txHash
+  if (aHash && bMetadataHash && aHash === bMetadataHash) return true;
+  if (bHash && aMetadataHash && bHash === aMetadataHash) return true;
+  // Same metadata.txHash
+  if (aMetadataHash && bMetadataHash && aMetadataHash === bMetadataHash) return true;
   // Same userOpHash is a duplicate
-  if (a.userOpHash && b.userOpHash && a.userOpHash === b.userOpHash) return true;
+  if (a.userOpHash && b.userOpHash && a.userOpHash.toLowerCase() === b.userOpHash.toLowerCase())
+    return true;
   // Same clientTxId is a duplicate
   if (a.clientTxId && b.clientTxId && a.clientTxId === b.clientTxId) return true;
   // Hash matches userOpHash or clientTxId
-  if (a.hash && (a.hash === b.userOpHash || a.hash === b.clientTxId)) return true;
-  if (b.hash && (b.hash === a.userOpHash || b.hash === a.clientTxId)) return true;
+  if (aHash && (aHash === b.userOpHash?.toLowerCase() || aHash === b.clientTxId?.toLowerCase()))
+    return true;
+  if (bHash && (bHash === a.userOpHash?.toLowerCase() || bHash === a.clientTxId?.toLowerCase()))
+    return true;
   return false;
 }
 
@@ -92,9 +113,10 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
 
     if (!existing) {
       deduplicated.set(key, transaction);
-      existing = transaction;
+      continue;
     }
 
+    // If we found an existing duplicate, we need to decide which one to keep
     // Check if either transaction is a card deposit
     const existingIsCardDeposit = isCardDeposit(existing);
     // Check if they share the same toAddress (card funding address)
@@ -117,11 +139,13 @@ export function deduplicateTransactions(transactions: ActivityEvent[]): Activity
       const existingPriority = typePriority[existing.type as keyof typeof typePriority] || 0;
 
       if (currentPriority > existingPriority) {
+        // Current has higher priority, replace existing
         deduplicated.delete(existingKey!);
         deduplicated.set(key, transaction);
         continue;
       }
       if (currentPriority < existingPriority) {
+        // Existing has higher priority, skip current
         continue;
       }
       // If priorities are equal, fall through to general deduplication logic
