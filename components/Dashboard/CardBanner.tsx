@@ -1,21 +1,19 @@
-import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
+import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
+import SwipeableBanner from './SwipeableBanner';
 
 const CardBanner = () => {
   const { isScreenMedium } = useDimension();
 
   return (
-    <Pressable
-      onPress={() => router.push(path.CARD_WAITLIST)}
-      className="flex-1 overflow-hidden rounded-twice"
-    >
+    <SwipeableBanner onPress={() => router.push(path.CARD_WAITLIST)}>
       <LinearGradient
         colors={['rgba(148, 242, 127, 0.25)', 'rgba(148, 242, 127, 0)']}
         start={{ x: 0.5, y: 0 }}
@@ -54,7 +52,7 @@ const CardBanner = () => {
               <Text className="text-base text-primary font-bold">Get your card</Text>
             </Button>
           </View>
-          <View className="-mt-14 -ml-4 md:-mt-4">
+          <View className="-mt-14 -ml-4 md:-mt-4 pointer-events-none">
             <Image
               source={
                 isScreenMedium
@@ -67,7 +65,7 @@ const CardBanner = () => {
           </View>
         </View>
       </LinearGradient>
-    </Pressable>
+    </SwipeableBanner>
   );
 };
 
