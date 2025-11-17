@@ -37,7 +37,9 @@ const CardBanner = () => {
               <Text className="text-muted-foreground font-semibold hover:opacity-70">
                 <Link
                   target="_blank"
-                  href={'https://docs.solid.xyz/how-solid-works/solid-card-coming-soon'}
+                  href={
+                    'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+                  }
                   className="underline"
                 >
                   Read more

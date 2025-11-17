@@ -104,9 +104,7 @@ const CardWaitlist = () => {
     const checkWaitlistStatus = async () => {
       if (user?.email) {
         try {
-          const [cashbackResponse] = await Promise.all([
-            getCashbackPercentage(),
-          ]);
+          const [cashbackResponse] = await Promise.all([getCashbackPercentage()]);
           setCashbackPercentage(cashbackResponse.percentage);
         } catch (error) {
           console.error('Error fetching cashback:', error);

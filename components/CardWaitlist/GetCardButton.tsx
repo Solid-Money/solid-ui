@@ -9,14 +9,10 @@ const GetCardButton = () => {
 
   const handleGetCard = async () => {
     router.push(path.CARD_ACTIVATE);
-  }
+  };
 
   return (
-    <Button
-      variant="brand"
-      className="rounded-xl h-12 px-8"
-      onPress={handleGetCard}
-    >
+    <Button variant="brand" className="rounded-xl h-12 px-8" onPress={handleGetCard}>
       <Text className="text-base font-bold">Get your card</Text>
     </Button>
   );
