@@ -227,11 +227,13 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
       router.replace(path.CARD_DETAILS);
     } catch (error) {
       console.error('Error activating card:', error);
+      const errorMessage = await extractCardActivationErrorMessage(error);
+
       // Show error toast
       Toast.show({
         type: 'error',
         text1: 'Error activating card',
-        text2: 'Please try again',
+        text2: errorMessage,
         props: {
           badgeText: '',
         },
@@ -240,6 +242,30 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
       setActivatingCard(false);
     }
   }, [router]);
+
+  async function extractCardActivationErrorMessage(error: unknown): Promise<string> {
+    if (error instanceof Response) {
+      try {
+        const data = await error.json();
+
+        const serverMessage =
+          (typeof data === 'string' && data) ||
+          (Array.isArray((data as any)?.message)
+            ? (data as any).message.join(' ')
+            : (data as any)?.message || (data as any)?.error);
+
+        if (serverMessage && typeof serverMessage === 'string') {
+          return serverMessage;
+        }
+      } catch {
+        // Fall through to default message
+      }
+    } else if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return 'Please try again';
+  }
 
   const steps: Step[] = useMemo(() => {
     const description = getKycDescription(uiKycStatus, rejectionReasonsText);
