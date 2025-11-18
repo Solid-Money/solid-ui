@@ -4,7 +4,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { createCard, getKycLinkFromBridge } from '@/lib/api';
 import { track } from '@/lib/analytics';
-import { KycStatus } from '@/lib/types';
+import { CardStatus, KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { isFinalKycStatus, startKycFlow } from '@/lib/utils/kyc';
 import { useKycStore } from '@/store/useKycStore';
@@ -50,7 +50,7 @@ function getKycButtonText(kycStatus: KycStatus): string | undefined {
   return 'Complete KYC';
 }
 
-export function useCardSteps(initialKycStatus?: KycStatus) {
+export function useCardSteps(initialKycStatus?: KycStatus, cardStatus?: CardStatus) {
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [cardActivated, setCardActivated] = useState(false);
   const [activatingCard, setActivatingCard] = useState(false);
@@ -289,6 +289,13 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
     }
   }, [router]);
 
+  // Keep local card activation state in sync with server status
+  useEffect(() => {
+    if (cardStatus === CardStatus.ACTIVE || cardStatus === CardStatus.FROZEN) {
+      setCardActivated(true);
+    }
+  }, [cardStatus]);
+
   async function extractCardActivationErrorMessage(error: unknown): Promise<string> {
     if (error instanceof Response) {
       try {
@@ -345,7 +352,7 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
         title: 'Start spending :)',
         description: 'Congratulations! your card is ready',
         buttonText: 'To the card',
-        completed: cardActivated,
+        completed: false,
         status: cardActivated ? 'completed' : 'pending',
         onPress: () => router.push(path.CARD_DETAILS),
       },
