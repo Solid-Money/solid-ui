@@ -125,7 +125,7 @@ export default function CardDepositExternalForm() {
       }
 
       setSendStatus(Status.PENDING);
-      const fundingAddress = arbitrumFundingAddress.address as Address;
+      const fundingAddress = arbitrumFundingAddress;
       const amountWei = parseUnits(data.amount, 6);
 
       try {
