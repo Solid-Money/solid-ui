@@ -9,8 +9,9 @@ import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardSteps } from '@/hooks/useCardSteps';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
-import { KycStatus } from '@/lib/types';
+import { CardStatus, KycStatus } from '@/lib/types';
 
 export default function ActivateMobile() {
   const { kycLink: _kycLink, kycStatus: _kycStatus } = useLocalSearchParams<{
@@ -20,6 +21,8 @@ export default function ActivateMobile() {
 
   const { steps, activeStepId, isStepButtonEnabled, toggleStep, canToggleStep, activatingCard } =
     useCardSteps(_kycStatus as KycStatus | undefined);
+  const { data: cardStatus } = useCardStatus();
+  const isCardPending = cardStatus?.status === CardStatus.PENDING;
 
   const router = useRouter();
   const { checkingCountry } = useCountryCheck();
@@ -64,16 +67,30 @@ export default function ActivateMobile() {
         <View className="mt-8 mb-4">
           <Text className="text-lg font-medium text-white/70 mb-4">Card issuance status</Text>
 
+          {isCardPending && (
+            <View className="bg-[#1C1C1C] rounded-xl p-4 border border-yellow-500/30 mb-4">
+              <Text className="text-white font-semibold">Your card is on its way</Text>
+              <Text className="text-white/70 mt-2 text-sm">
+                We&rsquo;re finishing up your card. This can take a few minutes. We&rsquo;ll let you
+                know as soon as it&rsquo;s ready to use.
+              </Text>
+            </View>
+          )}
+
           <View className="bg-[#1C1C1C] rounded-xl p-6">
             {steps.map((step, index) => (
               <CardActivationStep
                 key={step.id}
-                step={step}
+                step={
+                  isCardPending && step.id === 2
+                    ? { ...step, buttonText: 'Card creation pending' }
+                    : step
+                }
                 index={index}
                 totalSteps={steps.length}
                 isActive={activeStepId === step.id}
                 canToggle={canToggleStep(step.id)}
-                isButtonEnabled={isStepButtonEnabled(index)}
+                isButtonEnabled={!isCardPending && isStepButtonEnabled(index)}
                 activatingCard={activatingCard}
                 onToggle={toggleStep}
               />
