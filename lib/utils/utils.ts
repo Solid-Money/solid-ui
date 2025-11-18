@@ -6,7 +6,7 @@ import { Address, keccak256, toHex } from 'viem';
 
 import { refreshToken } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { AuthTokens, User } from '@/lib/types';
+import { AuthTokens, CardResponse, User } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -231,4 +231,16 @@ export const base64urlToUint8Array = (base64url: string): Uint8Array => {
 
 export const parseStampHeaderValueCredentialId = (stampHeaderValue: string) => {
   return JSON.parse(stampHeaderValue).credentialId;
+};
+
+export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
+  const ARBITRUM_CHAIN = "arbitrum"
+
+  if (cardDetails?.funding_instructions?.chain === ARBITRUM_CHAIN) {
+    return cardDetails?.funding_instructions?.address;
+  }
+
+  return cardDetails?.additional_funding_instructions?.find(
+    instruction => instruction.chain === ARBITRUM_CHAIN,
+  )?.address;
 };
