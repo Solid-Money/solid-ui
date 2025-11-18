@@ -52,7 +52,7 @@ const DepositBanner = () => {
               </Text>
               {getButton()}
             </View>
-            <View>
+            <View className="pointer-events-none">
               <Image
                 source={require('@/assets/images/fund-wallet-tokens.png')}
                 contentFit="contain"

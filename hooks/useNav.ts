@@ -45,9 +45,9 @@ const useNav = () => {
 
   const menuItems = useMemo<MenuItem[]>(() => {
     if (hasDeposited) {
-      return [home, savings, card, activity, points];
+      return [home, savings, card, points, activity];
     }
-    return [home, card, activity, points];
+    return [home, card, points, activity];
   }, [hasDeposited, card]);
 
   return {
