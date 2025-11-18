@@ -19,9 +19,9 @@ export default function ActivateMobile() {
     kycStatus?: KycStatus;
   }>();
 
-  const { steps, activeStepId, isStepButtonEnabled, toggleStep, canToggleStep, activatingCard } =
-    useCardSteps(_kycStatus as KycStatus | undefined);
   const { data: cardStatus } = useCardStatus();
+  const { steps, activeStepId, isStepButtonEnabled, toggleStep, canToggleStep, activatingCard } =
+    useCardSteps(_kycStatus as KycStatus | undefined, cardStatus?.status);
   const isCardPending = cardStatus?.status === CardStatus.PENDING;
 
   const router = useRouter();
