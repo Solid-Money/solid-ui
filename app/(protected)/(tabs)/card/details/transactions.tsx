@@ -152,8 +152,8 @@ export default function CardTransactions() {
         </View>
 
         {allTransactions.length ? (
-          <View className="px-4">
-            <View className="bg-card rounded-xl md:rounded-twice overflow-hidden">
+          <View className="flex-1 px-4">
+            <View className="bg-card rounded-xl md:rounded-twice overflow-hidden flex-1">
               <FlatList
                 data={allTransactions}
                 renderItem={renderTransaction}
