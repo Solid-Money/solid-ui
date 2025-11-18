@@ -24,7 +24,7 @@ const ReferBanner = () => {
         }}
       >
         <View className="flex-1 flex-row justify-between items-center pl-5 md:px-10">
-          <View className="max-w-64 justify-between items-start gap-2 md:gap-4 py-5 md:py-8">
+          <View className="max-w-64 justify-between items-start gap-2 md:gap-4 py-5 md:py-7">
             <Text className="text-xl md:text-3xl font-semibold">Refer & Earn</Text>
             <Text className="text-muted-foreground font-semibold">
               Invite your friends and get 1% cashback on their purchases
