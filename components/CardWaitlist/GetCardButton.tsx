@@ -3,11 +3,17 @@ import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 
 const GetCardButton = () => {
   const router = useRouter();
 
   const handleGetCard = async () => {
+    track(TRACKING_EVENTS.CARD_GET_CARD_PRESSED, {
+      source: 'card_waitlist',
+    });
+
     router.push(path.CARD_ACTIVATE);
   };
 

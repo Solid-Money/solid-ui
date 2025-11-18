@@ -132,6 +132,16 @@ export const TRACKING_EVENTS = {
   CARD_WAITLIST_STARTED: 'card_waitlist_started',
   CARD_WAITLIST_COMPLETED: 'card_waitlist_completed',
 
+  // Card & KYC Events
+  CARD_GET_CARD_PRESSED: 'get_card_pressed',
+  CARD_COUNTRY_SELECTED: 'card_country_selected',
+  CARD_COUNTRY_AVAILABILITY_CHECKED: 'card_country_availability_checked',
+  CARD_COUNTRY_CHANGE_PRESSED: 'card_country_change_pressed',
+  CARD_KYC_FLOW_TRIGGERED: 'card_kyc_flow_triggered',
+  CARD_ACTIVATION_STARTED: 'card_activation_started',
+  CARD_ACTIVATION_SUCCEEDED: 'card_activation_succeeded',
+  CARD_ACTIVATION_FAILED: 'card_activation_failed',
+
   // Global / Error Events
   ERROR_BOUNDARY: 'error_boundary',
 } as const;
