@@ -254,7 +254,6 @@ export default function ActivateCountrySelection() {
       countryCode: countryInfo?.countryCode,
       countryName: countryInfo?.countryName,
     });
-    setSelectionMethod('manual');
     setShowCountrySelector(true);
   };
 
