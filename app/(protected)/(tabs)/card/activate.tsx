@@ -71,8 +71,7 @@ export default function ActivateMobile() {
             <View className="bg-[#1C1C1C] rounded-xl p-4 border border-yellow-500/30 mb-4">
               <Text className="text-white font-semibold">Your card is on its way</Text>
               <Text className="text-white/70 mt-2 text-sm">
-                We&rsquo;re finishing up your card. This can take a few minutes. We&rsquo;ll let you
-                know as soon as it&rsquo;s ready to use.
+                We&rsquo;re finishing up your card. This may take some time.
               </Text>
             </View>
           )}
