@@ -19,7 +19,7 @@ import useUser from '@/hooks/useUser';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { getChain } from '@/lib/thirdweb';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
-import { cn, formatNumber } from '@/lib/utils';
+import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { Wallet as WalletIcon } from 'lucide-react-native';
 import { useActiveAccount, useSwitchActiveWalletChain } from 'thirdweb/react';
@@ -76,11 +76,18 @@ export default function CardDepositExternalForm() {
   };
 
   const onSubmit = async (data: any) => {
-    const arbitrumFundingAddress = cardDetails?.additional_funding_instructions?.find(
-      instruction => instruction.chain === 'arbitrum',
-    );
-
     try {
+      if (!cardDetails) {
+        Toast.show({
+          type: 'error',
+          text1: 'Card details not found',
+          text2: 'Please try again later',
+        });
+        return;
+      }
+
+      const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
+
       if (!arbitrumFundingAddress) {
         Toast.show({
           type: 'error',
@@ -118,7 +125,7 @@ export default function CardDepositExternalForm() {
       }
 
       setSendStatus(Status.PENDING);
-      const fundingAddress = arbitrumFundingAddress.address as Address;
+      const fundingAddress = arbitrumFundingAddress;
       const amountWei = parseUnits(data.amount, 6);
 
       try {

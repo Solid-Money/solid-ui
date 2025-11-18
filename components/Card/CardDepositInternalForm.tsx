@@ -36,7 +36,7 @@ import useUser from '@/hooks/useUser';
 import ERC20_ABI from '@/lib/abis/ERC20';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
-import { cn, formatNumber } from '@/lib/utils';
+import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
 
@@ -335,9 +335,15 @@ export default function CardDepositInternalForm() {
 
     try {
       // Check for Arbitrum funding address
-      const arbitrumFundingAddress = cardDetails?.additional_funding_instructions?.find(
-        instruction => instruction.chain === 'arbitrum',
-      );
+      if (!cardDetails) {
+        Toast.show({
+          type: 'error',
+          text1: 'Card details not found',
+          text2: 'Please try again later',
+        });
+        return;
+      }
+      const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
 
       if (!arbitrumFundingAddress) {
         Toast.show({
@@ -359,7 +365,7 @@ export default function CardDepositInternalForm() {
         symbol: sourceSymbol,
         chainId: fuse.id,
         fromAddress: user.safeAddress,
-        toAddress: arbitrumFundingAddress.address,
+        toAddress: arbitrumFundingAddress,
         status: TransactionStatus.PENDING,
         metadata: {
           description: `Deposit ${data.amount} ${sourceSymbol} to card`,

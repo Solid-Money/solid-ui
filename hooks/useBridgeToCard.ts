@@ -9,6 +9,7 @@ import { getStargateQuote } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, Status, TransactionType } from '@/lib/types';
+import { getArbitrumFundingAddress } from '@/lib/utils';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useCallback, useState } from 'react';
@@ -56,9 +57,11 @@ const useBridgeToCard = (): BridgeResult => {
         }
 
         // Get card's Arbitrum funding address
-        const arbitrumFundingAddress = cardDetails?.additional_funding_instructions?.find(
-          instruction => instruction.chain === 'arbitrum',
-        );
+        if(!cardDetails) {
+          throw new Error('Card details not found');
+        }
+        
+        const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
 
         if (!arbitrumFundingAddress) {
           const error = new Error('Arbitrum funding address not found for card');
@@ -91,7 +94,7 @@ const useBridgeToCard = (): BridgeResult => {
         setBridgeStatus(Status.PENDING);
         setError(null);
 
-        const destinationAddress = arbitrumFundingAddress.address;
+        const destinationAddress = arbitrumFundingAddress;
         const amountWei = parseUnits(amount, 6);
 
         Sentry.addBreadcrumb({
