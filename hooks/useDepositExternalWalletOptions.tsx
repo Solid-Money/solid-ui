@@ -8,6 +8,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { client } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useDimension } from './useDimension';
 
 import HomeQR from '@/assets/images/home-qr';
 
@@ -18,6 +19,7 @@ const useDepositExternalWalletOptions = () => {
   const activeAccount = useActiveAccount();
   const { connect } = useConnectModal();
   const { setModal } = useDepositStore();
+  const { isScreenMedium } = useDimension();
   const address = activeAccount?.address;
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -93,6 +95,7 @@ const useDepositExternalWalletOptions = () => {
       ),
       onPress: openWallet,
       isLoading: isWalletOpen,
+      isEnabled: isScreenMedium
     },
     {
       text: 'Share your deposit address',
