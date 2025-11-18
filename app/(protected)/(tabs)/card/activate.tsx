@@ -19,13 +19,20 @@ export default function ActivateMobile() {
     kycStatus?: KycStatus;
   }>();
 
-  const { steps, activeStepId, isStepButtonEnabled, toggleStep, canToggleStep, activatingCard } =
-    useCardSteps(_kycStatus as KycStatus | undefined);
   const { data: cardStatus } = useCardStatus();
+  const { steps, activeStepId, isStepButtonEnabled, toggleStep, canToggleStep, activatingCard } =
+    useCardSteps(_kycStatus as KycStatus | undefined, cardStatus?.status);
   const isCardPending = cardStatus?.status === CardStatus.PENDING;
 
   const router = useRouter();
   const { checkingCountry } = useCountryCheck();
+
+  // If the card is already active, skip the activation flow
+  React.useEffect(() => {
+    if (cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN) {
+      router.replace(path.CARD_DETAILS);
+    }
+  }, [cardStatus?.status, router]);
 
   // Show loading state while checking country
   if (checkingCountry) {
