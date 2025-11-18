@@ -7,7 +7,6 @@ import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
 
 import PointsBanner from '@/components/Points/PointsBanner';
-import ReferBanner from '@/components/Points/ReferBanner';
 import { useDimension } from '@/hooks/useDimension';
 import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';

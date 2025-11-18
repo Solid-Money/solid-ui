@@ -15,6 +15,7 @@ type DepositOptionProps = {
   onPress: () => void;
   isLoading?: boolean;
   isComingSoon?: boolean;
+  isEnabled?: boolean;
 };
 
 const DepositOptions = () => {
@@ -35,7 +36,7 @@ const DepositOptions = () => {
 
   return (
     <View className="gap-y-2.5">
-      {DEPOSIT_OPTIONS.map(option => (
+      {DEPOSIT_OPTIONS.filter(option => option.isEnabled ?? true).map(option => (
         <DepositOption
           key={option.text}
           text={option.text}
