@@ -1,7 +1,9 @@
 import { Endorsements } from '@/components/BankTransfer/enums';
 import { KycMode } from '@/components/UserKyc';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { createCard, getKycLinkFromBridge } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { isFinalKycStatus, startKycFlow } from '@/lib/utils/kyc';
@@ -146,6 +148,13 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
   }, [kycStatus, kycLink]);
 
   const handleProceedToKyc = useCallback(async () => {
+    track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+      action: 'start',
+      kycStatus: uiKycStatus,
+      kycLinkId,
+      hasProcessingWindow: Boolean(processingUntil),
+    });
+
     try {
       // Fetch latest KYC status if we have a link id
       if (kycLinkId) {
@@ -153,6 +162,11 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
         const latestStatus = (latest?.kyc_status as KycStatus) || KycStatus.NOT_STARTED;
 
         if (latestStatus === KycStatus.UNDER_REVIEW) {
+          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+            action: 'blocked',
+            reason: 'under_review',
+            kycLinkId,
+          });
           Toast.show({
             type: 'info',
             text1: 'KYC under review',
@@ -163,6 +177,11 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
         }
 
         if (latestStatus === KycStatus.APPROVED) {
+          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+            action: 'blocked',
+            reason: 'approved',
+            kycLinkId,
+          });
           Toast.show({
             type: 'success',
             text1: 'KYC approved',
@@ -173,6 +192,11 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
         }
 
         if (latestStatus === KycStatus.OFFBOARDED) {
+          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+            action: 'blocked',
+            reason: 'offboarded',
+            kycLinkId,
+          });
           Toast.show({
             type: 'error',
             text1: 'Account offboarded',
@@ -183,6 +207,10 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
         }
       }
     } catch (_e) {
+      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+        action: 'status_check_failed',
+        kycLinkId,
+      });
       // If status check fails, we still allow starting KYC flow
     }
 
@@ -197,6 +225,11 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
         if (!urlObj.searchParams.has('redirect-uri') && !urlObj.searchParams.has('redirect_uri')) {
           urlObj.searchParams.set('redirect-uri', redirectUri);
         }
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'redirect',
+          method: 'existing_link',
+          kycLinkId,
+        });
         startKycFlow({ router, kycLink: urlObj.toString() });
         return;
       } catch (_e) {
@@ -210,10 +243,15 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
       redirectUri,
     }).toString();
 
+    track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+      action: 'redirect',
+      method: 'collect_user_info',
+    });
     router.push(`/user-kyc-info?${params}`);
-  }, [router, kycLinkId, kycLink?.kyc_link]);
+  }, [router, kycLinkId, kycLink?.kyc_link, uiKycStatus, processingUntil]);
 
   const handleActivateCard = useCallback(async () => {
+    track(TRACKING_EVENTS.CARD_ACTIVATION_STARTED);
     try {
       setActivatingCard(true);
       const card = await withRefreshToken(() => createCard());
@@ -223,11 +261,19 @@ export function useCardSteps(initialKycStatus?: KycStatus) {
       console.warn('Card created:', card);
       setCardActivated(true);
 
+      track(TRACKING_EVENTS.CARD_ACTIVATION_SUCCEEDED, {
+        cardId: card.id,
+      });
+
       // Navigate to card details
       router.replace(path.CARD_DETAILS);
     } catch (error) {
       console.error('Error activating card:', error);
       const errorMessage = await extractCardActivationErrorMessage(error);
+
+      track(TRACKING_EVENTS.CARD_ACTIVATION_FAILED, {
+        message: errorMessage,
+      });
 
       // Show error toast
       Toast.show({

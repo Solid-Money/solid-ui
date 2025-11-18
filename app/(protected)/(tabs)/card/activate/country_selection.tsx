@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -29,6 +31,11 @@ export default function ActivateCountrySelection() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+
+  const [selectionMethod, setSelectionMethod] = useState<'manual' | 'ip_detected' | 'unknown'>(
+    'unknown',
+  );
+
   const [processing, setProcessing] = useState(false);
 
   const {
@@ -101,6 +108,7 @@ export default function ActivateCountrySelection() {
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
+            setSelectionMethod('ip_detected');
           }
           // Always show country selection screen
           setShowCountrySelector(true);
@@ -128,6 +136,7 @@ export default function ActivateCountrySelection() {
           if (country) {
             setSelectedCountry(country);
             setSearchQuery(country.name);
+            setSelectionMethod('ip_detected');
           }
           // Always show country selection screen
           setShowCountrySelector(true);
@@ -169,8 +178,14 @@ export default function ActivateCountrySelection() {
   };
 
   const handleCountrySelect = (country: Country) => {
+    track(TRACKING_EVENTS.CARD_COUNTRY_SELECTED, {
+      countryCode: country.code,
+      countryName: country.name,
+      selectionMethod: 'manual',
+    });
     setSelectedCountry(country);
     setSearchQuery(country.name);
+    setSelectionMethod('manual');
     setShowDropdown(false);
   };
 
@@ -194,6 +209,13 @@ export default function ActivateCountrySelection() {
         setCountryInfo(updatedCountryInfo);
         setCountryDetectionFailed(false);
 
+        track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
+          countryCode: selectedCountry.code,
+          countryName: selectedCountry.name,
+          isAvailable: accessCheck.hasAccess,
+          selectionMethod: selectionMethod === 'ip_detected' ? 'ip_detected' : 'manual',
+        });
+
         // If selected country is available, redirect to activate page
         if (accessCheck.hasAccess) {
           router.replace(path.CARD_ACTIVATE);
@@ -211,6 +233,14 @@ export default function ActivateCountrySelection() {
           isAvailable: false,
         };
 
+        track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
+          countryCode: selectedCountry.code,
+          countryName: selectedCountry.name,
+          isAvailable: false,
+          selectionMethod: selectionMethod === 'ip_detected' ? 'ip_detected' : 'manual',
+          error: (error as Error)?.message,
+        });
+
         setCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
       } finally {
@@ -220,6 +250,11 @@ export default function ActivateCountrySelection() {
   };
 
   const handleChangeCountry = () => {
+    track(TRACKING_EVENTS.CARD_COUNTRY_CHANGE_PRESSED, {
+      countryCode: countryInfo?.countryCode,
+      countryName: countryInfo?.countryName,
+    });
+    setSelectionMethod('manual');
     setShowCountrySelector(true);
   };
 
