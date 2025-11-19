@@ -5,6 +5,9 @@ import { ActivityIndicator, Image, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Address, formatUnits } from 'viem';
 
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
+
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -75,6 +78,13 @@ const DepositToCard = () => {
     }
 
     try {
+      // Track card deposit started
+      track(TRACKING_EVENTS.CARD_DEPOSIT_STARTED, {
+        amount: Number(amount),
+        token_symbol: selectedToken.contractTickerSymbol,
+        chain_id: selectedToken.chainId,
+      });
+
       const fundingAddress = cardDetails.funding_instructions.address as Address;
 
       console.warn('[Card Deposit] Creating activity...');
@@ -100,6 +110,14 @@ const DepositToCard = () => {
 
       // Send the transaction
       const transaction = await send(amount, fundingAddress);
+
+      // Track transaction sent
+      track(TRACKING_EVENTS.CARD_DEPOSIT_TRANSACTION_SENT, {
+        amount: Number(amount),
+        token_symbol: selectedToken.contractTickerSymbol,
+        chain_id: selectedToken.chainId,
+        tx_hash: transaction.transactionHash,
+      });
 
       // Update activity with transaction hash, but keep it PENDING
       // It will only go to SUCCESS when Bridge processes it
@@ -132,6 +150,15 @@ const DepositToCard = () => {
       }, 2000);
     } catch (error) {
       console.error('Deposit failed:', error);
+
+      // Track deposit failed
+      track(TRACKING_EVENTS.CARD_DEPOSIT_FAILED, {
+        amount: Number(amount),
+        token_symbol: selectedToken?.contractTickerSymbol,
+        chain_id: selectedToken?.chainId,
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+
       Toast.show({
         type: 'error',
         text1: 'Deposit failed',

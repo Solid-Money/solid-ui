@@ -142,6 +142,12 @@ export const TRACKING_EVENTS = {
   CARD_ACTIVATION_SUCCEEDED: 'card_activation_succeeded',
   CARD_ACTIVATION_FAILED: 'card_activation_failed',
 
+  // Card Deposit Events
+  CARD_DEPOSIT_STARTED: 'card_deposit_started',
+  CARD_DEPOSIT_TRANSACTION_SENT: 'card_deposit_transaction_sent',
+  CARD_DEPOSIT_COMPLETED: 'card_deposit_completed',
+  CARD_DEPOSIT_FAILED: 'card_deposit_failed',
+
   // Global / Error Events
   ERROR_BOUNDARY: 'error_boundary',
 } as const;

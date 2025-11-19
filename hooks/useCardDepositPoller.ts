@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { getCardTransactions } from '@/lib/api';
 import { TransactionStatus, TransactionType } from '@/lib/types';
 import { useActivity } from './useActivity';
@@ -57,6 +59,14 @@ export const useCardDepositPoller = () => {
             await updateActivity(activity.clientTxId, {
               status: TransactionStatus.SUCCESS,
               metadata: activity.metadata,
+            });
+
+            // Track deposit completed
+            track(TRACKING_EVENTS.CARD_DEPOSIT_COMPLETED, {
+              amount: Number(activity.amount),
+              token_symbol: activity.symbol,
+              chain_id: activity.chainId,
+              tx_hash: activity.hash,
             });
           }
         }
