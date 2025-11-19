@@ -493,7 +493,7 @@ export const createCard = async (): Promise<CardResponse> => {
   return response.json();
 };
 
-export const getCardStatus = async (): Promise<CardStatusResponse> => {
+export const getCardStatus = async (): Promise<CardStatusResponse | null> => {
   const jwt = getJWTToken();
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/status`, {
@@ -503,6 +503,8 @@ export const getCardStatus = async (): Promise<CardStatusResponse> => {
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
+
+  if (response.status === 404) return null;
 
   if (!response.ok) throw response;
 
