@@ -1,3 +1,5 @@
+import { Cashback } from '@/lib/types';
+
 /**
  * Get initials from merchant/person name for avatar display
  */
@@ -42,8 +44,27 @@ export const formatCardAmountWithCurrency = (amount: string, currency: string): 
 
 /**
  * Get cashback amount for a transaction
- * TODO: Replace with actual calculation based on transaction data
+ * @param transactionId - The card transaction ID
+ * @param cashbacks - Array of cashback records
+ * @returns Formatted cashback amount string
  */
-export const getCashbackAmount = (): string => {
-  return '+$0.34';
+export const getCashbackAmount = (
+  transactionId: string,
+  cashbacks: Cashback[] | undefined,
+): string => {
+  if (!cashbacks) return '+$0.00';
+
+  const cashback = cashbacks.find(cb => cb.transactionId === transactionId);
+
+  if (!cashback || cashback.status !== 'Paid' || !cashback.fuseAmount) {
+    return '+$0.00';
+  }
+
+  const amount = parseFloat(cashback.fuseAmount);
+
+  if (isNaN(amount) || amount <= 0) {
+    return '+$0.00';
+  }
+
+  return `+$${amount.toFixed(2)}`;
 };
