@@ -119,13 +119,13 @@ export async function checkCountryAccessForKyc(countryStore: {
     const accessCheck = await withRefreshToken(() => checkCardAccess(countryCode));
 
     if (!accessCheck) {
-      // If card access check fails, allow access
+      // If card access check fails, return unavailable
       track(TRACKING_EVENTS.CARD_KYC_COUNTRY_DETECTION_FAILED, {
         reason: 'card_access_check_failed',
         context: 'kyc_button_click',
       });
 
-      throw new Error('Card access check failed');
+      return { isAvailable: false };
     }
 
     const countryInfo = {
