@@ -32,7 +32,7 @@ export default function Help() {
       title: 'Email Support',
       description: 'Contact our team',
       icon: <EmailIcon color="#ffffff" />,
-      link: 'mailto:support@solid.xyz',
+      link: 'mailto:hello@solid.xyz',
     },
     {
       title: 'Documentation',
@@ -97,7 +97,7 @@ export default function Help() {
         {/* Additional Help Text */}
         <View className="px-4 pt-6 pb-2">
           <Text className="text-muted-foreground text-sm text-center">
-            Need more help? Email <Text className="text-white font-medium">support@solid.xyz</Text>
+            Need more help? Email <Text className="text-white font-medium">hello@solid.xyz</Text>
           </Text>
         </View>
       </View>
