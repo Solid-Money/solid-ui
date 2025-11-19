@@ -138,6 +138,8 @@ export const TRACKING_EVENTS = {
   CARD_COUNTRY_AVAILABILITY_CHECKED: 'card_country_availability_checked',
   CARD_COUNTRY_CHANGE_PRESSED: 'card_country_change_pressed',
   CARD_KYC_FLOW_TRIGGERED: 'card_kyc_flow_triggered',
+  CARD_KYC_COUNTRY_DETECTION_FAILED: 'card_kyc_country_detection_failed',
+  CARD_KYC_COUNTRY_NOT_SUPPORTED: 'card_kyc_country_not_supported',
   CARD_ACTIVATION_STARTED: 'card_activation_started',
   CARD_ACTIVATION_SUCCEEDED: 'card_activation_succeeded',
   CARD_ACTIVATION_FAILED: 'card_activation_failed',
