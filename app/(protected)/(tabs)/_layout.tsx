@@ -12,6 +12,7 @@ import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { CardStatus } from '@/lib/types';
 
 export default function TabLayout() {
   const { user } = useUser();
@@ -20,7 +21,10 @@ export default function TabLayout() {
 
   const { isDesktop } = useDimension();
 
-  const cardHref = cardStatus ? path.CARD_DETAILS : path.CARD_WAITLIST;
+  const cardHref =
+    cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN
+      ? path.CARD_DETAILS
+      : path.CARD_WAITLIST;
 
   return (
     <Tabs
