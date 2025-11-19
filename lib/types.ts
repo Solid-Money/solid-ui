@@ -314,7 +314,10 @@ export interface CardDetailsResponseDto extends CardResponse {
 }
 
 export interface CardStatusResponse {
-  status: CardStatus;
+  status?: CardStatus;
+  activationBlocked?: boolean;
+  activationBlockedReason?: string;
+  activationFailedAt?: string;
 }
 
 export enum LayerZeroTransactionStatus {
