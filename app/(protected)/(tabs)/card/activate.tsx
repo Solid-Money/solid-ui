@@ -19,20 +19,26 @@ export default function ActivateMobile() {
     kycStatus?: KycStatus;
   }>();
 
-  const { data: cardStatus } = useCardStatus();
+  const { data: cardStatusResponse } = useCardStatus();
+  const cardStatus = cardStatusResponse?.status;
+  const isCardPending = cardStatus === CardStatus.PENDING;
+  const isCardBlocked = Boolean(cardStatusResponse?.activationBlocked);
+  const activationBlockedReason =
+    cardStatusResponse?.activationBlockedReason ||
+    'There was an issue activating your card. Please contact support.';
+
   const { steps, activeStepId, isStepButtonEnabled, toggleStep, canToggleStep, activatingCard } =
-    useCardSteps(_kycStatus as KycStatus | undefined, cardStatus?.status);
-  const isCardPending = cardStatus?.status === CardStatus.PENDING;
+    useCardSteps(_kycStatus as KycStatus | undefined, cardStatusResponse);
 
   const router = useRouter();
   const { checkingCountry } = useCountryCheck();
 
   // If the card is already active, skip the activation flow
   React.useEffect(() => {
-    if (cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN) {
+    if (cardStatus === CardStatus.ACTIVE || cardStatus === CardStatus.FROZEN) {
       router.replace(path.CARD_DETAILS);
     }
-  }, [cardStatus?.status, router]);
+  }, [cardStatus, router]);
 
   // Show loading state while checking country
   if (checkingCountry) {
@@ -80,6 +86,12 @@ export default function ActivateMobile() {
               <Text className="text-white/70 mt-2 text-sm">
                 We&rsquo;re finishing up your card. This may take some time.
               </Text>
+            </View>
+          )}
+          {isCardBlocked && (
+            <View className="bg-[#1C1C1C] rounded-xl p-4 border border-red-500/30 mb-4">
+              <Text className="text-white font-semibold">Card activation rejected</Text>
+              <Text className="text-white/70 mt-2 text-sm">{activationBlockedReason}</Text>
             </View>
           )}
 
