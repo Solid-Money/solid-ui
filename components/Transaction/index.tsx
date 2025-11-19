@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
+import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
@@ -37,6 +38,7 @@ interface TransactionProps {
   onPress?: () => void;
   clientTxId?: string;
   metadata?: Record<string, any>;
+  timestamp?: string;
 }
 
 const Transaction = ({
@@ -51,21 +53,32 @@ const Transaction = ({
   type,
   clientTxId,
   metadata,
+  timestamp,
 }: TransactionProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const { refetchAll } = useActivity();
+  const { isScreenMedium } = useDimension();
 
   const isPending = status === TransactionStatus.PENDING;
   const isFailed = status === TransactionStatus.FAILED;
   const isCancelled = status === TransactionStatus.CANCELLED;
+  const isProcessing = status === TransactionStatus.PROCESSING;
   const transactionDetails = TRANSACTION_DETAILS[type];
+
+  // Only show badge for failed status
+  const statusBadge = isFailed
+    ? {
+      text: 'Failed',
+      bgColor: 'bg-red-500/20',
+      textColor: 'text-red-400',
+    }
+    : null;
 
   // Check if this is a direct deposit with no amount yet
   const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
   const hasNoAmount = !amount || amount === '0' || parseFloat(amount) === 0;
-  const isProcessing = status === TransactionStatus.PROCESSING;
 
   // Determine status message for direct deposits with no amount
   const getDirectDepositStatusMessage = () => {
@@ -171,6 +184,27 @@ const Transaction = ({
     return transactionDetails?.category ?? 'Unknown';
   };
 
+  const formatTimestamp = () => {
+    if (!timestamp) return null;
+    try {
+      const date = new Date(Number(timestamp) * 1000);
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      })
+        .format(date)
+        .replace(',', ' at');
+    } catch {
+      return null;
+    }
+  };
+
+  const formattedTimestamp = formatTimestamp();
+
   return (
     <Pressable
       onPress={onPress}
@@ -180,14 +214,11 @@ const Transaction = ({
         classNames?.container,
       )}
     >
-      <View className="flex-row items-center gap-2 md:gap-4 flex-1 mr-2">
+      <View className="flex-row items-center gap-2 md:gap-4">
         <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
-        <View className="flex-1">
-          <Text className="hidden md:block text-lg font-medium" numberOfLines={1}>
+        <View>
+          <Text className="text-lg font-medium" numberOfLines={1}>
             {title}
-          </Text>
-          <Text className="block md:hidden text-lg font-medium" numberOfLines={1}>
-            {shortTitle || title}
           </Text>
           <View className="flex-row items-center gap-1">
             {isReward && (
@@ -197,25 +228,39 @@ const Transaction = ({
                 contentFit="contain"
               />
             )}
-            <View className="flex-row items-center gap-1">
-              {isPending && <ActivityIndicator color="gray" size={14} />}
-              <Text className="text-sm text-muted-foreground font-medium">{getDescription()}</Text>
-            </View>
+            {isPending && <ActivityIndicator color="gray" size={14} />}
+            <Text className="text-sm text-muted-foreground font-medium">{getDescription()}</Text>
           </View>
         </View>
+        {isFailed && statusBadge && (
+          <View className={cn(statusBadge.bgColor, 'px-2 py-1 rounded-full')}>
+            <Text className={cn(statusBadge.textColor, 'text-xs font-bold')}>
+              {statusBadge.text}
+            </Text>
+          </View>
+        )}
       </View>
-      <View className="flex-row items-center gap-2 md:gap-4 flex-shrink-0">
+
+      <View className="flex-1 flex-row items-center justify-center">
+        {formattedTimestamp && isScreenMedium && (
+          <View className="w-48">
+            <Text className="text-sm text-muted-foreground font-medium text-start">{formattedTimestamp}</Text>
+          </View>
+        )}
+      </View>
+
+      <View className="items-end">
         {directDepositStatusMessage || amount === '0' ? (
           <Text
             className={cn(
-              'text-sm font-medium text-right',
+              'text-sm font-medium',
               isFailed ? 'text-red-400' : 'text-muted-foreground',
             )}
           >
             {directDepositStatusMessage}
           </Text>
         ) : (
-          <Text className={cn('text-lg font-medium text-right', statusTextColor)}>
+          <Text className={cn('text-lg font-medium', statusTextColor)}>
             {statusSign}
             {formatNumber(Number(amount))} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
