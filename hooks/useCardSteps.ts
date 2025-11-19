@@ -4,7 +4,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { createCard, getKycLinkFromBridge } from '@/lib/api';
-import { CardStatus, KycStatus } from '@/lib/types';
+import { CardStatus, CardStatusResponse, KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { checkCountryAccessForKyc, isFinalKycStatus, startKycFlow } from '@/lib/utils/kyc';
 import { useCountryStore } from '@/store/useCountryStore';
@@ -51,10 +51,17 @@ function getKycButtonText(kycStatus: KycStatus): string | undefined {
   return 'Complete KYC';
 }
 
-export function useCardSteps(initialKycStatus?: KycStatus, cardStatus?: CardStatus) {
+export function useCardSteps(
+  initialKycStatus?: KycStatus,
+  cardStatusResponse?: CardStatusResponse | null,
+) {
   const [activeStepId, setActiveStepId] = useState<number | null>(null);
   const [cardActivated, setCardActivated] = useState(false);
   const [activatingCard, setActivatingCard] = useState(false);
+
+  const cardStatus = cardStatusResponse?.status;
+  const activationBlocked = cardStatusResponse?.activationBlocked;
+  const activationBlockedReason = cardStatusResponse?.activationBlockedReason;
 
   const router = useRouter();
   const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore();
@@ -373,6 +380,11 @@ export function useCardSteps(initialKycStatus?: KycStatus, cardStatus?: CardStat
     const description = getKycDescription(uiKycStatus, rejectionReasonsText);
     const buttonText = getKycButtonText(uiKycStatus);
 
+    const orderCardDesc = activationBlocked
+      ? activationBlockedReason ||
+        'There was an issue activating your card. Please contact support.'
+      : 'All is set! now click on the "Create card" button to issue your new card';
+
     return [
       {
         id: 1,
@@ -390,11 +402,11 @@ export function useCardSteps(initialKycStatus?: KycStatus, cardStatus?: CardStat
       {
         id: 2,
         title: 'Order your card',
-        description: 'All is set! now click on the "Create card" button to issue your new card',
+        description: orderCardDesc,
         completed: cardActivated,
         status: cardActivated ? 'completed' : 'pending',
-        buttonText: 'Order card',
-        onPress: handleActivateCard,
+        buttonText: activationBlocked ? undefined : 'Order card',
+        onPress: activationBlocked ? undefined : handleActivateCard,
       },
       {
         id: 3,
@@ -413,6 +425,8 @@ export function useCardSteps(initialKycStatus?: KycStatus, cardStatus?: CardStat
     handleActivateCard,
     router,
     rejectionReasonsText,
+    activationBlocked,
+    activationBlockedReason,
   ]);
 
   // Set default active step on mount

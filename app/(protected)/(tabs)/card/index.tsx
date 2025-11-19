@@ -22,11 +22,11 @@ export default function Card() {
     if (isLoading) return;
 
     // If card exists (regardless of status), go to card details
-    if (cardStatus) {
+    if (cardStatus?.status) {
       router.replace(path.CARD_DETAILS);
       return;
     }
-  }, [cardStatus, isLoading, error, router]);
+  }, [cardStatus?.status, isLoading, error, router]);
 
   const activateCard = async () => {
     router.push(path.CARD_COUNTRY_SELECTION);

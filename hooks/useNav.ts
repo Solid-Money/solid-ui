@@ -38,9 +38,9 @@ const useNav = () => {
   const card: MenuItem = useMemo(
     () => ({
       label: 'Card',
-      href: cardStatus ? path.CARD_DETAILS : path.CARD_WAITLIST,
+      href: cardStatus?.status ? path.CARD_DETAILS : path.CARD_WAITLIST,
     }),
-    [cardStatus],
+    [cardStatus?.status],
   );
 
   const menuItems = useMemo<MenuItem[]>(() => {
