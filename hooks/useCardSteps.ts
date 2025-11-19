@@ -2,11 +2,12 @@ import { Endorsements } from '@/components/BankTransfer/enums';
 import { KycMode } from '@/components/UserKyc';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { createCard, getKycLinkFromBridge } from '@/lib/api';
 import { track } from '@/lib/analytics';
+import { createCard, getKycLinkFromBridge } from '@/lib/api';
 import { CardStatus, KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { isFinalKycStatus, startKycFlow } from '@/lib/utils/kyc';
+import { checkCountryAccessForKyc, isFinalKycStatus, startKycFlow } from '@/lib/utils/kyc';
+import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -57,6 +58,14 @@ export function useCardSteps(initialKycStatus?: KycStatus, cardStatus?: CardStat
 
   const router = useRouter();
   const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore();
+
+  const {
+    getCachedIp,
+    setCachedIp,
+    getIpDetectedCountry,
+    setIpDetectedCountry,
+    countryDetectionFailed,
+  } = useCountryStore();
 
   console.warn('[CardSteps] kycLinkId', kycLinkId);
 
@@ -155,6 +164,35 @@ export function useCardSteps(initialKycStatus?: KycStatus, cardStatus?: CardStat
       hasProcessingWindow: Boolean(processingUntil),
     });
 
+    // Check country access before proceeding with KYC
+    const countryCheck = await checkCountryAccessForKyc({
+      getCachedIp,
+      setCachedIp,
+      getIpDetectedCountry,
+      setIpDetectedCountry,
+      countryDetectionFailed,
+    });
+
+    if (!countryCheck.isAvailable) {
+      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+        action: 'blocked',
+        reason: 'country_not_supported',
+        kycLinkId,
+        countryCode: countryCheck.countryCode,
+        countryName: countryCheck.countryName,
+      });
+
+      Toast.show({
+        type: 'error',
+        text1: 'Country not supported',
+        text2: countryCheck.countryName
+          ? `Unfortunately, Solid card isn't available in ${countryCheck.countryName} yet.`
+          : 'Unfortunately, Solid card is not available in your location yet.',
+        props: { badgeText: '' },
+      });
+      return;
+    }
+
     try {
       // Fetch latest KYC status if we have a link id
       if (kycLinkId) {
@@ -248,7 +286,18 @@ export function useCardSteps(initialKycStatus?: KycStatus, cardStatus?: CardStat
       method: 'collect_user_info',
     });
     router.push(`/user-kyc-info?${params}`);
-  }, [router, kycLinkId, kycLink?.kyc_link, uiKycStatus, processingUntil]);
+  }, [
+    router,
+    kycLinkId,
+    kycLink?.kyc_link,
+    uiKycStatus,
+    processingUntil,
+    getCachedIp,
+    setCachedIp,
+    getIpDetectedCountry,
+    setIpDetectedCountry,
+    countryDetectionFailed,
+  ]);
 
   const handleActivateCard = useCallback(async () => {
     track(TRACKING_EVENTS.CARD_ACTIVATION_STARTED);
