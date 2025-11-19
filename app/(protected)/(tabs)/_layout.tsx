@@ -9,14 +9,22 @@ import SavingsNavBarIcon from '@/assets/images/savings-nav-bar-icon';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { CardStatus } from '@/lib/types';
 
 export default function TabLayout() {
   const { user } = useUser();
   const hasDeposited = user?.isDeposited;
+  const { data: cardStatus } = useCardStatus();
 
   const { isDesktop } = useDimension();
+
+  const cardHref =
+    cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN
+      ? path.CARD_DETAILS
+      : path.CARD_WAITLIST;
 
   return (
     <Tabs
@@ -68,7 +76,7 @@ export default function TabLayout() {
           title: 'Card',
           headerShown: false,
           tabBarIcon: ({ color }) => <CardNavBarIcon color={color} />,
-          href: path.CARD_WAITLIST,
+          href: cardHref,
         }}
       />
 
