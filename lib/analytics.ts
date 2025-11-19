@@ -82,6 +82,11 @@ const initFirebase = async () => {
 
 // Initialize all analytics providers
 export const initAnalytics = async () => {
+  // Don't initialize analytics locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     await initAmplitude();
     await initFirebase();
@@ -93,6 +98,11 @@ export const initAnalytics = async () => {
 
 // Track Amplitude events
 const trackAmplitudeEvent = (event: string, params: Record<string, any>) => {
+  // Don't track events locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     trackAmplitude(formatAmplitudeEvent(event), params);
   } catch (error) {
@@ -102,6 +112,11 @@ const trackAmplitudeEvent = (event: string, params: Record<string, any>) => {
 
 // Track Firebase events
 const trackFirebaseEvent = async (event: string, params: Record<string, any>) => {
+  // Don't track events locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     // Only track if Firebase is available (web only)
     if (Platform.OS === 'web' && firebaseApp) {
@@ -114,6 +129,11 @@ const trackFirebaseEvent = async (event: string, params: Record<string, any>) =>
 
 // Main track function
 export const track = (event: string, params: Record<string, any> = {}) => {
+  // Don't track events locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     // Validate inputs
     if (!event || typeof event !== 'string') {
@@ -137,6 +157,11 @@ export const track = (event: string, params: Record<string, any> = {}) => {
 
 // Track Amplitude screens
 const trackAmplitudeScreen = (pathname: string, params: Record<string, any>) => {
+  // Don't track screens locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     trackAmplitude(AmplitudeEvent.PAGE_VIEWED, {
       pathname,
@@ -149,6 +174,11 @@ const trackAmplitudeScreen = (pathname: string, params: Record<string, any>) => 
 
 // Track Firebase screens
 const trackFirebaseScreen = async (pathname: string, params: Record<string, any>) => {
+  // Don't track screens locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     // Only track if Firebase is available (web only)
     if (Platform.OS === 'web' && firebaseApp) {
@@ -165,6 +195,11 @@ const trackFirebaseScreen = async (pathname: string, params: Record<string, any>
 
 // Main screen tracking function
 export const trackScreen = (pathname: string, params: Record<string, any> = {}) => {
+  // Don't track screens locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     // Validate inputs
     if (!pathname || typeof pathname !== 'string') {
@@ -187,6 +222,11 @@ export const trackScreen = (pathname: string, params: Record<string, any> = {}) 
 
 // Track Amplitude identity
 const trackAmplitudeIdentity = (id: string, params: Record<string, any>) => {
+  // Don't track identity locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     setAmplitudeUserId(id);
     const identifyObj = new Identify();
@@ -199,6 +239,11 @@ const trackAmplitudeIdentity = (id: string, params: Record<string, any>) => {
 
 // Track Firebase identity
 const trackFirebaseIdentity = async (id: string, params: Record<string, any>) => {
+  // Don't track identity locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     // Only track if Firebase is available (web only)
     if (Platform.OS === 'web' && firebaseApp) {
@@ -212,6 +257,11 @@ const trackFirebaseIdentity = async (id: string, params: Record<string, any>) =>
 
 // Main identity tracking function
 export const trackIdentity = (id: string, params: Record<string, any> = {}) => {
+  // Don't track identity locally
+  if (__DEV__) {
+    return;
+  }
+
   try {
     // Validate inputs
     if (!id || typeof id !== 'string') {

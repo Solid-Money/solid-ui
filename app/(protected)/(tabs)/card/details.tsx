@@ -3,19 +3,27 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Pressable, View } from 'react-native';
+import { Alert, Animated, Platform, Pressable, View } from 'react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
+import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
+import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
+import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
+import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
-import { CardHolderName, CardStatus } from '@/lib/types';
+import getTokenIcon from '@/lib/getTokenIcon';
+import { CardHolderName, CardStatus, CardTransaction } from '@/lib/types';
+import { formatCardAmountWithCurrency } from '@/lib/utils/cardHelpers';
+import { cn } from '@/lib/utils/utils';
 
 interface CardHeaderProps {
   onBackPress: () => void;
@@ -32,16 +40,20 @@ export default function CardDetails() {
   const flipAnimation = useRef(new Animated.Value(0)).current;
   const router = useRouter();
 
+  const {
+    data: transactionsData,
+    isLoading: isLoadingTransactions,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useCardTransactions();
+
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
   const handleBackPress = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
+    router.push(path.HOME);
   };
 
   const handleFreezeToggle = async () => {
@@ -118,9 +130,16 @@ export default function CardDetails() {
             onCardDetails={handleCardFlip}
             onFreezeToggle={handleFreezeToggle}
           />
+          <DepositBonusBanner />
           <CashbackDisplay cashback={cardDetails?.cashback} />
           <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
-          <ViewTransactionsButton onPress={() => router.push(path.CARD_TRANSACTIONS)} />
+          <RecentTransactions
+            transactions={transactionsData?.pages.flatMap(page => page.data) ?? []}
+            isLoading={isLoadingTransactions}
+            isFetchingNextPage={isFetchingNextPage}
+            hasNextPage={hasNextPage}
+            onLoadMore={fetchNextPage}
+          />
         </View>
       </View>
 
@@ -459,6 +478,19 @@ function CardActions({
   );
 }
 
+function DepositBonusBanner() {
+  return (
+    <View className="border-2 border-[#FFD151]/40 rounded-2xl p-4 mb-4 flex-row items-center">
+      <View className="mr-3 w-6 h-6 rounded-full bg-[#FFD151]/20 items-center justify-center">
+        <Text className="text-[#FFD151] text-base font-extrabold">!</Text>
+      </View>
+      <Text className="text-[#FFD151] text-base font-bold flex-1">
+        Deposit $100 to receive your $50 sign up bonus!
+      </Text>
+    </View>
+  );
+}
+
 interface CashbackDisplayProps {
   cashback?: {
     monthlyFuseAmount: number;
@@ -525,18 +557,203 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
   );
 }
 
-interface ViewTransactionsButtonProps {
-  onPress: () => void;
+interface RecentTransactionsProps {
+  transactions: CardTransaction[];
+  isLoading: boolean;
+  isFetchingNextPage: boolean;
+  hasNextPage?: boolean;
+  onLoadMore: () => void;
 }
 
-function ViewTransactionsButton({ onPress }: ViewTransactionsButtonProps) {
+function RecentTransactions({
+  transactions,
+  isLoading,
+  isFetchingNextPage,
+  hasNextPage,
+  onLoadMore,
+}: RecentTransactionsProps) {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const isToday = date.toDateString() === today.toDateString();
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    if (isToday) return 'Today';
+    if (isYesterday) return 'Yesterday';
+
+    return date.toLocaleDateString('en-US', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  // Group transactions by date
+  const groupedTransactions = transactions.reduce(
+    (groups, transaction) => {
+      const dateKey = formatDate(transaction.posted_at);
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(transaction);
+      return groups;
+    },
+    {} as Record<string, CardTransaction[]>,
+  );
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const getTransactionClassName = (totalTransactions: number, isLast: boolean) => {
+    // Remove bottom border for last item only
+    if (isLast) return 'border-b-0';
+    return '';
+  };
+
+  const getColorForTransaction = (merchantName: string) => {
+    // Generate consistent color based on merchant name
+    const colors = [
+      { bg: 'rgba(127,230,242,0.25)', text: '#7fe6f2' }, // cyan
+      { bg: 'rgba(242,127,129,0.25)', text: '#f27f81' }, // red
+      { bg: 'rgba(165,127,242,0.25)', text: '#a57ff2' }, // purple
+      { bg: 'rgba(242,194,127,0.25)', text: '#f2c27f' }, // orange
+      { bg: 'rgba(127,242,158,0.25)', text: '#7ff29e' }, // green
+      { bg: 'rgba(242,127,215,0.25)', text: '#f27fd7' }, // pink
+    ];
+
+    // Simple hash function to get consistent color for same merchant
+    let hash = 0;
+    for (let i = 0; i < merchantName.length; i++) {
+      hash = merchantName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const getInitials = (name: string) => {
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) {
+      return words[0].substring(0, 2).toUpperCase();
+    }
+    return words
+      .slice(0, 2)
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
+
+  const renderTransaction = (item: CardTransaction, isLast: boolean) => {
+    const isPurchase = item.category === 'purchase';
+    const merchantName = item.merchant_name || item.description;
+    const color = getColorForTransaction(merchantName);
+
+    const transactionUrl = item.crypto_transaction_details?.tx_hash
+      ? `https://etherscan.io/tx/${item.crypto_transaction_details.tx_hash}`
+      : undefined;
+
+    return (
+      <Pressable
+        className={cn(
+          'flex-row items-center justify-between p-4 md:px-6',
+          'border-b border-border/40',
+          getTransactionClassName(transactions.length, isLast),
+        )}
+      >
+        <View className="flex-row items-center gap-2 md:gap-4 flex-1 mr-2">
+          {isPurchase ? (
+            <View
+              className="rounded-full overflow-hidden items-center justify-center"
+              style={{ width: 43, height: 43, backgroundColor: color.bg }}
+            >
+              <Text className="text-lg font-semibold" style={{ color: color.text }}>
+                {getInitials(merchantName)}
+              </Text>
+            </View>
+          ) : (
+            <RenderTokenIcon
+              tokenIcon={getTokenIcon({
+                tokenSymbol: item.currency?.toUpperCase(),
+                size: 43,
+              })}
+              size={43}
+            />
+          )}
+          <View className="flex-1">
+            <Text className="text-lg font-medium" numberOfLines={1}>
+              {merchantName}
+            </Text>
+            <Text className="text-sm text-muted-foreground" numberOfLines={1}>
+              {formatDate(item.posted_at)}
+              {', '}
+              {formatTime(item.posted_at)}
+            </Text>
+          </View>
+        </View>
+        <View className="flex-row items-center gap-2 md:gap-10 flex-shrink-0">
+          <Text className={`font-bold text-right text-white`}>
+            {formatCardAmountWithCurrency(item.amount, item.currency)}
+          </Text>
+          {Platform.OS === 'web' ? (
+            <TransactionDropdown url={transactionUrl} />
+          ) : (
+            <TransactionDrawer url={transactionUrl} />
+          )}
+        </View>
+      </Pressable>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <View className="mb-28">
+        <Text className="text-lg font-semibold text-[#A1A1A1] mb-4 mt-4">Recent transactions</Text>
+        <View className="py-8">
+          <Loading />
+        </View>
+      </View>
+    );
+  }
+
+  if (transactions.length === 0) {
+    return (
+      <View className="mb-28">
+        <Text className="text-lg font-semibold text-[#A1A1A1] mb-4 mt-4">Recent transactions</Text>
+        <View className="bg-[#1C1C1C] rounded-2xl p-8">
+          <Text className="text-center text-[#ACACAC]">No transactions yet</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <Pressable
-      onPress={onPress}
-      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 mb-28 h-14"
-    >
-      <Text className=" text-base font-bold text-white">View transactions</Text>
-      <ChevronRight color="white" size={22} />
-    </Pressable>
+    <View className="mb-28 mt-4">
+      <Text className="text-lg font-semibold text-[#A1A1A1] mb-4">Recent transactions</Text>
+      {Object.entries(groupedTransactions).map(([date, txs], groupIndex) => (
+        <View key={groupIndex} className="mb-4">
+          <Text className="text-base font-semibold text-white/60 mb-2">{date}</Text>
+          <View className="bg-[#1C1C1C] rounded-2xl overflow-hidden">
+            {txs.map((tx, index) => renderTransaction(tx, index === txs.length - 1))}
+          </View>
+        </View>
+      ))}
+      {isFetchingNextPage && (
+        <View className="py-4">
+          <Loading />
+        </View>
+      )}
+      {hasNextPage && !isFetchingNextPage && (
+        <Pressable onPress={onLoadMore} className="bg-[#1E1E1E] rounded-2xl p-4 items-center">
+          <Text className="text-white font-bold">Load more</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }

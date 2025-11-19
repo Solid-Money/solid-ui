@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import { mainnet } from 'viem/chains';
 
+import SupportIcon from '@/assets/images/support-svg';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import EstimatedTime from '@/components/EstimatedTime';
 import PageLayout from '@/components/PageLayout';
@@ -20,6 +21,7 @@ import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { useIntercom } from '@/lib/intercom';
 import {
   CardTransaction,
   TransactionDirection,
@@ -91,6 +93,39 @@ const Back = ({ title, className }: BackProps) => {
   );
 };
 
+type SupportSectionProps = {
+  transactionContext?: string;
+};
+
+const SupportSection = ({ transactionContext }: SupportSectionProps) => {
+  const intercom = useIntercom();
+
+  const handleSupportPress = () => {
+    if (intercom) {
+      // Send transaction context as a pre-filled message if available
+      if (transactionContext) {
+        intercom.showNewMessage(transactionContext);
+      } else {
+        intercom.show();
+      }
+    }
+  };
+
+  return (
+    <View className="items-center mt-6">
+      <Pressable
+        onPress={handleSupportPress}
+        className="flex-row items-center gap-2 web:hover:opacity-80 active:opacity-70"
+      >
+        <SupportIcon width={18} height={18} />
+        <Text className="text-white/70 text-sm">
+          Got question? <Text className="underline">Click here</Text> to talk with support
+        </Text>
+      </Pressable>
+    </View>
+  );
+};
+
 type CardTransactionDetailProps = {
   transaction: CardTransaction;
 };
@@ -99,6 +134,8 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
   const initials = getInitials(merchantName);
   const avatarColor = getAvatarColor(merchantName);
+
+  const transactionContext = `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount)}\nDate: ${format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}\nTransaction ID: card-${transaction.id}\n\nMy question: `;
 
   const rows = [
     {
@@ -151,7 +188,7 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
 
   return (
     <PageLayout desktopOnly>
-      <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+      <View className="flex-1 gap-10 px-4 py-8 md:py-12 pb-32 w-full max-w-lg mx-auto">
         <Back title={merchantName} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
@@ -188,6 +225,8 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
               ),
           )}
         </View>
+
+        <SupportSection transactionContext={transactionContext} />
       </View>
     </PageLayout>
   );
@@ -388,9 +427,11 @@ export default function ActivityDetail() {
     return index === lastEnabledIndex;
   };
 
+  const transactionContext = `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${statusSign}${formatNumber(Number(finalActivity.amount))} ${finalActivity.symbol?.toLowerCase() === 'sousd' ? 'soUSD' : finalActivity.symbol}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}\nTransaction ID: ${clientTxId}\n\nMy question: `;
+
   return (
     <PageLayout desktopOnly isLoading={isAnyLoading}>
-      <View className="flex-1 gap-10 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+      <View className="flex-1 gap-10 px-4 py-8 md:py-12 pb-32 w-full max-w-lg mx-auto">
         <Back title={finalActivity.title} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
@@ -432,6 +473,8 @@ export default function ActivityDetail() {
             <Text>Cancel Withdraw</Text>
           </Button>
         )}
+
+        <SupportSection transactionContext={transactionContext} />
       </View>
     </PageLayout>
   );
