@@ -27,7 +27,6 @@ type TransactionClassNames = {
 
 interface TransactionProps {
   title: string;
-  shortTitle?: string;
   amount: string;
   status: TransactionStatus;
   hash?: string;
@@ -43,7 +42,6 @@ interface TransactionProps {
 
 const Transaction = ({
   title,
-  shortTitle,
   amount,
   status,
   classNames,
@@ -70,10 +68,10 @@ const Transaction = ({
   // Only show badge for failed status
   const statusBadge = isFailed
     ? {
-      text: 'Failed',
-      bgColor: 'bg-red-500/20',
-      textColor: 'text-red-400',
-    }
+        text: 'Failed',
+        bgColor: 'bg-red-500/20',
+        textColor: 'text-red-400',
+      }
     : null;
 
   // Check if this is a direct deposit with no amount yet
@@ -244,7 +242,9 @@ const Transaction = ({
       <View className="flex-1 flex-row items-center justify-center">
         {formattedTimestamp && isScreenMedium && (
           <View className="w-48">
-            <Text className="text-sm text-muted-foreground font-medium text-start">{formattedTimestamp}</Text>
+            <Text className="text-sm text-muted-foreground font-medium text-start">
+              {formattedTimestamp}
+            </Text>
           </View>
         )}
       </View>

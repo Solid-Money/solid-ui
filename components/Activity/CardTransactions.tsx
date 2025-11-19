@@ -4,15 +4,17 @@ import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import Diamond from '@/assets/images/diamond';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
+import getTokenIcon from '@/lib/getTokenIcon';
 import { ActivityGroup, ActivityTab, CardTransaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   formatCardAmount,
-  getAvatarColor,
   getCashbackAmount,
+  getColorForTransaction,
   getInitials,
 } from '@/lib/utils/cardHelpers';
 import { groupByTime, TimeGroup } from '@/lib/utils/timeGrouping';
@@ -79,7 +81,8 @@ export default function CardTransactions() {
     const transaction = item.data;
     const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
     const initials = getInitials(merchantName);
-    const avatarColor = getAvatarColor(merchantName);
+    const isPurchase = transaction.category === 'purchase';
+    const color = getColorForTransaction(merchantName);
     const isFirst = isFirstInGroup(groupedTransactions, index);
     const isLast = isLastInGroup(groupedTransactions, index);
 
@@ -96,9 +99,24 @@ export default function CardTransactions() {
       >
         <View className="flex-row items-center gap-3 flex-1 mr-4">
           {/* Avatar with initials */}
-          <View className={cn('w-14 h-14 rounded-full items-center justify-center', avatarColor)}>
-            <Text className="text-white text-lg font-semibold">{initials}</Text>
-          </View>
+          {isPurchase ? (
+            <View
+              className="w-14 h-14 rounded-full items-center justify-center"
+              style={{ backgroundColor: color.bg }}
+            >
+              <Text className="text-lg font-semibold" style={{ color: color.text }}>
+                {initials}
+              </Text>
+            </View>
+          ) : (
+            <RenderTokenIcon
+              tokenIcon={getTokenIcon({
+                tokenSymbol: transaction.currency?.toUpperCase(),
+                size: 56,
+              })}
+              size={56}
+            />
+          )}
 
           {/* Merchant name and cashback */}
           <View className="flex-1">

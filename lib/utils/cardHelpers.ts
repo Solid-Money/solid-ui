@@ -26,6 +26,29 @@ export const getAvatarColor = (name: string): string => {
 };
 
 /**
+ * Get a consistent color palette for transaction merchant icons
+ * Returns background and text colors based on merchant name hash
+ */
+export const getColorForTransaction = (
+  merchantName: string,
+): { bg: string; text: string } => {
+  const colors = [
+    { bg: 'rgba(127,230,242,0.25)', text: '#7fe6f2' }, // cyan
+    { bg: 'rgba(242,127,129,0.25)', text: '#f27f81' }, // red
+    { bg: 'rgba(165,127,242,0.25)', text: '#a57ff2' }, // purple
+    { bg: 'rgba(242,194,127,0.25)', text: '#f2c27f' }, // orange
+    { bg: 'rgba(127,242,158,0.25)', text: '#7ff29e' }, // green
+    { bg: 'rgba(242,127,215,0.25)', text: '#f27fd7' }, // pink
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < merchantName.length; i++) {
+    hash = merchantName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+/**
  * Format card transaction amount with proper sign and currency symbol
  */
 export const formatCardAmount = (amount: string): string => {
