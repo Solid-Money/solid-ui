@@ -15,7 +15,11 @@ import { cardTransactionsQueryKey, useCardTransactions } from '@/hooks/useCardTr
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { formatCardAmountWithCurrency } from '@/lib/utils/cardHelpers';
+import {
+  formatCardAmountWithCurrency,
+  getColorForTransaction,
+  getInitials,
+} from '@/lib/utils/cardHelpers';
 
 export default function CardTransactions() {
   const router = useRouter();
@@ -57,10 +61,9 @@ export default function CardTransactions() {
   };
 
   const renderTransaction = ({ item, index }: { item: CardTransaction; index: number }) => {
-    const tokenIcon = getTokenIcon({
-      tokenSymbol: item.currency?.toUpperCase(),
-      size: 34,
-    });
+    const isPurchase = item.category === 'purchase';
+    const merchantName = item.merchant_name || item.description;
+    const color = getColorForTransaction(merchantName);
 
     const transactionUrl = item.crypto_transaction_details?.tx_hash
       ? `https://etherscan.io/tx/${item.crypto_transaction_details.tx_hash}`
@@ -75,10 +78,27 @@ export default function CardTransactions() {
         )}
       >
         <View className="flex-row items-center gap-2 md:gap-4 flex-1 mr-2">
-          <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
+          {isPurchase ? (
+            <View
+              className="rounded-full overflow-hidden items-center justify-center"
+              style={{ width: 34, height: 34, backgroundColor: color.bg }}
+            >
+              <Text className="text-base font-semibold" style={{ color: color.text }}>
+                {getInitials(merchantName)}
+              </Text>
+            </View>
+          ) : (
+            <RenderTokenIcon
+              tokenIcon={getTokenIcon({
+                tokenSymbol: item.currency?.toUpperCase(),
+                size: 34,
+              })}
+              size={34}
+            />
+          )}
           <View className="flex-1">
             <Text className="text-lg font-medium" numberOfLines={1}>
-              {item.merchant_name || item.description}
+              {merchantName}
             </Text>
             <Text className="text-sm text-muted-foreground" numberOfLines={1}>
               {formatDate(item.posted_at)}

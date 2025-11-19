@@ -22,7 +22,11 @@ import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardHolderName, CardStatus, CardTransaction } from '@/lib/types';
-import { formatCardAmountWithCurrency } from '@/lib/utils/cardHelpers';
+import {
+  formatCardAmountWithCurrency,
+  getColorForTransaction,
+  getInitials,
+} from '@/lib/utils/cardHelpers';
 import { cn } from '@/lib/utils/utils';
 
 interface CardHeaderProps {
@@ -617,37 +621,6 @@ function RecentTransactions({
     // Remove bottom border for last item only
     if (isLast) return 'border-b-0';
     return '';
-  };
-
-  const getColorForTransaction = (merchantName: string) => {
-    // Generate consistent color based on merchant name
-    const colors = [
-      { bg: 'rgba(127,230,242,0.25)', text: '#7fe6f2' }, // cyan
-      { bg: 'rgba(242,127,129,0.25)', text: '#f27f81' }, // red
-      { bg: 'rgba(165,127,242,0.25)', text: '#a57ff2' }, // purple
-      { bg: 'rgba(242,194,127,0.25)', text: '#f2c27f' }, // orange
-      { bg: 'rgba(127,242,158,0.25)', text: '#7ff29e' }, // green
-      { bg: 'rgba(242,127,215,0.25)', text: '#f27fd7' }, // pink
-    ];
-
-    // Simple hash function to get consistent color for same merchant
-    let hash = 0;
-    for (let i = 0; i < merchantName.length; i++) {
-      hash = merchantName.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
-  };
-
-  const getInitials = (name: string) => {
-    const words = name.trim().split(/\s+/);
-    if (words.length === 1) {
-      return words[0].substring(0, 2).toUpperCase();
-    }
-    return words
-      .slice(0, 2)
-      .map(word => word[0])
-      .join('')
-      .toUpperCase();
   };
 
   const renderTransaction = (item: CardTransaction, isLast: boolean) => {

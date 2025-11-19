@@ -19,6 +19,7 @@ import { path } from '@/constants/path';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
+import { useCashbacks } from '@/hooks/useCashbacks';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useIntercom } from '@/lib/intercom';
@@ -134,6 +135,7 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
   const initials = getInitials(merchantName);
   const avatarColor = getAvatarColor(merchantName);
+  const { data: cashbacks } = useCashbacks();
 
   const transactionContext = `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount)}\nDate: ${format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}\nTransaction ID: card-${transaction.id}\n\nMy question: `;
 
@@ -155,7 +157,9 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
           <Label>Cashback</Label>
         </View>
       ),
-      value: <Value className="text-[#34C759]">{getCashbackAmount()}</Value>,
+      value: (
+        <Value className="text-[#34C759]">{getCashbackAmount(transaction.id, cashbacks)}</Value>
+      ),
       enabled: true,
     },
     {
