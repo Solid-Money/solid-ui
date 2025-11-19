@@ -35,6 +35,7 @@ import {
   CardTransaction,
   CardTransactionsResponse,
   CardWaitlistResponse,
+  Cashback,
   ChartPayload,
   CoinHistoricalChart,
   CountryFromIp,
@@ -1134,6 +1135,22 @@ export const getCardTransactions = async (
   }
 
   const response = await fetch(url.toString(), {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getCashbacks = async (): Promise<Cashback[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/cashback`, {
     headers: {
       ...getPlatformHeaders(),
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),

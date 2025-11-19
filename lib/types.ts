@@ -565,6 +565,22 @@ export enum ActivityTab {
   CARD = 'card',
 }
 
+export enum CashbackStatus {
+  Pending = 'Pending',
+  Paid = 'Paid',
+  Failed = 'Failed',
+  PermanentlyFailed = 'PermanentlyFailed',
+}
+
+export interface Cashback {
+  _id: string;
+  transactionId: string;
+  status: CashbackStatus;
+  fuseAmount?: string;
+  fuseUsdPrice?: string;
+  createdAt: string;
+}
+
 export interface SourceDepositInstructions {
   payment_rail: string;
   currency: string;

@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import Diamond from '@/assets/images/diamond';
 import { Text } from '@/components/ui/text';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
+import { useCashbacks } from '@/hooks/useCashbacks';
 import { ActivityGroup, ActivityTab, CardTransaction } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
@@ -26,6 +27,7 @@ type RenderItemProps = {
 export default function CardTransactions() {
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useCardTransactions();
+  const { data: cashbacks } = useCashbacks();
 
   const transactions = useMemo(() => {
     return data?.pages.flatMap(page => page.data) ?? [];
@@ -115,7 +117,9 @@ export default function CardTransactions() {
           <Text className="text-xl font-semibold text-white">
             {formatCardAmount(transaction.amount)}
           </Text>
-          <Text className="text-sm font-medium text-[#34C759] mt-0.5">{getCashbackAmount()}</Text>
+          <Text className="text-sm font-medium text-[#34C759] mt-0.5">
+            {getCashbackAmount(transaction.id, cashbacks)}
+          </Text>
         </View>
       </Pressable>
     );
