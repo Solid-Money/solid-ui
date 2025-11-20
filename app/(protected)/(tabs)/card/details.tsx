@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Platform, Pressable, View } from 'react-native';
@@ -484,13 +484,34 @@ function CardActions({
 
 function DepositBonusBanner() {
   return (
-    <View className="border-2 border-[#FFD151]/40 rounded-2xl p-4 mb-4 flex-row items-center">
-      <View className="mr-3 w-6 h-6 rounded-full bg-[#FFD151]/20 items-center justify-center">
-        <Text className="text-[#FFD151] text-base font-extrabold">!</Text>
+    <View className="border-2 border-[#FFD151]/40 rounded-2xl p-3 md:p-5 mb-4 flex-row items-center gap-3">
+      <Image
+        source={require('@/assets/images/dollar-yellow.png')}
+        style={{ width: 70, height: 70 }}
+        contentFit="contain"
+      />
+      <View className="flex-1 items-start gap-1">
+        <View className="bg-[#332A10] rounded-full px-3 py-1">
+          <Text className="text-[#FFD151] font-bold">Limited time offer</Text>
+        </View>
+        <View className="inline max-w-[22rem]">
+          <Text className="text-[#FFD151] font-bold">
+            Deposit a minimum of $100 to receive your $50 sign up bonus!
+          </Text>{' '}
+          <Text className="text-[#FFD151] font-bold hover:opacity-70">
+            <Link
+              target="_blank"
+              href={
+                'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+              }
+              className="underline"
+            >
+              Learn more
+            </Link>{' '}
+            {'>'}
+          </Text>
+        </View>
       </View>
-      <Text className="text-[#FFD151] text-base font-bold flex-1">
-        Deposit $100 to receive your $50 sign up bonus!
-      </Text>
     </View>
   );
 }
