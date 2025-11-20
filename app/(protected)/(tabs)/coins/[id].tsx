@@ -147,7 +147,7 @@ export default function Coin() {
           {token?.contractTickerSymbol && (
             <View className="gap-4">
               <Text className="text-muted-foreground font-semibold">Recent activity</Text>
-              <ActivityTransactions symbol={token.contractTickerSymbol} />
+              <ActivityTransactions symbol={token.contractTickerSymbol} showTimestamp={false} />
             </View>
           )}
         </View>
