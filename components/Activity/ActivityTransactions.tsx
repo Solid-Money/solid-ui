@@ -25,6 +25,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 type ActivityTransactionsProps = {
   tab?: ActivityTab;
   symbol?: string;
+  showTimestamp?: boolean;
 };
 
 type RenderItemProps = {
@@ -35,6 +36,7 @@ type RenderItemProps = {
 export default function ActivityTransactions({
   tab = ActivityTab.WALLET,
   symbol,
+  showTimestamp = true,
 }: ActivityTransactionsProps) {
   const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore();
   const { activityEvents, activities, getKey, refetchAll } = useActivity();
@@ -143,6 +145,7 @@ export default function ActivityTransactions({
         {...transaction}
         title={displayTitle}
         shortTitle={displayShortTitle}
+        showTimestamp={showTimestamp}
         onPress={() => {
           const clientTxId = transaction.clientTxId;
           const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
