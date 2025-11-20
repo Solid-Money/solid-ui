@@ -38,6 +38,7 @@ interface TransactionProps {
   clientTxId?: string;
   metadata?: Record<string, any>;
   timestamp?: string;
+  showTimestamp?: boolean;
 }
 
 const Transaction = ({
@@ -52,6 +53,7 @@ const Transaction = ({
   clientTxId,
   metadata,
   timestamp,
+  showTimestamp = true,
 }: TransactionProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -240,7 +242,7 @@ const Transaction = ({
       </View>
 
       <View className="flex-1 flex-row items-center justify-center">
-        {formattedTimestamp && isScreenMedium && (
+        {formattedTimestamp && isScreenMedium && showTimestamp && (
           <View className="w-48">
             <Text className="text-sm text-muted-foreground font-medium text-start">
               {formattedTimestamp}
