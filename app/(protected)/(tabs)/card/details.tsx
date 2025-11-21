@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Copy } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Platform, Pressable, View } from 'react-native';
+import { Alert, Animated, Clipboard, Platform, Pressable, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
@@ -354,10 +355,28 @@ function CardDetailsOverlay({
     return `${month}/${year}`;
   };
 
+  const handleCopyCardNumber = useCallback(async () => {
+    if (!cardDetails) return;
+    try {
+      await Clipboard.setString(formatCardNumber(cardDetails.card_number));
+      Toast.show({
+        type: 'success',
+        text1: 'Card number copied',
+        props: { badgeText: '' },
+        visibilityTime: 4000,
+      });
+    } catch (_error) {
+      Alert.alert('Error', 'Failed to copy card number');
+    }
+  }, [cardDetails]);
+
   // Don't render if still loading, error, or no data
   if (isLoading || error || !cardDetails) {
     return null;
   }
+
+  // At this point cardDetails is guaranteed to be non-null
+  const safeCardDetails = cardDetails;
 
   const displayName = cardholderName
     ? `${cardholderName.first_name} ${cardholderName.last_name}`
@@ -371,9 +390,14 @@ function CardDetailsOverlay({
         className="absolute inset-0 rounded-2xl p-6 mt-24 justify-center"
       >
         <View className="mb-5">
-          <Text className="text-3xl font-medium" style={{ color: '#2E6A25' }}>
-            {formatCardNumber(cardDetails.card_number)}
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-3xl font-medium" style={{ color: '#2E6A25' }}>
+              {formatCardNumber(safeCardDetails.card_number)}
+            </Text>
+            <Pressable onPress={handleCopyCardNumber} className="p-2 web:hover:opacity-70">
+              <Copy size={20} color="#2E6A25" />
+            </Pressable>
+          </View>
         </View>
 
         <View className="flex-row">
@@ -406,9 +430,14 @@ function CardDetailsOverlay({
   return (
     <View className="absolute inset-0 rounded-2xl p-6 mt-24 justify-center">
       <View className="mb-5">
-        <Text className="text-3xl font-medium" style={{ color: '#2E6A25' }}>
-          {formatCardNumber(cardDetails.card_number)}
-        </Text>
+        <View className="flex-row items-center gap-2">
+          <Text className="text-lg md:text-3xl font-medium" style={{ color: '#2E6A25' }}>
+            {formatCardNumber(cardDetails.card_number)}
+          </Text>
+          <Pressable onPress={handleCopyCardNumber} className="p-2 web:hover:opacity-70">
+            <Copy size={20} color="#2E6A25" />
+          </Pressable>
+        </View>
       </View>
 
       <View className="flex-row">
