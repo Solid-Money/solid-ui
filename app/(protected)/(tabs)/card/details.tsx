@@ -431,7 +431,7 @@ function CardDetailsOverlay({
     <View className="absolute inset-0 rounded-2xl p-6 mt-24 justify-center">
       <View className="mb-5">
         <View className="flex-row items-center gap-2">
-          <Text className="text-3xl font-medium" style={{ color: '#2E6A25' }}>
+          <Text className="text-lg md:text-3xl font-medium" style={{ color: '#2E6A25' }}>
             {formatCardNumber(cardDetails.card_number)}
           </Text>
           <Pressable onPress={handleCopyCardNumber} className="p-2 web:hover:opacity-70">
