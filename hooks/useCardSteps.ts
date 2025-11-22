@@ -499,5 +499,6 @@ export function useCardSteps(
     toggleStep,
     canToggleStep,
     activatingCard,
+    uiKycStatus,
   };
 }
