@@ -27,7 +27,15 @@ interface Step {
   kycStatus?: KycStatus;
 }
 
-function getKycDescription(kycStatus: KycStatus, rejectionReasonsText?: string) {
+function getKycDescription(
+  kycStatus: KycStatus,
+  rejectionReasonsText?: string,
+  opts?: { allowFreshKyc?: boolean },
+) {
+  if (opts?.allowFreshKyc) {
+    return 'Card activation was blocked. Restart verification to proceed.';
+  }
+
   if (kycStatus === KycStatus.REJECTED) {
     return (
       rejectionReasonsText ||
@@ -43,7 +51,11 @@ function getKycDescription(kycStatus: KycStatus, rejectionReasonsText?: string) 
   return 'Identity verification required for us to issue your card';
 }
 
-function getKycButtonText(kycStatus: KycStatus): string | undefined {
+function getKycButtonText(
+  kycStatus: KycStatus,
+  opts?: { allowFreshKyc?: boolean },
+): string | undefined {
+  if (opts?.allowFreshKyc) return 'Restart verification';
   if (kycStatus === KycStatus.UNDER_REVIEW) return 'Under Review';
   if (kycStatus === KycStatus.REJECTED) return 'Retry KYC';
   if (kycStatus === KycStatus.PAUSED) return 'Retry KYC';
@@ -164,6 +176,8 @@ export function useCardSteps(
   }, [kycStatus, kycLink]);
 
   const handleProceedToKyc = useCallback(async () => {
+    const allowFreshKyc = true;
+
     track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
       action: 'start',
       kycStatus: uiKycStatus,
@@ -200,70 +214,75 @@ export function useCardSteps(
       return;
     }
 
-    try {
-      // Fetch latest KYC status if we have a link id
-      if (kycLinkId) {
-        const latest = await withRefreshToken(() => getKycLinkFromBridge(kycLinkId));
-        const latestStatus = (latest?.kyc_status as KycStatus) || KycStatus.NOT_STARTED;
+    if (!true) {
+      try {
+        // Fetch latest KYC status if we have a link id
+        if (kycLinkId) {
+          const latest = await withRefreshToken(() => getKycLinkFromBridge(kycLinkId));
+          const latestStatus = (latest?.kyc_status as KycStatus) || KycStatus.NOT_STARTED;
 
-        if (latestStatus === KycStatus.UNDER_REVIEW) {
-          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-            action: 'blocked',
-            reason: 'under_review',
-            kycLinkId,
-          });
-          Toast.show({
-            type: 'info',
-            text1: 'KYC under review',
-            text2: 'Please wait while we complete the review.',
-            props: { badgeText: '' },
-          });
-          return;
-        }
+          if (latestStatus === KycStatus.UNDER_REVIEW) {
+            track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+              action: 'blocked',
+              reason: 'under_review',
+              kycLinkId,
+            });
 
-        if (latestStatus === KycStatus.APPROVED) {
-          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-            action: 'blocked',
-            reason: 'approved',
-            kycLinkId,
-          });
-          Toast.show({
-            type: 'success',
-            text1: 'KYC approved',
-            text2: 'You can proceed to order your card.',
-            props: { badgeText: '' },
-          });
-          return;
-        }
+            Toast.show({
+              type: 'info',
+              text1: 'KYC under review',
+              text2: 'Please wait while we complete the review.',
+              props: { badgeText: '' },
+            });
+            return;
+          }
 
-        if (latestStatus === KycStatus.OFFBOARDED) {
-          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-            action: 'blocked',
-            reason: 'offboarded',
-            kycLinkId,
-          });
-          Toast.show({
-            type: 'error',
-            text1: 'Account offboarded',
-            text2: 'Please contact support for assistance.',
-            props: { badgeText: '' },
-          });
-          return;
+          if (latestStatus === KycStatus.APPROVED) {
+            track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+              action: 'blocked',
+              reason: 'approved',
+              kycLinkId,
+            });
+
+            Toast.show({
+              type: 'success',
+              text1: 'KYC approved',
+              text2: 'You can proceed to order your card.',
+              props: { badgeText: '' },
+            });
+            return;
+          }
+
+          if (latestStatus === KycStatus.OFFBOARDED) {
+            track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+              action: 'blocked',
+              reason: 'offboarded',
+              kycLinkId,
+            });
+
+            Toast.show({
+              type: 'error',
+              text1: 'Account offboarded',
+              text2: 'Please contact support for assistance.',
+              props: { badgeText: '' },
+            });
+            return;
+          }
         }
+      } catch (_e) {
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'status_check_failed',
+          kycLinkId,
+        });
+        // If status check fails, we still allow starting KYC flow
       }
-    } catch (_e) {
-      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-        action: 'status_check_failed',
-        kycLinkId,
-      });
-      // If status check fails, we still allow starting KYC flow
     }
 
     const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
     const redirectUri = `${baseUrl}${path.CARD_ACTIVATE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
 
     // If we already have an existing KYC link, start the flow directly using it
-    if (kycLink?.kyc_link) {
+    if (kycLink?.kyc_link && !true) {
       try {
         const urlObj = new URL(kycLink.kyc_link);
         // Ensure redirect-uri is present for post-completion navigation (mainly for web)
@@ -286,11 +305,19 @@ export function useCardSteps(
       kycMode: KycMode.CARD,
       endorsement: Endorsements.CARDS,
       redirectUri,
-    }).toString();
+    });
+
+    if (true) {
+      params.set('reset', 'true');
+      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+        action: 'redirect',
+        method: 'collect_user_info_fresh',
+      });
+    }
 
     track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
       action: 'redirect',
-      method: 'collect_user_info',
+      method: true ? 'collect_user_info_fresh' : 'collect_user_info',
     });
     router.push(`/user-kyc-info?${params}`);
   }, [
@@ -381,8 +408,13 @@ export function useCardSteps(
   }, [router]);
 
   const steps: Step[] = useMemo(() => {
-    const description = getKycDescription(uiKycStatus, rejectionReasonsText);
-    const buttonText = getKycButtonText(uiKycStatus);
+    const allowFreshKyc = true;
+
+    const description = getKycDescription(uiKycStatus, rejectionReasonsText, { allowFreshKyc });
+    const buttonText = getKycButtonText(uiKycStatus, { allowFreshKyc });
+    const kycStepCompleted = allowFreshKyc
+      ? false
+      : uiKycStatus === KycStatus.APPROVED || cardActivated;
 
     const orderCardDesc = activationBlocked
       ? activationBlockedReason ||
@@ -394,8 +426,8 @@ export function useCardSteps(
         id: 1,
         title: 'Complete KYC',
         description: description,
-        completed: uiKycStatus === KycStatus.APPROVED || cardActivated,
-        status: uiKycStatus === KycStatus.APPROVED || cardActivated ? 'completed' : 'pending',
+        completed: kycStepCompleted,
+        status: kycStepCompleted ? 'completed' : 'pending',
         kycStatus: uiKycStatus,
         buttonText: buttonText,
         onPress:
