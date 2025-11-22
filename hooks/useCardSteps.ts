@@ -376,6 +376,10 @@ export function useCardSteps(
     return 'Please try again';
   }
 
+  const pushCardDetails = useCallback(() => {
+    router.push(path.CARD_DETAILS);
+  }, [router]);
+
   const steps: Step[] = useMemo(() => {
     const description = getKycDescription(uiKycStatus, rejectionReasonsText);
     const buttonText = getKycButtonText(uiKycStatus);
@@ -415,7 +419,7 @@ export function useCardSteps(
         buttonText: 'To the card',
         completed: false,
         status: cardActivated ? 'completed' : 'pending',
-        onPress: () => router.push(path.CARD_DETAILS),
+        onPress: pushCardDetails,
       },
     ];
   }, [
@@ -423,23 +427,26 @@ export function useCardSteps(
     cardActivated,
     handleProceedToKyc,
     handleActivateCard,
-    router,
+    pushCardDetails,
     rejectionReasonsText,
     activationBlocked,
     activationBlockedReason,
   ]);
 
-  // Set default active step on mount
+  // Set default active step on mount (avoid re-setting on every render)
   useEffect(() => {
     const firstIncompleteStep = steps.find((step, index) => {
       const allPrecedingCompleted = steps.slice(0, index).every(s => s.completed);
       return !step.completed && allPrecedingCompleted;
     });
 
-    if (firstIncompleteStep) {
+    if (!firstIncompleteStep) return;
+
+    // Only set when the target changes to prevent update loops
+    if (activeStepId !== firstIncompleteStep.id) {
       setActiveStepId(firstIncompleteStep.id);
     }
-  }, [steps]);
+  }, [steps, activeStepId]);
 
   // Check if a step's button should be enabled
   const isStepButtonEnabled = (_stepIndex: number) => {

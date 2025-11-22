@@ -81,6 +81,7 @@ const useUser = (): UseUserReturn => {
     setSignupInfo,
     setLoginInfo,
     setSignupUser,
+    markSafeAddressSynced,
   } = useUserStore();
 
   const { clearKycLinkId } = useKycStore();
@@ -98,11 +99,11 @@ const useUser = (): UseUserReturn => {
         timeout: 60000,
         allowCredentials: user?.credentialId
           ? [
-            {
-              id: base64urlToUint8Array(user.credentialId) as BufferSource,
-              type: 'public-key' as const,
-            },
-          ]
+              {
+                id: base64urlToUint8Array(user.credentialId) as BufferSource,
+                type: 'public-key' as const,
+              },
+            ]
           : undefined,
       });
     } else {
@@ -110,11 +111,11 @@ const useUser = (): UseUserReturn => {
         rpId: getRuntimeRpId(),
         allowCredentials: user?.credentialId
           ? [
-            {
-              id: user.credentialId,
-              type: 'public-key' as const,
-            },
-          ]
+              {
+                id: user.credentialId,
+                type: 'public-key' as const,
+              },
+            ]
           : undefined,
       });
     }
@@ -414,15 +415,26 @@ const useUser = (): UseUserReturn => {
         // Check for WebAuthn-specific errors first
         if (error?.name === 'NotAllowedError' || error?.message?.includes('not allowed')) {
           message = 'Passkey creation was cancelled or blocked by your browser. Please try again.';
-        } else if (error?.name === 'TimeoutError' || error?.message?.includes('timeout') || error?.message?.includes('timed out')) {
-          message = 'Passkey creation timed out. Please try again and complete the authentication prompt.';
+        } else if (
+          error?.name === 'TimeoutError' ||
+          error?.message?.includes('timeout') ||
+          error?.message?.includes('timed out')
+        ) {
+          message =
+            'Passkey creation timed out. Please try again and complete the authentication prompt.';
         } else if (error?.name === 'InvalidStateError') {
           message = 'This passkey already exists. Please try logging in instead.';
-        } else if (error?.name === 'NotSupportedError' || error?.message?.includes('not supported')) {
+        } else if (
+          error?.name === 'NotSupportedError' ||
+          error?.message?.includes('not supported')
+        ) {
           message = 'Passkeys are not supported in your current browser or context.';
         } else if (error?.message?.includes('embedded context')) {
           message = 'Passkey creation is not supported in embedded or iframe context.';
-        } else if (error?.status === 409 || error.message?.includes(ERRORS.USERNAME_ALREADY_EXISTS)) {
+        } else if (
+          error?.status === 409 ||
+          error.message?.includes(ERRORS.USERNAME_ALREADY_EXISTS)
+        ) {
           message = ERRORS.USERNAME_ALREADY_EXISTS;
         } else if ((await error?.text?.())?.toLowerCase()?.includes('invite')) {
           message = ERRORS.INVALID_INVITE_CODE;
@@ -507,18 +519,32 @@ const useUser = (): UseUserReturn => {
 
       const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
 
-      if (!user.safeAddress || user.safeAddress == '') {
+      if (!user.safeAddress || user.safeAddress === '') {
+        console.warn('[useUser] updating safe address on login (missing on user)', {
+          userId: user._id,
+          safeAddress: smartAccountClient.account.address,
+        });
+
         const resp = await withRefreshToken(() =>
           updateSafeAddress(smartAccountClient.account.address),
         );
+
         if (!resp) {
           const error = new Error('Error updating safe address on login');
+
           Sentry.captureException(error, {
             tags: {
               type: 'safe_address_update_error',
             },
+            user: {
+              id: user._id,
+              address: smartAccountClient.account.address,
+            },
           });
         }
+
+        // Mark as synced to avoid repeated attempts elsewhere
+        markSafeAddressSynced(user._id);
       }
 
       // For backward compatibility: if user doesn't have credentialId stored, update it
@@ -555,19 +581,6 @@ const useUser = (): UseUserReturn => {
         login_method: 'passkey',
         platform: Platform.OS,
       });
-
-      try {
-        if (!user.safeAddress) {
-          await withRefreshToken(() => updateSafeAddress(smartAccountClient.account.address));
-        }
-      } catch (error) {
-        console.error('Error updating safe address:', error);
-        Sentry.captureException(new Error('Error updating safe address'), {
-          extra: {
-            error,
-          },
-        });
-      }
 
       // Fetch points after successful login
       try {
@@ -721,11 +734,11 @@ const useUser = (): UseUserReturn => {
             // Prepare allowCredentials if we have a credential ID for this user
             const allowCredentials = selectedUser?.credentialId
               ? [
-                {
-                  id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
-                  type: 'public-key' as const,
-                },
-              ]
+                  {
+                    id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
+                    type: 'public-key' as const,
+                  },
+                ]
               : undefined;
 
             const passkeyClient = turnkey.passkeyClient(

@@ -18,6 +18,7 @@ export const usePostSignupInit = (user: User | undefined) => {
   const queryClient = useQueryClient();
   const hasInitialized = useRef(false);
   const lastUserId = useRef<string | undefined>(undefined);
+  const { safeAddressSynced, markSafeAddressSynced } = useUserStore();
 
   useEffect(() => {
     // Only run when we have a new user (different userId)
@@ -32,12 +33,19 @@ export const usePostSignupInit = (user: User | undefined) => {
         hasInitialized.current = true;
 
         // 1. Update safe address if needed (non-blocking failure)
-        if (user.safeAddress) {
+        if (user.safeAddress && !safeAddressSynced[user.userId]) {
+          console.warn('[usePostSignupInit] updating safe address (lazy init)', {
+            userId: user.userId,
+            safeAddress: user.safeAddress,
+          });
+
           try {
             await withRefreshToken(() => updateSafeAddress(user.safeAddress));
+            markSafeAddressSynced(user.userId);
           } catch (error: any) {
             // 409 means safe address is already registered - this is expected, not an error
             if (error?.status === 409) {
+              markSafeAddressSynced(user.userId);
               return;
             }
             Sentry.captureException(error, {

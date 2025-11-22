@@ -118,8 +118,8 @@ export default function CountrySelection() {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          // Always show country selection screen
-          setShowCountrySelector(true);
+          // If the cached country is unavailable, show the unavailable view directly
+          setShowCountrySelector(cachedInfo.isAvailable);
           setLoading(false);
           return;
         }
@@ -146,8 +146,8 @@ export default function CountrySelection() {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          // Always show country selection screen
-          setShowCountrySelector(true);
+          // Skip selector when the detected country is unavailable so we show the "not ready" state
+          setShowCountrySelector(countryInfo.isAvailable);
         } else {
           // If country detection fails, show country selector instead of error
           setShowCountrySelector(true);
@@ -262,6 +262,7 @@ export default function CountrySelection() {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
           isAvailable: accessCheck.hasAccess,
+          source: 'manual' as const,
         };
 
         // Update store and clear failure flag
@@ -299,6 +300,7 @@ export default function CountrySelection() {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
           isAvailable: false,
+          source: 'manual' as const,
         };
 
         setCountryInfo(unavailableCountryInfo);
