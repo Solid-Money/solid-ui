@@ -11,6 +11,7 @@ interface UserState {
   signupInfo: StatusInfo;
   loginInfo: StatusInfo;
   signupUser: SignupUser;
+  safeAddressSynced: Record<string, boolean>;
   storeUser: (user: User) => void;
   updateUser: (user: User) => void;
   selectUser: (username: string) => void;
@@ -19,6 +20,7 @@ interface UserState {
   setSignupInfo: (info: StatusInfo) => void;
   setLoginInfo: (info: StatusInfo) => void;
   setSignupUser: (user: SignupUser) => void;
+  markSafeAddressSynced: (userId: string) => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -28,6 +30,7 @@ export const useUserStore = create<UserState>()(
       signupInfo: { status: Status.IDLE, message: '' },
       loginInfo: { status: Status.IDLE, message: '' },
       signupUser: { username: '' },
+      safeAddressSynced: {},
 
       storeUser: (user: User) => {
         set(
@@ -86,6 +89,13 @@ export const useUserStore = create<UserState>()(
       setLoginInfo: info => set({ loginInfo: info }),
 
       setSignupUser: user => set({ signupUser: user }),
+
+      markSafeAddressSynced: userId =>
+        set(
+          produce(state => {
+            state.safeAddressSynced[userId] = true;
+          }),
+        ),
     }),
     {
       name: USER.storageKey,
