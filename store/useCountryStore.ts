@@ -49,16 +49,17 @@ export const useCountryStore = create<CountryState>()(
       countryDetectionFailed: false,
 
       setCountryInfo: (info: CountryInfo) => {
-        set({ countryInfo: info });
+        set({ countryInfo: { ...info, source: info.source ?? 'manual' } });
       },
 
       setIpDetectedCountry: (ip: string, info: CountryInfo) => {
+        const ipInfo = { ...info, source: 'ip' as const };
         set(state => ({
-          countryInfo: info,
+          countryInfo: ipInfo,
           ipCountryCache: {
             ...state.ipCountryCache,
             [ip]: {
-              info,
+              info: ipInfo,
               fetchTime: Date.now(),
             },
           },

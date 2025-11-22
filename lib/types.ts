@@ -19,6 +19,7 @@ export interface CountryInfo {
   countryCode: string;
   countryName: string;
   isAvailable: boolean;
+  source?: 'ip' | 'manual';
 }
 
 export interface CardAccessResponse {

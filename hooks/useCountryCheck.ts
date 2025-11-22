@@ -23,27 +23,30 @@ export function useCountryCheck() {
     setCountryDetectionFailed,
   } = useCountryStore();
 
+  // Only consider IP-detected country info for activation gating
+  const ipDetectedCountryInfo = countryInfo?.source === 'ip' ? countryInfo : null;
+
   useEffect(() => {
     const checkCountry = async () => {
       try {
         track(TRACKING_EVENTS.CARD_COUNTRY_CHECK_STARTED);
 
         // First check if we have valid cached country info
-        if (countryInfo) {
+        if (ipDetectedCountryInfo) {
           track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
-            countryCode: countryInfo.countryCode,
-            countryName: countryInfo.countryName,
-            isAvailable: countryInfo.isAvailable,
+            countryCode: ipDetectedCountryInfo.countryCode,
+            countryName: ipDetectedCountryInfo.countryName,
+            isAvailable: ipDetectedCountryInfo.isAvailable,
             source: 'cached_country_info',
           });
 
           // If country is available, proceed with activation
-          if (countryInfo.isAvailable) {
+          if (ipDetectedCountryInfo.isAvailable) {
             setCheckingCountry(false);
             return;
           }
           // If country is not available, redirect to country selection
-          router.replace(path.CARD_ACTIVATE_COUNTRY_SELECTION);
+          router.replace(path.CARD_COUNTRY_SELECTION);
           return;
         }
 
@@ -60,7 +63,7 @@ export function useCountryCheck() {
             } else {
               track(TRACKING_EVENTS.CARD_COUNTRY_CHECK_IP_FAILED, { reason: 'no_ip_returned' });
               // If IP detection fails, redirect to country selection
-              router.replace(path.CARD_ACTIVATE_COUNTRY_SELECTION);
+              router.replace(path.CARD_COUNTRY_SELECTION);
               return;
             }
           } catch (error) {
@@ -68,7 +71,7 @@ export function useCountryCheck() {
               reason: 'fetch_error',
               error: (error as Error)?.message,
             });
-            router.replace(path.CARD_ACTIVATE_COUNTRY_SELECTION);
+            router.replace(path.CARD_COUNTRY_SELECTION);
             return;
           }
         } else {
@@ -91,7 +94,7 @@ export function useCountryCheck() {
             setCheckingCountry(false);
             return;
           } else {
-            router.replace(path.CARD_ACTIVATE_COUNTRY_SELECTION);
+            router.replace(path.CARD_COUNTRY_SELECTION);
             return;
           }
         }
@@ -102,7 +105,7 @@ export function useCountryCheck() {
             reason: 'previous_detection_failed',
             ip,
           });
-          router.replace(path.CARD_ACTIVATE_COUNTRY_SELECTION);
+          router.replace(path.CARD_COUNTRY_SELECTION);
           return;
         }
 
@@ -114,7 +117,7 @@ export function useCountryCheck() {
             reason: 'no_country_data_from_ip',
             ip,
           });
-          router.replace(path.CARD_ACTIVATE_COUNTRY_SELECTION);
+          router.replace(path.CARD_COUNTRY_SELECTION);
           return;
         }
 
@@ -135,7 +138,7 @@ export function useCountryCheck() {
             countryName,
             ip,
           });
-          router.replace(path.CARD_ACTIVATE_COUNTRY_SELECTION);
+          router.replace(path.CARD_COUNTRY_SELECTION);
           return;
         }
 
@@ -170,7 +173,7 @@ export function useCountryCheck() {
             countryName,
             ip,
           });
-          router.replace(path.CARD_ACTIVATE_COUNTRY_SELECTION);
+          router.replace(path.CARD_COUNTRY_SELECTION);
         }
       } catch (error) {
         console.error('Error checking country:', error);
@@ -179,14 +182,14 @@ export function useCountryCheck() {
           reason: 'unexpected_error',
           error: (error as Error)?.message,
         });
-        router.replace(path.CARD_ACTIVATE_COUNTRY_SELECTION);
+        router.replace(path.CARD_COUNTRY_SELECTION);
       }
     };
 
     checkCountry();
   }, [
     router,
-    countryInfo,
+    ipDetectedCountryInfo,
     getIpDetectedCountry,
     setIpDetectedCountry,
     getCachedIp,
