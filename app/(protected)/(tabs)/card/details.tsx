@@ -626,6 +626,8 @@ function RecentTransactions({
   hasNextPage,
   onLoadMore,
 }: RecentTransactionsProps) {
+  const router = useRouter();
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -667,12 +669,6 @@ function RecentTransactions({
     });
   };
 
-  const getTransactionClassName = (totalTransactions: number, isLast: boolean) => {
-    // Remove bottom border for last item only
-    if (isLast) return 'border-b-0';
-    return '';
-  };
-
   const renderTransaction = (item: CardTransaction, isLast: boolean) => {
     const isPurchase = item.category === 'purchase';
     const merchantName = item.merchant_name || item.description;
@@ -684,10 +680,13 @@ function RecentTransactions({
 
     return (
       <Pressable
+        onPress={() => router.push(`/activity/card-${item.id}?from=card`)}
         className={cn(
           'flex-row items-center justify-between p-4 md:px-6',
           'border-b border-border/40',
-          getTransactionClassName(transactions.length, isLast),
+          {
+            'border-b-0': isLast,
+          },
         )}
       >
         <View className="flex-row items-center gap-2 md:gap-4 flex-1 mr-2">
@@ -760,7 +759,7 @@ function RecentTransactions({
     <View className="mb-28 mt-4">
       <Text className="text-lg font-semibold text-[#A1A1A1] mb-4">Recent transactions</Text>
       {Object.entries(groupedTransactions).map(([date, txs], groupIndex) => (
-        <View key={groupIndex} className="mb-4">
+        <View key={groupIndex} className="mb-4 mt-5">
           <Text className="text-base font-semibold text-white/60 mb-2">{date}</Text>
           <View className="bg-[#1C1C1C] rounded-2xl overflow-hidden">
             {txs.map((tx, index) => renderTransaction(tx, index === txs.length - 1))}
