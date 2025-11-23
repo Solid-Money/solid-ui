@@ -76,9 +76,13 @@ const Value = ({ children, className }: ValueProps) => {
 
 const Back = ({ title, className }: BackProps) => {
   const router = useRouter();
-  const params = useLocalSearchParams<{ tab?: string }>();
+  const params = useLocalSearchParams<{ tab?: string; from?: string }>();
 
   const handleBackPress = () => {
+    if (params.from === 'card') {
+      router.replace(path.CARD_DETAILS);
+      return;
+    }
     const tabParam = params.tab ? `?tab=${params.tab}` : '';
     router.replace(`${path.ACTIVITY}${tabParam}` as any);
   };
@@ -210,6 +214,9 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
             <Text className="text-4xl font-bold text-white">
               {formatCardAmount(transaction.amount)}
             </Text>
+            {transaction.category === 'purchase' && (
+              <Text className="text-muted-foreground font-semibold mt-2">Savings account</Text>
+            )}
             <Text className="text-muted-foreground font-semibold mt-2">
               {format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}
             </Text>
@@ -304,7 +311,13 @@ export default function ActivityDetail() {
 
   if (!finalActivity && !isAnyLoading) return null;
 
-  if (!finalActivity) return null;
+  if (!finalActivity) {
+    return (
+      <PageLayout desktopOnly isLoading={true}>
+        <View />
+      </PageLayout>
+    );
+  }
 
   const isFailed = finalActivity.status === TransactionStatus.FAILED;
   const isCancelled = finalActivity.status === TransactionStatus.CANCELLED;
