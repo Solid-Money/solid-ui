@@ -680,7 +680,12 @@ function RecentTransactions({
 
     return (
       <Pressable
-        onPress={() => router.push(`/activity/card-${item.id}?from=card`)}
+        onPress={() =>
+          router.push({
+            pathname: '/activity/[clientTxId]',
+            params: { clientTxId: `card-${item.id}`, from: 'card' },
+          })
+        }
         className={cn(
           'flex-row items-center justify-between p-4 md:px-6',
           'border-b border-border/40',
