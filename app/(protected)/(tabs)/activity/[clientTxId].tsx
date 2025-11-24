@@ -32,8 +32,8 @@ import {
 import { cn, eclipseAddress, formatNumber, toTitleCase, withRefreshToken } from '@/lib/utils';
 import {
   formatCardAmount,
-  getAvatarColor,
   getCashbackAmount,
+  getColorForTransaction,
   getInitials,
 } from '@/lib/utils/cardHelpers';
 
@@ -138,7 +138,8 @@ type CardTransactionDetailProps = {
 const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
   const initials = getInitials(merchantName);
-  const avatarColor = getAvatarColor(merchantName);
+  const isPurchase = transaction.category === 'purchase';
+  const color = getColorForTransaction(merchantName);
   const { data: cashbacks } = useCashbacks();
 
   const transactionContext = `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount)}\nDate: ${format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}\nTransaction ID: card-${transaction.id}\n\nMy question: `;
@@ -200,24 +201,32 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
         <Back title={merchantName} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
-          {/* Avatar with initials */}
-          <View
-            className={cn(
-              'w-[120px] h-[120px] rounded-full items-center justify-center',
-              avatarColor,
-            )}
-          >
-            <Text className="text-white text-5xl font-semibold">{initials}</Text>
-          </View>
+          {/* Avatar with initials or token icon */}
+          {isPurchase ? (
+            <View
+              className="w-[75px] h-[75px] rounded-full items-center justify-center"
+              style={{ backgroundColor: color.bg }}
+            >
+              <Text className="text-5xl font-semibold" style={{ color: color.text }}>
+                {initials}
+              </Text>
+            </View>
+          ) : (
+            <RenderTokenIcon
+              tokenIcon={getTokenIcon({
+                tokenSymbol: transaction.currency?.toUpperCase(),
+                size: 75,
+              })}
+              size={75}
+            />
+          )}
 
           <View className="items-center">
             <Text className="text-4xl font-bold text-white">
               {formatCardAmount(transaction.amount)}
             </Text>
-            {transaction.category === 'purchase' && (
-              <Text className="text-muted-foreground font-semibold mt-2">Savings account</Text>
-            )}
-            <Text className="text-muted-foreground font-semibold mt-2">
+            <Text className="text-muted-foreground font-semibold mt-2">Savings account</Text>
+            <Text className="text-muted-foreground font-semibold">
               {format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}
             </Text>
           </View>
@@ -366,6 +375,13 @@ export default function ActivityDetail() {
       ? TransactionDirection.CANCELLED
       : (transactionDetails?.sign ?? '');
 
+  const getDescription = () => {
+    if (isDeposit && isPending) {
+      return 'Deposit in progress';
+    }
+    return transactionDetails?.category ?? 'Unknown';
+  };
+
   const tokenIcon = getTokenIcon({
     tokenSymbol: finalActivity.symbol,
     size: 75,
@@ -460,6 +476,7 @@ export default function ActivityDetail() {
               {formatNumber(Number(finalActivity.amount))}{' '}
               {finalActivity.symbol?.toLowerCase() === 'sousd' ? 'soUSD' : finalActivity.symbol}
             </Text>
+            <Text className="text-muted-foreground font-semibold mt-2">{getDescription()}</Text>
             <Text className="text-muted-foreground font-semibold">
               {format(Number(finalActivity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}
             </Text>

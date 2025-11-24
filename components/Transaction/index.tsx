@@ -174,7 +174,7 @@ const Transaction = ({
   const tokenIcon = getTokenIcon({
     logoUrl,
     tokenSymbol: symbol?.toLowerCase() === 'usdc.e' ? 'USDC' : symbol,
-    size: 34,
+    size: 44,
   });
 
   const getDescription = () => {
@@ -215,7 +215,7 @@ const Transaction = ({
       )}
     >
       <View className="flex-row items-center gap-2 md:gap-4">
-        <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
+        <RenderTokenIcon tokenIcon={tokenIcon} size={44} />
         <View>
           <Text className="text-lg font-medium" numberOfLines={1}>
             {title}
