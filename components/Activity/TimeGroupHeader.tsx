@@ -1,7 +1,7 @@
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
-import { View } from 'react-native';
 import { cn } from '@/lib/utils';
+import { View } from 'react-native';
 
 interface HeaderProps {
   title: string;

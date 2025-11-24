@@ -71,8 +71,8 @@ export default function CardTransactions() {
   const renderItem = ({ item, index }: RenderItemProps) => {
     if (item.type === ActivityGroup.HEADER) {
       return (
-        <View className="pt-6 pb-3">
-          <Text className="text-base text-[#8E8E93] font-medium">{item.data.title}</Text>
+        <View className="py-3">
+          <Text className="font-semibold text-muted-foreground">{item.data.title}</Text>
         </View>
       );
     }
@@ -101,7 +101,7 @@ export default function CardTransactions() {
           {/* Avatar with initials */}
           {isPurchase ? (
             <View
-              className="w-14 h-14 rounded-full items-center justify-center"
+              className="w-[44px] h-[44px] rounded-full items-center justify-center"
               style={{ backgroundColor: color.bg }}
             >
               <Text className="text-lg font-semibold" style={{ color: color.text }}>
@@ -112,9 +112,9 @@ export default function CardTransactions() {
             <RenderTokenIcon
               tokenIcon={getTokenIcon({
                 tokenSymbol: transaction.currency?.toUpperCase(),
-                size: 56,
+                size: 44,
               })}
-              size={56}
+              size={44}
             />
           )}
 

@@ -136,15 +136,10 @@ export default function ActivityTransactions({
 
     const transaction = item.data as ActivityEvent;
 
-    // Normalize title for BRIDGE_DEPOSIT based on symbol (backend may have old title)
-    let displayTitle = transaction.title;
-    let displayShortTitle = transaction.shortTitle;
-
     return (
       <Transaction
         {...transaction}
-        title={displayTitle}
-        shortTitle={displayShortTitle}
+        title={transaction.title}
         showTimestamp={showTimestamp}
         onPress={() => {
           const clientTxId = transaction.clientTxId;
