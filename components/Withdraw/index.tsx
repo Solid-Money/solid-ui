@@ -184,6 +184,13 @@ const Withdraw = () => {
         </Text>
       </View>
 
+      <View className="flex-row gap-2">
+        <Info size={20} color="gray" />
+        <Text className="text-sm text-muted-foreground">
+          Withdrawals sometimes take up to 24 hours but usually faster
+        </Text>
+      </View>
+
       <Button
         variant="brand"
         className="rounded-2xl h-12 mt-32"
