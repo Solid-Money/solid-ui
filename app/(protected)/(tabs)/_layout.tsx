@@ -45,6 +45,9 @@ export default function TabLayout() {
           borderTopWidth: 1,
           backgroundColor: 'rgba(0, 0, 0, 0.9)',
           borderTopColor: 'rgba(61, 61, 61, 0.8)',
+          borderColor: 'rgba(61, 61, 61, 0.8)',
+          elevation: 0,
+          shadowOpacity: 0,
           position: 'absolute',
         },
       }}

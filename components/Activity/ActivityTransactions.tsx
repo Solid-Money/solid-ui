@@ -118,6 +118,47 @@ export default function ActivityTransactions({
     return cn(classNames);
   };
 
+  const getTransactionPosition = (currentIndex: number) => {
+    let currentGroupStart = -1;
+    let currentGroupEnd = -1;
+
+    for (let i = currentIndex; i >= 0; i--) {
+      if (filteredTransactions[i].type === ActivityGroup.HEADER) {
+        currentGroupStart = i + 1;
+        break;
+      }
+    }
+
+    for (let i = currentIndex; i < filteredTransactions.length; i++) {
+      if (filteredTransactions[i].type === ActivityGroup.HEADER && i > currentIndex) {
+        currentGroupEnd = i - 1;
+        break;
+      }
+    }
+
+    if (currentGroupEnd === -1) currentGroupEnd = filteredTransactions.length - 1;
+
+    const visibleIndices = [];
+    for (let i = currentGroupStart; i <= currentGroupEnd; i++) {
+      if (filteredTransactions[i].type === ActivityGroup.TRANSACTION) {
+        const transaction = filteredTransactions[i].data as ActivityEvent;
+        const isPending = transaction.status === TransactionStatus.PENDING;
+        const isCancelled = transaction.status === TransactionStatus.CANCELLED;
+        const isStuck = isTransactionStuck(transaction.timestamp);
+
+        if (showStuckTransactions || !((isPending && isStuck) || isCancelled)) {
+          visibleIndices.push(i);
+        }
+      }
+    }
+
+    const position = visibleIndices.indexOf(currentIndex);
+    return {
+      isFirst: position === 0,
+      isLast: position === visibleIndices.length - 1,
+    };
+  };
+
   const renderItem = ({ item, index }: RenderItemProps) => {
     if (item.type === ActivityGroup.HEADER) {
       const headerData = item.data as TimeGroupHeaderData;
@@ -135,12 +176,15 @@ export default function ActivityTransactions({
     }
 
     const transaction = item.data as ActivityEvent;
+    const { isFirst, isLast } = getTransactionPosition(index);
 
     return (
       <Transaction
         {...transaction}
         title={transaction.title}
         showTimestamp={showTimestamp}
+        isFirst={isFirst}
+        isLast={isLast}
         onPress={() => {
           const clientTxId = transaction.clientTxId;
           const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');

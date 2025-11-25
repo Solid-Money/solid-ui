@@ -2,8 +2,8 @@ import { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
 
 import CurrencyLogo from '@/components/CurrencyLogo';
-import { Button } from '@/components/ui/button';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { Currency } from '@cryptoalgebra/fuse-sdk';
@@ -67,7 +67,10 @@ const SwapTokenSelectorModal = ({
       contentClassName="md:gap-8 md:max-w-md"
       trigger={
         <Button
-          className={cn('bg-accent h-10 px-3 rounded-full text-white flex items-center', className)}
+          className={cn(
+            'bg-accent h-10 px-3 rounded-full text-white flex items-center active:bg-accent web:hover:bg-accent',
+            className,
+          )}
           disabled={disabled}
           accessibilityLabel={`Select token. Currently selected: ${buttonText}`}
           accessibilityHint="Opens token selection dialog"
