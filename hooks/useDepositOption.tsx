@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, PressableProps, View } from 'react-native';
+import { Platform, Pressable, PressableProps, View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
@@ -10,8 +10,8 @@ import BuyCrypto from '@/components/BuyCrypto';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import DepositBuyCryptoOptions from '@/components/DepositOption/DepositBuyCryptoOptions';
-import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress.web';
-import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks.web';
+import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress';
+import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
@@ -26,6 +26,7 @@ import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import useResponsiveModal from './useResponsiveModal';
 
@@ -33,12 +34,14 @@ export interface DepositOptionProps {
   buttonText?: string;
   trigger?: React.ReactNode;
   modal?: DepositModal;
+  fillContainer?: boolean;
 }
 
 const useDepositOption = ({
   buttonText = 'Add funds',
   trigger,
   modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  fillContainer = false,
 }: DepositOptionProps = {}) => {
   const { user } = useUser();
   const {
@@ -101,6 +104,9 @@ const useDepositOption = ({
     return (
       <Pressable
         {...props}
+        className={cn({
+          'flex-1': Platform.OS === 'web' || fillContainer,
+        })}
         onPress={e => {
           if (isScreenMedium) {
             props?.onPress?.(e);

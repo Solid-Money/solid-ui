@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Control,
   Controller,
@@ -7,7 +7,7 @@ import {
   UseFormSetValue,
   UseFormTrigger,
 } from 'react-hook-form';
-import { ActivityIndicator, Image, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Address, TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
@@ -47,6 +47,117 @@ type SourceSelectorProps = {
   from: 'wallet' | 'savings';
 };
 
+function SourceSelectorNative({
+  value,
+  onChange,
+  from,
+}: {
+  value: 'wallet' | 'savings';
+  onChange: (value: 'wallet' | 'savings') => void;
+  from: 'wallet' | 'savings';
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <View>
+      <Pressable
+        className="bg-accent rounded-2xl p-4 flex-row justify-between items-center"
+        onPress={() => setIsOpen(!isOpen)}
+      >
+        <View className="flex-row items-center gap-2">
+          {value === 'wallet' ? (
+            <WalletIcon color="#A1A1A1" size={24} />
+          ) : (
+            <Leaf color="#A1A1A1" size={24} />
+          )}
+          <Text className="text-lg font-semibold">{value === 'wallet' ? 'Wallet' : 'Savings'}</Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <Text className="text-sm text-muted-foreground">
+            {from === 'wallet' ? 'USDC.e' : 'soUSD'}
+          </Text>
+          <ChevronDown color="#A1A1A1" size={20} />
+        </View>
+      </Pressable>
+      {isOpen && (
+        <View className="bg-accent rounded-2xl mt-1 overflow-hidden">
+          <Pressable
+            className="flex-row items-center gap-2 px-4 py-3"
+            onPress={() => {
+              onChange('savings');
+              setIsOpen(false);
+            }}
+          >
+            <Leaf color="#A1A1A1" size={20} />
+            <Text className="text-lg">Savings</Text>
+          </Pressable>
+          <Pressable
+            className="flex-row items-center gap-2 px-4 py-3"
+            onPress={() => {
+              onChange('wallet');
+              setIsOpen(false);
+            }}
+          >
+            <WalletIcon color="#A1A1A1" size={20} />
+            <Text className="text-lg">Wallet</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function SourceSelectorWeb({
+  value,
+  onChange,
+  from,
+}: {
+  value: 'wallet' | 'savings';
+  onChange: (value: 'wallet' | 'savings') => void;
+  from: 'wallet' | 'savings';
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Pressable className="bg-accent rounded-2xl p-4 flex-row justify-between items-center">
+          <View className="flex-row items-center gap-2">
+            {value === 'wallet' ? (
+              <WalletIcon color="#A1A1A1" size={24} />
+            ) : (
+              <Leaf color="#A1A1A1" size={24} />
+            )}
+            <Text className="text-lg font-semibold">
+              {value === 'wallet' ? 'Wallet' : 'Savings'}
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-sm text-muted-foreground">
+              {from === 'wallet' ? 'USDC.e' : 'soUSD'}
+            </Text>
+            <ChevronDown color="#A1A1A1" size={20} />
+          </View>
+        </Pressable>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-full min-w-[380px] border-0 rounded-t-none rounded-b-2xl -mt-4">
+        <DropdownMenuItem
+          onPress={() => onChange('savings')}
+          className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+        >
+          <Leaf color="#A1A1A1" size={20} />
+          <Text className="text-lg">Savings</Text>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onPress={() => onChange('wallet')}
+          className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+        >
+          <WalletIcon color="#A1A1A1" size={20} />
+          <Text className="text-lg">Wallet</Text>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function SourceSelector({ control, from }: SourceSelectorProps) {
   return (
     <View className="gap-2">
@@ -54,46 +165,13 @@ function SourceSelector({ control, from }: SourceSelectorProps) {
       <Controller
         control={control}
         name="from"
-        render={({ field: { onChange, value } }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <View className="bg-accent rounded-2xl p-4 flex-row justify-between items-center">
-                <View className="flex-row items-center gap-2">
-                  {value === 'wallet' ? (
-                    <WalletIcon color="#A1A1A1" size={24} />
-                  ) : (
-                    <Leaf color="#A1A1A1" size={24} />
-                  )}
-                  <Text className="text-lg font-semibold">
-                    {value === 'wallet' ? 'Wallet' : 'Savings'}
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-sm text-muted-foreground">
-                    {from === 'wallet' ? 'USDC.e' : 'soUSD'}
-                  </Text>
-                  <ChevronDown color="#A1A1A1" size={20} />
-                </View>
-              </View>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-full min-w-[380px] border-0 rounded-t-none rounded-b-2xl -mt-4">
-              <DropdownMenuItem
-                onPress={() => onChange('savings')}
-                className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
-              >
-                <Leaf color="#A1A1A1" size={20} />
-                <Text className="text-lg">Savings</Text>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onPress={() => onChange('wallet')}
-                className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
-              >
-                <WalletIcon color="#A1A1A1" size={20} />
-                <Text className="text-lg">Wallet</Text>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        render={({ field: { onChange, value } }) =>
+          Platform.OS === 'web' ? (
+            <SourceSelectorWeb value={value} onChange={onChange} from={from} />
+          ) : (
+            <SourceSelectorNative value={value} onChange={onChange} from={from} />
+          )
+        }
       />
     </View>
   );
@@ -121,7 +199,7 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
               keyboardType="decimal-pad"
-              className="w-full text-2xl text-white font-semibold web:focus:outline-none"
+              className="web:w-full text-2xl text-white font-semibold web:focus:outline-none"
               value={value as any}
               placeholder="0.0"
               placeholderTextColor="#666"
@@ -130,7 +208,7 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
             />
           )}
         />
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-2 native:shrink-0">
           <Image
             source={
               from === 'wallet'

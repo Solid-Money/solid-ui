@@ -39,6 +39,8 @@ interface TransactionProps {
   metadata?: Record<string, any>;
   timestamp?: string;
   showTimestamp?: boolean;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 const Transaction = ({
@@ -54,6 +56,8 @@ const Transaction = ({
   metadata,
   timestamp,
   showTimestamp = true,
+  isFirst = false,
+  isLast = false,
 }: TransactionProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -209,15 +213,17 @@ const Transaction = ({
     <Pressable
       onPress={onPress}
       className={cn(
-        'flex-row items-center justify-between p-4 md:px-6 hover:opacity-80',
-        'border-b border-border/40',
+        'flex-row items-center justify-between px-4 py-4 bg-[#1C1C1E]',
+        !isLast && 'border-b border-[#2C2C2E]',
+        isFirst && 'rounded-t-[20px]',
+        isLast && 'rounded-b-[20px]',
         classNames?.container,
       )}
     >
       <View className="flex-row items-center gap-2 md:gap-4">
         <RenderTokenIcon tokenIcon={tokenIcon} size={44} />
         <View>
-          <Text className="text-lg font-medium" numberOfLines={1}>
+          <Text className="text-base web:text-lg font-medium" numberOfLines={1}>
             {title}
           </Text>
           <View className="flex-row items-center gap-1">
@@ -262,9 +268,9 @@ const Transaction = ({
             {directDepositStatusMessage}
           </Text>
         ) : (
-          <Text className={cn('text-lg font-medium', statusTextColor)}>
+          <Text className={cn('text-base web:text-lg font-medium', statusTextColor)}>
             {statusSign}
-            {formatNumber(Number(amount))} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
+            {formatNumber(Number(amount), 2)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
         )}
         {directDepositIsPendingOrProcessing && (

@@ -2,13 +2,13 @@ import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
 
 const DepositBuyCryptoOptions = () => {
   const { setModal } = useDepositStore();
 
-  const handleBankDepositPress = useCallback(async () => {
+  const handleBankDepositPress = useCallback(() => {
     setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
   }, [setModal]);
 
@@ -16,36 +16,39 @@ const DepositBuyCryptoOptions = () => {
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
   }, [setModal]);
 
-  const BUY_CRYPTO_OPTIONS = [
-    {
-      text: 'Debit/Credit Card',
-      subtitle: 'Google Pay, card or bank account',
-      icon: (
-        <Image
-          source={require('@/assets/images/buy_crypto.png')}
-          style={{ width: 26, height: 22 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: handleCreditCardPress,
-    },
-    {
-      text: 'Bank Deposit',
-      icon: (
-        <Image
-          source={require('@/assets/images/bank_deposit.png')}
-          style={{ width: 26, height: 22 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: handleBankDepositPress,
-      isComingSoon: false,
-    },
-  ];
+  const buyCryptoOptions = useMemo(
+    () => [
+      {
+        text: 'Debit/Credit Card',
+        subtitle: 'Google Pay, card or bank account',
+        icon: (
+          <Image
+            source={require('@/assets/images/buy_crypto.png')}
+            style={{ width: 26, height: 22 }}
+            contentFit="contain"
+          />
+        ),
+        onPress: handleCreditCardPress,
+      },
+      {
+        text: 'Bank Deposit',
+        icon: (
+          <Image
+            source={require('@/assets/images/bank_deposit.png')}
+            style={{ width: 26, height: 22 }}
+            contentFit="contain"
+          />
+        ),
+        onPress: handleBankDepositPress,
+        isComingSoon: false,
+      },
+    ],
+    [handleCreditCardPress, handleBankDepositPress],
+  );
 
   return (
     <View className="gap-y-2.5">
-      {BUY_CRYPTO_OPTIONS.map(option => (
+      {buyCryptoOptions.map(option => (
         <DepositOption
           key={option.text}
           text={option.text}

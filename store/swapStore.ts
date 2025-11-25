@@ -238,27 +238,33 @@ export function useDerivedSwapInfo(): {
 
   useEffect(() => {
     if (voltageTrade.isLoading) return;
-    if (currentTrade.state === TradeState.NO_ROUTE_FOUND) {
-      setIsVoltageTrade(false);
-    } else if (voltageTrade.isValid) {
-      if (
-        isExactIn &&
-        currentTrade?.trade?.outputAmount &&
-        voltageTrade.trade?.outputAmount &&
-        currentTrade.trade.outputAmount.lessThan(voltageTrade.trade.outputAmount)
-      ) {
-        setIsVoltageTrade(true);
-      } else if (
-        !isExactIn &&
-        currentTrade?.trade?.inputAmount &&
-        voltageTrade.trade?.inputAmount &&
-        currentTrade.trade.inputAmount.lessThan(voltageTrade.trade.inputAmount)
-      ) {
-        setIsVoltageTrade(true);
-      } else {
+
+    // Use setTimeout to avoid setState during render
+    const timeoutId = setTimeout(() => {
+      if (currentTrade.state === TradeState.NO_ROUTE_FOUND) {
         setIsVoltageTrade(false);
+      } else if (voltageTrade.isValid) {
+        if (
+          isExactIn &&
+          currentTrade?.trade?.outputAmount &&
+          voltageTrade.trade?.outputAmount &&
+          currentTrade.trade.outputAmount.lessThan(voltageTrade.trade.outputAmount)
+        ) {
+          setIsVoltageTrade(true);
+        } else if (
+          !isExactIn &&
+          currentTrade?.trade?.inputAmount &&
+          voltageTrade.trade?.inputAmount &&
+          currentTrade.trade.inputAmount.lessThan(voltageTrade.trade.inputAmount)
+        ) {
+          setIsVoltageTrade(true);
+        } else {
+          setIsVoltageTrade(false);
+        }
       }
-    }
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [
     voltageTrade.isLoading,
     voltageTrade.isValid,
