@@ -1,7 +1,8 @@
 import { ChartPayload } from '@/lib/types';
 import { useMemo } from 'react';
 import { Dimensions, View } from 'react-native';
-import { LineChart } from 'react-native-chart-kit';
+import { Defs, LinearGradient, Stop } from 'react-native-svg';
+import { VictoryArea, VictoryAxis, VictoryChart } from 'victory-native';
 
 interface AreaChartProps {
   data: ChartPayload[];
@@ -14,16 +15,10 @@ const Chart = ({ data }: AreaChartProps) => {
   const chartData = useMemo(() => {
     if (!data || data.length < 2) return null;
 
-    return {
-      labels: [],
-      datasets: [
-        {
-          data: data.map(d => d.value),
-          color: () => '#94F27F',
-          strokeWidth: 2,
-        },
-      ],
-    };
+    return data.map((d, index) => ({
+      x: index,
+      y: d.value,
+    }));
   }, [data]);
 
   if (!chartData) {
@@ -34,38 +29,31 @@ const Chart = ({ data }: AreaChartProps) => {
 
   return (
     <View style={{ height: CHART_HEIGHT }}>
-      <LineChart
-        data={chartData}
+      <VictoryChart
         width={screenWidth}
         height={CHART_HEIGHT}
-        withDots={false}
-        withInnerLines={false}
-        withOuterLines={false}
-        withVerticalLabels={false}
-        withHorizontalLabels={false}
-        withVerticalLines={false}
-        withHorizontalLines={false}
-        chartConfig={{
-          backgroundGradientFrom: 'transparent',
-          backgroundGradientFromOpacity: 0,
-          backgroundGradientTo: 'transparent',
-          backgroundGradientToOpacity: 0,
-          color: () => '#94F27F',
-          fillShadowGradientFrom: '#94F27F',
-          fillShadowGradientFromOpacity: 0.15,
-          fillShadowGradientTo: '#94F27F',
-          fillShadowGradientToOpacity: 0,
-          strokeWidth: 2,
-          propsForBackgroundLines: {
-            strokeWidth: 0,
-          },
-        }}
-        bezier
-        style={{
-          paddingRight: 0,
-          paddingLeft: 0,
-        }}
-      />
+        padding={{ top: 10, bottom: 10, left: 0, right: 0 }}
+      >
+        <Defs>
+          <LinearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#94F27F" stopOpacity={0.15} />
+            <Stop offset="100%" stopColor="#94F27F" stopOpacity={0} />
+          </LinearGradient>
+        </Defs>
+        <VictoryAxis style={{ axis: { stroke: 'transparent' } }} />
+        <VictoryAxis dependentAxis style={{ axis: { stroke: 'transparent' } }} />
+        <VictoryArea
+          data={chartData}
+          interpolation="natural"
+          style={{
+            data: {
+              fill: 'url(#areaGradient)',
+              stroke: '#94F27F',
+              strokeWidth: 2,
+            },
+          }}
+        />
+      </VictoryChart>
     </View>
   );
 };
