@@ -359,6 +359,7 @@ export enum TransactionType {
   UNWRAP = 'unwrap',
   MERKL_CLAIM = 'merkl_claim',
   CARD_WELCOME_BONUS = 'card_welcome_bonus',
+  DEPOSIT_BONUS = 'deposit_bonus',
 }
 
 export enum TransactionDirection {
