@@ -22,7 +22,7 @@ const UnstakeModal = ({ trigger }: UnstakeModalProps) => {
 
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
-    return 'Unstake';
+    return 'Withdraw from deposit';
   };
 
   const handleTransactionStatusPress = () => {
