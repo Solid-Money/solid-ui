@@ -73,7 +73,7 @@ const Unstake = () => {
     if (bridgeStatus === Status.ERROR) return 'Error while unstaking';
     if (bridgeStatus === Status.SUCCESS) return 'Successfully Unstaked';
     if (!isBridgeValid || !watchedBridgeAmount) return 'Enter an amount';
-    return 'Unstake';
+    return 'Withdraw';
   };
 
   const onBridgeSubmit = async (data: BridgeFormData) => {
@@ -165,17 +165,17 @@ const Unstake = () => {
         </View>
       </View>
 
-      <View className="flex-row gap-2">
-        <Info size={30} color="gray" />
-        <Text className="text-sm text-muted-foreground">
-          This action will unstake your funds, and allow you to withdraw and send them to another
-          wallet
+      <View className="flex-row gap-2 items-start">
+        <Info size={20} color="gray" />
+        <Text className="text-sm text-muted-foreground flex-1">
+          Withdrawals are processed in two steps. This step will unstake your funds to be able to
+          withdraw and should take up to 10 mins.
         </Text>
       </View>
 
-      <View className="flex-row gap-2">
+      <View className="flex-row gap-2 items-start">
         <Info size={20} color="gray" />
-        <Text className="text-sm text-muted-foreground">
+        <Text className="text-sm text-muted-foreground flex-1">
           Withdrawals sometimes take up to 24 hours but usually faster
         </Text>
       </View>
