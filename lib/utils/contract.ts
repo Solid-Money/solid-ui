@@ -1,9 +1,9 @@
-import { Address, Hex, TransactionRequest } from "viem";
-import { readContract, writeContract } from "wagmi/actions";
+import { Address, Hex, TransactionRequest } from 'viem';
+import { readContract, writeContract } from 'wagmi/actions';
 
-import { getUsdcAddress } from "@/constants/bridge";
-import ERC20ABI from "@/lib/abis/ERC20";
-import { config, getWallet, publicClient } from "@/lib/wagmi";
+import { getUsdcAddress } from '@/constants/bridge';
+import ERC20ABI from '@/lib/abis/ERC20';
+import { config, getWallet, publicClient } from '@/lib/wagmi';
 
 export const getTransactionReceipt = async (chainId: number, hash: Hex) => {
   return publicClient(chainId).waitForTransactionReceipt({
@@ -33,6 +33,26 @@ export const approveUsdc = async (
   }
 };
 
+export const approveToken = async (
+  tokenAddress: Address,
+  spender: Address,
+  amount: bigint,
+): Promise<string> => {
+  try {
+    const hash = await writeContract(config, {
+      address: tokenAddress,
+      abi: ERC20ABI,
+      functionName: 'approve',
+      args: [spender, amount],
+    });
+
+    return hash;
+  } catch (error) {
+    console.error(error);
+    throw new Error('Failed to approve token');
+  }
+};
+
 export const getUsdcAllowance = async (
   chainId: number,
   owner: Address,
@@ -41,12 +61,32 @@ export const getUsdcAllowance = async (
   try {
     const usdcAddress = getUsdcAddress(chainId);
 
-    const allowance = await readContract(config, {
+    const allowance = (await readContract(config, {
       address: usdcAddress,
       abi: ERC20ABI,
       functionName: 'allowance',
       args: [owner, spender],
-    }) as bigint;
+    })) as bigint;
+
+    return allowance;
+  } catch (error) {
+    console.error(error);
+    throw new Error('Failed to get USDC allowance');
+  }
+};
+
+export const getTokenAllowance = async (
+  tokenAddress: Address,
+  ownerAddress: Address,
+  spenderAddress: Address,
+): Promise<bigint> => {
+  try {
+    const allowance = (await readContract(config, {
+      address: tokenAddress,
+      abi: ERC20ABI,
+      functionName: 'allowance',
+      args: [ownerAddress, spenderAddress],
+    })) as bigint;
 
     return allowance;
   } catch (error) {
@@ -65,6 +105,19 @@ export const checkAndSetAllowance = async (
   if (allowance >= amount) return;
 
   const hash = await approveUsdc(chainId, spenderAddress, amount);
+  return hash;
+};
+
+export const checkAndSetAllowanceToken = async (
+  tokenAddress: Address,
+  ownerAddress: Address,
+  spenderAddress: Address,
+  amount: bigint,
+): Promise<string | undefined> => {
+  const allowance = await getTokenAllowance(tokenAddress, ownerAddress, spenderAddress);
+  if (allowance >= amount) return;
+
+  const hash = await approveToken(tokenAddress, spenderAddress, amount);
   return hash;
 };
 
