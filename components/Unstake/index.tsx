@@ -168,8 +168,8 @@ const Unstake = () => {
       <View className="flex-row gap-2 items-start">
         <Info size={20} color="gray" />
         <Text className="text-sm text-muted-foreground flex-1">
-          Withdrawals are processed in two steps. This step will unstake your funds to be able to
-          withdraw and should take up to 10 mins.
+          Withdrawals are processed in two steps. This step will withdraw your soUSD to your wallet
+          and should take up to 10 mins.
         </Text>
       </View>
 
