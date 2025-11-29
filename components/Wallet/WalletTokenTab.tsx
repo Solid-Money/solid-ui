@@ -45,11 +45,11 @@ const WalletTokenTab = () => {
   const [width, setWidth] = useState(0);
   const { isScreenMedium } = useDimension();
   const router = useRouter();
-  const { ethereumTokens, fuseTokens } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
   const allTokens = useMemo(() => {
-    const combined = [...ethereumTokens, ...fuseTokens];
+    const combined = [...ethereumTokens, ...fuseTokens, ...baseTokens];
     return combined.sort((a, b) => {
       const balanceA = Number(formatUnits(BigInt(a.balance || '0'), a.contractDecimals));
       const balanceUSD_A = balanceA * (a.quoteRate || 0);
@@ -59,7 +59,7 @@ const WalletTokenTab = () => {
 
       return balanceUSD_B - balanceUSD_A; // Descending order
     });
-  }, [ethereumTokens, fuseTokens]);
+  }, [ethereumTokens, fuseTokens, baseTokens]);
 
   const format = isScreenMedium ? formatNumber : compactNumberFormat;
 
