@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
-import { ArrowUpRight, Fuel, Wallet } from 'lucide-react-native';
+import { ArrowUpRight, Fuel, Info, Wallet } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, TextInput, View } from 'react-native';
@@ -273,9 +273,18 @@ const Send = ({
         </Text>
       </View>
 
+      <View className="flex-row gap-2 items-start mt-2">
+        <Info size={20} color="gray" />
+        <Text className="text-sm text-muted-foreground flex-1">
+          This is a transaction on <Text className="font-bold text-white">{chain?.name}</Text>. Only
+          enter a <Text className="font-bold text-white">{chain?.name}</Text> address, otherwise
+          funds will be lost.
+        </Text>
+      </View>
+
       <Button
         variant="brand"
-        className="rounded-2xl h-12 mt-8"
+        className="rounded-2xl h-12 mt-3"
         onPress={handleSubmit(onSubmit)}
         disabled={isFormDisabled()}
       >
