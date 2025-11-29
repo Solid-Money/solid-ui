@@ -64,6 +64,10 @@ type Addresses = {
     cardDepositManager: Address;
     stargateOftUSDC: Address;
   };
+  base: {
+    vault: Address;
+    usdc: Address;
+  }
 };
 
 export const ADDRESSES: Addresses = {
@@ -100,6 +104,10 @@ export const ADDRESSES: Addresses = {
     merklDistributor: '0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae',
     cardDepositManager: '0x22BBc13D022735f2586d4eb04a93f0F4E0173E50',
     stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',
+  },
+  base: {
+    usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    vault: '0x0000000000000000000000000000000000000000',
   },
 };
 

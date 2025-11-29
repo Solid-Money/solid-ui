@@ -1,7 +1,7 @@
 import { Token } from '@cryptoalgebra/fuse-sdk';
 
-import { ImageSourcePropType } from "react-native";
-import { fuse, mainnet } from "viem/chains";
+import { ImageSourcePropType } from 'react-native';
+import { base, fuse, mainnet } from 'viem/chains';
 import {
   BUSD,
   FUSD_V2,
@@ -21,32 +21,33 @@ import {
 } from './addresses';
 import { ChainsId } from './chains';
 
-import { ADDRESSES } from "@/lib/config";
-import { TokenMap } from "@/lib/types";
+import { ADDRESSES } from '@/lib/config';
+import { TokenMap } from '@/lib/types';
 
 export const TOKEN_MAP: TokenMap = {
   [mainnet.id]: [
     {
-      name: "USDC",
+      name: 'USDC',
       address: ADDRESSES.ethereum.usdc,
-      symbol: "USDC",
+      symbol: 'USDC',
       decimals: 6,
-      imageId: "usdc",
-    }
+      imageId: 'usdc',
+    },
   ],
-}
+};
 
 export const NATIVE_TOKENS: Record<number, string> = {
-  [mainnet.id]: "ETH",
-  [fuse.id]: "fuse-network-token",
-}
+  [mainnet.id]: 'ETH',
+  [fuse.id]: 'fuse-network-token',
+  [base.id]: 'ETH',
+};
 
 export const TOKEN_IMAGES: Record<string, ImageSourcePropType> = {
-  usdc: require("@/assets/images/usdc.png"),
-  weth: require("@/assets/images/eth.png"),
-  usdt: require("@/assets/images/usdt.png"),
-  usds: require("@/assets/images/usds.png"),
-}
+  usdc: require('@/assets/images/usdc.png'),
+  weth: require('@/assets/images/eth.png'),
+  usdt: require('@/assets/images/usdt.png'),
+  usds: require('@/assets/images/usds.png'),
+};
 
 // FUSE CHAIN
 
@@ -74,7 +75,19 @@ export const WETH_STARGATE_TOKEN = new Token(
   WETH_STARGATE,
   18,
   'WETH',
-  'Bridged Wrapped Ether (Stargate)'
+  'Bridged Wrapped Ether (Stargate)',
 );
-export const USDC_STARGATE_TOKEN = new Token(ChainsId.Fuse, USDC_STARGATE, 6, 'USDCe', 'USD Coin on Fuse - Stargate');
-export const soUSDC_TOKEN = new Token(ChainsId.Fuse, '0x75333830E7014e909535389a6E5b0C02aA62ca27', 6, 'soUSDC', 'Solid USD');
+export const USDC_STARGATE_TOKEN = new Token(
+  ChainsId.Fuse,
+  USDC_STARGATE,
+  6,
+  'USDCe',
+  'USD Coin on Fuse - Stargate',
+);
+export const soUSDC_TOKEN = new Token(
+  ChainsId.Fuse,
+  '0x75333830E7014e909535389a6E5b0C02aA62ca27',
+  6,
+  'soUSDC',
+  'Solid USD',
+);
