@@ -230,7 +230,7 @@ export default function Savings() {
   );
 
   return (
-    <PageLayout desktopOnly isLoading={isLoading}>
+    <PageLayout desktopOnly isLoading={isLoading} scrollable={false}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}

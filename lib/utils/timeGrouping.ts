@@ -31,7 +31,7 @@ export const formatTimeGroup = (timestamp: string): string => {
   } else if (isYesterday(transactionDate)) {
     return 'Yesterday';
   } else {
-    return format(transactionDate, 'do MMM yyyy');
+    return format(transactionDate, "dd MMM yyyy");
   }
 };
 

@@ -116,21 +116,21 @@ const ActivityTabs = () => {
     <Tabs
       value={tab}
       onValueChange={value => handleTabChange(value as ActivityTab)}
-      className="gap-8"
+      className="flex-1 gap-8"
     >
-      <TabsList className="flex-row bg-[#1C1C1E] rounded-[50px] p-1 self-start h-auto">
+      <TabsList className="flex-row bg-[#1C1C1E] rounded-full p-1 self-start h-auto">
         <Animated.View style={underlineStyle} />
         <TabsTrigger
           value={ActivityTab.WALLET}
           className={cn(
-            'py-3 px-6 rounded-[20px] shadow-none',
+            'py-2.5 px-5 web:py-3 web:px-6 rounded-full shadow-none items-center justify-center',
             tab === ActivityTab.WALLET ? 'bg-black' : 'bg-transparent',
           )}
           onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.WALLET)}
         >
           <Text
             className={cn(
-              'text-base font-semibold',
+              'text-base font-semibold leading-none',
               tab === ActivityTab.WALLET ? 'text-white' : 'text-[rgba(255,255,255,0.6)]',
             )}
           >
@@ -140,14 +140,14 @@ const ActivityTabs = () => {
         <TabsTrigger
           value={ActivityTab.CARD}
           className={cn(
-            'py-3 px-6 rounded-[20px] shadow-none',
+            'py-2.5 px-5 web:py-3 web:px-6 rounded-full shadow-none items-center justify-center',
             tab === ActivityTab.CARD ? 'bg-black' : 'bg-transparent',
           )}
           onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.CARD)}
         >
           <Text
             className={cn(
-              'text-base font-semibold',
+              'text-base font-semibold leading-none',
               tab === ActivityTab.CARD ? 'text-white' : 'text-[rgba(255,255,255,0.6)]',
             )}
           >
@@ -155,10 +155,10 @@ const ActivityTabs = () => {
           </Text>
         </TabsTrigger>
       </TabsList>
-      <TabsContent value={ActivityTab.WALLET}>
+      <TabsContent value={ActivityTab.WALLET} className="flex-1">
         <ActivityTransactions tab={ActivityTab.WALLET} />
       </TabsContent>
-      <TabsContent value={ActivityTab.CARD}>
+      <TabsContent value={ActivityTab.CARD} className="flex-1">
         <CardTransactions />
       </TabsContent>
     </Tabs>

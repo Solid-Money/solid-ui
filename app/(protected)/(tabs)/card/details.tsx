@@ -485,7 +485,7 @@ function CardActions({
   onFreezeToggle,
 }: CardActionsProps) {
   return (
-    <View className="flex-row justify-center space-x-8 items-center mb-8">
+    <View className="flex-row justify-center web:space-x-8 native:gap-8 items-center mb-8">
       <DepositToCardModal
         trigger={
           <CircularActionButton
@@ -523,23 +523,19 @@ function DepositBonusBanner() {
         <View className="bg-[#332A10] rounded-full px-3 py-1">
           <Text className="text-[#FFD151] font-bold">Limited time offer</Text>
         </View>
-        <View className="inline max-w-[22rem]">
-          <Text className="text-[#FFD151] font-bold">
-            Deposit a minimum of $100 to receive your $50 sign up bonus!
-          </Text>{' '}
-          <Text className="text-[#FFD151] font-bold hover:opacity-70">
-            <Link
-              target="_blank"
-              href={
-                'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
-              }
-              className="underline"
-            >
-              Learn more
-            </Link>{' '}
-            {'>'}
-          </Text>
-        </View>
+        <Text className="text-[#FFD151] font-bold max-w-[22rem]">
+          Deposit a minimum of $100 to receive your $50 sign up bonus!{' '}
+          <Link
+            target="_blank"
+            href={
+              'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+            }
+            className="underline"
+          >
+            Learn more
+          </Link>
+          {' >'}
+        </Text>
       </View>
     </View>
   );
@@ -562,19 +558,27 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
       colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.175)']}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      className="rounded-2xl p-6 mb-4 flex-row"
+      style={{ flexDirection: 'row', borderRadius: 16, padding: 24, marginBottom: 16 }}
     >
       <View className="flex-1 pr-4">
         <Text className="text-white/70 mb-1">Cashback</Text>
-        <Text className="text-[#94F27F] text-2xl font-semibold">${totalUsdValue} this month</Text>
-      </View>
-      <View className="w-[1px] bg-[#3D5A3B] mx-4 my-[-24px]" />
-      <View className="flex-1 pl-8 justify-center">
-        <Text className="text-white text-lg leading-6">
-          you are receiving{'\n'}
-          <Text className="text-[#94F27F] text-lg font-bold">{cashbackPercentage * 100}%</Text>{' '}
-          cashback on all purchases
+        <Text className="text-[#94F27F] web:text-2xl native:text-xl font-semibold">
+          ${totalUsdValue} this month
         </Text>
+      </View>
+      <View
+        style={{ width: 1, backgroundColor: '#3D5A3B', marginHorizontal: 16, marginVertical: -24 }}
+      />
+      <View style={{ flex: 1, paddingLeft: 16, justifyContent: 'center' }}>
+        <Text className="text-white web:text-lg native:text-base">you are</Text>
+        <Text className="text-white web:text-lg native:text-base">receiving</Text>
+        <Text className="text-white web:text-lg native:text-base">
+          <Text className="text-[#94F27F] web:text-lg native:text-base font-bold">
+            {cashbackPercentage * 100}%
+          </Text>
+          <Text className="text-white web:text-lg native:text-base"> cashback</Text>
+        </Text>
+        <Text className="text-white web:text-lg native:text-base">on all purchases</Text>
       </View>
     </LinearGradient>
   );
@@ -680,6 +684,7 @@ function RecentTransactions({
 
     return (
       <Pressable
+        key={item.id}
         onPress={() =>
           router.push({
             pathname: '/activity/[clientTxId]',

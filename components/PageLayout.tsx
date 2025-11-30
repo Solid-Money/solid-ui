@@ -94,42 +94,44 @@ export default function PageLayout({
   const shouldShowMobileNavbar = showNavbar && !desktopOnly && !isLargeScreen;
 
   // Render navbar/header content
-  const navbarContent = (
-    <>
-      {/* Desktop navbar/header */}
-      {isLargeScreen && (customDesktopHeader || (shouldShowDesktopNavbar && <Navbar />))}
-
-      {/* Mobile navbar/header */}
-      {!isLargeScreen && (customMobileHeader || (shouldShowMobileNavbar && <NavbarMobile />))}
-    </>
-  );
+  const renderNavbar = () => {
+    if (isLargeScreen) {
+      // Desktop navbar/header
+      return customDesktopHeader || (shouldShowDesktopNavbar && <Navbar />);
+    }
+    // Mobile navbar/header
+    return customMobileHeader || (shouldShowMobileNavbar && <NavbarMobile />);
+  };
 
   // Show loading state with navbar
   if (isLoading) {
     return (
       <SafeAreaView className={`bg-background text-foreground flex-1 ${className}`} edges={edges}>
-        {navbarContent}
+        {renderNavbar()}
         <Loading />
       </SafeAreaView>
     );
   }
 
   // Build the main content
-  const mainContent = scrollable ? (
-    <ScrollView className={`flex-1 ${contentClassName}`}>
-      {navbarContent}
-      {children}
-    </ScrollView>
-  ) : (
-    <View className={`flex-1 ${contentClassName}`}>
-      {navbarContent}
-      {children}
-    </View>
-  );
+  if (scrollable) {
+    return (
+      <SafeAreaView className={`bg-background text-foreground flex-1 ${className}`} edges={edges}>
+        <ScrollView className={`flex-1 ${contentClassName}`}>
+          {renderNavbar()}
+          {children}
+        </ScrollView>
+        {additionalContent}
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className={`bg-background text-foreground flex-1 ${className}`} edges={edges}>
-      {mainContent}
+      <View className={`flex-1 ${contentClassName}`}>
+        {renderNavbar()}
+        {children}
+      </View>
       {additionalContent}
     </SafeAreaView>
   );

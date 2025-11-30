@@ -249,7 +249,7 @@ const ResponsiveModal = ({
           onPress={handlePresentModalPress}
           style={({ pressed }) => [pressed && { opacity: 0.8 }]}
         >
-          {triggerElement(trigger)}
+          {triggerElement(trigger, '')}
         </Pressable>
       )}
       <BottomSheetModal

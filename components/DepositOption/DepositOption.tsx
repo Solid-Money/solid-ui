@@ -1,7 +1,6 @@
 import { ChevronRight } from 'lucide-react-native';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import DepositComingSoon from './DepositComingSoon';
 
@@ -25,34 +24,35 @@ const DepositOption = ({
   const isDisabled = isComingSoon || isLoading;
 
   return (
-    <Button
-      className="flex-row items-center justify-between bg-primary/10 rounded-2xl px-5 py-6 web:hover:bg-accent disabled:opacity-100 disabled:web:hover:opacity-100 h-auto"
+    <Pressable
+      className="flex-row items-center justify-between bg-primary/10 rounded-2xl px-5 py-10"
       onPress={onPress}
       disabled={isDisabled}
     >
-      <View className="flex-row gap-x-4">
-        <View className="mt-1.5">{icon}</View>
-        <View className="flex-col gap-y-0.5">
-          <Text className="text-primary text-lg font-semibold">{text}</Text>
+      <View className="flex-row gap-x-4 flex-1 items-start">
+        <View className="mt-0.5">{icon}</View>
+        <View className="flex-col gap-y-1 flex-1">
+          <Text className="text-primary text-lg font-semibold leading-6">{text}</Text>
           {subtitle && (
             <Text
-              className="text-muted-foreground text-sm leading-4"
-              // Web-only: Preserve newline characters (\n) in subtitle text
-              style={{ whiteSpace: 'pre-line' } as any}
+              className="text-muted-foreground text-sm leading-5"
+              style={Platform.OS === 'web' ? ({ whiteSpace: 'pre-line' } as any) : undefined}
             >
               {subtitle}
             </Text>
           )}
         </View>
       </View>
-      {isComingSoon ? (
-        <DepositComingSoon />
-      ) : isLoading ? (
-        <ActivityIndicator color="white" size={20} className="shrink-0" />
-      ) : (
-        <ChevronRight color="white" size={20} className="shrink-0" />
-      )}
-    </Button>
+      <View className="ml-3 self-center">
+        {isComingSoon ? (
+          <DepositComingSoon />
+        ) : isLoading ? (
+          <ActivityIndicator color="white" size={20} />
+        ) : (
+          <ChevronRight color="white" size={20} />
+        )}
+      </View>
+    </Pressable>
   );
 };
 

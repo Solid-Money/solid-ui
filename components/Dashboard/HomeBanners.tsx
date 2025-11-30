@@ -2,7 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import type { PanGesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
 
@@ -141,29 +146,30 @@ const HomeBannersContent = () => {
               gapPadding.value = withTiming(0, { duration: 100 });
             }}
             onConfigurePanGesture={(panGesture: PanGesture) => {
-              let hasMoved = false;
-              panGesture.onBegin(() => {
-                hasMoved = false;
-                isPanning.current = false;
-              });
-              panGesture.onUpdate(event => {
-                // Only set panning if gesture moved significantly
-                if (Math.abs(event.translationX) > 10 || Math.abs(event.translationY) > 10) {
-                  hasMoved = true;
-                  isPanning.current = true;
-                }
-              });
-              panGesture.onEnd(() => {
-                // Clear flag if gesture ended without significant movement
-                if (!hasMoved) {
-                  isPanning.current = false;
-                }
-              });
-              panGesture.onFinalize(() => {
-                // Clear flag after a short delay to allow press handler to check
+              const setPanning = (value: boolean) => {
+                isPanning.current = value;
+              };
+              const clearPanningDelayed = () => {
                 setTimeout(() => {
                   isPanning.current = false;
                 }, 100);
+              };
+
+              panGesture.onBegin(() => {
+                'worklet';
+                runOnJS(setPanning)(false);
+              });
+              panGesture.onUpdate(event => {
+                'worklet';
+                // Only set panning if gesture moved significantly
+                if (Math.abs(event.translationX) > 10 || Math.abs(event.translationY) > 10) {
+                  runOnJS(setPanning)(true);
+                }
+              });
+              panGesture.onFinalize(() => {
+                'worklet';
+                // Clear flag after a short delay to allow press handler to check
+                runOnJS(clearPanningDelayed)();
               });
             }}
             renderItem={renderItem}

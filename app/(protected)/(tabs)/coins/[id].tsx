@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { formatUnits } from 'viem';
 
-import AreaChart from '@/components/AreaChart.web';
+import AreaChart from '@/components/AreaChart';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinChartTime from '@/components/Coin/CoinChartTime';
 import PageLayout from '@/components/PageLayout';

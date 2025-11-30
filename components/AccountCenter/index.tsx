@@ -36,8 +36,8 @@ const AccountCenterUsername = () => {
 
   return (
     <>
-      <View className="size-8 bg-black rounded-full flex items-center justify-center">
-        {username?.charAt(0).toUpperCase()}
+      <View className="w-8 h-8 bg-black rounded-full items-center justify-center">
+        <Text className="font-semibold text-white">{username?.charAt(0).toUpperCase()}</Text>
       </View>
       <Text className="font-semibold">{eclipseUsername(username)}</Text>
     </>

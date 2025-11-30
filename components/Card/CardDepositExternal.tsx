@@ -1,35 +1,16 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useActiveAccount, useConnectModal } from 'thirdweb/react';
-import { createWallet } from 'thirdweb/wallets';
+import React from 'react';
+import { View } from 'react-native';
 
-import { client } from '@/lib/thirdweb';
-import CardDepositExternalForm from './CardDepositExternalForm';
+import { Text } from '@/components/ui/text';
 
+// Native version - useConnectModal is web-only in thirdweb
+// External wallet connection is not supported on native
 export default function CardDepositExternal() {
-  const { connect } = useConnectModal();
-  const account = useActiveAccount();
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  const connectWallet = useCallback(async () => {
-    try {
-      setIsConnecting(true);
-      await connect({
-        client,
-        showThirdwebBranding: false,
-        size: 'compact',
-        wallets: [createWallet('io.rabby'), createWallet('io.metamask')],
-      });
-    } finally {
-      setIsConnecting(false);
-    }
-  }, [connect]);
-
-  useEffect(() => {
-    if (!account && !isConnecting) {
-      connectWallet();
-    }
-  }, [account, isConnecting, connectWallet]);
-
-  // After wallet is connected, show external form with ConnectedWalletDropdown
-  return <CardDepositExternalForm />;
+  return (
+    <View className="flex-1 items-center justify-center p-6">
+      <Text className="text-muted-foreground text-center">
+        External wallet deposit is only available on web.
+      </Text>
+    </View>
+  );
 }

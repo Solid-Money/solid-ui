@@ -3,8 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
 import { View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import SwipeableBanner from './SwipeableBanner';
@@ -27,24 +27,22 @@ const CardBanner = () => {
       >
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
           <View className="max-w-40 md:max-w-64 justify-between items-start gap-1 md:gap-4 py-4 md:py-7">
-            <Text className="text-xl md:text-3xl font-semibold">Solid Card is live!</Text>
-            <View className="inline">
-              <Text className="text-muted-foreground font-semibold">
-                Get your card today and receive $50 bonus.
-              </Text>{' '}
-              <Text className="text-muted-foreground font-semibold hover:opacity-70">
-                <Link
-                  target="_blank"
-                  href={
-                    'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
-                  }
-                  className="underline"
-                >
-                  Read more
-                </Link>{' '}
-                {'>'}
-              </Text>
-            </View>
+            <Text className="text-xl md:text-3xl font-semibold native:text-base">
+              Solid Card is live!
+            </Text>
+            <Text className="text-muted-foreground font-semibold native:text-sm">
+              Get your card today and receive $50 bonus.{' '}
+              <Link
+                target="_blank"
+                href={
+                  'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+                }
+                className="underline"
+              >
+                Read more
+              </Link>
+              {' >'}
+            </Text>
             <Button
               className="rounded-xl h-11 md:h-12 px-6 border-0 bg-button-earning web:hover:bg-button-earning web:hover:brightness-110"
               onPress={() => router.push(path.CARD_WAITLIST)}

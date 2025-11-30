@@ -1,27 +1,22 @@
-import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
-
-import { path } from '@/constants/path';
-import CircleButton from '@/components/CircleButton';
-import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import { View } from 'react-native';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
+import CircleButton from '@/components/CircleButton';
+import { path } from '@/constants/path';
 
 const DashboardHeaderButtonsMobile = () => {
   const router = useRouter();
   return (
-    <View className="flex-row justify-between gap-8 items-center mx-auto">
-      <DepositOptionModal
-        trigger={
-          <CircleButton
-            icon={Plus}
-            label="Fund"
-            backgroundColor="bg-[#94F27F]"
-            iconColor="#000000"
-          />
-        }
+    <View className="flex-row justify-center gap-12 items-center">
+      <CircleButton
+        icon={Plus}
+        label="Fund"
+        backgroundColor="bg-[#94F27F]"
+        iconColor="#000000"
+        onPress={() => router.push(path.DEPOSIT)}
       />
 
       <CircleButton
