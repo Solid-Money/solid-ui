@@ -67,6 +67,10 @@ export const DEPOSIT_MODAL = {
     name: 'open_deposit_directly_address',
     number: 15,
   },
+  OPEN_TOKEN_SELECTOR: {
+    name: 'open_token_selector',
+    number: 16,
+  },
 };
 
 export const SEND_MODAL = {

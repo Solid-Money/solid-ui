@@ -15,7 +15,7 @@ import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyN
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
-import { DepositToVaultForm } from '@/components/DepositToVault';
+import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -82,6 +82,7 @@ const useDepositOption = ({
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
+  const isTokenSelector = currentModal.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -193,6 +194,10 @@ const useDepositOption = ({
       return <DepositDirectlyAddress />;
     }
 
+    if (isTokenSelector) {
+      return <DepositTokenSelector />;
+    }
+
     return <DepositOptions />;
   };
 
@@ -212,6 +217,7 @@ const useDepositOption = ({
     if (isPublicAddress) return 'public-address';
     if (isDepositDirectly) return 'deposit-directly-networks';
     if (isDepositDirectlyAddress) return 'deposit-directly-address';
+    if (isTokenSelector) return 'token-selector';
     return 'deposit-options';
   };
 
@@ -226,6 +232,7 @@ const useDepositOption = ({
     if (isBuyCryptoOptions) return 'Buy crypto';
     if (isPublicAddress) return 'Solid address';
     if (isDepositDirectly) return 'Choose network';
+    if (isTokenSelector) return 'Select a token';
     return 'Deposit';
   };
 
@@ -311,11 +318,13 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isDepositDirectlyAddress) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+    } else if (isTokenSelector) {
+      setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isBuyCrypto) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isNetworks) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
-    }else if (isScreenMedium) {
+    } else if (isScreenMedium) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else {
       router.back();
@@ -394,7 +403,8 @@ const useDepositOption = ({
     isBuyCryptoOptions ||
     isPublicAddress ||
     isDepositDirectly ||
-    isDepositDirectlyAddress;
+    isDepositDirectlyAddress ||
+    isTokenSelector;
 
   return {
     shouldOpen,

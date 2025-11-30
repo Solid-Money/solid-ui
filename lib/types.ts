@@ -451,10 +451,11 @@ export enum SavingMode {
 }
 
 export type BridgeDeposit = {
+  srcToken: string;
   eoaAddress: Address;
   srcChainId: number;
   amount: string;
-  permitSignature: {
+  permitSignature?: {
     v: number;
     r: string;
     s: string;

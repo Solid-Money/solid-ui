@@ -15,9 +15,9 @@ import {
 import { waitForTransactionReceipt } from 'viem/actions';
 import { mainnet } from 'viem/chains';
 import { useBlockNumber, useChainId, useReadContract } from 'wagmi';
-import { readContract } from "wagmi/actions";
+import { readContract } from 'wagmi/actions';
 
-import { BRIDGE_TOKENS, getUsdcAddress } from '@/constants/bridge';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
@@ -26,12 +26,20 @@ import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, createDeposit, getLifiQuote } from '@/lib/api';
-import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
+import {
+  ADDRESSES,
+  EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
+  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+} from '@/lib/config';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionType, User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { checkAndSetAllowance, sendTransaction } from '@/lib/utils/contract';
+import {
+  checkAndSetAllowanceToken,
+  getTransactionReceipt,
+  sendTransaction,
+} from '@/lib/utils/contract';
 import { config, publicClient } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -46,7 +54,11 @@ type DepositResult = {
   isEthereum: boolean;
 };
 
-const useDepositFromEOA = (): DepositResult => {
+const useDepositFromEOA = (
+  tokenAddress: Address,
+  token: string,
+  tokenVersion: string = '2',
+): DepositResult => {
   const { user } = useUser();
   const wallet = useActiveWallet();
   const account = useActiveAccount();
@@ -70,7 +82,7 @@ const useDepositFromEOA = (): DepositResult => {
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
     abi: ERC20_ABI,
-    address: BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.address,
+    address: tokenAddress,
     functionName: 'balanceOf',
     args: [eoaAddress as Address],
     chainId: srcChainId,
@@ -109,12 +121,10 @@ const useDepositFromEOA = (): DepositResult => {
     return fee;
   };
 
-  const getNonce = async (chainId: number) => {
-    const address = getUsdcAddress(chainId);
-
+  const getNonce = async (chainId: number, tokenAddress: Address) => {
     const nonce = await readContract(config, {
       abi: FiatTokenV2_2,
-      address,
+      address: tokenAddress,
       functionName: 'nonces',
       args: [eoaAddress as Address],
       chainId,
@@ -134,19 +144,16 @@ const useDepositFromEOA = (): DepositResult => {
     }
 
     return nonce;
-  }
+  };
 
-  const getTokenName = async (chainId: number) => {
-    const address = getUsdcAddress(chainId);
-
+  const getTokenName = async (chainId: number, tokenAddress: Address) => {
     const tokenName = await readContract(config, {
       abi: ERC20_ABI,
-      address,
+      address: tokenAddress,
       functionName: 'name',
       chainId,
       args: [],
     });
-
 
     if (!tokenName) {
       const error = new Error('Could not get token name');
@@ -176,14 +183,25 @@ const useDepositFromEOA = (): DepositResult => {
     }
   };
 
-  const signPermit = async (owner: Address, spender: Address, amount: string, amountWei: bigint, chainId: number, nonce: bigint, tokenName: string, user: User, isSponsor: boolean) => {
+  const signPermit = async (
+    owner: Address,
+    spender: Address,
+    amount: string,
+    amountWei: bigint,
+    chainId: number,
+    nonce: bigint,
+    tokenName: string,
+    user: User,
+    isSponsor: boolean,
+    tokenAddress: Address,
+  ) => {
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour
 
     const domain = {
       name: tokenName,
-      version: '2',
+      version: tokenVersion,
       chainId,
-      verifyingContract: getUsdcAddress(chainId),
+      verifyingContract: tokenAddress,
     };
 
     const types = {
@@ -258,9 +276,9 @@ const useDepositFromEOA = (): DepositResult => {
     };
   };
 
-  const createEvent = async (amount: string, spender: Address) => {
+  const createEvent = async (amount: string, spender: Address, token: string) => {
     const clientTxId = await createActivity({
-      title: 'Staked USDC',
+      title: `Staked ${token}`,
       amount,
       symbol: 'soUsd',
       chainId: srcChainId,
@@ -272,7 +290,14 @@ const useDepositFromEOA = (): DepositResult => {
     return clientTxId;
   };
 
-  const depositOnEthereum = async (amount: string, amountWei: bigint, signatureData: Signature, deadline: bigint, user: User, fee: bigint) => {
+  const depositOnEthereum = async (
+    amount: string,
+    amountWei: bigint,
+    signatureData: Signature,
+    deadline: bigint,
+    user: User,
+    fee: bigint,
+  ) => {
     setDepositStatus({ status: Status.PENDING, message: 'Check Wallet' });
 
     Sentry.addBreadcrumb({
@@ -313,7 +338,7 @@ const useDepositFromEOA = (): DepositResult => {
         hash: transaction?.transactionHash as `0x${string}`,
       });
     } catch (error) {
-      throw new Error(`${ERRORS.WAIT_TRANSACTION_RECEIPT}: ${error}`)
+      throw new Error(`${ERRORS.WAIT_TRANSACTION_RECEIPT}: ${error}`);
     }
 
     return transaction;
@@ -362,7 +387,9 @@ const useDepositFromEOA = (): DepositResult => {
       }
 
       const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
-      const spender = isSponsor ? EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS : ADDRESSES.ethereum.vault;
+      const spender = isSponsor
+        ? EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS
+        : ADDRESSES.ethereum.vault;
 
       // Track deposit validation passed
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
@@ -385,6 +412,7 @@ const useDepositFromEOA = (): DepositResult => {
           amount,
           eoaAddress,
           srcChainId,
+          token,
           isEthereum,
           isSponsor,
         },
@@ -394,7 +422,7 @@ const useDepositFromEOA = (): DepositResult => {
 
       let txHash: Address | undefined;
       let transaction: { transactionHash: Address } | undefined = { transactionHash: '' };
-      if (isEthereum) {
+      if (isEthereum && token === 'USDC') {
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
           user_id: user?.userId,
@@ -408,10 +436,21 @@ const useDepositFromEOA = (): DepositResult => {
         });
 
         await switchChain(mainnet.id);
-        const nonce = await getNonce(mainnet.id);
-        const tokenName = await getTokenName(mainnet.id);
+        const nonce = await getNonce(mainnet.id, tokenAddress);
+        const tokenName = await getTokenName(mainnet.id, tokenAddress);
 
-        const { signatureData, deadline } = await signPermit(eoaAddress, spender, amount, amountWei, mainnet.id, nonce, tokenName, user, isSponsor);
+        const { signatureData, deadline } = await signPermit(
+          eoaAddress,
+          spender,
+          amount,
+          amountWei,
+          mainnet.id,
+          nonce,
+          tokenName,
+          user,
+          isSponsor,
+          tokenAddress,
+        );
 
         if (isSponsor) {
           Sentry.addBreadcrumb({
@@ -420,7 +459,7 @@ const useDepositFromEOA = (): DepositResult => {
             data: { amount, eoaAddress, isEthereum: true, isSponsor: true },
           });
 
-          trackingId = await createEvent(amount, spender);
+          trackingId = await createEvent(amount, spender, token);
 
           withRefreshToken(() =>
             createDeposit({
@@ -437,15 +476,64 @@ const useDepositFromEOA = (): DepositResult => {
           );
         } else {
           const fee = await getFee();
-          transaction = await depositOnEthereum(amount, amountWei, signatureData, deadline, user, fee);
+          transaction = await depositOnEthereum(
+            amount,
+            amountWei,
+            signatureData,
+            deadline,
+            user,
+            fee,
+          );
         }
       } else {
         if (isSponsor) {
-          const nonce = await getNonce(srcChainId);
-          const tokenName = await getTokenName(srcChainId);
+          let signatureData: Signature | undefined;
+          let deadline: bigint | undefined;
+
+          const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
+          const tokenConfig = tokens
+            ? Object.values(tokens).find(t => t.name === token)
+            : undefined;
+          const isPermitSupported = tokenConfig?.isPermit !== false;
+
           await switchChain(srcChainId);
 
-          const { signatureData, deadline } = await signPermit(eoaAddress, spender, amount, amountWei, srcChainId, nonce, tokenName, user, isSponsor);
+          if (isPermitSupported) {
+            const nonce = await getNonce(srcChainId, tokenAddress);
+            const tokenName = await getTokenName(srcChainId, tokenAddress);
+
+            const result = await signPermit(
+              eoaAddress,
+              spender,
+              amount,
+              amountWei,
+              srcChainId,
+              nonce,
+              tokenName,
+              user,
+              isSponsor,
+              tokenAddress,
+            );
+            signatureData = result.signatureData;
+            deadline = result.deadline;
+          } else {
+            const hash = await checkAndSetAllowanceToken(
+              tokenAddress,
+              eoaAddress,
+              spender,
+              amountWei,
+            );
+            if (!hash) {
+              throw new Error('Failed to set allowance');
+            }
+            const receipt = await getTransactionReceipt(srcChainId, hash as `0x${string}`);
+            if (!receipt) {
+              throw new Error('Failed to get transaction receipt');
+            }
+            if (receipt.status !== 'success') {
+              throw new Error('Transaction failed');
+            }
+          }
 
           // Track bridge deposit start
           track(TRACKING_EVENTS.DEPOSIT_BRIDGE_STARTED, {
@@ -467,19 +555,23 @@ const useDepositFromEOA = (): DepositResult => {
             data: { amount, eoaAddress, srcChainId, isEthereum: false, isSponsor: true },
           });
 
-          trackingId = await createEvent(amount, spender);
+          trackingId = await createEvent(amount, spender, token);
 
           withRefreshToken(() =>
             bridgeDeposit({
+              srcToken: token,
               eoaAddress,
               srcChainId,
               amount,
-              permitSignature: {
-                v: Number(signatureData.v),
-                r: signatureData.r,
-                s: signatureData.s,
-                deadline: Number(deadline),
-              },
+              permitSignature:
+                signatureData && deadline
+                  ? {
+                      v: Number(signatureData.v),
+                      r: signatureData.r,
+                      s: signatureData.s,
+                      deadline: Number(deadline),
+                    }
+                  : undefined,
               trackingId,
             }),
           );
@@ -492,13 +584,13 @@ const useDepositFromEOA = (): DepositResult => {
 
           await switchChain(srcChainId);
 
-          const fromToken = getUsdcAddress(srcChainId);
           const quote = await getLifiQuote({
             fromAddress: eoaAddress,
             fromChain: srcChainId,
             fromAmount: amountWei,
-            fromToken,
+            fromToken: tokenAddress,
             toAddress: eoaAddress,
+            toToken: BRIDGE_TOKENS[mainnet.id]?.tokens?.USDC.address,
           });
 
           Sentry.addBreadcrumb({
@@ -511,8 +603,8 @@ const useDepositFromEOA = (): DepositResult => {
             },
           });
 
-          await checkAndSetAllowance(
-            srcChainId,
+          await checkAndSetAllowanceToken(
+            tokenAddress,
             eoaAddress,
             quote.estimate.approvalAddress,
             BigInt(quote.estimate.fromAmount),
@@ -531,7 +623,9 @@ const useDepositFromEOA = (): DepositResult => {
             deposit_type: 'connected_wallet',
             deposit_method: 'lifi_bridge',
             from_amount: quote.estimate.fromAmount,
+            from_token: tokenAddress,
             to_amount: quote.estimate.toAmount,
+            to_token: BRIDGE_TOKENS[mainnet.id]?.tokens?.USDC.address,
           });
 
           const bridgeTxHash = await sendTransaction(srcChainId, quote.transactionRequest);
@@ -550,17 +644,35 @@ const useDepositFromEOA = (): DepositResult => {
           const bridgeStatus = await waitForBridgeTransactionReceipt(bridgeTxHash);
 
           await switchChain(mainnet.id);
-          const nonce = await getNonce(mainnet.id);
-          const tokenName = await getTokenName(mainnet.id);
+          const nonce = await getNonce(mainnet.id, tokenAddress);
+          const tokenName = await getTokenName(mainnet.id, tokenAddress);
           const fee = await getFee();
 
           const bridgeAmountWei = BigInt(bridgeStatus.receiving.amount);
           const bridgeAmount = formatUnits(bridgeAmountWei, 6);
 
-          const { signatureData, deadline } = await signPermit(eoaAddress, spender, bridgeAmount, bridgeAmountWei, mainnet.id, nonce, tokenName, user, isSponsor);
+          const { signatureData, deadline } = await signPermit(
+            eoaAddress,
+            spender,
+            bridgeAmount,
+            bridgeAmountWei,
+            mainnet.id,
+            nonce,
+            tokenName,
+            user,
+            isSponsor,
+            tokenAddress,
+          );
 
           setDepositStatus({ status: Status.PENDING, message: 'Depositing (takes 2 min)' });
-          transaction = await depositOnEthereum(bridgeAmount, bridgeAmountWei, signatureData, deadline, user, fee);
+          transaction = await depositOnEthereum(
+            bridgeAmount,
+            bridgeAmountWei,
+            signatureData,
+            deadline,
+            user,
+            fee,
+          );
         }
       }
 

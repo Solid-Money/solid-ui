@@ -10,7 +10,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 import DepositNetwork from './DepositNetwork';
 
 const DepositNetworks = () => {
-  const { setModal, setSrcChainId } = useDepositStore();
+  const { setModal, setSrcChainId, setOutputToken } = useDepositStore();
   const { user } = useUser();
 
   const handlePress = (id: number) => {
@@ -27,6 +27,7 @@ const DepositNetworks = () => {
     });
 
     setSrcChainId(id);
+    setOutputToken('USDC');
     setModal(DEPOSIT_MODAL.OPEN_FORM);
   };
 
