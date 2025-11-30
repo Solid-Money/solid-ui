@@ -175,9 +175,6 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const tokenListData = tokenList.status === PromiseStatus.FULFILLED ? tokenList.value : [];
 
   const filterTokenList = (list: SwapTokenResponse[], chainId: number, address: string) => {
-    console.log('list', list);
-    console.log('chainId', chainId);
-    console.log('address', address);
     if (list.length === 0) return true;
     return list.some(
       token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
