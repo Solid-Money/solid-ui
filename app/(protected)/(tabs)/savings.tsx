@@ -1,4 +1,5 @@
 import { DashboardTitle } from '@/components/Dashboard';
+import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
@@ -6,7 +7,6 @@ import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import SavingsHeaderButtons from '@/components/Savings/SavingsHeaderButtons';
-import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -222,7 +222,7 @@ export default function Savings() {
           </View>
         </LinearGradient>
 
-        {!isScreenMedium && <SavingsHeaderButtonsMobile />}
+        {!isScreenMedium && <DashboardHeaderButtonsMobile />}
         <HomeBanners />
         <FAQs faqs={faqs} className="md:mt-20" />
       </View>
