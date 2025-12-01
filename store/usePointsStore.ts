@@ -26,6 +26,7 @@ export const usePointsStore = create<PointsState>()(
           totalPoints: 0,
           rewardsByType: [],
         },
+        userRefferer: '',
       },
       isLoading: false,
       error: null,
