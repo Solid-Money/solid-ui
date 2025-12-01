@@ -7,7 +7,7 @@ import '@/global.css';
 import { infoClient } from '@/graphql/clients';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
-import { ApolloProvider } from '@apollo/client';
+import { ApolloProvider } from '@apollo/client/react';
 import {
   MonaSans_200ExtraLight,
   MonaSans_300Light,

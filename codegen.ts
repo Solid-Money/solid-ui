@@ -9,7 +9,7 @@ const config: CodegenConfig = {
       plugins: ['typescript', 'typescript-operations', 'typescript-react-apollo'],
     },
     'graphql/generated/algebra-info.tsx': {
-      schema: 'https://api.studio.thegraph.com/query/78455/algebra/version/latest',
+      schema: 'https://gateway.thegraph.com/api/3a78a20e9f74b2cecd6a4f0fc41bcafe/subgraphs/id/7mTMzJM4W2a1sVkwYLYmMGnR2D3BLAhUxVKaqaxTRVQb',
       documents: [
         'graphql/queries/algebraInfo.ts',
         'graphql/queries/pools.ts',

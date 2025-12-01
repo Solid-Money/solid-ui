@@ -6,7 +6,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { View } from 'react-native';
 
 const DepositTokenSelector = () => {
-  const { setModal, setOutputToken, outputToken, srcChainId } = useDepositStore();
+  const { setModal, setOutputToken, srcChainId } = useDepositStore();
 
   const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
 

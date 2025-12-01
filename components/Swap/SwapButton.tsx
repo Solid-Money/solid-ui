@@ -54,7 +54,7 @@ const SwapButton: React.FC = () => {
       () => {
         setTransaction({
           amount: Number(inputAmount),
-          address: currencies[SwapField.INPUT]?.wrapped.address,
+          address: currencies[SwapField.INPUT]?.wrapped.address as `0x${string}`,
           inputCurrencySymbol: inputSymbol,
           outputCurrencySymbol: outputSymbol,
         });
@@ -79,8 +79,8 @@ const SwapButton: React.FC = () => {
 
   const userHasSpecifiedInputOutput = Boolean(
     currencies[SwapField.INPUT] &&
-      currencies[SwapField.OUTPUT] &&
-      parsedAmounts[independentField]?.greaterThan('0'),
+    currencies[SwapField.OUTPUT] &&
+    parsedAmounts[independentField]?.greaterThan('0'),
   );
 
   const routeNotFound = trade?.swaps.length === 0;
@@ -413,7 +413,7 @@ const SwapButton: React.FC = () => {
         if (onWrap) {
           setTransaction({
             amount: Number(typedValue || '0'),
-            address: currencies[SwapField.INPUT]?.wrapped.address,
+            address: currencies[SwapField.INPUT]?.wrapped.address as `0x${string}`,
             inputCurrencySymbol: currencies[SwapField.INPUT]?.symbol,
             outputCurrencySymbol: currencies[SwapField.OUTPUT]?.symbol,
           });

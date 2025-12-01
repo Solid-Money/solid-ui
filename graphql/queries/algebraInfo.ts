@@ -1,6 +1,5 @@
 import { gql } from '@apollo/client';
 
-import { infoClient } from '@/graphql/clients';
 
 export const GET_ALGEBRA_PAIRS_QUERY = gql`
     query algebraPairs($from: Int!) {
@@ -84,14 +83,3 @@ export const TOP_PAIRS_QUERY = gql`
     }
 `;
 
-export async function getAlgebraPairs(from: number, first: number) {
-    const response = await infoClient.query({
-        query: GET_ALGEBRA_PAIRS_QUERY,
-        variables: {
-            from,
-            first,
-        },
-    });
-
-    return response.data.pools;
-}
