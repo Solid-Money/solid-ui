@@ -8,6 +8,7 @@ import PageLayout from '@/components/PageLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import { usePoints } from '@/hooks/usePoints';
 import useUser from '@/hooks/useUser';
 import { fetchLeaderboardUsers } from '@/lib/api';
 import { LeaderboardResponse, LeaderboardUser } from '@/lib/types';
@@ -83,6 +84,7 @@ const Row = ({ leaderboardUser, index, isStar }: RowProps) => {
 
 const Leaderboard = () => {
   const { user } = useUser();
+  const { points } = usePoints();
   const { isScreenMedium } = useDimension();
 
   const {
@@ -111,7 +113,7 @@ const Leaderboard = () => {
   const constructedUser: LeaderboardUser = {
     id: user.safeAddress,
     walletAddress: user.safeAddress,
-    points: user.points || 0,
+    points: points.userRewardsSummary.totalPoints || 0,
     leaderboardPosition: user.leaderboardPosition || 0,
   };
 
