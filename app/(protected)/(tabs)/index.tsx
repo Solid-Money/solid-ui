@@ -162,7 +162,7 @@ export default function Savings() {
                 )}
               </View>
             </View>
-            <DashboardHeaderButtons hasTokens={hasTokens} />
+            <DashboardHeaderButtons hasTokens={true} />
           </View>
         ) : (
           <DashboardHeaderMobile
