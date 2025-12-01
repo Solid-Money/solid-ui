@@ -47,11 +47,11 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
               const balance = Number(
                 formatUnits(BigInt(token.balance) || 0n, token.contractDecimals),
               );
+
               const balanceUSD = balance * (token.quoteRate || 0);
               const isSelected =
                 selectedToken?.contractAddress === token.contractAddress &&
                 selectedToken?.chainId === token.chainId;
-
               return (
                 <Pressable
                   key={`${token.contractAddress}-${token.chainId}`}
@@ -75,7 +75,12 @@ const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
                         {token.contractTickerSymbol}
                       </Text>
                       <Text className="text-gray-400 text-sm">
-                        {token.contractTickerSymbol} on {token.chainId === 1 ? 'Ethereum' : 'Fuse'}
+                        {token.contractTickerSymbol} on{' '}
+                        {token.chainId === 1
+                          ? 'Ethereum'
+                          : token.chainId === 8453
+                            ? 'Base'
+                            : 'Fuse'}
                       </Text>
                     </View>
                   </View>

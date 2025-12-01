@@ -29,11 +29,11 @@ const SendPage = () => {
   const [selectedToken, setSelectedToken] = useState<TokenBalance | null>(null);
   const [showTokenSelector, setShowTokenSelector] = useState(false);
   const { setModal, setTransaction } = useSendStore();
-  const { ethereumTokens, fuseTokens } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
   const allTokens = useMemo(() => {
-    const combined = [...ethereumTokens, ...fuseTokens];
+    const combined = [...ethereumTokens, ...fuseTokens, ...baseTokens];
     return combined.sort((a, b) => {
       const balanceA = Number(formatUnits(BigInt(a.balance || '0'), a.contractDecimals));
       const balanceUSD_A = balanceA * (a.quoteRate || 0);
@@ -43,7 +43,7 @@ const SendPage = () => {
 
       return balanceUSD_B - balanceUSD_A; // Descending order
     });
-  }, [ethereumTokens, fuseTokens]);
+  }, [ethereumTokens, fuseTokens, baseTokens]);
 
   // Create form schema with validation (reusing patterns from SendModal)
   const sendSchema = useMemo(() => {
