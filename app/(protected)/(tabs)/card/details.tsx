@@ -554,7 +554,10 @@ interface CashbackDisplayProps {
 }
 
 function CashbackDisplay({ cashback }: CashbackDisplayProps) {
-  const totalUsdValue = cashback?.monthlyUsdValue ? Math.round(cashback.monthlyUsdValue) : 0;
+  const totalUsdValue = cashback?.monthlyUsdValue
+    ? parseFloat(cashback.monthlyUsdValue.toFixed(2))
+    : 0;
+
   const cashbackPercentage = cashback?.percentage || 0;
 
   return (
