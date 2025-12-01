@@ -667,6 +667,7 @@ export interface Points {
     referredUsersDepositedCount?: number;
   };
   userRefferer: string;
+  leaderboardPosition?: number;
 }
 
 export enum LifiOrder {
