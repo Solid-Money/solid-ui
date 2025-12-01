@@ -114,7 +114,7 @@ const Leaderboard = () => {
     id: user.safeAddress,
     walletAddress: user.safeAddress,
     points: points.userRewardsSummary.totalPoints || 0,
-    leaderboardPosition: user.leaderboardPosition || 0,
+    leaderboardPosition: points.leaderboardPosition || 0,
   };
 
   const renderItem = ({ item, index }: { item: LeaderboardUser; index: number }) => (
@@ -137,7 +137,7 @@ const Leaderboard = () => {
       <View className="gap-10">
         <View className="gap-4">
           <Text className="text-lg font-semibold">Your Ranking</Text>
-          <Row leaderboardUser={constructedUser} index={user.leaderboardPosition || 0} />
+          <Row leaderboardUser={constructedUser} index={points.leaderboardPosition || 0} />
         </View>
         <View className="mb-4">
           <Text className="text-lg font-semibold">Top users of all-time</Text>
