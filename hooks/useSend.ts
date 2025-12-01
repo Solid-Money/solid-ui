@@ -28,7 +28,13 @@ type SendResult = {
   resetSendStatus: () => void;
 };
 
-const useSend = ({ tokenAddress, tokenDecimals, chainId, tokenSymbol, tokenType }: SendProps): SendResult => {
+const useSend = ({
+  tokenAddress,
+  tokenDecimals,
+  chainId,
+  tokenSymbol,
+  tokenType,
+}: SendProps): SendResult => {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivity();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
@@ -58,25 +64,26 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId, tokenSymbol, tokenType 
 
       const amountWei = parseUnits(amount, tokenDecimals);
 
-      const transactions = tokenType === TokenType.NATIVE
-        ? [
-            {
-              to: to,
-              data: '0x' as const,
-              value: amountWei,
-            },
-          ]
-        : [
-            {
-              to: tokenAddress,
-              data: encodeFunctionData({
-                abi: ERC20_ABI,
-                functionName: 'transfer',
-                args: [to, amountWei],
-              }),
-              value: 0n,
-            },
-          ];
+      const transactions =
+        tokenType === TokenType.NATIVE
+          ? [
+              {
+                to: to,
+                data: '0x' as const,
+                value: amountWei,
+              },
+            ]
+          : [
+              {
+                to: tokenAddress,
+                data: encodeFunctionData({
+                  abi: ERC20_ABI,
+                  functionName: 'transfer',
+                  args: [to, amountWei],
+                }),
+                value: 0n,
+              },
+            ];
 
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 
@@ -96,19 +103,15 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId, tokenSymbol, tokenType 
             tokenDecimals: tokenDecimals.toString(),
           },
         },
-        (onUserOpHash) => executeTransactions(
-          smartAccountClient,
-          transactions,
-          'Send failed',
-          chain,
-          onUserOpHash
-        )
+        onUserOpHash =>
+          executeTransactions(smartAccountClient, transactions, 'Send failed', chain, onUserOpHash),
       );
 
       // Extract transaction from result
-      const transaction = result && typeof result === 'object' && 'transaction' in result
-        ? result.transaction
-        : result;
+      const transaction =
+        result && typeof result === 'object' && 'transaction' in result
+          ? result.transaction
+          : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         throw new Error('User cancelled transaction');
@@ -127,7 +130,7 @@ const useSend = ({ tokenAddress, tokenDecimals, chainId, tokenSymbol, tokenType 
       return transaction;
     } catch (error) {
       console.error(error);
-      
+
       track(TRACKING_EVENTS.SEND_TRANSACTION_ERROR, {
         token_address: tokenAddress,
         chain_id: chainId,
