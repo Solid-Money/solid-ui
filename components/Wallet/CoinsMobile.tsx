@@ -7,8 +7,8 @@ import { formatUnits } from 'viem';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { TokenBalance } from '@/lib/types';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { TokenBalance } from '@/lib/types';
 import { compactNumberFormat } from '@/lib/utils';
 
 const Title = () => (

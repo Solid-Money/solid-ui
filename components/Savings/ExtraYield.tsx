@@ -224,7 +224,7 @@ const ExtraYield = () => {
         <View className="flex-row items-center gap-1 flex-wrap">
           <Text
             className={cn(
-              'text-muted-foreground font-medium',
+              'text-muted-foreground font-medium text-base',
               isScreenMedium ? (hasDeposited ? 'max-w-56' : 'max-w-xs') : 'max-w-full',
             )}
           >
@@ -238,7 +238,7 @@ const ExtraYield = () => {
             className="hover:opacity-70"
           >
             <View className="flex-row items-center">
-              <Text className="underline leading-4 text-muted-foreground font-medium">
+              <Text className="text-base underline leading-4 text-muted-foreground font-medium">
                 Read more
               </Text>
               <ChevronRight size={18} color="white" className="mt-0.5" />
