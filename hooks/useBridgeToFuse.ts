@@ -1,6 +1,5 @@
 import { useActivity } from '@/hooks/useActivity';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -8,7 +7,7 @@ import { Status, TransactionType } from '@/lib/types';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useState } from 'react';
-import { TransactionReceipt } from 'viem';
+import { erc20Abi, TransactionReceipt } from 'viem';
 import { mainnet } from 'viem/chains';
 import {
   encodeAbiParameters,
@@ -93,7 +92,7 @@ const useBridgeToFuse = (): BridgeResult => {
         {
           to: ADDRESSES.ethereum.vault,
           data: encodeFunctionData({
-            abi: ERC20_ABI,
+            abi: erc20Abi,
             functionName: 'transfer',
             args: [ADDRESSES.ethereum.bridgePaymasterAddress, amountWei],
           }),

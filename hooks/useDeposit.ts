@@ -4,6 +4,7 @@ import {
   type Address,
   encodeAbiParameters,
   encodeFunctionData,
+  erc20Abi,
   parseAbiParameters,
   parseUnits,
   TransactionReceipt,
@@ -12,14 +13,13 @@ import { mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useActivity } from '@/hooks/useActivity';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TransactionType } from '@/lib/types';
-import { useActivity } from '@/hooks/useActivity';
 import useUser from './useUser';
 
 type DepositResult = {
@@ -115,7 +115,7 @@ const useDeposit = (): DepositResult => {
         {
           to: ADDRESSES.ethereum.usdc,
           data: encodeFunctionData({
-            abi: ERC20_ABI,
+            abi: erc20Abi,
             functionName: 'transfer',
             args: [ADDRESSES.ethereum.bridgePaymasterAddress, amountWei],
           }),

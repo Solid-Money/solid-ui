@@ -2,8 +2,8 @@ import { Address, Hex, TransactionRequest } from 'viem';
 import { readContract, writeContract } from 'wagmi/actions';
 
 import { getUsdcAddress } from '@/constants/bridge';
-import ERC20ABI from '@/lib/abis/ERC20';
 import { config, getWallet, publicClient } from '@/lib/wagmi';
+import { erc20Abi } from 'viem';
 
 export const getTransactionReceipt = async (chainId: number, hash: Hex) => {
   return publicClient(chainId).waitForTransactionReceipt({
@@ -21,7 +21,7 @@ export const approveUsdc = async (
 
     const hash = await writeContract(config, {
       address: usdcAddress,
-      abi: ERC20ABI,
+      abi: erc20Abi,
       functionName: 'approve',
       args: [spender, amount],
     });
@@ -41,7 +41,7 @@ export const approveToken = async (
   try {
     const hash = await writeContract(config, {
       address: tokenAddress,
-      abi: ERC20ABI,
+      abi: erc20Abi,
       functionName: 'approve',
       args: [spender, amount],
     });
@@ -63,9 +63,10 @@ export const getUsdcAllowance = async (
 
     const allowance = (await readContract(config, {
       address: usdcAddress,
-      abi: ERC20ABI,
+      abi: erc20Abi,
       functionName: 'allowance',
       args: [owner, spender],
+      chainId,
     })) as bigint;
 
     return allowance;
@@ -83,7 +84,7 @@ export const getTokenAllowance = async (
   try {
     const allowance = (await readContract(config, {
       address: tokenAddress,
-      abi: ERC20ABI,
+      abi: erc20Abi,
       functionName: 'allowance',
       args: [ownerAddress, spenderAddress],
     })) as bigint;
@@ -91,7 +92,7 @@ export const getTokenAllowance = async (
     return allowance;
   } catch (error) {
     console.error(error);
-    throw new Error('Failed to get USDC allowance');
+    throw new Error('Failed to get token allowance');
   }
 };
 

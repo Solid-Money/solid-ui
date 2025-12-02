@@ -5,6 +5,7 @@ import {
   type Address,
   encodeAbiParameters,
   encodeFunctionData,
+  erc20Abi,
   formatUnits,
   parseAbiParameters,
   parseSignature,
@@ -21,7 +22,6 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
@@ -81,7 +81,7 @@ const useDepositFromEOA = (
   });
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
-    abi: ERC20_ABI,
+    abi: erc20Abi,
     address: tokenAddress,
     functionName: 'balanceOf',
     args: [eoaAddress as Address],
@@ -148,7 +148,7 @@ const useDepositFromEOA = (
 
   const getTokenName = async (chainId: number, tokenAddress: Address) => {
     const tokenName = await readContract(config, {
-      abi: ERC20_ABI,
+      abi: erc20Abi,
       address: tokenAddress,
       functionName: 'name',
       chainId,

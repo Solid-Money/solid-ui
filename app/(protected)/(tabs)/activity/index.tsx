@@ -18,7 +18,9 @@ export default function Activity() {
 
   return (
     <PageLayout desktopOnly isLoading={isCardLoading} scrollable={!isNative}>
-      <View className={`gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto ${isNative ? 'flex-1' : ''}`}>
+      <View
+        className={`gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto ${isNative ? 'flex-1' : ''}`}
+      >
         <Text className="text-xl md:text-3xl font-semibold">Activity</Text>
         {hasCard ? <ActivityTabs /> : <ActivityTransactions tab={ActivityTab.WALLET} />}
       </View>
