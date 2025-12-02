@@ -26,7 +26,7 @@ const TransactionCredenzaContent = ({
   return (
     <>
       <ArrowUpRight color="white" />
-      <Text>{text}</Text>
+      <Text className="text-base">{text}</Text>
     </>
   );
 };
@@ -35,7 +35,7 @@ const TransactionCancelContent = () => {
   return (
     <>
       <X color="white" />
-      <Text>Cancel Withdraw</Text>
+      <Text className="text-base">Cancel Withdraw</Text>
     </>
   );
 };
@@ -48,5 +48,6 @@ export {
   pressTransactionCredenzaContent,
   TransactionCancelContent,
   TransactionCredenzaContent,
-  TransactionCredenzaTrigger,
+  TransactionCredenzaTrigger
 };
+

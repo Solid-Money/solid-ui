@@ -209,21 +209,21 @@ const DepositToCard = () => {
                   <Text className="text-[#ACACAC] font-medium">{selectedToken.contractName}</Text>
                 </View>
                 <View className="flex-row items-center gap-4">
-                  <Text className=" text-[#ACACAC] font-medium">
+                  <Text className=" text-[#ACACAC] font-medium text-base">
                     {formatNumber(availableBalance)} available
                   </Text>
                   <Pressable onPress={handleMaxPress} className="bg-[#4D4D4D] px-3 py-1 rounded-xl">
-                    <Text className="text-primary font-bold">Max</Text>
+                    <Text className="text-primary font-bold text-base">Max</Text>
                   </Pressable>
                 </View>
               </>
             ) : (
-              <Text className="text-muted-foreground">No stablecoins available</Text>
+              <Text className="text-muted-foreground text-base">No stablecoins available</Text>
             )}
           </View>
         </View>
 
-        <Text className="text-center text-muted-foreground font-medium mb-4">
+        <Text className="text-center text-muted-foreground font-medium text-base mb-4">
           Only stablecoins allowed to deposit to card
         </Text>
 
@@ -272,7 +272,7 @@ const DepositToCard = () => {
           onPress={handleContinue}
           disabled={!isValidAmount || isDepositing}
         >
-          <Text className="font-bold">{isDepositing ? 'Depositing...' : 'Continue'}</Text>
+          <Text className="font-bold text-base">{isDepositing ? 'Depositing...' : 'Continue'}</Text>
           {isDepositing && <ActivityIndicator color="gray" size="small" />}
         </Button>
       </View>

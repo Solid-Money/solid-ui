@@ -79,7 +79,7 @@ const Row = memo(function Row({ label, value, isLast }: RowProps) {
 });
 
 const Label = memo(function Label({ children }: LabelProps) {
-  return <Text className="text-[#8E8E93] font-medium">{children}</Text>;
+  return <Text className="text-[#8E8E93] font-medium text-base">{children}</Text>;
 });
 
 const Value = memo(function Value({ children, className }: ValueProps) {
@@ -506,7 +506,7 @@ export default function ActivityDetail() {
             className="rounded-xl h-14 border-0"
           >
             <X color="white" size={16} />
-            <Text>Cancel Withdraw</Text>
+            <Text className="text-base">Cancel Withdraw</Text>
           </Button>
         )}
 
