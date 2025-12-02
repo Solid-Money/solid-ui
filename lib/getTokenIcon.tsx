@@ -16,6 +16,8 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
   switch (tokenSymbol?.toUpperCase()) {
     case 'USDC':
       return { type: 'image', source: require('@/assets/images/usdc-4x.png') };
+    case 'USDT':
+      return { type: 'image', source: require('@/assets/images/usdt.png') };
     case 'WETH':
     case 'ETH':
       return { type: 'image', source: require('@/assets/images/eth.png') };

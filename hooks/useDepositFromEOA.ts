@@ -523,15 +523,14 @@ const useDepositFromEOA = (
               spender,
               amountWei,
             );
-            if (!hash) {
-              throw new Error('Failed to set allowance');
-            }
-            const receipt = await getTransactionReceipt(srcChainId, hash as `0x${string}`);
-            if (!receipt) {
-              throw new Error('Failed to get transaction receipt');
-            }
-            if (receipt.status !== 'success') {
-              throw new Error('Transaction failed');
+            if (hash) {
+              const receipt = await getTransactionReceipt(srcChainId, hash as `0x${string}`);
+              if (!receipt) {
+                throw new Error('Failed to get transaction receipt');
+              }
+              if (receipt.status !== 'success') {
+                throw new Error('Transaction failed');
+              }
             }
           }
 
