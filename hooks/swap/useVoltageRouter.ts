@@ -73,7 +73,6 @@ export function useVoltageRouter(
 ): { trade: VoltageTrade | undefined; isLoading: boolean; isValid: boolean } {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState<boolean>(false);
-  const [isValid, setIsValid] = useState<boolean>(false);
 
   const inputToken = getToken(inputCurrency);
 
@@ -119,31 +118,30 @@ export function useVoltageRouter(
     };
   }, [amount, inputToken, isExactIn, outputToken, slippage]);
 
-  return useMemo(() => {
-    let trade: VoltageTrade | undefined;
-    if (!quote || !inputCurrency || !outputCurrency) {
-      trade = undefined;
-      setIsValid(false);
-    } else {
-      trade = {
-        inputAmount: CurrencyAmount.fromRawAmount(inputCurrency, quote.sellAmount),
-        outputAmount: CurrencyAmount.fromRawAmount(outputCurrency, quote.buyAmount),
-        data: quote.data,
-        allowanceTarget: quote.allowanceTarget,
-        value: CurrencyAmount.fromRawAmount(WFUSE_TOKEN, quote.value),
-        priceImpact: new Percent(String(parseInt(String(+quote.estimatedPriceImpact * 100))), String(10000)),
-        price: parseFloat(quote.price),
-        to: quote.to,
-        tradeType: isExactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-        sources: quote.sources,
-      };
-      setIsValid(true);
-    }
+  // Derive isValid from quote state instead of using setState in useMemo
+  const isValid = Boolean(quote && inputCurrency && outputCurrency);
 
+  const trade = useMemo(() => {
+    if (!quote || !inputCurrency || !outputCurrency) {
+      return undefined;
+    }
     return {
-      trade,
-      isLoading: quoteLoading,
-      isValid,
+      inputAmount: CurrencyAmount.fromRawAmount(inputCurrency, quote.sellAmount),
+      outputAmount: CurrencyAmount.fromRawAmount(outputCurrency, quote.buyAmount),
+      data: quote.data,
+      allowanceTarget: quote.allowanceTarget,
+      value: CurrencyAmount.fromRawAmount(WFUSE_TOKEN, quote.value),
+      priceImpact: new Percent(String(parseInt(String(+quote.estimatedPriceImpact * 100))), String(10000)),
+      price: parseFloat(quote.price),
+      to: quote.to,
+      tradeType: isExactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
+      sources: quote.sources,
     };
-  }, [inputCurrency, isExactIn, outputCurrency, quote, quoteLoading, isValid]);
+  }, [inputCurrency, isExactIn, outputCurrency, quote]);
+
+  return {
+    trade,
+    isLoading: quoteLoading,
+    isValid,
+  };
 }

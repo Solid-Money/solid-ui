@@ -1,6 +1,6 @@
 import { ChevronRight, Wallet } from 'lucide-react-native';
 import React from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -34,13 +34,15 @@ export default function CardDepositOptions() {
           setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
         }}
       />
-      <Item
-        text="From External Wallet"
-        onPress={() => {
-          setSource('external');
-          setModal(CARD_DEPOSIT_MODAL.OPEN_EXTERNAL_FORM);
-        }}
-      />
+      {Platform.OS === 'web' && (
+        <Item
+          text="From External Wallet"
+          onPress={() => {
+            setSource('external');
+            setModal(CARD_DEPOSIT_MODAL.OPEN_EXTERNAL_FORM);
+          }}
+        />
+      )}
     </View>
   );
 }

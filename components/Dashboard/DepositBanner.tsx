@@ -66,7 +66,11 @@ const DepositBanner = () => {
   };
 
   return (
-    <DepositOptionModal trigger={getTrigger()} modal={DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS} />
+    <DepositOptionModal
+      trigger={getTrigger()}
+      modal={DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS}
+      fillContainer
+    />
   );
 };
 

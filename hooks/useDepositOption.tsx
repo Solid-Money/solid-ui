@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, PressableProps, View } from 'react-native';
+import { Platform, Pressable, PressableProps, View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
@@ -10,12 +10,12 @@ import BuyCrypto from '@/components/BuyCrypto';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import DepositBuyCryptoOptions from '@/components/DepositOption/DepositBuyCryptoOptions';
-import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress.web';
-import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks.web';
+import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress';
+import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
-import { DepositToVaultForm } from '@/components/DepositToVault';
+import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -26,6 +26,7 @@ import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import useResponsiveModal from './useResponsiveModal';
 
@@ -33,12 +34,14 @@ export interface DepositOptionProps {
   buttonText?: string;
   trigger?: React.ReactNode;
   modal?: DepositModal;
+  fillContainer?: boolean;
 }
 
 const useDepositOption = ({
   buttonText = 'Add funds',
   trigger,
   modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  fillContainer = false,
 }: DepositOptionProps = {}) => {
   const { user } = useUser();
   const {
@@ -47,6 +50,7 @@ const useDepositOption = ({
     transaction,
     setModal,
     srcChainId,
+    outputToken,
     bankTransfer,
     directDepositSession,
   } = useDepositStore();
@@ -82,6 +86,7 @@ const useDepositOption = ({
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
+  const isTokenSelector = currentModal.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -100,6 +105,9 @@ const useDepositOption = ({
     return (
       <Pressable
         {...props}
+        className={cn({
+          'flex-1': Platform.OS === 'web' || fillContainer,
+        })}
         onPress={e => {
           if (isScreenMedium) {
             props?.onPress?.(e);
@@ -129,7 +137,7 @@ const useDepositOption = ({
           >
             <View className="flex-row items-center gap-1">
               <Plus color="black" />
-              <Text className="text-primary-foreground font-bold">{buttonText}</Text>
+              <Text className="text-primary-foreground font-bold text-base">{buttonText}</Text>
             </View>
           </View>
         </Trigger>
@@ -144,7 +152,8 @@ const useDepositOption = ({
         <TransactionStatus
           amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
-          icon={getTokenIcon({ tokenSymbol: 'USDC' })}
+          icon={getTokenIcon({ tokenSymbol: outputToken })}
+          token={outputToken}
         />
       );
     }
@@ -193,6 +202,10 @@ const useDepositOption = ({
       return <DepositDirectlyAddress />;
     }
 
+    if (isTokenSelector) {
+      return <DepositTokenSelector />;
+    }
+
     return <DepositOptions />;
   };
 
@@ -212,6 +225,7 @@ const useDepositOption = ({
     if (isPublicAddress) return 'public-address';
     if (isDepositDirectly) return 'deposit-directly-networks';
     if (isDepositDirectlyAddress) return 'deposit-directly-address';
+    if (isTokenSelector) return 'token-selector';
     return 'deposit-options';
   };
 
@@ -226,6 +240,7 @@ const useDepositOption = ({
     if (isBuyCryptoOptions) return 'Buy crypto';
     if (isPublicAddress) return 'Solid address';
     if (isDepositDirectly) return 'Choose network';
+    if (isTokenSelector) return 'Select a token';
     return 'Deposit';
   };
 
@@ -311,11 +326,13 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isDepositDirectlyAddress) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+    } else if (isTokenSelector) {
+      setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isBuyCrypto) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isNetworks) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
-    }else if (isScreenMedium) {
+    } else if (isScreenMedium) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else {
       router.back();
@@ -394,7 +411,8 @@ const useDepositOption = ({
     isBuyCryptoOptions ||
     isPublicAddress ||
     isDepositDirectly ||
-    isDepositDirectlyAddress;
+    isDepositDirectlyAddress ||
+    isTokenSelector;
 
   return {
     shouldOpen,

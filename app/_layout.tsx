@@ -146,10 +146,10 @@ if (Platform.OS !== 'web') {
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-// Set the animation options for a smoother transition
+// Set the animation options - instant hide, no fade
 SplashScreen.setOptions({
-  duration: 1500,
-  fade: true,
+  duration: 0,
+  fade: false,
 });
 
 const queryClient = new QueryClient({
@@ -182,11 +182,9 @@ export default Sentry.wrap(function RootLayout() {
         // Pre-load fonts, make any API calls you need to do here
         // await Font.loadAsync(Entypo.font);
 
-        // Simulate loading time - replace with actual async operations
         await initAnalytics();
         if (Platform.OS !== 'web') {
           Appearance.setColorScheme('dark');
-          await new Promise(resolve => setTimeout(resolve, 2000));
         }
 
         // Add any additional initialization here
@@ -234,93 +232,6 @@ export default Sentry.wrap(function RootLayout() {
     return null;
   }
 
-  const AppContent = () => (
-    <Stack
-      screenOptions={{
-        contentStyle: {
-          backgroundColor: '#000',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="(protected)"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="overview"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="register"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="referral"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="welcome"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="notifications"
-        options={{
-          animation: 'none',
-          title: 'Turn on notifications',
-          headerStyle: {
-            backgroundColor: '#000',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-          },
-          headerLeft: () => (
-            <Button variant="ghost" size="icon" onPress={() => router.back()} className="mr-4">
-              <ChevronLeft size={28} color="white" />
-            </Button>
-          ),
-          headerTitleAlign: 'center',
-        }}
-      />
-      <Stack.Screen
-        name="passkey-not-supported"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-      <Stack.Screen
-        name="onboarding"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="recovery"
-        options={{
-          headerShown: false,
-          animation: 'none',
-        }}
-      />
-    </Stack>
-  );
-
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <TurnkeyProvider>
@@ -336,7 +247,88 @@ export default Sentry.wrap(function RootLayout() {
                           <title>Solid - The Savings Super-App</title>
                         </Head>
                       )}
-                      <AppContent />
+                      <Stack
+                        screenOptions={{
+                          contentStyle: {
+                            backgroundColor: '#000',
+                          },
+                        }}
+                      >
+                        <Stack.Screen
+                          name="(protected)"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                        <Stack.Screen
+                          name="overview"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                        <Stack.Screen
+                          name="register"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                        <Stack.Screen
+                          name="welcome"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                        <Stack.Screen
+                          name="notifications"
+                          options={{
+                            animation: 'none',
+                            title: 'Turn on notifications',
+                            headerStyle: {
+                              backgroundColor: '#000',
+                            },
+                            headerTintColor: '#fff',
+                            headerTitleStyle: {
+                              fontSize: 20,
+                              fontWeight: 'bold',
+                            },
+                            headerLeft: () => (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onPress={() => router.back()}
+                                className="mr-4"
+                              >
+                                <ChevronLeft size={28} color="white" />
+                              </Button>
+                            ),
+                            headerTitleAlign: 'center',
+                          }}
+                        />
+                        <Stack.Screen
+                          name="passkey-not-supported"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                        <Stack.Screen
+                          name="onboarding"
+                          options={{
+                            headerShown: false,
+                          }}
+                        />
+                        <Stack.Screen
+                          name="recovery"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                      </Stack>
                       <PortalHost />
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>

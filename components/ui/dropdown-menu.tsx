@@ -1,3 +1,9 @@
+import { TextClassContext } from '@/components/ui/text';
+import { Check } from '@/lib/icons/Check';
+import { ChevronDown } from '@/lib/icons/ChevronDown';
+import { ChevronRight } from '@/lib/icons/ChevronRight';
+import { ChevronUp } from '@/lib/icons/ChevronUp';
+import { cn } from '@/lib/utils';
 import * as DropdownMenuPrimitive from '@rn-primitives/dropdown-menu';
 import * as React from 'react';
 import {
@@ -9,12 +15,6 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { Check } from '@/lib/icons/Check';
-import { ChevronDown } from '@/lib/icons/ChevronDown';
-import { ChevronRight } from '@/lib/icons/ChevronRight';
-import { ChevronUp } from '@/lib/icons/ChevronUp';
-import { cn } from '@/lib/utils';
-import { TextClassContext } from '@/components/ui/text';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -141,7 +141,7 @@ function DropdownMenuItem({
     <TextClassContext.Provider value="select-none text-sm native:text-lg text-popover-foreground web:group-focus:text-accent-foreground">
       <DropdownMenuPrimitive.Item
         className={cn(
-          'relative flex flex-row web:cursor-default gap-2 items-center rounded-sm px-2 py-1.5 native:py-2 web:outline-none web:focus:bg-accent active:bg-accent web:hover:bg-accent group',
+          'relative flex flex-row web:cursor-default gap-2 items-center rounded-sm px-2 py-1.5 native:py-2 web:outline-none web:focus:bg-accent active:bg-accent web:hover:bg-accent group bottom-0',
           inset && 'pl-8',
           props.disabled && 'opacity-50 web:pointer-events-none',
           className,

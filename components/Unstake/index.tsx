@@ -109,7 +109,7 @@ const Unstake = () => {
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60">Unstake amount</Text>
+        <Text className="opacity-60 text-base">Unstake amount</Text>
 
         <View
           className={cn(
@@ -198,7 +198,7 @@ const UnstakeTrigger = (props: any) => {
     >
       <View className="flex-row items-center gap-4">
         <ArrowDownLeft color="white" />
-        <Text className="font-bold">Withdraw</Text>
+        <Text className="font-bold text-base">Withdraw</Text>
       </View>
     </Button>
   );

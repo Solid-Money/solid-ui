@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
-import { Fuel, Wallet } from 'lucide-react-native';
+import { ChevronDown, Fuel, Wallet } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
@@ -31,9 +31,27 @@ import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 function DepositToVaultForm() {
-  const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA();
-  const { setModal, setTransaction, srcChainId } = useDepositStore();
+  const { setModal, setTransaction, srcChainId, outputToken } = useDepositStore();
   const { isScreenMedium } = useDimension();
+
+  const selectedTokenInfo = useMemo(() => {
+    const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
+    const tokenData = tokens ? tokens[outputToken as keyof typeof tokens] : undefined;
+
+    return {
+      address: tokenData?.address,
+      name: tokenData?.name || outputToken,
+      image: tokenData?.icon || require('@/assets/images/usdc.png'),
+      fullName: tokenData?.fullName,
+      version: tokenData?.version,
+    };
+  }, [srcChainId, outputToken]);
+
+  const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA(
+    selectedTokenInfo?.address || '',
+    selectedTokenInfo?.name || '',
+    selectedTokenInfo?.version,
+  );
 
   const isLoading = depositStatus.status === Status.PENDING;
   const { maxAPY } = useMaxAPY();
@@ -86,7 +104,8 @@ function DepositToVaultForm() {
     amountOut,
     isLoading: isPreviewDepositLoading,
     exchangeRate,
-  } = usePreviewDeposit(watchedAmount || '0');
+    routingFee,
+  } = usePreviewDeposit(watchedAmount || '0', selectedTokenInfo?.address, srcChainId);
 
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
@@ -182,23 +201,25 @@ function DepositToVaultForm() {
               )}
             />
             <View className="flex-row items-center gap-2 flex-shrink-0">
-              <Image
-                source={require('@/assets/images/usdc.png')}
-                alt="USDC"
-                style={{ width: 32, height: 32 }}
-              />
-              <Text className="font-semibold text-white text-lg">
-                {BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.name}
-              </Text>
-              {BRIDGE_TOKENS[srcChainId]?.tokens?.USDC?.fullName && (
-                <TooltipPopover text={BRIDGE_TOKENS[srcChainId].tokens.USDC.fullName} />
-              )}
+              <Pressable
+                onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+                className="flex-row items-center gap-2"
+              >
+                <Image
+                  source={selectedTokenInfo.image}
+                  alt={selectedTokenInfo.name}
+                  style={{ width: 32, height: 32 }}
+                />
+                <Text className="font-semibold text-white text-lg">{selectedTokenInfo.name}</Text>
+                {selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />}
+                <ChevronDown size={16} color="#A1A1A1" />
+              </Pressable>
             </View>
           </View>
           <View className="flex-row items-center gap-2">
             <Wallet color="#A1A1A1" size={16} />
             <Text className="text-muted-foreground">
-              {formatNumber(Number(formattedBalance))} USDC
+              {formatNumber(Number(formattedBalance))} {selectedTokenInfo.name}
             </Text>
             <Max
               onPress={() => {
@@ -237,15 +258,22 @@ function DepositToVaultForm() {
             </View>
           </View>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
-            <Text className="text-base text-muted-foreground">Exchange rate</Text>
+            <Text className="text-base text-muted-foreground">Price</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
               <Text className="text-lg font-semibold">
-                {exchangeRate ? (
-                  formatUnits(exchangeRate, 6)
-                ) : (
-                  <Skeleton className="w-20 h-7 bg-white/20" />
-                )}
+                {'1 soUSD = '}
+                {`$${formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 0)}`}
               </Text>
+            </View>
+          </View>
+          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+            <Text className="text-base text-muted-foreground">Routing Fee</Text>
+            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+              {isPreviewDepositLoading ? (
+                <Skeleton className="w-20 h-7 bg-white/20" />
+              ) : (
+                <Text className="text-lg font-semibold">{`$${formatNumber(routingFee)}`}</Text>
+              )}
             </View>
           </View>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">

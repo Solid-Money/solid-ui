@@ -126,7 +126,7 @@ const Withdraw = () => {
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60">Withdraw amount</Text>
+        <Text className="opacity-60 text-base">Withdraw amount</Text>
 
         <View
           className={cn(

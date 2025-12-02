@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -9,7 +9,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 const useDepositBuyCryptoOptions = () => {
   const { setModal } = useDepositStore();
 
-  const handleBankDepositPress = useCallback(async () => {
+  const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'bank_transfer',
     });
@@ -23,35 +23,37 @@ const useDepositBuyCryptoOptions = () => {
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
   }, [setModal]);
 
-  const BUY_CRYPTO_OPTIONS = [
-    {
-      text: 'Debit/Credit Card',
-      subtitle: 'Apple pay, Google Pay, or your\ncredit card',
-      icon: (
-        <Image
-          source={require('@/assets/images/buy_crypto.png')}
-          style={{ width: 26, height: 22 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: handleCreditCardPress,
-    },
-    {
-      text: 'Bank Deposit',
-      subtitle: 'Make a transfer from your bank',
-      icon: (
-        <Image
-          source={require('@/assets/images/bank_deposit.png')}
-          style={{ width: 26, height: 22 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: handleBankDepositPress,
-      isComingSoon: false,
-    },
-  ];
+  const buyCryptoOptions = useMemo(
+    () => [
+      {
+        text: 'Debit/Credit Card',
+        subtitle: 'Apple pay, Google Pay, or your\ncredit card',
+        icon: (
+          <Image
+            source={require('@/assets/images/buy_crypto.png')}
+            style={{ width: 26, height: 22 }}
+            contentFit="contain"
+          />
+        ),
+        onPress: handleCreditCardPress,
+      },
+      {
+        text: 'Bank Deposit',
+        subtitle: 'Make a transfer from your bank',
+        icon: (
+          <Image
+            source={require('@/assets/images/bank_deposit.png')}
+            style={{ width: 26, height: 22 }}
+            contentFit="contain"
+          />
+        ),
+        onPress: handleBankDepositPress,
+      },
+    ],
+    [handleCreditCardPress, handleBankDepositPress],
+  );
 
-  return { BUY_CRYPTO_OPTIONS };
+  return { buyCryptoOptions };
 };
 
 export default useDepositBuyCryptoOptions;

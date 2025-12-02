@@ -179,7 +179,7 @@ const Send = ({
   return (
     <View className="gap-4">
       <View className="gap-2">
-        <Text className="opacity-60">Send amount</Text>
+        <Text className="opacity-60 text-base">Send amount</Text>
 
         <View
           className={cn(
@@ -231,7 +231,7 @@ const Send = ({
       </View>
 
       <View className="gap-2">
-        <Text className="opacity-60">To wallet</Text>
+        <Text className="opacity-60 text-base">To wallet</Text>
         <Controller
           control={control}
           name="address"

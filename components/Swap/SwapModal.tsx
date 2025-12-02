@@ -68,7 +68,7 @@ const SwapModal = () => {
           setModal(SWAP_MODAL.CLOSE);
         }
       }}
-      trigger={<></>}
+      trigger={null}
       title={getTitle()}
       titleClassName="justify-center"
       contentKey={getContentKey()}

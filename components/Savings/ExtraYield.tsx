@@ -221,27 +221,29 @@ const ExtraYield = () => {
       <View className="md:items-start gap-4">
         {isScreenMedium ? null : getImage()}
         <Text className="text-2xl leading-6 font-semibold md:max-w-72">Get 3% boosted yield!</Text>
-        <View className="flex-row items-center gap-1">
+        <View className="flex-row items-center gap-1 flex-wrap">
           <Text
             className={cn(
-              'text-muted-foreground font-medium',
+              'text-muted-foreground font-medium text-base',
               isScreenMedium ? (hasDeposited ? 'max-w-56' : 'max-w-xs') : 'max-w-full',
             )}
           >
             {hasDeposited
               ? 'Read the terms and claim your yield'
-              : 'Limited time offer - Get 3% extra boosted yield if you deposit now.'}{' '}
-            <Link
-              href="https://docs.solid.xyz/solid-early-adopter-bonus"
-              target="_blank"
-              className="hover:opacity-70"
-            >
-              <View className="flex-row items-center">
-                <Text className="underline leading-4">Read more</Text>
-                <ChevronRight size={18} color="white" className="mt-0.5" />
-              </View>
-            </Link>
+              : 'Limited time offer - Get 3% extra boosted yield if you deposit now.'}
           </Text>
+          <Link
+            href="https://docs.solid.xyz/solid-early-adopter-bonus"
+            target="_blank"
+            className="hover:opacity-70"
+          >
+            <View className="flex-row items-center">
+              <Text className="text-base underline leading-4 text-muted-foreground font-medium">
+                Read more
+              </Text>
+              <ChevronRight size={18} color="white" className="mt-0.5" />
+            </View>
+          </Link>
         </View>
         {hasDeposited ? getClaimButton() : <DepositOptionModal trigger={getTrigger()} />}
       </View>

@@ -51,6 +51,7 @@ const buttonTextVariants = cva(
         brand: 'text-primary-foreground',
         accent: 'text-primary-foreground',
         purple: 'text-primary-foreground',
+        rewards: 'text-primary-foreground',
       },
       size: {
         default: '',
@@ -69,7 +70,7 @@ const buttonTextVariants = cva(
 type ButtonProps = React.ComponentPropsWithoutRef<typeof Pressable> &
   VariantProps<typeof buttonVariants>;
 
-const Button = React.forwardRef<React.ElementRef<typeof Pressable>, ButtonProps>(
+const Button = React.forwardRef<React.ComponentRef<typeof Pressable>, ButtonProps>(
   ({ className, variant, size, ...props }, ref) => {
     return (
       <TextClassContext.Provider

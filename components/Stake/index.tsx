@@ -109,7 +109,7 @@ const Stake = () => {
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60">Stake amount</Text>
+        <Text className="opacity-60 text-base">Stake amount</Text>
 
         <View
           className={cn(
@@ -190,7 +190,7 @@ const StakeTrigger = (props: any) => {
     >
       <View className="flex-row items-center gap-4">
         <ArrowUp color="white" />
-        <Text className="font-bold">Stake</Text>
+        <Text className="font-bold text-base">Stake</Text>
       </View>
     </Button>
   );

@@ -184,6 +184,11 @@ export default function CardTransactions() {
                   }
                 }}
                 onEndReachedThreshold={0.5}
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={10}
+                updateCellsBatchingPeriod={50}
+                windowSize={11}
+                initialNumToRender={10}
                 ListFooterComponent={
                   isFetchingNextPage ? (
                     <View className="py-4">

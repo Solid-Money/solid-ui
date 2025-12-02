@@ -30,9 +30,9 @@ const PointsBanner = () => {
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
           <View className="justify-between items-start md:gap-2 py-5 md:py-8">
             <View className="inline max-w-40 md:max-w-64">
-              <Text className="text-xl md:text-3xl font-semibold">Earn</Text>{' '}
-              <Text className="text-xl md:text-3xl font-semibold text-rewards">5X</Text>{' '}
-              <Text className="text-xl md:text-3xl font-semibold">points on your deposits</Text>
+              <Text className="text-xl md:text-3xl font-semibold">
+                Earn <Text className="text-rewards">5X</Text> points on your deposits
+              </Text>
             </View>
             <View className="flex-row items-center gap-4">
               <Button
@@ -45,7 +45,7 @@ const PointsBanner = () => {
               </Button>
               <Link href={path.POINTS} className="web:hover:opacity-70">
                 <View className="flex-row items-center gap-0.5">
-                  <Text className="font-bold">Points page</Text>
+                  <Text className="font-bold text-base">Points page</Text>
                   <ChevronRight color="white" size={18} className="mt-0.5" />
                 </View>
               </Link>
