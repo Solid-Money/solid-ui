@@ -25,7 +25,7 @@ const DepositOption = ({
 
   return (
     <Pressable
-      className="flex-row items-center justify-between bg-primary/10 rounded-2xl px-5 py-10"
+      className="flex-row items-center justify-between bg-primary/10 rounded-2xl px-5 native:py-10 web:py-6 web:hover:bg-accent web:disabled:opacity-100 web:disabled:hover:opacity-100 web:h-auto"
       onPress={onPress}
       disabled={isDisabled}
     >

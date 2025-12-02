@@ -151,7 +151,7 @@ export default function CardDetails() {
       <AddToWalletModal
         isOpen={isAddToWalletModalOpen}
         onOpenChange={setIsAddToWalletModalOpen}
-        trigger={<></>}
+        trigger={null}
       />
     </PageLayout>
   );
