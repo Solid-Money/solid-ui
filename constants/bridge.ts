@@ -53,7 +53,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         isPermit: true,
       },
       USDT: {
-        name: 'USDT0',
+        name: 'USDT',
         fullName: 'Tether USD',
         address: '0xc2132d05d31c914a87c6611c10748aeb04b58e8f',
         icon: require('@/assets/images/usdt.png'),
@@ -84,10 +84,10 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         name: 'USDC',
         address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
         version: '2',
-        isPermit: true,
+        isPermit: false,
       },
       USDT: {
-        name: 'USD₮0',
+        name: 'USDT',
         fullName: 'Tether USD',
         address: '0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9',
         icon: require('@/assets/images/usdt.png'),

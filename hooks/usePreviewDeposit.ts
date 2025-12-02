@@ -22,8 +22,14 @@ export const usePreviewDeposit = (amount: string, tokenAddress?: string, chainId
   const isMainnetUsdc =
     chainId === mainnet.id && tokenAddress?.toLowerCase() === mainnetUsdcAddress?.toLowerCase();
 
+  const currentChainUsdcAddress = BRIDGE_TOKENS[chainId || 0]?.tokens?.USDC?.address;
+  const isUsdc =
+    tokenAddress &&
+    currentChainUsdcAddress &&
+    tokenAddress.toLowerCase() === currentChainUsdcAddress.toLowerCase();
+
   const shouldFetchLifi =
-    !!amount && Number(amount) > 0 && !!tokenAddress && !!chainId && !isMainnetUsdc;
+    !!amount && Number(amount) > 0 && !!tokenAddress && !!chainId && !isMainnetUsdc && !isUsdc;
 
   const { data: lifiAmountOut, isLoading: isLifiLoading } = useQuery({
     queryKey: ['lifiQuote', amount, tokenAddress, chainId],
@@ -48,7 +54,7 @@ export const usePreviewDeposit = (amount: string, tokenAddress?: string, chainId
   });
 
   let estimatedUsdcAmount = 0;
-  if (isMainnetUsdc) {
+  if (isMainnetUsdc || isUsdc) {
     estimatedUsdcAmount = Number(amount) * 10 ** 6;
   } else if (lifiAmountOut) {
     estimatedUsdcAmount = Number(lifiAmountOut);
@@ -56,10 +62,17 @@ export const usePreviewDeposit = (amount: string, tokenAddress?: string, chainId
 
   const amountOut = exchangeRate ? estimatedUsdcAmount / Number(exchangeRate) : 0;
 
+  const amountInUsdc = Number(amount) * 10 ** 6; // approximate for display purposes, assuming stablecoin input for now or if input is already USDC value
+  const routingFee =
+    !isMainnetUsdc && !isUsdc && estimatedUsdcAmount > 0 && amountInUsdc > estimatedUsdcAmount
+      ? (amountInUsdc - estimatedUsdcAmount) / 10 ** 6
+      : 0;
+
   return {
     amountOut,
     isLoading: isExchangeRateLoading || isLifiLoading,
     exchangeRate,
+    routingFee,
   };
 };
 

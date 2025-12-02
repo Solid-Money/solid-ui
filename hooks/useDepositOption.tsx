@@ -47,6 +47,7 @@ const useDepositOption = ({
     transaction,
     setModal,
     srcChainId,
+    outputToken,
     bankTransfer,
     directDepositSession,
   } = useDepositStore();
@@ -145,7 +146,8 @@ const useDepositOption = ({
         <TransactionStatus
           amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
-          icon={getTokenIcon({ tokenSymbol: 'USDC' })}
+          icon={getTokenIcon({ tokenSymbol: outputToken })}
+          token={outputToken}
         />
       );
     }
