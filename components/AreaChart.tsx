@@ -1,8 +1,12 @@
 import { ChartPayload } from '@/lib/types';
-import { useMemo } from 'react';
-import { Dimensions, View } from 'react-native';
+import { useCoinStore } from '@/store/useCoinStore';
+import { formatNumber } from '@/lib/utils';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Dimensions, GestureResponderEvent, View } from 'react-native';
 import { Defs, LinearGradient, Stop } from 'react-native-svg';
 import { VictoryArea, VictoryAxis, VictoryChart } from 'victory-native';
+import { Text } from '@/components/ui/text';
+import { calculatePercentageChange } from '@/components/ChartTooltip';
 
 interface AreaChartProps {
   data: ChartPayload[];
@@ -10,8 +14,27 @@ interface AreaChartProps {
 }
 
 const CHART_HEIGHT = 200;
+const CHART_PADDING = { top: 10, bottom: 10, left: 0, right: 0 };
 
-const Chart = ({ data }: AreaChartProps) => {
+const formatTimestamp = (timestamp: number) => {
+  return new Date(timestamp).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  });
+};
+
+// Throttle interval for touch events (~30fps for smooth performance on Android)
+const TOUCH_THROTTLE_MS = 32;
+
+const Chart = ({ data, formatToolTip }: AreaChartProps) => {
+  const { setSelectedPrice, setSelectedPriceChange } = useCoinStore();
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [touchX, setTouchX] = useState<number>(0);
+  const lastTouchTime = useRef(0);
+
+  const screenWidth = Dimensions.get('window').width;
+
   const chartData = useMemo(() => {
     if (!data || data.length < 2) return null;
 
@@ -21,39 +44,205 @@ const Chart = ({ data }: AreaChartProps) => {
     }));
   }, [data]);
 
+  // Calculate min/max for Y position calculation
+  const { minValue, maxValue } = useMemo(() => {
+    if (!data || data.length < 2) return { minValue: 0, maxValue: 1 };
+    const values = data.map(d => d.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    // Add padding like domainPadding does
+    const range = max - min || 1;
+    const padding = range * 0.1;
+    return {
+      minValue: min - padding,
+      maxValue: max + padding,
+    };
+  }, [data]);
+
+  // Convert data value to Y pixel position
+  const getYPosition = useCallback(
+    (value: number) => {
+      const chartAreaHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
+      const range = maxValue - minValue || 1;
+      const normalizedValue = (value - minValue) / range;
+      // Invert because screen Y increases downward
+      return CHART_PADDING.top + chartAreaHeight * (1 - normalizedValue);
+    },
+    [minValue, maxValue],
+  );
+
+  const getIndexFromX = useCallback(
+    (locationX: number) => {
+      if (!data || data.length < 2) return null;
+      const index = Math.round((locationX / screenWidth) * (data.length - 1));
+      return Math.max(0, Math.min(data.length - 1, index));
+    },
+    [data, screenWidth],
+  );
+
+  const handleTouch = useCallback(
+    (evt: GestureResponderEvent) => {
+      // Throttle touch events to reduce JS thread load on Android
+      const now = Date.now();
+      if (now - lastTouchTime.current < TOUCH_THROTTLE_MS) return;
+      lastTouchTime.current = now;
+
+      const { locationX } = evt.nativeEvent;
+      const index = getIndexFromX(locationX);
+      if (index === null) return;
+
+      setActiveIndex(index);
+      setTouchX(locationX);
+
+      const currentData = data[index];
+      if (currentData) {
+        setSelectedPrice(currentData.value);
+
+        if (index > 0) {
+          const previousPrice = data[index - 1]?.value;
+          if (previousPrice) {
+            const priceChange = calculatePercentageChange(previousPrice, currentData.value);
+            if (priceChange) {
+              setSelectedPriceChange(priceChange);
+            }
+          }
+        }
+      }
+    },
+    [data, getIndexFromX, setSelectedPrice, setSelectedPriceChange],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    setActiveIndex(null);
+  }, []);
+
   if (!chartData) {
     return <View style={{ height: CHART_HEIGHT }} />;
   }
 
-  const screenWidth = Dimensions.get('window').width;
+  const activeData = activeIndex !== null ? data[activeIndex] : null;
+  const previousData = activeIndex !== null && activeIndex > 0 ? data[activeIndex - 1] : null;
+  const priceChange =
+    activeData && previousData
+      ? calculatePercentageChange(previousData.value, activeData.value)
+      : null;
+
+  const format = (value: number | null) => {
+    if (!value) return `$0.00`;
+    return `$${formatNumber(value)}`;
+  };
+
+  const TOOLTIP_WIDTH = 140;
+
+  // Position tooltip to the right of touch, or left if near edge
+  const tooltipLeft =
+    touchX + 20 + TOOLTIP_WIDTH > screenWidth ? touchX - TOOLTIP_WIDTH - 10 : touchX + 20;
 
   return (
     <View style={{ height: CHART_HEIGHT }}>
-      <VictoryChart
-        width={screenWidth}
-        height={CHART_HEIGHT}
-        padding={{ top: 10, bottom: 10, left: 0, right: 0 }}
+      <View
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={handleTouch}
+        onResponderMove={handleTouch}
+        onResponderRelease={handleTouchEnd}
+        onResponderTerminate={handleTouchEnd}
       >
-        <Defs>
-          <LinearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor="#94F27F" stopOpacity={0.15} />
-            <Stop offset="100%" stopColor="#94F27F" stopOpacity={0} />
-          </LinearGradient>
-        </Defs>
-        <VictoryAxis style={{ axis: { stroke: 'transparent' } }} />
-        <VictoryAxis dependentAxis style={{ axis: { stroke: 'transparent' } }} />
-        <VictoryArea
-          data={chartData}
-          interpolation="natural"
+        <VictoryChart
+          width={screenWidth}
+          height={CHART_HEIGHT}
+          padding={CHART_PADDING}
+          domainPadding={{ y: 10 }}
+        >
+          <Defs>
+            <LinearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <Stop offset="0%" stopColor="#94F27F" stopOpacity={0.15} />
+              <Stop offset="100%" stopColor="#94F27F" stopOpacity={0} />
+            </LinearGradient>
+          </Defs>
+          <VictoryAxis
+            style={{ axis: { stroke: 'transparent' }, tickLabels: { fill: 'transparent' } }}
+          />
+          <VictoryAxis
+            dependentAxis
+            style={{ axis: { stroke: 'transparent' }, tickLabels: { fill: 'transparent' } }}
+          />
+          <VictoryArea
+            data={chartData}
+            interpolation="linear"
+            style={{
+              data: {
+                fill: 'url(#areaGradient)',
+                stroke: '#94F27F',
+                strokeWidth: 2,
+              },
+            }}
+          />
+        </VictoryChart>
+      </View>
+      {/* Dot indicator - simple clean dot matching web */}
+      {activeIndex !== null && activeData && (
+        <View
           style={{
-            data: {
-              fill: 'url(#areaGradient)',
-              stroke: '#94F27F',
-              strokeWidth: 2,
-            },
+            position: 'absolute',
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: '#94F27F',
+            borderWidth: 2,
+            borderColor: '#FFFFFF',
+            left: touchX - 5,
+            top: getYPosition(activeData.value) - 5,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.2,
+            shadowRadius: 3,
+            elevation: 3,
           }}
+          pointerEvents="none"
         />
-      </VictoryChart>
+      )}
+      {/* Tooltip - white background matching web exactly */}
+      {activeIndex !== null && activeData && (
+        <View
+          style={{
+            position: 'absolute',
+            left: tooltipLeft,
+            top: Math.max(8, getYPosition(activeData.value) - 30),
+            minWidth: TOOLTIP_WIDTH,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            backgroundColor: '#FFFFFF',
+            borderRadius: 12,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+            elevation: 8,
+          }}
+          pointerEvents="none"
+        >
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#18181B' }}>
+            {formatToolTip ? formatToolTip(activeData.value) : format(activeData.value)}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            {priceChange !== null && (
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: priceChange < 0 ? '#EF4444' : '#22C55E',
+                }}
+              >
+                {formatNumber(priceChange, 2)}%
+              </Text>
+            )}
+            <Text style={{ fontSize: 14, color: '#9CA3AF' }}>
+              {formatTimestamp(activeData.time)}
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };

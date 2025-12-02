@@ -146,10 +146,10 @@ if (Platform.OS !== 'web') {
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-// Set the animation options for a smoother transition
+// Set the animation options - instant hide, no fade
 SplashScreen.setOptions({
-  duration: 1500,
-  fade: true,
+  duration: 0,
+  fade: false,
 });
 
 const queryClient = new QueryClient({
@@ -182,11 +182,9 @@ export default Sentry.wrap(function RootLayout() {
         // Pre-load fonts, make any API calls you need to do here
         // await Font.loadAsync(Entypo.font);
 
-        // Simulate loading time - replace with actual async operations
         await initAnalytics();
         if (Platform.OS !== 'web') {
           Appearance.setColorScheme('dark');
-          await new Promise(resolve => setTimeout(resolve, 2000));
         }
 
         // Add any additional initialization here
