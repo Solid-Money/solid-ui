@@ -1,7 +1,6 @@
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
@@ -10,7 +9,7 @@ import { Status, TransactionType } from '@/lib/types';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useCallback, useState } from 'react';
-import { TransactionReceipt } from 'viem';
+import { erc20Abi, TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import {
   encodeAbiParameters,
@@ -109,7 +108,7 @@ const useBridgeToMainnet = (): BridgeResult => {
         {
           to: ADDRESSES.fuse.vault,
           data: encodeFunctionData({
-            abi: ERC20_ABI,
+            abi: erc20Abi,
             functionName: 'transfer',
             args: [ADDRESSES.fuse.bridgePaymasterAddress, amountWei],
           }),

@@ -1,6 +1,5 @@
-import ERC20_ABI from '@/lib/abis/ERC20';
 import { createPimlicoClient } from 'permissionless/clients/pimlico';
-import { Address, encodeFunctionData, getAddress } from 'viem';
+import { Address, encodeFunctionData, erc20Abi, getAddress } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { http } from 'wagmi';
@@ -31,7 +30,7 @@ export const addPaymasterTransaction = async (
     {
       to: ADDRESSES.ethereum.usdc,
       data: encodeFunctionData({
-        abi: ERC20_ABI,
+        abi: erc20Abi,
         functionName: 'approve',
         args: [ADDRESSES.ethereum.paymasterAddress, amount],
       }),

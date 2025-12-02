@@ -9,7 +9,7 @@ import {
 } from 'react-hook-form';
 import { ActivityIndicator, Image, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Address, TransactionReceipt } from 'viem';
+import { Address, erc20Abi, TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
@@ -33,7 +33,6 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
@@ -347,7 +346,7 @@ export default function CardDepositInternalForm() {
 
   // Get Fuse USDC.e balance
   const { data: fuseUsdcBalance, isLoading: isUsdcBalanceLoading } = useReadContract({
-    abi: ERC20_ABI,
+    abi: erc20Abi,
     address: USDC_STARGATE,
     functionName: 'balanceOf',
     args: [user?.safeAddress as Address],

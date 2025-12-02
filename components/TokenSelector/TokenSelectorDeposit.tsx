@@ -17,7 +17,9 @@ const TokenSelectorDeposit = () => {
         </View>
       </View>
       <View className="flex-row items-center justify-center gap-2 p-2">
-        <Text className="text-base">{user?.safeAddress ? eclipseAddress(user?.safeAddress) : ''}</Text>
+        <Text className="text-base">
+          {user?.safeAddress ? eclipseAddress(user?.safeAddress) : ''}
+        </Text>
         <CopyToClipboard text={user?.safeAddress || ''} className="text-primary" />
       </View>
     </View>

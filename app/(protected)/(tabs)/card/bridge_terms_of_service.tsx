@@ -63,10 +63,16 @@ export default function BridgeTermsOfServiceIframe() {
 
   return (
     <View style={styles.container}>
-      {loading && <Text className="text-base" style={styles.loadingText}>Loading...</Text>}
+      {loading && (
+        <Text className="text-base" style={styles.loadingText}>
+          Loading...
+        </Text>
+      )}
 
       {error ? (
-        <Text className="text-base" style={styles.errorText}>{error}</Text>
+        <Text className="text-base" style={styles.errorText}>
+          {error}
+        </Text>
       ) : (
         <iframe
           src={url}

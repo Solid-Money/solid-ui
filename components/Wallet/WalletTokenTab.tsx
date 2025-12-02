@@ -233,7 +233,9 @@ const WalletTokenTab = () => {
                       style={{ width: columnWidths[2] }}
                     >
                       <View className="items-start">
-                        <Text className="font-bold text-base">${format(token.quoteRate || 0, 2)}</Text>
+                        <Text className="font-bold text-base">
+                          ${format(token.quoteRate || 0, 2)}
+                        </Text>
                       </View>
                     </TableCell>
                     <TableCell className="p-3 pl-0 md:p-6" style={{ width: columnWidths[3] }}>
