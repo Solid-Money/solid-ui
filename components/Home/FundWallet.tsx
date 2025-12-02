@@ -23,7 +23,7 @@ const FundWallet = ({ className }: FundWalletProps) => {
         })}
       >
         <View className="flex-row items-center gap-4">
-          <Text className="font-bold">Add funds</Text>
+          <Text className="font-bold text-base">Add funds</Text>
         </View>
       </View>
     );
@@ -42,7 +42,7 @@ const FundWallet = ({ className }: FundWalletProps) => {
         <View className="justify-between gap-4">
           <View className="gap-2">
             <Text className="text-3xl font-semibold max-w-lg">Fund your wallet</Text>
-            <Text className="text-muted-foreground md:max-w-60">
+            <Text className="text-muted-foreground text-base md:max-w-60">
               Fund your account with crypto you already own or with cash
             </Text>
           </View>

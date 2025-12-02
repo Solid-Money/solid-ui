@@ -67,7 +67,7 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
         </Text>
         <Text
           className={cn(
-            'text-muted-foreground text-center font-medium',
+            'text-muted-foreground text-center font-medium text-base',
             currentStep === 'email' ? 'max-w-sm' : 'max-w-xs',
           )}
         >

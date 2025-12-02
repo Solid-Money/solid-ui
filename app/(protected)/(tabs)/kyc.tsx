@@ -155,8 +155,8 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
         </View>
 
         <View style={styles.inlineContainer}>
-          {loading && <Text style={styles.loadingText}>Loading...</Text>}
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {loading && <Text className="text-base" style={styles.loadingText}>Loading...</Text>}
+          {error && <Text className="text-base" style={styles.errorText}>{error}</Text>}
           <iframe ref={iframeRef} style={styles.inlineIframe as any} title="Persona KYC" />
         </View>
       </View>

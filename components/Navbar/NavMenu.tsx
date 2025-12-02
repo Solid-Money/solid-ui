@@ -38,7 +38,7 @@ export function NavMenu() {
               onPress={() => router.push(item.href)}
               active={pathname === item.href}
             >
-              <Text>{item.label}</Text>
+              <Text className="text-base">{item.label}</Text>
             </NavigationMenuLink>
           </NavigationMenuItem>
         ))}

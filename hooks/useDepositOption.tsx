@@ -137,7 +137,7 @@ const useDepositOption = ({
           >
             <View className="flex-row items-center gap-1">
               <Plus color="black" />
-              <Text className="text-primary-foreground font-bold">{buttonText}</Text>
+              <Text className="text-primary-foreground font-bold text-base">{buttonText}</Text>
             </View>
           </View>
         </Trigger>

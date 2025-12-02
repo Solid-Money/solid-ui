@@ -45,7 +45,7 @@ const PointsBanner = () => {
               </Button>
               <Link href={path.POINTS} className="web:hover:opacity-70">
                 <View className="flex-row items-center gap-0.5">
-                  <Text className="font-bold">Points page</Text>
+                  <Text className="font-bold text-base">Points page</Text>
                   <ChevronRight color="white" size={18} className="mt-0.5" />
                 </View>
               </Link>

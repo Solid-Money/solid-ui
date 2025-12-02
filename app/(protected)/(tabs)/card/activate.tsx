@@ -8,8 +8,8 @@ import { CardActivationStep } from '@/components/Card/CardActivationStep';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { CardStatus, KycStatus } from '@/lib/types';
 
@@ -111,7 +111,7 @@ export default function ActivateMobile() {
 
             {isCardPending && (
               <View className="bg-[#1C1C1C] rounded-xl p-4 border border-yellow-500/30 mb-4">
-                <Text className="text-white font-semibold">Your card is on its way</Text>
+                <Text className="text-white text-base font-semibold">Your card is on its way</Text>
                 <Text className="text-white/70 mt-2 text-sm">
                   We&rsquo;re finishing up your card. This may take some time.
                 </Text>
@@ -119,7 +119,7 @@ export default function ActivateMobile() {
             )}
             {isCardBlocked && (
               <View className="bg-[#1C1C1C] rounded-xl p-4 border border-red-500/30 mb-4">
-                <Text className="text-white font-semibold">Card activation rejected</Text>
+                <Text className="text-white text-base font-semibold">Card activation rejected</Text>
                 <Text className="text-white/70 mt-2 text-sm">{activationBlockedReason}</Text>
               </View>
             )}

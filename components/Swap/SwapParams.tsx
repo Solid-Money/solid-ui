@@ -183,7 +183,7 @@ const SwapParams = () => {
               {dynamicFeePlugin && (
                 <ZapIcon className="mr-2" strokeWidth={1} stroke="white" fill="white" size={16} />
               )}
-              <Text>{`${slidingFee?.toFixed(4)}% fee`}</Text>
+              <Text className="text-base">{`${slidingFee?.toFixed(4)}% fee`}</Text>
             </View>
           )}
           <View className={cn('ml-auto', { 'rotate-180': isExpanded })}>

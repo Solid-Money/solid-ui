@@ -73,7 +73,7 @@ const Row = ({ leaderboardUser, index, isStar }: RowProps) => {
         </View>
       </View>
       <View className="grow md:w-8/12">
-        <Text>{eclipseAddress(leaderboardUser.walletAddress, 6, 4)}</Text>
+        <Text className="text-base">{eclipseAddress(leaderboardUser.walletAddress, 6, 4)}</Text>
       </View>
       <Text className="text-lg text-rewards font-bold">
         {formatNumber(leaderboardUser.points || 0, 0, 0)}

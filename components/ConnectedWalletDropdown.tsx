@@ -76,7 +76,7 @@ const ConnectedWalletDropdown = ({ chainId }: ConnectedWalletDropdownProps = {})
           <View>
             <WalletMinimal size={22} color="white" />
           </View>
-          <Text>
+          <Text className="text-base">
             {address ? eclipseAddress(address) : '0x'} ({networkName})
           </Text>
         </View>
@@ -102,7 +102,7 @@ const ConnectedWalletDropdown = ({ chainId }: ConnectedWalletDropdownProps = {})
           }}
         >
           <Unlink color="white" size={20} />
-          <Text>Disconnect</Text>
+          <Text className="text-base">Disconnect</Text>
         </Pressable>
       </Animated.View>
     </View>

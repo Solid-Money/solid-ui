@@ -1,9 +1,9 @@
+import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import { TermsOfServiceStatus } from '@/lib/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { path } from '@/constants/path';
-import { TermsOfServiceStatus } from '@/lib/types';
-import { Text } from '@/components/ui/text';
 
 export default function BridgeTermsOfServiceIframe() {
   const { url } = useLocalSearchParams<{ url: string }>();
@@ -63,10 +63,10 @@ export default function BridgeTermsOfServiceIframe() {
 
   return (
     <View style={styles.container}>
-      {loading && <Text style={styles.loadingText}>Loading...</Text>}
+      {loading && <Text className="text-base" style={styles.loadingText}>Loading...</Text>}
 
       {error ? (
-        <Text style={styles.errorText}>{error}</Text>
+        <Text className="text-base" style={styles.errorText}>{error}</Text>
       ) : (
         <iframe
           src={url}

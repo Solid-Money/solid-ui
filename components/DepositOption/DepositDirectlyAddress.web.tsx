@@ -279,7 +279,7 @@ const DepositDirectlyAddress = () => {
 
       {isExpired && (
         <div className="w-full rounded-2xl border border-red-500/20 bg-red-500/10 px-3 md:px-4 2xl:px-6 py-3 md:py-4 2xl:py-5 text-center">
-          <Text className="font-medium text-red-400">
+          <Text className="font-medium text-base text-red-400">
             Session expired. Please create a new deposit session.
           </Text>
         </div>

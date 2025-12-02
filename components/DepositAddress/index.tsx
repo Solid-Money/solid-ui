@@ -49,7 +49,7 @@ const TokenSelector = ({ tokens, setSelectedToken, setOpen }: TokenSelectorProps
             </View>
           </View>
           {token.isComingSoon ? (
-            <Text>Coming soon</Text>
+            <Text className="text-base">Coming soon</Text>
           ) : (
             <View className="flex-col items-end gap-0.5">
               <Text className="text-lg font-bold">
