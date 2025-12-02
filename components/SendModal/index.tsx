@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { formatUnits, isAddress } from 'viem';
+import { erc20Abi, formatUnits, isAddress } from 'viem';
 import { useBalance, useReadContract } from 'wagmi';
 import { z } from 'zod';
 
@@ -20,7 +20,6 @@ import { NATIVE_TOKENS } from '@/constants/tokens';
 import { useEstimateGas } from '@/hooks/useEstimateGas';
 import useSend from '@/hooks/useSend';
 import useUser from '@/hooks/useUser';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import { Status, TokenIcon, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
@@ -57,7 +56,7 @@ const Send = ({
   });
 
   const { data: balanceERC20, isLoading: isBalanceERC20Loading } = useReadContract({
-    abi: ERC20_ABI,
+    abi: erc20Abi,
     address: tokenAddress,
     functionName: 'balanceOf',
     args: [user?.safeAddress as Address],

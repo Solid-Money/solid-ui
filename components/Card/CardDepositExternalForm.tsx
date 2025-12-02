@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Image, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Address, encodeFunctionData, formatUnits, parseUnits } from 'viem';
+import { Address, encodeFunctionData, erc20Abi, formatUnits, parseUnits } from 'viem';
 import { z } from 'zod';
 
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
@@ -16,7 +16,6 @@ import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useUser from '@/hooks/useUser';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import { getChain } from '@/lib/thirdweb';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
@@ -40,7 +39,7 @@ export default function CardDepositExternalForm() {
   const eoaAddress = account?.address as Address | undefined;
   const arbitrumUsdcAddress = BRIDGE_TOKENS[arbitrum.id]?.tokens?.USDC?.address as Address;
   const { data: eoaUsdcBalance, isLoading: isEOABalanceLoading } = useReadContract({
-    abi: ERC20_ABI,
+    abi: erc20Abi,
     address: arbitrumUsdcAddress,
     functionName: 'balanceOf',
     args: [eoaAddress as Address],
@@ -166,7 +165,7 @@ export default function CardDepositExternalForm() {
         chainId: arbitrum.id, // Arbitrum
         to: arbitrumUsdcAddress,
         data: encodeFunctionData({
-          abi: ERC20_ABI,
+          abi: erc20Abi,
           functionName: 'transfer',
           args: [fundingAddress, amountWei],
         }),

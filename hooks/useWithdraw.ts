@@ -1,7 +1,6 @@
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -9,7 +8,7 @@ import { Status, TransactionType } from '@/lib/types';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useState } from 'react';
-import { maxUint256, TransactionReceipt } from 'viem';
+import { erc20Abi, maxUint256, TransactionReceipt } from 'viem';
 import { mainnet } from 'viem/chains';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 import { useReadContract } from 'wagmi';
@@ -28,7 +27,7 @@ const useWithdraw = (): WithdrawResult => {
   const [error, setError] = useState<string | null>(null);
 
   const { data: allowance } = useReadContract({
-    abi: ERC20_ABI,
+    abi: erc20Abi,
     address: ADDRESSES.ethereum.vault,
     functionName: 'allowance',
     args: [user?.safeAddress as Address, ADDRESSES.ethereum.boringQueue],
@@ -63,7 +62,7 @@ const useWithdraw = (): WithdrawResult => {
         transactions.push({
           to: ADDRESSES.ethereum.vault,
           data: encodeFunctionData({
-            abi: ERC20_ABI,
+            abi: erc20Abi,
             functionName: 'approve',
             args: [ADDRESSES.ethereum.boringQueue, maxUint256],
           }),

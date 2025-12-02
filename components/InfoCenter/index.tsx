@@ -61,7 +61,11 @@ const onInfoCenterLegalPress = () => {
 };
 
 export {
-  InfoCenterDocs, InfoCenterLegal, InfoCenterSupport,
-  InfoCenterTrigger, onInfoCenterDocsPress, onInfoCenterLegalPress, useInfoCenterSupportPress
+  InfoCenterDocs,
+  InfoCenterLegal,
+  InfoCenterSupport,
+  InfoCenterTrigger,
+  onInfoCenterDocsPress,
+  onInfoCenterLegalPress,
+  useInfoCenterSupportPress,
 };
-

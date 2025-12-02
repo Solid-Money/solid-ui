@@ -1,12 +1,11 @@
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useState } from 'react';
-import { TransactionReceipt } from 'viem';
+import { erc20Abi, TransactionReceipt } from 'viem';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import { track } from '@/lib/analytics';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TokenType, TransactionType } from '@/lib/types';
@@ -77,7 +76,7 @@ const useSend = ({
               {
                 to: tokenAddress,
                 data: encodeFunctionData({
-                  abi: ERC20_ABI,
+                  abi: erc20Abi,
                   functionName: 'transfer',
                   args: [to, amountWei],
                 }),

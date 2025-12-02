@@ -48,6 +48,5 @@ export {
   pressTransactionCredenzaContent,
   TransactionCancelContent,
   TransactionCredenzaContent,
-  TransactionCredenzaTrigger
+  TransactionCredenzaTrigger,
 };
-
