@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { format, minutesToSeconds } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import { mainnet } from 'viem/chains';
 
@@ -41,6 +41,7 @@ type RowProps = {
   label: React.ReactNode;
   value: React.ReactNode;
   className?: string;
+  isLast?: boolean;
 };
 
 type LabelProps = {
@@ -57,35 +58,46 @@ type BackProps = {
   className?: string;
 };
 
-const Row = ({ label, value, className }: RowProps) => {
+type SupportSectionProps = {
+  transactionContext?: string;
+};
+
+const DATE_FORMAT = "do MMM yyyy 'at' h:mm a";
+
+const Row = memo(function Row({ label, value, isLast }: RowProps) {
   return (
-    <View className={cn('flex-row justify-between p-5 border-b border-[#2C2C2E]', className)}>
+    <View
+      className={cn(
+        'flex-row justify-between p-5 border-b border-[#2C2C2E]',
+        isLast && 'border-b-0',
+      )}
+    >
       {label}
       {value}
     </View>
   );
-};
+});
 
-const Label = ({ children }: LabelProps) => {
+const Label = memo(function Label({ children }: LabelProps) {
   return <Text className="text-[#8E8E93] font-medium">{children}</Text>;
-};
+});
 
-const Value = ({ children, className }: ValueProps) => {
+const Value = memo(function Value({ children, className }: ValueProps) {
   return <Text className={cn('text-lg font-bold', className)}>{children}</Text>;
-};
+});
 
-const Back = ({ title, className }: BackProps) => {
+const Back = memo(function Back({ title, className }: BackProps) {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string; from?: string }>();
 
-  const handleBackPress = () => {
+  const handleBackPress = useCallback(() => {
     if (params.from === 'card') {
       router.replace(path.CARD_DETAILS);
       return;
     }
     const tabParam = params.tab ? `?tab=${params.tab}` : '';
     router.replace(`${path.ACTIVITY}${tabParam}` as any);
-  };
+  }, [params.from, params.tab, router]);
 
   return (
     <View className="flex-row items-center justify-between">
@@ -96,25 +108,19 @@ const Back = ({ title, className }: BackProps) => {
       <View className="w-10" />
     </View>
   );
-};
+});
 
-type SupportSectionProps = {
-  transactionContext?: string;
-};
-
-const SupportSection = ({ transactionContext }: SupportSectionProps) => {
+const SupportSection = memo(function SupportSection({ transactionContext }: SupportSectionProps) {
   const intercom = useIntercom();
 
-  const handleSupportPress = () => {
-    if (intercom) {
-      // Send transaction context as a pre-filled message if available
-      if (transactionContext) {
-        intercom.showNewMessage(transactionContext);
-      } else {
-        intercom.show();
-      }
+  const handleSupportPress = useCallback(() => {
+    if (!intercom) return;
+    if (transactionContext) {
+      intercom.showNewMessage(transactionContext);
+    } else {
+      intercom.show();
     }
-  };
+  }, [intercom, transactionContext]);
 
   return (
     <View className="items-center mt-6">
@@ -129,71 +135,72 @@ const SupportSection = ({ transactionContext }: SupportSectionProps) => {
       </Pressable>
     </View>
   );
-};
+});
 
 type CardTransactionDetailProps = {
   transaction: CardTransaction;
 };
 
-const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
+const CardTransactionDetail = memo(function CardTransactionDetail({
+  transaction,
+}: CardTransactionDetailProps) {
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
-  const initials = getInitials(merchantName);
   const isPurchase = transaction.category === 'purchase';
-  const color = getColorForTransaction(merchantName);
   const { data: cashbacks } = useCashbacks();
 
-  const transactionContext = `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount)}\nDate: ${format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}\nTransaction ID: card-${transaction.id}\n\nMy question: `;
+  const txHash = transaction.crypto_transaction_details?.tx_hash;
+  const postedDate = useMemo(() => new Date(transaction.posted_at), [transaction.posted_at]);
 
-  const rows = [
-    {
-      label: <Label>Sent from</Label>,
-      value: <Value>Card</Value>,
-      enabled: true,
-    },
-    {
-      label: <Label>Status</Label>,
-      value: <Value>Confirmed</Value>,
-      enabled: true,
-    },
-    {
-      label: (
-        <View className="flex-row items-center gap-1.5">
-          <Diamond />
-          <Label>Cashback</Label>
-        </View>
-      ),
-      value: (
-        <Value className="text-[#34C759]">{getCashbackAmount(transaction.id, cashbacks)}</Value>
-      ),
-      enabled: true,
-    },
-    {
-      label: <Label>Explorer</Label>,
-      value: transaction.crypto_transaction_details?.tx_hash && (
-        <Pressable
-          onPress={() =>
-            Linking.openURL(
-              `https://arbiscan.io/tx/${transaction.crypto_transaction_details?.tx_hash}`,
-            )
-          }
-          className="hover:opacity-70"
-        >
-          <View className="flex-row items-center gap-1">
-            <Value className="underline">
-              {eclipseAddress(transaction.crypto_transaction_details.tx_hash)}
-            </Value>
-            <ArrowUpRight color="white" size={16} />
+  const initials = useMemo(() => getInitials(merchantName), [merchantName]);
+  const color = useMemo(() => getColorForTransaction(merchantName), [merchantName]);
+
+  const transactionContext = useMemo(
+    () =>
+      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}\n\nMy question: `,
+    [merchantName, transaction.amount, transaction.id, postedDate],
+  );
+
+  const handleExplorerPress = useCallback(() => {
+    if (txHash) Linking.openURL(`https://arbiscan.io/tx/${txHash}`);
+  }, [txHash]);
+
+  const rows = useMemo(() => {
+    const allRows = [
+      { key: 'from', label: <Label>Sent from</Label>, value: <Value>Card</Value> },
+      { key: 'status', label: <Label>Status</Label>, value: <Value>Confirmed</Value> },
+      {
+        key: 'cashback',
+        label: (
+          <View className="flex-row items-center gap-1.5">
+            <Diamond />
+            <Label>Cashback</Label>
           </View>
-        </Pressable>
-      ),
-      enabled: !!transaction.crypto_transaction_details?.tx_hash,
-    },
-  ];
+        ),
+        value: (
+          <Value className="text-[#34C759]">{getCashbackAmount(transaction.id, cashbacks)}</Value>
+        ),
+      },
+      txHash && {
+        key: 'explorer',
+        label: <Label>Explorer</Label>,
+        value: (
+          <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
+            <View className="flex-row items-center gap-1">
+              <Value className="underline">{eclipseAddress(txHash)}</Value>
+              <ArrowUpRight color="white" size={16} />
+            </View>
+          </Pressable>
+        ),
+      },
+    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
 
-  const isLastRow = (index: number) => {
-    const lastEnabledIndex = rows.findLastIndex(row => row.enabled);
-    return index === lastEnabledIndex;
-  };
+    return allRows;
+  }, [transaction.id, cashbacks, txHash, handleExplorerPress]);
+
+  const tokenIcon = useMemo(
+    () => getTokenIcon({ tokenSymbol: transaction.currency?.toUpperCase(), size: 75 }),
+    [transaction.currency],
+  );
 
   return (
     <PageLayout desktopOnly>
@@ -212,13 +219,7 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
               </Text>
             </View>
           ) : (
-            <RenderTokenIcon
-              tokenIcon={getTokenIcon({
-                tokenSymbol: transaction.currency?.toUpperCase(),
-                size: 75,
-              })}
-              size={75}
-            />
+            <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
           )}
 
           <View className="items-center">
@@ -227,42 +228,42 @@ const CardTransactionDetail = ({ transaction }: CardTransactionDetailProps) => {
             </Text>
             <Text className="text-muted-foreground font-semibold mt-2">Savings account</Text>
             <Text className="text-muted-foreground font-semibold">
-              {format(new Date(transaction.posted_at), "do MMM yyyy 'at' h:mm a")}
+              {format(postedDate, DATE_FORMAT)}
             </Text>
           </View>
         </View>
 
         <View className="bg-[#1C1C1E] rounded-[20px]">
-          {rows.map(
-            (row, index) =>
-              row.enabled && (
-                <Row
-                  key={index}
-                  label={row.label}
-                  value={row.value}
-                  className={cn(isLastRow(index) && 'border-b-0')}
-                />
-              ),
-          )}
+          {rows.map((row, index) => (
+            <Row
+              key={row.key}
+              label={row.label}
+              value={row.value}
+              isLast={index === rows.length - 1}
+            />
+          ))}
         </View>
 
         <SupportSection transactionContext={transactionContext} />
       </View>
     </PageLayout>
   );
-};
+});
+
+const formatSymbol = (symbol?: string) => (symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol);
 
 export default function ActivityDetail() {
   const { clientTxId } = useLocalSearchParams<{ clientTxId: string }>();
   const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
   const [currentTime, setCurrentTime] = useState(minutesToSeconds(5));
   const { cachedActivities, isLoading: isActivitiesLoading } = useActivity();
-  // Search by clientTxId, hash, or userOpHash (in case URL uses hash instead of clientTxId)
-  const activity = cachedActivities.find(
-    activity =>
-      activity.clientTxId === clientTxId ||
-      activity.hash === clientTxId ||
-      activity.userOpHash === clientTxId,
+
+  const activity = useMemo(
+    () =>
+      cachedActivities.find(
+        a => a.clientTxId === clientTxId || a.hash === clientTxId || a.userOpHash === clientTxId,
+      ),
+    [cachedActivities, clientTxId],
   );
 
   // Check if this is a card transaction
@@ -273,14 +274,14 @@ export default function ActivityDetail() {
   const { data: cardTransaction, isLoading: isCardTransactionLoading } = useQuery({
     queryKey: ['card-transaction', cardTxId],
     queryFn: () => withRefreshToken(() => getCardTransaction(cardTxId!)),
-    enabled: !!cardTxId && isCardTransaction,
+    enabled: !!cardTxId,
   });
 
   // Fetch from backend if not found in cache (fallback for activities not yet loaded)
   const { data: backendActivity, isLoading: isBackendLoading } = useQuery({
     queryKey: ['activity-event', clientTxId],
     queryFn: () => withRefreshToken(() => fetchActivityEvent(clientTxId)),
-    enabled: !activity && !isActivitiesLoading && !!clientTxId && !clientTxId.startsWith('card-'),
+    enabled: !activity && !isActivitiesLoading && !!clientTxId && !isCardTransaction,
   });
 
   const finalActivity = activity || backendActivity;
@@ -288,26 +289,166 @@ export default function ActivityDetail() {
 
   const isDeposit = finalActivity?.type === TransactionType.DEPOSIT;
   const isEthereum = finalActivity?.chainId === mainnet.id;
+
   const createdAt = useMemo(
     () => (finalActivity?.timestamp ? new Date(Number(finalActivity.timestamp) * 1000) : null),
-    [finalActivity],
+    [finalActivity?.timestamp],
   );
 
   useEffect(() => {
     if (!finalActivity || !isDeposit || !createdAt) return;
 
     const estimatedDuration = isEthereum ? minutesToSeconds(5) : minutesToSeconds(20);
-    const createdAtTime = createdAt.getTime();
-    const elapsedSeconds = Math.floor((Date.now() - createdAtTime) / 1000);
-    const remainingTime = Math.max(0, estimatedDuration - elapsedSeconds);
-    setCurrentTime(remainingTime);
+    const elapsedSeconds = Math.floor((Date.now() - createdAt.getTime()) / 1000);
+    setCurrentTime(Math.max(0, estimatedDuration - elapsedSeconds));
   }, [finalActivity, isDeposit, isEthereum, createdAt]);
 
-  // Show card transaction detail if it's a card transaction
+  const transactionDetails = finalActivity ? TRANSACTION_DETAILS[finalActivity.type] : null;
+
+  // Report unknown transaction types
+  useEffect(() => {
+    if (!finalActivity || transactionDetails) return;
+
+    const errorData = {
+      clientTxId,
+      title: finalActivity.title,
+      amount: finalActivity.amount,
+      status: finalActivity.status,
+      symbol: finalActivity.symbol,
+    };
+
+    Sentry.captureException(new Error(`Unknown transaction type: ${finalActivity.type}`), {
+      tags: {
+        type: 'unknown_transaction_type',
+        transaction_type: finalActivity.type,
+        screen: 'activity_detail',
+      },
+      extra: errorData,
+    });
+  }, [finalActivity, transactionDetails, clientTxId]);
+
+  const isFailed = finalActivity?.status === TransactionStatus.FAILED;
+  const isCancelled = finalActivity?.status === TransactionStatus.CANCELLED;
+  const isPending = finalActivity?.status === TransactionStatus.PENDING;
+  const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
+  const isCancelWithdraw = finalActivity?.requestId && isPending;
+
+  const statusTextColor = useMemo(() => {
+    if (isFailed) return 'text-red-400';
+    if (isCancelled) return '';
+    if (isIncoming) return 'text-brand';
+    return '';
+  }, [isFailed, isCancelled, isIncoming]);
+
+  const statusSign = useMemo(() => {
+    if (isFailed) return TransactionDirection.FAILED;
+    if (isCancelled) return TransactionDirection.CANCELLED;
+    return transactionDetails?.sign ?? '';
+  }, [isFailed, isCancelled, transactionDetails?.sign]);
+
+  const description = useMemo(() => {
+    if (isDeposit && isPending) return 'Deposit in progress';
+    return transactionDetails?.category ?? 'Unknown';
+  }, [isDeposit, isPending, transactionDetails?.category]);
+
+  const tokenIcon = useMemo(
+    () => (finalActivity ? getTokenIcon({ tokenSymbol: finalActivity.symbol, size: 75 }) : null),
+    [finalActivity],
+  );
+
+  const handleCancelWithdraw = useCallback(async () => {
+    if (!isCancelWithdraw || !finalActivity?.requestId) return;
+    await cancelOnchainWithdraw(finalActivity.requestId);
+  }, [isCancelWithdraw, finalActivity?.requestId, cancelOnchainWithdraw]);
+
+  const handleExplorerPress = useCallback(() => {
+    if (finalActivity?.url) Linking.openURL(finalActivity.url);
+  }, [finalActivity?.url]);
+
+  const rows = useMemo(() => {
+    if (!finalActivity) return [];
+
+    const { fromAddress, toAddress, status, metadata, url, hash } = finalActivity;
+
+    return [
+      fromAddress && {
+        key: 'from',
+        label: <Label>Sent from</Label>,
+        value: (
+          <View className="flex-row items-center gap-1">
+            <Value>{eclipseAddress(fromAddress)}</Value>
+            <CopyToClipboard text={fromAddress} />
+          </View>
+        ),
+      },
+      toAddress && {
+        key: 'to',
+        label: <Label>Recipient</Label>,
+        value: (
+          <View className="flex-row items-center gap-1">
+            <Value>{eclipseAddress(toAddress)}</Value>
+            <CopyToClipboard text={toAddress} />
+          </View>
+        ),
+      },
+      status && {
+        key: 'status',
+        label: <Label>Status</Label>,
+        value: <Value>{toTitleCase(status)}</Value>,
+      },
+      metadata?.inputAmount &&
+        metadata?.inputToken && {
+          key: 'paid',
+          label: <Label>Paid</Label>,
+          value: (
+            <Value>
+              {metadata.inputAmount} {metadata.inputToken}
+            </Value>
+          ),
+        },
+      metadata?.outputAmount &&
+        metadata?.outputToken && {
+          key: 'received',
+          label: <Label>Received</Label>,
+          value: (
+            <Value>
+              {metadata.outputAmount} {metadata.outputToken}
+            </Value>
+          ),
+        },
+      url &&
+        hash && {
+          key: 'explorer',
+          label: <Label>Explorer</Label>,
+          value: (
+            <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
+              <View className="flex-row items-center gap-1">
+                <Value className="underline">{eclipseAddress(hash)}</Value>
+                <ArrowUpRight color="white" size={16} />
+              </View>
+            </Pressable>
+          ),
+        },
+      isDeposit &&
+        isPending && {
+          key: 'estimated',
+          label: <Label>Estimated time</Label>,
+          value: <EstimatedTime currentTime={currentTime} setCurrentTime={setCurrentTime} />,
+        },
+    ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
+  }, [finalActivity, isDeposit, isPending, currentTime, handleExplorerPress]);
+
+  const transactionContext = useMemo(() => {
+    if (!finalActivity) return '';
+    return `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `;
+  }, [finalActivity, statusSign, clientTxId]);
+
+  // Card transaction
   if (isCardTransaction && cardTransaction && !isAnyLoading) {
     return <CardTransactionDetail transaction={cardTransaction} />;
   }
 
+  // Not found
   if (!finalActivity && !isCardTransaction && !isAnyLoading) {
     return (
       <PageLayout desktopOnly>
@@ -318,149 +459,14 @@ export default function ActivityDetail() {
     );
   }
 
-  if (!finalActivity && !isAnyLoading) return null;
-
+  // Loading
   if (!finalActivity) {
     return (
-      <PageLayout desktopOnly isLoading={true}>
+      <PageLayout desktopOnly isLoading>
         <View />
       </PageLayout>
     );
   }
-
-  const isFailed = finalActivity.status === TransactionStatus.FAILED;
-  const isCancelled = finalActivity.status === TransactionStatus.CANCELLED;
-  const isPending = finalActivity.status === TransactionStatus.PENDING;
-  const transactionDetails = TRANSACTION_DETAILS[finalActivity.type];
-
-  if (!transactionDetails) {
-    console.error('[ActivityDetail] Unknown transaction type:', finalActivity.type, {
-      clientTxId,
-      title: finalActivity.title,
-      amount: finalActivity.amount,
-      status: finalActivity.status,
-      symbol: finalActivity.symbol,
-    });
-
-    Sentry.captureException(new Error(`Unknown transaction type: ${finalActivity.type}`), {
-      tags: {
-        type: 'unknown_transaction_type',
-        transaction_type: finalActivity.type,
-        screen: 'activity_detail',
-      },
-      extra: {
-        clientTxId,
-        title: finalActivity.title,
-        amount: finalActivity.amount,
-        status: finalActivity.status,
-        symbol: finalActivity.symbol,
-      },
-    });
-  }
-
-  const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
-  const isCancelWithdraw = finalActivity.requestId && isPending;
-
-  const statusTextColor = isFailed
-    ? 'text-red-400'
-    : isCancelled
-      ? ''
-      : isIncoming
-        ? 'text-brand'
-        : '';
-
-  const statusSign = isFailed
-    ? TransactionDirection.FAILED
-    : isCancelled
-      ? TransactionDirection.CANCELLED
-      : (transactionDetails?.sign ?? '');
-
-  const getDescription = () => {
-    if (isDeposit && isPending) {
-      return 'Deposit in progress';
-    }
-    return transactionDetails?.category ?? 'Unknown';
-  };
-
-  const tokenIcon = getTokenIcon({
-    tokenSymbol: finalActivity.symbol,
-    size: 75,
-  });
-
-  const handleCancelWithdraw = async () => {
-    if (!isCancelWithdraw) return;
-    await cancelOnchainWithdraw(finalActivity.requestId!);
-  };
-
-  const rows = [
-    {
-      label: <Label>Sent from</Label>,
-      value: finalActivity.fromAddress && (
-        <View className="flex-row items-center gap-1">
-          <Value>{eclipseAddress(finalActivity.fromAddress)}</Value>
-          <CopyToClipboard text={finalActivity.fromAddress} />
-        </View>
-      ),
-      enabled: !!finalActivity.fromAddress,
-    },
-    {
-      label: <Label>Recipient</Label>,
-      value: finalActivity.toAddress && (
-        <View className="flex-row items-center gap-1">
-          <Value>{eclipseAddress(finalActivity.toAddress)}</Value>
-          <CopyToClipboard text={finalActivity.toAddress} />
-        </View>
-      ),
-      enabled: !!finalActivity.toAddress,
-    },
-    {
-      label: <Label>Status</Label>,
-      value: <Value>{toTitleCase(finalActivity.status)}</Value>,
-      enabled: !!finalActivity.status,
-    },
-    {
-      label: <Label>Paid</Label>,
-      value: finalActivity.metadata?.inputAmount && finalActivity.metadata?.inputToken && (
-        <Value>
-          {finalActivity.metadata.inputAmount} {finalActivity.metadata.inputToken}
-        </Value>
-      ),
-      enabled: !!finalActivity.metadata?.inputAmount && !!finalActivity.metadata?.inputToken,
-    },
-    {
-      label: <Label>Received</Label>,
-      value: finalActivity.metadata?.outputAmount && finalActivity.metadata?.outputToken && (
-        <Value>
-          {finalActivity.metadata.outputAmount} {finalActivity.metadata.outputToken}
-        </Value>
-      ),
-      enabled: !!finalActivity.metadata?.outputAmount && !!finalActivity.metadata?.outputToken,
-    },
-    {
-      label: <Label>Explorer</Label>,
-      value: finalActivity.url && finalActivity.hash && (
-        <Pressable onPress={() => Linking.openURL(finalActivity.url!)} className="hover:opacity-70">
-          <View className="flex-row items-center gap-1">
-            <Value className="underline">{eclipseAddress(finalActivity.hash)}</Value>
-            <ArrowUpRight color="white" size={16} />
-          </View>
-        </Pressable>
-      ),
-      enabled: !!finalActivity.url && !!finalActivity.hash,
-    },
-    {
-      label: <Label>Estimated time</Label>,
-      value: <EstimatedTime currentTime={currentTime} setCurrentTime={setCurrentTime} />,
-      enabled: isDeposit && isPending,
-    },
-  ];
-
-  const isLastRow = (index: number) => {
-    const lastEnabledIndex = rows.findLastIndex(row => row.enabled);
-    return index === lastEnabledIndex;
-  };
-
-  const transactionContext = `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${statusSign}${formatNumber(Number(finalActivity.amount))} ${finalActivity.symbol?.toLowerCase() === 'sousd' ? 'soUSD' : finalActivity.symbol}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}\nTransaction ID: ${clientTxId}\n\nMy question: `;
 
   return (
     <PageLayout desktopOnly isLoading={isAnyLoading}>
@@ -468,33 +474,29 @@ export default function ActivityDetail() {
         <Back title={finalActivity.title} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
-          <RenderTokenIcon tokenIcon={tokenIcon} size={75} />
+          {tokenIcon && <RenderTokenIcon tokenIcon={tokenIcon} size={75} />}
 
           <View className="items-center">
             <Text className={cn('text-2xl font-bold', statusTextColor)}>
               {statusSign}
-              {formatNumber(Number(finalActivity.amount))}{' '}
-              {finalActivity.symbol?.toLowerCase() === 'sousd' ? 'soUSD' : finalActivity.symbol}
+              {formatNumber(Number(finalActivity.amount))} {formatSymbol(finalActivity.symbol)}
             </Text>
-            <Text className="text-muted-foreground font-semibold mt-2">{getDescription()}</Text>
+            <Text className="text-muted-foreground font-semibold mt-2">{description}</Text>
             <Text className="text-muted-foreground font-semibold">
-              {format(Number(finalActivity.timestamp) * 1000, "do MMM yyyy 'at' h:mm a")}
+              {format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}
             </Text>
           </View>
         </View>
 
         <View className="bg-card rounded-twice">
-          {rows.map(
-            (row, index) =>
-              row.enabled && (
-                <Row
-                  key={index}
-                  label={row.label}
-                  value={row.value}
-                  className={cn(isLastRow(index) && 'border-b-0')}
-                />
-              ),
-          )}
+          {rows.map((row, index) => (
+            <Row
+              key={row.key}
+              label={row.label}
+              value={row.value}
+              isLast={index === rows.length - 1}
+            />
+          ))}
         </View>
 
         {isCancelWithdraw && (

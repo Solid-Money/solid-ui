@@ -4,8 +4,10 @@ import { useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { formatUnits } from 'viem';
 
-import AreaChart from '@/components/AreaChart.web';
+import ActivityTransactions from '@/components/Activity/ActivityTransactions';
+import AreaChart from '@/components/AreaChart';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
+import CoinButtons from '@/components/Coin/CoinButtons';
 import CoinChartTime from '@/components/Coin/CoinChartTime';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
@@ -15,8 +17,6 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useCoinStore } from '@/store/useCoinStore';
-import ActivityTransactions from '@/components/Activity/ActivityTransactions';
-import CoinButtons from '@/components/Coin/CoinButtons';
 
 const MAX_SAMPLE_SIZE = 20;
 
@@ -124,7 +124,9 @@ export default function Coin() {
                 <ActivityIndicator size="large" color="white" />
               </View>
             ) : formattedChartData.length > 0 ? (
-              <AreaChart data={formattedChartData} />
+              <View style={{ marginLeft: -16, marginRight: -16 }}>
+                <AreaChart data={formattedChartData} />
+              </View>
             ) : null}
 
             <CoinChartTime />

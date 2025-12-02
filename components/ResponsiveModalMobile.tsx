@@ -38,7 +38,8 @@ const ResponsiveModalMobile = ({
           {showBackButton && onBackPress && (
             <Button
               variant="ghost"
-              className="rounded-full p-0 web:hover:bg-transparent web:hover:opacity-70"
+              size="icon"
+              className="rounded-full bg-transparent active:bg-transparent web:hover:bg-transparent web:hover:opacity-70"
               onPress={onBackPress}
             >
               <ArrowLeft color="white" size={20} />

@@ -7,7 +7,6 @@ type Path = {
   HOME: Href;
   SAVINGS: Href;
   ACTIVITY: Href;
-  WALLET: Href;
   DEPOSIT: Href;
   SEND: Href;
   SWAP: Href;
@@ -24,13 +23,11 @@ type Path = {
   CARD_KYC_MOBILE: Href;
   CARD_COUNTRY_SELECTION: Href;
   EARN: Href;
-  BUY_CRYPTO: Href;
   SETTINGS: Href;
   NOTIFICATIONS: Href;
   PASSKEY_NOT_SUPPORTED: Href;
   POINTS: Href;
   REFERRAL: Href;
-  INVITE: Href;
   POINTS_LEADERBOARD: Href;
   OVERVIEW: Href;
   CARD_WAITLIST: Href;
@@ -47,7 +44,6 @@ export const path: Path = {
   HOME: '/',
   SAVINGS: '/savings',
   ACTIVITY: '/activity',
-  WALLET: '/wallet',
   DEPOSIT: '/deposit',
   SEND: '/send',
   SWAP: '/swap',
@@ -64,7 +60,6 @@ export const path: Path = {
   CARD_KYC_MOBILE: '/card/kyc_mobile',
   CARD_COUNTRY_SELECTION: '/card-onboard/country_selection',
   EARN: '/earn',
-  BUY_CRYPTO: '/buy-crypto',
   SETTINGS: '/settings',
   NOTIFICATIONS: '/notifications',
   PASSKEY_NOT_SUPPORTED: '/passkey-not-supported',

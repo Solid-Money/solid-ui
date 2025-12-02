@@ -76,46 +76,65 @@ export default function ActivityTransactions({
     return grouped;
   }, [activities, tab, symbol, showStuckTransactions]);
 
-  const getTransactionClassName = (groupedData: TimeGroup[], currentIndex: number) => {
-    const classNames = ['bg-card overflow-hidden'];
-    let currentGroupStart = -1;
-    let currentGroupEnd = -1;
+  // Pre-compute group positions for O(1) lookup instead of O(n) per item
+  const positionMap = useMemo(() => {
+    const map = new Map<number, { isFirst: boolean; isLast: boolean; className: string }>();
+    let currentGroupStart = 0;
 
-    for (let i = currentIndex; i >= 0; i--) {
-      if (groupedData[i].type === ActivityGroup.HEADER) {
+    for (let i = 0; i < filteredTransactions.length; i++) {
+      if (filteredTransactions[i].type === ActivityGroup.HEADER) {
+        // Process the previous group
+        if (currentGroupStart < i) {
+          const groupIndices: number[] = [];
+          for (let j = currentGroupStart; j < i; j++) {
+            if (filteredTransactions[j].type === ActivityGroup.TRANSACTION) {
+              groupIndices.push(j);
+            }
+          }
+          groupIndices.forEach((idx, pos) => {
+            const isFirst = pos === 0;
+            const isLast = pos === groupIndices.length - 1;
+            const classNames = ['bg-card overflow-hidden'];
+            if (isFirst) classNames.push('rounded-t-twice');
+            if (isLast) classNames.push('border-b-0 rounded-b-twice');
+            map.set(idx, { isFirst, isLast, className: cn(classNames) });
+          });
+        }
         currentGroupStart = i + 1;
-        break;
       }
     }
 
-    for (let i = currentIndex; i < groupedData.length; i++) {
-      if (groupedData[i].type === ActivityGroup.HEADER && i > currentIndex) {
-        currentGroupEnd = i - 1;
-        break;
-      }
-    }
-
-    if (currentGroupEnd === -1) currentGroupEnd = groupedData.length - 1;
-
-    const visibleIndices = [];
-    for (let i = currentGroupStart; i <= currentGroupEnd; i++) {
-      if (groupedData[i].type === ActivityGroup.TRANSACTION) {
-        const transaction = groupedData[i].data as ActivityEvent;
-        const isPending = transaction.status === TransactionStatus.PENDING;
-        const isCancelled = transaction.status === TransactionStatus.CANCELLED;
-        const isStuck = isTransactionStuck(transaction.timestamp);
-
-        if (showStuckTransactions || !((isPending && isStuck) || isCancelled)) {
-          visibleIndices.push(i);
+    // Process the last group
+    if (currentGroupStart < filteredTransactions.length) {
+      const groupIndices: number[] = [];
+      for (let j = currentGroupStart; j < filteredTransactions.length; j++) {
+        if (filteredTransactions[j].type === ActivityGroup.TRANSACTION) {
+          groupIndices.push(j);
         }
       }
+      groupIndices.forEach((idx, pos) => {
+        const isFirst = pos === 0;
+        const isLast = pos === groupIndices.length - 1;
+        const classNames = ['bg-card overflow-hidden'];
+        if (isFirst) classNames.push('rounded-t-twice');
+        if (isLast) classNames.push('border-b-0 rounded-b-twice');
+        map.set(idx, { isFirst, isLast, className: cn(classNames) });
+      });
     }
 
-    const position = visibleIndices.indexOf(currentIndex);
-    if (position === 0) classNames.push('rounded-t-twice');
-    if (position === visibleIndices.length - 1) classNames.push('border-b-0 rounded-b-twice');
+    return map;
+  }, [filteredTransactions]);
 
-    return cn(classNames);
+  const getTransactionClassName = (currentIndex: number) => {
+    return positionMap.get(currentIndex)?.className ?? 'bg-card overflow-hidden';
+  };
+
+  const getTransactionPosition = (currentIndex: number) => {
+    const position = positionMap.get(currentIndex);
+    return {
+      isFirst: position?.isFirst ?? false,
+      isLast: position?.isLast ?? false,
+    };
   };
 
   const renderItem = ({ item, index }: RenderItemProps) => {
@@ -135,12 +154,15 @@ export default function ActivityTransactions({
     }
 
     const transaction = item.data as ActivityEvent;
+    const { isFirst, isLast } = getTransactionPosition(index);
 
     return (
       <Transaction
         {...transaction}
         title={transaction.title}
         showTimestamp={showTimestamp}
+        isFirst={isFirst}
+        isLast={isLast}
         onPress={() => {
           const clientTxId = transaction.clientTxId;
           const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
@@ -167,7 +189,7 @@ export default function ActivityTransactions({
           }
         }}
         classNames={{
-          container: getTransactionClassName(filteredTransactions, index),
+          container: getTransactionClassName(index),
         }}
       />
     );

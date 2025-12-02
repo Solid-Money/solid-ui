@@ -6,7 +6,7 @@ import { Text } from '@/components/ui/text';
 const DashboardTitle = () => {
   return (
     <View className="gap-3">
-      <Text className="text-3xl font-semibold">Your saving account</Text>
+      <Text className="web:text-3xl native:text-2xl font-semibold">Your saving account</Text>
       <Text className="max-w-lg">
         <Text className="opacity-70">
           Our Solid vault will automatically manage your funds to maximize your yield without

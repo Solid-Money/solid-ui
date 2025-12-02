@@ -47,7 +47,6 @@ const Search = ({
 }) => {
   const [query, setQuery] = useState<Address | string | undefined>(undefined);
   const [isFocused, setIsFocused] = useState(false);
-  const [searchAnimation] = useState(new Animated.Value(0));
   const [pulseAnimation] = useState(new Animated.Value(1));
 
   const fuseOptions = useMemo(
@@ -67,44 +66,17 @@ const Search = ({
     (input: string | undefined) => {
       setQuery(input);
       onQueryChange?.(input);
-
-      // Animate search activity
-      if (input && input.length > 0) {
-        Animated.timing(searchAnimation, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: false,
-        }).start();
-      } else {
-        Animated.timing(searchAnimation, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: false,
-        }).start();
-      }
     },
-    [searchAnimation, onQueryChange],
+    [onQueryChange],
   );
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
-    Animated.timing(searchAnimation, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [searchAnimation]);
+  }, []);
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
-    if (!query) {
-      Animated.timing(searchAnimation, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [searchAnimation, query]);
+  }, []);
 
   useEffect(() => {
     search(query);
@@ -136,27 +108,20 @@ const Search = ({
     }
   }, [isLoading, pulseAnimation]);
 
-  const borderColor = searchAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(156, 163, 175, 0.3)', 'rgba(59, 130, 246, 0.8)'],
-  });
-
-  const shadowOpacity = searchAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.15],
-  });
+  const isActive = isFocused || (query && query.length > 0);
 
   return (
     <View className="relative gap-2">
-      <Animated.View
+      <View
         style={{
-          borderWidth: isFocused ? 2.5 : 2,
-          borderColor,
+          borderWidth: isActive ? 2.5 : 2,
+          borderColor: isActive ? 'rgba(59, 130, 246, 0.8)' : 'rgba(156, 163, 175, 0.3)',
           borderRadius: 16,
-          shadowOffset: { width: 0, height: isFocused ? 6 : 4 },
-          shadowOpacity,
-          shadowRadius: isFocused ? 12 : 8,
-          elevation: isFocused ? 8 : 4,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: isActive ? 6 : 4 },
+          shadowOpacity: isActive ? 0.15 : 0,
+          shadowRadius: isActive ? 12 : 8,
+          elevation: isActive ? 8 : 4,
         }}
         className="bg-card"
       >
@@ -175,7 +140,7 @@ const Search = ({
             letterSpacing: 0.2,
           }}
         />
-      </Animated.View>
+      </View>
       {isLoading && (
         <Animated.View
           style={{
@@ -188,28 +153,23 @@ const Search = ({
         </Animated.View>
       )}
       {query && query.length > 0 && !isLoading && (
-        <Animated.View
-          className="absolute right-3 top-3"
-          style={{
-            transform: [{ scale: searchAnimation }],
-          }}
-        >
+        <View className="absolute right-3 top-3">
           <View
-            className={`rounded-full p-1 border transition-all duration-200 ${
+            className={`rounded-full p-1 border ${
               result.length > 0
                 ? 'bg-green-500/10 border-green-500/20'
                 : 'bg-orange-500/10 border-orange-500/20'
             }`}
           >
             <Text
-              className={`text-xs font-semibold px-2 transition-colors duration-200 ${
+              className={`text-xs font-semibold px-2 ${
                 result.length > 0 ? 'text-green-600' : 'text-orange-600'
               }`}
             >
               {result.length === 0 ? 'No matches' : `${result.length} found`}
             </Text>
           </View>
-        </Animated.View>
+        </View>
       )}
     </View>
   );
@@ -235,7 +195,6 @@ const TokenRow = ({
   const currency = useCurrency(token.address as Address);
   const [pressAnimation] = useState(new Animated.Value(1));
   const [slideAnimation] = useState(new Animated.Value(0));
-  const [hoverAnimation] = useState(new Animated.Value(0));
 
   const { formatted } = useUSDCPrice(currency);
 
@@ -272,39 +231,25 @@ const TokenRow = ({
 
   const handlePressIn = useCallback(() => {
     if (!lock) {
-      Animated.parallel([
-        Animated.spring(pressAnimation, {
-          toValue: 0.96,
-          tension: 150,
-          friction: 4,
-          useNativeDriver: true,
-        }),
-        Animated.timing(hoverAnimation, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: false,
-        }),
-      ]).start();
+      Animated.spring(pressAnimation, {
+        toValue: 0.96,
+        tension: 150,
+        friction: 4,
+        useNativeDriver: true,
+      }).start();
     }
-  }, [pressAnimation, hoverAnimation, lock]);
+  }, [pressAnimation, lock]);
 
   const handlePressOut = useCallback(() => {
     if (!lock) {
-      Animated.parallel([
-        Animated.spring(pressAnimation, {
-          toValue: 1,
-          tension: 150,
-          friction: 4,
-          useNativeDriver: true,
-        }),
-        Animated.timing(hoverAnimation, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-      ]).start();
+      Animated.spring(pressAnimation, {
+        toValue: 1,
+        tension: 150,
+        friction: 4,
+        useNativeDriver: true,
+      }).start();
     }
-  }, [pressAnimation, hoverAnimation, lock]);
+  }, [pressAnimation, lock]);
 
   const handlePress = useCallback(() => {
     if (currency && !lock) {

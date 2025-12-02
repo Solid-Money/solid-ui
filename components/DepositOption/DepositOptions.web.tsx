@@ -2,11 +2,11 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
+import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import DepositOption from './DepositOption';
-import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
-import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
 
 type DepositOptionProps = {
   text: string;
@@ -20,8 +20,8 @@ type DepositOptionProps = {
 
 const DepositOptions = () => {
   const { user } = useUser();
-  const { EXTERNAL_WALLET_OPTIONS } = useDepositExternalWalletOptions();
-  const { BUY_CRYPTO_OPTIONS } = useDepositBuyCryptoOptions();
+  const { externalWalletOptions } = useDepositExternalWalletOptions();
+  const { buyCryptoOptions } = useDepositBuyCryptoOptions();
 
   // Track when deposit options are viewed
   useEffect(() => {
@@ -32,7 +32,7 @@ const DepositOptions = () => {
     });
   }, [user?.userId, user?.safeAddress, user?.isDeposited]);
 
-  const DEPOSIT_OPTIONS: DepositOptionProps[] = [...EXTERNAL_WALLET_OPTIONS, ...BUY_CRYPTO_OPTIONS];
+  const DEPOSIT_OPTIONS: DepositOptionProps[] = [...externalWalletOptions, ...buyCryptoOptions];
 
   return (
     <View className="gap-y-2.5">

@@ -139,8 +139,7 @@ const WalletTokenTab = () => {
 
   // Desktop table implementation
   return (
-    <>
-      <View className="flex-1" onLayout={handleLayout} />
+    <View className="flex-1" onLayout={handleLayout}>
       <ScrollView horizontal bounces={false} showsHorizontalScrollIndicator={false}>
         <Table aria-labelledby="token-table">
           <TableHeader>
@@ -281,7 +280,7 @@ const WalletTokenTab = () => {
           </TableBody>
         </Table>
       </ScrollView>
-    </>
+    </View>
   );
 };
 
