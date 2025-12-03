@@ -268,6 +268,7 @@ const constructDepositTransaction = (transaction: DepositTransaction) => {
     url,
     type: TransactionType.DEPOSIT,
     trackingId: transaction.trackingId,
+    failureReason: transaction.errorMessage,
   };
 };
 
@@ -300,6 +301,7 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
     url,
     type: TransactionType.DEPOSIT,
     trackingId: transaction.trackingId,
+    failureReason: transaction.errorMessage,
   };
 };
 
