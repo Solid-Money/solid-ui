@@ -679,7 +679,7 @@ const useUser = (): UseUserReturn => {
         router.replace(path.HOME);
       });
     },
-    [httpClient, selectUser, clearKycLinkId, router, user, unselectUser, users, updateUser],
+    [httpClient, selectUser, clearKycLinkId, router, user, unselectUser, users, updateUser, logout],
   );
 
   const handleRemoveUsers = useCallback(() => {
