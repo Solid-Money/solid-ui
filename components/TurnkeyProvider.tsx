@@ -5,8 +5,8 @@ import {
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
 import {
-  TurnkeyProvider as TurnkeyProviderKit,
   type TurnkeyProviderConfig,
+  TurnkeyProvider as TurnkeyProviderKit,
 } from '@turnkey/react-native-wallet-kit';
 import { Platform } from 'react-native';
 
@@ -14,9 +14,9 @@ import { Platform } from 'react-native';
  * StamperType defines the type of stamper to use when stamping a request.
  */
 export enum StamperType {
-  ApiKey = "api-key",
-  Passkey = "passkey",
-  Wallet = "wallet",
+  ApiKey = 'api-key',
+  Passkey = 'passkey',
+  Wallet = 'wallet',
 }
 
 // Helper to get current hostname in runtime; falls back to configured value during SSR.

@@ -68,7 +68,7 @@ const useUser = (): UseUserReturn => {
 
   // Get Turnkey client from the new SDK
   // httpClient is the base client, we'll pass StamperType.Passkey to operations that need passkey auth
-  const { httpClient, createPasskey } = useTurnkey();
+  const { httpClient, createPasskey, logout } = useTurnkey();
 
   const {
     users,
@@ -601,6 +601,7 @@ const useUser = (): UseUserReturn => {
     clearKycLinkId(); // Clear KYC data on logout
     intercom?.shutdown();
     intercom?.boot();
+    logout();
 
     // Go to onboarding on native, welcome on web
     if (Platform.OS === 'web') {
