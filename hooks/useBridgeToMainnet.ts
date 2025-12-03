@@ -130,22 +130,22 @@ const useBridgeToMainnet = (): BridgeResult => {
       const result = await trackTransaction(
         {
           type: TransactionType.BRIDGE_DEPOSIT,
-          title: `Unstake ${amount} soUSD`,
-          shortTitle: `Unstake ${amount}`,
+          title: `Withdraw ${amount} soUSD`,
+          shortTitle: `Withdraw ${amount}`,
           amount,
           symbol: 'USDC',
           chainId: fuse.id,
           fromAddress: user.safeAddress,
           toAddress: user.safeAddress,
           metadata: {
-            description: `Unstake ${amount} soUSD from Fuse to Mainnet`,
+            description: `Withdraw ${amount} soUSD from Fuse to Mainnet`,
             fee: fee?.toString(),
           },
         },
         (onUserOpHash) => executeTransactions(
           smartAccountClient,
           transactions,
-          'Unstake failed',
+          'Withdraw failed',
           fuse,
           onUserOpHash
         )

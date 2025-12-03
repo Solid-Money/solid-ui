@@ -86,7 +86,7 @@ const Unstake = () => {
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
         type: 'success',
-        text1: 'Unstake transaction submitted',
+        text1: 'Withdraw transaction submitted',
         text2: `${data.amount} soUSD`,
         props: {
           link: `https://layerzeroscan.com/tx/${transaction.transactionHash}`,
