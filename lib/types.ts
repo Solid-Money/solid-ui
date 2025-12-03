@@ -403,6 +403,7 @@ export type Transaction = {
   toAddress?: string;
   sourceDepositInstructions?: SourceDepositInstructions;
   trackingId?: string;
+  failureReason?: string;
 };
 
 export type Faq = {
@@ -505,6 +506,7 @@ export interface DepositTransaction {
   status: DepositTransactionStatus;
   createdAt: Date;
   trackingId?: string;
+  errorMessage?: string;
 }
 
 export enum BridgeTransactionStatus {
@@ -565,6 +567,7 @@ export interface BridgeTransaction {
   status: BridgeTransactionStatus;
   createdAt: Date;
   trackingId?: string;
+  errorMessage?: string;
 }
 
 export enum ActivityTab {
@@ -834,6 +837,7 @@ export interface ActivityEvent {
   metadata?: Record<string, any>;
   deleted?: boolean;
   deletedAt?: string;
+  failureReason?: string;
 }
 
 export interface ActivityEvents {
