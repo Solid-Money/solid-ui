@@ -486,6 +486,7 @@ const useDepositFromEOA = (
           );
         }
       } else {
+        await switchChain(srcChainId);
         if (isSponsor) {
           let signatureData: Signature | undefined;
           let deadline: bigint | undefined;
@@ -495,8 +496,6 @@ const useDepositFromEOA = (
             ? Object.values(tokens).find(t => t.name === token)
             : undefined;
           const isPermitSupported = tokenConfig?.isPermit !== false;
-
-          await switchChain(srcChainId);
 
           if (isPermitSupported) {
             const nonce = await getNonce(srcChainId, tokenAddress);
