@@ -163,6 +163,12 @@
   "overrides": {
     "lucide-react-native": {
       "react": "^19"
+    },
+    "use-sync-external-store": {
+      "react": "^19"
+    },
+    "valtio": {
+      "react": "^19"
     }
   },
   "private": true
