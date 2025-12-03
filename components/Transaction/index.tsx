@@ -69,16 +69,31 @@ const Transaction = ({
   const isFailed = status === TransactionStatus.FAILED;
   const isCancelled = status === TransactionStatus.CANCELLED;
   const isProcessing = status === TransactionStatus.PROCESSING;
+  const isExpired = status === TransactionStatus.EXPIRED;
+  const isRefunded = status === TransactionStatus.REFUNDED;
   const transactionDetails = TRANSACTION_DETAILS[type];
 
   // Only show badge for failed status
+
   const statusBadge = isFailed
     ? {
         text: 'Failed',
         bgColor: 'bg-red-500/20',
         textColor: 'text-red-400',
       }
-    : null;
+    : isExpired
+      ? {
+          text: 'Expired',
+          bgColor: 'bg-orange-500/20',
+          textColor: 'text-orange-400',
+        }
+      : isRefunded
+        ? {
+            text: 'Refunded',
+            bgColor: 'bg-purple-500/20',
+            textColor: 'text-purple-400',
+          }
+        : null;
 
   // Check if this is a direct deposit with no amount yet
   const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
@@ -88,6 +103,8 @@ const Transaction = ({
   const getDirectDepositStatusMessage = () => {
     if (!isDirectDeposit || !hasNoAmount) return null;
     if (isFailed) return 'Failed';
+    if (isExpired) return 'Expired';
+    if (isRefunded) return 'Refunded';
     if (isProcessing) return 'Processing deposit...';
     // For pending, check metadata for more specific status
     if (isPending) {
@@ -163,17 +180,24 @@ const Transaction = ({
 
   const statusTextColor = isFailed
     ? 'text-red-400'
-    : isCancelled
-      ? ''
-      : isIncoming
-        ? 'text-brand'
-        : '';
+    : isExpired
+      ? 'text-orange-400'
+      : isRefunded
+        ? 'text-purple-400'
+        : isCancelled
+          ? ''
+          : isIncoming
+            ? 'text-brand'
+            : '';
 
   const statusSign = isFailed
     ? TransactionDirection.FAILED
-    : isCancelled
+    : isExpired || isRefunded
       ? TransactionDirection.CANCELLED
-      : (transactionDetails?.sign ?? '');
+      : isCancelled
+        ? TransactionDirection.CANCELLED
+        : (transactionDetails?.sign ?? '');
+
 
   const tokenIcon = getTokenIcon({
     logoUrl,
@@ -238,7 +262,7 @@ const Transaction = ({
             <Text className="text-sm text-muted-foreground font-medium">{getDescription()}</Text>
           </View>
         </View>
-        {isFailed && statusBadge && (
+        {(isFailed || isExpired || isRefunded) && statusBadge && (
           <View className={cn(statusBadge.bgColor, 'px-2 py-1 rounded-full')}>
             <Text className={cn(statusBadge.textColor, 'text-xs font-bold')}>
               {statusBadge.text}
@@ -262,7 +286,7 @@ const Transaction = ({
           <Text
             className={cn(
               'text-sm font-medium',
-              isFailed ? 'text-red-400' : 'text-muted-foreground',
+              isFailed ? 'text-red-400' : isExpired ? 'text-orange-400' : isRefunded ? 'text-purple-400' : 'text-muted-foreground',
             )}
           >
             {directDepositStatusMessage}

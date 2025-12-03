@@ -384,6 +384,8 @@ export enum TransactionStatus {
   SUCCESS = 'success',
   FAILED = 'failed',
   CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
+  REFUNDED = 'refunded',
 }
 
 export type Transaction = {
