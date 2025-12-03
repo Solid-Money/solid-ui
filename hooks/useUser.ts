@@ -609,7 +609,7 @@ const useUser = (): UseUserReturn => {
     } else {
       router.replace(path.ONBOARDING);
     }
-  }, [unselectUser, clearKycLinkId, router, user, intercom, clearBalance]);
+  }, [unselectUser, clearKycLinkId, router, user, intercom, clearBalance, logout]);
 
   const handleSelectUser = useCallback(
     (username: string) => {
