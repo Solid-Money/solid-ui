@@ -1,9 +1,14 @@
-import { Endorsements } from '@/components/BankTransfer/enums';
+import { Endorsements, EndorsementStatus } from '@/components/BankTransfer/enums';
 import { KycMode } from '@/components/UserKyc';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { createCard, getKycLinkFromBridge } from '@/lib/api';
+import {
+  createCard,
+  getCustomerEndorsements,
+  getKycLinkForExistingCustomer,
+  getKycLinkFromBridge,
+} from '@/lib/api';
 import { CardStatus, CardStatusResponse, KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { checkCountryAccessForKyc, isFinalKycStatus, startKycFlow } from '@/lib/utils/kyc';
@@ -221,21 +226,6 @@ export function useCardSteps(
           return;
         }
 
-        if (latestStatus === KycStatus.APPROVED) {
-          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-            action: 'blocked',
-            reason: 'approved',
-            kycLinkId,
-          });
-          Toast.show({
-            type: 'success',
-            text1: 'KYC approved',
-            text2: 'You can proceed to order your card.',
-            props: { badgeText: '' },
-          });
-          return;
-        }
-
         if (latestStatus === KycStatus.OFFBOARDED) {
           track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
             action: 'blocked',
@@ -249,6 +239,71 @@ export function useCardSteps(
             props: { badgeText: '' },
           });
           return;
+        }
+
+        // If KYC is approved, check if user has cards endorsement
+        // If not, we need to get a new KYC link for existing customer to add the endorsement
+        if (latestStatus === KycStatus.APPROVED) {
+          // Check if user has cards endorsement
+          const endorsements = await withRefreshToken(() => getCustomerEndorsements());
+          const cardsEndorsement = endorsements?.find(e => e.name === 'cards');
+
+          if (cardsEndorsement && cardsEndorsement.status === EndorsementStatus.APPROVED) {
+            // User already has approved cards endorsement
+            track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+              action: 'blocked',
+              reason: 'approved_with_endorsement',
+              kycLinkId,
+            });
+            Toast.show({
+              type: 'success',
+              text1: 'KYC approved',
+              text2: 'You can proceed to order your card.',
+              props: { badgeText: '' },
+            });
+            return;
+          }
+
+          // User is approved but doesn't have cards endorsement
+          // Use existing customer flow to add the endorsement
+          track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+            action: 'approved_missing_endorsement',
+            kycLinkId,
+            hasCardsEndorsement: Boolean(cardsEndorsement),
+            cardsEndorsementStatus: cardsEndorsement?.status,
+          });
+
+          const baseUrl = process.env.EXPO_PUBLIC_BASE_URL;
+          const redirectUri = `${baseUrl}${path.CARD_ACTIVATE}?kycStatus=${KycStatus.UNDER_REVIEW}`;
+
+          try {
+            const existingCustomerKycLink = await withRefreshToken(() =>
+              getKycLinkForExistingCustomer({
+                endorsement: Endorsements.CARDS,
+                redirectUri,
+              }),
+            );
+
+            if (!existingCustomerKycLink) {
+              throw new Error('Failed to get KYC link for existing customer');
+            }
+
+            track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+              action: 'redirect',
+              method: 'existing_customer_endorsement',
+              kycLinkId,
+            });
+
+            startKycFlow({ router, kycLink: existingCustomerKycLink.url });
+            return;
+          } catch (error) {
+            console.error('Failed to get KYC link for existing customer:', error);
+            track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+              action: 'existing_customer_link_failed',
+              kycLinkId,
+            });
+            // Fall through to regular flow
+          }
         }
       }
     } catch (_e) {
