@@ -1,3 +1,4 @@
+import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import {
   DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
   DEPOSIT_MODAL,
@@ -197,7 +198,7 @@ export interface CustomerFromBridgeResponse {
 
 export type BridgeCustomerEndorsement = {
   name: string;
-  status: string;
+  status: EndorsementStatus;
   additional_requirements?: string[];
 };
 
