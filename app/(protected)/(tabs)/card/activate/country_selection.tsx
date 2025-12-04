@@ -10,8 +10,8 @@ import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { track } from '@/lib/analytics';
+import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
@@ -216,9 +216,14 @@ export default function ActivateCountrySelection() {
           selectionMethod: selectionMethod === 'ip_detected' ? 'ip_detected' : 'manual',
         });
 
-        // If selected country is available, redirect to activate page
+        // If selected country is available, check if IP matches
         if (accessCheck.hasAccess) {
-          router.replace(path.CARD_ACTIVATE);
+          const ipCountry = await getCountryFromIp();
+          if (ipCountry && ipCountry.countryCode === selectedCountry.code) {
+            router.replace(path.CARD_ACTIVATE);
+          } else {
+            router.replace(path.CARD_COUNTRY_SELECTION);
+          }
           return;
         }
 
