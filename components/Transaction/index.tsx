@@ -243,9 +243,9 @@ const Transaction = ({
         classNames?.container,
       )}
     >
-      <View className="flex-row items-center gap-2 md:gap-4">
+      <View className="flex-row items-center gap-2 md:gap-4 flex-[1.5] min-w-0">
         <RenderTokenIcon tokenIcon={tokenIcon} size={44} />
-        <View>
+        <View className="flex-shrink min-w-0">
           <Text className="text-base web:text-lg font-medium" numberOfLines={1}>
             {title}
           </Text>
@@ -262,7 +262,7 @@ const Transaction = ({
           </View>
         </View>
         {(isFailed || isExpired || isRefunded) && statusBadge && (
-          <View className={cn(statusBadge.bgColor, 'px-2 py-1 rounded-full')}>
+          <View className={cn(statusBadge.bgColor, 'px-2 py-1 rounded-full flex-shrink-0')}>
             <Text className={cn(statusBadge.textColor, 'text-xs font-bold')}>
               {statusBadge.text}
             </Text>
@@ -270,17 +270,15 @@ const Transaction = ({
         )}
       </View>
 
-      <View className="flex-1 flex-row items-center justify-center">
+      <View className="flex-[1.5] flex-row items-center justify-center px-2">
         {formattedTimestamp && isScreenMedium && showTimestamp && (
-          <View className="w-48">
-            <Text className="text-sm text-muted-foreground font-medium text-start">
-              {formattedTimestamp}
-            </Text>
-          </View>
+          <Text className="text-sm text-muted-foreground font-medium text-center">
+            {formattedTimestamp}
+          </Text>
         )}
       </View>
 
-      <View className="items-end">
+      <View className="items-end flex-[1] min-w-0">
         {directDepositStatusMessage || amount === '0' ? (
           <Text
             className={cn(
