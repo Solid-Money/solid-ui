@@ -47,16 +47,7 @@ export default function CountrySelection() {
   const [isInNotifyWaitlist, setIsInNotifyWaitlist] = useState(false);
   const [checkingWaitlist, setCheckingWaitlist] = useState(false);
 
-  const {
-    countryInfo,
-    setCountryInfo,
-    getIpDetectedCountry,
-    setIpDetectedCountry,
-    getCachedIp,
-    setCachedIp,
-    countryDetectionFailed,
-    setCountryDetectionFailed,
-  } = useCountryStore();
+  const { countryInfo, setCountryInfo, setCountryDetectionFailed } = useCountryStore();
 
   // Function to get country from IP and check card access
   const getCountryFromIpAndCheckAccess = async (): Promise<{
@@ -88,16 +79,19 @@ export default function CountrySelection() {
 
   useEffect(() => {
     const fetchCountry = async () => {
+      // Get current store state directly to avoid dependency issues
+      const store = useCountryStore.getState();
+
       try {
         // First, check if we have a cached IP address
-        let ip = getCachedIp();
+        let ip = store.getCachedIp();
 
         // If no cached IP or cache expired, fetch a new one
         if (!ip) {
           ip = await getClientIp();
 
           if (ip) {
-            setCachedIp(ip);
+            store.setCachedIp(ip);
           } else {
             // If IP detection fails, show country selector instead of error
             setShowCountrySelector(true);
@@ -107,11 +101,11 @@ export default function CountrySelection() {
         }
 
         // Check if we have a valid cached country info for this IP
-        const cachedInfo = getIpDetectedCountry(ip);
+        const cachedInfo = store.getIpDetectedCountry(ip);
 
         if (cachedInfo) {
           // Update countryInfo to match the IP-detected country
-          setCountryInfo(cachedInfo);
+          store.setCountryInfo(cachedInfo);
 
           const country = COUNTRIES.find(c => c.code === cachedInfo.countryCode);
           if (country) {
@@ -126,7 +120,7 @@ export default function CountrySelection() {
 
         // If country detection already failed (e.g., from ReserveCardButton),
         // skip retry and go straight to manual selection.
-        if (countryDetectionFailed) {
+        if (store.countryDetectionFailed) {
           setShowCountrySelector(true);
           setLoading(false);
           return;
@@ -136,9 +130,9 @@ export default function CountrySelection() {
         const countryInfo = await getCountryFromIpAndCheckAccess();
 
         if (countryInfo) {
-          setIpDetectedCountry(ip, countryInfo);
+          store.setIpDetectedCountry(ip, countryInfo);
           // Clear failure flag on successful detection
-          setCountryDetectionFailed(false);
+          store.setCountryDetectionFailed(false);
 
           const country = COUNTRIES.find(c => c.code === countryInfo.countryCode);
 
@@ -162,16 +156,7 @@ export default function CountrySelection() {
     };
 
     fetchCountry();
-  }, [
-    router,
-    getIpDetectedCountry,
-    setIpDetectedCountry,
-    getCachedIp,
-    setCachedIp,
-    setCountryInfo,
-    countryDetectionFailed,
-    setCountryDetectionFailed,
-  ]);
+  }, []);
 
   // Check if user is already in notify waitlist
   useEffect(() => {
