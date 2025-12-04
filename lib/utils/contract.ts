@@ -37,6 +37,7 @@ export const approveToken = async (
   tokenAddress: Address,
   spender: Address,
   amount: bigint,
+  chainId: number,
 ): Promise<string> => {
   try {
     const hash = await writeContract(config, {
@@ -44,6 +45,7 @@ export const approveToken = async (
       abi: erc20Abi,
       functionName: 'approve',
       args: [spender, amount],
+      chainId,
     });
 
     return hash;
@@ -80,6 +82,7 @@ export const getTokenAllowance = async (
   tokenAddress: Address,
   ownerAddress: Address,
   spenderAddress: Address,
+  chainId: number,
 ): Promise<bigint> => {
   try {
     const allowance = (await readContract(config, {
@@ -87,6 +90,7 @@ export const getTokenAllowance = async (
       abi: erc20Abi,
       functionName: 'allowance',
       args: [ownerAddress, spenderAddress],
+      chainId,
     })) as bigint;
 
     return allowance;
@@ -114,11 +118,22 @@ export const checkAndSetAllowanceToken = async (
   ownerAddress: Address,
   spenderAddress: Address,
   amount: bigint,
+  chainId: number,
 ): Promise<string | undefined> => {
-  const allowance = await getTokenAllowance(tokenAddress, ownerAddress, spenderAddress);
+  const allowance = await getTokenAllowance(
+    tokenAddress,
+    ownerAddress,
+    spenderAddress,
+    chainId,
+  );
   if (allowance >= amount) return;
 
-  const hash = await approveToken(tokenAddress, spenderAddress, amount);
+  const hash = await approveToken(
+    tokenAddress,
+    spenderAddress,
+    amount,
+    chainId,
+  );
   return hash;
 };
 
