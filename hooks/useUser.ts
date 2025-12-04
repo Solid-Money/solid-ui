@@ -601,7 +601,14 @@ const useUser = (): UseUserReturn => {
     clearKycLinkId(); // Clear KYC data on logout
     intercom?.shutdown();
     intercom?.boot();
-    logout();
+
+    // Wrap SDK logout in try-catch to ensure navigation always happens
+    // even if the SDK cleanup fails
+    try {
+      logout();
+    } catch (error) {
+      console.warn('[useUser] SDK logout error (non-blocking):', error);
+    }
 
     // Go to onboarding on native, welcome on web
     if (Platform.OS === 'web') {
