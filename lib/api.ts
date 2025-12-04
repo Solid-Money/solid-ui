@@ -1248,6 +1248,33 @@ export const fetchActivityEvents = async (
   return response.json();
 };
 
+/**
+ * Refresh activity events - calls backend to check pending transaction statuses
+ * and returns updated activity list. Rate limited to 2 requests per minute.
+ */
+export const refreshActivityEvents = async (
+  page: number = 1,
+  limit: number = 30,
+): Promise<ActivityEvents> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/refresh?page=${page}&limit=${limit}`,
+    {
+      method: 'POST',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const updateActivityEvent = async (
   clientTxId: string,
   event: UpdateActivityEvent,
