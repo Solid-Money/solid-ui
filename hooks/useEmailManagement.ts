@@ -83,8 +83,8 @@ export const useEmailManagement = (
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [isSkip, setIsSkip] = useState(false);
 
-  // Get updateUserEmail from the new SDK - works on both web and native
-  const { updateUserEmail } = useTurnkey();
+  // Use httpClient directly to bypass proxyGetAccount check which requires Auth Proxy
+  const { httpClient } = useTurnkey();
 
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
@@ -124,14 +124,17 @@ export const useEmailManagement = (
   }, [step, hasInitializedOtp, otpForm]);
 
   const handleUpdateUserEmail = async (email: string, verificationToken: string) => {
-    // Use the unified updateUserEmail from the new SDK with passkey stamping
-    await updateUserEmail({
-      userId: user?.turnkeyUserId as string,
-      email: email,
-      organizationId: user?.suborgId,
-      verificationToken,
-      stampWith: StamperType.Passkey,
-    });
+    // Use httpClient.updateUserEmail directly to bypass proxyGetAccount check
+    // which requires Auth Proxy (we don't use Auth Proxy, only passkeys)
+    await httpClient?.updateUserEmail(
+      {
+        userId: user?.turnkeyUserId as string,
+        userEmail: email,
+        organizationId: user?.suborgId,
+        verificationToken,
+      },
+      StamperType.Passkey,
+    );
   };
 
   const handleSendOtp = async (data: EmailFormData) => {
