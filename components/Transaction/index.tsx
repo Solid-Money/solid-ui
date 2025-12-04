@@ -62,7 +62,7 @@ const Transaction = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { deleteDirectDepositSession } = useDirectDepositSession();
-  const { refetchAll } = useActivity();
+  const { refresh } = useActivity();
   const { isScreenMedium } = useDimension();
 
   const isPending = status === TransactionStatus.PENDING;
@@ -133,7 +133,7 @@ const Transaction = ({
       setIsDeleteDialogOpen(false);
 
       // Refresh the activity list
-      refetchAll();
+      refresh();
     } catch (error) {
       console.error('Failed to delete direct deposit session:', error);
       Sentry.captureException(error, {
