@@ -312,7 +312,7 @@ const useDepositFromEOA = (
       args: [
         ADDRESSES.ethereum.usdc,
         amountWei,
-        0n,
+        BigInt(0),
         deadline,
         Number(signatureData.v),
         signatureData.r,
@@ -320,7 +320,7 @@ const useDepositFromEOA = (
         user.safeAddress,
         encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
         ADDRESSES.ethereum.nativeFeeToken,
-        fee ? fee : 0n,
+        fee ? fee : BigInt(0),
       ],
     });
 
@@ -521,6 +521,7 @@ const useDepositFromEOA = (
               eoaAddress,
               spender,
               amountWei,
+              srcChainId,
             );
             if (hash) {
               const receipt = await getTransactionReceipt(srcChainId, hash as `0x${string}`);
@@ -606,6 +607,7 @@ const useDepositFromEOA = (
             eoaAddress,
             quote.estimate.approvalAddress,
             BigInt(quote.estimate.fromAmount),
+            srcChainId,
           );
 
           // Track LiFi bridge start
