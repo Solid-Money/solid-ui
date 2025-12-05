@@ -1,15 +1,15 @@
-import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowDownLeft, ArrowUp, Minus } from 'lucide-react-native';
+import { Pressable, View } from 'react-native';
 import { Address } from 'viem';
 
-import { path } from '@/constants/path';
 import CircleButton from '@/components/CircleButton';
-import { isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
-import UnstakeModal from '@/components/Unstake/UnstakeModal';
-import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import StakeModal from '@/components/Stake/StakeModal';
 import { Text } from '@/components/ui/text';
+import UnstakeModal from '@/components/Unstake/UnstakeModal';
+import WithdrawModal from '@/components/Withdraw/WithdrawModal';
+import { path } from '@/constants/path';
+import { isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -46,7 +46,7 @@ const CoinButtons = ({ contractAddress }: CoinButtonsProps) => {
         isSoUSDEthereum(contractAddress) && (
           <>
             <WithdrawModal trigger={<Trigger icon={<Minus color="white" />} label="Withdraw" />} />
-            <StakeModal trigger={<Trigger icon={<ArrowUp color="white" />} label="Stake" />} />
+            <StakeModal trigger={<Trigger icon={<ArrowUp color="white" />} label="Deposit" />} />
           </>
         )
       )}
