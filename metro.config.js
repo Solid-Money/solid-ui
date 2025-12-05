@@ -17,7 +17,6 @@ config.resolver = {
   },
   resolveRequest: (context, moduleName, platform) => {
     // Block browser-specific modules when building for native platforms
-    // @turnkey/sdk-browser is kept for web-only recovery.tsx but should be empty on native
     if (
       platform !== 'web' &&
       (moduleName === '@turnkey/sdk-browser' ||
@@ -31,11 +30,6 @@ config.resolver = {
       return {
         type: 'empty',
       };
-    }
-
-    // Fix tsyringe/tslib ESM compatibility issue on web
-    if (platform === 'web' && moduleName === 'tslib') {
-      return context.resolveRequest(context, 'tslib/tslib.es6.js', platform);
     }
 
     // Handle Node.js built-ins for React Native

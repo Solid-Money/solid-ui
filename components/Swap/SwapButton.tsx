@@ -79,8 +79,8 @@ const SwapButton: React.FC = () => {
 
   const userHasSpecifiedInputOutput = Boolean(
     currencies[SwapField.INPUT] &&
-    currencies[SwapField.OUTPUT] &&
-    parsedAmounts[independentField]?.greaterThan('0'),
+      currencies[SwapField.OUTPUT] &&
+      parsedAmounts[independentField]?.greaterThan('0'),
   );
 
   const routeNotFound = trade?.swaps.length === 0;

@@ -198,6 +198,7 @@ const Transaction = ({
         ? TransactionDirection.CANCELLED
         : (transactionDetails?.sign ?? '');
 
+
   const tokenIcon = getTokenIcon({
     logoUrl,
     tokenSymbol: symbol?.toLowerCase() === 'usdc.e' ? 'USDC' : symbol,
@@ -283,13 +284,7 @@ const Transaction = ({
           <Text
             className={cn(
               'text-sm font-medium',
-              isFailed
-                ? 'text-red-400'
-                : isExpired
-                  ? 'text-orange-400'
-                  : isRefunded
-                    ? 'text-purple-400'
-                    : 'text-muted-foreground',
+              isFailed ? 'text-red-400' : isExpired ? 'text-orange-400' : isRefunded ? 'text-purple-400' : 'text-muted-foreground',
             )}
           >
             {directDepositStatusMessage}
