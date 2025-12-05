@@ -1,17 +1,22 @@
-import { withRefreshToken } from '@/lib/utils';
+import { base64urlToUint8Array, withRefreshToken } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTurnkey } from '@turnkey/react-native-wallet-kit';
+import { TurnkeyClient } from '@turnkey/http';
+import { PasskeyStamper } from '@turnkey/sdk-react-native';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
-import { StamperType } from '@/components/TurnkeyProvider';
+import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { initGenericOtp, verifyGenericOtp } from '@/lib/api';
+import {
+  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+} from '@/lib/config';
 import { useUserStore } from '@/store/useUserStore';
 
 const emailSchema = z.object({
@@ -83,9 +88,6 @@ export const useEmailManagement = (
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [isSkip, setIsSkip] = useState(false);
 
-  // Use httpClient directly to bypass proxyGetAccount check which requires Auth Proxy
-  const { httpClient } = useTurnkey();
-
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
     mode: 'onChange',
@@ -123,18 +125,65 @@ export const useEmailManagement = (
     }
   }, [step, hasInitializedOtp, otpForm]);
 
-  const handleUpdateUserEmail = async (email: string, verificationToken: string) => {
-    // Use httpClient.updateUserEmail directly to bypass proxyGetAccount check
-    // which requires Auth Proxy (we don't use Auth Proxy, only passkeys)
-    await httpClient?.updateUserEmail(
-      {
+  const updateUserEmail = async (email: string, verificationToken: string) => {
+    if (Platform.OS === 'web') {
+      const { Turnkey } = await import('@turnkey/sdk-browser');
+      const turnkey = new Turnkey({
+        apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+        defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+        rpId: getRuntimeRpId(),
+      });
+
+      const allowCredentials = user?.credentialId
+        ? [
+            {
+              id: base64urlToUint8Array(user.credentialId) as BufferSource,
+              type: 'public-key' as const,
+            },
+          ]
+        : undefined;
+
+      const passkeyClient = turnkey.passkeyClient(
+        allowCredentials ? { allowCredentials } : undefined,
+      );
+      const indexedDbClient = await turnkey.indexedDbClient();
+      await indexedDbClient?.init();
+      await indexedDbClient!.resetKeyPair();
+      await passkeyClient?.updateUserEmail({
         userId: user?.turnkeyUserId as string,
         userEmail: email,
         organizationId: user?.suborgId,
         verificationToken,
-      },
-      StamperType.Passkey,
-    );
+      });
+    } else {
+      const stamper = new PasskeyStamper({
+        rpId: getRuntimeRpId(),
+        allowCredentials: user?.credentialId
+          ? [
+              {
+                id: user.credentialId,
+                type: 'public-key' as const,
+              },
+            ]
+          : undefined,
+      });
+
+      const turnkeyClient = new TurnkeyClient(
+        { baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL },
+        stamper,
+      );
+
+      await turnkeyClient.updateUserEmail({
+        type: 'ACTIVITY_TYPE_UPDATE_USER_EMAIL',
+        timestampMs: Date.now().toString(),
+        organizationId: user?.suborgId as string,
+        parameters: {
+          userId: user?.turnkeyUserId as string,
+          userEmail: email,
+          verificationToken,
+        },
+      });
+    }
   };
 
   const handleSendOtp = async (data: EmailFormData) => {
@@ -220,7 +269,7 @@ export const useEmailManagement = (
         verifyGenericOtp(otpId, data.otpCode, emailValue),
       );
 
-      await handleUpdateUserEmail(emailValue, verifyResponse.verificationToken);
+      await updateUserEmail(emailValue, verifyResponse.verificationToken);
 
       if (updateUser) {
         updateUser({
