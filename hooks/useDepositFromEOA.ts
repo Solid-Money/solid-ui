@@ -2,16 +2,16 @@ import * as Sentry from '@sentry/react-native';
 import { useEffect, useState } from 'react';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import {
-  type Address,
-  encodeAbiParameters,
-  encodeFunctionData,
-  erc20Abi,
-  formatUnits,
-  parseAbiParameters,
-  parseSignature,
-  parseUnits,
-  Signature,
-  verifyTypedData,
+    type Address,
+    encodeAbiParameters,
+    encodeFunctionData,
+    erc20Abi,
+    formatUnits,
+    parseAbiParameters,
+    parseSignature,
+    parseUnits,
+    Signature,
+    verifyTypedData,
 } from 'viem';
 import { waitForTransactionReceipt } from 'viem/actions';
 import { mainnet } from 'viem/chains';
@@ -27,18 +27,18 @@ import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, createDeposit, getLifiQuote } from '@/lib/api';
 import {
-  ADDRESSES,
-  EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
-  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+    ADDRESSES,
+    EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
+    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionType, User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import {
-  checkAndSetAllowanceToken,
-  getTransactionReceipt,
-  sendTransaction,
+    checkAndSetAllowanceToken,
+    getTransactionReceipt,
+    sendTransaction,
 } from '@/lib/utils/contract';
 import { config, publicClient } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -278,7 +278,7 @@ const useDepositFromEOA = (
 
   const createEvent = async (amount: string, spender: Address, token: string) => {
     const clientTxId = await createActivity({
-      title: `Staked ${token}`,
+      title: `Deposited ${token}`,
       amount,
       symbol: 'soUsd',
       chainId: srcChainId,
