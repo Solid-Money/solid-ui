@@ -162,7 +162,7 @@ const Stake = () => {
 
       <View className="flex-row gap-2">
         <Info size={30} color="gray" />
-        <Text className="text-sm text-muted-foreground">This action will deposit your funds to earn rewards.</Text>
+        <Text className="text-sm text-muted-foreground">This action will deposit your funds.</Text>
       </View>
 
       <Button
