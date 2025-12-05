@@ -69,9 +69,9 @@ const Unstake = () => {
 
   const getBridgeText = () => {
     if (bridgeErrors.amount) return bridgeErrors.amount.message;
-    if (bridgeStatus === Status.PENDING) return 'Unstaking';
-    if (bridgeStatus === Status.ERROR) return 'Error while unstaking';
-    if (bridgeStatus === Status.SUCCESS) return 'Successfully Unstaked';
+    if (bridgeStatus === Status.PENDING) return 'Withdrawing';
+    if (bridgeStatus === Status.ERROR) return 'Error while withdrawing';
+    if (bridgeStatus === Status.SUCCESS) return 'Successfully Withdrawn';
     if (!isBridgeValid || !watchedBridgeAmount) return 'Enter an amount';
     return 'Withdraw';
   };
@@ -97,7 +97,7 @@ const Unstake = () => {
     } catch (_error) {
       Toast.show({
         type: 'error',
-        text1: 'Error while unstaking',
+        text1: 'Error while withdrawing',
       });
     }
   };
@@ -109,7 +109,7 @@ const Unstake = () => {
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60 text-base">Unstake amount</Text>
+        <Text className="opacity-60 text-base">Withdraw amount</Text>
 
         <View
           className={cn(
@@ -205,7 +205,7 @@ const UnstakeTrigger = (props: any) => {
 };
 
 const UnstakeTitle = () => {
-  return <Text className="text-2xl font-semibold">Unstake from savings</Text>;
+  return <Text className="text-2xl font-semibold">Withdraw from savings</Text>;
 };
 
 export { Unstake, UnstakeTitle, UnstakeTrigger };
