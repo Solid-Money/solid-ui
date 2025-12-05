@@ -11,6 +11,7 @@ type DepositOptionProps = {
   onPress: () => void;
   isLoading?: boolean;
   isComingSoon?: boolean;
+  bannerText?: string;
 };
 
 const DepositOption = ({
@@ -20,6 +21,7 @@ const DepositOption = ({
   onPress,
   isLoading,
   isComingSoon,
+  bannerText,
 }: DepositOptionProps) => {
   const isDisabled = isComingSoon || isLoading;
 
@@ -40,6 +42,11 @@ const DepositOption = ({
             >
               {subtitle}
             </Text>
+          )}
+          {bannerText && (
+            <View className="bg-[#94F27F]/20 self-start px-3 py-1 rounded-2xl mt-1">
+              <Text className="text-[#94F27F] font-bold text-base">{bannerText}</Text>
+            </View>
           )}
         </View>
       </View>
