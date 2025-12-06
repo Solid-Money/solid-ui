@@ -39,7 +39,7 @@ export default function ActivityTransactions({
   showTimestamp = true,
 }: ActivityTransactionsProps) {
   const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore();
-  const { activityEvents, activities, getKey, refetchAll } = useActivity();
+  const { activityEvents, activities, getKey, refresh, isRefreshing, canRefresh } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
 
@@ -263,10 +263,10 @@ export default function ActivityTransactions({
         contentContainerStyle={{ paddingVertical: 0, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading}
-            onRefresh={refetchAll}
-            tintColor="#666"
-            colors={['#666']}
+            refreshing={isRefreshing || isLoading}
+            onRefresh={refresh}
+            tintColor={canRefresh ? '#666' : '#999'}
+            colors={canRefresh ? ['#666'] : ['#999']}
           />
         }
         showsVerticalScrollIndicator={false}

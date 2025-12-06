@@ -1,28 +1,22 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Hash } from 'viem';
 
-import {
-  formatTransactions,
-  useBankTransferTransactions,
-  useBridgeDepositTransactions,
-  useDepositTransactions,
-  useSendTransactions,
-  useUserTransactions,
-} from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
 import {
-  bulkUpsertActivityEvent,
   createActivityEvent,
   fetchActivityEvents,
+  refreshActivityEvents,
   updateActivityEvent,
 } from '@/lib/api';
-import { ActivityEvent, Transaction, TransactionStatus, TransactionType } from '@/lib/types';
+import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
-import { secondsToMilliseconds } from 'date-fns';
+
+// Cooldown period for manual refresh (30 seconds)
+const REFRESH_COOLDOWN_MS = 30_000;
 
 // Get explorer URL for a transaction hash based on chain ID
 function getExplorerUrl(chainId: number, txHash: string): string {
@@ -44,14 +38,15 @@ function getTransactionHash(transaction: any): string {
   return '';
 }
 
-function contructActivity(tx: Transaction | ActivityEvent, safeAddress: string): ActivityEvent {
-  let clientTxId = `${tx.type}-${tx.timestamp}`;
-  if ('trackingId' in tx && tx.trackingId) {
-    clientTxId = tx.trackingId;
-  } else if ('clientTxId' in tx && tx.clientTxId) {
-    clientTxId = tx.clientTxId;
-  } else if ('hash' in tx && tx.hash) {
-    clientTxId = `${tx.type}-${tx.hash}`;
+function constructActivity(tx: ActivityEvent, safeAddress: string): ActivityEvent {
+  // Use existing clientTxId, or construct one from hash/type+timestamp
+  let clientTxId = tx.clientTxId;
+  if (!clientTxId) {
+    if (tx.hash) {
+      clientTxId = `${tx.type}-${tx.hash}`;
+    } else {
+      clientTxId = `${tx.type}-${tx.timestamp}`;
+    }
   }
 
   return {
@@ -104,12 +99,16 @@ export function useActivity() {
   const queryClient = useQueryClient();
   const [cachedActivities, setCachedActivities] = useState<ActivityEvent[]>([]);
 
+  // Rate limiting state for manual refresh
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
     return event.hash || event.userOpHash || event.clientTxId;
   }, []);
 
-  // 1. Fetch from backend first (cached data for instant display)
+  // Fetch activities from backend (single source of truth)
   const activityEvents = useInfiniteQuery({
     queryKey: ['activity-events', user?.userId],
     queryFn: ({ pageParam = 1 }) => withRefreshToken(() => fetchActivityEvents(pageParam)),
@@ -121,113 +120,43 @@ export function useActivity() {
     },
     initialPageParam: 1,
     enabled: !!user?.userId,
-    refetchInterval: query => {
-      // Check if there are any pending direct deposit activities
-      const allActivities = query.state.data?.pages.flatMap(page => page?.docs || []) || [];
-
-      const hasPendingDirectDeposits = allActivities.some(activity => {
-        const pendingOrProcessing =
-          activity.status === TransactionStatus.PENDING ||
-          activity.status === TransactionStatus.PROCESSING;
-
-        return activity.clientTxId?.startsWith('direct_deposit_') && pendingOrProcessing;
-      });
-
-      // Poll every 15 seconds if there are pending direct deposits
-      // Otherwise, don't poll automatically (rely on manual refresh)
-      return hasPendingDirectDeposits ? secondsToMilliseconds(15) : false;
-    },
-    refetchIntervalInBackground: true,
+    // No polling - manual refresh only
   });
 
-  const { data: activityData, refetch: refetchActivityEvents } = activityEvents;
+  const { data: activityData, refetch: refetchActivityEvents, isLoading, isRefetching } = activityEvents;
 
-  // 2. Fetch from third-party services
-  const { data: userDepositTransactions, refetch: refetchTransactions } = useUserTransactions(
-    user?.safeAddress ?? '',
-  );
+  // Check if refresh is on cooldown
+  const canRefresh = Date.now() - lastRefreshTime > REFRESH_COOLDOWN_MS;
 
-  const { data: sendTransactions, refetch: refetchSendTransactions } = useSendTransactions(
-    user?.safeAddress ?? '',
-  );
+  // Rate-limited refresh function - calls backend to check pending tx statuses
+  const refresh = useCallback(async () => {
+    if (!canRefresh || isRefreshing || !user?.userId) {
+      return;
+    }
 
-  const { data: depositTransactions, refetch: refetchDepositTransactions } = useDepositTransactions(
-    user?.safeAddress ?? '',
-  );
+    setIsRefreshing(true);
+    setLastRefreshTime(Date.now());
 
-  const { data: bridgeDepositTransactions, refetch: refetchBridgeDepositTransactions } =
-    useBridgeDepositTransactions(user?.safeAddress ?? '');
+    try {
+      // Call the refresh endpoint which checks pending tx statuses on backend
+      const result = await withRefreshToken(() => refreshActivityEvents());
 
-  const { data: bankTransferTransactions, refetch: refetchBankTransfers } =
-    useBankTransferTransactions();
+      // Sync refreshed data to local store
+      if (result?.docs) {
+        const events = result.docs.map(tx => constructActivity(tx, user.safeAddress));
+        bulkUpsertEvent(user.userId, events);
+      }
 
-  // 3. Format third-party transactions
-  const {
-    data: transactions,
-    dataUpdatedAt: transactionsUpdatedAt,
-    isLoading,
-  } = useQuery({
-    queryKey: [
-      'formatted-transactions',
-      user?.safeAddress,
-      userDepositTransactions?.deposits?.length,
-      sendTransactions?.fuse?.length,
-      sendTransactions?.ethereum?.length,
-      depositTransactions?.length,
-      bridgeDepositTransactions?.length,
-      bankTransferTransactions?.length,
-    ],
-    queryFn: () =>
-      formatTransactions(
-        userDepositTransactions,
-        sendTransactions,
-        depositTransactions,
-        bridgeDepositTransactions,
-        bankTransferTransactions,
-      ),
-    staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
-  });
-
-  // Refetch all data sources
-  const refetchAll = useCallback(() => {
-    refetchActivityEvents();
-    refetchTransactions();
-    refetchSendTransactions();
-    refetchDepositTransactions();
-    refetchBridgeDepositTransactions();
-    refetchBankTransfers();
-  }, [
-    refetchActivityEvents,
-    refetchTransactions,
-    refetchSendTransactions,
-    refetchDepositTransactions,
-    refetchBridgeDepositTransactions,
-    refetchBankTransfers,
-  ]);
-
-  const { mutateAsync: bulkUpsertActivitiesMutation } = useMutation({
-    mutationKey: ['bulk-upsert-activity'],
-    mutationFn: async (payload: ActivityEvent[]) => {
-      const result = await withRefreshToken(() => bulkUpsertActivityEvent(payload));
-      if (!result) throw new Error('Failed to bulk upsert activities');
-      return result;
-    },
-    onSuccess: (serverEvents: ActivityEvent[]) => {
-      if (!user?.userId) return;
-      // Merge server-confirmed events locally
-      bulkUpsertEvent(user.userId, serverEvents);
-    },
-  });
-
-  const bulkUpsertActivities = useCallback(
-    async (payload: ActivityEvent[]) => {
-      const inFlight = queryClient.isMutating({ mutationKey: ['bulk-upsert-activity'] });
-      if (inFlight) return;
-      return bulkUpsertActivitiesMutation(payload);
-    },
-    [queryClient, bulkUpsertActivitiesMutation],
-  );
+      // Also invalidate balance queries
+      queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
+    } catch (error) {
+      console.error('Failed to refresh activities:', error);
+      // Fallback to regular refetch if refresh endpoint fails
+      await refetchActivityEvents();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [canRefresh, isRefreshing, user?.userId, user?.safeAddress, refetchActivityEvents, queryClient, bulkUpsertEvent]);
 
   // Get user's activities from local storage
   const activities = useMemo(() => {
@@ -262,21 +191,30 @@ export function useActivity() {
     );
   }, [activities]);
 
+  // Sync backend data to local store
   useEffect(() => {
     if (!user?.userId || !activityData) return;
 
     const events = activityData.pages
-      .flatMap(page => page?.docs.map(tx => contructActivity(tx, user.safeAddress)))
+      .flatMap(page => page?.docs.map(tx => constructActivity(tx, user.safeAddress)))
       .filter((event): event is ActivityEvent => event !== undefined);
     if (!events.length) return;
 
     bulkUpsertEvent(user.userId, events);
   }, [activityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
 
+  // Trigger refresh on initial load to check pending tx statuses
+  const hasRefreshedOnLoad = useRef(false);
   useEffect(() => {
-    if (!user?.userId || !transactions?.length) return;
-    bulkUpsertActivities(transactions.map(tx => contructActivity(tx, user.safeAddress)));
-  }, [transactionsUpdatedAt, user?.userId, user?.safeAddress, bulkUpsertActivities]);
+    if (user?.userId && !hasRefreshedOnLoad.current && !isLoading) {
+      hasRefreshedOnLoad.current = true;
+      // Small delay to avoid race with initial query
+      const timer = setTimeout(() => {
+        refresh();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [user?.userId, isLoading, refresh]);
 
   // Create new activity
   const createActivity = useCallback(
@@ -311,7 +249,7 @@ export function useActivity() {
       // Update local state immediately for instant UI feedback
       upsertEvent(user.userId, activityEvent);
 
-      // Send to backend for caching (non-blocking)
+      // Send to backend for persistence (non-blocking)
       withRefreshToken(() => createActivityEvent(activityEvent)).catch(error => {
         console.error('Failed to create activity on server:', error);
       });
@@ -345,7 +283,7 @@ export function useActivity() {
       // Update local state immediately
       upsertEvent(user.userId, updatedActivity);
 
-      // Send to backend for caching (non-blocking)
+      // Send to backend for persistence (non-blocking)
       withRefreshToken(() =>
         updateActivityEvent(clientTxId, {
           status: updates.status,
@@ -456,12 +394,13 @@ export function useActivity() {
     pendingActivities,
     pendingCount: pendingActivities.length,
     activityEvents,
-    isLoading,
+    isLoading: isLoading || isRefreshing,
+    isRefreshing,
+    canRefresh,
     getKey,
     createActivity,
     updateActivity,
     trackTransaction,
-    refetchAll,
-    bulkUpsertActivities,
+    refresh,
   };
 }
