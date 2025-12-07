@@ -1,11 +1,9 @@
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
-import { useEffect, useRef } from 'react';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Checkmark from '@/assets/images/checkmark';
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -21,8 +19,6 @@ export default function Email() {
   const { isDesktop } = useDimension();
   const insets = useSafeAreaInsets();
 
-  const hasNavigated = useRef(false);
-
   const {
     step,
     isLoading,
@@ -37,18 +33,11 @@ export default function Email() {
     getButtonText,
     isFormDisabled,
     clearRateLimitError,
-  } = useEmailManagement();
-
-  // Auto-navigate after success state + delay
-  useEffect(() => {
-    if (step === 'success' && !hasNavigated.current) {
-      const timer = setTimeout(() => {
-        hasNavigated.current = true;
-        router.back();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [step, router]);
+  } = useEmailManagement(() => {
+    Alert.alert('Success', 'Your email has been successfully updated!', [
+      { text: 'OK', onPress: () => router.back() },
+    ]);
+  });
 
   const handleBack = () => {
     if (step === 'email' || step === 'otp') {
@@ -95,112 +84,95 @@ export default function Email() {
             'max-w-7xl': !isDesktop,
           })}
         >
-          {step === 'success' ? (
-            <View className="flex-1 items-center justify-center py-12">
-              <Checkmark width={120} height={120} color="#94F27F" />
-              <Text className="text-2xl font-semibold text-white mt-6 text-center">
-                Email verified!
+          <Text className="text-sm text-muted-foreground font-medium mb-8">
+            {step === 'existing'
+              ? 'Your current email address is used for notifications and wallet recovery.'
+              : step === 'email'
+                ? 'Enter the email address we should use to notify you of important activity and be used for Wallet funds recovery.'
+                : 'Enter the 6-digit verification code sent to your email address.'}
+          </Text>
+
+          {step === 'otp' && (
+            <Text className="text-sm text-muted-foreground mb-6">Sent to: {emailValue}</Text>
+          )}
+
+          {rateLimitError && (
+            <View className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <View className="flex-row items-center mb-2">
+                <Text className="text-red-600 text-lg mr-2">⏰</Text>
+                <Text className="font-semibold text-red-800">Rate Limit Reached</Text>
+              </View>
+              <Text className="text-red-700 text-sm leading-5">{rateLimitError}</Text>
+              <Text className="text-red-600 text-xs mt-2">
+                This is a security measure to prevent spam. You can try again in a few minutes.
               </Text>
-              <Text className="text-muted-foreground mt-2 text-center">
-                {emailValue}
-              </Text>
-              <Text className="text-sm text-muted-foreground mt-4 text-center max-w-xs">
-                This email will be used for notifications and wallet recovery.
-              </Text>
+              <Button
+                onPress={clearRateLimitError}
+                variant="outline"
+                className="mt-3 h-10 border-red-300"
+              >
+                <Text className="text-red-700 text-sm">Try Again</Text>
+              </Button>
+            </View>
+          )}
+
+          {step === 'existing' ? (
+            <View className="gap-2">
+              <Text className="text-muted-foreground">Current Email</Text>
+              <View className="px-5 py-4 bg-accent rounded-2xl">
+                <Text className="text-lg font-semibold text-white">{user?.email}</Text>
+              </View>
             </View>
           ) : (
-            <>
-              <Text className="text-sm text-muted-foreground font-medium mb-8">
-                {step === 'existing'
-                  ? 'Your current email address is used for notifications and wallet recovery.'
-                  : step === 'email'
-                    ? 'Enter the email address we should use to notify you of important activity and be used for Wallet funds recovery.'
-                    : 'Enter the 6-digit verification code sent to your email address.'}
+            <View className="gap-2">
+              <Text className="text-muted-foreground">
+                {step === 'email' ? 'Email address' : 'Verification Code'}
               </Text>
-
-              {step === 'otp' && (
-                <Text className="text-sm text-muted-foreground mb-6">Sent to: {emailValue}</Text>
-              )}
-
-              {rateLimitError && (
-                <View className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <View className="flex-row items-center mb-2">
-                    <Text className="text-red-600 text-lg mr-2">⏰</Text>
-                    <Text className="font-semibold text-red-800">Rate Limit Reached</Text>
-                  </View>
-                  <Text className="text-red-700 text-sm leading-5">{rateLimitError}</Text>
-                  <Text className="text-red-600 text-xs mt-2">
-                    This is a security measure to prevent spam. You can try again in a few minutes.
-                  </Text>
-                  <Button
-                    onPress={clearRateLimitError}
-                    variant="outline"
-                    className="mt-3 h-10 border-red-300"
-                  >
-                    <Text className="text-red-700 text-sm">Try Again</Text>
-                  </Button>
-                </View>
-              )}
-
-              {step === 'existing' ? (
-                <View className="gap-2">
-                  <Text className="text-muted-foreground">Current Email</Text>
-                  <View className="px-5 py-4 bg-accent rounded-2xl">
-                    <Text className="text-lg font-semibold text-white">{user?.email}</Text>
-                  </View>
-                </View>
-              ) : (
-                <View className="gap-2">
-                  <Text className="text-muted-foreground">
-                    {step === 'email' ? 'Email address' : 'Verification Code'}
-                  </Text>
-                  <View className="px-5 py-4 bg-accent rounded-2xl">
-                    {step === 'email' ? (
-                      <Controller
-                        key="email-input"
-                        control={emailForm.control}
-                        name="email"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                          <TextInput
-                            placeholder="Enter your email address"
-                            value={value}
-                            onChangeText={onChange}
-                            onBlur={onBlur}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            autoComplete="email"
-                            className="text-lg font-semibold text-white web:focus:outline-none"
-                            placeholderTextColor="#666"
-                          />
-                        )}
-                      />
-                    ) : (
-                      <Controller
-                        key="otp-input"
-                        control={otpForm.control}
-                        name="otpCode"
-                        render={({ field: { onChange, onBlur, value } }) => (
-                          <TextInput
-                            placeholder="Enter 6-digit code"
-                            value={value || ''}
-                            onChangeText={onChange}
-                            onBlur={onBlur}
-                            keyboardType="numeric"
-                            maxLength={6}
-                            className="text-lg font-semibold text-white text-center web:focus:outline-none"
-                            placeholderTextColor="#666"
-                          />
-                        )}
+              <View className="px-5 py-4 bg-accent rounded-2xl">
+                {step === 'email' ? (
+                  <Controller
+                    key="email-input"
+                    control={emailForm.control}
+                    name="email"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <TextInput
+                        placeholder="Enter your email address"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        className="text-lg font-semibold text-white web:focus:outline-none"
+                        placeholderTextColor="#666"
                       />
                     )}
-                  </View>
-                </View>
-              )}
-            </>
+                  />
+                ) : (
+                  <Controller
+                    key="otp-input"
+                    control={otpForm.control}
+                    name="otpCode"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <TextInput
+                        placeholder="Enter 6-digit code"
+                        value={value || ''}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        keyboardType="numeric"
+                        maxLength={6}
+                        className="text-lg font-semibold text-white text-center web:focus:outline-none"
+                        placeholderTextColor="#666"
+                      />
+                    )}
+                  />
+                )}
+              </View>
+            </View>
           )}
 
           {/* Desktop buttons - inline with content */}
-          {isDesktop && step !== 'success' && (
+          {isDesktop && (
             <View className="mt-8 gap-3">
               <Button
                 variant="brand"
@@ -233,7 +205,7 @@ export default function Email() {
         </View>
 
         {/* Mobile buttons - at bottom */}
-        {!isDesktop && step !== 'success' && (
+        {!isDesktop && (
           <View
             className="px-4 pt-4 gap-3 bg-black"
             style={{ paddingBottom: insets.bottom + 80 }} // Tab bar height + padding
