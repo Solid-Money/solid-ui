@@ -34,7 +34,7 @@ function getTransactionHash(transaction: any): string {
 function constructActivity(tx: ActivityEvent, safeAddress: string): ActivityEvent {
   let clientTxId = `${tx.type}-${tx.timestamp}`;
   if ('trackingId' in tx && tx.trackingId) {
-    clientTxId = tx.trackingId;
+    clientTxId = tx.trackingId as string;
   } else if ('clientTxId' in tx && tx.clientTxId) {
     clientTxId = tx.clientTxId;
   } else if ('hash' in tx && tx.hash) {
