@@ -138,7 +138,6 @@ export const useUserTransactions = (safeAddress: string) => {
     },
     enabled: !!safeAddress,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -167,7 +166,6 @@ export const useSendTransactions = (address: string) => {
     },
     enabled: !!address,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -200,7 +198,6 @@ export const useDepositTransactions = (safeAddress: string) => {
     },
     enabled: !!safeAddress,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -212,7 +209,6 @@ export const useBridgeDepositTransactions = (safeAddress: string) => {
     },
     enabled: !!safeAddress,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -236,7 +232,6 @@ export const useBankTransferTransactions = () => {
     },
     enabled: true,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 

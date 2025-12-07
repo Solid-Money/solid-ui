@@ -24,7 +24,7 @@ export const useCardDepositPoller = () => {
       activity.hash, // Must have a transaction hash to match
   );
 
-  // Poll Bridge API only if we have pending card deposits
+  // Fetch Bridge API only if we have pending card deposits (no polling)
   const { data: cardTransactions } = useQuery({
     queryKey: ['card-transactions-poller'],
     queryFn: async () => {
@@ -32,7 +32,7 @@ export const useCardDepositPoller = () => {
       return response.data.filter(tx => tx.category === 'crypto_funding');
     },
     enabled: pendingCardDeposits.length > 0,
-    refetchInterval: pendingCardDeposits.length > 0 ? 60000 : false, // Poll every minute if pending
+    // No polling - status updates should come from backend
   });
 
   // Check if any pending deposits have been processed by Bridge

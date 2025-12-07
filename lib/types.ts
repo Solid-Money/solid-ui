@@ -348,6 +348,7 @@ export enum TransactionType {
   UNSTAKE = 'unstake',
   WITHDRAW = 'withdraw',
   SEND = 'send',
+  RECEIVE = 'receive', // Incoming token/native transfers from external sources
   BRIDGE = 'bridge',
   CANCEL_WITHDRAW = 'cancel_withdraw',
   BRIDGE_DEPOSIT = 'bridge_deposit',
@@ -377,6 +378,14 @@ export enum TransactionCategory {
   BANK_DEPOSIT = 'Bank deposit',
   CARD_DEPOSIT = 'Card deposit',
   REWARD = 'Reward',
+  SEND = 'Send',
+  SWAP = 'Swap',
+  WRAP = 'Wrap',
+  UNWRAP = 'Unwrap',
+  MERKL_CLAIM = 'Merkl claim',
+  CARD_WELCOME_BONUS = 'Card welcome bonus',
+  DEPOSIT_BONUS = 'Deposit bonus',
+  RECEIVE = 'Receive',
 }
 
 export enum TransactionStatus {
@@ -859,6 +868,20 @@ export interface UpdateActivityEvent {
   txHash?: string;
   userOpHash?: string;
   metadata?: Record<string, any>;
+}
+
+// Sync activities from Blockscout
+export interface SyncActivitiesOptions {
+  chainIds?: number[];
+  direction?: 'from' | 'to' | 'all';
+  type?: 'token' | 'native' | 'all';
+}
+
+export interface SyncActivitiesResponse {
+  synced: number;
+  skipped: number;
+  errors: number;
+  message: string;
 }
 
 export interface VaultBreakdown {
