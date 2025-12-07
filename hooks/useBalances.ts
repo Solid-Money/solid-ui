@@ -347,9 +347,7 @@ export const useBalances = (): BalanceData => {
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
-    // Refetch every 30 seconds when data becomes stale
-    refetchInterval: 30 * 1000,
-    refetchIntervalInBackground: false,
+    // No polling - manual refresh only (triggered by activity refresh)
   });
 
   const defaultData = {
