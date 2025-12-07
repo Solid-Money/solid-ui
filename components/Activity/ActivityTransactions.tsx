@@ -1,7 +1,8 @@
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
+import { RefreshCw } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { RefreshControl, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, View } from 'react-native';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
@@ -39,10 +40,9 @@ export default function ActivityTransactions({
   showTimestamp = true,
 }: ActivityTransactionsProps) {
   const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore();
-  const { activityEvents, activities, getKey, refresh, isRefreshing, canRefresh } = useActivity();
+  const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
-
   useCardDepositPoller();
 
   const filteredTransactions = useMemo(() => {
@@ -196,18 +196,48 @@ export default function ActivityTransactions({
   };
 
   const renderLoading = () => (
-    <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+    <View className="gap-3">
+      <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+      <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+      <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+    </View>
   );
+
+  const renderSyncingIndicator = () => {
+    if (!isSyncing) return null;
+    return (
+      <View className="flex-row items-center justify-center py-2 gap-2">
+        <View className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        <Text className="text-muted-foreground text-sm">
+          {isSyncStale ? 'Syncing your transaction history...' : 'Syncing...'}
+        </Text>
+      </View>
+    );
+  };
 
   const renderEmpty = () => (
     <View className="py-16 px-4">
-      <Text className="text-muted-foreground text-center text-lg">
-        {tab === ActivityTab.PROGRESS ? 'No pending transactions' : 'No transactions found'}
-      </Text>
-      {tab === ActivityTab.WALLET && (
-        <Text className="text-muted-foreground text-center text-sm mt-2">
-          Start by making a swap or sending tokens
-        </Text>
+      {isSyncing && isSyncStale ? (
+        <>
+          <Text className="text-muted-foreground text-center text-lg">
+            Syncing your transaction history...
+          </Text>
+          <Text className="text-muted-foreground text-center text-sm mt-2">
+            This may take a moment for new accounts
+          </Text>
+          <View className="mt-4">{renderLoading()}</View>
+        </>
+      ) : (
+        <>
+          <Text className="text-muted-foreground text-center text-lg">
+            {tab === ActivityTab.PROGRESS ? 'No pending transactions' : 'No transactions found'}
+          </Text>
+          {tab === ActivityTab.WALLET && (
+            <Text className="text-muted-foreground text-center text-sm mt-2">
+              Start by making a swap or sending tokens
+            </Text>
+          )}
+        </>
       )}
     </View>
   );
@@ -219,12 +249,50 @@ export default function ActivityTransactions({
     return null;
   };
 
-  if (isLoading && !filteredTransactions.length) {
-    return renderLoading();
+  // Show full loading state only for first load with stale data
+  if (isLoading && !filteredTransactions.length && isSyncStale) {
+    return (
+      <View className="flex-1 px-4">
+        <View className="py-8">
+          <Text className="text-muted-foreground text-center text-lg mb-2">
+            Syncing your transaction history...
+          </Text>
+          <Text className="text-muted-foreground text-center text-sm mb-4">
+            This may take a moment for new accounts
+          </Text>
+        </View>
+        {renderLoading()}
+      </View>
+    );
   }
+
+  const isWeb = Platform.OS === 'web';
 
   return (
     <View className="flex-1">
+      {/* Web-only refresh button (pull-to-refresh doesn't work on web) */}
+      {isWeb && (
+        <View className="flex-row justify-end px-4 py-2">
+          <Pressable
+            onPress={refetchAll}
+            disabled={isLoading || isSyncing}
+            className="flex-row items-center gap-2 px-3 py-1.5 rounded-full bg-card active:opacity-70"
+          >
+            <RefreshCw
+              size={14}
+              color={isLoading || isSyncing ? '#666' : '#fff'}
+              className={isSyncing ? 'animate-spin' : ''}
+            />
+            <Text className="text-sm text-muted-foreground">
+              {isSyncing ? 'Syncing...' : 'Refresh'}
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Subtle syncing indicator for background syncs (native only) */}
+      {!isWeb && renderSyncingIndicator()}
+
       <FlashList
         key={`flashlist-${showStuckTransactions}`}
         data={filteredTransactions}
@@ -263,10 +331,10 @@ export default function ActivityTransactions({
         contentContainerStyle={{ paddingVertical: 0, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing || isLoading}
-            onRefresh={refresh}
-            tintColor={canRefresh ? '#666' : '#999'}
-            colors={canRefresh ? ['#666'] : ['#999']}
+            refreshing={isLoading || isSyncing}
+            onRefresh={refetchAll}
+            tintColor="#666"
+            colors={['#666']}
           />
         }
         showsVerticalScrollIndicator={false}

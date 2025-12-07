@@ -1,22 +1,15 @@
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Hash } from 'viem';
 
 import useUser from '@/hooks/useUser';
-import {
-  createActivityEvent,
-  fetchActivityEvents,
-  refreshActivityEvents,
-  updateActivityEvent,
-} from '@/lib/api';
+import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
-
-// Cooldown period for manual refresh (30 seconds)
-const REFRESH_COOLDOWN_MS = 30_000;
+import { useSyncActivities } from './useSyncActivities';
 
 // Get explorer URL for a transaction hash based on chain ID
 function getExplorerUrl(chainId: number, txHash: string): string {
@@ -39,14 +32,13 @@ function getTransactionHash(transaction: any): string {
 }
 
 function constructActivity(tx: ActivityEvent, safeAddress: string): ActivityEvent {
-  // Use existing clientTxId, or construct one from hash/type+timestamp
-  let clientTxId = tx.clientTxId;
-  if (!clientTxId) {
-    if (tx.hash) {
-      clientTxId = `${tx.type}-${tx.hash}`;
-    } else {
-      clientTxId = `${tx.type}-${tx.timestamp}`;
-    }
+  let clientTxId = `${tx.type}-${tx.timestamp}`;
+  if ('trackingId' in tx && tx.trackingId) {
+    clientTxId = tx.trackingId;
+  } else if ('clientTxId' in tx && tx.clientTxId) {
+    clientTxId = tx.clientTxId;
+  } else if ('hash' in tx && tx.hash) {
+    clientTxId = `${tx.type}-${tx.hash}`;
   }
 
   return {
@@ -96,19 +88,26 @@ export type TrackTransaction = <TransactionResult>(
 export function useActivity() {
   const { user } = useUser();
   const { events, bulkUpsertEvent, upsertEvent } = useActivityStore();
-  const queryClient = useQueryClient();
   const [cachedActivities, setCachedActivities] = useState<ActivityEvent[]>([]);
 
-  // Rate limiting state for manual refresh
-  const [lastRefreshTime, setLastRefreshTime] = useState(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Sync all activities from backend (handles smart caching internally)
+  // Backend now syncs: Blockscout, deposits, bridges, and bank transfers
+  const {
+    sync: syncFromBackend,
+    isSyncing,
+    isStale: isSyncStale,
+    canSync,
+  } = useSyncActivities({
+    syncOnAppActive: true,
+    syncOnMount: true,
+  });
 
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
     return event.hash || event.userOpHash || event.clientTxId;
   }, []);
 
-  // Fetch activities from backend (single source of truth)
+  // Fetch from backend (single source of truth for all activities)
   const activityEvents = useInfiniteQuery({
     queryKey: ['activity-events', user?.userId],
     queryFn: ({ pageParam = 1 }) => withRefreshToken(() => fetchActivityEvents(pageParam)),
@@ -125,38 +124,21 @@ export function useActivity() {
 
   const { data: activityData, refetch: refetchActivityEvents, isLoading, isRefetching } = activityEvents;
 
-  // Check if refresh is on cooldown
-  const canRefresh = Date.now() - lastRefreshTime > REFRESH_COOLDOWN_MS;
-
-  // Rate-limited refresh function - calls backend to check pending tx statuses
-  const refresh = useCallback(async () => {
-    if (!canRefresh || isRefreshing || !user?.userId) {
+  // Refetch all data sources (backend handles all syncing now)
+  const refetchAll = useCallback(() => {
+    if (isSyncing || isRefetching) {
       return;
     }
+    // Trigger backend sync in background (non-blocking)
+    // Backend syncs: Blockscout, deposits, bridges, and bank transfers
+    // The sync will invalidate 'activity-events' query when complete
+    syncFromBackend().catch((error: any) => {
+      console.error('Background sync failed:', error);
+    });
 
-    setIsRefreshing(true);
-    setLastRefreshTime(Date.now());
-
-    try {
-      // Call the refresh endpoint which checks pending tx statuses on backend
-      const result = await withRefreshToken(() => refreshActivityEvents());
-
-      // Sync refreshed data to local store
-      if (result?.docs) {
-        const events = result.docs.map(tx => constructActivity(tx, user.safeAddress));
-        bulkUpsertEvent(user.userId, events);
-      }
-
-      // Also invalidate balance queries
-      queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
-    } catch (error) {
-      console.error('Failed to refresh activities:', error);
-      // Fallback to regular refetch if refresh endpoint fails
-      await refetchActivityEvents();
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [canRefresh, isRefreshing, user?.userId, user?.safeAddress, refetchActivityEvents, queryClient, bulkUpsertEvent]);
+    // Refetch cached activities from backend
+    refetchActivityEvents();
+  }, [syncFromBackend, refetchActivityEvents]);
 
   // Get user's activities from local storage
   const activities = useMemo(() => {
@@ -191,7 +173,7 @@ export function useActivity() {
     );
   }, [activities]);
 
-  // Sync backend data to local store
+  // Sync backend activities to local store for offline access
   useEffect(() => {
     if (!user?.userId || !activityData) return;
 
@@ -202,19 +184,6 @@ export function useActivity() {
 
     bulkUpsertEvent(user.userId, events);
   }, [activityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
-
-  // Trigger refresh on initial load to check pending tx statuses
-  const hasRefreshedOnLoad = useRef(false);
-  useEffect(() => {
-    if (user?.userId && !hasRefreshedOnLoad.current && !isLoading) {
-      hasRefreshedOnLoad.current = true;
-      // Small delay to avoid race with initial query
-      const timer = setTimeout(() => {
-        refresh();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [user?.userId, isLoading, refresh]);
 
   // Create new activity
   const createActivity = useCallback(
@@ -249,7 +218,7 @@ export function useActivity() {
       // Update local state immediately for instant UI feedback
       upsertEvent(user.userId, activityEvent);
 
-      // Send to backend for persistence (non-blocking)
+      // Send to backend for caching (non-blocking)
       withRefreshToken(() => createActivityEvent(activityEvent)).catch(error => {
         console.error('Failed to create activity on server:', error);
       });
@@ -283,7 +252,7 @@ export function useActivity() {
       // Update local state immediately
       upsertEvent(user.userId, updatedActivity);
 
-      // Send to backend for persistence (non-blocking)
+      // Send to backend for caching (non-blocking)
       withRefreshToken(() =>
         updateActivityEvent(clientTxId, {
           status: updates.status,
@@ -394,13 +363,15 @@ export function useActivity() {
     pendingActivities,
     pendingCount: pendingActivities.length,
     activityEvents,
-    isLoading: isLoading || isRefreshing,
-    isRefreshing,
-    canRefresh,
+    isLoading: isLoading || isRefetching,
     getKey,
     createActivity,
     updateActivity,
     trackTransaction,
-    refresh,
+    refetchAll,
+    // Sync state for UI indicators
+    isSyncing,
+    isSyncStale,
+    canSync,
   };
 }

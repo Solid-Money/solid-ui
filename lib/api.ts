@@ -61,6 +61,8 @@ import {
   StargateQuoteResponse,
   SwapTokenRequest,
   SwapTokenResponse,
+  SyncActivitiesOptions,
+  SyncActivitiesResponse,
   ToCurrency,
   TokenPriceUsd,
   UpdateActivityEvent,
@@ -1248,33 +1250,6 @@ export const fetchActivityEvents = async (
   return response.json();
 };
 
-/**
- * Refresh activity events - calls backend to check pending transaction statuses
- * and returns updated activity list. Rate limited to 2 requests per minute.
- */
-export const refreshActivityEvents = async (
-  page: number = 1,
-  limit: number = 30,
-): Promise<ActivityEvents> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/refresh?page=${page}&limit=${limit}`,
-    {
-      method: 'POST',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
 export const updateActivityEvent = async (
   clientTxId: string,
   event: UpdateActivityEvent,
@@ -1314,6 +1289,51 @@ export const bulkUpsertActivityEvent = async (
     },
     credentials: 'include',
     body: JSON.stringify(events),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Sync on-chain transactions from Blockscout for the user's wallet.
+ * Fetches both token transfers and native transactions, then upserts them as activities.
+ *
+ * @param options - Optional parameters to customize the sync
+ * @param options.chainIds - Array of chain IDs to sync (defaults to all supported: Fuse, Ethereum, Base)
+ * @param options.direction - Transaction direction: 'from', 'to', or 'all' (default: 'all')
+ * @param options.type - Transaction type: 'token', 'native', or 'all' (default: 'all')
+ * @returns Sync result with counts of synced, skipped, and errored transactions
+ */
+export const syncActivities = async (
+  options: SyncActivitiesOptions = {},
+): Promise<SyncActivitiesResponse> => {
+  const jwt = getJWTToken();
+
+  const params = new URLSearchParams();
+
+  if (options.chainIds?.length) {
+    options.chainIds.forEach(chainId => params.append('chainIds[]', chainId.toString()));
+  }
+  if (options.direction) {
+    params.append('direction', options.direction);
+  }
+  if (options.type) {
+    params.append('type', options.type);
+  }
+
+  const queryString = params.toString();
+  const url = `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/sync${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
   });
 
   if (!response.ok) throw response;
