@@ -34,7 +34,7 @@ export type EmailFormData = z.infer<typeof emailSchema>;
 export type OtpFormData = z.infer<typeof otpSchema>;
 
 export interface EmailManagementState {
-  step: 'existing' | 'email' | 'otp' | 'success';
+  step: 'existing' | 'email' | 'otp';
   isLoading: boolean;
   otpId: string;
   emailValue: string;
@@ -286,11 +286,6 @@ export const useEmailManagement = (
         context: initialStep === 'email' ? 'deposit_flow' : 'settings',
       });
 
-      // Transition to success state
-      setStep('success');
-
-      // Call onSuccess callback immediately for backward compatibility
-      // (modals that use this hook expect immediate callback, not delayed)
       onSuccess?.();
     } catch (error: any) {
       let errorTitle = 'Failed to verify OTP';
