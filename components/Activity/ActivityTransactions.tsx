@@ -1,8 +1,8 @@
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { RefreshCw } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
-import { Platform, Pressable, RefreshControl, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Platform, Pressable, RefreshControl, View } from 'react-native';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
@@ -44,6 +44,31 @@ export default function ActivityTransactions({
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
   useCardDepositPoller();
+
+  // Spin animation for refresh icon
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isSyncing) {
+      spinValue.setValue(0);
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ).start();
+    } else {
+      spinValue.stopAnimation();
+      spinValue.setValue(0);
+    }
+  }, [isSyncing, spinValue]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   const filteredTransactions = useMemo(() => {
     const filtered = activities.filter(transaction => {
@@ -278,11 +303,9 @@ export default function ActivityTransactions({
             disabled={isLoading || isSyncing}
             className="flex-row items-center gap-2 px-3 py-1.5 rounded-full bg-card active:opacity-70"
           >
-            <RefreshCw
-              size={14}
-              color={isLoading || isSyncing ? '#666' : '#fff'}
-              className={isSyncing ? 'animate-spin' : ''}
-            />
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <RefreshCw size={14} color={isLoading || isSyncing ? '#666' : '#fff'} />
+            </Animated.View>
             <Text className="text-sm text-muted-foreground">
               {isSyncing ? 'Syncing...' : 'Refresh'}
             </Text>
