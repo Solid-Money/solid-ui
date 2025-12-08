@@ -131,12 +131,20 @@ const ResponsiveModal = ({
     };
   });
 
+  // Prevent page scroll when modal closes by stopping focus restoration to trigger
+  const handleCloseAutoFocus = useCallback((event: Event) => {
+    event.preventDefault();
+  }, []);
+
   // Use modal for desktop web, bottom sheet for mobile web and native
   if (isScreenMedium) {
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-        <DialogContent className={cn('p-6 md:p-8 md:max-w-md', contentClassName)}>
+        <DialogContent
+          className={cn('p-6 md:p-8 md:max-w-md', contentClassName)}
+          onCloseAutoFocus={handleCloseAutoFocus}
+        >
           <Animated.View style={dialogAnimatedStyle} className="overflow-hidden">
             <View
               className={cn('gap-8', containerClassName)}

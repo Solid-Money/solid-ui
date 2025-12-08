@@ -83,8 +83,8 @@ const DialogOverlay = Platform.select({
 
 const DialogContent = React.forwardRef<
   DialogPrimitive.ContentRef,
-  DialogPrimitive.ContentProps & { portalHost?: string }
->(({ className, children, portalHost, ...props }, ref) => {
+  DialogPrimitive.ContentProps & { portalHost?: string; onCloseAutoFocus?: (event: Event) => void }
+>(({ className, children, portalHost, onCloseAutoFocus, ...props }, ref) => {
   const { open } = DialogPrimitive.useRootContext();
 
   const content = (
@@ -98,6 +98,7 @@ const DialogContent = React.forwardRef<
             : 'web:animate-out web:fade-out-0 web:zoom-out-95',
           className,
         )}
+        onCloseAutoFocus={onCloseAutoFocus}
         {...props}
       >
         {children}
@@ -186,5 +187,6 @@ export {
   DialogOverlay,
   DialogPortal,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 };
+
