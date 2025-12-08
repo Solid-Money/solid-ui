@@ -1,8 +1,8 @@
 import { Pressable, View } from 'react-native';
 import { SvgProps } from 'react-native-svg';
 
-import { Text } from './ui/text';
 import { cn } from '@/lib/utils';
+import { Text } from './ui/text';
 
 interface CircleButtonProps {
   icon: React.ComponentType<SvgProps>;
@@ -18,7 +18,7 @@ const CircleButton = ({
   icon: Icon,
   label,
   onPress,
-  backgroundColor = 'bg-[#3A3A3A]',
+  backgroundColor = 'bg-[#2C2C2C]',
   iconColor = '#ffffff',
   scale = 1,
   viewBox,
@@ -43,7 +43,7 @@ const CircleButton = ({
           preserveAspectRatio="xMidYMid meet"
         />
       </View>
-      <Text className="text-muted-foreground font-medium">{label}</Text>
+      <Text className="text-primary/70 font-medium">{label}</Text>
     </Pressable>
   );
 };

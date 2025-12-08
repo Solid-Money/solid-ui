@@ -1,8 +1,8 @@
-import { View } from 'react-native';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 import { ArrowLeft } from 'lucide-react-native';
+import { View } from 'react-native';
 
 interface ResponsiveModalMobileProps {
   containerClassName?: string;
@@ -26,7 +26,7 @@ const ResponsiveModalMobile = ({
   children,
 }: ResponsiveModalMobileProps) => {
   return (
-    <View className={cn('gap-4 md:gap-6', containerClassName)}>
+    <View className={cn('gap-2 md:gap-6', containerClassName)}>
       {(title || (showBackButton && onBackPress)) && (
         <View
           className={cn(
