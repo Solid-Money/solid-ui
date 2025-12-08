@@ -223,6 +223,13 @@ export default function usePegSwapCallback(
       }
 
       setSwapData(result);
+
+      // Call success callback immediately after transaction completes
+      // This ensures the success modal is shown even if useTransactionAwait has timing issues
+      if (successInfo?.onSuccess) {
+        successInfo.onSuccess();
+      }
+
       return result;
     } catch (error) {
       console.error('Peg swap failed', error);
@@ -243,7 +250,7 @@ export default function usePegSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA]);
+  }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA, needAllowance, approvalConfig, successInfo]);
 
   const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
 

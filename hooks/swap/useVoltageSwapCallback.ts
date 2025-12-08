@@ -111,7 +111,14 @@ export function useVoltageSwapCallback(
         return;
       }
 
-      setSwapData(transaction);
+      setSwapData(result);
+
+      // Call success callback immediately after transaction completes
+      // This ensures the success modal is shown even if useTransactionAwait has timing issues
+      if (successInfo?.onSuccess) {
+        successInfo.onSuccess();
+      }
+
       return transaction;
     } catch (error) {
       console.error('Voltage swap failed', error);
@@ -132,7 +139,7 @@ export function useVoltageSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [trade, account, safeAA, user]);
+  }, [trade, account, safeAA, user, allowedSlippage, needAllowance, approvalConfig, successInfo, trackTransaction]);
 
   const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
 
