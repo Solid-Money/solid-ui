@@ -270,13 +270,13 @@ const Transaction = ({
         )}
       </View>
 
-      <View className="flex-[1.5] flex-row items-center justify-center px-2">
-        {formattedTimestamp && isScreenMedium && showTimestamp && (
+      {formattedTimestamp && isScreenMedium && showTimestamp && (
+        <View className="flex-[1.5] flex-row items-center justify-center px-2">
           <Text className="text-sm text-muted-foreground font-medium text-center">
             {formattedTimestamp}
           </Text>
-        )}
-      </View>
+        </View>
+      )}
 
       <View className="items-end flex-[1] min-w-0">
         {directDepositStatusMessage || amount === '0' ? (

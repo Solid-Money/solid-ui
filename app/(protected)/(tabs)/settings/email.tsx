@@ -101,9 +101,7 @@ export default function Email() {
               <Text className="text-2xl font-semibold text-white mt-6 text-center">
                 Email verified!
               </Text>
-              <Text className="text-muted-foreground mt-2 text-center">
-                {emailValue}
-              </Text>
+              <Text className="text-muted-foreground mt-2 text-center">{emailValue}</Text>
               <Text className="text-sm text-muted-foreground mt-4 text-center max-w-xs">
                 This email will be used for notifications and wallet recovery.
               </Text>
