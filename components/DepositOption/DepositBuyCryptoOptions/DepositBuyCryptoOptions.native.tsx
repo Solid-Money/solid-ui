@@ -21,6 +21,7 @@ const DepositBuyCryptoOptions = () => {
       {
         text: 'Debit/Credit Card',
         subtitle: 'Google Pay, card or bank account',
+        bannerText: '5% bonus on deposits',
         icon: (
           <Image
             source={require('@/assets/images/buy_crypto.png')}
