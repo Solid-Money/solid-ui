@@ -181,7 +181,7 @@ const DepositDirectlyAddress = () => {
       <div className="flex flex-row flex-wrap items-center justify-center">
         <Text className="text-xl md:text-2xl font-bold text-[#ACACAC]">Transfer</Text>
         <div className="flex items-center gap-1 px-1">
-          <Image source={USDC_ICON} style={{ width: 21, height: 21 }} contentFit="cover" />
+          <Image source={USDC_ICON} style={{ width: 21, height: 21, marginTop: -3 }} contentFit="cover" />
           <Text className="text-xl md:text-2xl font-bold text-white">USDC</Text>
         </div>
         <Text className="text-xl md:text-2xl font-semibold text-[#ACACAC]">to this</Text>
@@ -191,24 +191,28 @@ const DepositDirectlyAddress = () => {
               src={network.icon}
               alt={network?.name}
               className="h-[16px] w-[16px] 2xl:h-[18px] 2xl:w-[18px]"
+              style={{ marginTop: '-3px' }}
             />
           ) : (
             <Image
               source={network?.icon}
-              style={{ width: 21, height: 21, borderRadius: 9 }}
+              style={{ width: 21, height: 21, borderRadius: 9, marginTop: -3 }}
               contentFit="cover"
             />
           )}
           <Text className="text-xl md:text-2xl font-semibold text-[#ACACAC]">
-            {network?.name || 'Ethereum'} address
+            <span>
+              <span className="text-white">{network?.name || 'Ethereum'}</span>{' '}
+              <span className="text-[#ACACAC]">address</span>
+            </span>
           </Text>
         </div>
       </div>
 
-      <div className="w-full rounded-[20px] bg-accent mt-2 p-4 md:py-4 md:px-6">
+      <div className="w-full rounded-[20px] bg-primary/10 mt-2 p-4 md:py-4 md:px-6">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-center">
-            <Text className="md:text-lg tracking-wide text-foreground text-center">
+            <Text className="text-lg tracking-wide text-foreground text-center font-semibold">
               {walletAddress ? eclipseAddress(walletAddress, 6, 6) : '—'}
             </Text>
             <CopyToClipboard
@@ -225,7 +229,7 @@ const DepositDirectlyAddress = () => {
               className="h-9 rounded-2xl bg-secondary-hover web:hover:brightness-110 border-0"
             >
               <Copy size={14} color="white" />
-              <Text className="md:text-lg font-bold text-white">Show QR</Text>
+              <Text className="md:text-lg font-bold text-white text-[1rem]">Show QR</Text>
             </Button>
             <Button
               variant="secondary"
@@ -233,7 +237,7 @@ const DepositDirectlyAddress = () => {
               className="h-9 rounded-2xl bg-secondary-hover web:hover:brightness-110 border-0"
             >
               <Share2 size={18} color="white" />
-              <Text className="md:text-lg font-bold text-white">Share</Text>
+              <Text className="md:text-lg font-bold text-white text-[1rem]">Share</Text>
             </Button>
           </div>
 
@@ -248,20 +252,20 @@ const DepositDirectlyAddress = () => {
       </div>
 
       {!isExpired && (
-        <div className="w-full rounded-2xl bg-accent flex flex-col">
+        <div className="w-full rounded-2xl bg-primary/10 flex flex-col">
           {infoRows.map((row, index) => (
             <div key={row.label} className="flex flex-col">
               <div className="flex flex-row items-center justify-between px-5 py-6 md:p-6 gap-1.5 md:gap-2 2xl:gap-3">
                 <div className="flex items-center gap-1.5 md:gap-2">
                   {row.icon}
-                  <Text className="font-medium text-muted-foreground">{row.label}</Text>
+                  <Text className="font-medium text-primary/70 text-[1rem]">{row.label}</Text>
                 </div>
                 <div className="flex items-center gap-2">
                   {row.valueContent ? (
                     row.valueContent
                   ) : (
                     <Text
-                      className={`font-medium text-foreground ${
+                      className={`font-medium text-foreground text-[1rem] ${
                         row.valueClassName ? row.valueClassName : ''
                       }`}
                     >

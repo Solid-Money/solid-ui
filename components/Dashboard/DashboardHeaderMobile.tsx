@@ -21,7 +21,7 @@ const DashboardHeaderMobile = ({
   decimalPlaces = 2,
 }: DashboardHeaderMobileProps) => {
   return (
-    <View className="gap-10">
+    <View className="gap-8">
       <View className="flex-row justify-center items-center">
         <SavingCountUp
           prefix="$"

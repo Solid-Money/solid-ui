@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { View } from 'react-native';
-import Toast from 'react-native-toast-message';
-import * as Sentry from '@sentry/react-native';
+import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
-import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
+import * as Sentry from '@sentry/react-native';
+import { useState } from 'react';
+import { View } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 const DepositDirectlyNetworks = () => {
   const { setModal } = useDepositStore();
@@ -77,7 +77,7 @@ const DepositDirectlyNetworks = () => {
 
   return (
     <View className="gap-y-2">
-      <Text className="text-muted-foreground font-medium">Choose a network</Text>
+      <Text className="text-muted-foreground font-medium text-[1rem]">Choose a network</Text>
 
       <View className="gap-y-1.5">
         {Object.entries(BRIDGE_TOKENS)
