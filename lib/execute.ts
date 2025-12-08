@@ -9,7 +9,8 @@ export const USER_CANCELLED_TRANSACTION = Symbol('USER_CANCELLED_TRANSACTION');
 
 export type TransactionResult = {
   transaction: any;
-  userOpHash?: `0x${string}`;
+  userOpHash: `0x${string}`;
+  transactionHash: string;
 } | typeof USER_CANCELLED_TRANSACTION;
 
 const isWebAuthnUserCancelledError = (error: any): boolean => {
@@ -127,7 +128,7 @@ export const executeTransactions = async (
       throw error;
     }
 
-    return { transaction, userOpHash };
+    return { transaction, userOpHash, transactionHash: transaction.transactionHash };
   } catch (error: any) {
     if (isWebAuthnUserCancelledError(error)) {
       Sentry.addBreadcrumb({

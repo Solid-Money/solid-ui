@@ -254,6 +254,12 @@ export function useSwapCallback(
 
       // Transaction successful - AA wallet handles receipt tracking
       setSwapData(result);
+
+      // Call success callback immediately after transaction completes
+      // This ensures the success modal is shown even if useTransactionAwait has timing issues
+      if (successInfo?.onSuccess) {
+        successInfo.onSuccess();
+      }
     } catch (error: any) {
       console.error('Swap execution failed:', error);
 
@@ -292,7 +298,7 @@ export function useSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [trade, swapConfig, approvalConfig, needAllowance, isTokenInput, account, user, safeAA, allowedSlippage]);
+  }, [trade, swapConfig, approvalConfig, needAllowance, isTokenInput, account, user, safeAA, allowedSlippage, successInfo, trackTransaction]);
 
   const { isLoading } = useTransactionAwait(swapData?.transactionHash, successInfo);
 
