@@ -60,7 +60,9 @@ export default function TabLayout() {
           backgroundBlur: '10px',
         },
       }}
-      tabBar={Platform.OS === 'web' && !isDesktop ? (props) => <CustomTabBar {...props} /> : undefined}
+      tabBar={
+        Platform.OS === 'web' && !isDesktop ? props => <CustomTabBar {...props} /> : undefined
+      }
       backBehavior="history"
     >
       <Tabs.Screen

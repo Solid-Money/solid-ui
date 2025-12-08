@@ -27,16 +27,18 @@ export function HapticTab({
   };
 
   // Animation styles based on pressed state
-  const animationStyle = Platform.OS === 'web'
-    ? {
-        transition: 'transform 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 150ms cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: pressed ? 'scale(0.9)' : 'scale(1)',
-        opacity: pressed ? 0.5 : 1,
-      }
-    : {
-        opacity: pressed ? 0.5 : 1,
-        transform: [{ scale: pressed ? 0.85 : 1 }],
-      };
+  const animationStyle =
+    Platform.OS === 'web'
+      ? {
+          transition:
+            'transform 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 150ms cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: pressed ? 'scale(0.9)' : 'scale(1)',
+          opacity: pressed ? 0.5 : 1,
+        }
+      : {
+          opacity: pressed ? 0.5 : 1,
+          transform: [{ scale: pressed ? 0.85 : 1 }],
+        };
 
   return (
     <Pressable
@@ -51,9 +53,7 @@ export function HapticTab({
       style={[styles.pressable, style]}
     >
       {/* @ts-ignore - web CSS properties */}
-      <View style={[styles.content, animationStyle]}>
-        {children}
-      </View>
+      <View style={[styles.content, animationStyle]}>{children}</View>
     </Pressable>
   );
 }

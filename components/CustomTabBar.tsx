@@ -27,22 +27,24 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
   };
 
   // Animation styles based on pressed state
-  const animationStyle = Platform.OS === 'web'
-    ? {
-        transition: 'all 100ms cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: pressed ? 'scale(0.9)' : 'scale(1)',
-        opacity: pressed ? 0.8 : 1,
-        //filter: pressed ? 'brightness(1)' : 'brightness(1)',
-      }
-    : {
-        opacity: pressed ? 0.4 : 1,
-        transform: [{ scale: pressed ? 0.88 : 1 }],
-      };
+  const animationStyle =
+    Platform.OS === 'web'
+      ? {
+          transition: 'all 100ms cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: pressed ? 'scale(0.9)' : 'scale(1)',
+          opacity: pressed ? 0.8 : 1,
+          //filter: pressed ? 'brightness(1)' : 'brightness(1)',
+        }
+      : {
+          opacity: pressed ? 0.4 : 1,
+          transform: [{ scale: pressed ? 0.88 : 1 }],
+        };
 
   // Transition style for active/inactive state change
-  const activeTransitionStyle = Platform.OS === 'web' 
-    ? { transition: 'color 150ms ease-in-out, opacity 150ms ease-in-out' }
-    : {};
+  const activeTransitionStyle =
+    Platform.OS === 'web'
+      ? { transition: 'color 150ms ease-in-out, opacity 150ms ease-in-out' }
+      : {};
 
   return (
     <Pressable
@@ -78,16 +80,14 @@ const VISIBLE_TAB_NAMES = ['index', 'savings', 'card-onboard', 'activity'];
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   // Filter to only show the main visible tabs
-  const visibleRoutes = state.routes.filter((route) => 
-    VISIBLE_TAB_NAMES.includes(route.name)
-  );
+  const visibleRoutes = state.routes.filter(route => VISIBLE_TAB_NAMES.includes(route.name));
 
   return (
     <View style={styles.tabBar}>
-      {visibleRoutes.map((route) => {
+      {visibleRoutes.map(route => {
         const { options } = descriptors[route.key];
         const originalIndex = state.routes.findIndex(r => r.key === route.key);
-        
+
         const label = options.title ?? route.name;
         const isFocused = state.index === originalIndex;
 
@@ -165,4 +165,3 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 });
-

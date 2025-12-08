@@ -79,6 +79,5 @@ export {
   AccountCenterTrigger,
   AccountCenterUsername,
   onAccountCenterSettingsPress,
-  useAccountCenterSignOutPress
+  useAccountCenterSignOutPress,
 };
-

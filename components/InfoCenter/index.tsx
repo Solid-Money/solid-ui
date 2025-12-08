@@ -67,6 +67,5 @@ export {
   InfoCenterTrigger,
   onInfoCenterDocsPress,
   onInfoCenterLegalPress,
-  useInfoCenterSupportPress
+  useInfoCenterSupportPress,
 };
-
