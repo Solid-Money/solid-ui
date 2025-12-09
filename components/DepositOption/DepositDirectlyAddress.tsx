@@ -10,10 +10,11 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDirectDepositSessionPolling } from '@/hooks/useDirectDepositSession';
+import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { eclipseAddress } from '@/lib/utils';
+import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -21,10 +22,8 @@ import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { mainnet } from 'viem/chains';
-import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
-import { formatNumber } from '@/lib/utils';
 import { formatUnits } from 'viem';
+import { mainnet } from 'viem/chains';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
 
@@ -60,15 +59,19 @@ type InfoRow = {
 const DepositDirectlyAddress = () => {
   const { user } = useUser();
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
+  const chainId = directDepositSession.chainId || mainnet.id;
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareError, setShareError] = useState(false);
   const { maxAPY, isAPYsLoading } = useMaxAPY();
-  const { exchangeRate, amountOut } = usePreviewDeposit('10');
+  const { exchangeRate, amountOut } = usePreviewDeposit(
+    '10',
+    BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address,
+    chainId,
+  );
   const trackedStatuses = useRef<Set<DepositStatus>>(new Set());
 
   const { session } = useDirectDepositSessionPolling(directDepositSession.sessionId, true);
 
-  const chainId = directDepositSession.chainId || mainnet.id;
   const network = BRIDGE_TOKENS[chainId];
   const walletAddress = directDepositSession.walletAddress;
 
@@ -169,7 +172,7 @@ const DepositDirectlyAddress = () => {
             contentFit="contain"
           />
           <Text className="font-bold text-white text-base">
-            {formatNumber(amountOut || 0)} soUSD
+            {formatNumber(amountOut || 0, 4, 4)} soUSD
           </Text>
         </View>
       ),
