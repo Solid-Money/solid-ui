@@ -17,7 +17,7 @@ import { eclipseAddress } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Copy, Fuel, Share2 } from 'lucide-react-native';
+import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -52,12 +52,17 @@ type InfoRow = {
   valueContent?: ReactNode;
 };
 
+import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
+import { formatNumber } from '@/lib/utils';
+import { formatUnits } from 'viem';
+
 const DepositDirectlyAddress = () => {
   const { user } = useUser();
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<'copied' | 'error' | null>(null);
   const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
+  const { exchangeRate, amountOut } = usePreviewDeposit('10');
   const trackedStatuses = useRef<Set<DepositStatus>>(new Set());
 
   const { session } = useDirectDepositSessionPolling(directDepositSession.sessionId, true);
@@ -147,24 +152,7 @@ const DepositDirectlyAddress = () => {
 
   const infoRows: InfoRow[] = useMemo(
     () => [
-      {
-        label: 'APY',
-        valueClassName: 'text-[#5BFF6C] md:text-lg',
-        valueContent: isMaxAPYsLoading ? (
-          <Skeleton className="h-7 w-16 bg-white/20" />
-        ) : (
-          <Text className="font-bold text-[#94F27F] text-xl">{formattedAPY}</Text>
-        ),
-        extra: (
-          <TooltipPopover
-            text="Annual percentage yield for this deposited amount. Actual yield may vary slightly once the transfer clears."
-            analyticsContext="deposit_directly_apy"
-            side="top"
-          />
-        ),
-      },
       { label: 'Min deposit', value: `${minDeposit} USDC` },
-      { label: 'Max deposit', value: `${maxDeposit} USDC` },
       { label: 'Estimated time', value: estimatedTime },
       {
         label: 'Status',
@@ -173,8 +161,50 @@ const DepositDirectlyAddress = () => {
       },
       { label: 'Fee', value: `${fee} USDC`, icon: <Fuel size={16} color="#A1A1AA" /> },
     ],
-    [isMaxAPYsLoading, formattedAPY, minDeposit, maxDeposit, estimatedTime, status, fee],
+    [minDeposit, estimatedTime, status, fee],
   );
+
+  const priceRows: InfoRow[] = useMemo(() => {
+    const rows: InfoRow[] = [];
+
+    // Always show estimated receive amount for 10 USDC
+    rows.push({
+      label: 'You will receive',
+      valueContent: (
+        <div className="flex flex-row items-center gap-1.5">
+          <Image
+            source={require('@/assets/images/sousd-4x.png')}
+            style={{ width: 18, height: 18 }}
+            contentFit="contain"
+          />
+          <Text className="font-bold text-white text-base">
+            {formatNumber(amountOut || 0)} soUSD
+          </Text>
+        </div>
+      ),
+    });
+
+    rows.push({
+      label: 'Price',
+      valueContent: (
+        <Text className="font-bold text-white text-base">
+          1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
+          USDC
+        </Text>
+      ),
+    });
+
+    rows.push({
+      label: 'APY',
+      valueContent: isMaxAPYsLoading ? (
+        <Skeleton className="h-7 w-16 bg-white/20" />
+      ) : (
+        <Text className="font-bold text-[#94F27F] text-base">{formattedAPY}</Text>
+      ),
+    });
+
+    return rows;
+  }, [amountOut, exchangeRate, isMaxAPYsLoading, formattedAPY]);
 
   return (
     <div className="flex flex-col gap-3 md:gap-4 2xl:gap-6">
@@ -247,11 +277,53 @@ const DepositDirectlyAddress = () => {
         </div>
       </div>
 
+      {/* Warning Text */}
+      <div className="flex flex-row items-center justify-center gap-1.5 px-4">
+        <Info size={16} color="#A1A1AA" />
+        <Text className="text-[#A1A1AA] text-sm text-center md:my-0 my-2">
+          Please send only USDC to this address
+        </Text>
+        <TooltipPopover
+          text="Sending any other token may result in permanent loss of funds."
+          analyticsContext="deposit_directly_warning"
+          side="top"
+        />
+      </div>
+
+      {/* Yield Info Rows */}
+      {!isExpired && (
+        <div className="w-full rounded-2xl bg-accent flex flex-col">
+          {priceRows.map((row, index) => (
+            <div key={row.label} className="flex flex-col">
+              <div className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
+                <Text className="font-medium text-muted-foreground">{row.label}</Text>
+                <div className="flex items-center gap-2">
+                  {row.valueContent ? (
+                    row.valueContent
+                  ) : (
+                    <Text
+                      className={`font-medium text-foreground ${
+                        row.valueClassName ? row.valueClassName : ''
+                      }`}
+                    >
+                      {row.value}
+                    </Text>
+                  )}
+                  {row.extra}
+                </div>
+              </div>
+              {index !== priceRows.length - 1 && <div className="h-px bg-primary/10 ml-5" />}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Details Info Rows */}
       {!isExpired && (
         <div className="w-full rounded-2xl bg-accent flex flex-col">
           {infoRows.map((row, index) => (
             <div key={row.label} className="flex flex-col">
-              <div className="flex flex-row items-center justify-between px-5 py-6 md:p-6 gap-1.5 md:gap-2 2xl:gap-3">
+              <div className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
                 <div className="flex items-center gap-1.5 md:gap-2">
                   {row.icon}
                   <Text className="font-medium text-muted-foreground">{row.label}</Text>
@@ -271,7 +343,7 @@ const DepositDirectlyAddress = () => {
                   {row.extra}
                 </div>
               </div>
-              {index !== infoRows.length - 1 && <div className="h-px bg-primary/10" />}
+              {index !== infoRows.length - 1 && <div className="h-px bg-primary/10 ml-5" />}
             </div>
           ))}
         </div>
@@ -287,10 +359,22 @@ const DepositDirectlyAddress = () => {
 
       <Button
         onPress={handleDone}
-        className="h-14 w-full rounded-2xl bg-[#94F27F] web:hover:bg-[#94F27F]/90"
+        className="h-14 w-full rounded-2xl bg-[#94F27F] web:hover:bg-[#94F27F]/90 mt-2"
       >
         <Text className="text-lg font-bold text-black">Done</Text>
       </Button>
+
+      {/* Need help? */}
+      <div className="flex items-center justify-center pb-4">
+        <Button
+          variant="ghost"
+          className="flex flex-row items-center gap-2 hover:bg-transparent"
+          onPress={() => window.open('https://intercom.help/solid-money/en', '_blank')}
+        >
+          <MessageCircle size={18} color="#A1A1AA" />
+          <Text className="text-[#A1A1AA] font-medium">Need help?</Text>
+        </Button>
+      </div>
 
       <ResponsiveDialog
         open={isQrDialogOpen}
