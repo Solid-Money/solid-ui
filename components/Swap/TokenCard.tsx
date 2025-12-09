@@ -57,11 +57,17 @@ const TokenCard: React.FC<TokenCardProps> = ({
     chainId: fuse.id,
   });
 
+  const balanceValue = useMemo(() => {
+    if (isBalanceLoading || !balance) return 0;
+    const value = Number(formatUnits(balance.value, currency?.decimals || 18));
+    return isNaN(value) ? 0 : value;
+  }, [balance, isBalanceLoading, currency?.decimals]);
+
   const balanceString = useMemo(() => {
     if (isBalanceLoading) return '...';
     if (!balance) return '0.00';
-    return formatNumber(Number(formatUnits(balance.value, currency?.decimals || 18)));
-  }, [balance, isBalanceLoading, currency?.decimals]);
+    return formatNumber(balanceValue);
+  }, [balance, isBalanceLoading, balanceValue]);
 
   const handleInput = useCallback(
     (inputValue: string) => {
@@ -138,11 +144,11 @@ const TokenCard: React.FC<TokenCardProps> = ({
                   className="text-muted-foreground"
                 />
                 <Text className="text-muted-foreground text-left">
-                  {isBalanceLoading ? '...' : formatNumber(Number(balanceString))}
+                  {isBalanceLoading ? '...' : balanceString}
                 </Text>
               </View>
             )}
-            {!isBalanceLoading && Number(balanceString) > 0 && showMaxButton && handleMaxValue && (
+            {!isBalanceLoading && balanceValue > 0 && showMaxButton && handleMaxValue && (
               <Max onPress={handleMaxValue} />
             )}
           </View>
