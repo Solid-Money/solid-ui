@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { algebraRouterConfig } from '@/generated/wagmi';
@@ -39,6 +40,7 @@ export function useSwapCallback(
 ) {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivity();
+  const queryClient = useQueryClient();
   const account = user?.safeAddress;
 
   const [bestCall, setBestCall] = useState<SuccessfulCall | SwapCallEstimate | undefined>(undefined);
@@ -252,14 +254,20 @@ export function useSwapCallback(
         },
       });
 
-      // Transaction successful - AA wallet handles receipt tracking
-      setSwapData(result);
+      // Invalidate all balance queries immediately after successful transaction
+      // This ensures TokenCard balances refresh without waiting for useTransactionAwait
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
 
-      // Call success callback immediately after transaction completes
-      // This ensures the success modal is shown even if useTransactionAwait has timing issues
+      // Transaction successful - call success callback immediately
+      // Note: We call onSuccess BEFORE setting swapData to avoid useTransactionAwait's
+      // isLoading state from affecting the button while the success modal is shown
       if (successInfo?.onSuccess) {
         successInfo.onSuccess();
       }
+
+      // Set swap data for useTransactionAwait to handle toast notifications
+      setSwapData(result);
     } catch (error: any) {
       console.error('Swap execution failed:', error);
 
@@ -298,9 +306,12 @@ export function useSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [trade, swapConfig, approvalConfig, needAllowance, isTokenInput, account, user, safeAA, allowedSlippage, successInfo, trackTransaction]);
+  }, [trade, swapConfig, approvalConfig, needAllowance, isTokenInput, account, user, safeAA, allowedSlippage, successInfo, trackTransaction, queryClient]);
 
-  const { isLoading } = useTransactionAwait(swapData?.transactionHash, successInfo);
+  // useTransactionAwait handles balance invalidation and toast notifications
+  // We don't use its isLoading state since the transaction is already confirmed
+  // when executeTransactions returns (it waits for receipt internally)
+  useTransactionAwait(swapData?.transactionHash, successInfo);
 
   return useMemo(() => {
     if (!trade || !swapConfig) {
@@ -317,8 +328,8 @@ export function useSwapCallback(
       state: SwapCallbackState.VALID,
       callback: swapCallback,
       error: undefined,
-      isLoading: isSendingSwap || isLoading,
+      isLoading: isSendingSwap,
       needAllowance,
     };
-  }, [trade, swapConfig, swapCallback, swapData, isSendingSwap, needAllowance]);
+  }, [trade, swapConfig, swapCallback, isSendingSwap, needAllowance]);
 }
