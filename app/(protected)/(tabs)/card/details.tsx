@@ -1,9 +1,17 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Copy } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Copy, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Clipboard, Platform, Pressable, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Clipboard,
+  Platform,
+  Pressable,
+  View,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
@@ -111,10 +119,73 @@ export default function CardDetails() {
     }).start();
   }, [flipAnimation]);
 
+  // Desktop layout
+  if (isScreenMedium) {
+    return (
+      <PageLayout desktopOnly contentClassName="px-4" isLoading={isLoading}>
+        <View className="w-full max-w-6xl mx-auto pt-8 pb-12">
+          {/* Desktop Header */}
+          <DesktopHeader
+            isCardFrozen={isCardFrozen}
+            isFreezing={isFreezing}
+            isCardFlipped={isCardFlipped}
+            isLoadingCardDetails={isLoadingCardDetails}
+            onCardDetails={handleCardFlip}
+            onFreezeToggle={handleFreezeToggle}
+          />
+
+          {/* Row 1: Spending Balance Card + Card Image */}
+          <View className="flex-row gap-6 mt-12">
+            <View className="flex-[3]">
+              <SpendingBalanceCard amount={availableAmount} cashback={cardDetails?.cashback} />
+            </View>
+            <View className="flex-[2]">
+              <CardImageSection
+                isScreenMedium={isScreenMedium}
+                isCardFrozen={isCardFrozen}
+                flipAnimation={flipAnimation}
+                isCardFlipped={isCardFlipped}
+                cardholderName={cardDetails?.cardholder_name}
+                shouldRevealDetails={shouldRevealDetails}
+                onCardDetailsLoaded={handleCardDetailsLoaded}
+              />
+            </View>
+          </View>
+
+          {/* Row 2: Bonus Banner + Add to Wallet (same height) */}
+          <View className="flex-row gap-6 mt-4">
+            <View className="flex-[3]">
+              <DepositBonusBanner />
+            </View>
+            <View className="flex-[2]">
+              <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
+            </View>
+          </View>
+
+          {/* Recent Transactions */}
+          <RecentTransactions
+            transactions={transactionsData?.pages.flatMap(page => page.data) ?? []}
+            isLoading={isLoadingTransactions}
+            isFetchingNextPage={isFetchingNextPage}
+            hasNextPage={hasNextPage}
+            onLoadMore={fetchNextPage}
+          />
+        </View>
+
+        <AddToWalletModal
+          isOpen={isAddToWalletModalOpen}
+          onOpenChange={setIsAddToWalletModalOpen}
+          trigger={null}
+        />
+      </PageLayout>
+    );
+  }
+
+  // Mobile layout (unchanged)
   return (
     <PageLayout desktopOnly contentClassName="px-4" isLoading={isLoading}>
       <View className="w-full max-w-lg mx-auto pt-8">
-        <CardHeader onBackPress={handleBackPress} />
+        <MobileHeader onBackPress={handleBackPress} />
 
         <View className="flex-1">
           <BalanceDisplay amount={availableAmount} />
@@ -157,7 +228,7 @@ export default function CardDetails() {
   );
 }
 
-function CardHeader({ onBackPress }: CardHeaderProps) {
+function MobileHeader({ onBackPress }: CardHeaderProps) {
   return (
     <View className="flex-row items-center justify-between">
       <Pressable onPress={onBackPress} className="web:hover:opacity-70">
@@ -166,6 +237,140 @@ function CardHeader({ onBackPress }: CardHeaderProps) {
       <Text className="text-white text-xl md:text-2xl font-semibold text-center">Solid card</Text>
       <View className="w-4" />
     </View>
+  );
+}
+
+interface DesktopHeaderProps {
+  isCardFrozen: boolean;
+  isFreezing: boolean;
+  isCardFlipped: boolean;
+  isLoadingCardDetails: boolean;
+  onCardDetails: () => void;
+  onFreezeToggle: () => Promise<void>;
+}
+
+function DesktopHeader({
+  isCardFrozen,
+  isFreezing,
+  isCardFlipped,
+  isLoadingCardDetails,
+  onCardDetails,
+  onFreezeToggle,
+}: DesktopHeaderProps) {
+  return (
+    <View className="flex-row items-center justify-between">
+      <Text className="text-white text-4xl font-bold">Card</Text>
+      <View className="flex-row items-center gap-3">
+        <Pressable
+          onPress={onCardDetails}
+          disabled={isLoadingCardDetails}
+          className="flex-row items-center gap-2 bg-[#303030] rounded-xl px-5 py-3 web:hover:bg-[#3a3a3a] active:opacity-80"
+        >
+          <View style={{ width: 15, height: 15, justifyContent: 'center', alignItems: 'center' }}>
+            {isLoadingCardDetails ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Image
+                source={require('@/assets/images/reveal_card_details_icon.png')}
+                style={{ width: 15, height: 15 }}
+                contentFit="contain"
+              />
+            )}
+          </View>
+
+          <Text className="text-white  font-semibold">
+            {isCardFlipped ? 'Hide details' : 'Card details'}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={onFreezeToggle}
+          disabled={isFreezing}
+          className="flex-row items-center gap-2 bg-[#303030] rounded-xl px-5 py-3 web:hover:bg-[#3a3a3a] active:opacity-80"
+        >
+          <View style={{ width: 18, height: 18, justifyContent: 'center', alignItems: 'center' }}>
+            {isFreezing ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Image
+                source={require('@/assets/images/freeze_button_icon.png')}
+                style={{ width: 18, height: 18 }}
+                contentFit="contain"
+              />
+            )}
+          </View>
+          <Text className="text-white font-semibold">{isCardFrozen ? 'Unfreeze' : 'Freeze'}</Text>
+        </Pressable>
+        <DepositToCardModal
+          trigger={
+            <View className="flex-row items-center gap-2 bg-[#94F27F] rounded-xl px-5 py-3 web:hover:opacity-90 active:opacity-80">
+              <Plus size={18} color="black" />
+              <Text className="text-black font-semibold">Deposit</Text>
+            </View>
+          }
+        />
+      </View>
+    </View>
+  );
+}
+
+interface SpendingBalanceCardProps {
+  amount: string;
+  cashback?: {
+    monthlyFuseAmount: number;
+    monthlyUsdValue: number;
+    percentage: number;
+  };
+}
+
+function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
+  const formattedAmount = Number.parseFloat(amount).toFixed(2);
+  const totalUsdValue = cashback?.monthlyUsdValue
+    ? parseFloat(cashback.monthlyUsdValue.toFixed(0))
+    : 0;
+  const cashbackPercentage = cashback?.percentage || 0;
+
+  return (
+    <LinearGradient
+      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.175)']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={{ borderRadius: 20, padding: 24, height: '100%' }}
+    >
+      <View className="flex-1 justify-between">
+        {/* Spending Balance Section */}
+        <View>
+          <Text className="text-white/60 text-base mb-2">Spending balance</Text>
+          <Text className="text-white text-5xl font-bold">${formattedAmount}</Text>
+        </View>
+
+        {/* Cashback Section */}
+        <View className="flex-row items-end justify-between">
+          <View>
+            <Text className="text-white/60 text-sm mb-1">Cashback</Text>
+            <Text className="text-[#94F27F] text-2xl font-bold">${totalUsdValue} this month</Text>
+          </View>
+
+          {/* Cashback Badge */}
+          <View className="bg-[#1A2E1A] rounded-xl px-4 py-3 flex-row items-center gap-2">
+            <Image
+              source={require('@/assets/images/diamond.png')}
+              style={{ width: 62, height: 57 }}
+              contentFit="contain"
+            />
+            <View>
+              <Text className="text-white text-sm">you are receiving</Text>
+              <Text className="text-white text-sm">
+                <Text className="text-[#94F27F] font-bold">
+                  {Math.round(cashbackPercentage * 100)}%
+                </Text>
+                <Text className="text-white"> cashback on all</Text>
+              </Text>
+              <Text className="text-white text-sm">purchases</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </LinearGradient>
   );
 }
 
@@ -230,13 +435,12 @@ function CardImageSection({
 
   return (
     <View
-      className="items-center mt-12 mb-6"
+      className={cn('items-center', !isScreenMedium && 'mt-12 mb-6')}
       style={{
-        paddingHorizontal: isCardFrozen || !isScreenMedium ? 0 : 9.5,
-        paddingVertical: isCardFrozen || !isScreenMedium ? 0 : 11.5,
+        paddingHorizontal: isCardFrozen || !isScreenMedium ? 0 : 2,
       }}
     >
-      <View style={{ position: 'relative', width: isScreenMedium ? '100%' : '80%' }}>
+      <View style={{ position: 'relative', width: '100%' }}>
         {/* Front of card */}
         <Animated.View
           style={{
@@ -513,30 +717,32 @@ function CardActions({
 
 function DepositBonusBanner() {
   return (
-    <View className="border-2 border-[#FFD151]/40 rounded-2xl p-3 md:p-5 mb-4 flex-row items-center gap-3">
-      <Image
-        source={require('@/assets/images/dollar-yellow.png')}
-        style={{ width: 70, height: 70 }}
-        contentFit="contain"
-      />
-      <View className="flex-1 items-start gap-1">
-        <View className="bg-[#332A10] rounded-full px-3 py-1">
-          <Text className="text-[#FFD151] font-bold">Limited time offer</Text>
-        </View>
-        <Text className="text-[#FFD151] font-bold max-w-[22rem]">
-          Deposit a minimum of $100 to receive your $50 sign up bonus!{' '}
-          <Link
-            target="_blank"
-            href={
-              'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
-            }
-            className="underline"
-          >
-            Learn more
-          </Link>
-          {' >'}
-        </Text>
-      </View>
+    <View
+      className="border-[#FFD151]/40 rounded-2xl p-4 md:p-5 flex-row items-center gap-4 h-full bg-black/40"
+      style={{ borderWidth: 1 }}
+    >
+      <Link
+        href={
+          'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+        }
+        target="_blank"
+        className="bg-[#FFD151]/20 rounded-full px-3"
+      >
+        <Text className="text-[#FFD151] font-bold text-sm">Receive your $50 sign up bonus!</Text>
+      </Link>
+      <Text className="text-[#FFD151] text-sm flex-1 font-medium">
+        On a minimum deposit of $100{' '}
+        <Link
+          target="_blank"
+          href={
+            'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+          }
+          className="underline"
+        >
+          Learn more
+        </Link>
+        <Text> {'>'}</Text>
+      </Text>
     </View>
   );
 }
@@ -595,17 +801,17 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 mb-4 h-14"
+      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 h-full web:hover:bg-[#2a2a2a]"
     >
       <View className="flex-row items-center flex-1">
-        <Text className="flex-1 text-base font-bold text-white mr-3">Add to wallet</Text>
-        <View className="flex-row items-center mr-8">
+        <Text className="text-base text-white mr-2">Add to</Text>
+        <View className="flex-row items-center">
           <Image
             source={require('@/assets/images/apple_pay.png')}
             style={{ width: 49, height: 22 }}
             contentFit="contain"
           />
-          <View className="w-px h-8 bg-white/50 mx-3" />
+          <View className="w-px h-6 bg-white/30 mx-2" />
           <Image
             source={require('@/assets/images/google_pay.png')}
             style={{ width: 47, height: 19 }}
@@ -769,7 +975,7 @@ function RecentTransactions({
   }
 
   return (
-    <View className="mb-28 mt-4">
+    <View className="mb-28 mt-24">
       <Text className="text-lg font-semibold text-[#A1A1A1] mb-4">Recent transactions</Text>
       {Object.entries(groupedTransactions).map(([date, txs], groupIndex) => (
         <View key={groupIndex} className="mb-4 mt-5">
