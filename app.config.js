@@ -95,7 +95,8 @@ export default {
             useFrameworks: 'static',
           },
           android: {
-            compileSdkVersion: 35,
+            minSdkVersion: 26,
+            compileSdkVersion: 36,
             enableProguardInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
           },

@@ -1,3 +1,6 @@
+// Polyfills must be early to satisfy crypto/random usage across dependencies
+import "react-native-get-random-values";
+
 import { Platform } from "react-native";
 
 if (Platform.OS !== "web") {

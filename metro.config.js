@@ -15,9 +15,7 @@ config.resolver = {
     https: 'https-browserify',
     events: 'events',
   },
-  // Packages that should NOT use package exports resolution (have circular dependency issues)
   unstable_enablePackageExports: true,
-  unstable_conditionNames: ['require', 'import'], // Prefer CJS to avoid circular deps in ESM
   resolveRequest: (context, moduleName, platform) => {
     // ===========================================
     // FIX: permissionless circular dependency
@@ -69,23 +67,8 @@ config.resolver = {
     if (platform === 'web' && moduleName === 'tslib') {
       return context.resolveRequest(context, 'tslib/tslib.es6.js', platform);
     }
-    // ===========================================
-    // NATIVE-ONLY MODULES (block on web)
-    // ===========================================
-    // const nativeOnlyModules = [
-    //   '@turnkey/sdk-react-native',
-    //   'react-native-keychain',
-    //   'react-native-passkey',
-    //   'react-native-inappbrowser-reborn',
-    // ];
 
-    // if (platform === 'web' && nativeOnlyModules.includes(moduleName)) {
-    //   return { type: 'empty' };
-    // }
-
-    // ===========================================
-    // NODE.JS BUILT-INS (for React Native)
-    // ===========================================
+    // Handle Node.js built-ins for React Native
     if (platform !== 'web') {
       const nodeModuleMappings = {
         stream: 'stream-browserify',
@@ -100,9 +83,17 @@ config.resolver = {
       }
     }
 
-    // Default resolver
+    // Default resolver for all other modules
     return context.resolveRequest(context, moduleName, platform);
   },
 };
+
+config.transformer.minifierConfig = {
+  compress: {
+    // The option below removes all console logs statements in production.
+    drop_console: true,
+  },
+};
+
 
 module.exports = withNativeWind(config, { input: './global.css' });
