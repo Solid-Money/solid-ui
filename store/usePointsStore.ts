@@ -26,6 +26,8 @@ export const usePointsStore = create<PointsState>()(
           totalPoints: 0,
           rewardsByType: [],
         },
+        userRefferer: '',
+        leaderboardPosition: 0,
       },
       isLoading: false,
       error: null,

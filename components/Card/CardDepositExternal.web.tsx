@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
-import { createWallet } from 'thirdweb/wallets';
 
-import { client } from '@/lib/thirdweb';
+import { client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import CardDepositExternalForm from './CardDepositExternalForm';
 
 export default function CardDepositExternal() {
@@ -17,7 +16,8 @@ export default function CardDepositExternal() {
         client,
         showThirdwebBranding: false,
         size: 'compact',
-        wallets: [createWallet('io.rabby'), createWallet('io.metamask')],
+        wallets: thirdwebWallets,
+        theme: thirdwebTheme,
       });
     } finally {
       setIsConnecting(false);

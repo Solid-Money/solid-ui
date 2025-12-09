@@ -1,20 +1,19 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { Plus } from 'lucide-react-native';
 import React from 'react';
 import { FlatList, View } from 'react-native';
-import { Plus } from 'lucide-react-native';
 
+import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
+import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { useDimension } from '@/hooks/useDimension';
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
-import { HomeBanners } from '@/components/Dashboard/HomeBanners';
-import { DashboardHeaderMobile } from '@/components/Dashboard';
-import { buttonVariants } from '@/components/ui/button';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
@@ -41,66 +40,15 @@ export default function SavingsEmptyState() {
         <View className="md:flex-row justify-between md:items-center gap-y-4">
           <View className="flex-row items-center">
             <Text className="text-5xl font-semibold">$0</Text>
-            {/*
-              <CountUp
-                count={0}
-                isTrailingZero={false}
-                classNames={{
-                  wrapper: 'text-foreground',
-                  decimalSeparator: 'text-5xl font-semibold',
-                }}
-                styles={{
-                  wholeText: {
-                    fontSize: fontSize(3),
-                    fontWeight: 'semibold',
-                    //fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                    marginRight: -1,
-                  },
-                  decimalText: {
-                    fontSize: fontSize(3),
-                    fontWeight: '100',
-                    //fontFamily: 'MonaSans_600SemiBold',
-                    color: '#ffffff',
-                  },
-                }}
-              />
-              */}
-
-            {/*}
-              <SavingCountUp
-                balance={0}
-                apy={0}
-                lastTimestamp={0}
-                classNames={{
-                  wrapper: 'text-foreground',
-                  decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
-                }}
-                styles={{
-                  wholeText: {
-                    fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
-                    fontWeight: 'medium',
-                    fontFamily: 'MonaSans_500Medium',
-                    color: '#ffffff',
-                    marginRight: -2,
-                  },
-                  decimalText: {
-                    fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
-                    fontWeight: 'medium',
-                    fontFamily: 'MonaSans_500Medium',
-                    color: '#ffffff',
-                  },
-                }}
-              />
-              */}
           </View>
-
           <View className="flex-row items-center gap-5">
             <DepositOptionModal />
           </View>
         </View>
       ) : (
-        <DashboardHeaderMobile balance={0} decimalPlaces={0} />
+        <View className="flex-row justify-center items-center">
+          <Text className="text-5xl font-semibold">$0</Text>
+        </View>
       )}
 
       <View className="gap-[1.875rem]">

@@ -1,12 +1,12 @@
 import { DashboardTitle } from '@/components/Dashboard';
-import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
-import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
+import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
-import { HomeBanners } from '@/components/Dashboard/HomeBanners';
+import SavingsHeaderButtons from '@/components/Savings/SavingsHeaderButtons';
+import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -83,7 +83,7 @@ export default function Savings() {
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center">
             <DashboardTitle />
-            <DashboardHeaderButtons hasTokens={hasTokens} />
+            <SavingsHeaderButtons hasTokens={hasTokens} />
           </View>
         ) : (
           <Text className="text-xl font-semibold">Savings</Text>
@@ -222,7 +222,7 @@ export default function Savings() {
           </View>
         </LinearGradient>
 
-        {!isScreenMedium && <DashboardHeaderButtonsMobile />}
+        {!isScreenMedium && <SavingsHeaderButtonsMobile hasTokens={hasTokens} />}
         <HomeBanners />
         <FAQs faqs={faqs} className="md:mt-20" />
       </View>

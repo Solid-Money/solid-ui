@@ -138,7 +138,6 @@ export const useUserTransactions = (safeAddress: string) => {
     },
     enabled: !!safeAddress,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -167,7 +166,6 @@ export const useSendTransactions = (address: string) => {
     },
     enabled: !!address,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -200,7 +198,6 @@ export const useDepositTransactions = (safeAddress: string) => {
     },
     enabled: !!safeAddress,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -212,7 +209,6 @@ export const useBridgeDepositTransactions = (safeAddress: string) => {
     },
     enabled: !!safeAddress,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -236,7 +232,6 @@ export const useBankTransferTransactions = () => {
     },
     enabled: true,
     staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -259,7 +254,7 @@ const constructDepositTransaction = (transaction: DepositTransaction) => {
   const status = mapToTransactionStatus(rawStatus);
 
   return {
-    title: 'Staked USDC',
+    title: 'Deposit USDC',
     timestamp: Math.floor(new Date(transaction.createdAt).getTime() / 1000).toString(),
     amount: safeFormatUnits(transaction.amount, transaction.decimals),
     symbol: 'soUsd',
@@ -268,6 +263,7 @@ const constructDepositTransaction = (transaction: DepositTransaction) => {
     url,
     type: TransactionType.DEPOSIT,
     trackingId: transaction.trackingId,
+    failureReason: transaction.errorMessage,
   };
 };
 
@@ -291,7 +287,7 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
   const status = mapToTransactionStatus(rawStatus);
 
   return {
-    title: 'Staked USDC',
+    title: 'Deposit USDC',
     timestamp: Math.floor(new Date(transaction.createdAt).getTime() / 1000).toString(),
     amount: safeFormatUnits(transaction.toAmount, transaction.decimals),
     symbol: 'soUsd',
@@ -300,6 +296,7 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
     url,
     type: TransactionType.DEPOSIT,
     trackingId: transaction.trackingId,
+    failureReason: transaction.errorMessage,
   };
 };
 
@@ -307,9 +304,9 @@ export const formatTransactions = async (
   transactions: GetUserTransactionsQuery | undefined,
   sendTransactions:
     | {
-      fuse: BlockscoutTransaction[];
-      ethereum: BlockscoutTransaction[];
-    }
+        fuse: BlockscoutTransaction[];
+        ethereum: BlockscoutTransaction[];
+      }
     | undefined,
   depositTransactions: DepositTransaction[] | undefined,
   bridgeDepositTransactions: BridgeTransaction[] | undefined,
@@ -333,7 +330,7 @@ export const formatTransactions = async (
         const status = mapToTransactionStatus(rawStatus);
 
         return {
-          title: 'Staked USDC',
+          title: 'Deposit USDC',
           timestamp: internalTransaction.depositTimestamp,
           amount,
           symbol: 'soUsd',
@@ -345,7 +342,7 @@ export const formatTransactions = async (
       } catch (error: any) {
         console.error('Failed to fetch LZ transaction:', error);
         return {
-          title: 'Staked USDC',
+          title: 'Deposit USDC',
           timestamp: internalTransaction.depositTimestamp,
           amount,
           symbol: 'soUsd',
@@ -372,7 +369,7 @@ export const formatTransactions = async (
       const status = mapToTransactionStatus(rawStatus);
 
       return {
-        title: 'Unstake soUSD',
+        title: 'Withdraw USDC',
         timestamp: internalTransaction.blockTimestamp,
         amount: safeFormatUnits(internalTransaction.shareAmount, 6),
         symbol: 'soUSD',
@@ -384,7 +381,7 @@ export const formatTransactions = async (
     } catch (error: any) {
       console.error('Failed to fetch LZ transaction:', error);
       return {
-        title: 'Unstake soUSD',
+        title: 'Withdraw USDC',
         timestamp: internalTransaction.blockTimestamp,
         amount: safeFormatUnits(internalTransaction.shareAmount, 6),
         symbol: 'soUSD',
@@ -550,20 +547,19 @@ export const useMaxAPY = () => {
   const thirtyDay = apys?.thirtyDay ?? 0;
   const fifteenDay = apys?.fifteenDay ?? 0;
   const sevenDay = apys?.sevenDay ?? 0;
-  
+
   const maxThirtyFifteen = Math.max(thirtyDay, fifteenDay);
-  
+
   // If both thirtyDay and fifteenDay are below 9% and sevenDay is greater than both, use sevenDay
-  const shouldUseSevenDay =
-    thirtyDay < 9 && fifteenDay < 9 && sevenDay > maxThirtyFifteen;
-  
+  const shouldUseSevenDay = thirtyDay < 9 && fifteenDay < 9 && sevenDay > maxThirtyFifteen;
+
   const maxAPY = shouldUseSevenDay ? sevenDay : maxThirtyFifteen;
   const maxAPYDays = shouldUseSevenDay
     ? ApyToDays.sevenDay
     : thirtyDay > fifteenDay
       ? ApyToDays.thirtyDay
       : ApyToDays.fifteenDay;
-  
+
   return {
     maxAPY,
     maxAPYDays,

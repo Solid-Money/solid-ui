@@ -21,6 +21,7 @@ const DepositBuyCryptoOptions = () => {
       {
         text: 'Debit/Credit Card',
         subtitle: 'Google Pay, card or bank account',
+        bannerText: '5% bonus on deposits',
         icon: (
           <Image
             source={require('@/assets/images/buy_crypto.png')}
@@ -32,6 +33,8 @@ const DepositBuyCryptoOptions = () => {
       },
       {
         text: 'Bank Deposit',
+        subtitle: 'Make a transfer from your bank.',
+        bannerText: '5% bonus on deposits',
         icon: (
           <Image
             source={require('@/assets/images/bank_deposit.png')}
@@ -56,6 +59,7 @@ const DepositBuyCryptoOptions = () => {
           icon={option.icon}
           onPress={option.onPress}
           isComingSoon={option.isComingSoon}
+          bannerText={option.bannerText}
         />
       ))}
     </View>

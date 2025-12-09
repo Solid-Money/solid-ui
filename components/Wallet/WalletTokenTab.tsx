@@ -123,7 +123,7 @@ const WalletTokenTab = () => {
 
                 <View className="flex-row items-center gap-3">
                   <View className="items-end">
-                    <Text className="font-bold">{compactNumberFormat(balance)}</Text>
+                    <Text className="font-bold text-base">{compactNumberFormat(balance)}</Text>
                     <Text className="text-sm font-medium text-muted-foreground">
                       ${compactNumberFormat(balanceUSD)}
                     </Text>
@@ -139,8 +139,7 @@ const WalletTokenTab = () => {
 
   // Desktop table implementation
   return (
-    <>
-      <View className="flex-1" onLayout={handleLayout} />
+    <View className="flex-1" onLayout={handleLayout}>
       <ScrollView horizontal bounces={false} showsHorizontalScrollIndicator={false}>
         <Table aria-labelledby="token-table">
           <TableHeader>
@@ -207,7 +206,7 @@ const WalletTokenTab = () => {
                         <View className="flex-row items-center gap-2">
                           <RenderTokenIcon tokenIcon={tokenIcon} size={isScreenMedium ? 34 : 24} />
                           <View className="items-start">
-                            <Text className="font-bold">
+                            <Text className="font-bold text-base">
                               {token.contractTickerSymbol || 'Unknown'}
                             </Text>
                           </View>
@@ -221,7 +220,7 @@ const WalletTokenTab = () => {
                     </TableCell>
                     <TableCell className="p-3 md:p-6" style={{ width: columnWidths[1] }}>
                       <View className="items-end md:items-start">
-                        <Text className="font-bold">
+                        <Text className="font-bold text-base">
                           {format(balance)} {isScreenMedium ? token.contractTickerSymbol : ''}
                         </Text>
                         <Text className="text-sm text-muted-foreground">
@@ -234,7 +233,9 @@ const WalletTokenTab = () => {
                       style={{ width: columnWidths[2] }}
                     >
                       <View className="items-start">
-                        <Text className="font-bold">${format(token.quoteRate || 0, 2)}</Text>
+                        <Text className="font-bold text-base">
+                          ${format(token.quoteRate || 0, 2)}
+                        </Text>
                       </View>
                     </TableCell>
                     <TableCell className="p-3 pl-0 md:p-6" style={{ width: columnWidths[3] }}>
@@ -281,7 +282,7 @@ const WalletTokenTab = () => {
           </TableBody>
         </Table>
       </ScrollView>
-    </>
+    </View>
   );
 };
 

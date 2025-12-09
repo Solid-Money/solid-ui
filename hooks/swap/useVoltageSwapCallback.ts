@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 
 import { useActivity } from '@/hooks/useActivity';
@@ -21,12 +22,13 @@ export function useVoltageSwapCallback(
 ) {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivity();
+  const queryClient = useQueryClient();
   const { needAllowance, approvalConfig } =
     useApproveCallbackFromVoltageTrade(trade, allowedSlippage);
-    
+
   // For token inputs, check if we need approval
   const isTokenInput = trade?.inputAmount?.currency?.isToken;
-  
+
   const account = user?.safeAddress;
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
@@ -111,7 +113,16 @@ export function useVoltageSwapCallback(
         return;
       }
 
-      setSwapData(transaction);
+      // Invalidate all balance queries immediately after successful transaction
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
+
+      // Call success callback immediately after transaction completes
+      if (successInfo?.onSuccess) {
+        successInfo.onSuccess();
+      }
+
+      setSwapData(result);
       return transaction;
     } catch (error) {
       console.error('Voltage swap failed', error);
@@ -132,9 +143,12 @@ export function useVoltageSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [trade, account, safeAA, user]);
+  }, [trade, account, safeAA, user, allowedSlippage, needAllowance, approvalConfig, successInfo, trackTransaction, queryClient]);
 
-  const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
+  // useTransactionAwait handles balance invalidation and toast notifications
+  // We don't use its isLoading state since the transaction is already confirmed
+  // when executeTransactions returns (it waits for receipt internally)
+  const { isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
 
   return useMemo(() => {
     if (!trade)
@@ -151,9 +165,9 @@ export function useVoltageSwapCallback(
       state: SwapCallbackState.VALID,
       callback: swapCallback,
       error: null,
-      isLoading: isSendingSwap || isLoading,
+      isLoading: isSendingSwap,
       isSuccess,
       needAllowance,
     };
-  }, [trade, swapCallback, isLoading, isSuccess, isSendingSwap, needAllowance, approvalConfig]);
+  }, [trade, swapCallback, isSuccess, isSendingSwap, needAllowance, approvalConfig]);
 }

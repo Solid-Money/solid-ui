@@ -31,6 +31,8 @@ export const useKycLinkFromBridge = (kycLinkId?: string) => {
     enabled: !!kycLinkId,
     retry: false,
     refetchInterval: (query: any) => {
+      if (!kycLinkId) return false;
+
       // In our TanStack version, refetchInterval receives the Query instance
       const data = query?.state?.data as any;
       const status = data?.kyc_status as string | undefined;
@@ -39,7 +41,7 @@ export const useKycLinkFromBridge = (kycLinkId?: string) => {
       const next = !hasData ? 5000 : isFinalKycStatus(status) ? false : 5000;
 
       try {
-        console.warn('[KYC Poll] tick', {
+        console.log('[KYC Poll] tick', {
           kycLinkId,
           status,
           next,

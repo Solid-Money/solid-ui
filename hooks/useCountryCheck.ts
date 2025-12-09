@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -11,6 +11,8 @@ import { useCountryStore } from '@/store/useCountryStore';
 export function useCountryCheck() {
   const router = useRouter();
   const [checkingCountry, setCheckingCountry] = useState(true);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const hasChecked = useRef(false);
 
   const {
     countryInfo,
@@ -28,11 +30,21 @@ export function useCountryCheck() {
 
   useEffect(() => {
     const checkCountry = async () => {
+      // If we are already redirecting, do nothing
+      if (isRedirecting) return;
+
+      // If we already checked and have a result, stop checking
+      if (hasChecked.current && !checkingCountry) return;
+
       try {
         track(TRACKING_EVENTS.CARD_COUNTRY_CHECK_STARTED);
 
         // First check if we have valid cached country info
         if (ipDetectedCountryInfo) {
+          console.log('[useCountryCheck] ipDetectedCountryInfo found', {
+            countryCode: ipDetectedCountryInfo.countryCode,
+            isAvailable: ipDetectedCountryInfo.isAvailable,
+          });
           track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
             countryCode: ipDetectedCountryInfo.countryCode,
             countryName: ipDetectedCountryInfo.countryName,
@@ -42,10 +54,13 @@ export function useCountryCheck() {
 
           // If country is available, proceed with activation
           if (ipDetectedCountryInfo.isAvailable) {
+            hasChecked.current = true;
             setCheckingCountry(false);
             return;
           }
           // If country is not available, redirect to country selection
+          console.log('[useCountryCheck] Country not available, redirecting');
+          setIsRedirecting(true);
           router.replace(path.CARD_COUNTRY_SELECTION);
           return;
         }
@@ -63,6 +78,8 @@ export function useCountryCheck() {
             } else {
               track(TRACKING_EVENTS.CARD_COUNTRY_CHECK_IP_FAILED, { reason: 'no_ip_returned' });
               // If IP detection fails, redirect to country selection
+              console.log('[useCountryCheck] IP detection failed, redirecting');
+              setIsRedirecting(true);
               router.replace(path.CARD_COUNTRY_SELECTION);
               return;
             }
@@ -71,6 +88,7 @@ export function useCountryCheck() {
               reason: 'fetch_error',
               error: (error as Error)?.message,
             });
+            setIsRedirecting(true);
             router.replace(path.CARD_COUNTRY_SELECTION);
             return;
           }
@@ -81,7 +99,19 @@ export function useCountryCheck() {
         // Check if we have valid cached country info for this IP
         const cachedInfo = getIpDetectedCountry(ip);
         if (cachedInfo) {
-          setCountryInfo(cachedInfo);
+          console.log('[useCountryCheck] cachedInfo found', {
+            cached: cachedInfo.countryCode,
+            current: countryInfo?.countryCode,
+            match: countryInfo?.countryCode === cachedInfo.countryCode,
+          });
+          // Only update store if the info has changed to avoid infinite loops
+          if (
+            countryInfo?.countryCode !== cachedInfo.countryCode ||
+            countryInfo?.isAvailable !== cachedInfo.isAvailable
+          ) {
+            console.log('[useCountryCheck] Updating countryInfo from cache');
+            setCountryInfo(cachedInfo);
+          }
           track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
             countryCode: cachedInfo.countryCode,
             countryName: cachedInfo.countryName,
@@ -91,9 +121,12 @@ export function useCountryCheck() {
           });
 
           if (cachedInfo.isAvailable) {
+            hasChecked.current = true;
             setCheckingCountry(false);
             return;
           } else {
+            console.log('[useCountryCheck] Cached country not available, redirecting');
+            setIsRedirecting(true);
             router.replace(path.CARD_COUNTRY_SELECTION);
             return;
           }
@@ -105,6 +138,8 @@ export function useCountryCheck() {
             reason: 'previous_detection_failed',
             ip,
           });
+          console.log('[useCountryCheck] Previous detection failed, redirecting');
+          setIsRedirecting(true);
           router.replace(path.CARD_COUNTRY_SELECTION);
           return;
         }
@@ -117,6 +152,8 @@ export function useCountryCheck() {
             reason: 'no_country_data_from_ip',
             ip,
           });
+          console.log('[useCountryCheck] No country data from IP, redirecting');
+          setIsRedirecting(true);
           router.replace(path.CARD_COUNTRY_SELECTION);
           return;
         }
@@ -138,6 +175,8 @@ export function useCountryCheck() {
             countryName,
             ip,
           });
+          console.log('[useCountryCheck] Access check failed, redirecting');
+          setIsRedirecting(true);
           router.replace(path.CARD_COUNTRY_SELECTION);
           return;
         }
@@ -166,6 +205,7 @@ export function useCountryCheck() {
             countryName,
             ip,
           });
+          hasChecked.current = true;
           setCheckingCountry(false);
         } else {
           track(TRACKING_EVENTS.CARD_KYC_COUNTRY_NOT_SUPPORTED, {
@@ -173,6 +213,8 @@ export function useCountryCheck() {
             countryName,
             ip,
           });
+          console.log('[useCountryCheck] Country not supported (new), redirecting');
+          setIsRedirecting(true);
           router.replace(path.CARD_COUNTRY_SELECTION);
         }
       } catch (error) {
@@ -182,6 +224,7 @@ export function useCountryCheck() {
           reason: 'unexpected_error',
           error: (error as Error)?.message,
         });
+        setIsRedirecting(true);
         router.replace(path.CARD_COUNTRY_SELECTION);
       }
     };
@@ -197,6 +240,8 @@ export function useCountryCheck() {
     setCountryInfo,
     countryDetectionFailed,
     setCountryDetectionFailed,
+    checkingCountry,
+    isRedirecting,
   ]);
 
   return { checkingCountry };

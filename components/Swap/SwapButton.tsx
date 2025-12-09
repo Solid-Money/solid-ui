@@ -370,11 +370,11 @@ const SwapButton: React.FC = () => {
     return (
       <Button className="rounded-xl" size="lg" onPress={handlePegSwap} disabled={isPegSwapLoading}>
         {isPegSwapLoading ? (
-          <Text className="font-semibold">Migrating...</Text>
+          <Text className="font-semibold text-base">Migrating...</Text>
         ) : needPegSwapAllowance ? (
-          <Text className="font-semibold">Approve & Migrate</Text>
+          <Text className="font-semibold text-base">Approve & Migrate</Text>
         ) : (
-          <Text className="font-semibold">Migrate</Text>
+          <Text className="font-semibold text-base">Migrate</Text>
         )}
       </Button>
     );
@@ -383,7 +383,7 @@ const SwapButton: React.FC = () => {
   if (showWrap && wrapInputError) {
     return (
       <Button className="rounded-xl" size="lg" disabled>
-        <Text className="font-semibold">{wrapInputError}</Text>
+        <Text className="font-semibold text-base">{wrapInputError}</Text>
       </Button>
     );
   }
@@ -459,13 +459,13 @@ const SwapButton: React.FC = () => {
     return (
       <Button className="rounded-xl" size="lg" onPress={handleWrap}>
         {isWrapLoading ? (
-          <Text className="font-semibold">
+          <Text className="font-semibold text-base">
             {wrapType === WrapType.WRAP ? 'Wrapping...' : 'Unwrapping...'}
           </Text>
         ) : wrapType === WrapType.WRAP ? (
-          <Text className="font-semibold">Wrap</Text>
+          <Text className="font-semibold text-base">Wrap</Text>
         ) : (
-          <Text className="font-semibold">Unwrap</Text>
+          <Text className="font-semibold text-base">Unwrap</Text>
         )}
       </Button>
     );
@@ -475,9 +475,9 @@ const SwapButton: React.FC = () => {
     return (
       <Button className="rounded-xl" size="lg" disabled>
         {isLoadingRoute ? (
-          <Text className="font-semibold">Finding Routes...</Text>
+          <Text className="font-semibold text-base">Finding Routes...</Text>
         ) : (
-          <Text className="font-semibold">Insufficient liquidity for this trade.</Text>
+          <Text className="font-semibold text-base">Insufficient liquidity for this trade.</Text>
         )}
       </Button>
     );
@@ -502,17 +502,17 @@ const SwapButton: React.FC = () => {
       disabled={isButtonDisabled}
     >
       {isAnyLoading ? (
-        <Text className="font-semibold">Processing Transaction...</Text>
+        <Text className="font-semibold text-base">Processing Transaction...</Text>
       ) : swapInputError ? (
-        <Text className="font-semibold">{swapInputError}</Text>
+        <Text className="font-semibold text-base">{swapInputError}</Text>
       ) : priceImpactTooHigh ? (
-        <Text className="font-semibold">Price Impact Too High</Text>
+        <Text className="font-semibold text-base">Price Impact Too High</Text>
       ) : priceImpactSeverity > 2 ? (
-        <Text className="font-semibold">Swap Anyway</Text>
+        <Text className="font-semibold text-base">Swap Anyway</Text>
       ) : needsApproval ? (
-        <Text className="font-semibold">Approve & Swap</Text>
+        <Text className="font-semibold text-base">Approve & Swap</Text>
       ) : (
-        <Text className="font-semibold">Swap</Text>
+        <Text className="font-semibold text-base">Swap</Text>
       )}
     </Button>
   );

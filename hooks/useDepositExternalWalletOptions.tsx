@@ -1,12 +1,11 @@
 import { Wallet } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
-import { createWallet } from 'thirdweb/wallets';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { client } from '@/lib/thirdweb';
+import { client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useDimension } from './useDimension';
 
@@ -50,10 +49,8 @@ const useDepositExternalWalletOptions = () => {
         client,
         showThirdwebBranding: false,
         size: 'compact',
-        wallets: [
-          createWallet('io.rabby'),
-          createWallet('io.metamask'),
-        ],
+        wallets: thirdwebWallets,
+        theme: thirdwebTheme,
       });
 
       if (wallet) {

@@ -1,3 +1,4 @@
+import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import {
   DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
   DEPOSIT_MODAL,
@@ -197,7 +198,7 @@ export interface CustomerFromBridgeResponse {
 
 export type BridgeCustomerEndorsement = {
   name: string;
-  status: string;
+  status: EndorsementStatus;
   additional_requirements?: string[];
 };
 
@@ -347,6 +348,7 @@ export enum TransactionType {
   UNSTAKE = 'unstake',
   WITHDRAW = 'withdraw',
   SEND = 'send',
+  RECEIVE = 'receive', // Incoming token/native transfers from external sources
   BRIDGE = 'bridge',
   CANCEL_WITHDRAW = 'cancel_withdraw',
   BRIDGE_DEPOSIT = 'bridge_deposit',
@@ -376,6 +378,14 @@ export enum TransactionCategory {
   BANK_DEPOSIT = 'Bank deposit',
   CARD_DEPOSIT = 'Card deposit',
   REWARD = 'Reward',
+  SEND = 'Send',
+  SWAP = 'Swap',
+  WRAP = 'Wrap',
+  UNWRAP = 'Unwrap',
+  MERKL_CLAIM = 'Merkl claim',
+  CARD_WELCOME_BONUS = 'Card welcome bonus',
+  DEPOSIT_BONUS = 'Deposit bonus',
+  RECEIVE = 'Receive',
 }
 
 export enum TransactionStatus {
@@ -384,6 +394,8 @@ export enum TransactionStatus {
   SUCCESS = 'success',
   FAILED = 'failed',
   CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
+  REFUNDED = 'refunded',
 }
 
 export type Transaction = {
@@ -401,6 +413,7 @@ export type Transaction = {
   toAddress?: string;
   sourceDepositInstructions?: SourceDepositInstructions;
   trackingId?: string;
+  failureReason?: string;
 };
 
 export type Faq = {
@@ -503,6 +516,7 @@ export interface DepositTransaction {
   status: DepositTransactionStatus;
   createdAt: Date;
   trackingId?: string;
+  errorMessage?: string;
 }
 
 export enum BridgeTransactionStatus {
@@ -563,6 +577,7 @@ export interface BridgeTransaction {
   status: BridgeTransactionStatus;
   createdAt: Date;
   trackingId?: string;
+  errorMessage?: string;
 }
 
 export enum ActivityTab {
@@ -667,6 +682,7 @@ export interface Points {
     referredUsersDepositedCount?: number;
   };
   userRefferer: string;
+  leaderboardPosition?: number;
 }
 
 export enum LifiOrder {
@@ -831,6 +847,7 @@ export interface ActivityEvent {
   metadata?: Record<string, any>;
   deleted?: boolean;
   deletedAt?: string;
+  failureReason?: string;
 }
 
 export interface ActivityEvents {
@@ -851,6 +868,20 @@ export interface UpdateActivityEvent {
   txHash?: string;
   userOpHash?: string;
   metadata?: Record<string, any>;
+}
+
+// Sync activities from Blockscout
+export interface SyncActivitiesOptions {
+  chainIds?: number[];
+  direction?: 'from' | 'to' | 'all';
+  type?: 'token' | 'native' | 'all';
+}
+
+export interface SyncActivitiesResponse {
+  synced: number;
+  skipped: number;
+  errors: number;
+  message: string;
 }
 
 export interface VaultBreakdown {

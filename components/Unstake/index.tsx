@@ -69,9 +69,9 @@ const Unstake = () => {
 
   const getBridgeText = () => {
     if (bridgeErrors.amount) return bridgeErrors.amount.message;
-    if (bridgeStatus === Status.PENDING) return 'Unstaking';
-    if (bridgeStatus === Status.ERROR) return 'Error while unstaking';
-    if (bridgeStatus === Status.SUCCESS) return 'Successfully Unstaked';
+    if (bridgeStatus === Status.PENDING) return 'Withdrawing';
+    if (bridgeStatus === Status.ERROR) return 'Error while withdrawing';
+    if (bridgeStatus === Status.SUCCESS) return 'Successfully Withdrawn';
     if (!isBridgeValid || !watchedBridgeAmount) return 'Enter an amount';
     return 'Withdraw';
   };
@@ -86,7 +86,7 @@ const Unstake = () => {
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
         type: 'success',
-        text1: 'Unstake transaction submitted',
+        text1: 'Withdraw transaction submitted',
         text2: `${data.amount} soUSD`,
         props: {
           link: `https://layerzeroscan.com/tx/${transaction.transactionHash}`,
@@ -97,7 +97,7 @@ const Unstake = () => {
     } catch (_error) {
       Toast.show({
         type: 'error',
-        text1: 'Error while unstaking',
+        text1: 'Error while withdrawing',
       });
     }
   };
@@ -109,7 +109,7 @@ const Unstake = () => {
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60">Unstake amount</Text>
+        <Text className="opacity-60 text-base">Withdraw amount</Text>
 
         <View
           className={cn(
@@ -198,14 +198,14 @@ const UnstakeTrigger = (props: any) => {
     >
       <View className="flex-row items-center gap-4">
         <ArrowDownLeft color="white" />
-        <Text className="font-bold">Withdraw</Text>
+        <Text className="font-bold text-base">Withdraw</Text>
       </View>
     </Button>
   );
 };
 
 const UnstakeTitle = () => {
-  return <Text className="text-2xl font-semibold">Unstake from savings</Text>;
+  return <Text className="text-2xl font-semibold">Withdraw from savings</Text>;
 };
 
 export { Unstake, UnstakeTitle, UnstakeTrigger };

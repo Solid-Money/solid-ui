@@ -8,6 +8,7 @@ import PageLayout from '@/components/PageLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import { usePoints } from '@/hooks/usePoints';
 import useUser from '@/hooks/useUser';
 import { fetchLeaderboardUsers } from '@/lib/api';
 import { LeaderboardResponse, LeaderboardUser } from '@/lib/types';
@@ -72,7 +73,7 @@ const Row = ({ leaderboardUser, index, isStar }: RowProps) => {
         </View>
       </View>
       <View className="grow md:w-8/12">
-        <Text>{eclipseAddress(leaderboardUser.walletAddress, 6, 4)}</Text>
+        <Text className="text-base">{eclipseAddress(leaderboardUser.walletAddress, 6, 4)}</Text>
       </View>
       <Text className="text-lg text-rewards font-bold">
         {formatNumber(leaderboardUser.points || 0, 0, 0)}
@@ -83,6 +84,7 @@ const Row = ({ leaderboardUser, index, isStar }: RowProps) => {
 
 const Leaderboard = () => {
   const { user } = useUser();
+  const { points } = usePoints();
   const { isScreenMedium } = useDimension();
 
   const {
@@ -111,8 +113,8 @@ const Leaderboard = () => {
   const constructedUser: LeaderboardUser = {
     id: user.safeAddress,
     walletAddress: user.safeAddress,
-    points: user.points || 0,
-    leaderboardPosition: user.leaderboardPosition || 0,
+    points: points.userRewardsSummary.totalPoints || 0,
+    leaderboardPosition: points.leaderboardPosition || 0,
   };
 
   const renderItem = ({ item, index }: { item: LeaderboardUser; index: number }) => (
@@ -135,7 +137,7 @@ const Leaderboard = () => {
       <View className="gap-10">
         <View className="gap-4">
           <Text className="text-lg font-semibold">Your Ranking</Text>
-          <Row leaderboardUser={constructedUser} index={user.leaderboardPosition || 0} />
+          <Row leaderboardUser={constructedUser} index={points.leaderboardPosition || 0} />
         </View>
         <View className="mb-4">
           <Text className="text-lg font-semibold">Top users of all-time</Text>

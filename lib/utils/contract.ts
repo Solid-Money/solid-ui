@@ -2,8 +2,8 @@ import { Address, Hex, TransactionRequest } from 'viem';
 import { readContract, writeContract } from 'wagmi/actions';
 
 import { getUsdcAddress } from '@/constants/bridge';
-import ERC20ABI from '@/lib/abis/ERC20';
 import { config, getWallet, publicClient } from '@/lib/wagmi';
+import { erc20Abi } from 'viem';
 
 export const getTransactionReceipt = async (chainId: number, hash: Hex) => {
   return publicClient(chainId).waitForTransactionReceipt({
@@ -21,7 +21,7 @@ export const approveUsdc = async (
 
     const hash = await writeContract(config, {
       address: usdcAddress,
-      abi: ERC20ABI,
+      abi: erc20Abi,
       functionName: 'approve',
       args: [spender, amount],
     });
@@ -37,13 +37,15 @@ export const approveToken = async (
   tokenAddress: Address,
   spender: Address,
   amount: bigint,
+  chainId: number,
 ): Promise<string> => {
   try {
     const hash = await writeContract(config, {
       address: tokenAddress,
-      abi: ERC20ABI,
+      abi: erc20Abi,
       functionName: 'approve',
       args: [spender, amount],
+      chainId,
     });
 
     return hash;
@@ -63,9 +65,10 @@ export const getUsdcAllowance = async (
 
     const allowance = (await readContract(config, {
       address: usdcAddress,
-      abi: ERC20ABI,
+      abi: erc20Abi,
       functionName: 'allowance',
       args: [owner, spender],
+      chainId,
     })) as bigint;
 
     return allowance;
@@ -79,19 +82,21 @@ export const getTokenAllowance = async (
   tokenAddress: Address,
   ownerAddress: Address,
   spenderAddress: Address,
+  chainId: number,
 ): Promise<bigint> => {
   try {
     const allowance = (await readContract(config, {
       address: tokenAddress,
-      abi: ERC20ABI,
+      abi: erc20Abi,
       functionName: 'allowance',
       args: [ownerAddress, spenderAddress],
+      chainId,
     })) as bigint;
 
     return allowance;
   } catch (error) {
     console.error(error);
-    throw new Error('Failed to get USDC allowance');
+    throw new Error('Failed to get token allowance');
   }
 };
 
@@ -113,11 +118,22 @@ export const checkAndSetAllowanceToken = async (
   ownerAddress: Address,
   spenderAddress: Address,
   amount: bigint,
+  chainId: number,
 ): Promise<string | undefined> => {
-  const allowance = await getTokenAllowance(tokenAddress, ownerAddress, spenderAddress);
+  const allowance = await getTokenAllowance(
+    tokenAddress,
+    ownerAddress,
+    spenderAddress,
+    chainId,
+  );
   if (allowance >= amount) return;
 
-  const hash = await approveToken(tokenAddress, spenderAddress, amount);
+  const hash = await approveToken(
+    tokenAddress,
+    spenderAddress,
+    amount,
+    chainId,
+  );
   return hash;
 };
 

@@ -175,9 +175,6 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const tokenListData = tokenList.status === PromiseStatus.FULFILLED ? tokenList.value : [];
 
   const filterTokenList = (list: SwapTokenResponse[], chainId: number, address: string) => {
-    console.log('list', list);
-    console.log('chainId', chainId);
-    console.log('address', address);
     if (list.length === 0) return true;
     return list.some(
       token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
@@ -350,9 +347,7 @@ export const useBalances = (): BalanceData => {
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
-    // Refetch every 30 seconds when data becomes stale
-    refetchInterval: 30 * 1000,
-    refetchIntervalInBackground: false,
+    // No polling - manual refresh only (triggered by activity refresh)
   });
 
   const defaultData = {

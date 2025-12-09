@@ -69,16 +69,31 @@ const Transaction = ({
   const isFailed = status === TransactionStatus.FAILED;
   const isCancelled = status === TransactionStatus.CANCELLED;
   const isProcessing = status === TransactionStatus.PROCESSING;
+  const isExpired = status === TransactionStatus.EXPIRED;
+  const isRefunded = status === TransactionStatus.REFUNDED;
   const transactionDetails = TRANSACTION_DETAILS[type];
 
   // Only show badge for failed status
+
   const statusBadge = isFailed
     ? {
         text: 'Failed',
         bgColor: 'bg-red-500/20',
         textColor: 'text-red-400',
       }
-    : null;
+    : isExpired
+      ? {
+          text: 'Expired',
+          bgColor: 'bg-orange-500/20',
+          textColor: 'text-orange-400',
+        }
+      : isRefunded
+        ? {
+            text: 'Refunded',
+            bgColor: 'bg-purple-500/20',
+            textColor: 'text-purple-400',
+          }
+        : null;
 
   // Check if this is a direct deposit with no amount yet
   const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
@@ -88,6 +103,8 @@ const Transaction = ({
   const getDirectDepositStatusMessage = () => {
     if (!isDirectDeposit || !hasNoAmount) return null;
     if (isFailed) return 'Failed';
+    if (isExpired) return 'Expired';
+    if (isRefunded) return 'Refunded';
     if (isProcessing) return 'Processing deposit...';
     // For pending, check metadata for more specific status
     if (isPending) {
@@ -163,17 +180,23 @@ const Transaction = ({
 
   const statusTextColor = isFailed
     ? 'text-red-400'
-    : isCancelled
-      ? ''
-      : isIncoming
-        ? 'text-brand'
-        : '';
+    : isExpired
+      ? 'text-orange-400'
+      : isRefunded
+        ? 'text-purple-400'
+        : isCancelled
+          ? ''
+          : isIncoming
+            ? 'text-brand'
+            : '';
 
   const statusSign = isFailed
     ? TransactionDirection.FAILED
-    : isCancelled
+    : isExpired || isRefunded
       ? TransactionDirection.CANCELLED
-      : (transactionDetails?.sign ?? '');
+      : isCancelled
+        ? TransactionDirection.CANCELLED
+        : (transactionDetails?.sign ?? '');
 
   const tokenIcon = getTokenIcon({
     logoUrl,
@@ -220,9 +243,9 @@ const Transaction = ({
         classNames?.container,
       )}
     >
-      <View className="flex-row items-center gap-2 md:gap-4">
+      <View className="flex-row items-center gap-2 md:gap-4 flex-[1.5] min-w-0">
         <RenderTokenIcon tokenIcon={tokenIcon} size={44} />
-        <View>
+        <View className="flex-shrink min-w-0">
           <Text className="text-base web:text-lg font-medium" numberOfLines={1}>
             {title}
           </Text>
@@ -238,8 +261,8 @@ const Transaction = ({
             <Text className="text-sm text-muted-foreground font-medium">{getDescription()}</Text>
           </View>
         </View>
-        {isFailed && statusBadge && (
-          <View className={cn(statusBadge.bgColor, 'px-2 py-1 rounded-full')}>
+        {(isFailed || isExpired || isRefunded) && statusBadge && (
+          <View className={cn(statusBadge.bgColor, 'px-2 py-1 rounded-full flex-shrink-0')}>
             <Text className={cn(statusBadge.textColor, 'text-xs font-bold')}>
               {statusBadge.text}
             </Text>
@@ -247,22 +270,26 @@ const Transaction = ({
         )}
       </View>
 
-      <View className="flex-1 flex-row items-center justify-center">
-        {formattedTimestamp && isScreenMedium && showTimestamp && (
-          <View className="w-48">
-            <Text className="text-sm text-muted-foreground font-medium text-start">
-              {formattedTimestamp}
-            </Text>
-          </View>
-        )}
-      </View>
+      {formattedTimestamp && isScreenMedium && showTimestamp && (
+        <View className="flex-[1.5] flex-row items-center justify-center px-2">
+          <Text className="text-sm text-muted-foreground font-medium text-center">
+            {formattedTimestamp}
+          </Text>
+        </View>
+      )}
 
-      <View className="items-end">
+      <View className="items-end flex-[1] min-w-0">
         {directDepositStatusMessage || amount === '0' ? (
           <Text
             className={cn(
               'text-sm font-medium',
-              isFailed ? 'text-red-400' : 'text-muted-foreground',
+              isFailed
+                ? 'text-red-400'
+                : isExpired
+                  ? 'text-orange-400'
+                  : isRefunded
+                    ? 'text-purple-400'
+                    : 'text-muted-foreground',
             )}
           >
             {directDepositStatusMessage}

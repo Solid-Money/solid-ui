@@ -1,7 +1,8 @@
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { RefreshControl, View } from 'react-native';
+import { RefreshCw } from 'lucide-react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Platform, Pressable, RefreshControl, View } from 'react-native';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
@@ -39,11 +40,35 @@ export default function ActivityTransactions({
   showTimestamp = true,
 }: ActivityTransactionsProps) {
   const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore();
-  const { activityEvents, activities, getKey, refetchAll } = useActivity();
+  const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
-
   useCardDepositPoller();
+
+  // Spin animation for refresh icon
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isSyncing) {
+      spinValue.setValue(0);
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ).start();
+    } else {
+      spinValue.stopAnimation();
+      spinValue.setValue(0);
+    }
+  }, [isSyncing, spinValue]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   const filteredTransactions = useMemo(() => {
     const filtered = activities.filter(transaction => {
@@ -76,86 +101,64 @@ export default function ActivityTransactions({
     return grouped;
   }, [activities, tab, symbol, showStuckTransactions]);
 
-  const getTransactionClassName = (groupedData: TimeGroup[], currentIndex: number) => {
-    const classNames = ['bg-card overflow-hidden'];
-    let currentGroupStart = -1;
-    let currentGroupEnd = -1;
+  // Pre-compute group positions for O(1) lookup instead of O(n) per item
+  const positionMap = useMemo(() => {
+    const map = new Map<number, { isFirst: boolean; isLast: boolean; className: string }>();
+    let currentGroupStart = 0;
 
-    for (let i = currentIndex; i >= 0; i--) {
-      if (groupedData[i].type === ActivityGroup.HEADER) {
+    for (let i = 0; i < filteredTransactions.length; i++) {
+      if (filteredTransactions[i].type === ActivityGroup.HEADER) {
+        // Process the previous group
+        if (currentGroupStart < i) {
+          const groupIndices: number[] = [];
+          for (let j = currentGroupStart; j < i; j++) {
+            if (filteredTransactions[j].type === ActivityGroup.TRANSACTION) {
+              groupIndices.push(j);
+            }
+          }
+          groupIndices.forEach((idx, pos) => {
+            const isFirst = pos === 0;
+            const isLast = pos === groupIndices.length - 1;
+            const classNames = ['bg-card overflow-hidden'];
+            if (isFirst) classNames.push('rounded-t-twice');
+            if (isLast) classNames.push('border-b-0 rounded-b-twice');
+            map.set(idx, { isFirst, isLast, className: cn(classNames) });
+          });
+        }
         currentGroupStart = i + 1;
-        break;
       }
     }
 
-    for (let i = currentIndex; i < groupedData.length; i++) {
-      if (groupedData[i].type === ActivityGroup.HEADER && i > currentIndex) {
-        currentGroupEnd = i - 1;
-        break;
-      }
-    }
-
-    if (currentGroupEnd === -1) currentGroupEnd = groupedData.length - 1;
-
-    const visibleIndices = [];
-    for (let i = currentGroupStart; i <= currentGroupEnd; i++) {
-      if (groupedData[i].type === ActivityGroup.TRANSACTION) {
-        const transaction = groupedData[i].data as ActivityEvent;
-        const isPending = transaction.status === TransactionStatus.PENDING;
-        const isCancelled = transaction.status === TransactionStatus.CANCELLED;
-        const isStuck = isTransactionStuck(transaction.timestamp);
-
-        if (showStuckTransactions || !((isPending && isStuck) || isCancelled)) {
-          visibleIndices.push(i);
+    // Process the last group
+    if (currentGroupStart < filteredTransactions.length) {
+      const groupIndices: number[] = [];
+      for (let j = currentGroupStart; j < filteredTransactions.length; j++) {
+        if (filteredTransactions[j].type === ActivityGroup.TRANSACTION) {
+          groupIndices.push(j);
         }
       }
+      groupIndices.forEach((idx, pos) => {
+        const isFirst = pos === 0;
+        const isLast = pos === groupIndices.length - 1;
+        const classNames = ['bg-card overflow-hidden'];
+        if (isFirst) classNames.push('rounded-t-twice');
+        if (isLast) classNames.push('border-b-0 rounded-b-twice');
+        map.set(idx, { isFirst, isLast, className: cn(classNames) });
+      });
     }
 
-    const position = visibleIndices.indexOf(currentIndex);
-    if (position === 0) classNames.push('rounded-t-twice');
-    if (position === visibleIndices.length - 1) classNames.push('border-b-0 rounded-b-twice');
+    return map;
+  }, [filteredTransactions]);
 
-    return cn(classNames);
+  const getTransactionClassName = (currentIndex: number) => {
+    return positionMap.get(currentIndex)?.className ?? 'bg-card overflow-hidden';
   };
 
   const getTransactionPosition = (currentIndex: number) => {
-    let currentGroupStart = -1;
-    let currentGroupEnd = -1;
-
-    for (let i = currentIndex; i >= 0; i--) {
-      if (filteredTransactions[i].type === ActivityGroup.HEADER) {
-        currentGroupStart = i + 1;
-        break;
-      }
-    }
-
-    for (let i = currentIndex; i < filteredTransactions.length; i++) {
-      if (filteredTransactions[i].type === ActivityGroup.HEADER && i > currentIndex) {
-        currentGroupEnd = i - 1;
-        break;
-      }
-    }
-
-    if (currentGroupEnd === -1) currentGroupEnd = filteredTransactions.length - 1;
-
-    const visibleIndices = [];
-    for (let i = currentGroupStart; i <= currentGroupEnd; i++) {
-      if (filteredTransactions[i].type === ActivityGroup.TRANSACTION) {
-        const transaction = filteredTransactions[i].data as ActivityEvent;
-        const isPending = transaction.status === TransactionStatus.PENDING;
-        const isCancelled = transaction.status === TransactionStatus.CANCELLED;
-        const isStuck = isTransactionStuck(transaction.timestamp);
-
-        if (showStuckTransactions || !((isPending && isStuck) || isCancelled)) {
-          visibleIndices.push(i);
-        }
-      }
-    }
-
-    const position = visibleIndices.indexOf(currentIndex);
+    const position = positionMap.get(currentIndex);
     return {
-      isFirst: position === 0,
-      isLast: position === visibleIndices.length - 1,
+      isFirst: position?.isFirst ?? false,
+      isLast: position?.isLast ?? false,
     };
   };
 
@@ -211,25 +214,55 @@ export default function ActivityTransactions({
           }
         }}
         classNames={{
-          container: getTransactionClassName(filteredTransactions, index),
+          container: getTransactionClassName(index),
         }}
       />
     );
   };
 
   const renderLoading = () => (
-    <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+    <View className="gap-3">
+      <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+      <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+      <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+    </View>
   );
+
+  const renderSyncingIndicator = () => {
+    if (!isSyncing) return null;
+    return (
+      <View className="flex-row items-center justify-center py-2 gap-2">
+        <View className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        <Text className="text-muted-foreground text-sm">
+          {isSyncStale ? 'Syncing your transaction history...' : 'Syncing...'}
+        </Text>
+      </View>
+    );
+  };
 
   const renderEmpty = () => (
     <View className="py-16 px-4">
-      <Text className="text-muted-foreground text-center text-lg">
-        {tab === ActivityTab.PROGRESS ? 'No pending transactions' : 'No transactions found'}
-      </Text>
-      {tab === ActivityTab.WALLET && (
-        <Text className="text-muted-foreground text-center text-sm mt-2">
-          Start by making a swap or sending tokens
-        </Text>
+      {isSyncing && isSyncStale ? (
+        <>
+          <Text className="text-muted-foreground text-center text-lg">
+            Syncing your transaction history...
+          </Text>
+          <Text className="text-muted-foreground text-center text-sm mt-2">
+            This may take a moment for new accounts
+          </Text>
+          <View className="mt-4">{renderLoading()}</View>
+        </>
+      ) : (
+        <>
+          <Text className="text-muted-foreground text-center text-lg">
+            {tab === ActivityTab.PROGRESS ? 'No pending transactions' : 'No transactions found'}
+          </Text>
+          {tab === ActivityTab.WALLET && (
+            <Text className="text-muted-foreground text-center text-sm mt-2">
+              Start by making a swap or sending tokens
+            </Text>
+          )}
+        </>
       )}
     </View>
   );
@@ -241,12 +274,48 @@ export default function ActivityTransactions({
     return null;
   };
 
-  if (isLoading && !filteredTransactions.length) {
-    return renderLoading();
+  // Show full loading state only for first load with stale data
+  if (isLoading && !filteredTransactions.length && isSyncStale) {
+    return (
+      <View className="flex-1 px-4">
+        <View className="py-8">
+          <Text className="text-muted-foreground text-center text-lg mb-2">
+            Syncing your transaction history...
+          </Text>
+          <Text className="text-muted-foreground text-center text-sm mb-4">
+            This may take a moment for new accounts
+          </Text>
+        </View>
+        {renderLoading()}
+      </View>
+    );
   }
+
+  const isWeb = Platform.OS === 'web';
 
   return (
     <View className="flex-1">
+      {/* Web-only refresh button (pull-to-refresh doesn't work on web) */}
+      {isWeb && (
+        <View className="flex-row justify-end px-4 py-2">
+          <Pressable
+            onPress={refetchAll}
+            disabled={isLoading || isSyncing}
+            className="flex-row items-center gap-2 px-3 py-1.5 rounded-full bg-card active:opacity-70"
+          >
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <RefreshCw size={14} color={isLoading || isSyncing ? '#666' : '#fff'} />
+            </Animated.View>
+            <Text className="text-sm text-muted-foreground">
+              {isSyncing ? 'Syncing...' : 'Refresh'}
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Subtle syncing indicator for background syncs (native only) */}
+      {!isWeb && renderSyncingIndicator()}
+
       <FlashList
         key={`flashlist-${showStuckTransactions}`}
         data={filteredTransactions}
@@ -285,7 +354,7 @@ export default function ActivityTransactions({
         contentContainerStyle={{ paddingVertical: 0, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading}
+            refreshing={isLoading || isSyncing}
             onRefresh={refetchAll}
             tintColor="#666"
             colors={['#666']}

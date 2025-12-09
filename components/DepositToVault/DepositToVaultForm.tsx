@@ -104,7 +104,8 @@ function DepositToVaultForm() {
     amountOut,
     isLoading: isPreviewDepositLoading,
     exchangeRate,
-  } = usePreviewDeposit(watchedAmount || '0');
+    routingFee,
+  } = usePreviewDeposit(watchedAmount || '0', selectedTokenInfo?.address, srcChainId);
 
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
@@ -257,15 +258,22 @@ function DepositToVaultForm() {
             </View>
           </View>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
-            <Text className="text-base text-muted-foreground">Exchange rate</Text>
+            <Text className="text-base text-muted-foreground">Price</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
               <Text className="text-lg font-semibold">
-                {exchangeRate ? (
-                  formatUnits(exchangeRate, 6)
-                ) : (
-                  <Skeleton className="w-20 h-7 bg-white/20" />
-                )}
+                {'1 soUSD = '}
+                {`$${formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 0)}`}
               </Text>
+            </View>
+          </View>
+          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+            <Text className="text-base text-muted-foreground">Routing Fee</Text>
+            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+              {isPreviewDepositLoading ? (
+                <Skeleton className="w-20 h-7 bg-white/20" />
+              ) : (
+                <Text className="text-lg font-semibold">{`$${formatNumber(routingFee)}`}</Text>
+              )}
             </View>
           </View>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">

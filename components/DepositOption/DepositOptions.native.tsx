@@ -34,6 +34,7 @@ const DepositOptions = () => {
           subtitle={option.subtitle}
           icon={option.icon}
           onPress={option.onPress}
+          bannerText={(option as any).bannerText}
         />
       ))}
     </View>

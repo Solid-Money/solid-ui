@@ -1,28 +1,15 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Hash } from 'viem';
 
-import {
-  formatTransactions,
-  useBankTransferTransactions,
-  useBridgeDepositTransactions,
-  useDepositTransactions,
-  useSendTransactions,
-  useUserTransactions,
-} from '@/hooks/useAnalytics';
 import useUser from '@/hooks/useUser';
-import {
-  bulkUpsertActivityEvent,
-  createActivityEvent,
-  fetchActivityEvents,
-  updateActivityEvent,
-} from '@/lib/api';
-import { ActivityEvent, Transaction, TransactionStatus, TransactionType } from '@/lib/types';
+import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
+import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
-import { secondsToMilliseconds } from 'date-fns';
+import { useSyncActivities } from './useSyncActivities';
 
 // Get explorer URL for a transaction hash based on chain ID
 function getExplorerUrl(chainId: number, txHash: string): string {
@@ -44,10 +31,10 @@ function getTransactionHash(transaction: any): string {
   return '';
 }
 
-function contructActivity(tx: Transaction | ActivityEvent, safeAddress: string): ActivityEvent {
+function constructActivity(tx: ActivityEvent, safeAddress: string): ActivityEvent {
   let clientTxId = `${tx.type}-${tx.timestamp}`;
   if ('trackingId' in tx && tx.trackingId) {
-    clientTxId = tx.trackingId;
+    clientTxId = tx.trackingId as string;
   } else if ('clientTxId' in tx && tx.clientTxId) {
     clientTxId = tx.clientTxId;
   } else if ('hash' in tx && tx.hash) {
@@ -101,15 +88,26 @@ export type TrackTransaction = <TransactionResult>(
 export function useActivity() {
   const { user } = useUser();
   const { events, bulkUpsertEvent, upsertEvent } = useActivityStore();
-  const queryClient = useQueryClient();
   const [cachedActivities, setCachedActivities] = useState<ActivityEvent[]>([]);
+
+  // Sync all activities from backend (handles smart caching internally)
+  // Backend now syncs: Blockscout, deposits, bridges, and bank transfers
+  const {
+    sync: syncFromBackend,
+    isSyncing,
+    isStale: isSyncStale,
+    canSync,
+  } = useSyncActivities({
+    syncOnAppActive: true,
+    syncOnMount: true,
+  });
 
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
     return event.hash || event.userOpHash || event.clientTxId;
   }, []);
 
-  // 1. Fetch from backend first (cached data for instant display)
+  // Fetch from backend (single source of truth for all activities)
   const activityEvents = useInfiniteQuery({
     queryKey: ['activity-events', user?.userId],
     queryFn: ({ pageParam = 1 }) => withRefreshToken(() => fetchActivityEvents(pageParam)),
@@ -121,113 +119,26 @@ export function useActivity() {
     },
     initialPageParam: 1,
     enabled: !!user?.userId,
-    refetchInterval: query => {
-      // Check if there are any pending direct deposit activities
-      const allActivities = query.state.data?.pages.flatMap(page => page?.docs || []) || [];
-
-      const hasPendingDirectDeposits = allActivities.some(activity => {
-        const pendingOrProcessing =
-          activity.status === TransactionStatus.PENDING ||
-          activity.status === TransactionStatus.PROCESSING;
-
-        return activity.clientTxId?.startsWith('direct_deposit_') && pendingOrProcessing;
-      });
-
-      // Poll every 15 seconds if there are pending direct deposits
-      // Otherwise, don't poll automatically (rely on manual refresh)
-      return hasPendingDirectDeposits ? secondsToMilliseconds(15) : false;
-    },
-    refetchIntervalInBackground: true,
+    // No polling - manual refresh only
   });
 
-  const { data: activityData, refetch: refetchActivityEvents } = activityEvents;
+  const { data: activityData, refetch: refetchActivityEvents, isLoading, isRefetching } = activityEvents;
 
-  // 2. Fetch from third-party services
-  const { data: userDepositTransactions, refetch: refetchTransactions } = useUserTransactions(
-    user?.safeAddress ?? '',
-  );
-
-  const { data: sendTransactions, refetch: refetchSendTransactions } = useSendTransactions(
-    user?.safeAddress ?? '',
-  );
-
-  const { data: depositTransactions, refetch: refetchDepositTransactions } = useDepositTransactions(
-    user?.safeAddress ?? '',
-  );
-
-  const { data: bridgeDepositTransactions, refetch: refetchBridgeDepositTransactions } =
-    useBridgeDepositTransactions(user?.safeAddress ?? '');
-
-  const { data: bankTransferTransactions, refetch: refetchBankTransfers } =
-    useBankTransferTransactions();
-
-  // 3. Format third-party transactions
-  const {
-    data: transactions,
-    dataUpdatedAt: transactionsUpdatedAt,
-    isLoading,
-  } = useQuery({
-    queryKey: [
-      'formatted-transactions',
-      user?.safeAddress,
-      userDepositTransactions?.deposits?.length,
-      sendTransactions?.fuse?.length,
-      sendTransactions?.ethereum?.length,
-      depositTransactions?.length,
-      bridgeDepositTransactions?.length,
-      bankTransferTransactions?.length,
-    ],
-    queryFn: () =>
-      formatTransactions(
-        userDepositTransactions,
-        sendTransactions,
-        depositTransactions,
-        bridgeDepositTransactions,
-        bankTransferTransactions,
-      ),
-    staleTime: secondsToMilliseconds(30),
-    refetchInterval: secondsToMilliseconds(30),
-  });
-
-  // Refetch all data sources
+  // Refetch all data sources (backend handles all syncing now)
   const refetchAll = useCallback(() => {
+    if (isSyncing || isRefetching) {
+      return;
+    }
+    // Trigger backend sync in background (non-blocking)
+    // Backend syncs: Blockscout, deposits, bridges, and bank transfers
+    // The sync will invalidate 'activity-events' query when complete
+    syncFromBackend().catch((error: any) => {
+      console.error('Background sync failed:', error);
+    });
+
+    // Refetch cached activities from backend
     refetchActivityEvents();
-    refetchTransactions();
-    refetchSendTransactions();
-    refetchDepositTransactions();
-    refetchBridgeDepositTransactions();
-    refetchBankTransfers();
-  }, [
-    refetchActivityEvents,
-    refetchTransactions,
-    refetchSendTransactions,
-    refetchDepositTransactions,
-    refetchBridgeDepositTransactions,
-    refetchBankTransfers,
-  ]);
-
-  const { mutateAsync: bulkUpsertActivitiesMutation } = useMutation({
-    mutationKey: ['bulk-upsert-activity'],
-    mutationFn: async (payload: ActivityEvent[]) => {
-      const result = await withRefreshToken(() => bulkUpsertActivityEvent(payload));
-      if (!result) throw new Error('Failed to bulk upsert activities');
-      return result;
-    },
-    onSuccess: (serverEvents: ActivityEvent[]) => {
-      if (!user?.userId) return;
-      // Merge server-confirmed events locally
-      bulkUpsertEvent(user.userId, serverEvents);
-    },
-  });
-
-  const bulkUpsertActivities = useCallback(
-    async (payload: ActivityEvent[]) => {
-      const inFlight = queryClient.isMutating({ mutationKey: ['bulk-upsert-activity'] });
-      if (inFlight) return;
-      return bulkUpsertActivitiesMutation(payload);
-    },
-    [queryClient, bulkUpsertActivitiesMutation],
-  );
+  }, [syncFromBackend, refetchActivityEvents]);
 
   // Get user's activities from local storage
   const activities = useMemo(() => {
@@ -262,21 +173,17 @@ export function useActivity() {
     );
   }, [activities]);
 
+  // Sync backend activities to local store for offline access
   useEffect(() => {
     if (!user?.userId || !activityData) return;
 
     const events = activityData.pages
-      .flatMap(page => page?.docs.map(tx => contructActivity(tx, user.safeAddress)))
+      .flatMap(page => page?.docs.map(tx => constructActivity(tx, user.safeAddress)))
       .filter((event): event is ActivityEvent => event !== undefined);
     if (!events.length) return;
 
     bulkUpsertEvent(user.userId, events);
   }, [activityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
-
-  useEffect(() => {
-    if (!user?.userId || !transactions?.length) return;
-    bulkUpsertActivities(transactions.map(tx => contructActivity(tx, user.safeAddress)));
-  }, [transactionsUpdatedAt, user?.userId, user?.safeAddress, bulkUpsertActivities]);
 
   // Create new activity
   const createActivity = useCallback(
@@ -456,12 +363,15 @@ export function useActivity() {
     pendingActivities,
     pendingCount: pendingActivities.length,
     activityEvents,
-    isLoading,
+    isLoading: isLoading || isRefetching,
     getKey,
     createActivity,
     updateActivity,
     trackTransaction,
     refetchAll,
-    bulkUpsertActivities,
+    // Sync state for UI indicators
+    isSyncing,
+    isSyncStale,
+    canSync,
   };
 }

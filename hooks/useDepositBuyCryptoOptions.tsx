@@ -28,6 +28,7 @@ const useDepositBuyCryptoOptions = () => {
       {
         text: 'Debit/Credit Card',
         subtitle: 'Apple pay, Google Pay, or your\ncredit card',
+        bannerText: '5% bonus on deposits',
         icon: (
           <Image
             source={require('@/assets/images/buy_crypto.png')}
@@ -40,6 +41,7 @@ const useDepositBuyCryptoOptions = () => {
       {
         text: 'Bank Deposit',
         subtitle: 'Make a transfer from your bank',
+        bannerText: '5% bonus on deposits',
         icon: (
           <Image
             source={require('@/assets/images/bank_deposit.png')}

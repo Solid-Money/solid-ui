@@ -22,6 +22,10 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.WALLET_TRANSFER,
   },
+  [TransactionType.RECEIVE]: {
+    sign: TransactionDirection.IN,
+    category: TransactionCategory.RECEIVE,
+  },
   [TransactionType.BRIDGE]: {
     sign: TransactionDirection.OUT,
     category: TransactionCategory.EXTERNAL_WALLET_TRANSFER,
@@ -52,15 +56,15 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
   },
   [TransactionType.SWAP]: {
     sign: TransactionDirection.IN,
-    category: TransactionCategory.WALLET_TRANSFER,
+    category: TransactionCategory.SWAP,
   },
   [TransactionType.WRAP]: {
     sign: TransactionDirection.IN,
-    category: TransactionCategory.WALLET_TRANSFER,
+    category: TransactionCategory.SWAP,
   },
   [TransactionType.UNWRAP]: {
     sign: TransactionDirection.IN,
-    category: TransactionCategory.WALLET_TRANSFER,
+    category: TransactionCategory.SWAP,
   },
   [TransactionType.MERKL_CLAIM]: {
     sign: TransactionDirection.IN,

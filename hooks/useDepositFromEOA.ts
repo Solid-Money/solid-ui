@@ -2,15 +2,16 @@ import * as Sentry from '@sentry/react-native';
 import { useEffect, useState } from 'react';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import {
-  type Address,
-  encodeAbiParameters,
-  encodeFunctionData,
-  formatUnits,
-  parseAbiParameters,
-  parseSignature,
-  parseUnits,
-  Signature,
-  verifyTypedData,
+    type Address,
+    encodeAbiParameters,
+    encodeFunctionData,
+    erc20Abi,
+    formatUnits,
+    parseAbiParameters,
+    parseSignature,
+    parseUnits,
+    Signature,
+    verifyTypedData,
 } from 'viem';
 import { waitForTransactionReceipt } from 'viem/actions';
 import { mainnet } from 'viem/chains';
@@ -21,24 +22,23 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
-import ERC20_ABI from '@/lib/abis/ERC20';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, createDeposit, getLifiQuote } from '@/lib/api';
 import {
-  ADDRESSES,
-  EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
-  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+    ADDRESSES,
+    EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
+    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionType, User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import {
-  checkAndSetAllowanceToken,
-  getTransactionReceipt,
-  sendTransaction,
+    checkAndSetAllowanceToken,
+    getTransactionReceipt,
+    sendTransaction,
 } from '@/lib/utils/contract';
 import { config, publicClient } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -81,7 +81,7 @@ const useDepositFromEOA = (
   });
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
-    abi: ERC20_ABI,
+    abi: erc20Abi,
     address: tokenAddress,
     functionName: 'balanceOf',
     args: [eoaAddress as Address],
@@ -148,7 +148,7 @@ const useDepositFromEOA = (
 
   const getTokenName = async (chainId: number, tokenAddress: Address) => {
     const tokenName = await readContract(config, {
-      abi: ERC20_ABI,
+      abi: erc20Abi,
       address: tokenAddress,
       functionName: 'name',
       chainId,
@@ -278,7 +278,7 @@ const useDepositFromEOA = (
 
   const createEvent = async (amount: string, spender: Address, token: string) => {
     const clientTxId = await createActivity({
-      title: `Staked ${token}`,
+      title: `Deposited ${token}`,
       amount,
       symbol: 'soUsd',
       chainId: srcChainId,
@@ -312,7 +312,7 @@ const useDepositFromEOA = (
       args: [
         ADDRESSES.ethereum.usdc,
         amountWei,
-        0n,
+        BigInt(0),
         deadline,
         Number(signatureData.v),
         signatureData.r,
@@ -320,7 +320,7 @@ const useDepositFromEOA = (
         user.safeAddress,
         encodeAbiParameters(parseAbiParameters('uint32'), [30138]), // bridgeWildCard
         ADDRESSES.ethereum.nativeFeeToken,
-        fee ? fee : 0n,
+        fee ? fee : BigInt(0),
       ],
     });
 
@@ -486,6 +486,7 @@ const useDepositFromEOA = (
           );
         }
       } else {
+        await switchChain(srcChainId);
         if (isSponsor) {
           let signatureData: Signature | undefined;
           let deadline: bigint | undefined;
@@ -495,8 +496,6 @@ const useDepositFromEOA = (
             ? Object.values(tokens).find(t => t.name === token)
             : undefined;
           const isPermitSupported = tokenConfig?.isPermit !== false;
-
-          await switchChain(srcChainId);
 
           if (isPermitSupported) {
             const nonce = await getNonce(srcChainId, tokenAddress);
@@ -522,16 +521,16 @@ const useDepositFromEOA = (
               eoaAddress,
               spender,
               amountWei,
+              srcChainId,
             );
-            if (!hash) {
-              throw new Error('Failed to set allowance');
-            }
-            const receipt = await getTransactionReceipt(srcChainId, hash as `0x${string}`);
-            if (!receipt) {
-              throw new Error('Failed to get transaction receipt');
-            }
-            if (receipt.status !== 'success') {
-              throw new Error('Transaction failed');
+            if (hash) {
+              const receipt = await getTransactionReceipt(srcChainId, hash as `0x${string}`);
+              if (!receipt) {
+                throw new Error('Failed to get transaction receipt');
+              }
+              if (receipt.status !== 'success') {
+                throw new Error('Transaction failed');
+              }
             }
           }
 
@@ -608,6 +607,7 @@ const useDepositFromEOA = (
             eoaAddress,
             quote.estimate.approvalAddress,
             BigInt(quote.estimate.fromAmount),
+            srcChainId,
           );
 
           // Track LiFi bridge start

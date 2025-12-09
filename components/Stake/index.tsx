@@ -69,11 +69,11 @@ const Stake = () => {
 
   const getStakeText = () => {
     if (stakeErrors.amount) return stakeErrors.amount.message;
-    if (bridgeStatus === Status.PENDING) return 'Staking';
-    if (bridgeStatus === Status.ERROR) return 'Error while Staking';
-    if (bridgeStatus === Status.SUCCESS) return 'Stake Successful';
+    if (bridgeStatus === Status.PENDING) return 'Depositing';
+    if (bridgeStatus === Status.ERROR) return 'Error while Depositing';
+    if (bridgeStatus === Status.SUCCESS) return 'Deposit Successful';
     if (!isStakeValid || !watchedStakeAmount) return 'Enter an amount';
-    return 'Stake';
+    return 'Deposit';
   };
 
   const onStakeSubmit = async (data: StakeFormData) => {
@@ -86,7 +86,7 @@ const Stake = () => {
       setModal(STAKE_MODAL.OPEN_TRANSACTION_STATUS);
       Toast.show({
         type: 'success',
-        text1: 'Stake transaction completed',
+        text1: 'Deposit transaction completed',
         text2: `${data.amount} soUSD`,
         props: {
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
@@ -109,7 +109,7 @@ const Stake = () => {
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60">Stake amount</Text>
+        <Text className="opacity-60 text-base">Deposit amount</Text>
 
         <View
           className={cn(
@@ -162,7 +162,7 @@ const Stake = () => {
 
       <View className="flex-row gap-2">
         <Info size={30} color="gray" />
-        <Text className="text-sm text-muted-foreground">This action will stake your funds.</Text>
+        <Text className="text-sm text-muted-foreground">This action will deposit your funds.</Text>
       </View>
 
       <Button
@@ -190,14 +190,14 @@ const StakeTrigger = (props: any) => {
     >
       <View className="flex-row items-center gap-4">
         <ArrowUp color="white" />
-        <Text className="font-bold">Stake</Text>
+        <Text className="font-bold text-base">Deposit</Text>
       </View>
     </Button>
   );
 };
 
 const StakeTitle = () => {
-  return <Text className="text-2xl font-semibold">Stake to earn rewards</Text>;
+  return <Text className="text-2xl font-semibold">Deposit to earn rewards</Text>;
 };
 
 export { Stake, StakeTitle, StakeTrigger };

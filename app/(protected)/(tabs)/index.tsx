@@ -116,7 +116,7 @@ export default function Savings() {
     });
   }, [user, intercom]);
 
-  if (!balance && !isDeposited && !isBalanceLoading && !isTransactionsLoading) {
+  if (!balance && !isDeposited && !isBalanceLoading && !isTransactionsLoading && !hasTokens) {
     return <SavingsEmptyState />;
   }
 

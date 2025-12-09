@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { ArrowUpDown, CreditCard, Leaf, Plus, Send, Star } from 'lucide-react-native';
+import { CreditCard, Leaf, Star } from 'lucide-react-native';
 import React from 'react';
 
 import ActivityNavBarIcon from '@/assets/images/activity-nav-bar-icon';
@@ -94,16 +94,6 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="deposit"
-        options={{
-          title: 'Deposit',
-          headerShown: false,
-          tabBarIcon: ({ color }) => <Plus size={28} color={color} />,
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
         name="bank-transfer"
         options={{
           title: 'Bank Transfer',
@@ -126,15 +116,6 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="swap"
-        options={{
-          title: 'Swap',
-          headerShown: false,
-          tabBarIcon: ({ color }) => <ArrowUpDown size={28} color={color} />,
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="card"
         options={{
           title: 'Card',
@@ -147,14 +128,6 @@ export default function TabLayout() {
         options={{
           title: 'Earn',
           tabBarIcon: ({ color }) => <Leaf size={28} color={color} />,
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="send"
-        options={{
-          title: 'Send',
-          tabBarIcon: ({ color }) => <Send size={28} color={color} />,
           href: null,
         }}
       />
@@ -177,13 +150,6 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="coins"
-        options={{
-          title: 'Coins',
           href: null,
         }}
       />

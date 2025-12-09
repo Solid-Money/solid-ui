@@ -18,41 +18,60 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Copy, Fuel, Share2 } from 'lucide-react-native';
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { mainnet } from 'viem/chains';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
 
-const STATUS_TEXT: Record<string, string> = {
+const STATUS_TEXT = {
   pending: 'Waiting for transfer',
   detected: 'Transfer detected',
   processing: 'Processing deposit...',
   completed: 'Completed',
   failed: 'Failed',
   expired: 'Session expired',
+} as const;
+
+type DepositStatus = keyof typeof STATUS_TEXT;
+
+const STATUS_TONE_CLASSES: Record<DepositStatus, string> = {
+  completed: 'text-[#5BFF6C]',
+  expired: 'text-red-400',
+  failed: 'text-red-400',
+  processing: 'text-[#F9D270]',
+  detected: 'text-[#F9D270]',
+  pending: 'text-foreground',
 };
 
-type DepositStatus = 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
+type InfoRow = {
+  label: string;
+  value?: string;
+  valueClassName?: string;
+  extra?: ReactNode;
+  icon?: ReactNode;
+  valueContent?: ReactNode;
+};
 
 const DepositDirectlyAddress = () => {
   const { user } = useUser();
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
-  const [shareFeedback, setShareFeedback] = useState<'copied' | 'error' | null>(null);
+  const [shareError, setShareError] = useState(false);
   const { maxAPY, isAPYsLoading } = useMaxAPY();
-  const trackedStatuses = useRef<Set<string>>(new Set());
+  const trackedStatuses = useRef<Set<DepositStatus>>(new Set());
 
   const { session } = useDirectDepositSessionPolling(directDepositSession.sessionId, true);
+
+  const chainId = directDepositSession.chainId || mainnet.id;
+  const network = BRIDGE_TOKENS[chainId];
+  const walletAddress = directDepositSession.walletAddress;
 
   // Unified status from polling or store
   const status: DepositStatus =
     (session?.status as DepositStatus) || directDepositSession.status || 'pending';
-  const isCompleted = status === 'completed';
   const isExpired = status === 'expired';
-  const isFailed = status === 'failed';
-  const isProcessing = status === 'processing' || status === 'detected';
 
   // Track status changes (only once per status)
   useEffect(() => {
@@ -65,55 +84,48 @@ const DepositDirectlyAddress = () => {
       session_id: session.sessionId,
     };
 
-    if (status === 'detected') {
-      track(TRACKING_EVENTS.DEPOSIT_VALIDATED, { ...basePayload, status: 'detected' });
-    } else if (status === 'completed') {
-      track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-        ...basePayload,
-        amount: session.detectedAmount,
-        transaction_hash: session.transactionHash,
-      });
-    } else if (status === 'failed') {
-      track(TRACKING_EVENTS.DEPOSIT_ERROR, { ...basePayload, status: 'failed' });
+    switch (status) {
+      case 'detected':
+        track(TRACKING_EVENTS.DEPOSIT_VALIDATED, { ...basePayload, status: 'detected' });
+        break;
+      case 'completed':
+        track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
+          ...basePayload,
+          amount: session.detectedAmount,
+          transaction_hash: session.transactionHash,
+        });
+        break;
+      case 'failed':
+        track(TRACKING_EVENTS.DEPOSIT_ERROR, { ...basePayload, status: 'failed' });
+        break;
     }
   }, [status, session, user?.userId, user?.safeAddress]);
 
-  // Clear share feedback after timeout
+  // Clear share error after timeout
   useEffect(() => {
-    if (!shareFeedback) return;
-    const timer = setTimeout(() => setShareFeedback(null), 2500);
+    if (!shareError) return;
+    const timer = setTimeout(() => setShareError(false), 2500);
     return () => clearTimeout(timer);
-  }, [shareFeedback]);
+  }, [shareError]);
 
-  const handleDone = () => {
+  const handleDone = useCallback(() => {
     setModal(DEPOSIT_MODAL.CLOSE);
     clearDirectDepositSession();
     if (!directDepositSession.fromActivity) {
       router.push(path.ACTIVITY);
     }
-  };
+  }, [setModal, clearDirectDepositSession, directDepositSession.fromActivity]);
 
-  const handleShare = async () => {
-    const address = directDepositSession.walletAddress;
-    if (!address) return;
+  const handleShare = useCallback(async () => {
+    if (!walletAddress) return;
 
     try {
-      await Share.share({ message: address, title: 'Solid deposit address' });
+      await Share.share({ message: walletAddress, title: 'Solid deposit address' });
     } catch (error) {
       console.error('Failed to share deposit address:', error);
-      setShareFeedback('error');
+      setShareError(true);
     }
-  };
-
-  const chainId = directDepositSession.chainId || mainnet.id;
-  const network = BRIDGE_TOKENS[chainId];
-
-  const statusToneClass = useMemo(() => {
-    if (isCompleted) return 'text-[#5BFF6C]';
-    if (isExpired || isFailed) return 'text-red-400';
-    if (isProcessing) return 'text-[#F9D270]';
-    return 'text-foreground';
-  }, [isCompleted, isExpired, isFailed, isProcessing]);
+  }, [walletAddress]);
 
   const estimatedTime = chainId === 1 ? '5 minutes' : '30 minutes';
   const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
@@ -125,41 +137,35 @@ const DepositDirectlyAddress = () => {
   const maxDeposit = session?.maxDeposit || directDepositSession.maxDeposit || '500000';
   const fee = session?.fee || directDepositSession.fee || '0';
 
-  type InfoRow = {
-    label: string;
-    value?: string;
-    valueClassName?: string;
-    extra?: ReactNode;
-    icon?: ReactNode;
-    valueContent?: ReactNode;
-  };
-
-  const infoRows: InfoRow[] = [
-    {
-      label: 'APY',
-      valueContent: isAPYsLoading ? (
-        <Skeleton className="h-7 w-16 bg-white/20" />
-      ) : (
-        <Text className="font-bold text-[#94F27F] text-xl">{formattedAPY}</Text>
-      ),
-      extra: (
-        <TooltipPopover
-          text="Annual percentage yield for this deposited amount. Actual yield may vary slightly once the transfer clears."
-          analyticsContext="deposit_directly_apy"
-          side="top"
-        />
-      ),
-    },
-    { label: 'Min deposit', value: `${minDeposit} USDC` },
-    { label: 'Max deposit', value: `${maxDeposit} USDC` },
-    { label: 'Estimated time', value: estimatedTime },
-    {
-      label: 'Status',
-      value: STATUS_TEXT[status] || STATUS_TEXT.pending,
-      valueClassName: `${statusToneClass} font-medium`,
-    },
-    { label: 'Fee', value: `${fee} USDC`, icon: <Fuel size={16} color="#A1A1AA" /> },
-  ];
+  const infoRows: InfoRow[] = useMemo(
+    () => [
+      {
+        label: 'APY',
+        valueContent: isAPYsLoading ? (
+          <Skeleton className="h-7 w-16 bg-white/20" />
+        ) : (
+          <Text className="font-bold text-[#94F27F] text-xl">{formattedAPY}</Text>
+        ),
+        extra: (
+          <TooltipPopover
+            text="Annual percentage yield for this deposited amount. Actual yield may vary slightly once the transfer clears."
+            analyticsContext="deposit_directly_apy"
+            side="top"
+          />
+        ),
+      },
+      { label: 'Min deposit', value: `${minDeposit} USDC` },
+      { label: 'Max deposit', value: `${maxDeposit} USDC` },
+      { label: 'Estimated time', value: estimatedTime },
+      {
+        label: 'Status',
+        value: STATUS_TEXT[status],
+        valueClassName: `${STATUS_TONE_CLASSES[status]} font-medium`,
+      },
+      { label: 'Fee', value: `${fee} USDC`, icon: <Fuel size={16} color="#A1A1AA" /> },
+    ],
+    [isAPYsLoading, formattedAPY, minDeposit, maxDeposit, estimatedTime, status, fee],
+  );
 
   return (
     <View className="flex-col gap-3">
@@ -188,12 +194,10 @@ const DepositDirectlyAddress = () => {
         <View className="gap-4">
           <View className="flex-row items-center justify-center">
             <Text className="text-lg tracking-wide text-foreground text-center">
-              {directDepositSession.walletAddress
-                ? eclipseAddress(directDepositSession.walletAddress, 6, 6)
-                : '—'}
+              {walletAddress ? eclipseAddress(walletAddress, 6, 6) : '—'}
             </Text>
             <CopyToClipboard
-              text={directDepositSession.walletAddress || ''}
+              text={walletAddress || ''}
               className="h-10 w-10 bg-transparent"
               iconClassName="text-white"
             />
@@ -218,12 +222,8 @@ const DepositDirectlyAddress = () => {
             </Button>
           </View>
 
-          {shareFeedback && (
-            <Text className="text-xs text-muted-foreground">
-              {shareFeedback === 'copied'
-                ? 'Address copied to clipboard.'
-                : 'Sharing not supported.'}
-            </Text>
+          {shareError && (
+            <Text className="text-xs text-muted-foreground">Sharing not supported.</Text>
           )}
         </View>
       </View>
@@ -280,12 +280,7 @@ const DepositDirectlyAddress = () => {
       >
         <View className="items-center gap-3">
           <View className="rounded-3xl bg-white p-3">
-            <QRCode
-              value={directDepositSession.walletAddress || ''}
-              size={220}
-              backgroundColor="white"
-              color="black"
-            />
+            <QRCode value={walletAddress || ''} size={220} backgroundColor="white" color="black" />
           </View>
           <Text className="text-center text-xs text-muted-foreground">
             Share this QR code with the sender or scan it from another device to populate the wallet

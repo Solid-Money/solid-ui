@@ -46,14 +46,14 @@ export default function Referral() {
               <Text className="text-white/70 text-left mt-8">Referral code</Text>
             </View>
             <View className="flex-row w-full justify-between items-center p-4 ps-6 bg-primary/10 rounded-2xl text-primary font-medium mt-4">
-              <Text>{user?.referralCode}</Text>
+              <Text className="text-base">{user?.referralCode}</Text>
               <CopyToClipboard text={user?.referralCode || ''} />
             </View>
             <View className="flex-col justify-center w-full mt-4">
               <Text className="text-white/70 text-left mt-8">Direct register link</Text>
             </View>
             <View className="flex-row w-full justify-between items-center p-4 ps-6 bg-primary/10 rounded-2xl text-primary font-medium mt-4">
-              <Text>https://app.solid.xyz/?ref={user?.referralCode}</Text>
+              <Text className="text-base">https://app.solid.xyz/?ref={user?.referralCode}</Text>
               <CopyToClipboard text={`https://app.solid.xyz/?ref=${user?.referralCode}`} />
             </View>
           </View>

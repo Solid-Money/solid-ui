@@ -39,7 +39,7 @@ export default function Card() {
         <View className="flex-1 justify-center items-center">
           <Text className="text-lg text-red-500">Error loading card status</Text>
           <Button className="mt-4" onPress={() => refetch()}>
-            <Text>Retry</Text>
+            <Text className="text-base">Retry</Text>
           </Button>
         </View>
       </PageLayout>

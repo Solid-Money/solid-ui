@@ -1,5 +1,6 @@
 import { gql } from '@apollo/client';
 import * as Apollo from '@apollo/client';
+import * as ApolloReactHooks from '@apollo/client/react';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -1200,17 +1201,17 @@ export const GetExchangeRateUpdatesDocument = gql`
  *   },
  * });
  */
-export function useGetExchangeRateUpdatesQuery(baseOptions: Apollo.QueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables> & ({ variables: GetExchangeRateUpdatesQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+export function useGetExchangeRateUpdatesQuery(baseOptions: ApolloReactHooks.QueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables> & ({ variables: GetExchangeRateUpdatesQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
         const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
+        return ApolloReactHooks.useQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
       }
-export function useGetExchangeRateUpdatesLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>) {
+export function useGetExchangeRateUpdatesLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>) {
           const options = {...defaultOptions, ...baseOptions}
-          return Apollo.useLazyQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
+          return ApolloReactHooks.useLazyQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
         }
-export function useGetExchangeRateUpdatesSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>) {
-          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
-          return Apollo.useSuspenseQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
+export function useGetExchangeRateUpdatesSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
         }
 export type GetExchangeRateUpdatesQueryHookResult = ReturnType<typeof useGetExchangeRateUpdatesQuery>;
 export type GetExchangeRateUpdatesLazyQueryHookResult = ReturnType<typeof useGetExchangeRateUpdatesLazyQuery>;
@@ -1262,17 +1263,17 @@ export const GetUserTransactionsDocument = gql`
  *   },
  * });
  */
-export function useGetUserTransactionsQuery(baseOptions: Apollo.QueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables> & ({ variables: GetUserTransactionsQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
+export function useGetUserTransactionsQuery(baseOptions: ApolloReactHooks.QueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables> & ({ variables: GetUserTransactionsQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
         const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
+        return ApolloReactHooks.useQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
       }
-export function useGetUserTransactionsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>) {
+export function useGetUserTransactionsLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>) {
           const options = {...defaultOptions, ...baseOptions}
-          return Apollo.useLazyQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
+          return ApolloReactHooks.useLazyQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
         }
-export function useGetUserTransactionsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>) {
-          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
-          return Apollo.useSuspenseQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
+export function useGetUserTransactionsSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
         }
 export type GetUserTransactionsQueryHookResult = ReturnType<typeof useGetUserTransactionsQuery>;
 export type GetUserTransactionsLazyQueryHookResult = ReturnType<typeof useGetUserTransactionsLazyQuery>;

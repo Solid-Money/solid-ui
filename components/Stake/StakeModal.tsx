@@ -24,7 +24,7 @@ const StakeModal = ({ trigger }: StakeModalProps) => {
 
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
-    return 'Stake';
+    return 'Deposit';
   };
 
   const handleTransactionStatusPress = () => {

@@ -96,6 +96,8 @@ export default {
           },
           android: {
             compileSdkVersion: 35,
+            enableProguardInReleaseBuilds: true,
+            enableShrinkResourcesInReleaseBuilds: true,
           },
         },
       ],

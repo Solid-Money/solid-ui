@@ -26,9 +26,9 @@ const APYChart = () => {
         {isLoading ? (
           <ActivityIndicator size="large" color="white" />
         ) : data && data.length > 0 ? (
-          <BarChart data={data} height={150} formatToolTip={formatToolTip} />
+          <BarChart data={data} formatToolTip={formatToolTip} />
         ) : (
-          <Text>No data available</Text>
+          <Text className="text-base">No data available</Text>
         )}
       </View>
     </View>

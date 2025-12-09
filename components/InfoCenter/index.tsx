@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 import { Linking, Pressable } from 'react-native';
 
+import DocsIcon from '@/assets/images/docs';
 import QuestionIcon from '@/assets/images/question';
 import SupportIcon from '@/assets/images/support';
-import DocsIcon from '@/assets/images/docs';
 import { Text } from '@/components/ui/text';
 import { useIntercom } from '@/lib/intercom';
 
@@ -22,7 +22,7 @@ const InfoCenterSupport = () => {
   return (
     <>
       <SupportIcon width={20} height={20} />
-      <Text className="font-semibold">Support</Text>
+      <Text className="font-semibold text-base">Support</Text>
     </>
   );
 };
@@ -38,7 +38,7 @@ const InfoCenterDocs = () => {
   return (
     <>
       <DocsIcon width={20} height={20} />
-      <Text className="font-semibold">Docs</Text>
+      <Text className="font-semibold text-base">Docs</Text>
     </>
   );
 };
@@ -51,7 +51,7 @@ const InfoCenterLegal = () => {
   return (
     <>
       <DocsIcon width={20} height={20} />
-      <Text className="font-semibold">Legal</Text>
+      <Text className="font-semibold text-base">Legal</Text>
     </>
   );
 };
@@ -61,11 +61,11 @@ const onInfoCenterLegalPress = () => {
 };
 
 export {
+  InfoCenterDocs,
+  InfoCenterLegal,
   InfoCenterSupport,
   InfoCenterTrigger,
-  useInfoCenterSupportPress,
-  InfoCenterDocs,
   onInfoCenterDocsPress,
-  InfoCenterLegal,
   onInfoCenterLegalPress,
+  useInfoCenterSupportPress,
 };

@@ -236,7 +236,15 @@ export function useDerivedSwapInfo(): {
     slippage.toFixed(),
   );
 
+  // Track if component has mounted to avoid state updates during hydration
+  const [hasMounted, setHasMounted] = useState(false);
   useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Skip state updates until after initial mount/hydration
+    if (!hasMounted) return;
     if (voltageTrade.isLoading) return;
 
     // Use setTimeout to avoid setState during render
@@ -266,6 +274,7 @@ export function useDerivedSwapInfo(): {
 
     return () => clearTimeout(timeoutId);
   }, [
+    hasMounted,
     voltageTrade.isLoading,
     voltageTrade.isValid,
     voltageTrade.trade?.outputAmount,
