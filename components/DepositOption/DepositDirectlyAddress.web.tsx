@@ -20,6 +20,9 @@ import { router } from 'expo-router';
 import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'react-native-qrcode-svg';
+import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
+import { formatNumber } from '@/lib/utils';
+import { formatUnits } from 'viem';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
 
@@ -51,10 +54,6 @@ type InfoRow = {
   icon?: ReactNode;
   valueContent?: ReactNode;
 };
-
-import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
-import { formatNumber } from '@/lib/utils';
-import { formatUnits } from 'viem';
 
 const DepositDirectlyAddress = () => {
   const { user } = useUser();
