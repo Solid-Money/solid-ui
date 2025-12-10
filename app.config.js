@@ -93,6 +93,7 @@ export default {
           ios: {
             deploymentTarget: '15.1',
             useFrameworks: 'static',
+            forceStaticLinking: ['RNFBApp', 'RNFBMessaging', 'RNFBAnalytics']
           },
           android: {
             minSdkVersion: 26,
@@ -110,6 +111,7 @@ export default {
       ],
       '@react-native-firebase/app',
       '@react-native-firebase/messaging',
+      './plugins/withFirebaseModularHeadersFix',
       [
         '@sentry/react-native/expo',
         {

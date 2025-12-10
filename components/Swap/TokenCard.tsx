@@ -87,13 +87,13 @@ const TokenCard: React.FC<TokenCardProps> = ({
   );
 
   return (
-    <View className="bg-card flex flex-col w-full gap-2 transition-all duration-300 ease-out p-4 rounded-xl">
+    <View className="bg-card flex flex-col w-full gap-2 web:transition-all web:duration-300 web:ease-out p-4 rounded-xl">
       {title && (
         <View className="flex-row items-center justify-between gap-2 px-1">
           <Text className="text-sm text-muted-foreground font-medium tracking-wide">{title}</Text>
         </View>
       )}
-      <View className="flex-row items-center justify-between w-full transition-all duration-300">
+      <View className="flex-row items-center justify-between w-full web:transition-all web:duration-300">
         <View className="flex-1 mr-4">
           {disabled ? (
             <Text className="text-4xl font-semibold text-foreground">

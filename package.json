@@ -109,6 +109,7 @@
     "react-native-marked": "^7.1.0",
     "react-native-mmkv": "^4.1.0",
     "react-native-modal": "^14.0.0-rc.1",
+    "react-native-nitro-modules": "^0.31.10",
     "react-native-passkey": "^3.3.2",
     "react-native-qrcode-svg": "^6.3.21",
     "react-native-quick-crypto": "^0.7.17",
