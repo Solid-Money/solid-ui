@@ -605,7 +605,11 @@ function CardDetailsOverlay({
                 {formatExpiryDate(cardDetails.expiry_date)}
               </Text>
             </View>
-            <Text className="text-lg font-semibold mt-6" style={{ color: '#2E6A25' }}>
+            <Text
+              className="text-sm md:text-lg font-semibold mt-6"
+              style={{ color: '#2E6A25' }}
+              numberOfLines={1}
+            >
               {displayName}
             </Text>
           </View>
@@ -623,7 +627,7 @@ function CardDetailsOverlay({
   }
 
   return (
-    <View className="absolute inset-0 rounded-2xl p-6 mt-24 justify-center">
+    <View className="absolute inset-0 rounded-2xl p-6 mt-12 md:mt-24 justify-center">
       <View className="mb-5">
         <View className="flex-row items-center gap-2">
           <Text className="text-lg md:text-3xl font-medium" style={{ color: '#2E6A25' }}>
@@ -637,7 +641,7 @@ function CardDetailsOverlay({
 
       <View className="flex-row">
         <View className="flex-1 mr-6">
-          <View className="flex-row items-end mt-4">
+          <View className="flex-row items-end md:mt-4">
             <Text className="text-[9px] font-extrabold mb-1" style={{ color: '#2E6A25' }}>
               {'GOOD\nTHRU'}
             </Text>
@@ -645,15 +649,19 @@ function CardDetailsOverlay({
               {formatExpiryDate(cardDetails.expiry_date)}
             </Text>
           </View>
-          <Text className="text-lg font-semibold mt-6" style={{ color: '#2E6A25' }}>
+          <Text
+            className="text-sm md:text-lg font-semibold mt-6"
+            style={{ color: '#2E6A25' }}
+            numberOfLines={1}
+          >
             {displayName}
           </Text>
         </View>
-        <View className="flex-1 mt-4">
+        <View className="flex-1 md:mt-4">
           <Text className="text-xs font-semibold" style={{ color: '#2E6A25' }}>
             CVV
           </Text>
-          <Text className="text-lg font-semibold" style={{ color: '#2E6A25' }}>
+          <Text className="md:text-lg font-semibold" style={{ color: '#2E6A25' }}>
             {cardDetails.card_security_code}
           </Text>
         </View>
