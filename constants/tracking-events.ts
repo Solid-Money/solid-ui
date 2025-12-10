@@ -156,13 +156,6 @@ export const TRACKING_EVENTS = {
   CARD_DEPOSIT_COMPLETED: 'card_deposit_completed',
   CARD_DEPOSIT_FAILED: 'card_deposit_failed',
 
-  // Fast Withdraw Events
-  FAST_WITHDRAW_INITIATED: 'fast_withdraw_initiated',
-  FAST_WITHDRAW_TRANSACTION_SENT: 'fast_withdraw_transaction_sent',
-  FAST_WITHDRAW_COMPLETED: 'fast_withdraw_completed',
-  FAST_WITHDRAW_FAILED: 'fast_withdraw_failed',
-  FAST_WITHDRAW_CANCELLED: 'fast_withdraw_cancelled',
-
   // Global / Error Events
   ERROR_BOUNDARY: 'error_boundary',
 } as const;

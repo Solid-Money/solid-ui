@@ -180,7 +180,7 @@ const Withdraw = () => {
       <View className="flex-row gap-2">
         <Info size={30} color="gray" />
         <Text className="text-sm text-muted-foreground">
-          This action will withdraw your funds to USDC and allow you to send them to another wallet
+          This action will withdraw your funds and allow you to send them to another wallet
         </Text>
       </View>
 

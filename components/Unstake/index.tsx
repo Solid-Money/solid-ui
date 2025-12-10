@@ -109,12 +109,12 @@ const Unstake = () => {
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60 text-base text-muted-foreground">Withdraw amount</Text>
+        <Text className="opacity-60 text-base">Withdraw amount</Text>
 
         <View
           className={cn(
-            'w-full bg-primary/5 rounded-2xl px-5 py-3',
-            bridgeErrors.amount && 'border border-destructive',
+            'w-full bg-accent rounded-2xl px-5 py-3',
+            bridgeErrors.amount && 'border border-red-500',
           )}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
         >
@@ -124,10 +124,10 @@ const Unstake = () => {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="w-full text-2xl text-foreground font-semibold web:focus:outline-none"
+                className="w-full text-2xl text-white font-semibold web:focus:outline-none"
                 value={value.toString()}
                 placeholder="0.0"
-                placeholderTextColor="#A3A3A3"
+                placeholderTextColor="#666"
                 onChangeText={onChange}
                 onBlur={onBlur}
               />
@@ -139,14 +139,14 @@ const Unstake = () => {
               alt="SoUSD"
               style={{ width: 34, height: 34 }}
             />
-            <Text className="font-semibold text-foreground text-lg native:text-sm web:text-base">
+            <Text className="font-semibold text-white text-lg native:text-sm web:text-base">
               SoUSD
             </Text>
           </View>
         </View>
 
         <View className="flex-row items-center gap-1.5">
-          <Wallet size={16} color="#A3A3A3" />
+          <Wallet size={16} color="#666" />
           <Text className="text-muted-foreground text-sm">
             {isFuseBalanceLoading ? (
               <Skeleton className="w-16 h-4 rounded-md" />
@@ -166,7 +166,7 @@ const Unstake = () => {
       </View>
 
       <View className="flex-row gap-2 items-start">
-        <Info size={20} color="#A3A3A3" />
+        <Info size={20} color="gray" />
         <Text className="text-sm text-muted-foreground flex-1">
           Withdrawals are processed in two steps. This step will unstake your funds to be able to
           withdraw and should take up to 10 mins.
@@ -179,7 +179,7 @@ const Unstake = () => {
         onPress={handleBridgeSubmit(onBridgeSubmit)}
         disabled={isBridgeFormDisabled()}
       >
-        <Text className="font-semibold text-primary-foreground text-lg">{getBridgeText()}</Text>
+        <Text className="font-semibold text-black text-lg">{getBridgeText()}</Text>
         {isBridgeLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>

@@ -2,16 +2,16 @@ import * as Sentry from '@sentry/react-native';
 import { useEffect, useState } from 'react';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import {
-  type Address,
-  encodeAbiParameters,
-  encodeFunctionData,
-  erc20Abi,
-  formatUnits,
-  parseAbiParameters,
-  parseSignature,
-  parseUnits,
-  Signature,
-  verifyTypedData,
+    type Address,
+    encodeAbiParameters,
+    encodeFunctionData,
+    erc20Abi,
+    formatUnits,
+    parseAbiParameters,
+    parseSignature,
+    parseUnits,
+    Signature,
+    verifyTypedData,
 } from 'viem';
 import { waitForTransactionReceipt } from 'viem/actions';
 import { mainnet } from 'viem/chains';
@@ -27,18 +27,18 @@ import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, createDeposit, getLifiQuote } from '@/lib/api';
 import {
-  ADDRESSES,
-  EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
-  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+    ADDRESSES,
+    EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
+    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionType, User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import {
-  checkAndSetAllowanceToken,
-  getTransactionReceipt,
-  sendTransaction,
+    checkAndSetAllowanceToken,
+    getTransactionReceipt,
+    sendTransaction,
 } from '@/lib/utils/contract';
 import { config, publicClient } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -436,23 +436,21 @@ const useDepositFromEOA = (
         });
 
         await switchChain(mainnet.id);
+        const nonce = await getNonce(mainnet.id, tokenAddress);
+        const tokenName = await getTokenName(mainnet.id, tokenAddress);
 
-        const hash = await checkAndSetAllowanceToken(
-          tokenAddress,
+        const { signatureData, deadline } = await signPermit(
           eoaAddress,
           spender,
+          amount,
           amountWei,
-          srcChainId,
+          mainnet.id,
+          nonce,
+          tokenName,
+          user,
+          isSponsor,
+          tokenAddress,
         );
-        if (hash) {
-          const receipt = await getTransactionReceipt(srcChainId, hash as `0x${string}`);
-          if (!receipt) {
-            throw new Error('Failed to get transaction receipt');
-          }
-          if (receipt.status !== 'success') {
-            throw new Error('Transaction failed');
-          }
-        }
 
         if (isSponsor) {
           Sentry.addBreadcrumb({
@@ -467,30 +465,22 @@ const useDepositFromEOA = (
             createDeposit({
               eoaAddress,
               amount,
+              permitSignature: {
+                v: Number(signatureData.v),
+                r: signatureData.r,
+                s: signatureData.s,
+                deadline: Number(deadline),
+              },
               trackingId,
             }),
           );
         } else {
-          const nonce = await getNonce(srcChainId, tokenAddress);
-          const tokenName = await getTokenName(srcChainId, tokenAddress);
-          const result = await signPermit(
-            eoaAddress,
-            spender,
-            amount,
-            amountWei,
-            srcChainId,
-            nonce,
-            tokenName,
-            user,
-            isSponsor,
-            tokenAddress,
-          );
           const fee = await getFee();
           transaction = await depositOnEthereum(
             amount,
             amountWei,
-            result.signatureData,
-            result.deadline,
+            signatureData,
+            deadline,
             user,
             fee,
           );
