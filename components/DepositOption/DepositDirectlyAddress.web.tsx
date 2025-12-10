@@ -144,12 +144,13 @@ const DepositDirectlyAddress = () => {
 
   const estimatedTime = chainId === 1 ? '5 minutes' : '30 minutes';
   const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
+
   const minDeposit =
     EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ||
     session?.minDeposit ||
     directDepositSession.minDeposit ||
     '0.0001';
-  const maxDeposit = session?.maxDeposit || directDepositSession.maxDeposit || '500,000';
+
   const fee = session?.fee || directDepositSession.fee || '0';
 
   const infoRows: InfoRow[] = useMemo(
@@ -169,27 +170,10 @@ const DepositDirectlyAddress = () => {
   const priceRows: InfoRow[] = useMemo(() => {
     const rows: InfoRow[] = [];
 
-    // Always show estimated receive amount for 10 USDC
-    rows.push({
-      label: 'You will receive',
-      valueContent: (
-        <div className="flex flex-row items-center gap-1.5">
-          <Image
-            source={require('@/assets/images/sousd-4x.png')}
-            style={{ width: 18, height: 18 }}
-            contentFit="contain"
-          />
-          <Text className="font-bold text-white text-base">
-            {formatNumber(amountOut || 0, 4, 4)} soUSD
-          </Text>
-        </div>
-      ),
-    });
-
     rows.push({
       label: 'Price',
       valueContent: (
-        <Text className="font-bold text-white text-base">
+        <Text className="font-medium text-white text-base">
           1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
           USDC
         </Text>
@@ -201,7 +185,7 @@ const DepositDirectlyAddress = () => {
       valueContent: isMaxAPYsLoading ? (
         <Skeleton className="h-7 w-16 bg-white/20" />
       ) : (
-        <Text className="font-bold text-[#94F27F] text-base">{formattedAPY}</Text>
+        <Text className="font-medium text-[#94F27F] text-base">{formattedAPY}</Text>
       ),
     });
 
@@ -298,7 +282,7 @@ const DepositDirectlyAddress = () => {
           {priceRows.map((row, index) => (
             <div key={row.label} className="flex flex-col">
               <div className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
-                <Text className="font-medium text-muted-foreground">{row.label}</Text>
+                <Text className="font-medium text-base text-muted-foreground">{row.label}</Text>
                 <div className="flex items-center gap-2">
                   {row.valueContent ? (
                     row.valueContent
@@ -328,7 +312,7 @@ const DepositDirectlyAddress = () => {
               <div className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
                 <div className="flex items-center gap-1.5 md:gap-2">
                   {row.icon}
-                  <Text className="font-medium text-muted-foreground">{row.label}</Text>
+                  <Text className="font-medium text-base text-muted-foreground">{row.label}</Text>
                 </div>
                 <div className="flex items-center gap-2">
                   {row.valueContent ? (

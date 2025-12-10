@@ -22,6 +22,7 @@ import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
 import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
@@ -122,8 +123,8 @@ export default function CardDetails() {
   // Desktop layout
   if (isScreenMedium) {
     return (
-      <PageLayout desktopOnly contentClassName="px-4" isLoading={isLoading}>
-        <View className="w-full max-w-6xl mx-auto pt-8 pb-12">
+      <PageLayout desktopOnly isLoading={isLoading}>
+        <View className="w-full max-w-7xl mx-auto px-4 pt-8 pb-12">
           {/* Desktop Header */}
           <DesktopHeader
             isCardFrozen={isCardFrozen}
@@ -183,8 +184,8 @@ export default function CardDetails() {
 
   // Mobile layout (unchanged)
   return (
-    <PageLayout desktopOnly contentClassName="px-4" isLoading={isLoading}>
-      <View className="w-full max-w-lg mx-auto pt-8">
+    <PageLayout desktopOnly isLoading={isLoading}>
+      <View className="w-full max-w-lg mx-auto px-4 pt-8">
         <MobileHeader onBackPress={handleBackPress} />
 
         <View className="flex-1">
@@ -259,14 +260,15 @@ function DesktopHeader({
 }: DesktopHeaderProps) {
   return (
     <View className="flex-row items-center justify-between">
-      <Text className="text-white text-4xl font-bold">Card</Text>
-      <View className="flex-row items-center gap-3">
-        <Pressable
+      <Text className="text-3xl font-semibold">Card</Text>
+      <View className="flex-row items-center gap-2">
+        <Button
+          variant="secondary"
+          className="h-12 px-6 rounded-xl bg-[#303030] border-0"
           onPress={onCardDetails}
           disabled={isLoadingCardDetails}
-          className="flex-row items-center gap-2 bg-[#303030] rounded-xl px-5 py-3 web:hover:bg-[#3a3a3a] active:opacity-80"
         >
-          <View style={{ width: 15, height: 15, justifyContent: 'center', alignItems: 'center' }}>
+          <View className="flex-row items-center gap-2">
             {isLoadingCardDetails ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
@@ -276,18 +278,18 @@ function DesktopHeader({
                 contentFit="contain"
               />
             )}
+            <Text className="text-base text-white font-bold">
+              {isCardFlipped ? 'Hide details' : 'Card details'}
+            </Text>
           </View>
-
-          <Text className="text-white  font-semibold">
-            {isCardFlipped ? 'Hide details' : 'Card details'}
-          </Text>
-        </Pressable>
-        <Pressable
+        </Button>
+        <Button
+          variant="secondary"
+          className="h-12 px-6 rounded-xl bg-[#303030] border-0"
           onPress={onFreezeToggle}
           disabled={isFreezing}
-          className="flex-row items-center gap-2 bg-[#303030] rounded-xl px-5 py-3 web:hover:bg-[#3a3a3a] active:opacity-80"
         >
-          <View style={{ width: 18, height: 18, justifyContent: 'center', alignItems: 'center' }}>
+          <View className="flex-row items-center gap-2">
             {isFreezing ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
@@ -297,15 +299,22 @@ function DesktopHeader({
                 contentFit="contain"
               />
             )}
+            <Text className="text-base text-white font-bold">
+              {isCardFrozen ? 'Unfreeze' : 'Freeze'}
+            </Text>
           </View>
-          <Text className="text-white font-semibold">{isCardFrozen ? 'Unfreeze' : 'Freeze'}</Text>
-        </Pressable>
+        </Button>
         <DepositToCardModal
           trigger={
-            <View className="flex-row items-center gap-2 bg-[#94F27F] rounded-xl px-5 py-3 web:hover:opacity-90 active:opacity-80">
-              <Plus size={18} color="black" />
-              <Text className="text-black font-semibold">Deposit</Text>
-            </View>
+            <Button
+              className="h-12 px-6 rounded-xl border-0"
+              style={{ backgroundColor: '#94F27F' }}
+            >
+              <View className="flex-row items-center gap-2">
+                <Plus size={22} color="black" />
+                <Text className="text-base text-black font-bold">Deposit</Text>
+              </View>
+            </Button>
           }
         />
       </View>
@@ -340,7 +349,7 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
         {/* Spending Balance Section */}
         <View>
           <Text className="text-white/60 text-base mb-2">Spending balance</Text>
-          <Text className="text-white text-5xl font-bold">${formattedAmount}</Text>
+          <Text className="text-white text-[50px] font-semibold">${formattedAmount}</Text>
         </View>
 
         {/* Cashback Section */}
@@ -351,7 +360,7 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
           </View>
 
           {/* Cashback Badge */}
-          <View className="bg-[#1A2E1A] rounded-xl px-4 py-3 flex-row items-center gap-2">
+          <View className="px-4 py-3 flex-row items-center gap-2">
             <Image
               source={require('@/assets/images/diamond.png')}
               style={{ width: 62, height: 57 }}
@@ -726,7 +735,7 @@ function DepositBonusBanner() {
           >
             Learn more
           </Link>
-          <Text> {'>'}</Text>
+          <Text className="text-[#FFD151]"> {'>'}</Text>
         </Text>
       </View>
     );
