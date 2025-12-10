@@ -20,6 +20,7 @@ type BridgeTokens = {
     icon: ImageSourcePropType;
     sort: number;
     isComingSoon?: boolean;
+    bridgeSpeed?: number;
   };
 };
 
@@ -43,6 +44,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     name: 'Ethereum',
     icon: require('@/assets/images/eth.png'),
     sort: 1,
+    bridgeSpeed: 2,
   },
   [polygon.id]: {
     tokens: {
@@ -64,6 +66,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     name: 'Polygon',
     icon: require('@/assets/images/polygon.png'),
     sort: 2,
+    bridgeSpeed: 2,
   },
   [base.id]: {
     tokens: {
@@ -77,6 +80,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     name: 'Base',
     icon: require('@/assets/images/base.png'),
     sort: 3,
+    bridgeSpeed: 2,
   },
   [arbitrum.id]: {
     tokens: {
@@ -98,6 +102,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     name: 'Arbitrum',
     icon: require('@/assets/images/arbitrum.png'),
     sort: 4,
+    bridgeSpeed: 2,
   },
   [fuse.id]: {
     tokens: {
@@ -119,6 +124,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
     name: 'Fuse',
     icon: require('@/assets/images/fuse.png'),
     sort: 5,
+    bridgeSpeed: 0,
   },
 };
 
