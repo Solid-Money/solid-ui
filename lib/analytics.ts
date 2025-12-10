@@ -9,6 +9,8 @@ import { Platform } from 'react-native';
 import { EXPO_PUBLIC_AMPLITUDE_API_KEY, EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_APP_ID, EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN, EXPO_PUBLIC_FIREBASE_DATABASE_URL, EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID, EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, EXPO_PUBLIC_FIREBASE_PROJECT_ID, EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET } from '@/lib/config';
 import { trackGTMEvent } from '@/lib/gtm';
 import { sanitize, toTitleCase } from '@/lib/utils/utils';
+// Server-side proxy for ad-blocker bypass
+import { trackViaProxy, identifyViaProxy } from '@/lib/analytics-proxy';
 
 // Firebase app instance
 const isFirebaseApp = getApps().length > 0;
@@ -145,10 +147,12 @@ export const track = (event: string, params: Record<string, any> = {}) => {
     const sanitizedParams = sanitize(params);
 
     // Track to all providers in parallel
+    // Server-side proxy ensures events are tracked even with ad blockers
     Promise.allSettled([
       Promise.resolve(trackAmplitudeEvent(event, sanitizedParams)),
       trackFirebaseEvent(event, sanitizedParams),
       Promise.resolve(trackGTMEvent(event, sanitizedParams)),
+      trackViaProxy(formatAmplitudeEvent(event), sanitizedParams),
     ]);
   } catch (error) {
     console.error('Error tracking event:', error);
@@ -211,9 +215,11 @@ export const trackScreen = (pathname: string, params: Record<string, any> = {}) 
     const sanitizedParams = sanitize(params);
 
     // Track to all providers in parallel
+    // Server-side proxy ensures page views are tracked even with ad blockers
     Promise.allSettled([
       Promise.resolve(trackAmplitudeScreen(pathname, sanitizedParams)),
       trackFirebaseScreen(pathname, sanitizedParams),
+      trackViaProxy(AmplitudeEvent.PAGE_VIEWED, { pathname, ...sanitizedParams }),
     ]);
   } catch (error) {
     console.error('Error tracking screen:', error);
@@ -273,9 +279,11 @@ export const trackIdentity = (id: string, params: Record<string, any> = {}) => {
     const sanitizedParams = sanitize(params);
 
     // Track to all providers in parallel
+    // Server-side proxy ensures identification works even with ad blockers
     Promise.allSettled([
       Promise.resolve(trackAmplitudeIdentity(id, sanitizedParams)),
       trackFirebaseIdentity(id, sanitizedParams),
+      identifyViaProxy(id, sanitizedParams),
     ]);
 
     // Push user identification to GTM dataLayer

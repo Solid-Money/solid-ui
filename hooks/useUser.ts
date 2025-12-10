@@ -3,6 +3,7 @@ import { ERRORS } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track, trackIdentity } from '@/lib/analytics';
+import { resetProxyUser } from '@/lib/analytics-proxy';
 import {
   deleteAccount,
   getSubOrgIdByUsername,
@@ -684,6 +685,7 @@ const useUser = (): UseUserReturn => {
     clearBalance();
     unselectUser();
     clearKycLinkId(); // Clear KYC data on logout
+    resetProxyUser(); // Clear analytics proxy user state
     intercom?.shutdown();
     intercom?.boot();
 
@@ -790,6 +792,7 @@ const useUser = (): UseUserReturn => {
     });
     removeUsers();
     clearKycLinkId(); // Clear KYC data when removing all users
+    resetProxyUser(); // Clear analytics proxy user state
     removeEvents();
     router.replace(path.REGISTER);
   }, [removeUsers, clearKycLinkId, router]);
@@ -810,6 +813,7 @@ const useUser = (): UseUserReturn => {
       // Clear all user data
       removeUsers();
       clearKycLinkId();
+      resetProxyUser(); // Clear analytics proxy user state
       queryClient.clear();
 
       // Navigate to welcome screen
