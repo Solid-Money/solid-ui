@@ -10,17 +10,19 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDirectDepositSessionPolling } from '@/hooks/useDirectDepositSession';
+import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { eclipseAddress } from '@/lib/utils';
+import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Copy, Fuel, Share2 } from 'lucide-react-native';
+import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Share, View } from 'react-native';
+import { Linking, Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
@@ -57,14 +59,19 @@ type InfoRow = {
 const DepositDirectlyAddress = () => {
   const { user } = useUser();
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
+  const chainId = directDepositSession.chainId || mainnet.id;
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareError, setShareError] = useState(false);
   const { maxAPY, isAPYsLoading } = useMaxAPY();
+  const { exchangeRate, amountOut } = usePreviewDeposit(
+    '10',
+    BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address,
+    chainId,
+  );
   const trackedStatuses = useRef<Set<DepositStatus>>(new Set());
 
   const { session } = useDirectDepositSessionPolling(directDepositSession.sessionId, true);
 
-  const chainId = directDepositSession.chainId || mainnet.id;
   const network = BRIDGE_TOKENS[chainId];
   const walletAddress = directDepositSession.walletAddress;
 
@@ -139,23 +146,7 @@ const DepositDirectlyAddress = () => {
 
   const infoRows: InfoRow[] = useMemo(
     () => [
-      {
-        label: 'APY',
-        valueContent: isAPYsLoading ? (
-          <Skeleton className="h-7 w-16 bg-white/20" />
-        ) : (
-          <Text className="font-bold text-[#94F27F] text-xl">{formattedAPY}</Text>
-        ),
-        extra: (
-          <TooltipPopover
-            text="Annual percentage yield for this deposited amount. Actual yield may vary slightly once the transfer clears."
-            analyticsContext="deposit_directly_apy"
-            side="top"
-          />
-        ),
-      },
       { label: 'Min deposit', value: `${minDeposit} USDC` },
-      { label: 'Max deposit', value: `${maxDeposit} USDC` },
       { label: 'Estimated time', value: estimatedTime },
       {
         label: 'Status',
@@ -164,8 +155,50 @@ const DepositDirectlyAddress = () => {
       },
       { label: 'Fee', value: `${fee} USDC`, icon: <Fuel size={16} color="#A1A1AA" /> },
     ],
-    [isAPYsLoading, formattedAPY, minDeposit, maxDeposit, estimatedTime, status, fee],
+    [minDeposit, estimatedTime, status, fee],
   );
+
+  const priceRows: InfoRow[] = useMemo(() => {
+    const rows: InfoRow[] = [];
+
+    // Always show estimated receive amount for 10 USDC
+    rows.push({
+      label: 'You will receive',
+      valueContent: (
+        <View className="flex-row items-center gap-1.5">
+          <Image
+            source={require('@/assets/images/sousd-4x.png')}
+            style={{ width: 18, height: 18 }}
+            contentFit="contain"
+          />
+          <Text className="font-bold text-white text-base">
+            {formatNumber(amountOut || 0, 4, 4)} soUSD
+          </Text>
+        </View>
+      ),
+    });
+
+    rows.push({
+      label: 'Price',
+      valueContent: (
+        <Text className="font-bold text-white text-base">
+          1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
+          USDC
+        </Text>
+      ),
+    });
+
+    rows.push({
+      label: 'APY',
+      valueContent: isAPYsLoading ? (
+        <Skeleton className="h-7 w-16 bg-white/20" />
+      ) : (
+        <Text className="font-bold text-[#94F27F] text-base">{formattedAPY}</Text>
+      ),
+    });
+
+    return rows;
+  }, [amountOut, exchangeRate, isAPYsLoading, formattedAPY]);
 
   return (
     <View className="flex-col gap-3">
@@ -229,11 +262,51 @@ const DepositDirectlyAddress = () => {
       </View>
 
       {/* Info rows */}
+      {/* Warning Text */}
+      <View className="flex-row items-center justify-center gap-1.5 px-4 md:my-0 my-2">
+        <Info size={16} color="#A1A1AA" />
+        <Text className="text-[#A1A1AA] text-sm text-center">
+          Please send only USDC to this address
+        </Text>
+        <TooltipPopover
+          text="Sending any other token may result in permanent loss of funds."
+          analyticsContext="deposit_directly_warning"
+          side="top"
+        />
+      </View>
+
+      {/* Yield Info Rows */}
+      {!isExpired && (
+        <View className="w-full rounded-2xl bg-accent">
+          {priceRows.map((row, index) => (
+            <View key={row.label}>
+              <View className="flex-row items-center justify-between px-5 py-4 gap-1.5">
+                <Text className="font-medium text-muted-foreground">{row.label}</Text>
+                <View className="flex-row items-center gap-2">
+                  {row.valueContent ? (
+                    row.valueContent
+                  ) : (
+                    <Text
+                      className={`font-medium text-foreground ${row.valueClassName ? row.valueClassName : ''}`}
+                    >
+                      {row.value}
+                    </Text>
+                  )}
+                  {row.extra}
+                </View>
+              </View>
+              {index !== priceRows.length - 1 && <View className="h-px bg-primary/10 ml-5" />}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Details Info Rows */}
       {!isExpired && (
         <View className="w-full rounded-2xl bg-accent">
           {infoRows.map((row, index) => (
             <View key={row.label}>
-              <View className="flex-row items-center justify-between px-5 py-6 gap-1.5">
+              <View className="flex-row items-center justify-between px-5 py-4 gap-1.5">
                 <View className="flex-row items-center gap-1.5">
                   {row.icon}
                   <Text className="font-medium text-muted-foreground">{row.label}</Text>
@@ -251,7 +324,7 @@ const DepositDirectlyAddress = () => {
                   {row.extra}
                 </View>
               </View>
-              {index !== infoRows.length - 1 && <View className="h-px bg-primary/10" />}
+              {index !== infoRows.length - 1 && <View className="h-px bg-primary/10 ml-5" />}
             </View>
           ))}
         </View>
@@ -267,9 +340,21 @@ const DepositDirectlyAddress = () => {
       )}
 
       {/* Done button */}
-      <Button onPress={handleDone} className="h-14 w-full rounded-2xl bg-[#94F27F]">
+      <Button onPress={handleDone} className="h-14 w-full rounded-2xl bg-[#94F27F] mt-2">
         <Text className="text-lg font-bold text-black">Done</Text>
       </Button>
+
+      {/* Need help? */}
+      <View className="items-center pb-4">
+        <Button
+          variant="ghost"
+          className="flex-row items-center gap-2"
+          onPress={() => Linking.openURL('https://intercom.help/solid-money/en')}
+        >
+          <MessageCircle size={18} color="#A1A1AA" />
+          <Text className="text-[#A1A1AA] font-medium">Need help?</Text>
+        </Button>
+      </View>
 
       {/* QR Dialog */}
       <ResponsiveDialog
