@@ -449,24 +449,15 @@ function CardImageSection({
             opacity: frontOpacity,
           }}
         >
-          {isScreenMedium ? (
-            <Image
-              source={desktopImagePath}
-              alt="Solid Card"
-              style={{
-                width: '100%',
-                aspectRatio: desktopImageAspectRatio,
-              }}
-              contentFit="contain"
-            />
-          ) : (
-            <Image
-              source={require('@/assets/images/card_details.png')}
-              alt="Solid Card"
-              style={{ width: '100%', aspectRatio: 417 / 690 }}
-              contentFit="contain"
-            />
-          )}
+          <Image
+            source={desktopImagePath}
+            alt="Solid Card"
+            style={{
+              width: '100%',
+              aspectRatio: desktopImageAspectRatio,
+            }}
+            contentFit="contain"
+          />
         </Animated.View>
 
         {/* Back of card with details overlay */}
@@ -481,24 +472,15 @@ function CardImageSection({
             opacity: backOpacity,
           }}
         >
-          {isScreenMedium ? (
-            <Image
-              source={desktopImagePath}
-              alt="Solid Card"
-              style={{
-                width: '100%',
-                aspectRatio: desktopImageAspectRatio,
-              }}
-              contentFit="contain"
-            />
-          ) : (
-            <Image
-              source={require('@/assets/images/card_details.png')}
-              alt="Solid Card"
-              style={{ width: '100%', aspectRatio: 417 / 690 }}
-              contentFit="contain"
-            />
-          )}
+          <Image
+            source={desktopImagePath}
+            alt="Solid Card"
+            style={{
+              width: '100%',
+              aspectRatio: desktopImageAspectRatio,
+            }}
+            contentFit="contain"
+          />
           {shouldRevealDetails && (
             <CardDetailsOverlay
               cardholderName={cardholderName}
@@ -716,33 +698,63 @@ function CardActions({
 }
 
 function DepositBonusBanner() {
+  const { isScreenMedium } = useDimension();
+
+  if (isScreenMedium) {
+    return (
+      <View
+        className="border-[#FFD151]/40 rounded-2xl p-4 md:p-5 flex-row items-center gap-4 h-full bg-black/40"
+        style={{ borderWidth: 1 }}
+      >
+        <Link
+          href={
+            'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+          }
+          target="_blank"
+          className="bg-[#FFD151]/20 rounded-full px-3 py-1"
+        >
+          <Text className="text-[#FFD151] font-bold text-sm">Receive your $50 sign up bonus!</Text>
+        </Link>
+        <Text className="text-[#FFD151] text-sm flex-1 font-medium">
+          On a minimum deposit of $100{' '}
+          <Link
+            target="_blank"
+            href={
+              'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+            }
+            className="underline"
+          >
+            Learn more
+          </Link>
+          <Text> {'>'}</Text>
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View
-      className="border-[#FFD151]/40 rounded-2xl p-4 md:p-5 flex-row items-center gap-4 h-full bg-black/40"
+      className="border-[#FFD151]/40 rounded-2xl p-3 flex-row  gap-3 bg-black/40 mb-4"
       style={{ borderWidth: 1 }}
     >
+      <View style={{ width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}>
+        <Image
+          source={require('@/assets/images/exclamation_mark.png')}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="contain"
+        />
+      </View>
       <Link
         href={
           'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
         }
         target="_blank"
-        className="bg-[#FFD151]/20 rounded-full px-3"
+        className="w-full"
       >
-        <Text className="text-[#FFD151] font-bold text-sm">Receive your $50 sign up bonus!</Text>
+        <Text className="text-[#FFD151] font-bold text-base text-center">
+          Deposit $100 to receive your $50 sign up bonus!
+        </Text>
       </Link>
-      <Text className="text-[#FFD151] text-sm flex-1 font-medium">
-        On a minimum deposit of $100{' '}
-        <Link
-          target="_blank"
-          href={
-            'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
-          }
-          className="underline"
-        >
-          Learn more
-        </Link>
-        <Text> {'>'}</Text>
-      </Text>
     </View>
   );
 }
@@ -767,27 +779,32 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
       colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.175)']}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={{ flexDirection: 'row', borderRadius: 16, padding: 24, marginBottom: 16 }}
+      style={{ borderRadius: 20, marginBottom: 16, paddingBottom: 10, paddingTop: 10 }}
     >
-      <View className="flex-1 pr-4">
-        <Text className="text-white/70 mb-1">Cashback</Text>
-        <Text className="text-[#94F27F] web:text-2xl native:text-xl font-semibold">
-          ${totalUsdValue} this month
-        </Text>
+      {/* Top Section */}
+      <View className="flex-row justify-between items-start mb-2 px-4">
+        <View>
+          <Text className="text-white/70 text-lg mb-1">Cashback</Text>
+          <Text className="text-[#94F27F] text-3xl font-semibold">${totalUsdValue} this month</Text>
+        </View>
+        <Image
+          source={require('@/assets/images/diamond.png')}
+          style={{ width: 80, aspectRatio: 56 / 51 }}
+          contentFit="contain"
+        />
       </View>
-      <View
-        style={{ width: 1, backgroundColor: '#3D5A3B', marginHorizontal: 16, marginVertical: -24 }}
-      />
-      <View style={{ flex: 1, paddingLeft: 16, justifyContent: 'center' }}>
-        <Text className="text-white web:text-lg native:text-base">you are</Text>
-        <Text className="text-white web:text-lg native:text-base">receiving</Text>
-        <Text className="text-white web:text-lg native:text-base">
-          <Text className="text-[#94F27F] web:text-lg native:text-base font-bold">
-            {cashbackPercentage * 100}%
-          </Text>
-          <Text className="text-white web:text-lg native:text-base"> cashback</Text>
+
+      {/* Divider */}
+      <View style={{ height: 1, backgroundColor: '#3D5A3B', width: '100%', marginBottom: 16 }} />
+
+      {/* Bottom Text */}
+      <View>
+        <Text className="text-white text-lg pl-4 pb-2">
+          you are receiving{' '}
+          <Text className="text-[#94F27F] font-bold">{cashbackPercentage * 100}%</Text> cashback on
+          {'\n'}
+          all purchases
         </Text>
-        <Text className="text-white web:text-lg native:text-base">on all purchases</Text>
       </View>
     </LinearGradient>
   );
@@ -798,13 +815,17 @@ interface AddToWalletButtonProps {
 }
 
 function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
+  const { isScreenMedium } = useDimension();
+
   return (
     <Pressable
       onPress={onPress}
-      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 h-full web:hover:bg-[#2a2a2a]"
+      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 md:h-full web:hover:bg-[#2a2a2a]"
     >
       <View className="flex-row items-center flex-1">
-        <Text className="text-base text-white mr-2">Add to</Text>
+        <Text className="text-base font-bold text-white mr-2">
+          {isScreenMedium ? 'Add to' : 'Add to wallet'}
+        </Text>
         <View className="flex-row items-center">
           <Image
             source={require('@/assets/images/apple_pay.png')}
