@@ -1,4 +1,5 @@
 import { Currency, Token, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+import { useQueryClient } from '@tanstack/react-query';
 import JSBI from 'jsbi';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBalance } from 'wagmi';
@@ -144,6 +145,7 @@ export default function usePegSwapCallback(
   isSuccess?: boolean;
 } {
   const { user, safeAA } = useUser();
+  const queryClient = useQueryClient();
   const account = user?.safeAddress;
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
@@ -222,14 +224,16 @@ export default function usePegSwapCallback(
         return;
       }
 
-      setSwapData(result);
+      // Invalidate all balance queries immediately after successful transaction
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
 
       // Call success callback immediately after transaction completes
-      // This ensures the success modal is shown even if useTransactionAwait has timing issues
       if (successInfo?.onSuccess) {
         successInfo.onSuccess();
       }
 
+      setSwapData(result);
       return result;
     } catch (error) {
       console.error('Peg swap failed', error);
@@ -250,9 +254,12 @@ export default function usePegSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA, needAllowance, approvalConfig, successInfo]);
+  }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA, needAllowance, approvalConfig, successInfo, queryClient]);
 
-  const { isLoading, isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
+  // useTransactionAwait handles balance invalidation and toast notifications
+  // We don't use its isLoading state since the transaction is already confirmed
+  // when executeTransactions returns (it waits for receipt internally)
+  const { isSuccess } = useTransactionAwait(swapData?.transactionHash, successInfo);
 
   const { data: inputCurrencyBalance } = useBalance({
     address: account,
@@ -285,7 +292,7 @@ export default function usePegSwapCallback(
       pegSwapAddress,
       callback: swapCallback,
       inputError: error,
-      isLoading: isSendingSwap || isLoading,
+      isLoading: isSendingSwap,
       isSuccess,
     };
   }, [
@@ -299,7 +306,6 @@ export default function usePegSwapCallback(
     liquidity,
     minimum,
     swapCallback,
-    isLoading,
     isSuccess,
     isSendingSwap,
     approvalConfig,
