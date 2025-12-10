@@ -10,8 +10,10 @@ interface UnstakeState {
   currentModal: UnstakeModal;
   previousModal: UnstakeModal;
   transaction: TransactionStatusModal;
+  selectedNetwork?: any;
   setModal: (modal: UnstakeModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
+  setSelectedNetwork: (network: any) => void;
 }
 
 export const useUnstakeStore = create<UnstakeState>()(
@@ -20,6 +22,7 @@ export const useUnstakeStore = create<UnstakeState>()(
       currentModal: UNSTAKE_MODAL.CLOSE,
       previousModal: UNSTAKE_MODAL.CLOSE,
       transaction: {},
+      selectedNetwork: undefined,
 
       setModal: modal =>
         set({
@@ -27,6 +30,7 @@ export const useUnstakeStore = create<UnstakeState>()(
           currentModal: modal,
         }),
       setTransaction: transaction => set({ transaction }),
+      setSelectedNetwork: network => set({ selectedNetwork: network }),
     }),
     {
       name: USER.unstakeStorageKey,
