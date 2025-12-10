@@ -161,23 +161,6 @@ const DepositDirectlyAddress = () => {
   const priceRows: InfoRow[] = useMemo(() => {
     const rows: InfoRow[] = [];
 
-    // Always show estimated receive amount for 10 USDC
-    rows.push({
-      label: 'You will receive',
-      valueContent: (
-        <View className="flex-row items-center gap-1.5">
-          <Image
-            source={require('@/assets/images/sousd-4x.png')}
-            style={{ width: 18, height: 18 }}
-            contentFit="contain"
-          />
-          <Text className="font-bold text-white text-base">
-            {formatNumber(amountOut || 0, 4, 4)} soUSD
-          </Text>
-        </View>
-      ),
-    });
-
     rows.push({
       label: 'Price',
       valueContent: (
@@ -281,7 +264,7 @@ const DepositDirectlyAddress = () => {
           {priceRows.map((row, index) => (
             <View key={row.label}>
               <View className="flex-row items-center justify-between px-5 py-4 gap-1.5">
-                <Text className="font-medium text-muted-foreground">{row.label}</Text>
+                <Text className="font-medium text-base text-muted-foreground">{row.label}</Text>
                 <View className="flex-row items-center gap-2">
                   {row.valueContent ? (
                     row.valueContent
@@ -309,7 +292,7 @@ const DepositDirectlyAddress = () => {
               <View className="flex-row items-center justify-between px-5 py-4 gap-1.5">
                 <View className="flex-row items-center gap-1.5">
                   {row.icon}
-                  <Text className="font-medium text-muted-foreground">{row.label}</Text>
+                  <Text className="font-medium text-base text-muted-foreground">{row.label}</Text>
                 </View>
                 <View className="flex-row items-center gap-2">
                   {row.valueContent ? (
