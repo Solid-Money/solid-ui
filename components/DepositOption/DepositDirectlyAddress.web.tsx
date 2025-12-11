@@ -197,7 +197,7 @@ const DepositDirectlyAddress = () => {
     <View className="flex flex-col gap-3 md:gap-4 2xl:gap-6">
       <View className="flex flex-row flex-wrap items-center justify-center">
         <Text className="text-xl md:text-2xl font-bold text-[#ACACAC]">Transfer</Text>
-        <View className="flex items-center gap-1 px-1">
+        <View className="flex flex-row items-center gap-1 px-1">
           <Image
             source={USDC_ICON}
             style={{ width: 21, height: 21, marginTop: -3 }}
@@ -206,7 +206,7 @@ const DepositDirectlyAddress = () => {
           <Text className="text-xl md:text-2xl font-bold text-white">USDC</Text>
         </View>
         <Text className="text-xl md:text-2xl font-semibold text-[#ACACAC]">to this</Text>
-        <View className="flex items-center gap-1 px-2 2xl:px-3">
+        <View className="flex flex-row items-center gap-1 px-2 2xl:px-3">
           {network?.icon && (
             <Image
               source={typeof network.icon === 'string' ? { uri: network.icon } : network.icon}
