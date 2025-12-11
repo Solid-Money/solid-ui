@@ -122,7 +122,7 @@ export function useActivity() {
     // No polling - manual refresh only
   });
 
-  const { data: activityData, refetch: refetchActivityEvents, isLoading, isRefetching } = activityEvents;
+  const { data: activityData, isLoading, isRefetching } = activityEvents;
 
   // Refetch all data sources (backend handles all syncing now)
   // IMPORTANT: Do NOT call refetchActivityEvents() here!
