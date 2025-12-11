@@ -9,10 +9,12 @@ const CopyToClipboard = ({
   text,
   className,
   iconClassName,
+  size = 14,
 }: {
   text: string;
   className?: string;
   iconClassName?: string;
+  size?: number;
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -40,10 +42,10 @@ const CopyToClipboard = ({
       )}
     >
       {copied ? (
-        <Check size={14} className="text-green-500" />
+        <Check size={size} className="text-green-500" />
       ) : (
         <Copy
-          size={14}
+          size={size}
           className={cn('text-muted-foreground/60 hover:text-primary', iconClassName)}
         />
       )}

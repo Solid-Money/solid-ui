@@ -1,36 +1,32 @@
 import * as Application from 'expo-application';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, Text, View } from 'react-native';
 
-import FingerprintIcon from '@/assets/images/fingetprint';
-import LegalIcon from '@/assets/images/legal';
-import LifebuoyIcon from '@/assets/images/lifebuoy';
-import LogoutIcon from '@/assets/images/logout';
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
-import { accounts, supports } from '@/constants/settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
+
+const AccountDetailsIcon = require('@/assets/images/settings_account_details.png');
+const SecurityIcon = require('@/assets/images/settings_security.png');
+const HelpSupportIcon = require('@/assets/images/settings_help_and_support.png');
+const LogoutIcon = require('@/assets/images/settings_logout.png');
 
 export default function Settings() {
   const { handleLogout } = useUser();
   const { isDesktop } = useDimension();
 
-  const accountsWithIcons = accounts.map(account => ({
-    ...account,
-    icon: <FingerprintIcon color="#ffffff" />,
-  }));
-
-  const supportsWithIcons = supports.map(support => {
-    let icon = <LifebuoyIcon color="#ffffff" />;
-    if (support.title === 'Legal') {
-      icon = <LegalIcon color="#ffffff" />;
+  const handleLegalPress = () => {
+    const url = 'https://docs.solid.xyz/terms-and-conditions';
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank');
+    } else {
+      Linking.openURL(url);
     }
-    return { ...support, icon };
-  });
+  };
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
@@ -70,58 +66,58 @@ export default function Settings() {
       >
         {/* Account Details Card */}
         <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
-          {accountsWithIcons.slice(0, 1).map((account, index) => (
-            <SettingsCard
-              key={`account-${index}`}
-              title={account.title}
-              description={account.description}
-              icon={account.icon}
-              link={account.link}
-              isDesktop={isDesktop}
-            />
-          ))}
+          <SettingsCard
+            title="Account details"
+            icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
+            link="/settings/account"
+            isDesktop={isDesktop}
+            hideIconBackground
+          />
         </View>
 
-        {/* Help & Support and Legal Cards */}
+        {/* Security Card */}
         <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
-          <View>
-            {supportsWithIcons.slice(0, 1).map((support, index) => (
-              <SettingsCard
-                key={`support-${index}`}
-                title={support.title}
-                icon={support.icon}
-                link={support.link}
-                isDesktop={isDesktop}
-              />
-            ))}
-          </View>
-          <View className="border-t border-[#3B3B3B]">
-            {supportsWithIcons.slice(1, 2).map((support, index) => (
-              <SettingsCard
-                key={`support-legal-${index}`}
-                title={support.title}
-                icon={support.icon}
-                link={support.link}
-                isDesktop={isDesktop}
-              />
-            ))}
-          </View>
+          <SettingsCard
+            title="Security"
+            icon={<Image source={SecurityIcon} style={{ width: 24, height: 24 }} />}
+            link="/settings/security"
+            isDesktop={isDesktop}
+            hideIconBackground
+          />
+        </View>
+
+        {/* Help & Support Card */}
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
+          <SettingsCard
+            title="Help & Support"
+            icon={<Image source={HelpSupportIcon} style={{ width: 24, height: 24 }} />}
+            link="/settings/help"
+            isDesktop={isDesktop}
+            hideIconBackground
+          />
         </View>
 
         {/* Logout Card */}
         <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
           <SettingsCard
-            key="logout"
             title="Logout"
-            icon={<LogoutIcon color="#ffffff" />}
+            icon={<Image source={LogoutIcon} style={{ width: 23, height: 20 }} />}
             onPress={handleLogout}
             isDesktop={isDesktop}
+            hideIconBackground
           />
+        </View>
+
+        {/* Legal Footer Link */}
+        <View className="items-center pt-6 pb-4">
+          <Pressable onPress={handleLegalPress} className="active:opacity-70">
+            <Text className="text-[#808080] text-base font-medium">Legal</Text>
+          </Pressable>
         </View>
 
         {/* Build Information */}
         {Platform.OS !== 'web' && (
-          <View className="px-4 pt-8 pb-2 items-center">
+          <View className="px-4 pb-2 items-center">
             <Text className="text-muted-foreground text-xs">
               {Application.applicationName || 'Solid'} v
               {Application.nativeApplicationVersion || 'Unknown'} - Build{' '}
