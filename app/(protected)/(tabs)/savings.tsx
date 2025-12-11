@@ -79,7 +79,7 @@ export default function Savings() {
 
   const renderContent = () => (
     <>
-      <View className="gap-8 md:gap-9 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
+      <View className="gap-8 md:gap-9 px-4 py-8 md:py-12 pt-8 md:py-10 w-full max-w-7xl mx-auto">
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center">
             <DashboardTitle />
@@ -108,9 +108,9 @@ export default function Savings() {
               opacity: 0.5,
             }}
           >
-            <View className="flex-1 bg-transparent p-6 pb-16 md:px-10 md:py-8 justify-between gap-12 md:gap-4 border-b border-[#ffffff]/20 md:border-b-0 md:border-r">
+            <View className="flex-1 bg-transparent p-6 pb-10 md:px-10 md:py-8 justify-between gap-12 md:gap-4 border-b border-[#ffffff]/20 md:border-b-0 md:border-r">
               <View>
-                <Text className="md:text-lg text-primary/50">Total value</Text>
+                <Text className="text-[1rem] md:text-lg text-primary/70">Total value</Text>
                 <View className="flex-row items-center">
                   <SavingCountUp
                     prefix="$"
@@ -140,7 +140,7 @@ export default function Savings() {
                 </View>
               </View>
               <View className="gap-1">
-                <Text className="md:text-lg text-primary/50">Interest earned</Text>
+                <Text className="text-[1rem] md:text-lg text-primary/70">Interest earned</Text>
                 <View className="flex-row items-center">
                   <SavingCountUp
                     prefix="$"
@@ -171,10 +171,10 @@ export default function Savings() {
             </View>
           </ImageBackground>
 
-          <View className="flex-row md:flex-col web:md:w-80 bg-transparent justify-between md:justify-center">
-            <View className="p-6 md:p-7">
-              <View className="flex-row items-center gap-1">
-                <Text className="md:text-lg text-primary/50">Current Yield</Text>
+          <View className="flex-row md:flex-col web:md:w-80 bg-transparent justify-left md:justify-center">
+            <View className="p-6 md:p-7 yield-box">
+              <View className="flex-row items-center gap-2 pb-1">
+                <Text className="text-[1rem] md:text-lg text-primary/70">Current Yield</Text>
                 <TooltipPopover text={`Last ${maxAPYDays} days yield of the vault`} />
               </View>
               <View className="flex-row items-center gap-2">
@@ -194,8 +194,8 @@ export default function Savings() {
             <View className="border-r md:border-t border-[#ffffff]/20" />
 
             <View className="p-6 md:p-7">
-              <View className="flex-row items-center gap-1">
-                <Text className="md:text-lg text-primary/50">All time yield</Text>
+              <View className="flex-row items-center gap-2 pb-1">
+                <Text className="text-[1rem] md:text-lg text-primary/70">All time yield</Text>
                 <TooltipPopover text="All time yield of the vault" />
               </View>
               <Text className="text-2xl font-semibold">
@@ -210,7 +210,7 @@ export default function Savings() {
             <View className="border-t border-[#ffffff]/20 hidden md:block" />
 
             <View className="p-6 md:p-7 hidden md:flex">
-              <Text className="md:text-lg text-primary/50">Projected 1Y Earnings</Text>
+              <Text className="md:text-lg text-primary/70 pb-1">Projected 1Y Earnings</Text>
               <Text className="text-2xl font-semibold">
                 {isBalanceLoading ? (
                   <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
@@ -223,7 +223,11 @@ export default function Savings() {
         </LinearGradient>
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile hasTokens={hasTokens} />}
+      </View>
+      <View className="md:px-0 w-full max-w-7xl mx-auto">
         <HomeBanners />
+      </View>
+      <View className="px-4 w-full max-w-7xl mx-auto">
         <FAQs faqs={faqs} className="md:mt-20" />
       </View>
     </>

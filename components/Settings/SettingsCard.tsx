@@ -15,6 +15,8 @@ interface SettingsCardProps {
   isDesktop?: boolean;
   customAction?: React.ReactNode;
   titleStyle?: string;
+  descriptionStyle?: string;
+  descriptionContainerStyle?: string;
   hideIconBackground?: boolean;
   inlineAction?: React.ReactNode;
 }
@@ -73,6 +75,8 @@ const SettingsCard = ({
   isDesktop,
   customAction,
   titleStyle,
+  descriptionStyle,
+  descriptionContainerStyle,
   hideIconBackground,
   inlineAction,
 }: SettingsCardProps) => {
@@ -98,9 +102,13 @@ const SettingsCard = ({
             <Text className={cn('font-bold', textSize, titleStyle || 'text-white')}>{title}</Text>
             {description && (
               <View className="flex-row items-center">
-                <Text className={cn(descTextSize, 'text-[#acacac] font-medium')}>
-                  {description}
-                </Text>
+                <View className={cn(descriptionContainerStyle)}>
+                  <Text
+                    className={cn(descTextSize, 'text-[#acacac] font-medium', descriptionStyle)}
+                  >
+                    {description}
+                  </Text>
+                </View>
                 {inlineAction && <View className="ml-0.5">{inlineAction}</View>}
               </View>
             )}

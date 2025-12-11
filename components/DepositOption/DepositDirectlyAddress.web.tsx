@@ -20,6 +20,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { formatUnits } from 'viem';
 
@@ -61,7 +62,7 @@ const DepositDirectlyAddress = () => {
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<'copied' | 'error' | null>(null);
   const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
-  const { exchangeRate, amountOut } = usePreviewDeposit(
+  const { exchangeRate } = usePreviewDeposit(
     '10',
     BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address,
     chainId,
@@ -144,12 +145,12 @@ const DepositDirectlyAddress = () => {
 
   const estimatedTime = chainId === 1 ? '5 minutes' : '30 minutes';
   const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
+
   const minDeposit =
     EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ||
     session?.minDeposit ||
     directDepositSession.minDeposit ||
     '0.0001';
-  // const maxDeposit = session?.maxDeposit || directDepositSession.maxDeposit || '500,000';
   const fee = session?.fee || directDepositSession.fee || '0';
 
   const infoRows: InfoRow[] = useMemo(
@@ -169,27 +170,10 @@ const DepositDirectlyAddress = () => {
   const priceRows: InfoRow[] = useMemo(() => {
     const rows: InfoRow[] = [];
 
-    // Always show estimated receive amount for 10 USDC
-    rows.push({
-      label: 'You will receive',
-      valueContent: (
-        <div className="flex flex-row items-center gap-1.5">
-          <Image
-            source={require('@/assets/images/sousd-4x.png')}
-            style={{ width: 18, height: 18 }}
-            contentFit="contain"
-          />
-          <Text className="font-bold text-white text-base">
-            {formatNumber(amountOut || 0, 4, 4)} soUSD
-          </Text>
-        </div>
-      ),
-    });
-
     rows.push({
       label: 'Price',
       valueContent: (
-        <Text className="font-bold text-white text-base">
+        <Text className="font-medium text-white text-base">
           1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
           USDC
         </Text>
@@ -201,46 +185,46 @@ const DepositDirectlyAddress = () => {
       valueContent: isMaxAPYsLoading ? (
         <Skeleton className="h-7 w-16 bg-white/20" />
       ) : (
-        <Text className="font-bold text-[#94F27F] text-base">{formattedAPY}</Text>
+        <Text className="font-medium text-[#94F27F] text-base">{formattedAPY}</Text>
       ),
     });
 
     return rows;
-  }, [amountOut, exchangeRate, isMaxAPYsLoading, formattedAPY]);
+  }, [exchangeRate, isMaxAPYsLoading, formattedAPY]);
 
   return (
-    <div className="flex flex-col gap-3 md:gap-4 2xl:gap-6">
-      <div className="flex flex-row flex-wrap items-center justify-center">
+    <View className="flex flex-col gap-3 md:gap-4 2xl:gap-6">
+      <View className="flex flex-row flex-wrap items-center justify-center">
         <Text className="text-xl md:text-2xl font-bold text-[#ACACAC]">Transfer</Text>
-        <div className="flex items-center gap-1 px-1">
-          <Image source={USDC_ICON} style={{ width: 21, height: 21 }} contentFit="cover" />
+        <View className="flex flex-row items-center gap-1 px-1">
+          <Image
+            source={USDC_ICON}
+            style={{ width: 21, height: 21 }}
+            contentFit="cover"
+          />
           <Text className="text-xl md:text-2xl font-bold text-white">USDC</Text>
-        </div>
+        </View>
         <Text className="text-xl md:text-2xl font-semibold text-[#ACACAC]">to this</Text>
-        <div className="flex items-center gap-1 px-2 2xl:px-3">
-          {network?.icon && typeof network.icon === 'string' ? (
-            <img
-              src={network.icon}
-              alt={network?.name}
-              className="h-[16px] w-[16px] 2xl:h-[18px] 2xl:w-[18px]"
-            />
-          ) : (
+        <View className="flex flex-row items-center gap-1 px-2 2xl:px-3">
+          {network?.icon && (
             <Image
-              source={network?.icon}
+              source={typeof network.icon === 'string' ? { uri: network.icon } : network.icon}
               style={{ width: 21, height: 21, borderRadius: 9 }}
               contentFit="cover"
+              accessibilityLabel={network?.name}
             />
           )}
           <Text className="text-xl md:text-2xl font-semibold text-[#ACACAC]">
-            {network?.name || 'Ethereum'} address
+            <Text className="text-white">{network?.name || 'Ethereum'}</Text>{' '}
+            <Text className="text-[#ACACAC]">address</Text>
           </Text>
-        </div>
-      </div>
+        </View>
+      </View>
 
-      <div className="w-full rounded-[20px] bg-accent mt-2 p-4 md:py-4 md:px-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-center">
-            <Text className="md:text-lg tracking-wide text-foreground text-center">
+      <View className="w-full rounded-[20px] bg-primary/10 mt-2 p-4 md:py-4 md:px-6">
+        <View className="flex flex-col gap-4">
+          <View className="flex flex-row items-center justify-center">
+            <Text className="text-lg tracking-wide text-foreground text-center font-semibold">
               {walletAddress ? eclipseAddress(walletAddress, 6, 6) : '—'}
             </Text>
             <CopyToClipboard
@@ -248,16 +232,16 @@ const DepositDirectlyAddress = () => {
               className="h-10 w-10 md:h-12 md:w-12 bg-transparent web:hover:bg-transparent web:active:bg-transparent"
               iconClassName="text-white"
             />
-          </div>
+          </View>
 
-          <div className="grid grid-cols-2 gap-4 pb-1">
+          <View className="grid grid-cols-2 gap-4 pb-1">
             <Button
               variant="secondary"
               onPress={() => setIsQrDialogOpen(true)}
               className="h-9 rounded-2xl bg-secondary-hover web:hover:brightness-110 border-0"
             >
               <Copy size={14} color="white" />
-              <Text className="md:text-lg font-bold text-white">Show QR</Text>
+              <Text className="md:text-lg font-bold text-white text-[1rem]">Show QR</Text>
             </Button>
             <Button
               variant="secondary"
@@ -265,9 +249,9 @@ const DepositDirectlyAddress = () => {
               className="h-9 rounded-2xl bg-secondary-hover web:hover:brightness-110 border-0"
             >
               <Share2 size={18} color="white" />
-              <Text className="md:text-lg font-bold text-white">Share</Text>
+              <Text className="md:text-lg font-bold text-white text-[1rem]">Share</Text>
             </Button>
-          </div>
+          </View>
 
           {shareFeedback && (
             <Text className="text-xs text-muted-foreground">
@@ -276,11 +260,11 @@ const DepositDirectlyAddress = () => {
                 : 'Sharing not supported in this browser.'}
             </Text>
           )}
-        </div>
-      </div>
+        </View>
+      </View>
 
       {/* Warning Text */}
-      <div className="flex flex-row items-center justify-center gap-1.5 px-4">
+      <View className="flex flex-row items-center justify-center gap-1.5 px-4">
         <Info size={16} color="#A1A1AA" />
         <Text className="text-[#A1A1AA] text-sm text-center md:my-0 my-2">
           Please send only USDC to this address
@@ -290,16 +274,16 @@ const DepositDirectlyAddress = () => {
           analyticsContext="deposit_directly_warning"
           side="top"
         />
-      </div>
+      </View>
 
       {/* Yield Info Rows */}
       {!isExpired && (
-        <div className="w-full rounded-2xl bg-accent flex flex-col">
+        <View className="w-full rounded-2xl bg-accent flex flex-col">
           {priceRows.map((row, index) => (
-            <div key={row.label} className="flex flex-col">
-              <div className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
-                <Text className="font-medium text-muted-foreground">{row.label}</Text>
-                <div className="flex items-center gap-2">
+            <View key={row.label} className="flex flex-col">
+              <View className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
+                <Text className="font-medium text-base text-muted-foreground">{row.label}</Text>
+                <View className="flex items-center gap-2">
                   {row.valueContent ? (
                     row.valueContent
                   ) : (
@@ -312,30 +296,30 @@ const DepositDirectlyAddress = () => {
                     </Text>
                   )}
                   {row.extra}
-                </div>
-              </div>
-              {index !== priceRows.length - 1 && <div className="h-px bg-primary/10 ml-5" />}
-            </div>
+                </View>
+              </View>
+              {index !== priceRows.length - 1 && <View className="h-px bg-primary/10 ml-5" />}
+            </View>
           ))}
-        </div>
+        </View>
       )}
 
       {/* Details Info Rows */}
       {!isExpired && (
-        <div className="w-full rounded-2xl bg-accent flex flex-col">
+        <View className="w-full rounded-2xl bg-primary/10 flex flex-col">
           {infoRows.map((row, index) => (
-            <div key={row.label} className="flex flex-col">
-              <div className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
-                <div className="flex items-center gap-1.5 md:gap-2">
+            <View key={row.label} className="flex flex-col">
+              <View className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
+                <View className="flex items-center gap-1.5 md:gap-2">
                   {row.icon}
-                  <Text className="font-medium text-muted-foreground">{row.label}</Text>
-                </div>
-                <div className="flex items-center gap-2">
+                  <Text className="font-medium text-primary/70 text-[1rem]">{row.label}</Text>
+                </View>
+                <View className="flex items-center gap-2">
                   {row.valueContent ? (
                     row.valueContent
                   ) : (
                     <Text
-                      className={`font-medium text-foreground ${
+                      className={`font-medium text-foreground text-[1rem] ${
                         row.valueClassName ? row.valueClassName : ''
                       }`}
                     >
@@ -343,20 +327,20 @@ const DepositDirectlyAddress = () => {
                     </Text>
                   )}
                   {row.extra}
-                </div>
-              </div>
-              {index !== infoRows.length - 1 && <div className="h-px bg-primary/10 ml-5" />}
-            </div>
+                </View>
+              </View>
+              {index !== infoRows.length - 1 && <View className="h-px bg-primary/10 ml-5" />}
+            </View>
           ))}
-        </div>
+        </View>
       )}
 
       {isExpired && (
-        <div className="w-full rounded-2xl border border-red-500/20 bg-red-500/10 px-3 md:px-4 2xl:px-6 py-3 md:py-4 2xl:py-5 text-center">
+        <View className="w-full rounded-2xl border border-red-500/20 bg-red-500/10 px-3 md:px-4 2xl:px-6 py-3 md:py-4 2xl:py-5 text-center">
           <Text className="font-medium text-base text-red-400">
             Session expired. Please create a new deposit session.
           </Text>
-        </div>
+        </View>
       )}
 
       <Button
@@ -367,7 +351,7 @@ const DepositDirectlyAddress = () => {
       </Button>
 
       {/* Need help? */}
-      <div className="flex items-center justify-center pb-4">
+      <View className="flex items-center justify-center pb-4">
         <Button
           variant="ghost"
           className="flex flex-row items-center gap-2 hover:bg-transparent"
@@ -376,7 +360,7 @@ const DepositDirectlyAddress = () => {
           <MessageCircle size={18} color="#A1A1AA" />
           <Text className="text-[#A1A1AA] font-medium">Need help?</Text>
         </Button>
-      </div>
+      </View>
 
       <ResponsiveDialog
         open={isQrDialogOpen}
@@ -384,17 +368,17 @@ const DepositDirectlyAddress = () => {
         title="Scan to deposit"
         contentClassName="px-3 md:px-4 2xl:px-6 py-4 md:py-6 2xl:py-8"
       >
-        <div className="flex flex-col items-center gap-3 md:gap-4 2xl:gap-5">
-          <div className="rounded-3xl bg-white p-3 md:p-4 2xl:p-5 shadow-[0_18px_45px_rgba(0,0,0,0.25)]">
+        <View className="flex flex-col items-center gap-3 md:gap-4 2xl:gap-5">
+          <View className="rounded-3xl bg-white p-3 md:p-4 2xl:p-5 shadow-[0_18px_45px_rgba(0,0,0,0.25)]">
             <QRCode value={walletAddress || ''} size={220} backgroundColor="white" color="black" />
-          </div>
+          </View>
           <Text className="text-center text-xs md:text-sm text-muted-foreground">
             Share this QR code with the sender or scan it from another device to populate the wallet
             address automatically.
           </Text>
-        </div>
+        </View>
       </ResponsiveDialog>
-    </div>
+    </View>
   );
 };
 

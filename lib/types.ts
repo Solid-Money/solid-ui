@@ -362,6 +362,7 @@ export enum TransactionType {
   MERKL_CLAIM = 'merkl_claim',
   CARD_WELCOME_BONUS = 'card_welcome_bonus',
   DEPOSIT_BONUS = 'deposit_bonus',
+  FAST_WITHDRAW = 'fast_withdraw',
 }
 
 export enum TransactionDirection {
@@ -373,6 +374,7 @@ export enum TransactionDirection {
 
 export enum TransactionCategory {
   SAVINGS_ACCOUNT = 'Savings account',
+  FAST_WITHDRAW = 'Fast withdraw',
   WALLET_TRANSFER = 'Wallet transfer',
   EXTERNAL_WALLET_TRANSFER = 'External wallet transfer',
   BANK_DEPOSIT = 'Bank deposit',
@@ -490,7 +492,7 @@ export type BridgeTransactionRequest = {
 export type Deposit = {
   eoaAddress: Address;
   amount: string;
-  permitSignature: {
+  permitSignature?: {
     v: number;
     r: string;
     s: string;

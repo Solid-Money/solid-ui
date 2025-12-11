@@ -1,11 +1,13 @@
 import { Tabs } from 'expo-router';
 import { CreditCard, Leaf, Star } from 'lucide-react-native';
 import React from 'react';
+import { Platform } from 'react-native';
 
 import ActivityNavBarIcon from '@/assets/images/activity-nav-bar-icon';
 import AssetsNavBarIcon from '@/assets/images/assets-nav-bar-icon';
 import CardNavBarIcon from '@/assets/images/card-nav-bar-icon';
 import SavingsNavBarIcon from '@/assets/images/savings-nav-bar-icon';
+import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
@@ -30,9 +32,10 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: 'white',
+        tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
+        tabBarButton: Platform.OS !== 'web' ? HapticTab : undefined,
+        tabBarBackground: Platform.OS !== 'web' ? TabBarBackground : undefined,
         tabBarLabelStyle: {
           fontSize: 12,
           marginTop: 5,
@@ -40,17 +43,21 @@ export default function TabLayout() {
         tabBarStyle: {
           display: isDesktop ? 'none' : 'flex',
           height: 75,
-          paddingTop: 6,
-          paddingBottom: 5,
-          borderTopWidth: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.9)',
-          borderTopColor: 'rgba(61, 61, 61, 0.8)',
-          borderColor: 'rgba(61, 61, 61, 0.8)',
+          paddingTop: 4,
+          paddingBottom: 10,
+          borderTopWidth: 0,
+          // Native uses TabBarBackground (BlurView + overlay), web uses CSS backdropFilter
+          backgroundColor: Platform.OS === 'web' ? 'rgba(0, 0, 0, 0.7)' : 'transparent',
+          borderTopColor: 'rgba(61, 61, 61, 0.0)',
+          borderColor: 'rgba(61, 61, 61, 0.0)',
           elevation: 0,
           shadowOpacity: 0,
           position: 'absolute',
         },
       }}
+      tabBar={
+        Platform.OS === 'web' && !isDesktop ? props => <CustomTabBar {...props} /> : undefined
+      }
       backBehavior="history"
     >
       <Tabs.Screen

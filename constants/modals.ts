@@ -138,13 +138,25 @@ export const UNSTAKE_MODAL = {
     name: 'close',
     number: 0,
   },
+  OPEN_OPTIONS: {
+    name: 'open_options',
+    number: 1,
+  },
   OPEN_FORM: {
     name: 'open_form',
-    number: 1,
+    number: 2,
+  },
+  OPEN_NETWORKS: {
+    name: 'open_networks',
+    number: 3,
+  },
+  OPEN_FAST_WITHDRAW_FORM: {
+    name: 'open_fast_withdraw_form',
+    number: 4,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
-    number: 2,
+    number: 5,
   },
 };
 
