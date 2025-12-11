@@ -194,24 +194,14 @@ const FastWithdrawForm = () => {
   };
 
   const isFormDisabled = () => {
-    return isPreviewLoading || !isValid || !watchedAmount;
-  };
-
-  const getButtonText = () => {
-    if (isLoading) {
-      return 'Processing...';
-    }
-    if (chainId === 122) {
-      return 'Fast Withdraw';
-    }
-    return 'Withdraw';
+    return isPreviewLoading || !isValid || !watchedAmount || isLoading;
   };
 
   return (
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground">Destination address</Text>
+          <Text className="text-muted-foreground text-base">Destination address</Text>
           <View className="px-5 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
             <Controller
               control={control}
@@ -236,7 +226,7 @@ const FastWithdrawForm = () => {
           )}
         </View>
         <View className="gap-2">
-          <Text className="text-muted-foreground">Amount</Text>
+          <Text className="text-muted-foreground text-base">Amount</Text>
           <View className="px-5 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
             <Controller
               control={control}
@@ -271,7 +261,7 @@ const FastWithdrawForm = () => {
           </View>
           <View className="flex-row items-center gap-2">
             <Wallet color="#A1A1A1" size={16} />
-            <Text className="text-muted-foreground">
+            <Text className="text-base text-muted-foreground">
               {formatNumber(Number(formattedBalance))} soUSD
             </Text>
             <Max
@@ -288,11 +278,11 @@ const FastWithdrawForm = () => {
         <TokenDetails>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
             <View className="flex-row items-center gap-2">
-              <Text className="text-lg text-muted-foreground">Network</Text>
+              <Text className="text-base text-muted-foreground">Network</Text>
             </View>
             <View className="flex-row items-center gap-2 ml-auto flex-shrink-0">
               <Image source={selectedNetwork?.icon} style={{ width: 24, height: 24 }} />
-              <Text className="text-lg font-semibold">{selectedNetwork?.name}</Text>
+              <Text className="text-base font-semibold">{selectedNetwork?.name}</Text>
             </View>
           </View>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
@@ -301,33 +291,33 @@ const FastWithdrawForm = () => {
               {isPreviewLoading ? (
                 <Skeleton className="w-20 h-7 bg-white/20" />
               ) : (
-                <Text className="text-lg font-semibold">
+                <Text className="text-base font-semibold">
                   {formatNumber(Number(previewData?.minAmountOut ?? 0) / 1e6)} USDC
                 </Text>
               )}
             </View>
           </View>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
-            <Text className="text-base text-muted-foreground">Bridge Fee</Text>
+            <Text className="text-base text-muted-foreground">Estimated Time</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
-              {isPreviewLoading ? (
-                <Skeleton className="w-20 h-7 bg-white/20" />
+              {selectedNetwork?.name === 'Fuse' ? (
+                <Text className="text-base font-semibold">Instant</Text>
               ) : (
-                <Text className="text-lg font-semibold">{`$${formatNumber(
-                  Number(previewData?.feeAmount ?? 0) / 1e6,
-                )}`}</Text>
+                <Text className="text-base font-semibold">2 - 10 Minutes</Text>
               )}
             </View>
           </View>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
-            <Text className="text-base text-muted-foreground">Withdrawal Fee</Text>
+            <Text className="text-base text-muted-foreground">Fee</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
               {isPreviewLoading ? (
                 <Skeleton className="w-20 h-7 bg-white/20" />
               ) : (
-                <Text className="text-lg font-semibold">{`$${formatNumber(
+                <Text className="text-base font-semibold">{`$${formatNumber(
                   Number(
-                    (previewData?.amountOutBeforePremium ?? 0n) - (previewData?.minAmountOut ?? 0n),
+                    (previewData?.amountOutBeforePremium ?? 0n) -
+                      (previewData?.minAmountOut ?? 0n) +
+                      (previewData?.feeAmount ?? 0n),
                   ) / 1e6,
                 )}`}</Text>
               )}
@@ -341,8 +331,11 @@ const FastWithdrawForm = () => {
             onPress={handleSubmit(onSubmit)}
             disabled={isFormDisabled()}
           >
-            <Text className="text-lg font-semibold">Withdraw</Text>
-            {isLoading && <ActivityIndicator color="gray" />}
+            {isLoading ? (
+              <ActivityIndicator color="gray" />
+            ) : (
+              <Text className="font-semibold text-black text-lg">Withdraw</Text>
+            )}
           </Button>
         </CheckConnectionWrapper>
       </View>
