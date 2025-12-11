@@ -63,7 +63,7 @@ const DepositDirectlyAddress = () => {
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareError, setShareError] = useState(false);
   const { maxAPY, isAPYsLoading } = useMaxAPY();
-  const { exchangeRate, amountOut } = usePreviewDeposit(
+  const { exchangeRate } = usePreviewDeposit(
     '10',
     BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address,
     chainId,

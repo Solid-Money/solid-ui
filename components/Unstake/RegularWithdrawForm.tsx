@@ -57,7 +57,7 @@ const RegularWithdrawForm = () => {
   const {
     control,
     handleSubmit,
-    formState: { errors: bridgeErrors, isValid: isBridgeValid },
+    formState: { isValid: isBridgeValid },
     watch,
     reset,
     setValue,

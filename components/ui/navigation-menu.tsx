@@ -64,7 +64,9 @@ const NavigationMenuLink = React.forwardRef<
   React.ElementRef<typeof Pressable>,
   NavigationMenuLinkProps
 >(({ onPress, className, active, children }, ref) => {
-  const pressableClass = cn(navigationMenuLinkClassNames.pressable, active && 'bg-[#2C2C2C]');
+  const pressableClass = cn(navigationMenuLinkClassNames.pressable, {
+    'bg-[#2C2C2C]': active,
+  });
 
   const textClass = cn(
     navigationMenuLinkClassNames.text,

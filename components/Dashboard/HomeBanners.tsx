@@ -33,7 +33,7 @@ const BannerItem = ({
   item,
   dataLen,
   hasMultipleViews,
-  progress,
+  // progress,
   gapPadding,
 }: BannerItemProps) => {
   const animatedStyle = useAnimatedStyle(() => {
