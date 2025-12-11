@@ -197,11 +197,7 @@ const DepositDirectlyAddress = () => {
       <View className="flex flex-row flex-wrap items-center justify-center">
         <Text className="text-xl md:text-2xl font-bold text-[#ACACAC]">Transfer</Text>
         <View className="flex flex-row items-center gap-1 px-1">
-          <Image
-            source={USDC_ICON}
-            style={{ width: 21, height: 21 }}
-            contentFit="cover"
-          />
+          <Image source={USDC_ICON} style={{ width: 21, height: 21 }} contentFit="cover" />
           <Text className="text-xl md:text-2xl font-bold text-white">USDC</Text>
         </View>
         <Text className="text-xl md:text-2xl font-semibold text-[#ACACAC]">to this</Text>
