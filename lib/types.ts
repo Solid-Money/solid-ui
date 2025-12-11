@@ -374,6 +374,7 @@ export enum TransactionDirection {
 
 export enum TransactionCategory {
   SAVINGS_ACCOUNT = 'Savings account',
+  FAST_WITHDRAW = 'Fast withdraw',
   WALLET_TRANSFER = 'Wallet transfer',
   EXTERNAL_WALLET_TRANSFER = 'External wallet transfer',
   BANK_DEPOSIT = 'Bank deposit',
