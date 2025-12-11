@@ -197,20 +197,20 @@ const DepositDirectlyAddress = () => {
     <View className="flex flex-col gap-3 md:gap-4 2xl:gap-6">
       <View className="flex flex-row flex-wrap items-center justify-center">
         <Text className="text-xl md:text-2xl font-bold text-[#ACACAC]">Transfer</Text>
-        <View className="flex items-center gap-1 px-1">
+        <View className="flex flex-row items-center gap-1 px-1">
           <Image
             source={USDC_ICON}
-            style={{ width: 21, height: 21, marginTop: -3 }}
+            style={{ width: 21, height: 21 }}
             contentFit="cover"
           />
           <Text className="text-xl md:text-2xl font-bold text-white">USDC</Text>
         </View>
         <Text className="text-xl md:text-2xl font-semibold text-[#ACACAC]">to this</Text>
-        <View className="flex items-center gap-1 px-2 2xl:px-3">
+        <View className="flex flex-row items-center gap-1 px-2 2xl:px-3">
           {network?.icon && (
             <Image
               source={typeof network.icon === 'string' ? { uri: network.icon } : network.icon}
-              style={{ width: 18, height: 18, borderRadius: 9, marginTop: -3 }}
+              style={{ width: 21, height: 21, borderRadius: 9 }}
               contentFit="cover"
               accessibilityLabel={network?.name}
             />
@@ -224,7 +224,7 @@ const DepositDirectlyAddress = () => {
 
       <View className="w-full rounded-[20px] bg-primary/10 mt-2 p-4 md:py-4 md:px-6">
         <View className="flex flex-col gap-4">
-          <View className="flex items-center justify-center">
+          <View className="flex flex-row items-center justify-center">
             <Text className="text-lg tracking-wide text-foreground text-center font-semibold">
               {walletAddress ? eclipseAddress(walletAddress, 6, 6) : '—'}
             </Text>
