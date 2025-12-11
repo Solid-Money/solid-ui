@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import { Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
+import HomeFund from '@/assets/images/home-fund';
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
 import CircleButton from '@/components/CircleButton';
@@ -12,11 +12,13 @@ const DashboardHeaderButtonsMobile = () => {
   return (
     <View className="flex-row justify-center gap-12 items-center">
       <CircleButton
-        icon={Plus}
+        icon={HomeFund}
         label="Fund"
         backgroundColor="bg-[#94F27F]"
         iconColor="#000000"
         onPress={() => router.push(path.DEPOSIT)}
+        viewBox="0 0 20 20"
+        scale={1}
       />
 
       <CircleButton

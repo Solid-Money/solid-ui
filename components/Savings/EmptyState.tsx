@@ -35,23 +35,25 @@ export default function SavingsEmptyState() {
   };
 
   const renderContent = () => (
-    <View className="w-full max-w-7xl mx-auto gap-[40px] px-4 pt-12 pb-8 md:pt-8">
-      {isScreenMedium ? (
-        <View className="md:flex-row justify-between md:items-center gap-y-4">
-          <View className="flex-row items-center">
+    <View className="w-full max-w-7xl mx-auto gap-[40px] pt-12 pb-8 md:pt-8">
+      <View className="px-4">
+        {isScreenMedium ? (
+          <View className="md:flex-row justify-between md:items-center gap-y-4">
+            <View className="flex-row items-center">
+              <Text className="text-5xl font-semibold">$0</Text>
+            </View>
+            <View className="flex-row items-center gap-5">
+              <DepositOptionModal />
+            </View>
+          </View>
+        ) : (
+          <View className="flex-row justify-center items-center">
             <Text className="text-5xl font-semibold">$0</Text>
           </View>
-          <View className="flex-row items-center gap-5">
-            <DepositOptionModal />
-          </View>
-        </View>
-      ) : (
-        <View className="flex-row justify-center items-center">
-          <Text className="text-5xl font-semibold">$0</Text>
-        </View>
-      )}
+        )}
+      </View>
 
-      <View className="gap-[1.875rem]">
+      <View className="gap-[1.875rem] px-4">
         <LinearGradient
           colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
           style={{
@@ -79,9 +81,13 @@ export default function SavingsEmptyState() {
             </View>
           )}
         </LinearGradient>
+      </View>
+      <View className="md:px-4">
         <HomeBanners />
       </View>
-      <FAQs faqs={faqs} className="md:mt-16" />
+      <View className="px-4">
+        <FAQs faqs={faqs} className="md:mt-16" />
+      </View>
     </View>
   );
 

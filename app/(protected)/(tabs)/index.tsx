@@ -182,12 +182,10 @@ export default function Savings() {
             <SavingCard className="flex-1" decimalPlaces={2} />
           </View>
         ) : (
-          <View className="px-4">
-            <HomeBanners />
-          </View>
+          <HomeBanners />
         )}
 
-        <View className="px-4 md:px-0 mt-10 gap-6">
+        <View className="px-4 md:px-0 mt-4 gap-3">
           <Text className="text-lg text-muted-foreground font-semibold">Your assets</Text>
           {tokenError ? (
             <View className="flex-1 justify-center items-center p-4">
