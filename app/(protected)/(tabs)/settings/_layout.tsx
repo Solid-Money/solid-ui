@@ -49,6 +49,14 @@ export default function SettingsLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="security"
+        options={{
+          title: 'Security',
+          headerBackButtonDisplayMode: 'minimal',
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

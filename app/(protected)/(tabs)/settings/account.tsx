@@ -1,11 +1,8 @@
-import { Href, router } from 'expo-router';
+import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, Text, View } from 'react-native';
 
-import DeleteAccountIcon from '@/assets/images/delete-account';
-import EmailIcon from '@/assets/images/email';
-import UsernameIcon from '@/assets/images/username';
 import WalletIcon from '@/assets/images/wallet';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import Navbar from '@/components/Navbar';
@@ -16,39 +13,13 @@ import useUser from '@/hooks/useUser';
 import { cn, eclipseAddress } from '@/lib/utils';
 import { Address } from 'viem';
 
-interface Detail {
-  title: string;
-  description?: string | Address;
-  isAddress?: boolean;
-  icon?: React.ReactNode;
-  link?: Href;
-}
+const AccountDetailsIcon = require('@/assets/images/settings_account_details.png');
 
 export default function Account() {
   const { user, handleDeleteAccount } = useUser();
   const { isDesktop } = useDimension();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const details: Detail[] = [
-    {
-      title: 'User Name',
-      description: user?.username,
-      icon: <UsernameIcon color="#ffffff" />,
-    },
-    {
-      title: 'Wallet Address',
-      description: user?.safeAddress,
-      isAddress: true,
-      icon: <WalletIcon color="#ffffff" />,
-    },
-    {
-      title: 'Email',
-      description: user?.email,
-      icon: <EmailIcon color="#ffffff" />,
-      link: '/settings/email',
-    },
-  ];
 
   const handleDeletePress = () => {
     setShowDeleteModal(true);
@@ -152,51 +123,71 @@ export default function Account() {
       customDesktopHeader={desktopHeader}
       useDesktopBreakpoint
       additionalContent={deleteModal}
+      scrollable={false}
     >
       <View
-        className={cn('w-full mx-auto gap-3 px-4 py-4', {
+        className={cn('w-full mx-auto px-4 py-4 flex-1', {
           'max-w-[512px]': isDesktop,
           'max-w-7xl': !isDesktop,
         })}
       >
-        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
-          {details.map((detail, index) => (
-            <View key={`detail-${index}`}>
-              <SettingsCard
-                title={detail.title}
-                description={
-                  detail.isAddress
-                    ? eclipseAddress(detail.description as Address)
-                    : detail.description
-                }
-                icon={detail.icon}
-                link={detail.link}
-                isDesktop={isDesktop}
-                inlineAction={
-                  detail.isAddress && user?.safeAddress ? (
-                    <CopyToClipboard text={user.safeAddress} />
-                  ) : null
-                }
-                customAction={detail.link ? <ChevronRight size={20} color="#ffffff" /> : null}
-              />
-              {index < details.length - 1 && <View className="border-t border-[#2a2a2a]" />}
-            </View>
-          ))}
+        {/* Top Content */}
+        <View>
+          {/* User Name Section */}
+          <Text className="text-white text-base font-bold mb-4">User Name</Text>
+          <View className="bg-[#1c1c1c] rounded-xl overflow-hidden mb-6">
+            <SettingsCard
+              title={user?.username || 'Unknown'}
+              icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
+              isDesktop={isDesktop}
+              hideIconBackground
+              titleStyle="font-medium"
+            />
+          </View>
+
+          {/* Wallet Address Section */}
+          <Text className="text-white text-base font-bold mt-2 mb-4">Wallet address</Text>
+          <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
+            <SettingsCard
+              title={eclipseAddress(user?.safeAddress as Address)}
+              icon={<WalletIcon color="#ffffff" width={21} height={21} />}
+              isDesktop={isDesktop}
+              hideIconBackground
+              titleStyle="font-medium"
+              customAction={
+                user?.safeAddress ? (
+                  <CopyToClipboard
+                    text={user.safeAddress}
+                    size={18}
+                    iconClassName="text-white/70"
+                  />
+                ) : null
+              }
+            />
+          </View>
         </View>
 
-        {/* Delete Account Section */}
-        <View className="mt-4">
+        {/* Spacer */}
+        <View className="flex-1" />
+
+        {/* Delete Account Section - at bottom */}
+        <View className={cn('pb-4', { 'pb-24': !isDesktop })}>
           <Pressable
             onPress={handleDeletePress}
             className="bg-[#1c1c1c] rounded-xl overflow-hidden"
           >
             <SettingsCard
               title="Delete account"
-              icon={<DeleteAccountIcon />}
+              icon={
+                <Image
+                  source={AccountDetailsIcon}
+                  style={{ width: 22, height: 22, tintColor: '#FF7D7D' }}
+                />
+              }
               isDesktop={isDesktop}
-              customAction={<ChevronRight size={20} color="#ff7d7d" />}
-              titleStyle="text-[#ff7d7d]"
-              hideIconBackground={true}
+              customAction={<ChevronRight size={20} />}
+              titleStyle="text-[#FF7D7D]"
+              hideIconBackground
             />
           </Pressable>
         </View>
