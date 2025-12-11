@@ -152,6 +152,8 @@ export default function Security() {
             <SettingsCard
               title={user?.email || 'No email'}
               description={user?.email ? 'Verified' : undefined}
+              descriptionStyle="text-[#94F27F]"
+              descriptionContainerStyle="bg-[#94F27F]/15 rounded-full px-2 py-0.5 mt-1"
               icon={<Image source={SecurityEmailIcon} style={{ width: 24, height: 24 }} />}
               isDesktop={isDesktop}
               hideIconBackground
