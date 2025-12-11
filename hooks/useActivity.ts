@@ -119,7 +119,15 @@ export function useActivity() {
     },
     initialPageParam: 1,
     enabled: !!user?.userId,
-    // No polling - manual refresh only
+    // Prevent excessive refetches - only refetch when explicitly triggered
+    refetchOnMount: false, // Don't refetch when components mount (20+ components use this hook!)
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnReconnect: false, // Don't refetch on network reconnect
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    // Query will only refetch when:
+    // 1. Explicitly invalidated (by sync success)
+    // 2. Manually triggered (pull-to-refresh)
+    // 3. Data is older than 5 minutes
   });
 
   const { data: activityData, isLoading, isRefetching } = activityEvents;
