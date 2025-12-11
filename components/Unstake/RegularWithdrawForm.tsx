@@ -74,15 +74,6 @@ const RegularWithdrawForm = () => {
   const { bridge, bridgeStatus } = useBridgeToMainnet();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
 
-  const getBridgeText = () => {
-    if (bridgeErrors.amount) return bridgeErrors.amount.message;
-    if (bridgeStatus === Status.PENDING) return 'Moving...';
-    if (bridgeStatus === Status.ERROR) return 'Error while moving';
-    if (bridgeStatus === Status.SUCCESS) return 'Successfully Moved';
-    if (!isBridgeValid || !watchedAmount) return 'Enter an amount';
-    return 'Move';
-  };
-
   const onBridgeSubmit = async (data: WithdrawFormData) => {
     try {
       const transaction = await bridge(data.amount.toString());
@@ -117,7 +108,7 @@ const RegularWithdrawForm = () => {
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground">Amount</Text>
+          <Text className="text-muted-foreground text-base">Amount</Text>
           <View className="px-5 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
             <Controller
               control={control}
@@ -152,7 +143,7 @@ const RegularWithdrawForm = () => {
           </View>
           <View className="flex-row items-center gap-2">
             <Wallet color="#A1A1A1" size={16} />
-            <Text className="text-muted-foreground">
+            <Text className="text-base text-muted-foreground">
               {formatNumber(Number(formattedBalance))} soUSD
             </Text>
             <Max
@@ -166,27 +157,27 @@ const RegularWithdrawForm = () => {
         <TokenDetails>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
             <View className="flex-row items-center gap-2">
-              <Text className="text-lg text-muted-foreground">Destination</Text>
+              <Text className="text-base text-muted-foreground">Destination</Text>
             </View>
             <View className="flex-row items-center gap-2 ml-auto flex-shrink-0">
               <Wallet size={24} color="white" />
-              <Text className="text-lg font-semibold">Wallet</Text>
+              <Text className="text-base font-semibold">Wallet</Text>
             </View>
           </View>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
-            <Text className="text-base text-muted-foreground">Estimated Time</Text>
+            <Text className="text-muted-foreground text-base">Estimated Time</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
               {isLoadingFuseBalance ? (
                 <Skeleton className="w-20 h-7 bg-white/20" />
               ) : (
-                <Text className="text-lg font-semibold">Up to 24 hours</Text>
+                <Text className="text-base font-semibold">Up to 24 hours</Text>
               )}
             </View>
           </View>
           <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
-            <Text className="text-base text-muted-foreground">Fee</Text>
+            <Text className="text-muted-foreground text-base">Fee</Text>
             <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
-              <Text className="text-lg font-semibold">{`$${formatNumber(0)}`}</Text>
+              <Text className="text-base font-semibold">{`$${formatNumber(0)}`}</Text>
             </View>
           </View>
         </TokenDetails>
