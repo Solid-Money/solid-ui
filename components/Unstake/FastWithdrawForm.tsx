@@ -194,7 +194,7 @@ const FastWithdrawForm = () => {
   };
 
   const isFormDisabled = () => {
-    return isPreviewLoading || !isValid || !watchedAmount;
+    return isPreviewLoading || !isValid || !watchedAmount || isLoading;
   };
 
   return (
@@ -331,8 +331,11 @@ const FastWithdrawForm = () => {
             onPress={handleSubmit(onSubmit)}
             disabled={isFormDisabled()}
           >
-            <Text className="text-base font-semibold">Withdraw</Text>
-            {isLoading && <ActivityIndicator color="gray" />}
+            {isLoading ? (
+              <ActivityIndicator color="gray" />
+            ) : (
+              <Text className="font-semibold text-black text-lg">Withdraw</Text>
+            )}
           </Button>
         </CheckConnectionWrapper>
       </View>

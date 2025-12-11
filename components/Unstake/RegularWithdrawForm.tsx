@@ -101,7 +101,7 @@ const RegularWithdrawForm = () => {
   };
 
   const isWithdrawFormDisabled = () => {
-    return isLoadingFuseBalance || !isBridgeValid || !watchedAmount;
+    return isLoadingFuseBalance || !isBridgeValid || !watchedAmount || isBridgeLoading;
   };
 
   return (
@@ -197,7 +197,11 @@ const RegularWithdrawForm = () => {
           onPress={handleSubmit(onBridgeSubmit)}
           disabled={isWithdrawFormDisabled()}
         >
-          <Text className="font-bold text-primary-foreground text-lg">Withdraw</Text>
+          {isBridgeLoading ? (
+            <ActivityIndicator color="gray" />
+          ) : (
+            <Text className="font-bold text-primary-foreground text-lg">Withdraw</Text>
+          )}
           {isBridgeLoading && <ActivityIndicator color="black" />}
         </Button>
 
