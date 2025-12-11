@@ -33,25 +33,25 @@ const BannerItem = ({
   item,
   dataLen,
   hasMultipleViews,
-  progress,
+  // progress,
   gapPadding,
 }: BannerItemProps) => {
   const animatedStyle = useAnimatedStyle(() => {
-    const currentIndex = Math.round(progress.value);
-    const nextIndex = (currentIndex + 1) % dataLen;
+    // const currentIndex = Math.round(progress.value);
+    // const nextIndex = (currentIndex + 1) % dataLen;
 
     if (hasMultipleViews) {
-      const isCurrent = index === currentIndex;
-      const isNext = index === nextIndex;
+      // const isCurrent = index === currentIndex;
+      // const isNext = index === nextIndex;
       return {
-        paddingRight: isCurrent ? gapPadding.value : 0,
-        paddingLeft: isNext ? gapPadding.value : 0,
+        paddingRight: gapPadding.value, //isCurrent ? gapPadding.value : 0,
+        paddingLeft: gapPadding.value, //isNext ? gapPadding.value : 0,
       };
     }
 
     return {
-      paddingRight: gapPadding.value,
-      paddingLeft: gapPadding.value,
+      paddingRight: 16,
+      paddingLeft: 16,
     };
   }, [index, dataLen, hasMultipleViews]);
 
@@ -133,17 +133,17 @@ const HomeBannersContent = () => {
             width={ITEM_WIDTH}
             height={BANNER_HEIGHT}
             data={data}
-            loop={IS_PAGINATION}
+            loop={false}
             autoPlay={false}
             onProgressChange={progress}
             scrollAnimationDuration={200}
             onScrollStart={() => {
-              if (HAS_MULTIPLE_VIEWS) return;
-              gapPadding.value = withTiming(GAP / 2, { duration: 100 });
+              //  if (HAS_MULTIPLE_VIEWS) return;
+              //gapPadding.value = withTiming(GAP / 2, { duration: 100 });
             }}
             onScrollEnd={() => {
-              if (HAS_MULTIPLE_VIEWS) return;
-              gapPadding.value = withTiming(0, { duration: 100 });
+              //if (HAS_MULTIPLE_VIEWS) return;
+              //gapPadding.value = withTiming(0, { duration: 100 });
             }}
             onConfigurePanGesture={(panGesture: PanGesture) => {
               const setPanning = (value: boolean) => {
@@ -207,16 +207,16 @@ const styles = StyleSheet.create({
   },
   paginationContainer: {
     gap: 4,
-    marginTop: 34,
+    marginTop: 20,
   },
   dotStyle: {
-    backgroundColor: '#C2C2C2',
-    width: 10,
-    height: 10,
+    backgroundColor: '#616161',
+    width: 9,
+    height: 9,
     borderRadius: 50,
   },
   activeDot: {
-    backgroundColor: '#C2C2C2',
+    backgroundColor: '#B2B2B2',
     width: 20,
   },
 });

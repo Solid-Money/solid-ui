@@ -56,7 +56,7 @@ NavigationMenuItem.displayName = 'NavigationMenuItem';
 
 const navigationMenuLinkClassNames = {
   pressable:
-    'group inline-flex h-8 w-max items-center justify-center rounded-full px-3 py-2 md:p-5 transition-colors hover:bg-button-secondary focus:bg-button-secondary focus:outline-none disabled:pointer-events-none disabled:opacity-50',
+    'group inline-flex h-8 w-max items-center justify-center rounded-full px-3 py-2 md:p-5 transition-colors hover:bg-[#2C2C2C] focus:bg-[#2C2C2C] focus:outline-none disabled:pointer-events-none disabled:opacity-50',
   text: 'font-semibold',
 };
 
@@ -64,10 +64,9 @@ const NavigationMenuLink = React.forwardRef<
   React.ElementRef<typeof Pressable>,
   NavigationMenuLinkProps
 >(({ onPress, className, active, children }, ref) => {
-  const pressableClass = cn(
-    navigationMenuLinkClassNames.pressable,
-    active && 'bg-button-secondary',
-  );
+  const pressableClass = cn(navigationMenuLinkClassNames.pressable, {
+    'bg-[#2C2C2C]': active,
+  });
 
   const textClass = cn(
     navigationMenuLinkClassNames.text,

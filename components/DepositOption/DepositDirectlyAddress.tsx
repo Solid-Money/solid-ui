@@ -63,7 +63,7 @@ const DepositDirectlyAddress = () => {
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareError, setShareError] = useState(false);
   const { maxAPY, isAPYsLoading } = useMaxAPY();
-  const { exchangeRate, amountOut } = usePreviewDeposit(
+  const { exchangeRate } = usePreviewDeposit(
     '10',
     BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address,
     chainId,
@@ -141,7 +141,7 @@ const DepositDirectlyAddress = () => {
     session?.minDeposit ||
     directDepositSession.minDeposit ||
     '0.0001';
-  const maxDeposit = session?.maxDeposit || directDepositSession.maxDeposit || '500000';
+  // const maxDeposit = session?.maxDeposit || directDepositSession.maxDeposit || '500000';
   const fee = session?.fee || directDepositSession.fee || '0';
 
   const infoRows: InfoRow[] = useMemo(
@@ -181,7 +181,7 @@ const DepositDirectlyAddress = () => {
     });
 
     return rows;
-  }, [amountOut, exchangeRate, isAPYsLoading, formattedAPY]);
+  }, [exchangeRate, isAPYsLoading, formattedAPY]);
 
   return (
     <View className="flex-col gap-3">
