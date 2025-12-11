@@ -37,12 +37,12 @@ const BannerItem = ({
   gapPadding,
 }: BannerItemProps) => {
   const animatedStyle = useAnimatedStyle(() => {
-    const currentIndex = Math.round(progress.value);
-    const nextIndex = (currentIndex + 1) % dataLen;
+    // const currentIndex = Math.round(progress.value);
+    // const nextIndex = (currentIndex + 1) % dataLen;
 
     if (hasMultipleViews) {
-      const isCurrent = index === currentIndex;
-      const isNext = index === nextIndex;
+      // const isCurrent = index === currentIndex;
+      // const isNext = index === nextIndex;
       return {
         paddingRight: gapPadding.value, //isCurrent ? gapPadding.value : 0,
         paddingLeft: gapPadding.value, //isNext ? gapPadding.value : 0,

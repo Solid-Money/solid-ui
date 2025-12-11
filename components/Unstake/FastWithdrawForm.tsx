@@ -197,16 +197,6 @@ const FastWithdrawForm = () => {
     return isPreviewLoading || !isValid || !watchedAmount;
   };
 
-  const getButtonText = () => {
-    if (isLoading) {
-      return 'Processing...';
-    }
-    if (chainId === 122) {
-      return 'Fast Withdraw';
-    }
-    return 'Withdraw';
-  };
-
   return (
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">

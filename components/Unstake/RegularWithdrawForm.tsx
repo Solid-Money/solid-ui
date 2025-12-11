@@ -74,15 +74,6 @@ const RegularWithdrawForm = () => {
   const { bridge, bridgeStatus } = useBridgeToMainnet();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
 
-  const getBridgeText = () => {
-    if (bridgeErrors.amount) return bridgeErrors.amount.message;
-    if (bridgeStatus === Status.PENDING) return 'Moving...';
-    if (bridgeStatus === Status.ERROR) return 'Error while moving';
-    if (bridgeStatus === Status.SUCCESS) return 'Successfully Moved';
-    if (!isBridgeValid || !watchedAmount) return 'Enter an amount';
-    return 'Move';
-  };
-
   const onBridgeSubmit = async (data: WithdrawFormData) => {
     try {
       const transaction = await bridge(data.amount.toString());
