@@ -125,20 +125,21 @@ export function useActivity() {
   const { data: activityData, refetch: refetchActivityEvents, isLoading, isRefetching } = activityEvents;
 
   // Refetch all data sources (backend handles all syncing now)
+  // IMPORTANT: Do NOT call refetchActivityEvents() here!
+  // syncFromBackend() invalidates the 'activity-events' query on success,
+  // which triggers React Query to auto-refetch. Calling both causes double fetches.
   const refetchAll = useCallback(() => {
     if (isSyncing || isRefetching) {
       return;
     }
-    // Trigger backend sync in background (non-blocking)
-    // Backend syncs: Blockscout, deposits, bridges, and bank transfers
-    // The sync will invalidate 'activity-events' query when complete
+    // Trigger backend sync - this will:
+    // 1. Call /v1/activity/sync API
+    // 2. On success, invalidate 'activity-events' query (useSyncActivities.ts:130)
+    // 3. React Query auto-refetches the invalidated query
     syncFromBackend().catch((error: any) => {
       console.error('Background sync failed:', error);
     });
-
-    // Refetch cached activities from backend
-    refetchActivityEvents();
-  }, [syncFromBackend, refetchActivityEvents]);
+  }, [isSyncing, isRefetching, syncFromBackend]);
 
   // Get user's activities from local storage
   const activities = useMemo(() => {
