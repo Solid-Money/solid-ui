@@ -46,18 +46,13 @@ export default function TabLayout() {
           paddingTop: 4,
           paddingBottom: 10,
           borderTopWidth: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          // Native uses TabBarBackground (BlurView + overlay), web uses CSS backdropFilter
+          backgroundColor: Platform.OS === 'web' ? 'rgba(0, 0, 0, 0.7)' : 'transparent',
           borderTopColor: 'rgba(61, 61, 61, 0.0)',
           borderColor: 'rgba(61, 61, 61, 0.0)',
           elevation: 0,
           shadowOpacity: 0,
           position: 'absolute',
-          // Add background blur effect (supported in react-native 0.71+)
-          backdropFilter: 'blur(10px)', // Web support only
-          // For native, you need to use a blur view background component;
-          // but for a quick improvement here, you can add the deprecated native property:
-          // @ts-ignore
-          backgroundBlur: '10px',
         },
       }}
       tabBar={

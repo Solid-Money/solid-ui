@@ -64,6 +64,7 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
           // @ts-ignore - web CSS properties
           style={[
             styles.tabLabel,
+            // @ts-ignore - web CSS transition property
             activeTransitionStyle,
             { color: isFocused ? 'white' : 'rgba(255, 255, 255, 0.5)' },
           ]}
