@@ -118,24 +118,24 @@ export default function Security() {
         >
           {/* Unlock Banner - only show when locked */}
           {!isUnlocked && (
-            <View className="bg-[#94F27F]/20 rounded-xl p-4 mb-6">
+            <View className="bg-[#94F27F]/20 rounded-xl p-6 mb-6">
               <View className="flex-row items-center justify-center gap-2 mb-3">
                 <Image source={SecurityUnlockIcon} style={{ width: 15, height: 17 }} />
-                <Text className="text-[#94F27F] text-base font-medium">
+                <Text className="text-[#94F27F] text-base font-bold">
                   Unlock to change settings
                 </Text>
               </View>
               <Pressable
                 onPress={handleUnlock}
                 disabled={isUnlocking}
-                className="bg-[#94F27F] rounded-xl py-3 flex-row items-center justify-center gap-2 active:opacity-80"
+                className="bg-[#94F27F] rounded-xl mt-2 py-3 flex-row items-center justify-center gap-2 active:opacity-80"
               >
                 {isUnlocking ? (
                   <ActivityIndicator color="#000000" size="small" />
                 ) : (
                   <>
                     <Image source={SecurityKeyIcon} style={{ width: 23, height: 11 }} />
-                    <Text className="text-black text-base font-semibold">Unlock</Text>
+                    <Text className="text-black text-base font-bold">Unlock</Text>
                   </>
                 )}
               </Pressable>
@@ -144,7 +144,7 @@ export default function Security() {
 
           {/* Email Section */}
           <Text className="text-white text-base font-bold mb-2">Email</Text>
-          <Text className="text-[#ACACAC] text-sm mb-4">
+          <Text className="text-[#ACACAC] text-base font-medium mb-4">
             This email will receive important alerts regarding your account and be used for Wallet
             funds recovery.
           </Text>
