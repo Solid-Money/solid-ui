@@ -75,7 +75,7 @@ const useDepositExternalWalletOptions = () => {
     () => [
       {
         text: 'Send from your crypto wallet',
-        subtitle: 'Add USDC from supported networks\ndirectly to your account',
+        subtitle: 'Add supported assets from supported\nnetworks directly to your account',
         icon: <Wallet color="white" size={24} strokeWidth={1} />,
         onPress: openWallet,
         isLoading: isWalletOpen,
@@ -83,8 +83,7 @@ const useDepositExternalWalletOptions = () => {
       },
       {
         text: 'Share your deposit address',
-        subtitle:
-          'Send supported assets to your solid\ndeposit address from any supported\nnetwork',
+        subtitle: 'Send USDC to your solid deposit\naddress from any supported network',
         icon: <HomeQR />,
         onPress: handleDepositDirectly,
       },
