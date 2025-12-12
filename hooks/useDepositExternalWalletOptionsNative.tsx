@@ -22,8 +22,7 @@ const useDepositExternalWalletOptionsNative = () => {
     () => [
       {
         text: 'Share your deposit address',
-        subtitle:
-          'Send supported assets to your solid\ndeposit address from any supported\nnetwork',
+        subtitle: 'Send USDC to your solid\ndeposit address from any supported\nnetwork',
         icon: <HomeQR />,
         onPress: handleDepositDirectly,
       },
