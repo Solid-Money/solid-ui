@@ -14,6 +14,7 @@ import { useDimension } from '@/hooks/useDimension';
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
+import SavingsHeaderButtonsMobile from './SavingsHeaderButtonsMobile';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
@@ -81,6 +82,8 @@ export default function SavingsEmptyState() {
             </View>
           )}
         </LinearGradient>
+
+        {!isScreenMedium && <SavingsHeaderButtonsMobile />}
       </View>
       <View className="md:px-4">
         <HomeBanners />
