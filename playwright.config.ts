@@ -12,6 +12,9 @@ if (!hasAuth) {
   process.exit(1);
 }
 
+// In CI, use production; locally use dev server
+const baseURL = process.env.CI ? 'https://app.solid.xyz' : 'http://localhost:8081';
+
 export default defineConfig({
   testDir: './playwright/e2e',
   fullyParallel: true,
@@ -20,7 +23,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:8081',
+    baseURL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -32,19 +35,15 @@ export default defineConfig({
       },
     },
   ],
-  webServer: process.env.CI
-    ? {
-        // In CI: serve the pre-built static files
-        command: 'npx serve dist -l 8081',
-        url: 'http://localhost:8081',
-        reuseExistingServer: false,
-        timeout: 30 * 1000,
-      }
+  // Only start webServer locally, not in CI
+  ...(process.env.CI
+    ? {}
     : {
-        // Locally: use the dev server
-        command: 'npm run web',
-        url: 'http://localhost:8081',
-        reuseExistingServer: true,
-        timeout: 120 * 1000,
-      },
+        webServer: {
+          command: 'npm run web',
+          url: 'http://localhost:8081',
+          reuseExistingServer: true,
+          timeout: 120 * 1000,
+        },
+      }),
 });

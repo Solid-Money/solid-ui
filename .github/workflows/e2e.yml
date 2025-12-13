@@ -1,14 +1,21 @@
 name: E2E Tests
 
 on:
-  push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+  # Triggered by Vercel webhook after deployment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test against'
+        required: false
+        default: 'qa'
+        type: choice
+        options:
+          - qa
+          - production
 
 jobs:
   e2e:
-    timeout-minutes: 60
+    timeout-minutes: 15
     runs-on: ubuntu-latest
 
     steps:
@@ -46,11 +53,6 @@ jobs:
 
       - name: Decode and write auth state
         run: echo "${{ secrets.PLAYWRIGHT_AUTH_STATE }}" | base64 -d > playwright/.auth/user.json
-
-      - name: Build web app
-        run: npx expo export -p web
-        env:
-          NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Run Playwright tests
         run: npm run test:e2e
