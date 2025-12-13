@@ -49,3 +49,8 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Playwright
+playwright/.auth/
+playwright-report/
+test-results/
