@@ -26,6 +26,7 @@ import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
+const SOUSD_ICON = require('@/assets/images/sousd-4x.png');
 
 const STATUS_TEXT = {
   pending: 'Waiting for transfer',
@@ -160,6 +161,26 @@ const DepositDirectlyAddress = () => {
 
   const priceRows: InfoRow[] = useMemo(() => {
     const rows: InfoRow[] = [];
+
+    // Calculate soUSD amount for 10 USDC
+    const usdcAmount = 10;
+
+    const soUSDAmount = exchangeRate
+      ? usdcAmount / Number(formatUnits(exchangeRate, 6))
+      : usdcAmount;
+
+    rows.push({
+      label: 'You will receive',
+      valueContent: (
+        <View className="flex-row items-center gap-1.5">
+          <Image source={SOUSD_ICON} style={{ width: 18, height: 18 }} contentFit="cover" />
+          <Text className="font-bold text-white text-base">
+            {formatNumber(soUSDAmount, 2, 2)}{' '}
+            <Text className="text-white/70">soUSD on Ethereum</Text>
+          </Text>
+        </View>
+      ),
+    });
 
     rows.push({
       label: 'Price',
