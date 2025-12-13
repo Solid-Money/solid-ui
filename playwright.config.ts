@@ -28,7 +28,6 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // Only use storageState if the auth file exists
         ...(hasAuth ? { storageState: authFile } : {}),
       },
     },
@@ -37,6 +36,6 @@ export default defineConfig({
     command: 'npm run web',
     url: 'http://localhost:8081',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    timeout: 300 * 1000, // 5 minutes for CI
   },
 });
