@@ -222,7 +222,7 @@ export default function Savings() {
           </View>
         </LinearGradient>
 
-        {!isScreenMedium && <SavingsHeaderButtonsMobile hasTokens={hasTokens} />}
+        {!isScreenMedium && <SavingsHeaderButtonsMobile />}
       </View>
       <View className="md:px-0 w-full max-w-7xl mx-auto">
         <HomeBanners />
