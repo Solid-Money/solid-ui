@@ -47,6 +47,11 @@ jobs:
       - name: Decode and write auth state
         run: echo "${{ secrets.PLAYWRIGHT_AUTH_STATE }}" | base64 -d > playwright/.auth/user.json
 
+      - name: Build web app
+        run: npx expo export -p web
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
       - name: Run Playwright tests
         run: npm run test:e2e
         env:
