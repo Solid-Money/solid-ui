@@ -32,10 +32,19 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: 'npm run web',
-    url: 'http://localhost:8081',
-    reuseExistingServer: !process.env.CI,
-    timeout: 300 * 1000, // 5 minutes for CI
-  },
+  webServer: process.env.CI
+    ? {
+        // In CI: serve the pre-built static files
+        command: 'npx serve dist -l 8081',
+        url: 'http://localhost:8081',
+        reuseExistingServer: false,
+        timeout: 30 * 1000,
+      }
+    : {
+        // Locally: use the dev server
+        command: 'npm run web',
+        url: 'http://localhost:8081',
+        reuseExistingServer: true,
+        timeout: 120 * 1000,
+      },
 });
