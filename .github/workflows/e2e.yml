@@ -8,12 +8,23 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Debug job to see what Vercel sends
+  debug:
+    if: github.event_name == 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug deployment info
+        run: |
+          echo "State: ${{ github.event.deployment_status.state }}"
+          echo "Environment: ${{ github.event.deployment.environment }}"
+          echo "Description: ${{ github.event.deployment_status.description }}"
+          echo "Target URL: ${{ github.event.deployment_status.target_url }}"
+
   e2e:
-    # Only run when deployment succeeded and it's production
+    # Only run when deployment succeeded
     if: |
       github.event_name == 'workflow_dispatch' || 
-      (github.event.deployment_status.state == 'success' && 
-       github.event.deployment.environment == 'Production')
+      github.event.deployment_status.state == 'success'
 
     timeout-minutes: 15
     runs-on: ubuntu-latest
