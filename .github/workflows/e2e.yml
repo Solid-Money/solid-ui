@@ -1,20 +1,20 @@
 name: E2E Tests
 
 on:
-  # Triggered by Vercel webhook after deployment
+  # Triggered automatically by Vercel via deployment_status event
+  deployment_status:
+
+  # Also allow manual triggering for testing
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to test against'
-        required: false
-        default: 'qa'
-        type: choice
-        options:
-          - qa
-          - production
 
 jobs:
   e2e:
+    # Only run when deployment succeeded and it's production
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (github.event.deployment_status.state == 'success' && 
+       github.event.deployment.environment == 'Production')
+
     timeout-minutes: 15
     runs-on: ubuntu-latest
 
