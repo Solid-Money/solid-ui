@@ -1,0 +1,78 @@
+name: E2E Tests
+
+on:
+  # Triggered automatically by Vercel via deployment_status event
+  deployment_status:
+
+  # Also allow manual triggering for testing
+  workflow_dispatch:
+
+jobs:
+  # Debug job to see what Vercel sends
+  debug:
+    if: github.event_name == 'deployment_status'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug deployment info
+        run: |
+          echo "State: ${{ github.event.deployment_status.state }}"
+          echo "Environment: ${{ github.event.deployment.environment }}"
+          echo "Description: ${{ github.event.deployment_status.description }}"
+          echo "Target URL: ${{ github.event.deployment_status.target_url }}"
+
+  e2e:
+    # Only run when deployment succeeded
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      github.event.deployment_status.state == 'success'
+
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(npm ls @playwright/test --json | jq -r '.dependencies["@playwright/test"].version')" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright deps (if cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Create auth directory
+        run: mkdir -p playwright/.auth
+
+      - name: Decode and write auth state
+        run: echo "${{ secrets.PLAYWRIGHT_AUTH_STATE }}" | base64 -d > playwright/.auth/user.json
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+        env:
+          CI: true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30

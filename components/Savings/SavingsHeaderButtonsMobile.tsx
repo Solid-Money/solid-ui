@@ -9,11 +9,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 
-type SavingsHeaderButtonsMobileProps = {
-  hasTokens: boolean;
-};
-
-const SavingsHeaderButtonsMobile = ({ hasTokens }: SavingsHeaderButtonsMobileProps) => {
+const SavingsHeaderButtonsMobile = () => {
   const router = useRouter();
 
   const withdrawTrigger = (
@@ -41,7 +37,7 @@ const SavingsHeaderButtonsMobile = ({ hasTokens }: SavingsHeaderButtonsMobilePro
         onPress={() => router.push(path.DEPOSIT)}
       />
 
-      {hasTokens && <UnstakeModal trigger={withdrawTrigger} />}
+      <UnstakeModal trigger={withdrawTrigger} />
     </View>
   );
 };

@@ -25,6 +25,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { formatUnits } from 'viem';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
+const SOUSD_ICON = require('@/assets/images/sousd-4x.png');
 
 const STATUS_TEXT = {
   pending: 'Waiting for transfer',
@@ -170,6 +171,26 @@ const DepositDirectlyAddress = () => {
   const priceRows: InfoRow[] = useMemo(() => {
     const rows: InfoRow[] = [];
 
+    // Calculate soUSD amount for 10 USDC
+    const usdcAmount = 10;
+
+    const soUSDAmount = exchangeRate
+      ? usdcAmount / Number(formatUnits(exchangeRate, 6))
+      : usdcAmount;
+
+    rows.push({
+      label: 'You will receive',
+      valueContent: (
+        <View className="flex flex-row items-center gap-1.5">
+          <Image source={SOUSD_ICON} style={{ width: 18, height: 18 }} contentFit="cover" />
+          <Text className="font-medium text-white text-base">
+            {formatNumber(soUSDAmount, 2, 2)}{' '}
+            <Text className="text-white/70">soUSD on Ethereum</Text>
+          </Text>
+        </View>
+      ),
+    });
+
     rows.push({
       label: 'Price',
       valueContent: (
@@ -306,7 +327,7 @@ const DepositDirectlyAddress = () => {
           {infoRows.map((row, index) => (
             <View key={row.label} className="flex flex-col">
               <View className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
-                <View className="flex items-center gap-1.5 md:gap-2">
+                <View className="flex-row items-center gap-1.5 md:gap-2">
                   {row.icon}
                   <Text className="font-medium text-primary/70 text-[1rem]">{row.label}</Text>
                 </View>
