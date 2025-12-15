@@ -21,10 +21,10 @@ import Input from '@/components/ui/input';
 const registerSchema = z.object({
   username: z
     .string()
-    .min(3, 'Username must be at least 3 characters')
-    .max(20, 'Username must be less than 20 characters')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Only use letters, numbers, underscores_, or hyphens-.')
-    .refine(value => !value.includes(' '), 'Username cannot contain spaces'),
+    .min(3, { error: 'Username must be at least 3 characters' })
+    .max(20, { error: 'Username must be less than 20 characters' })
+    .regex(/^[a-zA-Z0-9_]+$/, { error: 'Only use letters, numbers, underscores_, or hyphens-.' })
+    .refine(value => !value.includes(' '), { error: 'Username cannot contain spaces' }),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;

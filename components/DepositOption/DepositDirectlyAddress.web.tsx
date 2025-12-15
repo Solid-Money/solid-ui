@@ -152,7 +152,6 @@ const DepositDirectlyAddress = () => {
     session?.minDeposit ||
     directDepositSession.minDeposit ||
     '0.0001';
-
   const fee = session?.fee || directDepositSession.fee || '0';
 
   const infoRows: InfoRow[] = useMemo(

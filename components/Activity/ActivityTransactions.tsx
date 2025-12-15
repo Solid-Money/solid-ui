@@ -232,7 +232,7 @@ export default function ActivityTransactions({
     if (!isSyncing) return null;
     return (
       <View className="flex-row items-center justify-center py-2 gap-2">
-        <View className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        <View className="w-2 h-2 rounded-full bg-primary web:animate-pulse" />
         <Text className="text-muted-foreground text-sm">
           {isSyncStale ? 'Syncing your transaction history...' : 'Syncing...'}
         </Text>
