@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { RefreshCw } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, RefreshControl, View } from 'react-native';
-import ReAnimated from 'react-native-reanimated';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
