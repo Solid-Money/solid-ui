@@ -80,7 +80,6 @@ export default function DepositToCardModal({ trigger }: { trigger?: React.ReactN
       onOpenChange={handleOpenChange}
       trigger={trigger ?? <Trigger />}
       title={getTitle()}
-      titleClassName={isOptions ? 'justify-start' : undefined}
       containerClassName={'min-h-[36rem] overflow-y-auto flex-1'}
       contentKey={getContentKey()}
       showBackButton={!isOptions && !isTransactionStatus}

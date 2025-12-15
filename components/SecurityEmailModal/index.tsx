@@ -197,7 +197,6 @@ export const SecurityEmailModal: React.FC<SecurityEmailModalProps> = ({
       previousModal={closedModalState}
       trigger={null}
       title="Change Email"
-      titleClassName="justify-center"
       contentKey="security-email-modal"
     >
       <View className="p-6">

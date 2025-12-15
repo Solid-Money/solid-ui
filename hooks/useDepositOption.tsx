@@ -112,7 +112,7 @@ const useDepositOption = ({
           if (isScreenMedium) {
             props?.onPress?.(e);
           } else {
-            router.push(path.DEPOSIT);
+            handleOpenChange(true);
           }
         }}
       >
@@ -332,11 +332,8 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isNetworks) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
-    } else if (isScreenMedium) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else {
-      router.back();
-      setModal(DEPOSIT_MODAL.CLOSE);
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
   };
 

@@ -60,10 +60,17 @@ const DialogOverlayNative = React.forwardRef<
     }
   };
 
+  // Check if className contains 'justify-start' to position at top
+  const shouldAlignTop = className?.includes('justify-start');
+
   return (
     <DialogPrimitive.Overlay
       style={StyleSheet.absoluteFill}
-      className={cn('flex bg-black/80 justify-center items-center p-2', className)}
+      className={cn(
+        'flex bg-black/80 items-center p-2',
+        shouldAlignTop ? 'justify-start' : 'justify-center',
+        className,
+      )}
       onPress={handlePress}
       {...props}
       ref={ref}
@@ -83,16 +90,21 @@ const DialogOverlay = Platform.select({
 
 const DialogContent = React.forwardRef<
   DialogPrimitive.ContentRef,
-  DialogPrimitive.ContentProps & { portalHost?: string; onCloseAutoFocus?: (event: Event) => void }
->(({ className, children, portalHost, onCloseAutoFocus, ...props }, ref) => {
+  DialogPrimitive.ContentProps & {
+    portalHost?: string;
+    onCloseAutoFocus?: (event: Event) => void;
+    showCloseButton?: boolean;
+  }
+>(({ className, children, portalHost, onCloseAutoFocus, showCloseButton = true, ...props }, ref) => {
   const { open } = DialogPrimitive.useRootContext();
+  const shouldAlignTop = className?.includes('justify-start');
 
   const content = (
     <>
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          'max-w-lg gap-4 web:cursor-default bg-card p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
+          'max-w-lg gap-4 web:cursor-default bg-popup p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
           open
             ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
             : 'web:animate-out web:fade-out-0 web:zoom-out-95',
@@ -102,16 +114,9 @@ const DialogContent = React.forwardRef<
         {...props}
       >
         {children}
-        <DialogPrimitive.Close
-          className={
-            'absolute top-4 md:top-0 right-4 md:-right-12 h-6 w-6 md:h-10 md:w-10 flex items-center justify-center bg-card md:border border-0 rounded-full web:group web:ring-offset-background web:transition-opacity web:hover:opacity-70 web:focus:outline-none web:focus:ring-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none'
-          }
-        >
-          <X
-            size={Platform.OS === 'web' ? 22 : 18}
-            className={cn('text-muted-foreground', open && 'text-accent-foreground')}
-          />
-        </DialogPrimitive.Close>
+        {showCloseButton && (
+          <DialogCloseButton className="absolute top-4 right-4" />
+        )}
       </DialogPrimitive.Content>
       <Toast {...toastProps} />
     </>
@@ -119,7 +124,7 @@ const DialogContent = React.forwardRef<
 
   return (
     <DialogPortal hostName={portalHost}>
-      <DialogOverlay>
+      <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
         {Platform.OS === 'web' ? (
           content
         ) : (
@@ -127,7 +132,10 @@ const DialogContent = React.forwardRef<
             entering={FadeIn.duration(150)}
             exiting={FadeOut.duration(150)}
             style={StyleSheet.absoluteFill}
-            className="flex items-center justify-center"
+            className={cn(
+              'flex items-center',
+              shouldAlignTop ? 'justify-start' : 'justify-center',
+            )}
           >
             {content}
           </Animated.View>
@@ -177,9 +185,35 @@ const DialogDescription = React.forwardRef<
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
+const DialogCloseButton = React.forwardRef<
+  React.ComponentRef<typeof DialogPrimitive.Close>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Close> & {
+    className?: string;
+  }
+>(({ className, ...props }, ref) => {
+  const { open } = DialogPrimitive.useRootContext();
+  return (
+    <DialogPrimitive.Close
+      ref={ref}
+      className={cn(
+        'h-10 w-10 flex items-center justify-center bg-popover border-0 rounded-full web:group web:ring-offset-background web:transition-colors web:hover:bg-muted web:focus:outline-none web:focus:ring-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none',
+        className,
+      )}
+      {...props}
+    >
+      <X
+        size={Platform.OS === 'web' ? 22 : 18}
+        className={cn('text-muted-foreground', open && 'text-accent-foreground')}
+      />
+    </DialogPrimitive.Close>
+  );
+});
+DialogCloseButton.displayName = 'DialogCloseButton';
+
 export {
   Dialog,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -187,5 +221,5 @@ export {
   DialogOverlay,
   DialogPortal,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger
 };

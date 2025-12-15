@@ -113,7 +113,6 @@ const SendModal = ({
       onOpenChange={handleOpenChange}
       trigger={<SendTrigger />}
       title={getTitle()}
-      titleClassName="justify-center"
       contentKey={getContentKey()}
     >
       {getContent()}
