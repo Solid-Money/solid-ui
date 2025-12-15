@@ -171,7 +171,8 @@
     "@coinbase/wallet-mobile-sdk": {
       "react-native-mmkv": "$react-native-mmkv"
     },
-    "ox": "0.7.0"
+    "ox": "0.7.0",
+    "use-sync-external-store": "1.4.0"
   },
   "expo": {
     "doctor": {
