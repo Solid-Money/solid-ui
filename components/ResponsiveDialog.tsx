@@ -58,10 +58,7 @@ const ResponsiveDialog = ({
             <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
           </DialogHeader>
         )}
-        <ScrollView
-          className="max-h-[80vh]"
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView className="max-h-[80vh]" showsVerticalScrollIndicator={false}>
           {children}
         </ScrollView>
       </DialogContent>

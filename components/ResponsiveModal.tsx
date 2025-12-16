@@ -21,7 +21,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { useDimension } from '@/hooks/useDimension';
 import { cn } from '@/lib/utils';
@@ -127,10 +127,7 @@ const ResponsiveModal = ({
           >
             {hasHeader ? (
               <DialogHeader
-                className={cn(
-                  'flex-row items-center gap-2 justify-between',
-                  titleClassName,
-                )}
+                className={cn('flex-row items-center gap-2 justify-between', titleClassName)}
               >
                 {hasBackButton ? (
                   <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>

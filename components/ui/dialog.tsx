@@ -95,55 +95,58 @@ const DialogContent = React.forwardRef<
     onCloseAutoFocus?: (event: Event) => void;
     showCloseButton?: boolean;
   }
->(({ className, children, portalHost, onCloseAutoFocus, showCloseButton = true, ...props }, ref) => {
-  const { open } = DialogPrimitive.useRootContext();
-  const shouldAlignTop = className?.includes('justify-start');
+>(
+  (
+    { className, children, portalHost, onCloseAutoFocus, showCloseButton = true, ...props },
+    ref,
+  ) => {
+    const { open } = DialogPrimitive.useRootContext();
+    const shouldAlignTop = className?.includes('justify-start');
 
-  const content = (
-    <>
-      <DialogPrimitive.Content
-        ref={ref}
-        className={cn(
-          'max-w-lg gap-4 web:cursor-default bg-popup p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
-          open
-            ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
-            : 'web:animate-out web:fade-out-0 web:zoom-out-95',
-          className,
-        )}
-        onCloseAutoFocus={onCloseAutoFocus}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogCloseButton className="absolute top-4 right-4" />
-        )}
-      </DialogPrimitive.Content>
-      <Toast {...toastProps} />
-    </>
-  );
+    const content = (
+      <>
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            'max-w-lg gap-4 web:cursor-default bg-popup p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
+            open
+              ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
+              : 'web:animate-out web:fade-out-0 web:zoom-out-95',
+            className,
+          )}
+          onCloseAutoFocus={onCloseAutoFocus}
+          {...props}
+        >
+          {children}
+          {showCloseButton && <DialogCloseButton className="absolute top-4 right-4" />}
+        </DialogPrimitive.Content>
+        <Toast {...toastProps} />
+      </>
+    );
 
-  return (
-    <DialogPortal hostName={portalHost}>
-      <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
-        {Platform.OS === 'web' ? (
-          content
-        ) : (
-          <Animated.View
-            entering={FadeIn.duration(150)}
-            exiting={FadeOut.duration(150)}
-            style={StyleSheet.absoluteFill}
-            className={cn(
-              'flex items-center',
-              shouldAlignTop ? 'justify-start' : 'justify-center',
-            )}
-          >
-            {content}
-          </Animated.View>
-        )}
-      </DialogOverlay>
-    </DialogPortal>
-  );
-});
+    return (
+      <DialogPortal hostName={portalHost}>
+        <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
+          {Platform.OS === 'web' ? (
+            content
+          ) : (
+            <Animated.View
+              entering={FadeIn.duration(150)}
+              exiting={FadeOut.duration(150)}
+              style={StyleSheet.absoluteFill}
+              className={cn(
+                'flex items-center',
+                shouldAlignTop ? 'justify-start' : 'justify-center',
+              )}
+            >
+              {content}
+            </Animated.View>
+          )}
+        </DialogOverlay>
+      </DialogPortal>
+    );
+  },
+);
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: ViewProps) => (
@@ -221,5 +224,5 @@ export {
   DialogOverlay,
   DialogPortal,
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
 };
