@@ -296,17 +296,17 @@ const DepositDirectlyAddress = () => {
 
       {/* Yield Info Rows */}
       {!isExpired && (
-        <View className="w-full rounded-2xl bg-accent flex flex-col">
+        <View className="w-full rounded-2xl bg-primary/10 flex flex-col">
           {priceRows.map((row, index) => (
             <View key={row.label} className="flex flex-col">
               <View className="flex flex-row items-center justify-between px-5 py-4 md:px-6 gap-1.5 md:gap-2 2xl:gap-3">
-                <Text className="font-medium text-base text-muted-foreground">{row.label}</Text>
+                <Text className="font-medium text-primary/70 text-[1rem]">{row.label}</Text>
                 <View className="flex items-center gap-2">
                   {row.valueContent ? (
                     row.valueContent
                   ) : (
                     <Text
-                      className={`font-medium text-foreground ${
+                      className={`font-medium text-foreground text-[1rem] ${
                         row.valueClassName ? row.valueClassName : ''
                       }`}
                     >
