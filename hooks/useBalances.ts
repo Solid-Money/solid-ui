@@ -341,13 +341,14 @@ export const useBalances = (): BalanceData => {
     queryFn: () => fetchTokenBalances(user?.safeAddress!),
     enabled: !!user?.safeAddress,
     // TanStack Query handles all the manual logic:
-    staleTime: 60 * 1000, // 1 minute - data is considered fresh for 1 minute
+    staleTime: 30 * 1000, // 30 seconds - data is considered fresh for 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes - data stays in cache for 5 minutes when unused
     retry: 3, // retry up to 3 times on failure
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
-    // No polling - manual refresh only (triggered by activity refresh)
+    // Refetch every 30 seconds when data becomes stale
+    refetchInterval: 30 * 1000,
   });
 
   const defaultData = {
