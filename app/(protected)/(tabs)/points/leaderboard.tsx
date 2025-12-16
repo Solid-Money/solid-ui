@@ -27,6 +27,7 @@ type RowProps = {
   leaderboardUser: LeaderboardUser;
   index: number;
   isStar?: boolean;
+  useRawIndex?: boolean; // When true, use index directly (for already 1-indexed positions)
 };
 
 const PAGE_SIZE = 30;
@@ -46,8 +47,11 @@ const positionStars: PositionStars = {
   },
 };
 
-const Row = ({ leaderboardUser, index, isStar }: RowProps) => {
+const Row = ({ leaderboardUser, index, isStar, useRawIndex }: RowProps) => {
   const { isScreenMedium } = useDimension();
+  // When useRawIndex is true, index is already 1-indexed (e.g., from API's leaderboardPosition)
+  // Otherwise, index is 0-indexed (e.g., from FlashList) and we need to add 1
+  const displayPosition = useRawIndex ? index : index + 1;
 
   return (
     <Animated.View
@@ -57,7 +61,7 @@ const Row = ({ leaderboardUser, index, isStar }: RowProps) => {
       <View className="md:w-20 flex justify-center items-center relative">
         {isStar && (
           <Image
-            source={positionStars[index + 1].icon}
+            source={positionStars[displayPosition].icon}
             style={{ width: isScreenMedium ? 36 : 28, height: isScreenMedium ? 36 : 28 }}
             contentFit="contain"
           />
@@ -69,7 +73,7 @@ const Row = ({ leaderboardUser, index, isStar }: RowProps) => {
               : 'bg-white/10 h-full px-2 rounded-twice mx-auto',
           )}
         >
-          <Text className="text-lg font-semibold">{formatNumber(index + 1, 0, 0)}</Text>
+          <Text className="text-lg font-semibold">{formatNumber(displayPosition, 0, 0)}</Text>
         </View>
       </View>
       <View className="grow md:w-8/12">
@@ -137,7 +141,11 @@ const Leaderboard = () => {
       <View className="gap-10">
         <View className="gap-4">
           <Text className="text-lg font-semibold">Your Ranking</Text>
-          <Row leaderboardUser={constructedUser} index={points.leaderboardPosition || 0} />
+          <Row
+            leaderboardUser={constructedUser}
+            index={points.leaderboardPosition || 1}
+            useRawIndex
+          />
         </View>
         <View className="mb-4">
           <Text className="text-lg font-semibold">Top users of all-time</Text>
