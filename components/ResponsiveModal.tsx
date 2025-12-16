@@ -84,6 +84,10 @@ const ResponsiveModal = ({
   const contentHeightRef = React.useRef(0);
 
   const dialogAnimatedStyle = useAnimatedStyle(() => {
+    // on native, let the content determine its own height initially
+    if (dialogHeight.value === 0) {
+      return {};
+    }
     if (!shouldAnimate) {
       return {
         height: dialogHeight.value,
