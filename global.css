@@ -94,3 +94,26 @@
     bottom: 100px !important;
   }
 }
+
+/* Bounce animation for dialog on web */
+@keyframes bounceInDown {
+  0% {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+  80% {
+    transform: translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bounce-in-down {
+  animation: bounceInDown 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}

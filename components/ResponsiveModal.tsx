@@ -83,6 +83,12 @@ const ResponsiveModal = ({
   const containerHeightRef = React.useRef(0);
   const contentHeightRef = React.useRef(0);
 
+  const enteringAnimation = shouldAnimate
+    ? (isForward ? FadeInRight : FadeInLeft).duration(ANIMATION_DURATION)
+    : undefined;
+
+  const exitingAnimation = (isForward ? FadeOutLeft : FadeOutRight).duration(ANIMATION_DURATION);
+
   const dialogAnimatedStyle = useAnimatedStyle(() => {
     // on native, let the content determine its own height initially
     if (dialogHeight.value === 0) {
@@ -147,7 +153,11 @@ const ResponsiveModal = ({
                   <View className="w-10" />
                 )}
                 {title && (
-                  <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
+                  <Animated.View
+                    key={contentKey}
+                    entering={enteringAnimation}
+                    exiting={exitingAnimation}
+                  >
                     <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
                   </Animated.View>
                 )}
@@ -186,18 +196,8 @@ const ResponsiveModal = ({
                 scrollEventThrottle={16}
               >
                 <Animated.View
-                  entering={
-                    shouldAnimate
-                      ? isForward
-                        ? FadeInRight.duration(ANIMATION_DURATION)
-                        : FadeInLeft.duration(ANIMATION_DURATION)
-                      : undefined
-                  }
-                  exiting={
-                    isForward
-                      ? FadeOutLeft.duration(ANIMATION_DURATION)
-                      : FadeOutRight.duration(ANIMATION_DURATION)
-                  }
+                  entering={enteringAnimation}
+                  exiting={exitingAnimation}
                   key={contentKey}
                 >
                   {children}
