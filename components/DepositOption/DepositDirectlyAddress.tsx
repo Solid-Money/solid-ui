@@ -7,20 +7,19 @@ import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
-import { useDirectDepositSessionPolling } from '@/hooks/useDirectDepositSession';
+
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import useUser from '@/hooks/useUser';
-import { track } from '@/lib/analytics';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
+import { useIntercom } from '@/lib/intercom';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Share, View } from 'react-native';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
@@ -64,50 +63,18 @@ const DepositDirectlyAddress = () => {
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareError, setShareError] = useState(false);
   const { maxAPY, isAPYsLoading } = useMaxAPY();
+  const intercom = useIntercom();
   const { exchangeRate } = usePreviewDeposit(
     '10',
     BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address,
     chainId,
   );
-  const trackedStatuses = useRef<Set<DepositStatus>>(new Set());
-
-  const { session } = useDirectDepositSessionPolling(directDepositSession.sessionId, true);
-
   const network = BRIDGE_TOKENS[chainId];
   const walletAddress = directDepositSession.walletAddress;
 
-  // Unified status from polling or store
-  const status: DepositStatus =
-    (session?.status as DepositStatus) || directDepositSession.status || 'pending';
-  const isExpired = status === 'expired';
-
-  // Track status changes (only once per status)
-  useEffect(() => {
-    if (!session?.sessionId || trackedStatuses.current.has(status)) return;
-    trackedStatuses.current.add(status);
-
-    const basePayload = {
-      user_id: user?.userId,
-      safe_address: user?.safeAddress,
-      session_id: session.sessionId,
-    };
-
-    switch (status) {
-      case 'detected':
-        track(TRACKING_EVENTS.DEPOSIT_VALIDATED, { ...basePayload, status: 'detected' });
-        break;
-      case 'completed':
-        track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-          ...basePayload,
-          amount: session.detectedAmount,
-          transaction_hash: session.transactionHash,
-        });
-        break;
-      case 'failed':
-        track(TRACKING_EVENTS.DEPOSIT_ERROR, { ...basePayload, status: 'failed' });
-        break;
-    }
-  }, [status, session, user?.userId, user?.safeAddress]);
+  // Hardcoded status - always show "Waiting for transfer"
+  const status: DepositStatus = 'pending';
+  const isExpired = false;
 
   // Clear share error after timeout
   useEffect(() => {
@@ -137,13 +104,11 @@ const DepositDirectlyAddress = () => {
 
   const estimatedTime = chainId === 1 ? '5 minutes' : '30 minutes';
   const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
+
   const minDeposit =
-    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ||
-    session?.minDeposit ||
-    directDepositSession.minDeposit ||
-    '0.0001';
-  // const maxDeposit = session?.maxDeposit || directDepositSession.maxDeposit || '500000';
-  const fee = session?.fee || directDepositSession.fee || '0';
+    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT || directDepositSession.minDeposit || '0.0001';
+
+  const fee = directDepositSession.fee || '0';
 
   const infoRows: InfoRow[] = useMemo(
     () => [
@@ -353,7 +318,7 @@ const DepositDirectlyAddress = () => {
         <Button
           variant="ghost"
           className="flex-row items-center gap-2"
-          onPress={() => Linking.openURL('https://intercom.help/solid-money/en')}
+          onPress={() => intercom?.show()}
         >
           <MessageCircle size={18} color="#A1A1AA" />
           <Text className="text-[#A1A1AA] font-medium">Need help?</Text>
