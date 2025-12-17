@@ -7,7 +7,7 @@ import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo } from 'react';
-import { useKycLinkFromBridge } from '../useCustomer';
+import { useCustomer, useKycLinkFromBridge } from '../useCustomer';
 
 // Import helpers
 import { processCardsEndorsement } from './endorsementHelpers';
@@ -19,12 +19,7 @@ import {
   showAccountOffboardedToast,
   showKycUnderReviewToast,
 } from './kycFlowHelpers';
-import {
-  computeKycStatus,
-  computeUiKycStatus,
-  formatRejectionReasons,
-  useProcessingWindow,
-} from './kycStatusHelpers';
+import { computeKycStatus, computeUiKycStatus, useProcessingWindow } from './kycStatusHelpers';
 import { buildCardSteps, useCardActivation, useStepNavigation } from './stepHelpers';
 
 // Re-export types
@@ -32,6 +27,7 @@ export type { Step } from './types';
 
 /**
  * Hook that manages the card activation flow steps
+ * Now uses cards endorsement status as the source of truth for step display
  */
 export function useCardSteps(
   initialKycStatus?: KycStatus,
@@ -41,10 +37,17 @@ export function useCardSteps(
   const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore();
   const countryStore = useCountryStore();
 
-  // Get KYC link status
+  // Get customer data with cards endorsement
+  const { data: customer } = useCustomer();
+  const cardsEndorsement = useMemo(
+    () => customer?.endorsements?.find(e => e.name === 'cards'),
+    [customer?.endorsements],
+  );
+
+  // Get KYC link status (still needed for redirect flow)
   const { data: kycLink } = useKycLinkFromBridge(kycLinkId || undefined);
 
-  // Compute KYC status
+  // Compute KYC status (for processing window logic)
   const kycStatus = useMemo(
     () => computeKycStatus(kycLink?.kyc_status, initialKycStatus),
     [kycLink?.kyc_status, initialKycStatus],
@@ -60,16 +63,10 @@ export function useCardSteps(
     kycLink,
   );
 
-  // Compute UI KYC status with processing window override
+  // Compute UI KYC status with processing window override (for tracking)
   const uiKycStatus = useMemo(
     () => computeUiKycStatus(processingUntil, kycLink?.kyc_status as KycStatus, kycStatus),
     [processingUntil, kycLink?.kyc_status, kycStatus],
-  );
-
-  // Format rejection reasons
-  const rejectionReasonsText = useMemo(
-    () => (kycStatus === KycStatus.REJECTED ? formatRejectionReasons(kycLink) : undefined),
-    [kycStatus, kycLink],
   );
 
   // Card activation state and handlers
@@ -93,6 +90,7 @@ export function useCardSteps(
       kycStatus: uiKycStatus,
       kycLinkId,
       hasProcessingWindow: Boolean(processingUntil),
+      endorsementStatus: cardsEndorsement?.status,
     });
 
     // Check country access
@@ -116,18 +114,26 @@ export function useCardSteps(
         }
 
         if (latestStatus === KycStatus.APPROVED) {
-          const customer = await withRefreshToken(() => getCustomerFromBridge());
-          const cardsEndorsement = customer?.endorsements?.find(e => e.name === 'cards');
+          const latestCustomer = await withRefreshToken(() => getCustomerFromBridge());
+          const latestCardsEndorsement = latestCustomer?.endorsements?.find(
+            e => e.name === 'cards',
+          );
 
-          if (processCardsEndorsement(cardsEndorsement, kycLinkId, customer?.rejection_reasons)) {
+          if (
+            processCardsEndorsement(
+              latestCardsEndorsement,
+              kycLinkId,
+              latestCustomer?.rejection_reasons,
+            )
+          ) {
             return;
           }
 
           track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
             action: 'approved_missing_endorsement',
             kycLinkId,
-            hasCardsEndorsement: Boolean(cardsEndorsement),
-            cardsEndorsementStatus: cardsEndorsement?.status,
+            hasCardsEndorsement: Boolean(latestCardsEndorsement),
+            cardsEndorsementStatus: latestCardsEndorsement?.status,
           });
 
           if (await redirectToExistingCustomerKycLink(router, kycLinkId)) return;
@@ -140,27 +146,35 @@ export function useCardSteps(
     // Try existing KYC link or fall back to user info collection
     if (kycLink?.kyc_link && redirectToExistingKycLink(router, kycLink.kyc_link, kycLinkId)) return;
     redirectToCollectUserInfo(router);
-  }, [router, kycLinkId, kycLink?.kyc_link, uiKycStatus, processingUntil, countryStore]);
+  }, [
+    router,
+    kycLinkId,
+    kycLink?.kyc_link,
+    uiKycStatus,
+    processingUntil,
+    countryStore,
+    cardsEndorsement?.status,
+  ]);
 
-  // Build steps
+  // Build steps based on endorsement status
   const steps = useMemo(
     () =>
       buildCardSteps(
-        uiKycStatus,
+        cardsEndorsement,
+        customer?.rejection_reasons,
         cardActivated,
         cardStatusResponse?.activationBlocked,
         cardStatusResponse?.activationBlockedReason,
-        rejectionReasonsText,
         handleProceedToKyc,
         handleActivateCard,
         pushCardDetails,
       ),
     [
-      uiKycStatus,
+      cardsEndorsement,
+      customer?.rejection_reasons,
       cardActivated,
       cardStatusResponse?.activationBlocked,
       cardStatusResponse?.activationBlockedReason,
-      rejectionReasonsText,
       handleProceedToKyc,
       handleActivateCard,
       pushCardDetails,
@@ -177,6 +191,6 @@ export function useCardSteps(
     toggleStep,
     canToggleStep,
     activatingCard,
-    uiKycStatus,
+    cardsEndorsement,
   };
 }

@@ -1,49 +1,50 @@
+import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { createCard } from '@/lib/api';
-import { CardStatus, KycStatus } from '@/lib/types';
+import { BridgeCustomerEndorsement, BridgeRejectionReason, CardStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { Router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import Toast from 'react-native-toast-message';
 import { extractCardActivationErrorMessage } from './cardActivationHelpers';
-import { getKycButtonText, getKycDescription } from './kycDisplayHelpers';
+import { getStepButtonText, getStepDescription, isStepButtonDisabled } from './kycDisplayHelpers';
 import { Step } from './types';
 
 /**
- * Build the card activation steps array
+ * Build the card activation steps array based on endorsement status
  */
 export function buildCardSteps(
-  uiKycStatus: KycStatus,
+  cardsEndorsement: BridgeCustomerEndorsement | undefined,
+  customerRejectionReasons: BridgeRejectionReason[] | undefined,
   cardActivated: boolean,
   activationBlocked: boolean | undefined,
   activationBlockedReason: string | undefined,
-  rejectionReasonsText: string | undefined,
   handleProceedToKyc: () => void,
   handleActivateCard: () => void,
   pushCardDetails: () => void,
 ): Step[] {
-  const description = getKycDescription(uiKycStatus, rejectionReasonsText);
-  const buttonText = getKycButtonText(uiKycStatus);
+  const description = getStepDescription(cardsEndorsement, customerRejectionReasons);
+  const buttonText = getStepButtonText(cardsEndorsement);
+  const isButtonDisabled = isStepButtonDisabled(cardsEndorsement);
+
+  const isKycComplete = cardsEndorsement?.status === EndorsementStatus.APPROVED;
 
   const orderCardDesc = activationBlocked
     ? activationBlockedReason || 'There was an issue activating your card. Please contact support.'
     : 'All is set! now click on the "Create card" button to issue your new card';
-
-  const isKycBlocked =
-    uiKycStatus === KycStatus.UNDER_REVIEW || uiKycStatus === KycStatus.OFFBOARDED;
 
   return [
     {
       id: 1,
       title: 'Complete KYC',
       description,
-      completed: uiKycStatus === KycStatus.APPROVED || cardActivated,
-      status: uiKycStatus === KycStatus.APPROVED || cardActivated ? 'completed' : 'pending',
-      kycStatus: uiKycStatus,
+      completed: isKycComplete || cardActivated,
+      status: isKycComplete || cardActivated ? 'completed' : 'pending',
+      endorsementStatus: cardsEndorsement?.status,
       buttonText,
-      onPress: isKycBlocked ? undefined : handleProceedToKyc,
+      onPress: isButtonDisabled ? undefined : handleProceedToKyc,
     },
     {
       id: 2,
@@ -51,8 +52,8 @@ export function buildCardSteps(
       description: orderCardDesc,
       completed: cardActivated,
       status: cardActivated ? 'completed' : 'pending',
-      buttonText: activationBlocked ? undefined : 'Order card',
-      onPress: activationBlocked ? undefined : handleActivateCard,
+      buttonText: activationBlocked || !isKycComplete ? undefined : 'Order card',
+      onPress: activationBlocked || !isKycComplete ? undefined : handleActivateCard,
     },
     {
       id: 3,
@@ -146,10 +147,8 @@ export function useStepNavigation(steps: Step[]) {
   const isStepButtonEnabled = useCallback(
     (stepIndex: number) => {
       const currentStep = steps[stepIndex];
-      if (
-        currentStep?.kycStatus === KycStatus.UNDER_REVIEW ||
-        currentStep?.kycStatus === KycStatus.OFFBOARDED
-      ) {
+      // Button is disabled if step has no onPress handler (already handled by isStepButtonDisabled)
+      if (!currentStep?.onPress) {
         return false;
       }
       return steps.slice(0, stepIndex).every(step => step.completed);
