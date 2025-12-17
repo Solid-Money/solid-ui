@@ -1,10 +1,11 @@
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import * as React from 'react';
 import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeOut, FadeOutDown } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 
 import { toastProps } from '@/components/Toast';
+import { useDimension } from '@/hooks/useDimension';
 import { X } from '@/lib/icons/X';
 import { cn } from '@/lib/utils';
 import { BlurView } from 'expo-blur';
@@ -19,8 +20,6 @@ const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrimitive.OverlayProps>(
   ({ className, ...props }, ref) => {
-    const { open } = DialogPrimitive.useRootContext();
-
     const handlePointerDown = (event: any) => {
       // Check if the clicked element is a toast
       const target = event.target as HTMLElement;
@@ -34,7 +33,6 @@ const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrim
       <DialogPrimitive.Overlay
         className={cn(
           'web:backdrop-blur-[4px] bg-black/40 flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
-          open ? 'web:animate-in web:fade-in-0' : 'web:animate-out web:fade-out-0',
           className,
         )}
         onPointerDown={handlePointerDown}
@@ -100,7 +98,7 @@ const DialogContent = React.forwardRef<
     { className, children, portalHost, onCloseAutoFocus, showCloseButton = true, ...props },
     ref,
   ) => {
-    const { open } = DialogPrimitive.useRootContext();
+    const { isScreenMedium } = useDimension();
     const shouldAlignTop = className?.includes('justify-start');
 
     const content = (
@@ -109,9 +107,6 @@ const DialogContent = React.forwardRef<
           ref={ref}
           className={cn(
             'max-w-lg gap-4 web:cursor-default bg-popup p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
-            open
-              ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
-              : 'web:animate-out web:fade-out-0 web:zoom-out-95',
             className,
           )}
           onCloseAutoFocus={onCloseAutoFocus}
@@ -127,21 +122,12 @@ const DialogContent = React.forwardRef<
     return (
       <DialogPortal hostName={portalHost}>
         <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
-          {Platform.OS === 'web' ? (
-            content
-          ) : (
-            <Animated.View
-              entering={FadeIn.duration(150)}
-              exiting={FadeOut.duration(150)}
-              style={StyleSheet.absoluteFill}
-              className={cn(
-                'flex items-center',
-                shouldAlignTop ? 'justify-start' : 'justify-center',
-              )}
-            >
-              {content}
-            </Animated.View>
-          )}
+          <Animated.View
+            entering={isScreenMedium ? FadeIn.duration(150) : FadeInDown.duration(150).springify()}
+            exiting={isScreenMedium ? FadeOut.duration(150) : FadeOutDown.duration(180)}
+          >
+            {content}
+          </Animated.View>
         </DialogOverlay>
       </DialogPortal>
     );
