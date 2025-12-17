@@ -122,7 +122,7 @@ export function canOrderCard(cardsEndorsement: BridgeCustomerEndorsement | undef
 // ============================================================================
 
 /**
- * Handle approved cards endorsement - show success toast
+ * Handle approved cards endorsement
  * @returns true if flow should stop (user can order card)
  */
 export function handleApprovedEndorsement(kycLinkId: string | null): boolean {
@@ -131,17 +131,12 @@ export function handleApprovedEndorsement(kycLinkId: string | null): boolean {
     reason: 'approved_with_endorsement',
     kycLinkId,
   });
-  Toast.show({
-    type: 'success',
-    text1: 'Verification complete',
-    text2: 'You can now order your card.',
-    props: { badgeText: '' },
-  });
+  // Step description shows "Identity verification complete" message
   return true;
 }
 
 /**
- * Handle endorsement with pending review - show pending toast and stop flow
+ * Handle endorsement with pending review - stop flow (user should wait)
  * @returns true to stop the flow (user should wait)
  */
 export function handlePendingReviewEndorsement(
@@ -156,13 +151,7 @@ export function handlePendingReviewEndorsement(
     pendingItems,
   });
 
-  Toast.show({
-    type: 'info',
-    text1: 'Verification in progress',
-    text2: 'Your information is being reviewed. This usually takes a few minutes.',
-    props: { badgeText: '' },
-  });
-
+  // Step description shows "Your information is being reviewed" message
   return true; // Stop flow - user should wait
 }
 
@@ -181,6 +170,7 @@ export function handleRevokedEndorsement(
     action: 'endorsement_revoked',
     kycLinkId,
     issues: issues.map(i => (typeof i === 'string' ? i : Object.keys(i).join(','))),
+    hasRejectionReasons: Boolean(rejectionReasons?.length),
   });
 
   // Check if revoked due to region restriction - can't proceed
@@ -194,19 +184,7 @@ export function handleRevokedEndorsement(
     return true;
   }
 
-  // Show rejection reasons if available, otherwise default 24h message
-  const message =
-    rejectionReasons && rejectionReasons.length > 0
-      ? buildIssueMessage(rejectionReasons, issues)
-      : 'Please complete verification again. Remember to order your card within 24 hours.';
-
-  Toast.show({
-    type: 'warning',
-    text1: 'Verification expired',
-    text2: message,
-    props: { badgeText: '' },
-  });
-
+  // Step description shows rejection reasons or expiry message
   return false; // Continue to KYC link
 }
 
@@ -228,28 +206,16 @@ export function handleIncompleteEndorsement(
     kycLinkId,
     missingRequirements: missingKeys,
     issues: issues.map(i => (typeof i === 'string' ? i : Object.keys(i).join(','))),
+    hasRejectionReasons: Boolean(rejectionReasons?.length),
   });
 
   // Check for region restriction - can't proceed
   if (hasRegionRestriction(issues)) {
-    Toast.show({
-      type: 'error',
-      text1: 'Region not supported',
-      text2: 'Card service is not available in your region.',
-      props: { badgeText: '' },
-    });
+    // Step description shows "Card service is not available in your region" message
     return true;
   }
 
-  const message = buildIncompleteEndorsementMessage(missingKeys, issues, rejectionReasons);
-
-  Toast.show({
-    type: 'info',
-    text1: 'Additional information needed',
-    text2: message,
-    props: { badgeText: '' },
-  });
-
+  // Step description shows missing requirements and issues
   return false; // Continue to KYC link
 }
 

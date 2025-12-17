@@ -1,4 +1,4 @@
-import { KycStatus } from '@/lib/types';
+import { EndorsementStatus } from '@/components/BankTransfer/enums';
 
 export interface Step {
   id: number;
@@ -8,5 +8,5 @@ export interface Step {
   buttonText?: string;
   onPress?: () => void;
   status?: 'pending' | 'completed';
-  kycStatus?: KycStatus;
+  endorsementStatus?: EndorsementStatus;
 }
