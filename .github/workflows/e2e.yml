@@ -19,12 +19,18 @@ jobs:
           echo "Environment: ${{ github.event.deployment.environment }}"
           echo "Description: ${{ github.event.deployment_status.description }}"
           echo "Target URL: ${{ github.event.deployment_status.target_url }}"
+          echo "Environment URL: ${{ github.event.deployment_status.environment_url }}"
+          echo "Deployment ID: ${{ github.event.deployment.id }}"
+          echo "--- Full deployment_status JSON ---"
+          echo '${{ toJSON(github.event.deployment_status) }}'
 
   e2e:
-    # Only run when deployment succeeded
+    # Only run when deployment succeeded AND not for staging project
+    # Vercel staging project (solid-app-staging) deployments are skipped
     if: |
       github.event_name == 'workflow_dispatch' || 
-      github.event.deployment_status.state == 'success'
+      (github.event.deployment_status.state == 'success' && 
+       !contains(github.event.deployment_status.target_url, 'solid-app-staging'))
 
     timeout-minutes: 15
     runs-on: ubuntu-latest

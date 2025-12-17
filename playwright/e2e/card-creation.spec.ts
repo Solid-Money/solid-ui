@@ -47,8 +47,9 @@ test.describe('Card Creation Flow - With Mocking', () => {
       });
     });
 
-    // Navigate to the card page (which checks card status)
-    await page.goto('/card');
+    // Navigate to the card/activate page (which checks card status and redirects)
+    // Note: /card now redirects to /card-onboard, so we use /card/activate directly
+    await page.goto('/card/activate?countryConfirmed=true');
 
     // Wait for the page to process the mocked response
     await page.waitForLoadState('networkidle');
@@ -234,6 +235,11 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // This test verifies the bug fix: after manually selecting a supported country,
     // clicking the KYC button should NOT show "Country not supported" toast
 
+    // Clear any stored country info to ensure clean state
+    await page.addInitScript(() => {
+      localStorage.clear();
+    });
+
     // Mock card status API to return 404 (no card)
     await page.route('**/accounts/v1/cards/status', async route => {
       await route.fulfill({
@@ -313,26 +319,42 @@ test.describe('Card Creation Flow - With Mocking', () => {
       });
     });
 
+    // Mock card waitlist to notify status check API
+    await page.route('**/accounts/v1/cards/waitlist-to-notify/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ isInWaitlist: false }),
+      });
+    });
+
     // Step 1: Navigate to country selection (simulating user was redirected from unsupported country)
     await page.goto('/card-onboard/country_selection');
     await page.waitForLoadState('networkidle');
 
-    // User should see "not ready" screen for Russia since IP detection returned unsupported country
-    // Wait for the page to fully load
-    await page.waitForTimeout(2000);
-
-    // Click "Change country" to get to the country selector
+    // Wait for the page to process IP detection and show the appropriate view
+    // The page may show either:
+    // 1. "Change country" button (unavailable country view) - if IP detection succeeds with unsupported country
+    // 2. "Country of residence" (country selector) - if IP detection fails or shows selector directly
     const changeCountryButton = page.getByText('Change country');
-    await expect(changeCountryButton).toBeVisible({ timeout: 15000 });
-    await changeCountryButton.click();
+    const countrySelector = page.getByText('Country of residence', { exact: true });
 
-    // Now on country selector - select United States
-    await expect(page.getByText('Country of residence', { exact: true })).toBeVisible({
-      timeout: 15000,
-    });
+    // Wait for either element to appear
+    await expect(changeCountryButton.or(countrySelector)).toBeVisible({ timeout: 15000 });
 
-    // The dropdown should show Russia initially, click to open
-    await page.locator('.bg-\\[\\#1A1A1A\\]').first().click();
+    // Handle both scenarios
+    if (await changeCountryButton.isVisible()) {
+      // Scenario 1: Unavailable country view is shown - click "Change country"
+      await changeCountryButton.click();
+      // Wait for country selector to appear
+      await expect(countrySelector).toBeVisible({ timeout: 15000 });
+    }
+    // else: Scenario 2: Country selector is already visible, continue
+
+    // Open country dropdown and select United States
+    // Click on the dropdown trigger (the element with Select country or country name)
+    const dropdownTrigger = page.locator('.bg-\\[\\#1A1A1A\\]').first();
+    await dropdownTrigger.click();
     await page.getByRole('textbox').fill('United States');
     await page.getByText('United States').click();
 
@@ -402,6 +424,30 @@ test.describe('Card Creation Flow - With Mocking', () => {
       });
     });
 
+    // Mock Bridge customer API with incomplete endorsement and pending items
+    // This is required because the under review state now depends on endorsement.requirements.pending
+    await page.route('**/accounts/v1/bridge-customer/get-customer-from-bridge', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'cust_123',
+          endorsements: [
+            {
+              name: 'cards',
+              status: 'incomplete',
+              requirements: {
+                complete: ['first_name', 'last_name'],
+                pending: ['document_verification', 'identity_check'],
+                missing: {},
+                issues: [],
+              },
+            },
+          ],
+        }),
+      });
+    });
+
     // Navigate with kycStatus param to trigger the right state
     await page.goto('/card/activate?kycStatus=under_review&countryConfirmed=true');
     await page.waitForLoadState('networkidle');
@@ -449,6 +495,31 @@ test.describe('Card Creation Flow - With Mocking', () => {
             {
               type: 'document_invalid',
               description: 'Invalid document',
+            },
+          ],
+        }),
+      });
+    });
+
+    // Mock Bridge customer API with revoked endorsement and rejection reasons
+    // This is required because rejection messages now come from customer.rejection_reasons
+    await page.route('**/accounts/v1/bridge-customer/get-customer-from-bridge', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'cust_123',
+          endorsements: [
+            {
+              name: 'cards',
+              status: 'revoked',
+            },
+          ],
+          rejection_reasons: [
+            {
+              developer_reason: 'document_invalid',
+              reason: 'Invalid document submitted. Please try again.',
+              created_at: new Date().toISOString(),
             },
           ],
         }),
