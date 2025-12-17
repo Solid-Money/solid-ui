@@ -24,6 +24,7 @@ export function buildKycRedirectUri(): string {
  */
 export async function checkAndBlockForCountryAccess(
   countryStore: {
+    countryInfo: { isAvailable: boolean; countryCode?: string; source?: string } | null;
     getCachedIp: () => string | null;
     setCachedIp: (ip: string) => void;
     getIpDetectedCountry: (ip: string) => any;
@@ -32,6 +33,18 @@ export async function checkAndBlockForCountryAccess(
   },
   kycLinkId: string | null,
 ): Promise<boolean> {
+  // Trust country info if user already confirmed a supported country (manual or IP-based)
+  if (countryStore.countryInfo?.isAvailable) {
+    track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+      action: 'country_check_skipped',
+      reason: 'country_already_confirmed',
+      kycLinkId,
+      countryCode: countryStore.countryInfo.countryCode,
+      source: countryStore.countryInfo.source,
+    });
+    return false; // Not blocked
+  }
+
   const countryCheck = await checkCountryAccessForKyc({
     getCachedIp: countryStore.getCachedIp,
     setCachedIp: countryStore.setCachedIp,
