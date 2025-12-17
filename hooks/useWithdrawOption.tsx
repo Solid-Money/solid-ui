@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo } from 'react';
-import { Platform, Pressable, PressableProps, View } from 'react-native';
+import { useCallback } from 'react';
+import { Pressable, PressableProps, View } from 'react-native';
 
 import TransactionStatus from '@/components/TransactionStatus';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import WithdrawOptions from '@/components/Unstake/WithdrawOptions';
 import WithdrawNetworks from '@/components/Unstake/WithdrawNetworks';
@@ -14,7 +14,6 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { UnstakeModal } from '@/lib/types';
-import { cn } from '@/lib/utils';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 import useResponsiveModal from './useResponsiveModal';
 import { Minus } from 'lucide-react-native';
@@ -23,14 +22,12 @@ export interface WithdrawOptionProps {
   buttonText?: string;
   trigger?: React.ReactNode;
   modal?: UnstakeModal;
-  fillContainer?: boolean;
 }
 
 const useWithdrawOption = ({
   buttonText = 'Withdraw',
   trigger,
   modal = UNSTAKE_MODAL.OPEN_OPTIONS,
-  fillContainer = false,
 }: WithdrawOptionProps = {}) => {
   const {
     currentModal,
@@ -60,9 +57,7 @@ const useWithdrawOption = ({
     return (
       <Pressable
         {...props}
-        className={cn({
-          'flex-1': Platform.OS === 'web' || fillContainer,
-        })}
+        className='flex-1'
         onPress={e => {
           if (isScreenMedium) {
             props?.onPress?.(e);

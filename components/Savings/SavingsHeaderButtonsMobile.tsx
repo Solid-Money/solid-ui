@@ -1,17 +1,14 @@
-import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import HomeWithdraw from '@/assets/images/withdraw';
 import CircleButton from '@/components/CircleButton';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
-import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 
 const SavingsHeaderButtonsMobile = () => {
-  const router = useRouter();
-
   const withdrawTrigger = (
     <CircleButton
       icon={HomeWithdraw}
@@ -29,12 +26,15 @@ const SavingsHeaderButtonsMobile = () => {
 
   return (
     <View className="flex-row justify-center gap-12 items-center">
-      <CircleButton
-        icon={Plus}
-        label="Fund"
-        backgroundColor="bg-[#94F27F]"
-        iconColor="#000000"
-        onPress={() => router.push(path.DEPOSIT)}
+      <DepositOptionModal
+        trigger={
+          <CircleButton
+            icon={Plus}
+            label="Fund"
+            backgroundColor="bg-[#94F27F]"
+            iconColor="#000000"
+          />
+        }
       />
 
       <UnstakeModal trigger={withdrawTrigger} />

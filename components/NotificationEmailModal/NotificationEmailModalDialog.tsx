@@ -48,7 +48,6 @@ export const NotificationEmailModalDialog: React.FC<NotificationEmailModalDialog
       previousModal={closedModalState}
       trigger={null} // No trigger as we control open state externally
       title="Email Required"
-      titleClassName="justify-center"
       contentKey="notification-email-modal"
     >
       <View className="p-6">

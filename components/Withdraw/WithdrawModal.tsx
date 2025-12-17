@@ -78,7 +78,6 @@ const WithdrawModal = ({ trigger }: WithdrawModalProps) => {
       onOpenChange={handleOpenChange}
       trigger={trigger || <WithdrawTrigger />}
       title={getTitle()}
-      titleClassName="justify-center"
       contentKey={getContentKey()}
     >
       {getContent()}

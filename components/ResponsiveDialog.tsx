@@ -1,9 +1,6 @@
-import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import React, { ReactNode, useCallback, useRef } from 'react';
-import { Platform, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { ReactNode, useCallback } from 'react';
+import { ScrollView } from 'react-native';
 
-import { Text } from '@/components/ui/text';
 import {
   Dialog,
   DialogContent,
@@ -38,87 +35,34 @@ const ResponsiveDialog = ({
   contentClassName,
   titleClassName,
 }: ResponsiveDialogProps) => {
-  const { isDesktop } = useDimension();
-  const insets = useSafeAreaInsets();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const { isScreenMedium } = useDimension();
 
-  const handlePresentModalPress = useCallback(() => {
-    onOpenChange(true);
-  }, [onOpenChange]);
+  // Prevent page scroll when modal closes by stopping focus restoration to trigger
+  const handleCloseAutoFocus = useCallback((event: Event) => {
+    event.preventDefault();
+  }, []);
 
-  // Handle bottom sheet presentation when isOpen changes
-  React.useEffect(() => {
-    if (Platform.OS !== 'web' || !isDesktop) {
-      if (open) {
-        bottomSheetModalRef.current?.present();
-      } else {
-        bottomSheetModalRef.current?.dismiss();
-      }
-    }
-  }, [open, isDesktop]);
-
-  const handleBottomSheetOpenChange = useCallback(
-    (index: number) => {
-      onOpenChange(index >= 0);
-    },
-    [onOpenChange],
-  );
-
-  // Use modal for desktop web, bottom sheet for mobile web and native
-  if (Platform.OS === 'web' && isDesktop) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-        <DialogContent className={cn('p-6 md:p-8 md:max-w-md', contentClassName)}>
-          {title && (
-            <DialogHeader className={titleClassName}>
-              <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
-            </DialogHeader>
-          )}
-          {children}
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Use bottom sheet for mobile web and native
   return (
-    <View>
-      {trigger && <View onTouchEnd={handlePresentModalPress}>{trigger}</View>}
-      <BottomSheetModal
-        ref={bottomSheetModalRef}
-        onChange={handleBottomSheetOpenChange}
-        snapPoints={['85%']}
-        backgroundStyle={{
-          backgroundColor: 'black',
-        }}
-        handleIndicatorStyle={{
-          backgroundColor: 'white',
-        }}
-        onDismiss={() => onOpenChange(false)}
-        enablePanDownToClose
-        keyboardBehavior="interactive"
-        keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustPan"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      <DialogContent
+        className={cn(
+          'p-4 md:p-8 md:max-w-md',
+          contentClassName,
+          !isScreenMedium ? 'w-screen max-w-full mt-8 justify-start' : '',
+        )}
+        onCloseAutoFocus={handleCloseAutoFocus}
       >
-        <BottomSheetView
-          style={{
-            paddingHorizontal: 16,
-            paddingBottom: insets.bottom + 24,
-            paddingTop: 12,
-          }}
-        >
-          <View className="gap-6">
-            {title && (
-              <View className={cn('pb-2', titleClassName)}>
-                <Text className="text-2xl font-semibold text-white text-center">{title}</Text>
-              </View>
-            )}
-            <View>{children}</View>
-          </View>
-        </BottomSheetView>
-      </BottomSheetModal>
-    </View>
+        {title && (
+          <DialogHeader className={titleClassName}>
+            <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
+          </DialogHeader>
+        )}
+        <ScrollView className="max-h-[80vh]" showsVerticalScrollIndicator={false}>
+          {children}
+        </ScrollView>
+      </DialogContent>
+    </Dialog>
   );
 };
 

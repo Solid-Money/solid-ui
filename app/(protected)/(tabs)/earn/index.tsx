@@ -1,18 +1,17 @@
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { ChevronRight, Minus, Plus } from 'lucide-react-native';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
-import { TOKEN_IMAGES } from '@/constants/tokens';
-import { formatNumber } from '@/lib/utils';
-import { useTotalAPY } from '@/hooks/useAnalytics';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { TOKEN_IMAGES } from '@/constants/tokens';
+import { useTotalAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
+import { formatNumber } from '@/lib/utils';
 
 const transfers = [
   {
@@ -26,7 +25,6 @@ const transfers = [
 ];
 
 export default function Earn() {
-  const router = useRouter();
   const { data: totalAPY } = useTotalAPY();
   const { isDesktop } = useDimension();
 
@@ -64,12 +62,13 @@ export default function Earn() {
             </View>
             <View className="flex-row justify-center items-center gap-10 pb-6">
               <View className="gap-2">
-                <Button
-                  className="w-12 h-12 rounded-full p-0 text-primary-foreground"
-                  onPress={() => router.push(path.DEPOSIT)}
-                >
-                  <Plus />
-                </Button>
+                <DepositOptionModal
+                  trigger={
+                    <Button className="w-12 h-12 rounded-full p-0 text-primary-foreground">
+                      <Plus />
+                    </Button>
+                  }
+                />
                 <Text className="text-sm opacity-50">Deposit</Text>
               </View>
               <View className="gap-2">

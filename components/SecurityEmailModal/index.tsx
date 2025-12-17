@@ -1,4 +1,3 @@
-import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { useEffect } from 'react';
 import { Controller } from 'react-hook-form';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
@@ -78,7 +77,7 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
               control={emailForm.control}
               name="email"
               render={({ field: { onChange, onBlur, value } }) => {
-                const InputComponent = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
+                const InputComponent = TextInput;
                 return (
                   <InputComponent
                     value={value}
@@ -111,7 +110,7 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
               control={otpForm.control}
               name="otpCode"
               render={({ field: { onChange, onBlur, value } }) => {
-                const InputComponent = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
+                const InputComponent = TextInput;
                 return (
                   <InputComponent
                     placeholder="123456"
@@ -197,7 +196,6 @@ export const SecurityEmailModal: React.FC<SecurityEmailModalProps> = ({
       previousModal={closedModalState}
       trigger={null}
       title="Change Email"
-      titleClassName="justify-center"
       contentKey="security-email-modal"
     >
       <View className="p-6">
