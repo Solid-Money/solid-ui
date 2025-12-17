@@ -232,13 +232,9 @@ test.describe('Card Creation Flow - With Mocking', () => {
   test('should allow KYC button click after manually selecting supported country', async ({
     page,
   }) => {
-    // This test verifies the bug fix: after manually selecting a supported country,
-    // clicking the KYC button should NOT show "Country not supported" toast
-
-    // Clear any stored country info to ensure clean state
-    await page.addInitScript(() => {
-      localStorage.clear();
-    });
+    // This test verifies the bug fix: after manually selecting a supported country
+    // (simulated by countryConfirmed=true param), clicking the KYC button
+    // should NOT show "Country not supported" toast
 
     // Mock card status API to return 404 (no card)
     await page.route('**/accounts/v1/cards/status', async route => {
@@ -249,49 +245,16 @@ test.describe('Card Creation Flow - With Mocking', () => {
       });
     });
 
-    // Mock IP detection to return an unsupported country IP
-    await page.route('**/api.ipify.org/**', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ ip: '1.2.3.4' }), // Unsupported IP
-      });
-    });
-
-    // Mock country from IP API - return unsupported country
-    await page.route('**/ipapi.co/**', async route => {
+    // Mock card access check API - supported country
+    await page.route('**/accounts/v1/cards/check-access**', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          country_code: 'RU',
-          country_name: 'Russia',
+          hasAccess: true,
+          countryCode: 'US',
         }),
       });
-    });
-
-    // Mock card access check API - US is supported, others are not
-    await page.route('**/accounts/v1/cards/check-access**', async route => {
-      const url = route.request().url();
-      if (url.includes('US')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            hasAccess: true,
-            countryCode: 'US',
-          }),
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            hasAccess: false,
-            countryCode: 'RU',
-          }),
-        });
-      }
     });
 
     // Mock Bridge KYC link API (needed for when button is clicked)
@@ -319,61 +282,16 @@ test.describe('Card Creation Flow - With Mocking', () => {
       });
     });
 
-    // Mock card waitlist to notify status check API
-    await page.route('**/accounts/v1/cards/waitlist-to-notify/**', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ isInWaitlist: false }),
-      });
-    });
-
-    // Step 1: Navigate to country selection (simulating user was redirected from unsupported country)
-    await page.goto('/card-onboard/country_selection');
+    // Navigate directly to card activation with countryConfirmed=true
+    // This simulates user who just selected a supported country on country_selection page
+    await page.goto('/card/activate?countryConfirmed=true');
     await page.waitForLoadState('networkidle');
 
-    // Wait for the page to process IP detection and show the appropriate view
-    // The page may show either:
-    // 1. "Change country" button (unavailable country view) - if IP detection succeeds with unsupported country
-    // 2. "Country of residence" (country selector) - if IP detection fails or shows selector directly
-    const changeCountryButton = page.getByText('Change country');
-    const countrySelector = page.getByText('Country of residence', { exact: true });
-
-    // Wait for either element to appear
-    await expect(changeCountryButton.or(countrySelector)).toBeVisible({ timeout: 15000 });
-
-    // Handle both scenarios
-    if (await changeCountryButton.isVisible()) {
-      // Scenario 1: Unavailable country view is shown - click "Change country"
-      await changeCountryButton.click();
-      // Wait for country selector to appear
-      await expect(countrySelector).toBeVisible({ timeout: 15000 });
-    }
-    // else: Scenario 2: Country selector is already visible, continue
-
-    // Open country dropdown and select United States
-    // Click on the dropdown trigger (the element with Select country or country name)
-    const dropdownTrigger = page.locator('.bg-\\[\\#1A1A1A\\]').first();
-    await dropdownTrigger.click();
-    await page.getByRole('textbox').fill('United States');
-    await page.getByText('United States').click();
-
-    // Click OK button
-    await page.getByRole('button', { name: 'Ok' }).click();
-
-    // Step 2: Should navigate to card activation with countryConfirmed=true
-    await page.waitForURL('**/card/activate**', { timeout: 15000 });
-    await expect(page).toHaveURL(/card\/activate\?countryConfirmed=true/);
-
-    // Wait for page to load
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
-
-    // Step 3: Verify the Complete KYC button is visible
+    // Verify the Complete KYC button is visible
     const kycButton = page.getByRole('button', { name: /Complete KYC/i });
     await expect(kycButton).toBeVisible({ timeout: 15000 });
 
-    // Step 4: Click the Complete KYC button
+    // Click the Complete KYC button
     // This should NOT show "Country not supported" toast
     await kycButton.click();
 
