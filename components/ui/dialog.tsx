@@ -1,7 +1,15 @@
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import * as React from 'react';
 import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut, FadeOutDown } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  FadeOutDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 
 import { toastProps } from '@/components/Toast';
@@ -100,6 +108,48 @@ const DialogContent = React.forwardRef<
   ) => {
     const { isScreenMedium } = useDimension();
     const shouldAlignTop = className?.includes('justify-start');
+    const { open } = DialogPrimitive.useRootContext();
+
+    // Web bounce animation using useAnimatedStyle
+    const opacityWeb = useSharedValue(0);
+    const translateYWeb = useSharedValue(25);
+    const isWebBounce = Platform.OS === 'web' && !isScreenMedium;
+
+    React.useEffect(() => {
+      if (isWebBounce && open) {
+        // Reset values when dialog opens
+        opacityWeb.value = 0;
+        translateYWeb.value = 25;
+
+        const springConfig = {
+          damping: 12,
+          mass: 0.8,
+          stiffness: 300,
+          restSpeedThreshold: 0.01,
+          restDisplacementThreshold: 0.01,
+        };
+        opacityWeb.value = withSpring(1, springConfig);
+        translateYWeb.value = withSpring(0, springConfig);
+      } else if (isWebBounce && !open) {
+        // Reset when dialog closes
+        opacityWeb.value = 0;
+        translateYWeb.value = 25;
+      }
+    }, [isWebBounce, open, opacityWeb, translateYWeb]);
+
+    const webBounceStyle = useAnimatedStyle(() => {
+      if (!isWebBounce) return {};
+      return {
+        opacity: opacityWeb.value,
+        transform: [{ translateY: translateYWeb.value }],
+      };
+    });
+
+    const enteringAnimation = isScreenMedium
+      ? FadeIn.duration(150)
+      : Platform.OS === 'web'
+        ? undefined // Using useAnimatedStyle for web instead
+        : FadeInDown.springify().stiffness(300).damping(12).mass(0.8).restSpeedThreshold(0.01);
 
     const content = (
       <>
@@ -123,8 +173,9 @@ const DialogContent = React.forwardRef<
       <DialogPortal hostName={portalHost}>
         <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
           <Animated.View
-            entering={isScreenMedium ? FadeIn.duration(150) : FadeInDown.duration(150).springify()}
+            entering={enteringAnimation}
             exiting={isScreenMedium ? FadeOut.duration(150) : FadeOutDown.duration(180)}
+            style={isWebBounce ? webBounceStyle : undefined}
           >
             {content}
           </Animated.View>
