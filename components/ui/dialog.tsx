@@ -107,6 +107,7 @@ const DialogContent = React.forwardRef<
           ref={ref}
           className={cn(
             'max-w-lg gap-4 web:cursor-default bg-popup p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
+            !isScreenMedium && shouldAlignTop && 'min-h-[90vh]',
             className,
           )}
           onCloseAutoFocus={onCloseAutoFocus}
