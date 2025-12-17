@@ -116,7 +116,6 @@ const DialogContent = React.forwardRef<
           {children}
           {showCloseButton && <DialogCloseButton className="absolute top-4 right-4" />}
         </DialogPrimitive.Content>
-        <Toast {...toastProps} />
       </>
     );
 
@@ -129,6 +128,7 @@ const DialogContent = React.forwardRef<
           >
             {content}
           </Animated.View>
+          <Toast {...toastProps} />
         </DialogOverlay>
       </DialogPortal>
     );
