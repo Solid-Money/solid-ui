@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, PressableProps, View } from 'react-native';
+import { Pressable, PressableProps, View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
@@ -21,12 +21,10 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
-import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import useResponsiveModal from './useResponsiveModal';
 
@@ -34,14 +32,12 @@ export interface DepositOptionProps {
   buttonText?: string;
   trigger?: React.ReactNode;
   modal?: DepositModal;
-  fillContainer?: boolean;
 }
 
 const useDepositOption = ({
   buttonText = 'Add funds',
   trigger,
   modal = DEPOSIT_MODAL.OPEN_OPTIONS,
-  fillContainer = false,
 }: DepositOptionProps = {}) => {
   const { user } = useUser();
   const {
@@ -60,7 +56,6 @@ const useDepositOption = ({
   const router = useRouter();
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const [isDeleting, setIsDeleting] = useState(false);
-  const { isScreenMedium } = useDimension();
   const { triggerElement } = useResponsiveModal();
 
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
@@ -105,14 +100,12 @@ const useDepositOption = ({
     return (
       <Pressable
         {...props}
-        className={cn({
-          'flex-1': Platform.OS === 'web' || fillContainer,
-        })}
+        className='flex-1'
         onPress={e => {
-          if (isScreenMedium) {
-            props?.onPress?.(e);
+          if (props?.onPress) {
+            props.onPress(e);
           } else {
-            router.push(path.DEPOSIT);
+            handleOpenChange(true);
           }
         }}
       >
@@ -332,11 +325,8 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isNetworks) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
-    } else if (isScreenMedium) {
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else {
-      router.back();
-      setModal(DEPOSIT_MODAL.CLOSE);
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
   };
 

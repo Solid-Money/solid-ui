@@ -25,8 +25,8 @@ export function useCountryCheck() {
     setCountryDetectionFailed,
   } = useCountryStore();
 
-  // Only consider IP-detected country info for activation gating
-  const ipDetectedCountryInfo = countryInfo?.source === 'ip' ? countryInfo : null;
+  // Allow both IP-detected and manually-selected supported countries
+  const validCountryInfo = countryInfo?.isAvailable ? countryInfo : null;
 
   useEffect(() => {
     const checkCountry = async () => {
@@ -39,29 +39,18 @@ export function useCountryCheck() {
       try {
         track(TRACKING_EVENTS.CARD_COUNTRY_CHECK_STARTED);
 
-        // First check if we have valid cached country info
-        if (ipDetectedCountryInfo) {
-          console.log('[useCountryCheck] ipDetectedCountryInfo found', {
-            countryCode: ipDetectedCountryInfo.countryCode,
-            isAvailable: ipDetectedCountryInfo.isAvailable,
-          });
+        // First check if we have valid cached country info (IP or manual)
+        if (validCountryInfo) {
           track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
-            countryCode: ipDetectedCountryInfo.countryCode,
-            countryName: ipDetectedCountryInfo.countryName,
-            isAvailable: ipDetectedCountryInfo.isAvailable,
+            countryCode: validCountryInfo.countryCode,
+            countryName: validCountryInfo.countryName,
+            isAvailable: validCountryInfo.isAvailable,
             source: 'cached_country_info',
           });
 
           // If country is available, proceed with activation
-          if (ipDetectedCountryInfo.isAvailable) {
-            hasChecked.current = true;
-            setCheckingCountry(false);
-            return;
-          }
-          // If country is not available, redirect to country selection
-          console.log('[useCountryCheck] Country not available, redirecting');
-          setIsRedirecting(true);
-          router.replace(path.CARD_COUNTRY_SELECTION);
+          hasChecked.current = true;
+          setCheckingCountry(false);
           return;
         }
 
@@ -78,7 +67,6 @@ export function useCountryCheck() {
             } else {
               track(TRACKING_EVENTS.CARD_COUNTRY_CHECK_IP_FAILED, { reason: 'no_ip_returned' });
               // If IP detection fails, redirect to country selection
-              console.log('[useCountryCheck] IP detection failed, redirecting');
               setIsRedirecting(true);
               router.replace(path.CARD_COUNTRY_SELECTION);
               return;
@@ -99,17 +87,18 @@ export function useCountryCheck() {
         // Check if we have valid cached country info for this IP
         const cachedInfo = getIpDetectedCountry(ip);
         if (cachedInfo) {
-          console.log('[useCountryCheck] cachedInfo found', {
-            cached: cachedInfo.countryCode,
-            current: countryInfo?.countryCode,
-            match: countryInfo?.countryCode === cachedInfo.countryCode,
+          track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
+            countryCode: cachedInfo.countryCode,
+            countryName: cachedInfo.countryName,
+            isAvailable: cachedInfo.isAvailable,
+            source: 'cached_ip_country',
+            ip,
           });
           // Only update store if the info has changed to avoid infinite loops
           if (
             countryInfo?.countryCode !== cachedInfo.countryCode ||
             countryInfo?.isAvailable !== cachedInfo.isAvailable
           ) {
-            console.log('[useCountryCheck] Updating countryInfo from cache');
             setCountryInfo(cachedInfo);
           }
           track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
@@ -125,7 +114,6 @@ export function useCountryCheck() {
             setCheckingCountry(false);
             return;
           } else {
-            console.log('[useCountryCheck] Cached country not available, redirecting');
             setIsRedirecting(true);
             router.replace(path.CARD_COUNTRY_SELECTION);
             return;
@@ -138,7 +126,6 @@ export function useCountryCheck() {
             reason: 'previous_detection_failed',
             ip,
           });
-          console.log('[useCountryCheck] Previous detection failed, redirecting');
           setIsRedirecting(true);
           router.replace(path.CARD_COUNTRY_SELECTION);
           return;
@@ -152,7 +139,6 @@ export function useCountryCheck() {
             reason: 'no_country_data_from_ip',
             ip,
           });
-          console.log('[useCountryCheck] No country data from IP, redirecting');
           setIsRedirecting(true);
           router.replace(path.CARD_COUNTRY_SELECTION);
           return;
@@ -175,7 +161,6 @@ export function useCountryCheck() {
             countryName,
             ip,
           });
-          console.log('[useCountryCheck] Access check failed, redirecting');
           setIsRedirecting(true);
           router.replace(path.CARD_COUNTRY_SELECTION);
           return;
@@ -213,7 +198,6 @@ export function useCountryCheck() {
             countryName,
             ip,
           });
-          console.log('[useCountryCheck] Country not supported (new), redirecting');
           setIsRedirecting(true);
           router.replace(path.CARD_COUNTRY_SELECTION);
         }
@@ -232,7 +216,7 @@ export function useCountryCheck() {
     checkCountry();
   }, [
     router,
-    ipDetectedCountryInfo,
+    validCountryInfo,
     getIpDetectedCountry,
     setIpDetectedCountry,
     getCachedIp,

@@ -75,6 +75,13 @@ module.exports = {
         'modal-background': {
           DEFAULT: 'hsl(var(--modal-background))',
         },
+        popup: {
+          DEFAULT: 'hsl(var(--popup))',
+        },
+        option: {
+          DEFAULT: 'hsl(var(--option))',
+          hover: 'hsl(var(--option-hover))',
+        },
         'button-secondary': {
           DEFAULT: 'hsl(var(--button-secondary))',
           foreground: 'hsl(var(--button-secondary-foreground))',

@@ -78,7 +78,6 @@ const StakeModal = ({ trigger }: StakeModalProps) => {
       onOpenChange={handleOpenChange}
       trigger={trigger || <StakeTrigger />}
       title={getTitle()}
-      titleClassName="justify-center"
       contentKey={getContentKey()}
     >
       {getContent()}

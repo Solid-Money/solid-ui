@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
+import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { CardActivationStep } from '@/components/Card/CardActivationStep';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
@@ -14,10 +15,18 @@ import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { CardStatus, KycStatus } from '@/lib/types';
 
 export default function ActivateMobile() {
-  const { kycLink: _kycLink, kycStatus: _kycStatus } = useLocalSearchParams<{
+  const {
+    kycLink: _kycLink,
+    kycStatus: _kycStatus,
+    countryConfirmed,
+  } = useLocalSearchParams<{
     kycLink?: string;
     kycStatus?: KycStatus;
+    countryConfirmed?: string;
   }>();
+
+  // Skip country check if user just confirmed country on country_selection page
+  const skipCountryCheck = countryConfirmed === 'true';
 
   const { data: cardStatusResponse } = useCardStatus();
   const cardStatus = cardStatusResponse?.status;
@@ -34,11 +43,20 @@ export default function ActivateMobile() {
     toggleStep,
     canToggleStep,
     activatingCard,
-    uiKycStatus,
+    cardsEndorsement,
   } = useCardSteps(_kycStatus as KycStatus | undefined, cardStatusResponse);
 
   const router = useRouter();
+
+  // Only run country check if user didn't just confirm their country
   const { checkingCountry } = useCountryCheck();
+  const isCheckingCountry = !skipCountryCheck && checkingCountry;
+
+  // Check if endorsement is under review (has pending items)
+  const isUnderReview =
+    cardsEndorsement?.status === EndorsementStatus.INCOMPLETE &&
+    Array.isArray(cardsEndorsement?.requirements?.pending) &&
+    cardsEndorsement.requirements.pending.length > 0;
 
   // If the card is already active, skip the activation flow
   React.useEffect(() => {
@@ -47,8 +65,8 @@ export default function ActivateMobile() {
     }
   }, [cardStatus, router]);
 
-  // Show loading state while checking country
-  if (checkingCountry) {
+  // Show loading state while checking country (skip if user just confirmed country)
+  if (isCheckingCountry) {
     return (
       <PageLayout desktopOnly contentClassName="pb-10">
         <View className="flex-1 items-center justify-center">
@@ -83,8 +101,8 @@ export default function ActivateMobile() {
           />
         </View>
 
-        {/* KYC under review state */}
-        {uiKycStatus === KycStatus.UNDER_REVIEW ? (
+        {/* Under review state (endorsement has pending items) */}
+        {isUnderReview ? (
           <View className="mt-8 mb-10">
             <View className="bg-[#1C1C1C] rounded-2xl p-12 items-center border border-white/5">
               <View className="mb-4">

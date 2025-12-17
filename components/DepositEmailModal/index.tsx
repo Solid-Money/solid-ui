@@ -1,8 +1,7 @@
-import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { useEffect } from 'react';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -110,7 +109,7 @@ const DepositEmailModal: React.FC = () => {
               control={emailForm.control}
               name="email"
               render={({ field: { onChange, onBlur, value } }) => {
-                const InputComponent = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
+                const InputComponent = TextInput;
                 return (
                   <InputComponent
                     value={value}
@@ -143,7 +142,7 @@ const DepositEmailModal: React.FC = () => {
               control={otpForm.control}
               name="otpCode"
               render={({ field: { onChange, onBlur, value } }) => {
-                const InputComponent = Platform.OS === 'web' ? TextInput : BottomSheetTextInput;
+                const InputComponent = TextInput;
                 return (
                   <InputComponent
                     placeholder="123456"

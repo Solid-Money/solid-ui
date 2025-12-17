@@ -254,25 +254,13 @@ export default function CountrySelection() {
         setCountryInfo(updatedCountryInfo);
         setCountryDetectionFailed(false);
 
-        // If selected country is available, add to reserve waitlist and show confirmation
+        // If selected country is available, navigate to card activation
+        // Pass countryConfirmed param to skip the country check on activate page
         if (accessCheck.hasAccess) {
-          // Check if user has email and add to waitlist
-          if (user && !user.email) {
-            setProcessingWaitlist(false);
-            setShowEmailModal(true);
-          } else if (user?.email) {
-            try {
-              await withRefreshToken(() =>
-                addToCardWaitlist(user.email!, selectedCountry.code.toUpperCase()),
-              );
-
-              setConfirmedAvailableCountry(true);
-            } catch (error) {
-              console.error('Error adding to card waitlist:', error);
-            } finally {
-              setProcessingWaitlist(false);
-            }
-          }
+          router.push({
+            pathname: path.CARD_ACTIVATE,
+            params: { countryConfirmed: 'true' },
+          });
           return;
         }
 
