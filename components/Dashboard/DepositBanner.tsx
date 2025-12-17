@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react-native';
 import { View } from 'react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
-import { buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDimension } from '@/hooks/useDimension';
@@ -15,19 +15,20 @@ const DepositBanner = () => {
   const { isScreenMedium } = useDimension();
   const { setModal } = useDepositStore();
 
+  const handleAddFundsPress = () => {
+    setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+  };
+
   const getButton = () => {
     return (
-      <View
-        className={buttonVariants({
-          variant: 'secondary',
-          className: 'h-12 pr-6 rounded-xl border-0',
-        })}
+      <Button
+        variant="secondary"
+        className="h-12 pr-6 rounded-xl border-0 gap-4"
+        onPress={handleAddFundsPress}
       >
-        <View className="flex-row items-center gap-4">
-          <Plus color="white" />
-          <Text className="font-bold">Add funds</Text>
-        </View>
-      </View>
+        <Plus color="white" />
+        <Text className="font-bold">Add funds</Text>
+      </Button>
     );
   };
 
@@ -38,14 +39,12 @@ const DepositBanner = () => {
           colors={['rgba(126, 126, 126, 0.3)', 'rgba(126, 126, 126, 0.2)']}
           style={{
             borderRadius: 20,
-            height: '100%',
+            flex: 1,
             width: '100%',
             overflow: 'hidden',
-            paddingHorizontal: isScreenMedium ? 40 : 20,
-            paddingVertical: isScreenMedium ? 32 : 20,
           }}
         >
-          <View className="flex-row justify-between items-center">
+          <View className="flex-1 flex-row justify-between items-center px-5 md:px-10 py-5 md:py-8">
             <View className="max-w-52 md:max-w-72 h-full justify-between items-start gap-4">
               <Text className="text-xl md:text-3xl font-semibold">
                 Deposit from your bank or debit card
@@ -66,11 +65,10 @@ const DepositBanner = () => {
   };
 
   return (
-    <DepositOptionModal
-      trigger={getTrigger()}
-      modal={DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS}
-      fillContainer
-    />
+    <>
+      {getTrigger()}
+      <DepositOptionModal trigger={null} modal={DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS} />
+    </>
   );
 };
 

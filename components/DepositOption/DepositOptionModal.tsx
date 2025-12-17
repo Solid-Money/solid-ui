@@ -7,7 +7,6 @@ const DepositOptionModal = ({
   buttonText = 'Add funds',
   trigger,
   modal = DEPOSIT_MODAL.OPEN_OPTIONS,
-  fillContainer = false,
 }: DepositOptionProps) => {
   const {
     shouldOpen,
@@ -23,7 +22,7 @@ const DepositOptionModal = ({
     getContainerClassName,
     handleOpenChange,
     handleBackPress,
-  } = useDepositOption({ buttonText, trigger, modal, fillContainer });
+  } = useDepositOption({ buttonText, trigger, modal });
   const { currentModal, previousModal } = useDepositStore();
 
   return (
