@@ -14,10 +14,18 @@ import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { CardStatus, KycStatus } from '@/lib/types';
 
 export default function ActivateMobile() {
-  const { kycLink: _kycLink, kycStatus: _kycStatus } = useLocalSearchParams<{
+  const {
+    kycLink: _kycLink,
+    kycStatus: _kycStatus,
+    countryConfirmed,
+  } = useLocalSearchParams<{
     kycLink?: string;
     kycStatus?: KycStatus;
+    countryConfirmed?: string;
   }>();
+
+  // Skip country check if user just confirmed country on country_selection page
+  const skipCountryCheck = countryConfirmed === 'true';
 
   const { data: cardStatusResponse } = useCardStatus();
   const cardStatus = cardStatusResponse?.status;
@@ -38,7 +46,10 @@ export default function ActivateMobile() {
   } = useCardSteps(_kycStatus as KycStatus | undefined, cardStatusResponse);
 
   const router = useRouter();
+
+  // Only run country check if user didn't just confirm their country
   const { checkingCountry } = useCountryCheck();
+  const isCheckingCountry = !skipCountryCheck && checkingCountry;
 
   // If the card is already active, skip the activation flow
   React.useEffect(() => {
@@ -47,8 +58,8 @@ export default function ActivateMobile() {
     }
   }, [cardStatus, router]);
 
-  // Show loading state while checking country
-  if (checkingCountry) {
+  // Show loading state while checking country (skip if user just confirmed country)
+  if (isCheckingCountry) {
     return (
       <PageLayout desktopOnly contentClassName="pb-10">
         <View className="flex-1 items-center justify-center">

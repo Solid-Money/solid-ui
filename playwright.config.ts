@@ -25,7 +25,9 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    navigationTimeout: 60000,
   },
+  timeout: 60000,
   projects: [
     {
       name: 'chromium',

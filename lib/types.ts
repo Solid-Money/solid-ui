@@ -182,6 +182,12 @@ export type BridgeCustomerResponse = {
   kycLinkId: string;
 };
 
+export type BridgeRejectionReason = {
+  developer_reason: string;
+  reason: string;
+  created_at: string;
+};
+
 export interface CustomerFromBridgeResponse {
   id: string;
   first_name: string;
@@ -190,16 +196,28 @@ export interface CustomerFromBridgeResponse {
   status: string;
   type: string;
   has_accepted_terms_of_service: boolean;
-  rejection_reasons: string[];
+  rejection_reasons: BridgeRejectionReason[];
   requirements_due: string[];
   future_requirements_due: string[];
   endorsements: BridgeCustomerEndorsement[];
 }
 
+// Issue can be a string like "endorsement_not_available_in_customers_region"
+// or an object like { id_front_photo: "id_expired" }
+export type BridgeEndorsementIssue = string | Record<string, string>;
+
+export type BridgeEndorsementRequirements = {
+  complete: string[];
+  pending: string[];
+  missing: Record<string, unknown>;
+  issues: BridgeEndorsementIssue[];
+};
+
 export type BridgeCustomerEndorsement = {
   name: string;
   status: EndorsementStatus;
   additional_requirements?: string[];
+  requirements?: BridgeEndorsementRequirements;
 };
 
 export enum KycStatus {
