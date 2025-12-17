@@ -50,11 +50,13 @@ export default function Referral() {
               <CopyToClipboard text={user?.referralCode || ''} />
             </View>
             <View className="flex-col justify-center w-full mt-4">
-              <Text className="text-white/70 text-left mt-8">Direct register link</Text>
+              <Text className="text-white/70 text-left mt-8">Referral link</Text>
             </View>
             <View className="flex-row w-full justify-between items-center p-4 ps-6 bg-primary/10 rounded-2xl text-primary font-medium mt-4">
-              <Text className="text-base">https://app.solid.xyz/?ref={user?.referralCode}</Text>
-              <CopyToClipboard text={`https://app.solid.xyz/?ref=${user?.referralCode}`} />
+              <Text className="text-base">
+                https://www.solid.xyz/refer?ref={user?.referralCode}
+              </Text>
+              <CopyToClipboard text={`https://www.solid.xyz/refer?ref=${user?.referralCode}`} />
             </View>
           </View>
         </View>
