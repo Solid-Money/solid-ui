@@ -167,6 +167,23 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
     } catch (err) {
       console.error('createBridgeTransfer failed', err);
 
+      // Try to extract user-friendly error message from API response
+      let errorMessage = 'An error occurred while creating the transfer';
+      let errorCode = 'Unknown error';
+
+      try {
+        if (err instanceof Response) {
+          const errorData = await err.json();
+          // NestJS BadRequestException returns message at root level
+          if (errorData?.message) {
+            errorMessage = errorData.message;
+            errorCode = errorData.error || 'api_error';
+          }
+        }
+      } catch {
+        // Failed to parse error response, use default message
+      }
+
       // Track bank transfer error
       track(TRACKING_EVENTS.DEPOSIT_ERROR, {
         user_id: user?.userId,
@@ -176,13 +193,14 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
         crypto_currency: crypto,
         deposit_type: 'bank_transfer',
         deposit_method: loadingMethod,
-        error: err instanceof Error ? err.message : 'Unknown error',
+        errorMessage: errorMessage,
+        error: errorCode,
       });
 
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'An error occurred while creating the bridge transfer',
+        text2: errorMessage,
         props: {
           badgeText: '',
         },
