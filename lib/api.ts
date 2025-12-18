@@ -1207,6 +1207,110 @@ export const usernameExists = async (username: string) => {
   return response;
 };
 
+// ============================================
+// Email-First Signup Flow API Functions
+// ============================================
+
+/**
+ * Step 1: Initiate OTP for signup (public - no auth required)
+ * Checks if email is already registered before sending OTP
+ */
+export const initSignupOtp = async (email: string) => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-signup-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ email }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data as { otpId: string };
+};
+
+/**
+ * Step 2: Verify OTP for signup (public - no auth required)
+ * Returns verification token to use in emailSignUp
+ */
+export const verifySignupOtp = async (otpId: string, otpCode: string, email: string) => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-signup-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ otpId, otpCode, email }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data as { verificationToken: string; email: string };
+};
+
+/**
+ * Step 3: Create account with email and passkey (public - no auth required)
+ * Creates sub-org with passkey authenticator and wallet in a single step
+ */
+export const emailSignUp = async (
+  email: string,
+  verificationToken: string,
+  sessionPublicKey: string,
+  challenge: string,
+  attestation: any,
+  credentialId?: string,
+  referralCode?: string,
+  marketingConsent?: boolean,
+) => {
+  const body: Record<string, any> = {
+    email,
+    verificationToken,
+    sessionPublicKey,
+    challenge,
+    attestation,
+    marketingConsent,
+  };
+  if (credentialId) body.credentialId = credentialId;
+  if (referralCode) body.referralCode = referralCode;
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email-signup`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Check if email is already registered (public)
+ * Returns true if email exists, false otherwise
+ */
+export const emailExists = async (email: string): Promise<boolean> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email/${encodeURIComponent(email)}`,
+    {
+      method: 'HEAD',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+  return response.status === 200;
+};
+
 export const createActivityEvent = async (
   event: ActivityEvent,
 ): Promise<{ transactionHash: string }> => {
