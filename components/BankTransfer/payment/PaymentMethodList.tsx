@@ -39,6 +39,7 @@ const ALL_METHODS: BridgeTransferMethod[] = [
   BridgeTransferMethod.WIRE,
   BridgeTransferMethod.SEPA,
   BridgeTransferMethod.SPEI,
+  BridgeTransferMethod.PIX,
 ];
 
 export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }: Props) {
@@ -54,6 +55,10 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
     filtered = [BridgeTransferMethod.SEPA];
   } else if (normalizedFiat === BridgeTransferFiatCurrency.USD) {
     filtered = [BridgeTransferMethod.ACH_PUSH, BridgeTransferMethod.WIRE];
+  } else if (normalizedFiat === BridgeTransferFiatCurrency.MXN) {
+    filtered = [BridgeTransferMethod.SPEI];
+  } else if (normalizedFiat === BridgeTransferFiatCurrency.BRL) {
+    filtered = [BridgeTransferMethod.PIX];
   }
 
   if (isLoadingCustomer) {
@@ -328,6 +333,8 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
       return Endorsements.SEPA;
     } else if (method === BridgeTransferMethod.SPEI) {
       return Endorsements.SPEI;
+    } else if (method === BridgeTransferMethod.PIX) {
+      return Endorsements.PIX;
     } else {
       return Endorsements.BASE;
     }
