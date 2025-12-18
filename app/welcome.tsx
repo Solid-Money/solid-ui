@@ -21,7 +21,7 @@ export default function Welcome() {
   const router = useRouter();
   const { isDesktop } = useDimension();
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [, setSelectedUserId] = useState<string | null>(null);
 
   // Get the first (most recent) user - we display one at a time
   const selectedUser = users.find(u => u.selected) || users[0];

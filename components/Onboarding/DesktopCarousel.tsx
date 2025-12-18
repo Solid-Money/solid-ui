@@ -12,11 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui/text';
-import {
-  getBackgroundImage,
-  getGradientColors,
-  ONBOARDING_DATA,
-} from '@/lib/types/onboarding';
+import { getBackgroundImage, getGradientColors, ONBOARDING_DATA } from '@/lib/types/onboarding';
 import { useCarouselStore } from '@/store/useCarouselStore';
 
 const SWIPE_THRESHOLD = 20; // Minimum distance to trigger slide change
@@ -189,7 +185,12 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
                       contentFit="contain"
                     />
                   ) : currentSlide.animation ? (
-                    <View style={{ transform: [{ scale: 1.6 }], ...(currentIndex === 2 && { marginRight: 20 }) }} >
+                    <View
+                      style={{
+                        transform: [{ scale: 1.6 }],
+                        ...(currentIndex === 2 && { marginRight: 20 }),
+                      }}
+                    >
                       <LottieView
                         ref={animationRef}
                         source={currentSlide.animation}
