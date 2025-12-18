@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ChevronDown } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -15,7 +15,14 @@ type FiatDropdownProps = {
 export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
   const [open, setOpen] = useState(false);
 
-  const items = useMemo(() => [BridgeTransferFiatCurrency.USD], []);
+  const items = useMemo(
+    () => [
+      BridgeTransferFiatCurrency.USD,
+      BridgeTransferFiatCurrency.EUR,
+      // MXN and BRL hidden until exchange rate issues are resolved
+    ],
+    [],
+  );
 
   const renderFlag = (code: BridgeTransferFiatCurrency) => {
     const Icon = getFiatIcon(code);

@@ -666,19 +666,16 @@ export enum RewardsType {
 }
 
 export enum FromCurrency {
-  BTC = 'btc',
-  ETH = 'eth',
   EUR = 'eur',
-  SOL = 'sol',
   USD = 'usd',
+  BRL = 'brl',
+  MXN = 'mxn',
 }
 
 export enum ToCurrency {
   BRL = 'brl',
-  BTC = 'btc',
-  ETH = 'eth',
   EUR = 'eur',
-  SOL = 'sol',
+  MXN = 'mxn',
   USD = 'usd',
 }
 

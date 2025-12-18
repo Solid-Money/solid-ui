@@ -1,6 +1,8 @@
 export enum BridgeTransferFiatCurrency {
   USD = 'usd',
   EUR = 'eur',
+  MXN = 'mxn',
+  BRL = 'brl',
 }
 
 export enum BridgeTransferCryptoCurrency {
@@ -13,11 +15,14 @@ export enum BridgeTransferMethod {
   WIRE = 'wire',
   SEPA = 'sepa',
   SPEI = 'spei',
+  PIX = 'pix',
 }
 
 export const FIAT_LABEL: Record<BridgeTransferFiatCurrency, string> = {
   [BridgeTransferFiatCurrency.USD]: 'USD',
   [BridgeTransferFiatCurrency.EUR]: 'EUR',
+  [BridgeTransferFiatCurrency.MXN]: 'MXN',
+  [BridgeTransferFiatCurrency.BRL]: 'BRL',
 };
 
 export const CRYPTO_LABEL: Record<BridgeTransferCryptoCurrency, string> = {
@@ -30,6 +35,7 @@ export const METHOD_LABEL: Record<BridgeTransferMethod, string> = {
   [BridgeTransferMethod.WIRE]: 'Wire',
   [BridgeTransferMethod.SEPA]: 'SEPA',
   [BridgeTransferMethod.SPEI]: 'SPEI',
+  [BridgeTransferMethod.PIX]: 'Pix (Beta)',
 };
 
 export enum Endorsements {
@@ -37,6 +43,7 @@ export enum Endorsements {
   SEPA = 'sepa',
   SPEI = 'spei',
   CARDS = 'cards',
+  PIX = 'pix',
 }
 
 export enum EndorsementStatus {
