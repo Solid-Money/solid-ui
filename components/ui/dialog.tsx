@@ -1,10 +1,19 @@
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import * as React from 'react';
 import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  FadeOutDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 
 import { toastProps } from '@/components/Toast';
+import { useDimension } from '@/hooks/useDimension';
 import { X } from '@/lib/icons/X';
 import { cn } from '@/lib/utils';
 import { BlurView } from 'expo-blur';
@@ -19,8 +28,6 @@ const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrimitive.OverlayProps>(
   ({ className, ...props }, ref) => {
-    const { open } = DialogPrimitive.useRootContext();
-
     const handlePointerDown = (event: any) => {
       // Check if the clicked element is a toast
       const target = event.target as HTMLElement;
@@ -34,7 +41,6 @@ const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrim
       <DialogPrimitive.Overlay
         className={cn(
           'web:backdrop-blur-[4px] bg-black/40 flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
-          open ? 'web:animate-in web:fade-in-0' : 'web:animate-out web:fade-out-0',
           className,
         )}
         onPointerDown={handlePointerDown}
@@ -100,8 +106,50 @@ const DialogContent = React.forwardRef<
     { className, children, portalHost, onCloseAutoFocus, showCloseButton = true, ...props },
     ref,
   ) => {
-    const { open } = DialogPrimitive.useRootContext();
+    const { isScreenMedium } = useDimension();
     const shouldAlignTop = className?.includes('justify-start');
+    const { open } = DialogPrimitive.useRootContext();
+
+    // Web bounce animation using useAnimatedStyle
+    const opacityWeb = useSharedValue(0);
+    const translateYWeb = useSharedValue(25);
+    const isWebBounce = Platform.OS === 'web' && !isScreenMedium;
+
+    React.useEffect(() => {
+      if (isWebBounce && open) {
+        // Reset values when dialog opens
+        opacityWeb.value = 0;
+        translateYWeb.value = 25;
+
+        const springConfig = {
+          damping: 12,
+          mass: 0.8,
+          stiffness: 300,
+          restSpeedThreshold: 0.01,
+          restDisplacementThreshold: 0.01,
+        };
+        opacityWeb.value = withSpring(1, springConfig);
+        translateYWeb.value = withSpring(0, springConfig);
+      } else if (isWebBounce && !open) {
+        // Reset when dialog closes
+        opacityWeb.value = 0;
+        translateYWeb.value = 25;
+      }
+    }, [isWebBounce, open, opacityWeb, translateYWeb]);
+
+    const webBounceStyle = useAnimatedStyle(() => {
+      if (!isWebBounce) return {};
+      return {
+        opacity: opacityWeb.value,
+        transform: [{ translateY: translateYWeb.value }],
+      };
+    });
+
+    const enteringAnimation = isScreenMedium
+      ? FadeIn.duration(150)
+      : Platform.OS === 'web'
+        ? undefined // Using useAnimatedStyle for web instead
+        : FadeInDown.springify().stiffness(300).damping(12).mass(0.8).restSpeedThreshold(0.01);
 
     const content = (
       <>
@@ -109,9 +157,7 @@ const DialogContent = React.forwardRef<
           ref={ref}
           className={cn(
             'max-w-lg gap-4 web:cursor-default bg-popup p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
-            open
-              ? 'web:animate-in web:fade-in-0 web:zoom-in-95'
-              : 'web:animate-out web:fade-out-0 web:zoom-out-95',
+            !isScreenMedium && shouldAlignTop && 'min-h-[90vh]',
             className,
           )}
           onCloseAutoFocus={onCloseAutoFocus}
@@ -120,28 +166,20 @@ const DialogContent = React.forwardRef<
           {children}
           {showCloseButton && <DialogCloseButton className="absolute top-4 right-4" />}
         </DialogPrimitive.Content>
-        <Toast {...toastProps} />
       </>
     );
 
     return (
       <DialogPortal hostName={portalHost}>
         <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
-          {Platform.OS === 'web' ? (
-            content
-          ) : (
-            <Animated.View
-              entering={FadeIn.duration(150)}
-              exiting={FadeOut.duration(150)}
-              style={StyleSheet.absoluteFill}
-              className={cn(
-                'flex items-center',
-                shouldAlignTop ? 'justify-start' : 'justify-center',
-              )}
-            >
-              {content}
-            </Animated.View>
-          )}
+          <Animated.View
+            entering={enteringAnimation}
+            exiting={isScreenMedium ? FadeOut.duration(150) : FadeOutDown.duration(180)}
+            style={isWebBounce ? webBounceStyle : undefined}
+          >
+            {content}
+          </Animated.View>
+          <Toast {...toastProps} />
         </DialogOverlay>
       </DialogPortal>
     );
