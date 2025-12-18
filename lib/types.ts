@@ -673,9 +673,6 @@ export enum FromCurrency {
 }
 
 export enum ToCurrency {
-  BRL = 'brl',
-  EUR = 'eur',
-  MXN = 'mxn',
   USD = 'usd',
 }
 

@@ -19,7 +19,8 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
     () => [
       BridgeTransferFiatCurrency.USD,
       BridgeTransferFiatCurrency.EUR,
-      // MXN and BRL hidden until exchange rate issues are resolved
+      BridgeTransferFiatCurrency.MXN,
+      BridgeTransferFiatCurrency.BRL,
     ],
     [],
   );

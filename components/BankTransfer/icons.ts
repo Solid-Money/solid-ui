@@ -1,4 +1,6 @@
+import BrlFlag from '@/assets/images/brl-fiat-currency';
 import EurFlag from '@/assets/images/eur-fiat-currency';
+import MxnFlag from '@/assets/images/mxn-fiat-currency';
 import UsdFlag from '@/assets/images/usd-fiat-currency';
 import UsdcIcon from '@/assets/images/usdc-cryptocurrency';
 import type { ComponentType } from 'react';
@@ -10,8 +12,8 @@ export type SvgIcon = ComponentType<SvgProps>;
 export const FIAT_ICON_MAP: Partial<Record<BridgeTransferFiatCurrency, SvgIcon>> = {
   [BridgeTransferFiatCurrency.USD]: UsdFlag,
   [BridgeTransferFiatCurrency.EUR]: EurFlag,
-  [BridgeTransferFiatCurrency.MXN]: UsdFlag,
-  [BridgeTransferFiatCurrency.BRL]: UsdFlag,
+  [BridgeTransferFiatCurrency.MXN]: MxnFlag,
+  [BridgeTransferFiatCurrency.BRL]: BrlFlag,
 };
 
 export const getFiatIcon = (code: BridgeTransferFiatCurrency) => FIAT_ICON_MAP[code];
