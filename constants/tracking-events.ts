@@ -146,6 +146,15 @@ export const TRACKING_EVENTS = {
   CARD_COUNTRY_CHECK_DETECTED: 'card_country_check_detected',
   CARD_KYC_COUNTRY_SUPPORTED: 'card_kyc_country_supported',
   CARD_COUNTRY_CHECK_FAILED: 'card_country_check_failed',
+
+  // KYC Link Events (for debugging KYC flow issues)
+  KYC_LINK_PAGE_LOADED: 'kyc_link_page_loaded',
+  KYC_LINK_PARSED: 'kyc_link_parsed',
+  KYC_LINK_SDK_READY: 'kyc_link_sdk_ready',
+  KYC_LINK_COMPLETED: 'kyc_link_completed',
+  KYC_LINK_CANCELLED: 'kyc_link_cancelled',
+  KYC_LINK_ERROR: 'kyc_link_error',
+
   CARD_ACTIVATION_STARTED: 'card_activation_started',
   CARD_ACTIVATION_SUCCEEDED: 'card_activation_succeeded',
   CARD_ACTIVATION_FAILED: 'card_activation_failed',
