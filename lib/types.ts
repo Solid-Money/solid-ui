@@ -83,6 +83,7 @@ export interface AuthTokens {
 export interface User {
   username: string;
   safeAddress: Address;
+  walletAddress?: string;
   selected: boolean;
   signWith: string;
   suborgId: string;
