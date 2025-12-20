@@ -357,6 +357,7 @@ const useUser = (): UseUserReturn => {
         if (smartAccountClient && user) {
           const selectedUser: User = {
             safeAddress: smartAccountClient.account.address,
+            walletAddress: user.walletAddress,
             username,
             userId: user._id,
             signWith: user.walletAddress,
@@ -558,6 +559,7 @@ const useUser = (): UseUserReturn => {
 
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
+        walletAddress: user.walletAddress,
         username: user.username,
         userId: user._id,
         signWith: user.walletAddress,

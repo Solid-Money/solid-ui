@@ -108,15 +108,17 @@ const Leaderboard = () => {
     initialPageParam: 1,
   });
 
-  const leaderboardUsers = leaderboardData?.pages.flatMap(page => page.users) || [];
+  // Filter out the current user since they're already shown in "Your Ranking" section
+  const leaderboardUsers =
+    leaderboardData?.pages.flatMap(page => page.users).filter(u => u.id !== user?.userId) || [];
 
   if (!user) {
     return null;
   }
 
   const constructedUser: LeaderboardUser = {
-    id: user.safeAddress,
-    walletAddress: user.safeAddress,
+    id: user.userId,
+    walletAddress: user.walletAddress || user.safeAddress,
     points: points.userRewardsSummary.totalPoints || 0,
     leaderboardPosition: points.leaderboardPosition || 0,
   };
