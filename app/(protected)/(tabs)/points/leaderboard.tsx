@@ -28,6 +28,7 @@ type RowProps = {
   index: number;
   isStar?: boolean;
   useRawIndex?: boolean; // When true, use index directly (for already 1-indexed positions)
+  skipAnimation?: boolean; // When true, skip the entering animation
 };
 
 const PAGE_SIZE = 30;
@@ -47,7 +48,7 @@ const positionStars: PositionStars = {
   },
 };
 
-const Row = ({ leaderboardUser, index, isStar, useRawIndex }: RowProps) => {
+const Row = ({ leaderboardUser, index, isStar, useRawIndex, skipAnimation }: RowProps) => {
   const { isScreenMedium } = useDimension();
   // When useRawIndex is true, index is already 1-indexed (e.g., from API's leaderboardPosition)
   // Otherwise, index is 0-indexed (e.g., from FlashList) and we need to add 1
@@ -55,7 +56,9 @@ const Row = ({ leaderboardUser, index, isStar, useRawIndex }: RowProps) => {
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(150).delay((index % PAGE_SIZE) * 100)}
+      entering={
+        skipAnimation ? undefined : FadeInDown.duration(150).delay((index % PAGE_SIZE) * 100)
+      }
       className="bg-card rounded-twice flex-row items-center gap-2.5 text-lg font-medium px-4 py-5 md:pr-10"
     >
       <View className="md:w-20 flex justify-center items-center relative">
@@ -123,9 +126,14 @@ const Leaderboard = () => {
     leaderboardPosition: points.leaderboardPosition || 0,
   };
 
-  const renderItem = ({ item, index }: { item: LeaderboardUser; index: number }) => (
+  const renderItem = ({ item }: { item: LeaderboardUser }) => (
     <View className="w-full max-w-7xl mx-auto px-4">
-      <Row leaderboardUser={item} index={index} isStar={index < 3} />
+      <Row
+        leaderboardUser={item}
+        index={item.leaderboardPosition}
+        isStar={item.leaderboardPosition <= 3}
+        useRawIndex
+      />
     </View>
   );
 
@@ -147,6 +155,7 @@ const Leaderboard = () => {
             leaderboardUser={constructedUser}
             index={points.leaderboardPosition || 1}
             useRawIndex
+            skipAnimation
           />
         </View>
         <View className="mb-4">

@@ -10,7 +10,7 @@ export const usePoints = () => {
     if (user) {
       fetchPoints();
     }
-  }, [user, fetchPoints]);
+  }, [user?.userId, fetchPoints]);
 
   return {
     points,

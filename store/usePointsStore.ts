@@ -12,13 +12,17 @@ interface PointsState {
   points: Points;
   isLoading: boolean;
   error: string | null;
+  lastFetchTime: number | null;
   setPoints: (points: Points) => void;
-  fetchPoints: () => Promise<void>;
+  fetchPoints: (options?: { force?: boolean }) => Promise<void>;
 }
+
+// Cache duration in milliseconds (5 minutes)
+const CACHE_DURATION_MS = 5 * 60 * 1000;
 
 export const usePointsStore = create<PointsState>()(
   persist(
-    set => ({
+    (set, get) => ({
       points: {
         nextRewardTime: 0,
         pointsLast24Hours: 0,
@@ -31,6 +35,7 @@ export const usePointsStore = create<PointsState>()(
       },
       isLoading: false,
       error: null,
+      lastFetchTime: null,
 
       setPoints: (points: Points) => {
         set(
@@ -41,7 +46,18 @@ export const usePointsStore = create<PointsState>()(
         );
       },
 
-      fetchPoints: async () => {
+      fetchPoints: async (options?: { force?: boolean }) => {
+        const { lastFetchTime, isLoading } = get();
+        const now = Date.now();
+
+        // Skip if already loading
+        if (isLoading) return;
+
+        // Skip if data was fetched recently (unless forced)
+        if (!options?.force && lastFetchTime && now - lastFetchTime < CACHE_DURATION_MS) {
+          return;
+        }
+
         set(
           produce(state => {
             state.isLoading = true;
@@ -55,6 +71,7 @@ export const usePointsStore = create<PointsState>()(
             produce(state => {
               state.points = points;
               state.isLoading = false;
+              state.lastFetchTime = Date.now();
             }),
           );
         } catch (error: any) {
@@ -79,6 +96,10 @@ export const usePointsStore = create<PointsState>()(
     {
       name: USER.pointsStorageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.pointsStorageKey)),
+      partialize: state => ({
+        points: state.points,
+        // Don't persist lastFetchTime - we want fresh data on app restart
+      }),
     },
   ),
 );
