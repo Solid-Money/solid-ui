@@ -25,9 +25,9 @@ type PositionStars = {
 
 type RowProps = {
   leaderboardUser: LeaderboardUser;
-  index: number;
+  position: number;
   isStar?: boolean;
-  useRawIndex?: boolean; // When true, use index directly (for already 1-indexed positions)
+  skipAnimation?: boolean;
 };
 
 const PAGE_SIZE = 30;
@@ -47,21 +47,20 @@ const positionStars: PositionStars = {
   },
 };
 
-const Row = ({ leaderboardUser, index, isStar, useRawIndex }: RowProps) => {
+const Row = ({ leaderboardUser, position, isStar, skipAnimation }: RowProps) => {
   const { isScreenMedium } = useDimension();
-  // When useRawIndex is true, index is already 1-indexed (e.g., from API's leaderboardPosition)
-  // Otherwise, index is 0-indexed (e.g., from FlashList) and we need to add 1
-  const displayPosition = useRawIndex ? index : index + 1;
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(150).delay((index % PAGE_SIZE) * 100)}
+      entering={
+        skipAnimation ? undefined : FadeInDown.duration(150).delay((position % PAGE_SIZE) * 100)
+      }
       className="bg-card rounded-twice flex-row items-center gap-2.5 text-lg font-medium px-4 py-5 md:pr-10"
     >
       <View className="md:w-20 flex justify-center items-center relative">
         {isStar && (
           <Image
-            source={positionStars[displayPosition].icon}
+            source={positionStars[position].icon}
             style={{ width: isScreenMedium ? 36 : 28, height: isScreenMedium ? 36 : 28 }}
             contentFit="contain"
           />
@@ -73,7 +72,7 @@ const Row = ({ leaderboardUser, index, isStar, useRawIndex }: RowProps) => {
               : 'bg-white/10 h-full px-2 rounded-twice mx-auto',
           )}
         >
-          <Text className="text-lg font-semibold">{formatNumber(displayPosition, 0, 0)}</Text>
+          <Text className="text-lg font-semibold">{formatNumber(position, 0, 0)}</Text>
         </View>
       </View>
       <View className="grow md:w-8/12">
@@ -123,9 +122,13 @@ const Leaderboard = () => {
     leaderboardPosition: points.leaderboardPosition || 0,
   };
 
-  const renderItem = ({ item, index }: { item: LeaderboardUser; index: number }) => (
+  const renderItem = ({ item }: { item: LeaderboardUser }) => (
     <View className="w-full max-w-7xl mx-auto px-4">
-      <Row leaderboardUser={item} index={index} isStar={index < 3} />
+      <Row
+        leaderboardUser={item}
+        position={item.leaderboardPosition}
+        isStar={item.leaderboardPosition <= 3}
+      />
     </View>
   );
 
@@ -145,8 +148,11 @@ const Leaderboard = () => {
           <Text className="text-lg font-semibold">Your Ranking</Text>
           <Row
             leaderboardUser={constructedUser}
-            index={points.leaderboardPosition || 1}
-            useRawIndex
+            position={points.leaderboardPosition || 1}
+            isStar={
+              (points.leaderboardPosition || 0) <= 3 && (points.leaderboardPosition || 0) >= 1
+            }
+            skipAnimation
           />
         </View>
         <View className="mb-4">
