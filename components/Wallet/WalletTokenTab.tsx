@@ -3,11 +3,11 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { LayoutChangeEvent, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Address, formatUnits } from 'viem';
+import { formatUnits } from 'viem';
 
 import DepositModal from '@/components/Deposit/DepositModal';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
-import SendModal from '@/components/SendModal/SendModal';
+import SendModal from '@/components/Send/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
 import TooltipPopover from '@/components/Tooltip';
 import { TransactionCredenzaTrigger } from '@/components/Transaction/TransactionCredenza';
@@ -250,14 +250,7 @@ const WalletTokenTab = () => {
                           >
                             <View className="gap-2">
                               {!isSoUSDEthereum(token.contractAddress) && (
-                                <SendModal
-                                  tokenAddress={token.contractAddress as Address}
-                                  tokenDecimals={token.contractDecimals}
-                                  tokenIcon={tokenIcon}
-                                  tokenSymbol={token.contractTickerSymbol || 'Unknown'}
-                                  chainId={token.chainId}
-                                  tokenType={token.type}
-                                />
+                                <SendModal token={token} />
                               )}
                               {isSoUSDFuse(token.contractAddress) ? (
                                 <UnstakeModal />

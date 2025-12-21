@@ -1052,3 +1052,8 @@ export interface SwapTokenResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface AddressBookEntry {
+  name: string;
+  walletAddress: string;
+}
