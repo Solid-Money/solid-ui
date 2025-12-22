@@ -24,6 +24,41 @@ export function eclipseUsername(username: string, start = 10) {
   return username.slice(0, start) + (username.length > start ? '...' : '');
 }
 
+/**
+ * Gets the display name for a user, preferring email for email-first users.
+ * Falls back to username if no email exists (legacy users).
+ * Auto-generated usernames (starting with 'user_') indicate email-first signup.
+ */
+export function getUserDisplayName(user: User | null | undefined, maxLength = 20): string {
+  if (!user) {
+    return 'Unknown';
+  }
+  // Otherwise show username (legacy users or users who set a username)
+  return eclipseUsername(user.username || user.email || 'Unknown', maxLength);
+}
+
+/**
+ * Truncates an email address for display purposes.
+ * Shows the local part (before @) truncated if needed, plus the domain.
+ */
+export function eclipseEmail(email: string, maxLength = 20): string {
+  if (email.length <= maxLength) return email;
+
+  const [localPart, domain] = email.split('@');
+  if (!domain) return email.slice(0, maxLength) + '...';
+
+  // Calculate how much space we have for the local part
+  const domainWithAt = '@' + domain;
+  const availableForLocal = maxLength - domainWithAt.length - 3; // -3 for '...'
+
+  if (availableForLocal <= 3) {
+    // Domain too long, just truncate the whole thing
+    return email.slice(0, maxLength - 3) + '...';
+  }
+
+  return localPart.slice(0, availableForLocal) + '...' + domainWithAt;
+}
+
 export function compactNumberFormat(number: number) {
   return new Intl.NumberFormat('en-us', {
     notation: 'compact',

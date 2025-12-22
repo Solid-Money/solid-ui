@@ -5,6 +5,11 @@ type Path = {
   REGISTER: Route;
   WELCOME: Href;
   HOME: Href;
+  // Email-first signup flow
+  SIGNUP_EMAIL: Href;
+  SIGNUP_OTP: Href;
+  SIGNUP_CREATING: Href;
+  SIGNUP_PASSKEY: Href;
   SAVINGS: Href;
   ACTIVITY: Href;
   DEPOSIT: Href;
@@ -42,6 +47,11 @@ export const path: Path = {
   REGISTER: '/register',
   WELCOME: '/welcome',
   HOME: '/',
+  // Email-first signup flow
+  SIGNUP_EMAIL: '/signup/email',
+  SIGNUP_OTP: '/signup/otp',
+  SIGNUP_CREATING: '/signup/creating',
+  SIGNUP_PASSKEY: '/signup/passkey',
   SAVINGS: '/savings',
   ACTIVITY: '/activity',
   DEPOSIT: '/deposit',

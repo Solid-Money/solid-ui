@@ -322,6 +322,13 @@ export default Sentry.wrap(function RootLayout() {
                           }}
                         />
                         <Stack.Screen
+                          name="signup"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                        <Stack.Screen
                           name="recovery"
                           options={{
                             headerShown: false,
