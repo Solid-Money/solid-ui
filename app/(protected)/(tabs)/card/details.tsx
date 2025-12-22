@@ -360,21 +360,21 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
           </View>
 
           {/* Cashback Badge */}
-          <View className="px-4 py-3 flex-row items-center gap-2">
+          <View className="px-4 py-3 flex-row items-center gap-1">
             <Image
               source={require('@/assets/images/diamond.png')}
-              style={{ width: 62, height: 57 }}
+              style={{ width: 92, height: 86 }}
               contentFit="contain"
             />
             <View>
-              <Text className="text-white text-sm">you are receiving</Text>
-              <Text className="text-white text-sm">
+              <Text className="text-white text-lg">you are receiving</Text>
+              <Text className="text-white text-lg">
                 <Text className="text-[#94F27F] font-bold">
                   {Math.round(cashbackPercentage * 100)}%
                 </Text>
                 <Text className="text-white"> cashback on all</Text>
               </Text>
-              <Text className="text-white text-sm">purchases</Text>
+              <Text className="text-white text-lg">purchases</Text>
             </View>
           </View>
         </View>
