@@ -13,7 +13,7 @@ const DashboardTitle = () => {
           exposing you to unnecessary risk.
         </Text>{' '}
         <Link
-          href="https://docs.solid.xyz/what-is-solid"
+          href="https://support.solid.xyz/en/articles/12156695-what-is-solid"
           target="_blank"
           className="text-primary font-medium underline hover:opacity-70 text-[1rem]"
         >

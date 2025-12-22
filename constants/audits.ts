@@ -1,7 +1,7 @@
 export const audits = [
   {
     name: 'Solid Audit',
-    url: 'https://docs.solid.xyz/safety-and-trust/security-and-audits#audits',
+    url: 'https://support.solid.xyz/en/articles/12899057-solid-s-security-architecture-audits#h_3dfec703a3',
     image: require('@/assets/images/solid-green.png'),
   },
   {

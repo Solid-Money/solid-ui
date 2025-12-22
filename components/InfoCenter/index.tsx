@@ -44,7 +44,7 @@ const InfoCenterDocs = () => {
 };
 
 const onInfoCenterDocsPress = () => {
-  Linking.openURL('https://docs.solid.xyz');
+  Linking.openURL('https://support.solid.xyz');
 };
 
 const InfoCenterLegal = () => {
@@ -57,7 +57,7 @@ const InfoCenterLegal = () => {
 };
 
 const onInfoCenterLegalPress = () => {
-  Linking.openURL('https://docs.solid.xyz/community-and-resources-1/terms-and-conditions');
+  Linking.openURL('https://support.solid.xyz/en/articles/13184959-legal-privacy-policy-terms-conditions#h_5cf45398ce');
 };
 
 export {
