@@ -2,7 +2,8 @@ import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
-import { Button } from '@/components/ui/button';
+import SendModal from '@/components/Send/SendModal';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -24,22 +25,21 @@ const DashboardHeaderButtons = ({ hasTokens }: DashboardHeaderButtonsProps) => {
 
       {hasTokens && (
         <>
-          <Button
-            variant="secondary"
-            className="h-12 px-6 rounded-xl bg-[#303030] border-0"
-            onPress={() => {
-              track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
-                button_name: 'send',
-                source: 'dashboard_header',
-              });
-              router.push(path.SEND);
-            }}
-          >
-            <View className="flex-row items-center gap-2">
-              <HomeSend />
-              <Text className="text-base text-white font-bold">Send</Text>
-            </View>
-          </Button>
+          <SendModal
+            trigger={
+              <View
+                className={buttonVariants({
+                  variant: 'secondary',
+                  className: 'h-12 px-6 rounded-xl bg-[#303030] border-0',
+                })}
+              >
+                <View className="flex-row items-center gap-2">
+                  <HomeSend />
+                  <Text className="text-base text-white font-bold">Send</Text>
+                </View>
+              </View>
+            }
+          />
 
           <Button
             variant="secondary"

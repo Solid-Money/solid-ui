@@ -1,8 +1,8 @@
 import * as React from 'react';
 import Svg, { Path, SvgProps } from 'react-native-svg';
 
-const SvgComponent = ({ color = '#FFFFFF', width = 21, height = 21, ...props }: SvgProps) => (
-  <Svg width={width} height={height} viewBox="0 0 21 21" fill="none" {...props}>
+const SvgComponent = ({ color = '#FFFFFF', width = 21, height = 21, ...props }: SvgProps & { rotate?: number }) => (
+  <Svg width={width} height={height} viewBox="0 0 21 21" fill="none" style={{ transform: [{ rotate: `${props.rotate || 0}deg` }] }} {...props}>
     <Path
       stroke={color}
       strokeLinecap="round"

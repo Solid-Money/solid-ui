@@ -19,6 +19,7 @@ import {
 import {
   ActivityEvent,
   ActivityEvents,
+  AddressBookEntry,
   APYs,
   BlockscoutTransactions,
   BridgeCustomerEndorsement,
@@ -1684,6 +1685,39 @@ export const fetchTokenList = async (params: SwapTokenRequest) => {
     },
   );
   return response.data;
+};
+
+export const fetchAddressBook = async (): Promise<AddressBookEntry[]> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/address-book`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const addToAddressBook = async (data: AddressBookEntry): Promise<AddressBookEntry> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/address-book`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) throw response;
+  return response.json();
 };
 
 export const getDepositBonusConfig = async (): Promise<DepositBonusConfig> => {

@@ -1,10 +1,10 @@
 import { memo } from 'react';
 import { Pressable, View } from 'react-native';
-import { Address, formatUnits } from 'viem';
+import { formatUnits } from 'viem';
 
 import DepositModal from '@/components/Deposit/DepositModal';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
-import SendModal from '@/components/SendModal/SendModal';
+import SendModal from '@/components/Send/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
 import { TransactionCredenzaTrigger } from '@/components/Transaction/TransactionCredenza';
 import {
@@ -99,16 +99,7 @@ const TokenRow = memo(
                 className="bg-card border-none rounded-xl p-1 min-w-[12rem]"
               >
                 <View className="gap-2">
-                  {!isSoUSDEthereum(token.contractAddress) && (
-                    <SendModal
-                      tokenAddress={token.contractAddress as Address}
-                      tokenDecimals={token.contractDecimals}
-                      tokenIcon={tokenIcon}
-                      tokenSymbol={token.contractTickerSymbol || 'Unknown'}
-                      chainId={token.chainId}
-                      tokenType={token.type}
-                    />
-                  )}
+                  {!isSoUSDEthereum(token.contractAddress) && <SendModal token={token} />}
                   {isSoUSDFuse(token.contractAddress) ? (
                     <UnstakeModal />
                   ) : (

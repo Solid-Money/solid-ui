@@ -6,7 +6,8 @@
   :root {
     --background: 0 0% 7%;
     --foreground: 0 0% 100%;
-    --card: 0 0% 13%;
+    --card: 0 0% 11%;
+    --card-hover: 0 0% 13%;
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 18.43%;;
     --popover-foreground: 0 0% 98%;
@@ -32,8 +33,6 @@
     --qr-background: 0 0% 27%;
     --modal-background: 0 0% 19%;
     --popup: 0 0% 6%;
-    --option: 0 0% 11%;
-    --option-hover: 0 0% 13%;
     --purple: 270 39% 44%;
     --rewards: 44 100% 66%;
   }

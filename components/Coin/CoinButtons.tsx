@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import { Address } from 'viem';
 
 import CircleButton from '@/components/CircleButton';
+import SendModal from '@/components/Send/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
 import { Text } from '@/components/ui/text';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
@@ -51,12 +52,8 @@ const CoinButtons = ({ contractAddress }: CoinButtonsProps) => {
         )
       )}
 
-      <CircleButton
-        icon={HomeSend}
-        label="Send"
-        onPress={() => router.push(path.SEND)}
-        scale={0.9}
-        viewBox="0 0 25 24"
+      <SendModal
+        trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
       />
 
       <CircleButton

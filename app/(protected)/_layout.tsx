@@ -124,13 +124,6 @@ export default function ProtectedLayout() {
         }}
       />
       <Stack.Screen
-        name="send"
-        options={{
-          headerShown: false,
-          animation: 'slide_from_right',
-        }}
-      />
-      <Stack.Screen
         name="swap"
         options={{
           headerShown: false,

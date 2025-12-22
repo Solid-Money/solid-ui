@@ -4,8 +4,9 @@ import { View } from 'react-native';
 import HomeFund from '@/assets/images/home-fund';
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
-import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import CircleButton from '@/components/CircleButton';
+import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import SendModal from '@/components/Send/SendModal';
 import { path } from '@/constants/path';
 
 const DashboardHeaderButtonsMobile = () => {
@@ -25,12 +26,8 @@ const DashboardHeaderButtonsMobile = () => {
         }
       />
 
-      <CircleButton
-        icon={HomeSend}
-        label="Send"
-        onPress={() => router.push(path.SEND)}
-        scale={0.9}
-        viewBox="0 0 25 24"
+      <SendModal
+        trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
       />
 
       <CircleButton
