@@ -59,7 +59,7 @@ function WalletLoadingIcon() {
       -1, // -1 means infinite repeat
       false, // don't reverse
     );
-  }, []);
+  }, [dashOffset]);
 
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: dashOffset.value,
@@ -123,6 +123,7 @@ export default function SignupCreating() {
     setError,
   } = useSignupFlowStore();
   // Native Turnkey SDK for session management (only used on native)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const turnkeyContext = Platform.OS !== 'web' ? useTurnkey() : null;
 
   useEffect(() => {
@@ -133,7 +134,7 @@ export default function SignupCreating() {
     }
 
     createAccount();
-  }, []);
+  });
 
   const createAccount = async () => {
     track(TRACKING_EVENTS.SIGNUP_STARTED, {

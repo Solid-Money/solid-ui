@@ -103,6 +103,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
     setCurrentIndex(Math.max(currentIndex - 1, 0));
   }, [currentIndex, setCurrentIndex]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleHelpCenter = useCallback(() => {
     if (onHelpCenterPress) {
       onHelpCenterPress();

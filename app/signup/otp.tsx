@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -65,33 +65,21 @@ export default function SignupOtp() {
     }
   }, [email, otpId, router]);
 
-  // Auto-submit when 6 digits are entered
-  useEffect(() => {
-    if (otpValue.length === 6 && !isLoading) {
-      handleVerifyOtp();
-    }
-  }, [otpValue]);
-
-  const handleVerifyOtp = async () => {
+  const handleVerifyOtp = useCallback(async () => {
     if (otpValue.length !== 6) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await verifySignupOtp(otpId, otpValue, email);
-      setVerificationToken(response.verificationToken);
+      const { verificationToken } = await verifySignupOtp(otpId, otpValue, email);
+      setVerificationToken(verificationToken);
 
-      track(TRACKING_EVENTS.EMAIL_OTP_VERIFIED, {
-        email,
-        context: 'signup',
-      });
+      track(TRACKING_EVENTS.EMAIL_OTP_VERIFIED, { email, context: 'signup' });
 
-      // Move to passkey explanation step
       setStep('passkey');
       router.push(path.SIGNUP_PASSKEY);
     } catch (err: any) {
-      console.error('Failed to verify OTP:', err);
       const errorMessage = err?.message || 'Invalid verification code. Please try again.';
       setError(errorMessage);
 
@@ -104,7 +92,14 @@ export default function SignupOtp() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [otpValue, otpId, email, setIsLoading, setError, setVerificationToken, setStep, router]);
+
+  // Auto-submit when 6 digits are entered
+  useEffect(() => {
+    if (otpValue.length === 6 && !isLoading) {
+      handleVerifyOtp();
+    }
+  }, [otpValue, isLoading, handleVerifyOtp]);
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0 || isLoading) return;

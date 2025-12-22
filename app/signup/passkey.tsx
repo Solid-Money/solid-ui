@@ -37,7 +37,7 @@ export default function SignupPasskey() {
     if (!verificationToken || !email) {
       router.replace(path.SIGNUP_EMAIL);
     }
-  }, []);
+  });
 
   const handleContinue = async () => {
     setIsLoading(true);
@@ -160,7 +160,7 @@ export default function SignupPasskey() {
           Your account is{'\n'}protected with{'\n'}Passkey
         </Text>
         <Text className="text-white/60 text-center text-[14px] px-4">
-          Passkeys let you sign in using biometrics or your device PIN—no email needed. They're
+          Passkeys let you sign in using biometrics or your device PIN—no email needed. They&apos;re
           fast, secure, and act as 2FA to protect your account.{' '}
           <Text className="text-white underline" onPress={handleLearnMore}>
             Learn more
@@ -214,7 +214,7 @@ export default function SignupPasskey() {
               </Text>
               <Text className="text-white/60 text-center text-[14px] px-4">
                 Passkeys let you sign in using biometrics or your device PIN—no email needed.
-                They're fast, secure, and act as 2FA to protect your account.{' '}
+                They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
                 <Text className="text-white/60 underline" onPress={handleLearnMore}>
                   Learn more
                 </Text>
