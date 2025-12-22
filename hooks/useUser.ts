@@ -59,10 +59,16 @@ interface UseUserReturn {
   handleLogin: () => Promise<void>;
   handleDummyLogin: () => Promise<void>;
   handleSelectUser: (username: string) => void;
+  handleSelectUserById: (userId: string) => void;
   handleLogout: () => void;
   handleRemoveUsers: () => void;
   handleDeleteAccount: () => Promise<void>;
-  safeAA: (chain: Chain, subOrganization: string, signWith: string) => Promise<SmartAccountClient>;
+  safeAA: (
+    chain: Chain,
+    subOrganization: string,
+    signWith: string,
+    turnkeyClient?: any,
+  ) => Promise<SmartAccountClient>;
   checkBalance: (user: User) => Promise<boolean>;
 }
 
@@ -76,6 +82,7 @@ const useUser = (): UseUserReturn => {
     storeUser,
     updateUser,
     selectUser,
+    selectUserById,
     unselectUser,
     removeUsers,
     setSignupInfo,
@@ -90,94 +97,113 @@ const useUser = (): UseUserReturn => {
 
   const user = useMemo(() => users.find((user: User) => user.selected), [users]);
 
-  const safeAA = useCallback(async (chain: Chain, subOrganization: string, signWith: string) => {
-    let stamper: WebauthnStamper | PasskeyStamper;
+  const safeAA = useCallback(
+    async (
+      chain: Chain,
+      subOrganization: string,
+      signWith: string,
+      preAuthenticatedClient?: any,
+    ) => {
+      let turnkeyClientToUse: any;
 
-    if (Platform.OS === 'web') {
-      stamper = new WebauthnStamper({
-        rpId: getRuntimeRpId(),
-        timeout: 60000,
-        allowCredentials: user?.credentialId
-          ? [
-              {
-                id: base64urlToUint8Array(user.credentialId) as BufferSource,
-                type: 'public-key' as const,
-              },
-            ]
-          : undefined,
+      if (preAuthenticatedClient) {
+        // Use the pre-authenticated client (e.g., session-based client from signup flow)
+        turnkeyClientToUse = preAuthenticatedClient;
+      } else {
+        // Create a new client with passkey-based authentication
+        let stamper: WebauthnStamper | PasskeyStamper;
+
+        if (Platform.OS === 'web') {
+          stamper = new WebauthnStamper({
+            rpId: getRuntimeRpId(),
+            timeout: 60000,
+            allowCredentials: user?.credentialId
+              ? [
+                  {
+                    id: base64urlToUint8Array(user.credentialId) as BufferSource,
+                    type: 'public-key' as const,
+                  },
+                ]
+              : undefined,
+          });
+        } else {
+          stamper = new PasskeyStamper({
+            rpId: getRuntimeRpId(),
+            allowCredentials: user?.credentialId
+              ? [
+                  {
+                    id: user.credentialId,
+                    type: 'public-key' as const,
+                  },
+                ]
+              : undefined,
+          });
+        }
+
+        turnkeyClientToUse = new TurnkeyClient(
+          { baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL },
+          stamper,
+        );
+      }
+
+      const turnkeyAccount = await createAccount({
+        client: turnkeyClientToUse,
+        organizationId: subOrganization,
+        signWith: signWith,
       });
-    } else {
-      stamper = new PasskeyStamper({
-        rpId: getRuntimeRpId(),
-        allowCredentials: user?.credentialId
-          ? [
-              {
-                id: user.credentialId,
-                type: 'public-key' as const,
-              },
-            ]
-          : undefined,
+
+      // Create a wallet client from the turnkeyAccount
+      const smartAccountOwner = createWalletClient({
+        account: turnkeyAccount,
+        transport: http(rpcUrls[chain.id]),
+        chain: chain,
       });
-    }
 
-    const turnkeyClient = new TurnkeyClient({ baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL }, stamper);
-
-    const turnkeyAccount = await createAccount({
-      client: turnkeyClient,
-      organizationId: subOrganization,
-      signWith: signWith,
-    });
-
-    // Create a wallet client from the turnkeyAccount
-    const smartAccountOwner = createWalletClient({
-      account: turnkeyAccount,
-      transport: http(rpcUrls[chain.id]),
-      chain: chain,
-    });
-
-    const safeAccount = await toSafeSmartAccount({
-      saltNonce: await getNonce({
-        appId: 'solid',
-      }),
-      client: publicClient(chain.id),
-      owners: [smartAccountOwner.account],
-      version: '1.4.1',
-      entryPoint: {
-        address: entryPoint07Address,
-        version: '0.7',
-      },
-    });
-
-    const bundlerClient = pimlicoClient(chain.id);
-
-    return createSmartAccountClient({
-      account: safeAccount,
-      chain: chain,
-      paymaster: bundlerClient,
-      userOperation: {
-        estimateFeesPerGas: async () => {
-          try {
-            const gasPrice = await bundlerClient.getUserOperationGasPrice();
-            return gasPrice.fast;
-          } catch (error) {
-            console.error('Failed to get gas price:', error);
-            Sentry.captureException(error, {
-              tags: {
-                type: 'gas_price_estimation_error',
-                chainId: chain.id,
-              },
-              user: {
-                id: user?.userId,
-                address: user?.safeAddress,
-              },
-            });
-            throw error;
-          }
+      const safeAccount = await toSafeSmartAccount({
+        saltNonce: await getNonce({
+          appId: 'solid',
+        }),
+        client: publicClient(chain.id),
+        owners: [smartAccountOwner.account],
+        version: '1.4.1',
+        entryPoint: {
+          address: entryPoint07Address,
+          version: '0.7',
         },
-      },
-      bundlerTransport: http(USER.pimlicoUrl(chain.id)),
-    });
-  }, []);
+      });
+
+      const bundlerClient = pimlicoClient(chain.id);
+
+      return createSmartAccountClient({
+        account: safeAccount,
+        chain: chain,
+        paymaster: bundlerClient,
+        userOperation: {
+          estimateFeesPerGas: async () => {
+            try {
+              const gasPrice = await bundlerClient.getUserOperationGasPrice();
+              return gasPrice.fast;
+            } catch (error) {
+              console.error('Failed to get gas price:', error);
+              Sentry.captureException(error, {
+                tags: {
+                  type: 'gas_price_estimation_error',
+                  chainId: chain.id,
+                },
+                user: {
+                  id: user?.userId,
+                  address: user?.safeAddress,
+                },
+              });
+              throw error;
+            }
+          },
+        },
+        bundlerTransport: http(USER.pimlicoUrl(chain.id)),
+      });
+    },
+    [],
+  );
 
   const checkBalance = useCallback(
     async (user: User): Promise<boolean> => {
@@ -357,6 +383,7 @@ const useUser = (): UseUserReturn => {
         if (smartAccountClient && user) {
           const selectedUser: User = {
             safeAddress: smartAccountClient.account.address,
+            walletAddress: user.walletAddress,
             username,
             userId: user._id,
             signWith: user.walletAddress,
@@ -558,6 +585,7 @@ const useUser = (): UseUserReturn => {
 
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
+        walletAddress: user.walletAddress,
         username: user.username,
         userId: user._id,
         signWith: user.walletAddress,
@@ -784,6 +812,98 @@ const useUser = (): UseUserReturn => {
     [selectUser, clearKycLinkId, router, user, unselectUser, users],
   );
 
+  // New: select user by userId (preferred for email-first users)
+  const handleSelectUserById = useCallback(
+    (userId: string) => {
+      const previousUserId = user?.userId;
+      selectUserById(userId);
+      clearKycLinkId();
+
+      // Find the selected user
+      const selectedUser = users.find(u => u.userId === userId);
+      if (selectedUser) {
+        // Re-identify with the selected user
+        trackIdentity(selectedUser.userId, {
+          username: selectedUser.username,
+          safe_address: selectedUser.safeAddress,
+          email: selectedUser.email,
+          platform: Platform.OS,
+        });
+      }
+
+      track(TRACKING_EVENTS.WELCOME_USER, {
+        user_id: userId,
+        username: selectedUser?.username,
+        email: selectedUser?.email,
+      });
+
+      // We reauth if web to get a new session cookie
+      // and bind it to the selected user
+      const reauthIfWeb = async () => {
+        if (Platform.OS === 'web') {
+          try {
+            //@ts-ignore
+            const { Turnkey } = await import('@turnkey/sdk-browser');
+            const turnkey = new Turnkey({
+              apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
+              defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+              rpId: getRuntimeRpId(),
+            });
+
+            // Prepare allowCredentials if we have a credential ID for this user
+            const allowCredentials = selectedUser?.credentialId
+              ? [
+                  {
+                    id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
+                    type: 'public-key' as const,
+                  },
+                ]
+              : undefined;
+
+            const passkeyClient = turnkey.passkeyClient(
+              allowCredentials ? { allowCredentials } : undefined,
+            );
+
+            const result = await passkeyClient.stampGetWhoami({
+              organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
+            });
+            let credentialId: string | undefined;
+            if (result?.stamp?.stampHeaderValue) {
+              credentialId = parseStampHeaderValueCredentialId(result.stamp.stampHeaderValue);
+            }
+            const authedUser = await login(result);
+
+            // For backward compatibility: if user doesn't have credentialId stored, update it
+            if (credentialId && !authedUser.credentialId) {
+              try {
+                await withRefreshToken(() => updateUserCredentialId(credentialId));
+                await updateUser({ ...selectedUser!, credentialId });
+              } catch (error) {
+                console.error('Failed to update credentialId for existing user:', error);
+              }
+            }
+
+            // If returned user is different, select by userId
+            if (authedUser?.userId && authedUser.userId !== userId) {
+              selectUserById(authedUser.userId);
+            }
+          } catch (error) {
+            if (previousUserId) {
+              selectUserById(previousUserId);
+            } else {
+              unselectUser();
+            }
+          }
+        }
+      };
+
+      void reauthIfWeb().finally(() => {
+        router.replace(path.HOME);
+      });
+    },
+    [selectUserById, clearKycLinkId, router, user, unselectUser, users, updateUser],
+  );
+
   const handleRemoveUsers = useCallback(() => {
     track(TRACKING_EVENTS.FORGOT_ALL_USERS, {
       usernames: users.map((user: User) => user.username),
@@ -791,12 +911,12 @@ const useUser = (): UseUserReturn => {
     removeUsers();
     clearKycLinkId(); // Clear KYC data when removing all users
     removeEvents();
-    router.replace(path.REGISTER);
+    router.replace(path.SIGNUP_EMAIL);
   }, [removeUsers, clearKycLinkId, router]);
 
   const handleSessionExpired = useCallback(() => {
     clearKycLinkId(); // Clear KYC data when session expires
-    router.replace(`${path.REGISTER}?session=expired`);
+    router.replace(`${path.SIGNUP_EMAIL}?session=expired` as any);
   }, [clearKycLinkId, router]);
 
   const handleDeleteAccount = useCallback(async () => {
@@ -831,6 +951,7 @@ const useUser = (): UseUserReturn => {
     handleLogin,
     handleDummyLogin,
     handleSelectUser,
+    handleSelectUserById,
     handleLogout,
     handleRemoveUsers,
     handleDeleteAccount,

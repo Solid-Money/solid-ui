@@ -4,20 +4,7 @@ import { useEffect, useRef } from 'react';
 import { Dimensions, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
-import { OnboardingPageData } from '@/lib/types/onboarding';
-
-const getBackgroundImage = (index: number) => {
-  switch (index) {
-    case 0:
-      return require('@/assets/images/purple_onboarding_bg.png');
-    case 1:
-      return require('@/assets/images/yellow_onboarding_bg.png');
-    case 2:
-      return require('@/assets/images/green_onboarding_bg.png');
-    default:
-      return null;
-  }
-};
+import { getBackgroundImage, OnboardingPageData } from '@/lib/types/onboarding';
 
 interface OnboardingPageProps {
   data: OnboardingPageData;
@@ -31,18 +18,19 @@ export function OnboardingPage({ data, isActive, index }: OnboardingPageProps) {
   const animationRef = useRef<LottieView>(null);
 
   useEffect(() => {
-    if (isActive && animationRef.current && !data.isLastPage) {
+    if (isActive && animationRef.current && data.animation) {
       animationRef.current.play();
     }
-  }, [isActive, data.isLastPage]);
+  }, [isActive, data.animation]);
 
   const backgroundImage = getBackgroundImage(index);
 
   return (
     <View className="flex-1 items-center justify-center px-8" style={{ width: screenWidth }}>
-      <View className="items-center justify-center py-10 relative">
-        {/* Background Image */}
-        {backgroundImage && !data.isLastPage && (
+      {/* Illustration with background - Fixed height */}
+      <View className="items-center justify-center relative" style={{ height: 350 }}>
+        {/* Background Image - show for all slides */}
+        {backgroundImage && (
           <Image
             source={backgroundImage}
             alt="Background"
@@ -56,36 +44,49 @@ export function OnboardingPage({ data, isActive, index }: OnboardingPageProps) {
           />
         )}
 
-        {/* Animation/Logo */}
+        {/* Animation/Image */}
         <View style={{ zIndex: 1 }}>
-          {data.isLastPage ? (
+          {data.image ? (
             <Image
               source={data.image}
-              alt="Solid logo"
+              alt={data.title}
               style={{ width: 334, height: 334 }}
               contentFit="contain"
             />
-          ) : (
-            <LottieView
-              ref={animationRef}
-              source={data.animation}
-              autoPlay={false}
-              loop
+          ) : data.animation ? (
+            <View
               style={{
-                width: 280,
-                height: 280,
+                transform: [{ scale: 1.3 }],
+                ...(index === 2 && { marginRight: 20 }),
               }}
-              resizeMode="contain"
-            />
-          )}
+            >
+              <LottieView
+                ref={animationRef}
+                source={data.animation}
+                autoPlay={false}
+                loop
+                style={{
+                  width: 280,
+                  height: 280,
+                }}
+                resizeMode="contain"
+              />
+            </View>
+          ) : null}
         </View>
       </View>
 
-      {data.title && (
-        <View className="items-center max-w-sm">
-          <Text className="text-3xl font-semibold text-center">{data.title}</Text>
-        </View>
-      )}
+      {/* Title and Subtitle - Fixed height */}
+      <View className="items-center justify-center max-w-sm" style={{ height: 100, marginTop: 24 }}>
+        {data.title && (
+          <>
+            <Text className="text-3xl font-semibold text-center">{data.title}</Text>
+            {data.subtitle && (
+              <Text className="text-white/70 text-lg text-center mt-2">{data.subtitle}</Text>
+            )}
+          </>
+        )}
+      </View>
     </View>
   );
 }

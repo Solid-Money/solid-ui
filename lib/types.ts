@@ -48,6 +48,12 @@ export interface DirectDepositSessionResponse {
   transactionHash?: string;
 }
 
+export interface DepositBonusConfig {
+  isEnabled: boolean;
+  percentage: number;
+  cap: number;
+}
+
 export enum Status {
   IDLE = 'idle',
   PENDING = 'pending',
@@ -83,6 +89,7 @@ export interface AuthTokens {
 export interface User {
   username: string;
   safeAddress: Address;
+  walletAddress?: string;
   selected: boolean;
   signWith: string;
   suborgId: string;
@@ -326,6 +333,8 @@ export interface CardResponse {
 export interface CashbackData {
   monthlyFuseAmount: number;
   monthlyUsdValue: number;
+  totalFuseAmount: number;
+  totalUsdValue: number;
   percentage: number;
 }
 
@@ -666,19 +675,13 @@ export enum RewardsType {
 }
 
 export enum FromCurrency {
-  BTC = 'btc',
-  ETH = 'eth',
   EUR = 'eur',
-  SOL = 'sol',
   USD = 'usd',
+  BRL = 'brl',
+  MXN = 'mxn',
 }
 
 export enum ToCurrency {
-  BRL = 'brl',
-  BTC = 'btc',
-  ETH = 'eth',
-  EUR = 'eur',
-  SOL = 'sol',
   USD = 'usd',
 }
 

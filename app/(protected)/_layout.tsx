@@ -80,13 +80,8 @@ export default function ProtectedLayout() {
   }
 
   if (!users.length) {
-    // Show onboarding on native platforms (only if not seen before), and register on web
-    if (Platform.OS === 'web') {
-      return <Redirect href={path.REGISTER} />;
-    } else {
-      // On native, show onboarding first time, then register
-      return <Redirect href={hasSeenOnboarding ? path.REGISTER : path.ONBOARDING} />;
-    }
+    // Show onboarding first (if not seen), then signup flow
+    return <Redirect href={hasSeenOnboarding ? path.SIGNUP_EMAIL : path.ONBOARDING} />;
   }
 
   if (users.length && !user) {

@@ -1,5 +1,7 @@
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import type { ClientOptions } from 'persona';
@@ -26,9 +28,21 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
     redirectUri?: string;
   } => {
     const parsedUrl = new URL(rawUrl);
+
+    // Use /widget path instead of /verify when embedding (Bridge support recommendation)
+    if (parsedUrl.pathname.includes('/verify')) {
+      parsedUrl.pathname = parsedUrl.pathname.replace('/verify', '/widget');
+    }
+
+    // Add iframe-origin for proper embedding (Bridge support recommendation)
+    if (typeof window !== 'undefined' && !parsedUrl.searchParams.has('iframe-origin')) {
+      parsedUrl.searchParams.set('iframe-origin', window.location.origin);
+    }
+
     const searchParams = parsedUrl.searchParams;
 
     const templateId = searchParams.get('inquiry-template-id') ?? undefined;
+    const inquiryId = searchParams.get('inquiry-id') ?? undefined;
     const environmentId = searchParams.get('environment-id') ?? undefined;
     const referenceId = searchParams.get('reference-id') ?? undefined;
     const redirectUri = searchParams.get('redirect-uri') ?? undefined;
@@ -44,6 +58,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
 
     const options: ClientOptions = {
       templateId,
+      inquiryId,
       environmentId,
       referenceId,
       fields,
@@ -55,7 +70,17 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
   useEffect(() => {
     let destroyed = false;
 
+    // Track page load
+    track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, {
+      hasUrl: !!url,
+      urlLength: url?.length,
+    });
+
     if (!url) {
+      track(TRACKING_EVENTS.KYC_LINK_ERROR, {
+        error: 'No URL provided',
+        stage: 'url_validation',
+      });
       setError('No URL provided');
       setLoading(false);
       return;
@@ -65,7 +90,21 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
       try {
         const { options, redirectUri } = parseKycUrlToOptions(url);
 
+        // Track parsed URL details for debugging
+        track(TRACKING_EVENTS.KYC_LINK_PARSED, {
+          hasTemplateId: !!options.templateId,
+          hasInquiryId: !!options.inquiryId,
+          hasEnvironmentId: !!options.environmentId,
+          hasReferenceId: !!options.referenceId,
+          hasRedirectUri: !!redirectUri,
+          fieldsCount: Object.keys(options.fields || {}).length,
+        });
+
         if (typeof window === 'undefined') {
+          track(TRACKING_EVENTS.KYC_LINK_ERROR, {
+            error: 'Persona can only run in the browser',
+            stage: 'browser_check',
+          });
           setError('Persona can only run in the browser');
           setLoading(false);
           return;
@@ -73,6 +112,11 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
 
         // Basic validation
         if (!options.templateId && !options.inquiryId) {
+          track(TRACKING_EVENTS.KYC_LINK_ERROR, {
+            error: 'Missing templateId or inquiryId',
+            stage: 'options_validation',
+            rawUrl: url,
+          });
           throw new Error('Missing templateId or inquiryId');
         }
 
@@ -87,9 +131,21 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           host: (options as any).host ?? null,
           onLoad: null,
           onEvent: null,
-          onReady: () => setLoading(false),
-          onComplete: ({ inquiryId: _inquiryId, status: _status }) => {
+          onReady: () => {
+            track(TRACKING_EVENTS.KYC_LINK_SDK_READY, {
+              templateId: options.templateId,
+              inquiryId: options.inquiryId,
+            });
+            setLoading(false);
+          },
+          onComplete: ({ inquiryId: completedInquiryId, status }) => {
+            track(TRACKING_EVENTS.KYC_LINK_COMPLETED, {
+              inquiryId: completedInquiryId,
+              status,
+              hasRedirectUri: !!redirectUri,
+            });
             onSuccess?.();
+
             if (redirectUri) {
               try {
                 window.location.replace(redirectUri);
@@ -99,12 +155,22 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
             }
           },
           onCancel: () => {
+            track(TRACKING_EVENTS.KYC_LINK_CANCELLED, {
+              templateId: options.templateId,
+              inquiryId: options.inquiryId,
+            });
             setLoading(false);
             try {
               router.back();
             } catch (_e) {}
           },
           onError: e => {
+            track(TRACKING_EVENTS.KYC_LINK_ERROR, {
+              error: e?.message || 'Persona initialization error',
+              stage: 'sdk_error',
+              templateId: options.templateId,
+              inquiryId: options.inquiryId,
+            });
             setError(e?.message || 'Persona initialization error');
             setLoading(false);
           },
@@ -120,6 +186,10 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           });
         }
       } catch (e: any) {
+        track(TRACKING_EVENTS.KYC_LINK_ERROR, {
+          error: e?.message || 'Invalid URL format',
+          stage: 'parsing',
+        });
         setError(e?.message || 'Invalid URL format');
         setLoading(false);
       }

@@ -6,7 +6,7 @@ import { getAnalytics, logEvent, setUserId as setFirebaseUserId, setUserProperti
 import { getApps, initializeApp, setReactNativeAsyncStorage } from '@react-native-firebase/app';
 import { Platform } from 'react-native';
 // Local imports
-import { EXPO_PUBLIC_AMPLITUDE_API_KEY, EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_APP_ID, EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN, EXPO_PUBLIC_FIREBASE_DATABASE_URL, EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID, EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, EXPO_PUBLIC_FIREBASE_PROJECT_ID, EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET } from '@/lib/config';
+import { EXPO_PUBLIC_AMPLITUDE_API_KEY, EXPO_PUBLIC_AMPLITUDE_PROXY_URL, EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_APP_ID, EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN, EXPO_PUBLIC_FIREBASE_DATABASE_URL, EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID, EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, EXPO_PUBLIC_FIREBASE_PROJECT_ID, EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET } from '@/lib/config';
 import { trackGTMEvent } from '@/lib/gtm';
 import { sanitize, toTitleCase } from '@/lib/utils/utils';
 
@@ -41,7 +41,12 @@ const initAmplitude = async () => {
       })).promise;
     }
 
-    await initAmplitudeSDK(EXPO_PUBLIC_AMPLITUDE_API_KEY).promise;
+    // Use proxy URL if configured (bypasses ad blockers in production)
+    const amplitudeConfig = EXPO_PUBLIC_AMPLITUDE_PROXY_URL
+      ? { serverUrl: EXPO_PUBLIC_AMPLITUDE_PROXY_URL }
+      : undefined;
+
+    await initAmplitudeSDK(EXPO_PUBLIC_AMPLITUDE_API_KEY, undefined, amplitudeConfig).promise;
 
     if (Platform.OS !== 'web') {
       // Native: add plugin AFTER init

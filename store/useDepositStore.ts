@@ -81,11 +81,6 @@ export const useDepositStore = create<DepositState>()(
       directDepositSession: {},
 
       setModal: modal => {
-        // eslint-disable-next-line no-console
-        console.log('[DepositStore] Modal change:', {
-          from: get().currentModal.name,
-          to: modal.name,
-        });
         set({
           previousModal: get().currentModal,
           currentModal: modal,

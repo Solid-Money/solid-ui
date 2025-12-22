@@ -1,5 +1,6 @@
 import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { useDepositBonusConfig } from '@/hooks/useDepositBonusConfig';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { useCallback, useMemo } from 'react';
@@ -7,6 +8,7 @@ import { View } from 'react-native';
 
 const DepositBuyCryptoOptions = () => {
   const { setModal } = useDepositStore();
+  const { isEnabled: isDepositBonusEnabled, percentage } = useDepositBonusConfig();
 
   const handleBankDepositPress = useCallback(() => {
     setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
@@ -16,12 +18,16 @@ const DepositBuyCryptoOptions = () => {
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
   }, [setModal]);
 
+  const bonusBannerText = isDepositBonusEnabled
+    ? `${Math.round(percentage * 100)}% bonus on deposits`
+    : undefined;
+
   const buyCryptoOptions = useMemo(
     () => [
       {
         text: 'Debit/Credit Card',
         subtitle: 'Google Pay, card or bank account',
-        bannerText: '5% bonus on deposits',
+        bannerText: bonusBannerText,
         icon: (
           <Image
             source={require('@/assets/images/buy_crypto.png')}
@@ -34,7 +40,7 @@ const DepositBuyCryptoOptions = () => {
       {
         text: 'Bank Deposit',
         subtitle: 'Make a transfer from your bank.',
-        bannerText: '5% bonus on deposits',
+        bannerText: bonusBannerText,
         icon: (
           <Image
             source={require('@/assets/images/bank_deposit.png')}
@@ -46,7 +52,7 @@ const DepositBuyCryptoOptions = () => {
         isComingSoon: false,
       },
     ],
-    [handleCreditCardPress, handleBankDepositPress],
+    [handleCreditCardPress, handleBankDepositPress, bonusBannerText],
   );
 
   return (

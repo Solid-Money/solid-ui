@@ -14,7 +14,7 @@ declare global {
 // GTM events enum
 export enum GTMEventType {
   SIGNUP_INITIATED = 'signup_initiated',
-  ACCOUNT_CREATED = 'account_created', 
+  ACCOUNT_CREATED = 'account_created',
   EMAIL_VERIFICATION_INITIATED = 'email_verification_initiated',
   EMAIL_VERIFIED = 'email_verified',
   DEPOSIT_INITIATED = 'deposit_initiated',
@@ -93,7 +93,7 @@ export const trackGTMEvent = (event: string, params: Record<string, any>) => {
         .filter(([_, value]) => value !== undefined && value !== null)
         .reduce((acc, [key, value]) => {
           // Ensure values are serializable
-          acc[key] = typeof value === 'object' && value !== null ? 
+          acc[key] = typeof value === 'object' && value !== null ?
             JSON.stringify(value) : value;
           return acc;
         }, {} as Record<string, any>);
@@ -109,7 +109,7 @@ export const trackGTMEvent = (event: string, params: Record<string, any>) => {
       };
 
       window.dataLayer.push(enrichedEvent);
-      
+
       // Log for debugging in development
       if (__DEV__) {
         console.log('GTM Event pushed for Addressable:', enrichedEvent);

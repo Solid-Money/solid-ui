@@ -234,7 +234,7 @@ export default function Register() {
             <Text className="text-sm text-muted-foreground">
               Your Solid Account is secured with a passkey - a safer replacement for passwords.{' '}
               <Link
-                href="https://docs.solid.xyz/safety-and-trust/security-and-audits#biometric-passkey-login-via-turnkey"
+                href="https://support.solid.xyz/en/articles/12899057-solid-s-security-architecture-audits#h_6b6c31e2fe"
                 target="_blank"
                 className="underline hover:opacity-70"
               >

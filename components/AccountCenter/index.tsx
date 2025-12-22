@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
-import { eclipseUsername } from '@/lib/utils';
+import { getUserDisplayName } from '@/lib/utils';
 
 const AccountCenterTrigger = (props: any) => {
   const { user } = useUser();
@@ -32,14 +32,16 @@ const AccountCenterTrigger = (props: any) => {
 
 const AccountCenterUsername = () => {
   const { user } = useUser();
-  const username = user?.username || '';
+  const displayName = getUserDisplayName(user);
+  // Get first character for avatar - prefer email if it's an email-first user
+  const avatarChar = (user?.email || user?.username || '?').charAt(0).toUpperCase();
 
   return (
     <>
       <View className="w-8 h-8 bg-black rounded-full items-center justify-center">
-        <Text className="font-semibold text-white">{username?.charAt(0).toUpperCase()}</Text>
+        <Text className="font-semibold text-white">{avatarChar}</Text>
       </View>
-      <Text className="font-semibold">{eclipseUsername(username)}</Text>
+      <Text className="font-semibold">{displayName}</Text>
     </>
   );
 };

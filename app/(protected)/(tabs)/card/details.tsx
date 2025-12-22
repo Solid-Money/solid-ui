@@ -327,15 +327,15 @@ interface SpendingBalanceCardProps {
   cashback?: {
     monthlyFuseAmount: number;
     monthlyUsdValue: number;
+    totalFuseAmount: number;
+    totalUsdValue: number;
     percentage: number;
   };
 }
 
 function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
   const formattedAmount = Number.parseFloat(amount).toFixed(2);
-  const totalUsdValue = cashback?.monthlyUsdValue
-    ? parseFloat(cashback.monthlyUsdValue.toFixed(0))
-    : 0;
+  const totalUsdValue = cashback?.totalUsdValue ? parseFloat(cashback.totalUsdValue.toFixed(0)) : 0;
   const cashbackPercentage = cashback?.percentage || 0;
 
   return (
@@ -355,26 +355,26 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
         {/* Cashback Section */}
         <View className="flex-row items-end justify-between">
           <View>
-            <Text className="text-white/60 text-sm mb-1">Cashback</Text>
-            <Text className="text-[#94F27F] text-2xl font-bold">${totalUsdValue} this month</Text>
+            <Text className="text-white/70 text-lg mb-1 font-medium">Cashback earned</Text>
+            <Text className="text-[#94F27F] text-2xl font-semibold">${totalUsdValue}</Text>
           </View>
 
           {/* Cashback Badge */}
-          <View className="px-4 py-3 flex-row items-center gap-2">
+          <View className="px-4 py-3 flex-row items-center gap-1">
             <Image
               source={require('@/assets/images/diamond.png')}
-              style={{ width: 62, height: 57 }}
+              style={{ width: 92, height: 86 }}
               contentFit="contain"
             />
             <View>
-              <Text className="text-white text-sm">you are receiving</Text>
-              <Text className="text-white text-sm">
+              <Text className="text-white text-lg">you are receiving</Text>
+              <Text className="text-white text-lg">
                 <Text className="text-[#94F27F] font-bold">
                   {Math.round(cashbackPercentage * 100)}%
                 </Text>
                 <Text className="text-white"> cashback on all</Text>
               </Text>
-              <Text className="text-white text-sm">purchases</Text>
+              <Text className="text-white text-lg">purchases</Text>
             </View>
           </View>
         </View>
@@ -725,7 +725,7 @@ function DepositBonusBanner() {
       >
         <Link
           href={
-            'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+            'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
           }
           target="_blank"
           className="bg-[#FFD151]/20 rounded-full px-3 py-1"
@@ -737,7 +737,7 @@ function DepositBonusBanner() {
           <Link
             target="_blank"
             href={
-              'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+              'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
             }
             className="underline"
           >
@@ -763,7 +763,7 @@ function DepositBonusBanner() {
       </View>
       <Link
         href={
-          'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+          'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
         }
         target="_blank"
         className="w-full"
@@ -780,14 +780,14 @@ interface CashbackDisplayProps {
   cashback?: {
     monthlyFuseAmount: number;
     monthlyUsdValue: number;
+    totalFuseAmount: number;
+    totalUsdValue: number;
     percentage: number;
   };
 }
 
 function CashbackDisplay({ cashback }: CashbackDisplayProps) {
-  const totalUsdValue = cashback?.monthlyUsdValue
-    ? parseFloat(cashback.monthlyUsdValue.toFixed(2))
-    : 0;
+  const totalUsdValue = cashback?.totalUsdValue ? parseFloat(cashback.totalUsdValue.toFixed(2)) : 0;
 
   const cashbackPercentage = cashback?.percentage || 0;
 
@@ -801,8 +801,8 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
       {/* Top Section */}
       <View className="flex-row justify-between items-start mb-2 px-4">
         <View>
-          <Text className="text-white/70 text-lg mb-1">Cashback</Text>
-          <Text className="text-[#94F27F] text-3xl font-semibold">${totalUsdValue} this month</Text>
+          <Text className="text-white/70 text-lg mb-1">Cashback earned</Text>
+          <Text className="text-[#94F27F] text-2xl font-semibold">${totalUsdValue}</Text>
         </View>
         <Image
           source={require('@/assets/images/diamond.png')}

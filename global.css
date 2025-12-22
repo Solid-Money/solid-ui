@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
+    --background: 0 0% 7%;
     --foreground: 0 0% 100%;
     --card: 0 0% 11%;
     --card-hover: 0 0% 13%;
@@ -50,7 +50,7 @@
   #root,
   #__next {
     height: 100%;
-    background-color: #000;
+    background-color: #111111;
     overscroll-behavior-y: none;
     overscroll-behavior-x: none;
     color-scheme: dark;
