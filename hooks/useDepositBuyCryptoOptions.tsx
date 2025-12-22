@@ -3,11 +3,13 @@ import { useCallback, useMemo } from 'react';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useDepositBonusConfig } from '@/hooks/useDepositBonusConfig';
 import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const useDepositBuyCryptoOptions = () => {
   const { setModal } = useDepositStore();
+  const { isEnabled: isDepositBonusEnabled, percentage } = useDepositBonusConfig();
 
   const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -23,12 +25,16 @@ const useDepositBuyCryptoOptions = () => {
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
   }, [setModal]);
 
+  const bonusBannerText = isDepositBonusEnabled
+    ? `${Math.round(percentage * 100)}% bonus on deposits`
+    : undefined;
+
   const buyCryptoOptions = useMemo(
     () => [
       {
         text: 'Debit/Credit Card',
         subtitle: 'Apple pay, Google Pay, or your\ncredit card',
-        bannerText: '5% bonus on deposits',
+        bannerText: bonusBannerText,
         icon: (
           <Image
             source={require('@/assets/images/buy_crypto.png')}
@@ -41,7 +47,7 @@ const useDepositBuyCryptoOptions = () => {
       {
         text: 'Bank Deposit',
         subtitle: 'Make a transfer from your bank',
-        bannerText: '5% bonus on deposits',
+        bannerText: bonusBannerText,
         icon: (
           <Image
             source={require('@/assets/images/bank_deposit.png')}
@@ -52,7 +58,7 @@ const useDepositBuyCryptoOptions = () => {
         onPress: handleBankDepositPress,
       },
     ],
-    [handleCreditCardPress, handleBankDepositPress],
+    [handleCreditCardPress, handleBankDepositPress, bonusBannerText],
   );
 
   return { buyCryptoOptions };
