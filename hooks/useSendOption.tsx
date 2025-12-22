@@ -152,12 +152,12 @@ const useSendOption = ({
   };
 
   const getContentClassName = () => {
-    if(isSearch) return 'min-h-[40rem]';
-    if(isReview) return 'min-h-[30rem]';
     return '';
   };
 
   const getContainerClassName = () => {
+    if(isSearch) return 'min-h-[40rem]';
+    if(isReview) return 'min-h-[30rem]';
     return '';
   };
 
