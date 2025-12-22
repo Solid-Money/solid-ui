@@ -41,6 +41,7 @@ import {
   CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
+  DepositBonusConfig,
   DepositTransaction,
   DirectDepositSessionResponse,
   EphemeralKeyResponse,
@@ -1278,18 +1279,15 @@ export const emailSignUp = async (
   if (credentialId) body.credentialId = credentialId;
   if (referralCode) body.referralCode = referralCode;
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email-signup`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-      },
-      credentials: 'include',
-      body: JSON.stringify(body),
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email-signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
     },
-  );
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
   if (!response.ok) throw response;
   return response.json();
 };
@@ -1686,4 +1684,20 @@ export const fetchTokenList = async (params: SwapTokenRequest) => {
     },
   );
   return response.data;
+};
+
+export const getDepositBonusConfig = async (): Promise<DepositBonusConfig> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/deposit-bonus`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };

@@ -48,6 +48,12 @@ export interface DirectDepositSessionResponse {
   transactionHash?: string;
 }
 
+export interface DepositBonusConfig {
+  isEnabled: boolean;
+  percentage: number;
+  cap: number;
+}
+
 export enum Status {
   IDLE = 'idle',
   PENDING = 'pending',
