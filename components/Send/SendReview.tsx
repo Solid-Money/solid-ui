@@ -94,9 +94,9 @@ const SendReview: React.FC = () => {
 
   if (!selectedToken || !amount || !address) {
     return (
-      <View>
-        <Text className="text-muted-foreground">
-          Missing information. Please go back and fill all fields.
+      <View className="items-center">
+        <Text className="text-base font-medium max-w-64 text-center">
+          Missing or invalid information. Please go back and fill all fields.
         </Text>
       </View>
     );

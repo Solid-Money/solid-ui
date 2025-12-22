@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/text';
 
 interface AvatarProps {
   name: string;
+  className?: string;
 }
 
 const getInitials = (text: string) => {
@@ -14,10 +15,10 @@ const getInitials = (text: string) => {
   return firstChar;
 };
 
-const Avatar = ({ name }: AvatarProps) => {
+const Avatar = ({ name, className }: AvatarProps) => {
   return (
     <View
-      className={cn('w-10 h-10 rounded-full items-center justify-center')}
+      className={cn('w-10 h-10 rounded-full items-center justify-center', className)}
       style={{ backgroundColor: getColorForTransaction(name).bg }}
     >
       <Text className="text-xl font-medium" style={{ color: getColorForTransaction(name).text }}>

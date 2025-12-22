@@ -3,7 +3,7 @@ import { ChevronDown, Wallet } from 'lucide-react-native';
 import React, { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Platform, Pressable, TextInput, View } from 'react-native';
-import { formatUnits, isAddress, zeroAddress } from 'viem';
+import { formatUnits, zeroAddress } from 'viem';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
 
@@ -27,7 +27,7 @@ interface SendFormProps {
 }
 
 const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
-  const { selectedToken, amount, address, setAmount, setAddress, setModal } = useSendStore();
+  const { selectedToken, amount, setAmount, setModal } = useSendStore();
   const { user } = useUser();
 
   const tokenType = selectedToken?.type || TokenType.ERC20;
@@ -77,10 +77,6 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
           `Available balance is ${formatNumber(balanceAmount)} ${selectedToken?.contractTickerSymbol || ''}`,
         )
         .transform(val => Number(val)),
-      address: z
-        .string()
-        .refine(isAddress, 'Please enter a valid Ethereum address')
-        .transform(value => value.toLowerCase()),
     });
   }, [selectedToken, balanceAmount]);
 
@@ -93,8 +89,7 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
     resolver: zodResolver(sendSchema),
     mode: Platform.OS === 'web' ? 'onChange' : undefined,
     defaultValues: {
-      amount: amount || '',
-      address: address || '',
+      amount,
     },
   });
 
@@ -105,17 +100,11 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
 
   useEffect(() => {
     if (amount) setValue('amount', amount);
-    if (address) setValue('address', address);
-  }, [amount, address, setValue]);
+  }, [amount, setValue]);
 
   const handleAmountChange = (value: string) => {
     setAmount(value);
     setValue('amount', value);
-  };
-
-  const handleAddressChange = (value: string) => {
-    setAddress(value);
-    setValue('address', value);
   };
 
   const handleTokenSelectorPress = () => {
@@ -136,26 +125,12 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
 
   const onSubmit = (data: any) => {
     setAmount(data.amount.toString());
-    setAddress(data.address);
     onNext();
   };
 
   return (
     <View className="gap-8">
-      <Controller
-        control={control}
-        name="address"
-        render={({ field: { onChange, value } }) => (
-          <ToInput
-            value={value}
-            onChangeText={text => {
-              onChange(text);
-              handleAddressChange(text);
-            }}
-            error={errors.address?.message as string}
-          />
-        )}
-      />
+      <ToInput />
 
       <View className="gap-4">
         <View className="flex-row items-center justify-between">

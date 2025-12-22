@@ -51,6 +51,9 @@ const AddressBook: React.FC = () => {
       Toast.show({
         type: 'success',
         text1: 'Added to address book',
+        props: {
+          badgeText: 'Success',
+        },
       });
       setModal(SEND_MODAL.OPEN_SEND_SEARCH);
     },
@@ -58,6 +61,9 @@ const AddressBook: React.FC = () => {
       Toast.show({
         type: 'error',
         text1: 'Failed to add to address book',
+        props: {
+          badgeText: 'Error',
+        },
       });
     },
   });

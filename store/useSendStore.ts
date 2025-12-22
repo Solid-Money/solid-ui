@@ -15,6 +15,7 @@ interface SendState {
   amount: string;
   address: string;
   name: string;
+  searchQuery: string;
   setModal: (modal: SendModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setCurrentTokenAddress: (address: string) => void;
@@ -22,6 +23,7 @@ interface SendState {
   setAmount: (amount: string) => void;
   setAddress: (address: string) => void;
   setName: (name: string) => void;
+  setSearchQuery: (query: string) => void;
   clearForm: () => void;
 }
 
@@ -36,6 +38,7 @@ export const useSendStore = create<SendState>()(
       amount: '',
       address: '',
       name: '',
+      searchQuery: '',
 
       setModal: modal =>
         set({
@@ -48,12 +51,14 @@ export const useSendStore = create<SendState>()(
       setAmount: amount => set({ amount }),
       setAddress: address => set({ address }),
       setName: name => set({ name }),
+      setSearchQuery: query => set({ searchQuery: query }),
       clearForm: () =>
         set({
           selectedToken: null,
           amount: '',
           address: '',
           name: '',
+          searchQuery: '',
         }),
     }),
     {

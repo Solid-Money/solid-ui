@@ -11,6 +11,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
+import ToInput from './ToInput';
 
 const TokenSelector: React.FC = () => {
   const { selectedToken, setSelectedToken, setModal } = useSendStore();
@@ -36,54 +37,60 @@ const TokenSelector: React.FC = () => {
   };
 
   return (
-    <View className="gap-4">
-      <Text className="text-base opacity-70 font-medium">Select an asset</Text>
-      <ScrollView className="md:h-[50vh]" showsVerticalScrollIndicator={false}>
-        <View className="gap-2">
-          {allTokens.map(token => {
-            const balance = Number(
-              formatUnits(BigInt(token.balance) || 0n, token.contractDecimals),
-            );
+    <View className="gap-8">
+      <ToInput />
 
-            const balanceUSD = balance * (token.quoteRate || 0);
-            const isSelected =
-              selectedToken?.contractAddress === token.contractAddress &&
-              selectedToken?.chainId === token.chainId;
-            return (
-              <Pressable
-                key={`${token.contractAddress}-${token.chainId}`}
-                className={cn(
-                  'bg-card rounded-2xl px-4 py-4 flex-row items-center justify-between web:hover:bg-accent/50',
-                  isSelected && 'border border-green-500',
-                )}
-                onPress={() => handleTokenSelect(token)}
-              >
-                <View className="flex-row items-center gap-3 flex-1">
-                  <RenderTokenIcon
-                    tokenIcon={getTokenIcon({
-                      logoUrl: token.logoUrl,
-                      tokenSymbol: token.contractTickerSymbol,
-                      size: 40,
-                    })}
-                    size={40}
-                  />
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold">{token.contractTickerSymbol}</Text>
+      <View className="gap-4">
+        <Text className="text-base opacity-70 font-medium">Select an asset</Text>
+        <ScrollView className="md:h-[50vh]" showsVerticalScrollIndicator={false}>
+          <View className="gap-2">
+            {allTokens.map(token => {
+              const balance = Number(
+                formatUnits(BigInt(token.balance) || 0n, token.contractDecimals),
+              );
+
+              const balanceUSD = balance * (token.quoteRate || 0);
+              const isSelected =
+                selectedToken?.contractAddress === token.contractAddress &&
+                selectedToken?.chainId === token.chainId;
+              return (
+                <Pressable
+                  key={`${token.contractAddress}-${token.chainId}`}
+                  className={cn(
+                    'bg-card rounded-2xl px-4 py-4 flex-row items-center justify-between web:hover:bg-accent/50',
+                    isSelected && 'border border-green-500',
+                  )}
+                  onPress={() => handleTokenSelect(token)}
+                >
+                  <View className="flex-row items-center gap-3 flex-1">
+                    <RenderTokenIcon
+                      tokenIcon={getTokenIcon({
+                        logoUrl: token.logoUrl,
+                        tokenSymbol: token.contractTickerSymbol,
+                        size: 40,
+                      })}
+                      size={40}
+                    />
+                    <View className="flex-1">
+                      <Text className="text-lg font-semibold">{token.contractTickerSymbol}</Text>
+                      <Text className="text-sm opacity-50 font-medium">
+                        {token.contractTickerSymbol} on {getBridgeChain(token.chainId).name}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="items-end">
+                    <Text className="text-lg font-semibold">${formatNumber(balanceUSD, 2)}</Text>
                     <Text className="text-sm opacity-50 font-medium">
-                      {token.contractTickerSymbol} on {getBridgeChain(token.chainId).name}
+                      {formatNumber(balance, 2)}
                     </Text>
                   </View>
-                </View>
-
-                <View className="items-end">
-                  <Text className="text-lg font-semibold">${formatNumber(balanceUSD, 2)}</Text>
-                  <Text className="text-sm opacity-50 font-medium">{formatNumber(balance, 2)}</Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-      </ScrollView>
+                </Pressable>
+              );
+            })}
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 };

@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { EllipsisVertical, Plus } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { isAddress } from 'viem';
 
+import Avatar from '@/components/Avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,11 +21,9 @@ import { TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, eclipseAddress } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
 import ToInput from './ToInput';
-import Avatar from '@/components/Avatar';
 
 const SendSearch: React.FC = () => {
-  const { setAddress, setModal, setName } = useSendStore();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { setAddress, setModal, setName, setSearchQuery, searchQuery } = useSendStore();
   const insets = useSafeAreaInsets();
   const { activities } = useActivity();
 
@@ -72,6 +70,7 @@ const SendSearch: React.FC = () => {
   const handleToInput = (walletAddress: string, name?: string) => {
     setAddress(walletAddress);
     setName(name || '');
+    setSearchQuery(name || walletAddress);
     setModal(SEND_MODAL.OPEN_FORM);
   };
 
@@ -87,44 +86,9 @@ const SendSearch: React.FC = () => {
     right: 12,
   };
 
-  const isValidAddress = searchQuery.trim() && isAddress(searchQuery.trim());
-  const isValidName = useMemo(() => {
-    if (!searchQuery.trim()) return false;
-    return addressBook.some(
-      entry => entry.name?.toLowerCase() === searchQuery.trim().toLowerCase(),
-    );
-  }, [searchQuery, addressBook]);
-
-  const isValidInput = isValidAddress || isValidName;
-
-  const handleContinue = () => {
-    if (isValidAddress) {
-      handleToInput(searchQuery.trim());
-    } else if (isValidName) {
-      const entry = addressBook.find(
-        entry => entry.name?.toLowerCase() === searchQuery.trim().toLowerCase(),
-      );
-      if (entry) {
-        handleToInput(entry.walletAddress, entry.name);
-      }
-    }
-  };
-
-  const handleEnterKeyPress = () => {
-    if (isValidInput) {
-      handleContinue();
-    }
-  };
-
   return (
     <View className="gap-8">
-      <ToInput
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        onContinue={handleContinue}
-        onSubmitEditing={handleEnterKeyPress}
-        isValid={isValidInput}
-      />
+      <ToInput />
 
       <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
         {filteredAddressBook.length > 0 && (
@@ -138,7 +102,7 @@ const SendSearch: React.FC = () => {
                     'flex-row items-center justify-between border-b border-foreground/10 p-4',
                     filteredAddressBook.length - 1 === index && 'border-b-0',
                   )}
-                  onPress={() => handleToInput(entry.walletAddress)}
+                  onPress={() => handleToInput(entry.walletAddress, entry.name)}
                 >
                   <View className="flex-row items-center gap-3 flex-1">
                     <Avatar name={entry.name || entry.walletAddress} />
@@ -161,9 +125,11 @@ const SendSearch: React.FC = () => {
             <View className="bg-card rounded-2xl">
               {filteredRecentActivities.map((activity, index) => {
                 const walletAddress = activity.walletAddress;
-                const isInAddressBook = addressBook.some(
+                const addressBookEntry = addressBook.find(
                   entry => entry.walletAddress.toLowerCase() === walletAddress.toLowerCase(),
                 );
+                const isInAddressBook = !!addressBookEntry;
+                const displayName = addressBookEntry?.name || eclipseAddress(walletAddress);
 
                 return (
                   <View
@@ -175,13 +141,11 @@ const SendSearch: React.FC = () => {
                   >
                     <Pressable
                       className="flex-row items-center gap-3 flex-1"
-                      onPress={() => handleToInput(walletAddress)}
+                      onPress={() => handleToInput(walletAddress, addressBookEntry?.name)}
                     >
-                      <Avatar name={walletAddress} />
+                      <Avatar name={addressBookEntry?.name || walletAddress} />
                       <View className="flex-1">
-                        <Text className="text-base font-semibold">
-                          {eclipseAddress(walletAddress)}
-                        </Text>
+                        <Text className="text-base font-semibold">{displayName}</Text>
                         <Text className="text-sm opacity-50">
                           Last sent{' '}
                           {formatDistanceToNow(new Date(parseInt(activity.timestamp) * 1000), {

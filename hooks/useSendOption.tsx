@@ -38,7 +38,7 @@ const useSendOption = ({
   const router = useRouter();
   const { triggerElement } = useResponsiveModal();
 
-  const isSendSearch = currentModal.name === SEND_MODAL.OPEN_SEND_SEARCH.name;
+  const isSearch = currentModal.name === SEND_MODAL.OPEN_SEND_SEARCH.name;
   const isForm = currentModal.name === SEND_MODAL.OPEN_FORM.name;
   const isTokenSelector = currentModal.name === SEND_MODAL.OPEN_TOKEN_SELECTOR.name;
   const isReview = currentModal.name === SEND_MODAL.OPEN_REVIEW.name;
@@ -152,7 +152,8 @@ const useSendOption = ({
   };
 
   const getContentClassName = () => {
-    if(isSendSearch) return 'min-h-[40rem]';
+    if(isSearch) return 'min-h-[40rem]';
+    if(isReview) return 'min-h-[30rem]';
     return '';
   };
 
