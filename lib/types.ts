@@ -327,6 +327,8 @@ export interface CardResponse {
 export interface CashbackData {
   monthlyFuseAmount: number;
   monthlyUsdValue: number;
+  totalFuseAmount: number;
+  totalUsdValue: number;
   percentage: number;
 }
 
