@@ -26,7 +26,7 @@ export default function Help() {
       title: 'FAQ',
       description: 'Quick answers',
       icon: <LifebuoyIcon color="#ffffff" />,
-      link: 'https://docs.solid.xyz/faq',
+      link: 'https://support.solid.xyz/en/collections/16780872-troubleshooting',
     },
     {
       title: 'Email Support',
@@ -38,7 +38,7 @@ export default function Help() {
       title: 'Documentation',
       description: 'Learn more',
       icon: <LegalIcon color="#ffffff" />,
-      link: 'https://docs.solid.xyz',
+      link: 'https://support.solid.xyz',
     },
   ];
 

@@ -233,7 +233,7 @@ const ExtraYield = () => {
               : 'Limited time offer - Get 3% extra boosted yield if you deposit now.'}
           </Text>
           <Link
-            href="https://docs.solid.xyz/solid-early-adopter-bonus"
+            href="#"
             target="_blank"
             className="hover:opacity-70"
           >
