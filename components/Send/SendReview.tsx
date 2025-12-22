@@ -89,6 +89,10 @@ const SendReview: React.FC = () => {
         error: String(error),
         source: 'send_modal',
       });
+      Toast.show({
+        type: 'error',
+        text1: 'Error while sending',
+      });
     }
   };
 
