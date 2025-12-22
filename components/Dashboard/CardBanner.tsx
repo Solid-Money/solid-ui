@@ -115,7 +115,7 @@ const CardBanner = () => {
                   <Link
                     target="_blank"
                     href={
-                      'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+                      'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
                     }
                     className="underline"
                   >

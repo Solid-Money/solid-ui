@@ -725,7 +725,7 @@ function DepositBonusBanner() {
       >
         <Link
           href={
-            'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+            'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
           }
           target="_blank"
           className="bg-[#FFD151]/20 rounded-full px-3 py-1"
@@ -737,7 +737,7 @@ function DepositBonusBanner() {
           <Link
             target="_blank"
             href={
-              'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+              'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
             }
             className="underline"
           >
@@ -763,7 +763,7 @@ function DepositBonusBanner() {
       </View>
       <Link
         href={
-          'https://docs.solid.xyz/how-solid-works/solid-card/solid-card-launch-campaign-terms-and-conditions'
+          'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
         }
         target="_blank"
         className="w-full"
