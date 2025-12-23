@@ -11,7 +11,7 @@ module.exports = {
     extend: {
       fontFamily: {
         system: platformSelect({
-          ios: 'MonaSans',
+          ios: 'MonaSans_400Regular',
           android: 'MonaSans_400Regular',
           web: "MonaSans_400Regular, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
         }),
