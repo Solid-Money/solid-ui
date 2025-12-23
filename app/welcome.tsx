@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronLeft, KeyRound } from 'lucide-react-native';
+import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import LoginKeyIcon from '@/assets/images/login_key_icon';
 import PasskeySvg from '@/assets/images/passkey-svg';
 import { DesktopCarousel } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ export default function Welcome() {
   };
 
   const handleUseAnotherAccount = () => {
-    router.push(path.SIGNUP_EMAIL);
+    router.push(path.ONBOARDING);
   };
 
   const handleBack = () => {
@@ -85,10 +86,12 @@ export default function Welcome() {
         disabled={isLoading || !selectedUser}
         className="rounded-xl h-14 w-full mb-6"
       >
-        <KeyRound size={20} color="#ffffff" />
-        <Text className="text-lg font-semibold ml-2">
-          {isLoading ? 'Unlocking...' : 'Unlock with Passkey'}
-        </Text>
+        <View className="flex-row items-center">
+          <LoginKeyIcon color="#000" />
+          <Text className="text-lg font-semibold ml-2">
+            {isLoading ? 'Unlocking...' : 'Unlock with Passkey'}
+          </Text>
+        </View>
         {isLoading && <ActivityIndicator color="gray" className="ml-2" />}
       </Button>
 
@@ -128,7 +131,7 @@ export default function Welcome() {
               <Image
                 source={require('@/assets/images/solid-logo-4x.png')}
                 alt="Solid logo"
-                style={{ width: 48, height: 52 }}
+                style={{ width: 40, height: 44 }}
                 contentFit="contain"
               />
             </View>

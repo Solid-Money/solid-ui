@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -41,6 +41,8 @@ export default function SignupOtp() {
 
   const [otpValue, setOtpValue] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  // Track last submitted OTP to prevent duplicate API calls
+  const lastSubmittedOtpRef = useRef<string | null>(null);
 
   // Calculate and update resend cooldown
   useEffect(() => {
@@ -94,12 +96,13 @@ export default function SignupOtp() {
     }
   }, [otpValue, otpId, email, setIsLoading, setError, setVerificationToken, setStep, router]);
 
-  // Auto-submit when 6 digits are entered
+  // Auto-submit when 6 digits are entered (only once per unique OTP value)
   useEffect(() => {
-    if (otpValue.length === 6 && !isLoading) {
+    if (otpValue.length === 6 && otpValue !== lastSubmittedOtpRef.current) {
+      lastSubmittedOtpRef.current = otpValue;
       handleVerifyOtp();
     }
-  }, [otpValue, isLoading, handleVerifyOtp]);
+  }, [otpValue, handleVerifyOtp]);
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0 || isLoading) return;
@@ -113,6 +116,7 @@ export default function SignupOtp() {
       setOtpId(response.otpId);
       setLastOtpSentAt(Date.now());
       setOtpValue('');
+      lastSubmittedOtpRef.current = null; // Reset so user can re-enter same code for new OTP
 
       track(TRACKING_EVENTS.EMAIL_OTP_REQUESTED, {
         email,
@@ -171,8 +175,10 @@ export default function SignupOtp() {
         <Text className="text-white text-[38px] font-medium text-center mb-3">
           Check your email
         </Text>
-        <Text className="text-white/60 text-center text-sm">We sent a verification code to</Text>
-        <Text className="text-white text-center font-semibold mt-1">{email}</Text>
+        <Text className="text-white/60 text-center text-base font-medium">
+          We sent a verification code to
+        </Text>
+        <Text className="text-white/60 text-center font-medium mt-1">{email}</Text>
       </View>
 
       {/* OTP Input */}

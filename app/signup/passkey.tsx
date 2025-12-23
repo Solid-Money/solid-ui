@@ -156,13 +156,13 @@ export default function SignupPasskey() {
 
       {/* Header */}
       <View className="mt-8 mb-8 items-center">
-        <Text className="text-white text-[32px] font-medium text-center mb-4">
-          Your account is{'\n'}protected with{'\n'}Passkey
+        <Text className="text-white text-[38px] font-semibold text-center mb-4">
+          Secure sign-in{'\n'}with Passkey
         </Text>
-        <Text className="text-white/60 text-center text-[14px] px-4">
+        <Text className="text-white/60 text-center text-base font-medium px-4">
           Passkeys let you sign in using biometrics or your device PIN—no email needed. They&apos;re
           fast, secure, and act as 2FA to protect your account.{' '}
-          <Text className="text-white underline" onPress={handleLearnMore}>
+          <Text className="text-white/60 underline" onPress={handleLearnMore}>
             Learn more
           </Text>
         </Text>
@@ -178,10 +178,10 @@ export default function SignupPasskey() {
         {isLoading ? (
           <ActivityIndicator color="#000" />
         ) : (
-          <>
+          <View className="flex-row items-center">
             <LoginKeyIcon color="#000" />
             <Text className="text-lg font-semibold text-black ml-2">Continue</Text>
-          </>
+          </View>
         )}
       </Button>
     </View>

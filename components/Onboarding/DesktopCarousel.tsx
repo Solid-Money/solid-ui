@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -83,17 +83,10 @@ interface DesktopCarouselProps {
  */
 export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
   const { currentIndex, setCurrentIndex } = useCarouselStore();
-  const animationRef = useRef<LottieView>(null);
   const currentSlide = ONBOARDING_DATA[currentIndex];
   const backgroundImage = getBackgroundImage(currentIndex);
   const gradientColors = getGradientColors(currentIndex);
   const startX = useSharedValue(0);
-
-  useEffect(() => {
-    if (animationRef.current && !currentSlide.isLastPage) {
-      animationRef.current.play();
-    }
-  }, [currentIndex, currentSlide.isLastPage]);
 
   const goToNext = useCallback(() => {
     setCurrentIndex(Math.min(currentIndex + 1, ONBOARDING_DATA.length - 1));
@@ -193,9 +186,8 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
                       }}
                     >
                       <LottieView
-                        ref={animationRef}
                         source={currentSlide.animation}
-                        autoPlay={false}
+                        autoPlay
                         loop
                         style={{
                           width: 280,
