@@ -185,7 +185,7 @@ const DepositDirectlyAddress = () => {
     });
 
     return rows;
-  }, [exchangeRate, isMaxAPYsLoading, formattedAPY]);
+  }, [exchangeRate, isMaxAPYsLoading, formattedAPY, selectedToken]);
 
   return (
     <View className="flex flex-col gap-3 md:gap-4 2xl:gap-6">
