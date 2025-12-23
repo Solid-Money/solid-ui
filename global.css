@@ -8,7 +8,7 @@
     --foreground: 0 0% 100%;
     --card: 0 0% 13%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 18.43%;;
+    --popover: 0 0% 18.43%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 240 5.9% 10%;
@@ -41,8 +41,16 @@
   /* Override Tailwind's default system stack on web */
   body {
     /* On web, use the family name registered by Expo Font */
-    font-family: 'Mona Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-      Roboto, Helvetica, Arial, sans-serif;
+    font-family:
+      MonaSans_400Regular,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif;
   }
 
   /* Fill the viewport and keep a dark background under any bounce/overscroll */
@@ -60,12 +68,46 @@
   /* React Native Web generates classes like .css-text-xxxxx for Text elements.
    * Ensure they use Mona Sans regardless of the default system stack. */
   /* React Native Web renders Text as span.css-xxxx. Force Mona on those. */
-  [class^="css-text"],
-  [class*=" css-text"],
-  [class^="css-"],
-  [class*=" css-"] {
-    font-family: 'Mona Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-      Roboto, Helvetica, Arial, sans-serif !important;
+  [class^='css-text'],
+  [class*=' css-text'],
+  [class^='css-'],
+  [class*=' css-'] {
+    font-family:
+      MonaSans_400Regular,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif !important;
+  }
+
+  /* Tailwind FontWeight overrides for Web to ensure correct font file usage */
+  .font-extralight {
+    font-family: MonaSans_200ExtraLight !important;
+  }
+  .font-light {
+    font-family: MonaSans_300Light !important;
+  }
+  .font-normal {
+    font-family: MonaSans_400Regular !important;
+  }
+  .font-medium {
+    font-family: MonaSans_500Medium !important;
+  }
+  .font-semibold {
+    font-family: MonaSans_600SemiBold !important;
+  }
+  .font-bold {
+    font-family: MonaSans_700Bold !important;
+  }
+  .font-extrabold {
+    font-family: MonaSans_800ExtraBold !important;
+  }
+  .font-black {
+    font-family: MonaSans_900Black !important;
   }
 }
 
