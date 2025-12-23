@@ -343,7 +343,7 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
       colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.175)']}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={{ borderRadius: 20, padding: 24, height: '100%' }}
+      style={{ borderRadius: 20, paddingVertical: 30, paddingHorizontal: 36, height: '100%' }}
     >
       <View className="flex-1 justify-between">
         {/* Spending Balance Section */}
@@ -353,29 +353,26 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
         </View>
 
         {/* Cashback Section */}
-        <View className="flex-row items-end justify-between">
+        <View className="flex-row items-center justify-between">
           <View>
-            <Text className="text-white/70 text-lg mb-1 font-medium">Cashback earned</Text>
+            <Text className="text-white/50 text-lg mb-1 font-medium">Cashback earned</Text>
             <Text className="text-[#94F27F] text-2xl font-semibold">${totalUsdValue}</Text>
           </View>
 
           {/* Cashback Badge */}
-          <View className="px-4 py-3 flex-row items-center gap-1">
+          <View className="px-4  flex-row items-center gap-1">
             <Image
               source={require('@/assets/images/diamond.png')}
-              style={{ width: 92, height: 86 }}
+              style={{ width: 82, aspectRatio: 72/66 }}
               contentFit="contain"
             />
-            <View>
-              <Text className="text-white text-lg">you are receiving</Text>
-              <Text className="text-white text-lg">
-                <Text className="text-[#94F27F] font-bold">
-                  {Math.round(cashbackPercentage * 100)}%
-                </Text>
-                <Text className="text-white"> cashback on all</Text>
-              </Text>
-              <Text className="text-white text-lg">purchases</Text>
-            </View>
+            <Text className="text-white text-lg font-light" style={{ lineHeight: 20 }}>
+              you are receiving{'\n'}
+              <Text className="text-[#94F27F] font-bold">
+                {Math.round(cashbackPercentage * 100)}%
+              </Text>{' '}
+              cashback on all{'\n'}purchases
+            </Text>
           </View>
         </View>
       </View>
@@ -816,9 +813,10 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
 
       {/* Bottom Text */}
       <View>
-        <Text className="text-white text-lg pl-4 pb-2">
+        <Text className="text-white text-lg pl-4 pb-2 font-light" style={{ lineHeight: 20 }}>
           you are receiving{' '}
-          <Text className="text-[#94F27F] font-bold">{cashbackPercentage * 100}%</Text> cashback on
+          <Text className="text-[#94F27F] font-bold">{Math.round(cashbackPercentage * 100)}%</Text>{' '}
+          cashback on
           {'\n'}
           all purchases
         </Text>
