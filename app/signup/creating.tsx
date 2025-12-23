@@ -150,11 +150,7 @@ export default function SignupCreating() {
         marketingConsent,
       );
 
-      const smartAccountClient = await safeAA(
-        mainnet,
-        user.subOrganizationId,
-        user.walletAddress,
-      );
+      const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
 
       if (!smartAccountClient?.account?.address) {
         throw new Error('Failed to create smart account');
