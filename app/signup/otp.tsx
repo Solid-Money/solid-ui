@@ -164,7 +164,7 @@ export default function SignupOtp() {
       {isDesktop && (
         <Pressable
           onPress={handleBack}
-          className="self-start w-10 h-10 rounded-full bg-white/10 items-center justify-center web:hover:bg-white/20 mb-6"
+          className="self-start w-10 h-10 rounded-full bg-white/10 items-center justify-center web:hover:bg-white/20 mb-20"
         >
           <ArrowLeft size={20} color="#ffffff" />
         </Pressable>
