@@ -1262,7 +1262,6 @@ export const verifySignupOtp = async (otpId: string, otpCode: string, email: str
 export const emailSignUp = async (
   email: string,
   verificationToken: string,
-  sessionPublicKey: string,
   challenge: string,
   attestation: any,
   credentialId?: string,
@@ -1272,7 +1271,6 @@ export const emailSignUp = async (
   const body: Record<string, any> = {
     email,
     verificationToken,
-    sessionPublicKey,
     challenge,
     attestation,
     marketingConsent,

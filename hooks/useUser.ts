@@ -102,52 +102,40 @@ const useUser = (): UseUserReturn => {
       chain: Chain,
       subOrganization: string,
       signWith: string,
-      preAuthenticatedClient?: any,
     ) => {
-      let turnkeyClientToUse: any;
+      let stamper: WebauthnStamper | PasskeyStamper;
 
-      if (preAuthenticatedClient) {
-        // Use the pre-authenticated client (e.g., session-based client from signup flow)
-        turnkeyClientToUse = preAuthenticatedClient;
+      if (Platform.OS === 'web') {
+        stamper = new WebauthnStamper({
+          rpId: getRuntimeRpId(),
+          timeout: 60000,
+          allowCredentials: user?.credentialId
+            ? [
+              {
+                id: base64urlToUint8Array(user.credentialId) as BufferSource,
+                type: 'public-key' as const,
+              },
+            ]
+            : undefined,
+        });
       } else {
-        // Create a new client with passkey-based authentication
-        let stamper: WebauthnStamper | PasskeyStamper;
-
-        if (Platform.OS === 'web') {
-          stamper = new WebauthnStamper({
-            rpId: getRuntimeRpId(),
-            timeout: 60000,
-            allowCredentials: user?.credentialId
-              ? [
-                  {
-                    id: base64urlToUint8Array(user.credentialId) as BufferSource,
-                    type: 'public-key' as const,
-                  },
-                ]
-              : undefined,
-          });
-        } else {
-          stamper = new PasskeyStamper({
-            rpId: getRuntimeRpId(),
-            allowCredentials: user?.credentialId
-              ? [
-                  {
-                    id: user.credentialId,
-                    type: 'public-key' as const,
-                  },
-                ]
-              : undefined,
-          });
-        }
-
-        turnkeyClientToUse = new TurnkeyClient(
-          { baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL },
-          stamper,
-        );
+        stamper = new PasskeyStamper({
+          rpId: getRuntimeRpId(),
+          allowCredentials: user?.credentialId
+            ? [
+              {
+                id: user.credentialId,
+                type: 'public-key' as const,
+              },
+            ]
+            : undefined,
+        });
       }
 
+      const turnkeyClient = new TurnkeyClient({ baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL }, stamper);
+
       const turnkeyAccount = await createAccount({
-        client: turnkeyClientToUse,
+        client: turnkeyClient,
         organizationId: subOrganization,
         signWith: signWith,
       });
