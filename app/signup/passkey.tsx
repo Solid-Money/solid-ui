@@ -150,40 +150,53 @@ export default function SignupPasskey() {
 
   // Form content (used for desktop)
   const formContent = (
-    <View className="w-full max-w-[400px] items-center">
-      {/* Passkey Icon */}
-      <PasskeySvg />
-
-      {/* Header */}
-      <View className="mt-8 mb-8 items-center">
-        <Text className="text-white text-[38px] font-semibold text-center mb-4">
-          Secure sign-in{'\n'}with Passkey
-        </Text>
-        <Text className="text-white/60 text-center text-base font-medium px-4">
-          Passkeys let you sign in using biometrics or your device PIN—no email needed. They&apos;re
-          fast, secure, and act as 2FA to protect your account.{' '}
-          <Text className="text-white/60 underline" onPress={handleLearnMore}>
-            Learn more
-          </Text>
-        </Text>
-      </View>
-
-      {/* Continue Button */}
-      <Button
-        variant="brand"
-        onPress={handleContinue}
-        disabled={isLoading}
-        className="rounded-xl h-14 w-full"
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#000" />
-        ) : (
-          <View className="flex-row items-center">
-            <LoginKeyIcon color="#000" />
-            <Text className="text-lg font-semibold text-black ml-2">Continue</Text>
-          </View>
+    <View className="w-full max-w-[400px] flex-1 flex flex-col">
+      {/* Form content wrapper - centered vertically */}
+      <View className="my-auto items-center">
+        {/* Back button - positioned above form on desktop */}
+        {isDesktop && (
+          <Pressable
+            onPress={handleBack}
+            className="self-start w-10 h-10 rounded-full bg-white/10 items-center justify-center web:hover:bg-white/20 mb-20"
+          >
+            <ArrowLeft size={20} color="#ffffff" />
+          </Pressable>
         )}
-      </Button>
+
+        {/* Passkey Icon */}
+        <PasskeySvg />
+
+        {/* Header */}
+        <View className="mt-8 mb-8 items-center">
+          <Text className="text-white text-[38px] font-semibold text-center mb-4">
+            Secure sign-in{'\n'}with Passkey
+          </Text>
+          <Text className="text-white/60 text-center text-base font-medium px-4">
+            Passkeys let you sign in using biometrics or your device PIN—no email needed.
+            They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
+            <Text className="text-white/60 underline" onPress={handleLearnMore}>
+              Learn more
+            </Text>
+          </Text>
+        </View>
+
+        {/* Continue Button */}
+        <Button
+          variant="brand"
+          onPress={handleContinue}
+          disabled={isLoading}
+          className="rounded-xl h-14 w-full"
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <View className="flex-row items-center">
+              <LoginKeyIcon color="#000" />
+              <Text className="text-lg font-semibold text-black ml-2">Continue</Text>
+            </View>
+          )}
+        </Button>
+      </View>
     </View>
   );
 
