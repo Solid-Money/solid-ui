@@ -12,6 +12,8 @@ import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { addToAddressBook } from '@/lib/api';
 import { useSendStore } from '@/store/useSendStore';
+import { withRefreshToken } from '@/lib/utils';
+import { AddressBookEntry } from '@/lib/types';
 
 const addressBookSchema = z.object({
   walletAddress: z
@@ -45,7 +47,7 @@ const AddressBook: React.FC = () => {
   });
 
   const addToAddressBookMutation = useMutation({
-    mutationFn: addToAddressBook,
+    mutationFn: (data: AddressBookEntry) => withRefreshToken(() => addToAddressBook(data)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['address-book'] });
       Toast.show({
