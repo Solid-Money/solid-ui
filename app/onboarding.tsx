@@ -24,14 +24,12 @@ import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { ONBOARDING_DATA } from '@/lib/types/onboarding';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
-import { useUserStore } from '@/store/useUserStore';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function Onboarding() {
   const router = useRouter();
   const { handleLogin, handleDummyLogin } = useUser();
-  const { users } = useUserStore();
   const { setHasSeenOnboarding } = useOnboardingStore();
   const { isDesktop } = useDimension();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -53,20 +51,14 @@ export default function Onboarding() {
     // Mark onboarding as seen
     setHasSeenOnboarding(true);
 
-    if (users.length > 0) {
-      // If users exist, go to welcome screen for user selection
-      router.replace(path.WELCOME);
-    } else {
-      // No users exist, try passkey login or go to signup
-      try {
-        await handleLogin();
-      } catch (error) {
-        console.error('Passkey login failed:', error);
-        // If no existing users, redirect to signup
-        router.replace(path.SIGNUP_EMAIL);
-      }
+    try {
+      await handleLogin();
+    } catch (error) {
+      console.error('Passkey login failed:', error);
+      // If no existing users, redirect to signup
+      router.replace(path.SIGNUP_EMAIL);
     }
-  }, [users.length, handleLogin, router, setHasSeenOnboarding]);
+  }, [handleLogin, router, setHasSeenOnboarding]);
 
   const handleCreateAccount = useCallback(() => {
     setHasSeenOnboarding(true);
@@ -97,13 +89,7 @@ export default function Onboarding() {
                   contentContainerStyle={{ flexGrow: 1 }}
                 >
                   {ONBOARDING_DATA.map((item, index) => (
-                    <OnboardingPage
-                      key={item.id}
-                      data={item}
-                      isActive={currentIndex === index}
-                      index={index}
-                      scrollX={scrollX}
-                    />
+                    <OnboardingPage key={item.id} data={item} index={index} scrollX={scrollX} />
                   ))}
                 </Animated.ScrollView>
               </View>
@@ -175,11 +161,15 @@ export default function Onboarding() {
 
         {/* Content centered vertically */}
         <View className="flex-1 justify-center items-center px-8">
-          <View className="w-full max-w-[400px] items-center">
+          <View className="w-full max-w-[440px] items-center">
             {/* Welcome Text */}
             <View className="mb-8 items-center">
               <Text className="text-white/60 text-base font-medium mb-2">Welcome!</Text>
-              <Text className="text-white text-[38px] font-medium text-center mb-3">
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                className="text-white text-[38px] font-medium text-center mb-3"
+              >
                 Your Stablecoin Super-app
               </Text>
               <Text className="text-white/60 text-center text-base font-normal max-w-[320px]">
