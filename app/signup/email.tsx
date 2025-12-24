@@ -161,17 +161,8 @@ export default function SignupEmail() {
     router.replace(path.ONBOARDING);
   };
 
-  const getButtonText = () => {
-    // if (rateLimitError) return 'Please wait before trying again';
-    if (errors.email?.message) return errors.email.message;
-    // if (!isValid || !watchedEmail) return 'Enter email address';
-    // if (isLoading) return 'Creating...';
-    return 'Create account';
-  };
-
-  const isButtonDisabled = !isValid || !watchedEmail || isLoading || !!rateLimitError;
-
-  const displayError = error || rateLimitError;
+  // Show validation error, API error, or rate limit error
+  const displayError = errors.email?.message || error || rateLimitError;
 
   // Form content (shared between mobile and desktop)
   const formContent = (
@@ -248,11 +239,13 @@ export default function SignupEmail() {
         <Button
           variant="brand"
           onPress={handleSubmit(handleSendOtp)}
-          disabled={isButtonDisabled}
           className="rounded-xl h-14 w-full"
         >
-          <Text className="text-lg font-semibold">{getButtonText()}</Text>
-          {isLoading && <ActivityIndicator color="gray" />}
+          {isLoading ? (
+            <ActivityIndicator color="gray" />
+          ) : (
+            <Text className="text-lg font-semibold">Create account</Text>
+          )}
         </Button>
       </View>
 
@@ -381,11 +374,13 @@ export default function SignupEmail() {
               <Button
                 variant="brand"
                 onPress={handleSubmit(handleSendOtp)}
-                disabled={isButtonDisabled}
                 className="rounded-xl h-14 w-full"
               >
-                <Text className="text-lg font-semibold">{getButtonText()}</Text>
-                {isLoading && <ActivityIndicator color="gray" />}
+                {isLoading ? (
+                  <ActivityIndicator color="gray" />
+                ) : (
+                  <Text className="text-lg font-semibold">Create account</Text>
+                )}
               </Button>
             </View>
           </View>

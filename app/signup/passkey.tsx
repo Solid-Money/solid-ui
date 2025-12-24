@@ -168,7 +168,7 @@ export default function SignupPasskey() {
 
         {/* Header */}
         <View className="mt-8 mb-8 items-center">
-          <Text className="text-white text-[38px] font-semibold text-center mb-4">
+          <Text className="text-white text-[38px] font-semibold text-center mb-4 leading-none tracking-[-2px]">
             Secure sign-in{'\n'}with Passkey
           </Text>
           <Text className="text-white/60 text-center text-base font-medium px-4">
@@ -184,7 +184,6 @@ export default function SignupPasskey() {
         <Button
           variant="brand"
           onPress={handleContinue}
-          disabled={isLoading}
           className="rounded-xl h-14 w-full"
         >
           {isLoading ? (
@@ -222,7 +221,7 @@ export default function SignupPasskey() {
 
             {/* Header */}
             <View className="mt-8 items-center">
-              <Text className="text-white text-[38px] font-semibold text-center mb-4">
+              <Text className="text-white text-[38px] font-semibold text-center mb-4 leading-none tracking-[-2px]">
                 Your account is{'\n'}protected with{'\n'}Passkey
               </Text>
               <Text className="text-white/60 text-center text-[14px] px-4">
@@ -243,7 +242,6 @@ export default function SignupPasskey() {
             <Button
               variant="brand"
               onPress={handleContinue}
-              disabled={isLoading}
               className="rounded-xl h-14 w-full"
             >
               {isLoading ? (
