@@ -27,7 +27,7 @@ import {
   unwrappedToken,
 } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
-import { ZapIcon } from 'lucide-react-native';
+import { Fuel } from 'lucide-react-native';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Address, getContract } from 'viem';
@@ -171,6 +171,21 @@ const SwapParams = () => {
 
   if (pegSwapType !== PegSwapType.NOT_APPLICABLE) return;
 
+  if (!trade) {
+    return (
+      <View className="flex flex-row items-center justify-between px-1 mt-4">
+        <View className="flex-row items-center gap-2">
+          <Fuel strokeWidth={1} stroke="white" size={16} />
+          <Text className="text-base text-white/70 font-semibold">Fee</Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <Text className="text-base font-bold">0 USDC</Text>
+          <ChevronDown strokeWidth={2} size={16} className="text-foreground" />
+        </View>
+      </View>
+    );
+  }
+
   return trade ? (
     <View>
       <View className="flex flex-row justify-between">
@@ -181,9 +196,9 @@ const SwapParams = () => {
           {slidingFee && (
             <View className="rounded select-none pointer flex-row items-center relative">
               {dynamicFeePlugin && (
-                <ZapIcon className="mr-2" strokeWidth={1} stroke="white" fill="white" size={16} />
+                <Fuel className="mr-2" strokeWidth={1} stroke="white" size={16} />
               )}
-              <Text className="text-base">{`${slidingFee?.toFixed(4)}% fee`}</Text>
+              <Text className="text-base text-white/70 font-bold">{`${slidingFee?.toFixed(4)}% fee`}</Text>
             </View>
           )}
           <View className={cn('ml-auto', { 'rotate-180': isExpanded })}>

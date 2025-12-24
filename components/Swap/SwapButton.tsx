@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import React, { useCallback, useMemo } from 'react';
+import { Image, View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -463,7 +464,13 @@ const SwapButton: React.FC = () => {
             {wrapType === WrapType.WRAP ? 'Wrapping...' : 'Unwrapping...'}
           </Text>
         ) : wrapType === WrapType.WRAP ? (
-          <Text className="font-semibold text-base">Wrap</Text>
+          <View className="flex-row items-center gap-2">
+            <Image
+              source={require('@/assets/images/security_key.png')}
+              style={{ width: 21, height: 10 }}
+            />
+            <Text className="font-semibold text-base">Wrap</Text>
+          </View>
         ) : (
           <Text className="font-semibold text-base">Unwrap</Text>
         )}
@@ -512,7 +519,13 @@ const SwapButton: React.FC = () => {
       ) : needsApproval ? (
         <Text className="font-semibold text-base">Approve & Swap</Text>
       ) : (
-        <Text className="font-semibold text-base">Swap</Text>
+        <View className="flex-row items-center gap-2">
+          <Image
+            source={require('@/assets/images/security_key.png')}
+            style={{ width: 21, height: 10 }}
+          />
+          <Text className="font-semibold text-base">Swap</Text>
+        </View>
       )}
     </Button>
   );

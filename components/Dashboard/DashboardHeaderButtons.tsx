@@ -1,11 +1,10 @@
-import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import SendModal from '@/components/Send/SendModal';
+import SwapModal from '@/components/Swap/SwapModal';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 
@@ -17,8 +16,6 @@ type DashboardHeaderButtonsProps = {
 };
 
 const DashboardHeaderButtons = ({ hasTokens }: DashboardHeaderButtonsProps) => {
-  const router = useRouter();
-
   return (
     <View className="flex-row gap-2">
       <DepositOptionModal buttonText="Add funds" />
@@ -41,22 +38,25 @@ const DashboardHeaderButtons = ({ hasTokens }: DashboardHeaderButtonsProps) => {
             }
           />
 
-          <Button
-            variant="secondary"
-            className="h-12 px-6 rounded-xl bg-[#303030] border-0"
-            onPress={() => {
-              track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
-                button_name: 'swap',
-                source: 'dashboard_header',
-              });
-              router.push(path.SWAP);
-            }}
-          >
-            <View className="flex-row items-center gap-2">
-              <HomeSwap />
-              <Text className="text-base text-white font-bold">Swap</Text>
-            </View>
-          </Button>
+          <SwapModal
+            trigger={
+              <Button
+                variant="secondary"
+                className="h-12 px-6 rounded-xl bg-[#303030] border-0"
+                onPress={() => {
+                  track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
+                    button_name: 'swap',
+                    source: 'dashboard_header',
+                  });
+                }}
+              >
+                <View className="flex-row items-center gap-2">
+                  <HomeSwap />
+                  <Text className="text-base text-white font-bold">Swap</Text>
+                </View>
+              </Button>
+            }
+          />
         </>
       )}
     </View>
