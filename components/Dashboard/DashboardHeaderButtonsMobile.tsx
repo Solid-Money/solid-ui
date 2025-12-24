@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import HomeFund from '@/assets/images/home-fund';
@@ -7,10 +6,9 @@ import HomeSwap from '@/assets/images/home-swap';
 import CircleButton from '@/components/CircleButton';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import SendModal from '@/components/Send/SendModal';
-import { path } from '@/constants/path';
+import SwapModal from '@/components/Swap/SwapModal';
 
 const DashboardHeaderButtonsMobile = () => {
-  const router = useRouter();
   return (
     <View className="flex-row justify-center gap-12 items-center">
       <DepositOptionModal
@@ -30,12 +28,8 @@ const DashboardHeaderButtonsMobile = () => {
         trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
       />
 
-      <CircleButton
-        icon={HomeSwap}
-        label="Swap"
-        onPress={() => router.push(path.SWAP)}
-        scale={1}
-        viewBox="0 0 29 28"
+      <SwapModal
+        trigger={<CircleButton icon={HomeSwap} label="Swap" scale={1} viewBox="0 0 29 28" />}
       />
     </View>
   );
