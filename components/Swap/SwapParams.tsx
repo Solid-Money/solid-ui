@@ -263,8 +263,8 @@ const SwapRoute = ({ trade }: { trade: Trade<Currency, Currency, TradeType> }) =
     <View className="flex flex-row items-center gap-1">
       {path.map((token, idx, path) => (
         <Fragment key={`token-path-${idx}`}>
-          <Text className="text-sm">{unwrappedToken(token).symbol}</Text>
-          {idx === path.length - 1 ? null : <ChevronRight size={16} className="text-foreground" />}
+          <Text className="text-sm font-semibold">{unwrappedToken(token).symbol}</Text>
+          {idx === path.length - 1 ? null : <ChevronRight size={16} className="text-white" />}
         </Fragment>
       ))}
     </View>
