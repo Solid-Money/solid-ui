@@ -1,8 +1,8 @@
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Dimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useWindowDimensions, View } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedScrollHandler,
@@ -25,15 +25,20 @@ import useUser from '@/hooks/useUser';
 import { ONBOARDING_DATA } from '@/lib/types/onboarding';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
 
-const { width: screenWidth } = Dimensions.get('window');
-
 export default function Onboarding() {
   const router = useRouter();
   const { handleLogin, handleDummyLogin } = useUser();
   const { setHasSeenOnboarding } = useOnboardingStore();
   const { isDesktop } = useDimension();
+  const { width: screenWidth } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useSharedValue(0);
+
+  // Track screen width as shared value for use in worklets
+  const widthSV = useSharedValue(screenWidth);
+  useEffect(() => {
+    widthSV.value = screenWidth;
+  }, [screenWidth, widthSV]);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
@@ -43,7 +48,7 @@ export default function Onboarding() {
 
   // Derive current index from scroll position
   useDerivedValue(() => {
-    const index = Math.round(scrollX.value / screenWidth);
+    const index = Math.round(scrollX.value / widthSV.value);
     runOnJS(setCurrentIndex)(index);
   });
 
@@ -168,7 +173,7 @@ export default function Onboarding() {
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
-                className="text-white text-[38px] font-medium text-center mb-3"
+                className="text-white text-[38px] font-semibold text-center mb-3 -tracking-[1px]"
               >
                 Your Stablecoin Super-app
               </Text>

@@ -3,7 +3,6 @@ export interface OnboardingPageData {
   title: string;
   subtitle?: string;
   animation?: any;
-  image?: any; // Static image source for pages
   isLastPage?: boolean;
 }
 
@@ -46,7 +45,7 @@ export const ONBOARDING_DATA: OnboardingPageData[] = [
     id: '2',
     title: 'Spend while you earn',
     subtitle: 'Your funds instantly spendable at over 200M merchants worldwide',
-    image: require('@/assets/images/card-onboarding.png'),
+    animation: require('@/assets/animations/card.json'),
   },
   {
     id: '3',
