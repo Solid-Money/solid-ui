@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { useRouter } from 'expo-router';
 import React, { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
@@ -34,8 +35,28 @@ const SwapModal = ({ trigger = null, defaultOpen = false, onClose }: SwapModalPr
 
   const [isReady, setIsReady] = useState(false);
 
-  const isTransactionStatus = currentModal.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
-  const isClose = currentModal.name === SWAP_MODAL.CLOSE.name;
+  // Debug logging for prod
+  useEffect(() => {
+    if (!currentModal) {
+      console.warn('[SwapModal] currentModal is undefined', {
+        previousModal,
+        transaction,
+      });
+
+      Sentry.addBreadcrumb({
+        message: 'SwapModal currentModal is undefined',
+        category: 'swap',
+        level: 'warning',
+        data: {
+          previousModal: previousModal?.name,
+          hasTransaction: !!transaction,
+        },
+      });
+    }
+  }, [currentModal, previousModal, transaction]);
+
+  const isTransactionStatus = currentModal?.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isClose = !currentModal || currentModal?.name === SWAP_MODAL.CLOSE.name;
 
   useEffect(() => {
     const rafId = requestAnimationFrame(() => {

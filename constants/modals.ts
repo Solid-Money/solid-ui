@@ -185,9 +185,13 @@ export const SWAP_MODAL = {
     name: 'close',
     number: 0,
   },
+  OPEN_FORM: {
+    name: 'open_form',
+    number: 1,
+  },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
-    number: 1,
+    number: 2,
   },
 };
 
