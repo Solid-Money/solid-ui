@@ -2,6 +2,8 @@ import * as Sentry from '@sentry/react-native';
 import React, { useCallback, useMemo } from 'react';
 import { Image, View } from 'react-native';
 
+import InfoError from '@/assets/images/info-error';
+
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SWAP_MODAL } from '@/constants/modals';
@@ -359,33 +361,38 @@ const SwapButton: React.FC = () => {
 
   const priceImpactTooHigh = priceImpactSeverity > 3 && !isExpertMode;
 
-  if (showPegSwap && pegSwapInputError) {
-    return (
-      <Button className="mx-6" disabled>
-        {pegSwapInputError}
-      </Button>
-    );
-  }
-
   if (showPegSwap) {
     return (
-      <Button className="rounded-xl" size="lg" onPress={handlePegSwap} disabled={isPegSwapLoading}>
-        {isPegSwapLoading ? (
-          <Text className="font-semibold text-base">Migrating...</Text>
-        ) : needPegSwapAllowance ? (
-          <Text className="font-semibold text-base">Approve & Migrate</Text>
-        ) : (
-          <Text className="font-semibold text-base">Migrate</Text>
-        )}
-      </Button>
+      <View>
+        {showPegSwap && pegSwapInputError && <ErrorMessage message={pegSwapInputError} />}
+        <Button
+          className="rounded-xl"
+          size="lg"
+          onPress={handlePegSwap}
+          disabled={isPegSwapLoading || !!pegSwapInputError}
+        >
+          {isPegSwapLoading ? (
+            <Text className="font-semibold text-base">Migrating...</Text>
+          ) : needPegSwapAllowance ? (
+            <Text className="font-semibold text-base">Approve & Migrate</Text>
+          ) : (
+            <Text className="font-semibold text-base">Migrate</Text>
+          )}
+        </Button>
+      </View>
     );
   }
 
   if (showWrap && wrapInputError) {
     return (
-      <Button className="rounded-xl" size="lg" disabled>
-        <Text className="font-semibold text-base">{wrapInputError}</Text>
-      </Button>
+      <View>
+        <ErrorMessage message={wrapInputError} />
+        <Button className="rounded-xl" size="lg" disabled>
+          <Text className="font-semibold text-base">
+            {wrapType === WrapType.WRAP ? 'Wrap' : 'Unwrap'}
+          </Text>
+        </Button>
+      </View>
     );
   }
 
@@ -480,13 +487,16 @@ const SwapButton: React.FC = () => {
 
   if (routeNotFound && userHasSpecifiedInputOutput) {
     return (
-      <Button className="rounded-xl" size="lg" disabled>
-        {isLoadingRoute ? (
-          <Text className="font-semibold text-base">Finding Routes...</Text>
-        ) : (
-          <Text className="font-semibold text-base">Insufficient liquidity for this trade.</Text>
-        )}
-      </Button>
+      <View>
+        {!isLoadingRoute && <ErrorMessage message="Insufficient liquidity for this trade." />}
+        <Button className="rounded-xl" size="lg" disabled>
+          {isLoadingRoute ? (
+            <Text className="font-semibold text-base">Finding Routes...</Text>
+          ) : (
+            <Text className="font-semibold text-base">Swap</Text>
+          )}
+        </Button>
+      </View>
     );
   }
 
@@ -500,35 +510,43 @@ const SwapButton: React.FC = () => {
     isSwapLoading ||
     isVoltageSwapLoading;
 
+  const errorMessage = swapInputError || (priceImpactTooHigh ? 'Price Impact Too High' : null);
+
   return (
-    <Button
-      className="rounded-xl"
-      variant="brand"
-      size="lg"
-      onPress={handleSwap}
-      disabled={isButtonDisabled}
-    >
-      {isAnyLoading ? (
-        <Text className="font-semibold text-base">Processing Transaction...</Text>
-      ) : swapInputError ? (
-        <Text className="font-semibold text-base">{swapInputError}</Text>
-      ) : priceImpactTooHigh ? (
-        <Text className="font-semibold text-base">Price Impact Too High</Text>
-      ) : priceImpactSeverity > 2 ? (
-        <Text className="font-semibold text-base">Swap Anyway</Text>
-      ) : needsApproval ? (
-        <Text className="font-semibold text-base">Approve & Swap</Text>
-      ) : (
-        <View className="flex-row items-center gap-2">
-          <Image
-            source={require('@/assets/images/security_key.png')}
-            style={{ width: 21, height: 10 }}
-          />
-          <Text className="font-semibold text-base">Swap</Text>
-        </View>
-      )}
-    </Button>
+    <View>
+      {errorMessage && <ErrorMessage message={errorMessage} />}
+      <Button
+        className="rounded-xl"
+        variant="brand"
+        size="lg"
+        onPress={handleSwap}
+        disabled={isButtonDisabled}
+      >
+        {isAnyLoading ? (
+          <Text className="font-semibold text-base">Processing Transaction...</Text>
+        ) : priceImpactSeverity > 2 && !priceImpactTooHigh ? (
+          <Text className="font-semibold text-base">Swap Anyway</Text>
+        ) : needsApproval ? (
+          <Text className="font-semibold text-base">Approve & Swap</Text>
+        ) : (
+          <View className="flex-row items-center gap-2">
+            <Image
+              source={require('@/assets/images/security_key.png')}
+              style={{ width: 21, height: 10 }}
+            />
+            <Text className="font-semibold text-base">Swap</Text>
+          </View>
+        )}
+      </Button>
+    </View>
   );
 };
+
+const ErrorMessage = ({ message }: { message: string }) => (
+  <View className="flex-row items-center gap-2 mb-3">
+    <InfoError />
+    <Text className="text-sm text-red-400">{message}</Text>
+  </View>
+);
 
 export default SwapButton;
