@@ -1310,6 +1310,78 @@ export const emailExists = async (email: string): Promise<boolean> => {
   return response.status === 200;
 };
 
+/**
+ * Setup TOTP (Two-Factor Authentication)
+ * Returns secret and URI for QR code generation
+ */
+export const setupTotp = async (): Promise<{
+  secret: string;
+  uri: string;
+  qrCode?: string;
+}> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/totp/setup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Verify TOTP code during setup or transaction
+ */
+export const verifyTotp = async (
+  code: string,
+  context?: 'setup' | 'transaction',
+): Promise<{ verified: boolean; message: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/totp/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ code, context }),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Get TOTP status (verified or not)
+ */
+export const getTotpStatus = async (): Promise<{ verified: boolean }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/totp/status`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const createActivityEvent = async (
   event: ActivityEvent,
 ): Promise<{ transactionHash: string }> => {

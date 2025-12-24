@@ -24,7 +24,7 @@ import Key from '@/assets/images/key';
 const SendReview: React.FC = () => {
   const { selectedToken, amount, address, name, setTransaction, setModal } = useSendStore();
 
-  const { send, sendStatus } = useSend({
+  const { send, sendStatus, totpModal } = useSend({
     tokenAddress: selectedToken?.contractAddress as any,
     tokenDecimals: selectedToken?.contractDecimals || 18,
     tokenSymbol: selectedToken?.contractTickerSymbol || 'TOKEN',
@@ -198,6 +198,7 @@ const SendReview: React.FC = () => {
       </Button>
 
       <NeedHelp />
+      {totpModal}
     </View>
   );
 };
