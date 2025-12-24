@@ -3,7 +3,6 @@ import { ALGEBRA_ROUTER } from '@/constants/addresses';
 import { MAX_UINT128 } from '@/constants/max-uint128';
 import { algebraBasePluginAbi, algebraPoolAbi } from '@/generated/wagmi';
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
-import { usePoolPlugins } from '@/hooks/swap/usePoolPlugins';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import { ChevronDown } from '@/lib/icons/ChevronDown';
 import { ChevronRight } from '@/lib/icons/ChevronRight';
@@ -38,7 +37,6 @@ const SwapParams = () => {
     tradeState,
     toggledTrade: trade,
     allowedSlippage,
-    poolAddress,
     currencies,
     voltageTrade,
     isVoltageTrade,
@@ -60,8 +58,6 @@ const SwapParams = () => {
 
   const [isExpanded, toggleExpanded] = useState(false);
   const [slidingFee, setSlidingFee] = useState<number>();
-
-  const { dynamicFeePlugin } = usePoolPlugins(poolAddress);
 
   useEffect(() => {
     async function getFees() {
@@ -172,6 +168,14 @@ const SwapParams = () => {
   if (pegSwapType !== PegSwapType.NOT_APPLICABLE) return;
 
   if (!trade) {
+    if (tradeState.state === TradeState.LOADING) {
+      return (
+        <View className="flex flex-row justify-center px-3">
+          <ActivityIndicator size={17} color="white" />
+        </View>
+      );
+    }
+
     return (
       <View className="flex flex-row items-center justify-between px-1 mt-4">
         <View className="flex-row items-center gap-2">
@@ -186,44 +190,41 @@ const SwapParams = () => {
     );
   }
 
-  return trade ? (
+  return (
     <View>
-      <View className="flex flex-row justify-between">
-        <Pressable
-          className="flex flex-row items-center w-full text-center web:hover:opacity-70"
-          onPress={() => toggleExpanded(!isExpanded)}
-        >
-          {slidingFee && (
-            <View className="rounded select-none pointer flex-row items-center relative">
-              {dynamicFeePlugin && (
-                <Fuel className="mr-2" strokeWidth={1} stroke="white" size={16} />
-              )}
-              <Text className="text-base text-white/70 font-bold">{`${slidingFee?.toFixed(4)}% fee`}</Text>
-            </View>
-          )}
-          <View className={cn('ml-auto', { 'rotate-180': isExpanded })}>
+      <Pressable
+        className="flex flex-row items-center justify-between w-full web:hover:opacity-70"
+        onPress={() => toggleExpanded(!isExpanded)}
+      >
+        <View className="flex-row items-center gap-2">
+          <Fuel strokeWidth={1} stroke="white" size={16} />
+          <Text className="text-base text-white/70 font-semibold">Fee</Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <Text className="text-base font-bold">{LPFeeString}</Text>
+          <View className={cn({ 'rotate-180': isExpanded })}>
             <ChevronDown strokeWidth={2} size={16} className="text-foreground" />
           </View>
-        </Pressable>
-      </View>
+        </View>
+      </Pressable>
       <View
         className={cn('overflow-hidden', {
           'h-auto': isExpanded,
           'h-0': !isExpanded,
         })}
       >
-        <View className="flex flex-col gap-2.5 bg-card rounded-xl mt-2">
-          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
-            <Text className="text-sm text-muted-foreground font-semibold">Route</Text>
+        <View className="flex flex-col gap-2.5 bg-card rounded-xl mt-6">
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-white/10">
+            <Text className="text-base text-white/70 font-medium">Route</Text>
             <View>
               <SwapRoute trade={trade} />
             </View>
           </View>
-          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
-            <Text className="text-sm text-muted-foreground font-semibold">
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-white/10">
+            <Text className="text-base text-white/70 font-medium">
               {trade.tradeType === TradeType.EXACT_INPUT ? 'Minimum received' : 'Maximum sent'}
             </Text>
-            <Text className="text-sm">
+            <Text className="text-base font-semibold">
               {isVoltageTrade && !isVoltageTradeLoading
                 ? computeSlippageAdjustedAmounts(voltageTrade?.trade, allowedSlippage)[
                     trade.tradeType === TradeType.EXACT_INPUT ? 'outputAmount' : 'inputAmount'
@@ -233,28 +234,26 @@ const SwapParams = () => {
                   : `${trade.maximumAmountIn(allowedSlippage).toSignificant(6)} ${trade.inputAmount.currency.symbol}`}
             </Text>
           </View>
-          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
-            <Text className="text-sm text-muted-foreground font-semibold">LP Fee</Text>
-            <Text className="text-sm">{LPFeeString}</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-white/10">
+            <Text className="text-base text-white/70 font-medium">Sliding Fee</Text>
+            <Text className="text-base font-semibold">
+              {slidingFee ? `${slidingFee.toFixed(4)}%` : '-'}
+            </Text>
           </View>
-          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-border/50">
-            <Text className="text-sm text-muted-foreground font-semibold">Price impact</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-white/10">
+            <Text className="text-base text-white/70 font-medium">Price impact</Text>
             <View>
               <PriceImpact priceImpact={priceImpact} />
             </View>
           </View>
           <View className="flex flex-row items-center justify-between p-4 md:p-6">
-            <Text className="text-sm text-muted-foreground font-semibold">Slippage tolerance</Text>
-            <Text className="text-sm">{allowedSlippage.toFixed(2)}%</Text>
+            <Text className="text-base text-white/70 font-medium">Slippage tolerance</Text>
+            <Text className="text-base font-semibold">{allowedSlippage.toFixed(2)}%</Text>
           </View>
         </View>
       </View>
     </View>
-  ) : trade !== undefined || tradeState.state === TradeState.LOADING ? (
-    <View className="flex flex-row justify-center px-3">
-      <ActivityIndicator size={17} color="white" />
-    </View>
-  ) : null;
+  );
 };
 
 const SwapRoute = ({ trade }: { trade: Trade<Currency, Currency, TradeType> }) => {
