@@ -238,11 +238,7 @@ export default function SignupOtp() {
       </View>
 
       {/* Continue Button */}
-      <Button
-        variant="brand"
-        onPress={handleVerifyOtp}
-        className="rounded-xl h-14 w-full"
-      >
+      <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full">
         <Text className="text-lg font-semibold">{getButtonText()}</Text>
         {isLoading && <ActivityIndicator color="gray" />}
       </Button>
@@ -329,11 +325,7 @@ export default function SignupOtp() {
 
           {/* Bottom section: Continue Button */}
           <View className="px-6 pb-8">
-            <Button
-              variant="brand"
-              onPress={handleVerifyOtp}
-              className="rounded-xl h-14 w-full"
-            >
+            <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full">
               <Text className="text-lg font-semibold">{getButtonText()}</Text>
               {isLoading && <ActivityIndicator color="gray" />}
             </Button>
