@@ -245,33 +245,24 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
 
               {/* Animation/Image */}
               <View style={{ zIndex: 1 }}>
-                {currentSlide.image ? (
-                  <Image
-                    source={currentSlide.image}
-                    alt={currentSlide.title}
-                    style={{ width: 280, height: 280 }}
-                    contentFit="contain"
-                  />
-                ) : currentSlide.animation ? (
-                  <View
+                <View
+                  style={{
+                    transform: [{ scale: 1.6 }],
+                    ...(currentIndex === 2 && { marginRight: 20 }),
+                  }}
+                >
+                  <LottieView
+                    key={`lottie-${currentIndex}`}
+                    source={currentSlide.animation}
+                    autoPlay
+                    loop
                     style={{
-                      transform: [{ scale: 1.6 }],
-                      ...(currentIndex === 2 && { marginRight: 20 }),
+                      width: 280,
+                      height: 280,
                     }}
-                  >
-                    <LottieView
-                      key={`lottie-${currentIndex}`}
-                      source={currentSlide.animation}
-                      autoPlay
-                      loop
-                      style={{
-                        width: 280,
-                        height: 280,
-                      }}
-                      resizeMode="cover"
-                    />
-                  </View>
-                ) : null}
+                    resizeMode="cover"
+                  />
+                </View>
               </View>
             </View>
 
@@ -282,11 +273,11 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
             >
               {currentSlide.title && (
                 <>
-                  <Text className="text-white text-2xl font-semibold text-center tracking-tight">
+                  <Text className="text-white text-[28px] font-semibold text-center tracking-tight">
                     {currentSlide.title}
                   </Text>
                   {currentSlide.subtitle && (
-                    <Text className="text-white/70 text-lg text-center mt-2">
+                    <Text className="text-white/70 text-[20px] text-center mt-2 leading-6">
                       {currentSlide.subtitle}
                     </Text>
                   )}

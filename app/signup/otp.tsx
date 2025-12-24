@@ -185,7 +185,7 @@ export default function SignupOtp() {
 
   // Form content (shared between mobile and desktop)
   const formContent = (
-    <View className="w-full max-w-[400px] items-center">
+    <View className="w-full max-w-[440px] items-center">
       {/* Back button - positioned above form on desktop */}
       {isDesktop && (
         <Pressable
@@ -198,13 +198,13 @@ export default function SignupOtp() {
 
       {/* Header */}
       <View className="mb-8 items-center">
-        <Text className="text-white text-[38px] font-medium text-center mb-3">
+        <Text className="text-white text-[38px] font-medium text-center mb-3 -tracking-[1px]">
           Check your email
         </Text>
-        <Text className="text-white/60 text-center text-base font-medium">
+        <Text className="text-white/60 text-center text-base leading-none">
           We sent a verification code to
         </Text>
-        <Text className="text-white/60 text-center text-base font-medium mt-1">{email}</Text>
+        <Text className="text-white/60 text-center text-base mt-1  leading-none">{email}</Text>
       </View>
 
       {/* OTP Input */}
@@ -233,7 +233,7 @@ export default function SignupOtp() {
       </View>
 
       {/* Continue Button */}
-      <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full">
+      <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full font-semibold">
         {isLoading ? (
           <ActivityIndicator color="gray" />
         ) : (
@@ -246,7 +246,7 @@ export default function SignupOtp() {
         <Text className="text-white/60 text-base">Didn&apos;t receive it?</Text>
         {canResend ? (
           <Pressable onPress={handleResendOtp}>
-            <Text className="text-white/60 text-base">Resend Code</Text>
+            <Text className="text-white/60 text-base underline font-semibold">Resend Code</Text>
           </Pressable>
         ) : (
           <Text className="text-white/60 text-base">Resend in {resendCooldown}s</Text>
@@ -274,7 +274,7 @@ export default function SignupOtp() {
           <View className="flex-1 px-6 items-center">
             {/* Header */}
             <View className="mb-8 items-center mt-8">
-              <Text className="text-white text-[38px] font-medium mb-4 text-center">
+              <Text className="text-white text-[38px] font-medium mb-4 text-center -tracking-[1px] leading-10">
                 Check your email
               </Text>
               <Text className="text-white/60 text-[16px] text-center leading-4">
@@ -306,7 +306,7 @@ export default function SignupOtp() {
               <Text className="text-white/60">Didn&apos;t receive it?</Text>
               {canResend ? (
                 <Pressable onPress={handleResendOtp}>
-                  <Text className="text-white font-semibold underline">Resend Code</Text>
+                  <Text className="text-white/60 font-semibold underline">Resend Code</Text>
                 </Pressable>
               ) : (
                 <Text className="text-white/40">Resend in {resendCooldown}s</Text>
@@ -323,7 +323,7 @@ export default function SignupOtp() {
 
           {/* Bottom section: Continue Button */}
           <View className="px-6 pb-8">
-            <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full">
+            <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full font-semibold">
               {isLoading ? (
                 <ActivityIndicator color="gray" />
               ) : (

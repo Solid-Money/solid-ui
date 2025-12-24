@@ -166,7 +166,7 @@ export default function SignupEmail() {
 
   // Form content (shared between mobile and desktop)
   const formContent = (
-    <View className="w-full max-w-[400px] flex-1 flex flex-col">
+    <View className="w-full max-w-[440px] flex-1 flex flex-col">
       {/* Form content wrapper - centered vertically */}
       <View className="my-auto">
         {/* Back button - positioned above form on desktop */}
@@ -181,7 +181,7 @@ export default function SignupEmail() {
 
         {/* Header */}
         <View className="mb-8">
-          <Text className="text-white text-[38px] md:text-4xl font-semibold text-center mb-2">
+        <Text className="text-white text-[38px] font-medium mb-4 text-center -tracking-[1px]">
             Create your account
           </Text>
           <Text className="text-white/60 text-center text-base font-medium">
@@ -206,7 +206,7 @@ export default function SignupEmail() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
-                  className="border-0"
+                  className="bg-[#2F2F2F] font-normal"
                   error={!!errors.email || !!error}
                 />
               )}
@@ -239,7 +239,7 @@ export default function SignupEmail() {
         <Button
           variant="brand"
           onPress={handleSubmit(handleSendOtp)}
-          className="rounded-xl h-14 w-full"
+          className="rounded-xl h-14 w-full font-semibold"
         >
           {isLoading ? (
             <ActivityIndicator color="gray" />
@@ -290,18 +290,18 @@ export default function SignupEmail() {
             <View className="w-full">
               {/* Header */}
               <View className="mb-8 mt-4">
-                <Text className="text-white text-[38px] font-semibold text-center mb-4">
+                <Text className="text-white text-[38px] font-semibold text-center mb-4 -tracking-[1px] leading-10">
                   Create your{'\n'}account
                 </Text>
                 <Text className="text-white/60 text-center text-[16px]">
-                  Get premium benefits{'\n'}in under 5 mints
+                  Setup in minutes. Start earning{'\n'}and spending right away
                 </Text>
               </View>
 
               {/* Email Input */}
               <View className="gap-5 mb-6">
                 <View>
-                  <Text className="text-white/60 text-sm mb-2">Email</Text>
+                  <Text className="text-white/60 text-base mb-2">Email</Text>
                   <Controller
                     control={control}
                     name="email"
@@ -315,6 +315,7 @@ export default function SignupEmail() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoComplete="email"
+                        className="bg-[#2F2F2F] font-normal"
                         error={!!errors.email || !!error}
                       />
                     )}
@@ -331,7 +332,7 @@ export default function SignupEmail() {
                       className="flex-row items-start gap-3"
                     >
                       <Checkbox checked={value} onCheckedChange={onChange} className="mt-0.5" />
-                      <Text className="text-sm text-white/60 flex-1">
+                      <Text className="text-[16px] text-white/60 flex-1">
                         I consent to receive marketing messages about Solid products and services.
                       </Text>
                     </Pressable>
@@ -374,7 +375,7 @@ export default function SignupEmail() {
               <Button
                 variant="brand"
                 onPress={handleSubmit(handleSendOtp)}
-                className="rounded-xl h-14 w-full"
+                className="rounded-xl h-14 w-full font-semibold"
               >
                 {isLoading ? (
                   <ActivityIndicator color="gray" />

@@ -37,7 +37,7 @@ export default function Welcome() {
 
   // Form content (shared between mobile and desktop)
   const formContent = (
-    <View className="w-full max-w-[400px] items-center">
+    <View className="w-full max-w-[440px] items-center">
       {/* Header */}
       <View className="mb-4 items-center">
         <Text className="text-white text-[38px] md:text-4xl font-medium text-center">

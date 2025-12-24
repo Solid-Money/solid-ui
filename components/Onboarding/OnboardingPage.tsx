@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
-import { Dimensions, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import Animated, { interpolate, SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui/text';
@@ -12,9 +12,8 @@ interface OnboardingPageProps {
   scrollX: SharedValue<number>;
 }
 
-const { width: screenWidth } = Dimensions.get('window');
-
 export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
+  const { width: screenWidth } = useWindowDimensions();
   const backgroundImage = getBackgroundImage(index);
 
   // Calculate the input range for this specific page
@@ -65,32 +64,23 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
 
         {/* Animation/Image */}
         <View style={{ zIndex: 1 }}>
-          {data.image ? (
-            <Image
-              source={data.image}
-              alt={data.title}
-              style={{ width: 334, height: 334 }}
-              contentFit="contain"
-            />
-          ) : data.animation ? (
-            <View
+          <View
+            style={{
+              transform: [{ scale: 1.3 }],
+              ...(index === 2 && { marginRight: 20 }),
+            }}
+          >
+            <LottieView
+              source={data.animation}
+              autoPlay
+              loop
               style={{
-                transform: [{ scale: 1.3 }],
-                ...(index === 2 && { marginRight: 20 }),
+                width: 280,
+                height: 280,
               }}
-            >
-              <LottieView
-                source={data.animation}
-                autoPlay
-                loop
-                style={{
-                  width: 280,
-                  height: 280,
-                }}
-                resizeMode="contain"
-              />
-            </View>
-          ) : null}
+              resizeMode="contain"
+            />
+          </View>
         </View>
       </Animated.View>
 
@@ -101,9 +91,9 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
       >
         {data.title && (
           <>
-            <Text className="text-3xl font-semibold text-center">{data.title}</Text>
+            <Text className="text-[28px] font-semibold text-center">{data.title}</Text>
             {data.subtitle && (
-              <Text className="text-white/70 text-lg text-center mt-2">{data.subtitle}</Text>
+              <Text className="text-white/70 text-[20px] text-center mt-2">{data.subtitle}</Text>
             )}
           </>
         )}

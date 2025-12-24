@@ -1,10 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Dimensions, StyleSheet } from 'react-native';
-import Animated, { interpolate, SharedValue, useAnimatedStyle } from 'react-native-reanimated';
-
-import { ONBOARDING_DATA } from '@/lib/types/onboarding';
-
-const { width: screenWidth } = Dimensions.get('window');
+import { useEffect } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
+import Animated, {
+  interpolate,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 
 // Gradient colors for each slide
 const GRADIENT_COLORS: [string, string][] = [
@@ -18,38 +20,53 @@ interface AnimatedGradientBackgroundProps {
   children: React.ReactNode;
 }
 
-const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+export function AnimatedGradientBackground({ scrollX, children }: AnimatedGradientBackgroundProps) {
+  const { width } = useWindowDimensions();
 
-// Input range for scroll-based interpolation
-const inputRange = ONBOARDING_DATA.map((_, i) => i * screenWidth);
+  // Use shared value for width so it's properly accessible in worklets
+  const widthSV = useSharedValue(width);
 
-// Custom hook to create gradient opacity style
-function useGradientOpacity(scrollX: SharedValue<number>, targetIndex: number) {
-  return useAnimatedStyle(() => {
-    const outputRange = ONBOARDING_DATA.map((_, i) => (i === targetIndex ? 1 : 0));
-    const opacity = interpolate(scrollX.value, inputRange, outputRange, 'clamp');
+  // Update shared value when dimensions change
+  useEffect(() => {
+    widthSV.value = width;
+  }, [width, widthSV]);
+
+  // Create animated styles - wrap LinearGradient in Animated.View for reliable animation
+  const gradientStyle0 = useAnimatedStyle(() => {
+    'worklet';
+    const w = widthSV.value;
+    const opacity = interpolate(scrollX.value, [0, w, w * 2], [1, 0, 0], 'clamp');
     return { opacity };
   });
-}
 
-export function AnimatedGradientBackground({ scrollX, children }: AnimatedGradientBackgroundProps) {
-  // Call hooks at the top level - one for each gradient
-  const gradientStyle0 = useGradientOpacity(scrollX, 0);
-  const gradientStyle1 = useGradientOpacity(scrollX, 1);
-  const gradientStyle2 = useGradientOpacity(scrollX, 2);
+  const gradientStyle1 = useAnimatedStyle(() => {
+    'worklet';
+    const w = widthSV.value;
+    const opacity = interpolate(scrollX.value, [0, w, w * 2], [0, 1, 0], 'clamp');
+    return { opacity };
+  });
+
+  const gradientStyle2 = useAnimatedStyle(() => {
+    'worklet';
+    const w = widthSV.value;
+    const opacity = interpolate(scrollX.value, [0, w, w * 2], [0, 0, 1], 'clamp');
+    return { opacity };
+  });
+
   const gradientStyles = [gradientStyle0, gradientStyle1, gradientStyle2];
 
   return (
     <>
-      {/* Stack all gradients, animating their opacity */}
+      {/* Stack all gradients, animating opacity on wrapper View */}
       {GRADIENT_COLORS.map((colors, index) => (
-        <AnimatedLinearGradient
-          key={index}
-          colors={colors}
-          start={{ x: 0.2, y: 0.2 }}
-          end={{ x: 0.8, y: 0.8 }}
-          style={[StyleSheet.absoluteFill, gradientStyles[index]]}
-        />
+        <Animated.View key={index} style={[StyleSheet.absoluteFill, gradientStyles[index]]}>
+          <LinearGradient
+            colors={colors}
+            start={{ x: 0.2, y: 0.2 }}
+            end={{ x: 0.8, y: 0.8 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
       ))}
       {/* Render children on top of gradients */}
       {children}
