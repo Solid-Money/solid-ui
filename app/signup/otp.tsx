@@ -180,11 +180,6 @@ export default function SignupOtp() {
     router.replace(path.SIGNUP_EMAIL);
   };
 
-  const getButtonText = () => {
-    if (isLoading) return 'Verifying...';
-    return 'Continue';
-  };
-
   const canResend = resendCooldown === 0 && !isLoading;
   const displayError = errors.otp?.message || error || rateLimitError;
 
@@ -239,8 +234,11 @@ export default function SignupOtp() {
 
       {/* Continue Button */}
       <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full">
-        <Text className="text-lg font-semibold">{getButtonText()}</Text>
-        {isLoading && <ActivityIndicator color="gray" />}
+        {isLoading ? (
+          <ActivityIndicator color="gray" />
+        ) : (
+          <Text className="text-lg font-semibold">Continue</Text>
+        )}
       </Button>
 
       {/* Resend OTP */}
@@ -276,10 +274,10 @@ export default function SignupOtp() {
           <View className="flex-1 px-6 items-center">
             {/* Header */}
             <View className="mb-8 items-center mt-8">
-              <Text className="text-white text-[38px] font-semibold mb-4 text-center">
+              <Text className="text-white text-[38px] font-medium mb-4 text-center">
                 Check your email
               </Text>
-              <Text className="text-white/60 text-[16px] text-center">
+              <Text className="text-white/60 text-[16px] text-center leading-4">
                 We sent a verification code to{'\n'}
                 <Text className="text-white/90 font-semibold">{email}</Text>
               </Text>
@@ -326,8 +324,11 @@ export default function SignupOtp() {
           {/* Bottom section: Continue Button */}
           <View className="px-6 pb-8">
             <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full">
-              <Text className="text-lg font-semibold">{getButtonText()}</Text>
-              {isLoading && <ActivityIndicator color="gray" />}
+              {isLoading ? (
+                <ActivityIndicator color="gray" />
+              ) : (
+                <Text className="text-lg font-semibold">Continue</Text>
+              )}
             </Button>
           </View>
         </View>
