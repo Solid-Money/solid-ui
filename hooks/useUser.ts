@@ -29,7 +29,7 @@ import {
   withRefreshToken,
 } from '@/lib/utils';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
-import { publicClient, rpcUrls } from '@/lib/wagmi';
+import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useBalanceStore } from '@/store/useBalanceStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -37,17 +37,14 @@ import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
 import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { TurnkeyClient } from '@turnkey/http';
-import { PasskeyStamper } from '@turnkey/react-native-passkey-stamper';
+import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { createAccount } from '@turnkey/viem';
-import { WebauthnStamper } from '@turnkey/webauthn-stamper';
 import { useRouter } from 'expo-router';
 import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
 import { toSafeSmartAccount } from 'permissionless/accounts';
 import { useCallback, useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
-import { v4 as uuidv4 } from 'uuid';
-import { Chain, createWalletClient, http } from 'viem';
+import { Chain, hashTypedData, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { fetchIsDeposited } from './useAnalytics';
@@ -76,6 +73,10 @@ const useUser = (): UseUserReturn => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const intercom = useIntercom();
+  // Get Turnkey client from the new SDK
+  // httpClient is the base client, we'll pass StamperType.Passkey to operations that need passkey auth
+  // loginWithPasskey establishes a session with ephemeral API keys for signing operations
+  const { httpClient, createPasskey, logout, loginWithPasskey } = useTurnkey();
 
   const {
     users,
@@ -103,56 +104,39 @@ const useUser = (): UseUserReturn => {
       subOrganization: string,
       signWith: string,
     ) => {
-      let stamper: WebauthnStamper | PasskeyStamper;
-
-      if (Platform.OS === 'web') {
-        stamper = new WebauthnStamper({
-          rpId: getRuntimeRpId(),
-          timeout: 60000,
-          allowCredentials: user?.credentialId
-            ? [
-              {
-                id: base64urlToUint8Array(user.credentialId) as BufferSource,
-                type: 'public-key' as const,
-              },
-            ]
-            : undefined,
-        });
-      } else {
-        stamper = new PasskeyStamper({
-          rpId: getRuntimeRpId(),
-          allowCredentials: user?.credentialId
-            ? [
-              {
-                id: user.credentialId,
-                type: 'public-key' as const,
-              },
-            ]
-            : undefined,
-        });
+      if (!httpClient) {
+        throw new Error('Turnkey client not initialized');
       }
-
-      const turnkeyClient = new TurnkeyClient({ baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL }, stamper);
-
       const turnkeyAccount = await createAccount({
-        client: turnkeyClient,
+        client: httpClient,
         organizationId: subOrganization,
         signWith: signWith,
       });
 
+      // WORKAROUND: Fix @turnkey/viem signTypedData bug
+      // The SDK's signTypedData sends the hash to Turnkey with PAYLOAD_ENCODING_EIP712,
+      // but Turnkey expects JSON typed data. This causes Turnkey to sign wrong data.
+      // Fix: Compute hash locally, use the account's `sign` method for raw hash signing.
+      // TODO: Remove this workaround when @turnkey/viem fixes the bug
+      const originalSign = turnkeyAccount.sign.bind(turnkeyAccount);
+      turnkeyAccount.signTypedData = async (typedData: any) => {
+        const hash = hashTypedData(typedData);
+        return originalSign({ hash });
+      };
+
       // Create a wallet client from the turnkeyAccount
-      const smartAccountOwner = createWalletClient({
-        account: turnkeyAccount,
-        transport: http(rpcUrls[chain.id]),
-        chain: chain,
-      });
+      // const smartAccountOwner = createWalletClient({
+      //   account: turnkeyAccount,
+      //   transport: http(rpcUrls[chain.id]),
+      //   chain: chain,
+      // });
 
       const safeAccount = await toSafeSmartAccount({
         saltNonce: await getNonce({
           appId: 'solid',
         }),
         client: publicClient(chain.id),
-        owners: [smartAccountOwner.account],
+        owners: [turnkeyAccount],
         version: '1.4.1',
         entryPoint: {
           address: entryPoint07Address,
@@ -190,7 +174,7 @@ const useUser = (): UseUserReturn => {
         bundlerTransport: http(USER.pimlicoUrl(chain.id)),
       });
     },
-    [],
+    [httpClient, user?.userId, user?.safeAddress],
   );
 
   const checkBalance = useCallback(
@@ -282,60 +266,14 @@ const useUser = (): UseUserReturn => {
           throw new Error(ERRORS.USERNAME_ALREADY_EXISTS);
         }
 
-        const passkeyName = username;
-        let challenge: any;
-        let attestation: any;
-        let credentialId: string;
+        // Use the unified createPasskey from the new SDK
+        // This works on both web and native platforms automatically
+        const passkey = await createPasskey({
+          name: username,
+        });
 
-        if (Platform.OS === 'web') {
-          // Check if we're in an iframe or third-party context
-          if (window.self !== window.top) {
-            throw new Error('Passkey creation is not supported in embedded context');
-          }
-
-          // Dynamically import browser SDK only when needed
-          //@ts-ignore
-          const { Turnkey } = await import('@turnkey/sdk-browser');
-          const turnkey = new Turnkey({
-            apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-            defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-            rpId: getRuntimeRpId(),
-          });
-
-          const passkeyClient = turnkey.passkeyClient();
-          const passkey = await passkeyClient.createUserPasskey({
-            publicKey: {
-              user: {
-                name: passkeyName,
-                displayName: passkeyName,
-              },
-              timeout: 120000, // 2 minutes timeout to give users more time
-            },
-          });
-          challenge = passkey.encodedChallenge;
-          attestation = passkey.attestation;
-          credentialId = passkey.attestation.credentialId;
-        } else {
-          // Use the already imported React Native passkey stamper
-          //@ts-ignore
-          const { createPasskey } = await import('@turnkey/react-native-passkey-stamper');
-          const passkey = await createPasskey({
-            authenticatorName: 'End-User Passkey',
-            rp: {
-              id: getRuntimeRpId(),
-              name: 'Solid',
-            },
-            user: {
-              id: uuidv4(),
-              name: passkeyName,
-              displayName: passkeyName,
-            },
-          });
-          challenge = passkey.challenge;
-          attestation = passkey.attestation;
-          credentialId = passkey.attestation.credentialId;
-        }
-
+        const { encodedChallenge: challenge, attestation } = passkey;
+        const credentialId = attestation.credentialId;
         if (!challenge || !attestation) {
           const error = new Error('Error creating passkey');
           Sentry.captureException(error, {
@@ -361,6 +299,13 @@ const useUser = (): UseUserReturn => {
           referralCode,
           credentialId,
         );
+
+        // After signup, establish a Turnkey session with ephemeral API keys.
+        // This is required for signing operations (like EIP-712 typed data signing for Safe smart accounts).
+        // We use the new sub-organization that was just created by the backend.
+        await loginWithPasskey({
+          organizationId: user.subOrganizationId,
+        });
 
         const smartAccountClient = await safeAA(
           mainnet,
@@ -488,49 +433,32 @@ const useUser = (): UseUserReturn => {
         console.error(error);
       }
     },
-    [checkBalance, safeAA, setSignupInfo, storeUser, router],
+    [createPasskey, loginWithPasskey, checkBalance, safeAA, setSignupInfo, storeUser, router],
   );
 
   const handleLogin = useCallback(async () => {
     try {
       setLoginInfo({ status: Status.PENDING });
-      let stamp: any;
-      let credentialId: string | undefined;
-
-      if (Platform.OS === 'web') {
-        // Dynamically import browser SDK only when needed
-        //@ts-ignore
-        const { Turnkey } = await import('@turnkey/sdk-browser');
-        const turnkey = new Turnkey({
-          apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-          defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-          rpId: getRuntimeRpId(),
-        });
-
-        const passkeyClient = turnkey.passkeyClient();
-        stamp = await passkeyClient.stampGetWhoami({
-          organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-        });
-        if (stamp?.stamp?.stampHeaderValue) {
-          credentialId = parseStampHeaderValueCredentialId(stamp.stamp.stampHeaderValue);
-        }
-      } else {
-        const stamper = new PasskeyStamper({
-          rpId: getRuntimeRpId(),
-        });
-        const turnkeyClient = new TurnkeyClient(
-          { baseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL },
-          stamper,
-        );
-        stamp = await turnkeyClient.stampGetWhoami({
-          organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-        });
-        if (stamp?.stamp?.stampHeaderValue) {
-          credentialId = parseStampHeaderValueCredentialId(stamp.stamp.stampHeaderValue);
-        }
+      if (!httpClient) {
+        throw new Error('Turnkey client not initialized');
       }
 
+      // Step 1: Use passkey stamping to identify the user and get their sub-organization
+      // This prompts for passkey authentication
+      const stamp = await httpClient.stampGetWhoami(
+        { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
+        StamperType.Passkey,
+      );
+
       const user = await login(stamp);
+
+      // Step 3: Establish a Turnkey session for the USER'S SUB-ORGANIZATION (not root org!)
+      // This is critical - the wallet lives in the sub-org, so the session must be for that org.
+      // This prompts for passkey again, but it's necessary for signing operations.
+      const { credentialId } = await loginWithPasskey({
+        organizationId: user.subOrganizationId,
+      });
+
 
       const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
 
@@ -668,7 +596,7 @@ const useUser = (): UseUserReturn => {
         setLoginInfo({ status: Status.IDLE, message: '' });
       }, 3000);
     }
-  }, [checkBalance, setLoginInfo, storeUser, router, safeAA]);
+  }, [checkBalance, setLoginInfo, storeUser, router, safeAA, markSafeAddressSynced]);
 
   const handleDummyLogin = useCallback(async () => {
     try {
@@ -703,6 +631,13 @@ const useUser = (): UseUserReturn => {
     intercom?.shutdown();
     intercom?.boot();
 
+    // Wrap SDK logout in try-catch to ensure navigation always happens
+    // even if the SDK cleanup fails
+    try {
+      logout();
+    } catch (error) {
+      console.warn('[useUser] SDK logout error (non-blocking):', error);
+    }
     // Go to onboarding on native, welcome on web
     if (Platform.OS === 'web') {
       router.replace(path.WELCOME);
@@ -828,37 +763,19 @@ const useUser = (): UseUserReturn => {
       // We reauth if web to get a new session cookie
       // and bind it to the selected user
       const reauthIfWeb = async () => {
-        if (Platform.OS === 'web') {
+        if (Platform.OS === 'web' && httpClient) {
           try {
-            //@ts-ignore
-            const { Turnkey } = await import('@turnkey/sdk-browser');
-            const turnkey = new Turnkey({
-              apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-              defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-              rpId: getRuntimeRpId(),
-            });
-
-            // Prepare allowCredentials if we have a credential ID for this user
-            const allowCredentials = selectedUser?.credentialId
-              ? [
-                  {
-                    id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
-                    type: 'public-key' as const,
-                  },
-                ]
-              : undefined;
-
-            const passkeyClient = turnkey.passkeyClient(
-              allowCredentials ? { allowCredentials } : undefined,
+            // Use passkey stamping for re-authentication
+            const result = await httpClient.stampGetWhoami(
+              { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
+              StamperType.Passkey,
             );
 
-            const result = await passkeyClient.stampGetWhoami({
-              organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-            });
             let credentialId: string | undefined;
             if (result?.stamp?.stampHeaderValue) {
               credentialId = parseStampHeaderValueCredentialId(result.stamp.stampHeaderValue);
             }
+
             const authedUser = await login(result);
 
             // For backward compatibility: if user doesn't have credentialId stored, update it
