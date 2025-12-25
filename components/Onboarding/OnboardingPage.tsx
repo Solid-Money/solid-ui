@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
-import { useWindowDimensions, View } from 'react-native';
+import { Platform, useWindowDimensions, View } from 'react-native';
 import Animated, { interpolate, SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui/text';
@@ -78,7 +78,8 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
         <View style={{ zIndex: 1 }}>
           <View
             style={{
-              transform: [{ scale: lottieScale }],
+              // Only apply scale transform on web - native gets pre-computed size
+              ...(Platform.OS === 'web' && { transform: [{ scale: lottieScale }] }),
               ...(index === 2 && { marginRight: isSmallScreen ? 15 : 20 }),
             }}
           >

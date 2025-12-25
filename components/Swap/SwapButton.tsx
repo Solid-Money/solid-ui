@@ -364,7 +364,7 @@ const SwapButton: React.FC = () => {
   if (showPegSwap) {
     return (
       <View>
-        {showPegSwap && pegSwapInputError && <ErrorMessage message={pegSwapInputError} />}
+        {pegSwapInputError && <ErrorMessage message={pegSwapInputError} />}
         <Button
           className="rounded-xl"
           size="lg"

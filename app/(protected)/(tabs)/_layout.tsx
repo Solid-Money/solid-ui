@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
-import { CreditCard, Leaf, Star } from 'lucide-react-native';
+import { Tabs, usePathname } from 'expo-router';
+import { Leaf, Star } from 'lucide-react-native';
 import React from 'react';
 import { Platform } from 'react-native';
 
@@ -20,8 +20,12 @@ export default function TabLayout() {
   const { user } = useUser();
   const hasDeposited = user?.isDeposited;
   const { data: cardStatus } = useCardStatus();
+  const pathname = usePathname();
 
   const { isDesktop } = useDimension();
+
+  // Check if current route is any card-related route (card/ or card-onboard/)
+  const isCardRouteActive = pathname.startsWith('/card') || pathname.startsWith('/card-onboard');
 
   const cardHref =
     cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN
@@ -85,7 +89,7 @@ export default function TabLayout() {
         options={{
           title: 'Card',
           headerShown: false,
-          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} />,
+          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
           href: cardHref,
         }}
       />
@@ -126,7 +130,7 @@ export default function TabLayout() {
         name="card"
         options={{
           title: 'Card',
-          tabBarIcon: ({ color }) => <CreditCard size={28} color={color} />,
+          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
           href: null,
         }}
       />
