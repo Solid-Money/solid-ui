@@ -35,9 +35,14 @@ export default function Onboarding() {
   const { isDesktop } = useDimension();
 
   const isLoginPending = loginInfo.status === Status.PENDING;
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useSharedValue(0);
+
+  // Responsive layout for small screens (iPhone SE)
+  const isSmallScreen = screenHeight < 700;
+  const contentFlex = isSmallScreen ? 0.6 : 0.7;
+  const buttonsFlex = isSmallScreen ? 0.4 : 0.3;
 
   // Track screen width as shared value for use in worklets
   const widthSV = useSharedValue(screenWidth);
@@ -86,8 +91,8 @@ export default function Onboarding() {
         <AnimatedGradientBackground scrollX={scrollX}>
           <SafeAreaView className="flex-1">
             <View className="flex-1">
-              {/* Top section - Animation and Title (70%) */}
-              <View style={{ flex: 0.7 }}>
+              {/* Top section - Animation and Title (responsive) */}
+              <View style={{ flex: contentFlex }}>
                 <Animated.ScrollView
                   horizontal
                   pagingEnabled
@@ -103,21 +108,30 @@ export default function Onboarding() {
                 </Animated.ScrollView>
               </View>
 
-              {/* Bottom section - Dots and Buttons (30%) */}
-              <View style={{ flex: 0.3 }} className="justify-between px-6 pb-8">
+              {/* Bottom section - Dots and Buttons (responsive) */}
+              <View
+                style={{ flex: buttonsFlex }}
+                className={`justify-between px-6 ${isSmallScreen ? 'pb-4' : 'pb-8'}`}
+              >
                 {/* Pagination dots */}
                 <View className="pt-2">
                   <OnboardingPagination data={ONBOARDING_DATA} currentIndex={currentIndex} />
                 </View>
 
                 {/* Bottom buttons */}
-                <View className="gap-3">
-                  <Button variant="brand" className="rounded-xl h-14" onPress={handleCreateAccount}>
-                    <Text className="text-lg font-bold">Create account</Text>
+                <View className={isSmallScreen ? 'gap-2' : 'gap-3'}>
+                  <Button
+                    variant="brand"
+                    className={`rounded-xl ${isSmallScreen ? 'h-12' : 'h-14'}`}
+                    onPress={handleCreateAccount}
+                  >
+                    <Text className={`font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
+                      Create account
+                    </Text>
                   </Button>
 
                   {/* OR Divider */}
-                  <View className="flex-row items-center gap-4">
+                  <View className={`flex-row items-center gap-4 ${isSmallScreen ? 'my-0' : 'my-1'}`}>
                     <View className="flex-1 h-[1px] bg-white/20" />
                     <Text className="text-white/50 text-sm">OR</Text>
                     <View className="flex-1 h-[1px] bg-white/20" />
@@ -125,17 +139,21 @@ export default function Onboarding() {
 
                   <Button
                     variant="ghost"
-                    className="bg-white/15 rounded-xl h-14"
+                    className={`bg-white/15 rounded-xl ${isSmallScreen ? 'h-12' : 'h-14'}`}
                     onPress={handleLoginPress}
                     disabled={isLoginPending}
                   >
                     {isLoginPending ? (
                       <View className="flex-row items-center">
                         <ActivityIndicator size="small" color="white" />
-                        <Text className="text-lg font-bold ml-2">Authenticating...</Text>
+                        <Text className={`font-bold ml-2 ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
+                          Authenticating...
+                        </Text>
                       </View>
                     ) : (
-                      <Text className="text-lg font-bold">Login</Text>
+                      <Text className={`font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
+                        Login
+                      </Text>
                     )}
                   </Button>
 
@@ -143,10 +161,12 @@ export default function Onboarding() {
                   {__DEV__ && (
                     <Button
                       variant="ghost"
-                      className="bg-red-500/20 border border-red-500/50 rounded-xl h-10 mt-2"
+                      className={`bg-red-500/20 border border-red-500/50 rounded-xl ${isSmallScreen ? 'h-8 mt-1' : 'h-10 mt-2'}`}
                       onPress={handleDummyLogin}
                     >
-                      <Text className="text-red-400 text-sm font-medium">🛠 Dev: Skip Auth</Text>
+                      <Text className={`text-red-400 font-medium ${isSmallScreen ? 'text-xs' : 'text-sm'}`}>
+                        🛠 Dev: Skip Auth
+                      </Text>
                     </Button>
                   )}
                 </View>
