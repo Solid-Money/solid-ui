@@ -7,6 +7,9 @@ const config = getSentryExpoConfig(__dirname);
 // Custom resolver to handle platform-specific modules
 config.resolver = {
   ...config.resolver,
+  blockList: [
+    /node_modules\/.*\/ox\/tempo\/.*/,
+  ],
   alias: {
     ...config.resolver?.alias,
     stream: 'stream-browserify',
@@ -15,21 +18,57 @@ config.resolver = {
     https: 'https-browserify',
     events: 'events',
   },
+  unstable_enablePackageExports: true,
   resolveRequest: (context, moduleName, platform) => {
-    // Block browser-specific modules when building for native platforms
-    if (
-      platform !== 'web' &&
-      (moduleName === '@turnkey/sdk-browser' ||
-        moduleName === '@hpke/core' ||
-        moduleName === 'hpke-js' ||
-        moduleName === 'ws' ||
-        moduleName === 'react-use-intercom' ||
-        moduleName === 'recharts')
-    ) {
-      // Return an empty module for these packages on native platforms
-      return {
-        type: 'empty',
-      };
+    // ===========================================
+    // FIX: permissionless circular dependency
+    // ===========================================
+    // Rewrite permissionless imports to use CJS build directly
+    // See: https://github.com/pimlicolabs/permissionless.js/issues/61
+    if (moduleName === 'permissionless' || moduleName.startsWith('permissionless/')) {
+      // Subpaths that map to .js files (not directories with index.js)
+      const fileExports = [
+        'clients/pimlico',
+        'actions/pimlico',
+        'actions/erc7579',
+        'actions/passkeyServer',
+        'actions/etherspot',
+        'actions/smartAccount',
+      ];
+
+      const subpath = moduleName.replace('permissionless', '').replace(/^\//, '');
+      let cjsModule;
+
+      if (subpath === '' || moduleName === 'permissionless') {
+        cjsModule = 'permissionless/_cjs/index.js';
+      } else if (fileExports.includes(subpath)) {
+        cjsModule = `permissionless/_cjs/${subpath}.js`;
+      } else {
+        cjsModule = `permissionless/_cjs/${subpath}/index.js`;
+      }
+
+      return context.resolveRequest(context, cjsModule, platform);
+    }
+
+    // ===========================================
+    // WEB-ONLY MODULES (block on native)
+    // ===========================================
+    const webOnlyModules = [
+      '@turnkey/sdk-browser',
+      '@hpke/core',
+      'hpke-js',
+      'ws',
+      'react-use-intercom',
+      'recharts',
+    ];
+
+    if (platform !== 'web' && webOnlyModules.includes(moduleName)) {
+      return { type: 'empty' };
+    }
+
+    // Fix tsyringe/tslib ESM compatibility issue on web
+    if (platform === 'web' && moduleName === 'tslib') {
+      return context.resolveRequest(context, 'tslib/tslib.es6.js', platform);
     }
 
     // Handle Node.js built-ins for React Native
@@ -50,7 +89,13 @@ config.resolver = {
     // Default resolver for all other modules
     return context.resolveRequest(context, moduleName, platform);
   },
-  unstable_enablePackageExports: true,
+};
+
+config.transformer.minifierConfig = {
+  compress: {
+    // The option below removes all console logs statements in production.
+    drop_console: true,
+  },
 };
 
 module.exports = withNativeWind(config, { input: './global.css' });

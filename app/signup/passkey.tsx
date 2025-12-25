@@ -6,23 +6,18 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { v4 as uuidv4 } from 'uuid';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import PasskeySvg from '@/assets/images/passkey-svg';
 import { DesktopCarousel } from '@/components/Onboarding';
-import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
-import {
-  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-} from '@/lib/config';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
+import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 
 const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
 
@@ -31,6 +26,7 @@ export default function SignupPasskey() {
   const { isDesktop } = useDimension();
   const { email, verificationToken, setStep, setPasskeyData, setError } = useSignupFlowStore();
   const [isLoading, setIsLoading] = useState(false);
+  const { createPasskey } = useTurnkey();
 
   useEffect(() => {
     // Redirect if no verification token (user hasn't completed OTP)
@@ -44,53 +40,14 @@ export default function SignupPasskey() {
     setError(null);
 
     try {
-      let challenge: string;
-      let attestation: any;
-      let credentialId: string;
+      // Use the unified createPasskey from the new SDK
+      // This works on both web and native platforms automatically
+      const passkey = await createPasskey({
+        name: email,
+      });
 
-      if (Platform.OS === 'web') {
-        // Web: Use Turnkey browser SDK
-        const { Turnkey } = await import('@turnkey/sdk-browser');
-        const turnkey = new Turnkey({
-          apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-          defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-          rpId: getRuntimeRpId(),
-        });
-
-        const passkeyClient = turnkey.passkeyClient();
-        const passkey = await passkeyClient.createUserPasskey({
-          publicKey: {
-            user: {
-              name: email,
-              displayName: email,
-            },
-            timeout: 120000,
-          },
-        });
-
-        challenge = passkey.encodedChallenge;
-        attestation = passkey.attestation;
-        credentialId = passkey.attestation.credentialId;
-      } else {
-        // Native: Use React Native passkey stamper
-        const { createPasskey } = await import('@turnkey/react-native-passkey-stamper');
-        const passkey = await createPasskey({
-          authenticatorName: 'End-User Passkey',
-          rp: {
-            id: getRuntimeRpId(),
-            name: 'Solid',
-          },
-          user: {
-            id: uuidv4(),
-            name: email,
-            displayName: email,
-          },
-        });
-
-        challenge = passkey.challenge;
-        attestation = passkey.attestation;
-        credentialId = passkey.attestation.credentialId;
-      }
+      const { encodedChallenge: challenge, attestation } = passkey;
+      const credentialId = attestation.credentialId;
 
       // Store passkey data in the signup flow store
       setPasskeyData({ challenge, attestation, credentialId });

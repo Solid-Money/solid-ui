@@ -1664,6 +1664,9 @@ export const fetchHistoricalAPY = async (days: string = '30') => {
   return response.data;
 };
 
+/**
+ * @deprecated Use initRecoveryOtp instead (new OTP-based flow)
+ */
 export const startPasskeyRecovery = async (username: string, targetPublicKey: string) => {
   const response = await axios.post(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-user-email-recovery`,
@@ -1673,6 +1676,53 @@ export const startPasskeyRecovery = async (username: string, targetPublicKey: st
     },
   );
   return response.data;
+};
+
+/**
+ * Step 1: Initiate OTP for passkey recovery (public - no auth required)
+ * Sends OTP to user's registered email
+ */
+export const initRecoveryOtp = async (email: string): Promise<{ otpId: string }> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-recovery-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ email }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data;
+};
+
+/**
+ * Step 2: Verify OTP for passkey recovery (public - no auth required)
+ * Backend verifies OTP and calls otpLogin, returns credentialBundle for SDK session
+ */
+export const verifyRecoveryOtp = async (
+  otpId: string,
+  otpCode: string,
+  email: string,
+  publicKey: string,
+): Promise<{ credentialBundle: string; userId: string; organizationId: string }> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-recovery-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ otpId, otpCode, email, publicKey }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data;
 };
 
 export const fetchTokenList = async (params: SwapTokenRequest) => {

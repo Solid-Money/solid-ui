@@ -181,7 +181,7 @@ export default function SignupEmail() {
 
         {/* Header */}
         <View className="mb-8">
-          <Text className="text-white text-[38px] font-semibold mb-4 text-center -tracking-[1px]">
+          <Text className="text-white text-[38px] font-medium mb-4 text-center -tracking-[1px]">
             Create your account
           </Text>
           <Text className="text-white/60 text-center text-base font-medium">

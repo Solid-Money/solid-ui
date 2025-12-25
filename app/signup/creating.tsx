@@ -23,7 +23,6 @@ import { emailSignUp } from '@/lib/api';
 import { User } from '@/lib/types';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 import { useUserStore } from '@/store/useUserStore';
-// React Native Turnkey SDK for native session management
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 

@@ -2,7 +2,7 @@ import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, useWindowDimensions, View } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedScrollHandler,
@@ -22,14 +22,19 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { Status } from '@/lib/types';
 import { ONBOARDING_DATA } from '@/lib/types/onboarding';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
+import { useUserStore } from '@/store/useUserStore';
 
 export default function Onboarding() {
   const router = useRouter();
   const { handleLogin, handleDummyLogin } = useUser();
   const { setHasSeenOnboarding } = useOnboardingStore();
+  const { loginInfo } = useUserStore();
   const { isDesktop } = useDimension();
+
+  const isLoginPending = loginInfo.status === Status.PENDING;
   const { width: screenWidth } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useSharedValue(0);
@@ -58,8 +63,7 @@ export default function Onboarding() {
 
     try {
       await handleLogin();
-    } catch (error) {
-      console.error('Passkey login failed:', error);
+    } catch {
       // If no existing users, redirect to signup
       router.replace(path.SIGNUP_EMAIL);
     }
@@ -123,8 +127,16 @@ export default function Onboarding() {
                     variant="ghost"
                     className="bg-white/15 rounded-xl h-14"
                     onPress={handleLoginPress}
+                    disabled={isLoginPending}
                   >
-                    <Text className="text-lg font-bold">Login</Text>
+                    {isLoginPending ? (
+                      <View className="flex-row items-center">
+                        <ActivityIndicator size="small" color="white" />
+                        <Text className="text-lg font-bold ml-2">Authenticating...</Text>
+                      </View>
+                    ) : (
+                      <Text className="text-lg font-bold">Login</Text>
+                    )}
                   </Button>
 
                   {/* Dev-only Dummy Login */}
@@ -208,11 +220,19 @@ export default function Onboarding() {
                 variant="secondary"
                 className="rounded-xl h-14 w-full border-0"
                 onPress={handleLoginPress}
+                disabled={isLoginPending}
               >
-                <View className="flex-row items-center">
-                  <LoginKeyIcon />
-                  <Text className="text-lg font-semibold ml-2">Login</Text>
-                </View>
+                {isLoginPending ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="white" />
+                    <Text className="text-lg font-semibold ml-2">Authenticating...</Text>
+                  </View>
+                ) : (
+                  <View className="flex-row items-center">
+                    <LoginKeyIcon />
+                    <Text className="text-lg font-semibold ml-2">Login</Text>
+                  </View>
+                )}
               </Button>
 
               {/* Dev-only Dummy Login */}
