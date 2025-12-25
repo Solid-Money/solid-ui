@@ -264,7 +264,7 @@ export const base64urlToUint8Array = (base64url: string): Uint8Array => {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
-}
+};
 
 
 export const parseStampHeaderValueCredentialId = (stampHeaderValue: string) => {
