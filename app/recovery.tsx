@@ -1,5 +1,7 @@
 import InfoError from '@/assets/images/info-error';
 import { Button } from '@/components/ui/button';
+import Input from '@/components/ui/input';
+import { OtpInput } from '@/components/ui/otp-input';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
@@ -8,11 +10,9 @@ import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, TextInput, View } from 'react-native';
-import { OtpInput } from '@/components/ui/otp-input';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { z } from 'zod';
-import Input from '@/components/ui/input';
 
 // Validation schemas
 const emailSchema = z.object({
