@@ -96,12 +96,15 @@ export function OtpInput({
         <Pressable
           key={index}
           onPress={() => handlePress(index)}
-          className={cn('w-12 h-14 md:w-[65px] md:h-[78px] rounded-[15px] border items-center justify-center bg-[#2F2F2F]', {
-            'border-transparent': !error && !value[index],
-            'border-white/50': !error && value[index],
-            'border-red-500': error,
-            'opacity-50': disabled,
-          })}
+          className={cn(
+            'w-12 h-14 md:w-[65px] md:h-[78px] rounded-[15px] border items-center justify-center bg-[#2F2F2F]',
+            {
+              'border-transparent': !error && !value[index],
+              'border-white/50': !error && value[index],
+              'border-red-500': error,
+              'opacity-50': disabled,
+            },
+          )}
         >
           <TextInput
             ref={ref => {
