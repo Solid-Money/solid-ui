@@ -42,8 +42,13 @@ export default function SignupPasskey() {
     try {
       // Use the unified createPasskey from the new SDK
       // This works on both web and native platforms automatically
+      // Sanitize email for passkey name using same logic as backend generateUniqueUsername
+      const passkeyName = email
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, '')
+        .substring(0, 64);
       const passkey = await createPasskey({
-        name: email,
+        name: passkeyName,
       });
 
       const { encodedChallenge: challenge, attestation } = passkey;
