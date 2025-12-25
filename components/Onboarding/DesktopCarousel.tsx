@@ -192,7 +192,10 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
     <View className="w-[30%] min-w-[280px] max-w-[400px] rounded-2xl m-4 overflow-hidden bg-[#111]">
       {/* Stacked gradient backgrounds for crossfade effect */}
       {GRADIENT_COLORS.map((colors, index) => (
-        <Animated.View key={`gradient-${index}`} style={[StyleSheet.absoluteFill, gradientStyles[index]]}>
+        <Animated.View
+          key={`gradient-${index}`}
+          style={[StyleSheet.absoluteFill, gradientStyles[index]]}
+        >
           <LinearGradient
             colors={colors}
             start={{ x: 0.2, y: 0.2 }}
@@ -256,7 +259,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
                           loop
                           style={{
                             width: 280,
-                            height: 280
+                            height: 280,
                           }}
                           resizeMode="cover"
                         />

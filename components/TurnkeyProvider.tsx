@@ -12,8 +12,7 @@ import { useMemo } from 'react';
 import { Platform } from 'react-native';
 
 // Helper to get current hostname in runtime; falls back to configured value during SSR.
-export const getRuntimeRpId = () =>
-  Platform.OS === 'web' && __DEV__ ? 'localhost' : 'solid.xyz';
+export const getRuntimeRpId = () => (Platform.OS === 'web' && __DEV__ ? 'localhost' : 'solid.xyz');
 
 export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Get the selected user's credentialId from the store
@@ -45,10 +44,12 @@ export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const credentialIdBytes = base64urlToUint8Array(selectedUser.credentialId);
       baseConfig.passkeyConfig = {
         ...baseConfig.passkeyConfig,
-        allowCredentials: [{
-          id: credentialIdBytes as unknown as BufferSource,
-          type: 'public-key' as const,
-        }],
+        allowCredentials: [
+          {
+            id: credentialIdBytes as unknown as BufferSource,
+            type: 'public-key' as const,
+          },
+        ],
       };
     }
 
@@ -58,10 +59,7 @@ export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Use key to force re-mount when credentialId changes
   // This ensures the SDK reinitializes with the new allowCredentials config
   return (
-    <TurnkeyProviderKit
-      key={selectedUser?.credentialId ?? 'no-credential'}
-      config={config}
-    >
+    <TurnkeyProviderKit key={selectedUser?.credentialId ?? 'no-credential'} config={config}>
       {children}
     </TurnkeyProviderKit>
   );

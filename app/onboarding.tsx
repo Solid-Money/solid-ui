@@ -131,7 +131,9 @@ export default function Onboarding() {
                   </Button>
 
                   {/* OR Divider */}
-                  <View className={`flex-row items-center gap-4 ${isSmallScreen ? 'my-0' : 'my-1'}`}>
+                  <View
+                    className={`flex-row items-center gap-4 ${isSmallScreen ? 'my-0' : 'my-1'}`}
+                  >
                     <View className="flex-1 h-[1px] bg-white/20" />
                     <Text className="text-white/50 text-sm">OR</Text>
                     <View className="flex-1 h-[1px] bg-white/20" />
@@ -146,7 +148,9 @@ export default function Onboarding() {
                     {isLoginPending ? (
                       <View className="flex-row items-center">
                         <ActivityIndicator size="small" color="white" />
-                        <Text className={`font-bold ml-2 ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
+                        <Text
+                          className={`font-bold ml-2 ${isSmallScreen ? 'text-base' : 'text-lg'}`}
+                        >
                           Authenticating...
                         </Text>
                       </View>
@@ -164,7 +168,9 @@ export default function Onboarding() {
                       className={`bg-red-500/20 border border-red-500/50 rounded-xl ${isSmallScreen ? 'h-8 mt-1' : 'h-10 mt-2'}`}
                       onPress={handleDummyLogin}
                     >
-                      <Text className={`text-red-400 font-medium ${isSmallScreen ? 'text-xs' : 'text-sm'}`}>
+                      <Text
+                        className={`text-red-400 font-medium ${isSmallScreen ? 'text-xs' : 'text-sm'}`}
+                      >
                         🛠 Dev: Skip Auth
                       </Text>
                     </Button>
