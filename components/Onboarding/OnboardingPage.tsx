@@ -12,9 +12,21 @@ interface OnboardingPageProps {
   scrollX: SharedValue<number>;
 }
 
+// Small screen breakpoint (iPhone SE height)
+const SMALL_SCREEN_HEIGHT = 700;
+
 export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const backgroundImage = getBackgroundImage(index);
+
+  // Responsive sizing based on screen height
+  const isSmallScreen = screenHeight < SMALL_SCREEN_HEIGHT;
+  const illustrationSize = isSmallScreen ? 260 : 350;
+  const lottieSize = isSmallScreen ? 220 : 280;
+  const lottieScale = isSmallScreen ? 1.15 : 1.3;
+  const titleSize = isSmallScreen ? 24 : 28;
+  const subtitleSize = isSmallScreen ? 16 : 20;
+  const textMarginTop = isSmallScreen ? 12 : 24;
 
   // Calculate the input range for this specific page
   const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
@@ -42,10 +54,10 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
 
   return (
     <View className="flex-1 items-center justify-center px-8" style={{ width: screenWidth }}>
-      {/* Illustration with background - Fixed height */}
+      {/* Illustration with background - Responsive height */}
       <Animated.View
         className="items-center justify-center relative"
-        style={[{ height: 350 }, illustrationAnimatedStyle]}
+        style={[{ height: illustrationSize }, illustrationAnimatedStyle]}
       >
         {/* Background Image - show for all slides */}
         {backgroundImage && (
@@ -54,8 +66,8 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
             alt="Background"
             style={{
               position: 'absolute',
-              width: 350,
-              height: 350,
+              width: illustrationSize,
+              height: illustrationSize,
               zIndex: 0,
             }}
             contentFit="contain"
@@ -66,8 +78,8 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
         <View style={{ zIndex: 1 }}>
           <View
             style={{
-              transform: [{ scale: 1.3 }],
-              ...(index === 2 && { marginRight: 20 }),
+              transform: [{ scale: lottieScale }],
+              ...(index === 2 && { marginRight: isSmallScreen ? 15 : 20 }),
             }}
           >
             <LottieView
@@ -75,8 +87,8 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
               autoPlay
               loop
               style={{
-                width: 280,
-                height: 280,
+                width: lottieSize,
+                height: lottieSize,
               }}
               resizeMode="contain"
             />
@@ -84,16 +96,23 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
         </View>
       </Animated.View>
 
-      {/* Title and Subtitle - Fixed height with slide animation */}
+      {/* Title and Subtitle - Flexible height with slide animation */}
       <Animated.View
         className="items-center justify-center max-w-sm"
-        style={[{ height: 100, marginTop: 24 }, textAnimatedStyle]}
+        style={[{ marginTop: textMarginTop }, textAnimatedStyle]}
       >
         {data.title && (
           <>
-            <Text className="text-[28px] font-semibold text-center">{data.title}</Text>
+            <Text style={{ fontSize: titleSize }} className="font-semibold text-center">
+              {data.title}
+            </Text>
             {data.subtitle && (
-              <Text className="text-white/70 text-[20px] text-center mt-2">{data.subtitle}</Text>
+              <Text
+                style={{ fontSize: subtitleSize }}
+                className="text-white/70 text-center mt-2"
+              >
+                {data.subtitle}
+              </Text>
             )}
           </>
         )}
