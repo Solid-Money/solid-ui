@@ -899,7 +899,7 @@ const useUser = (): UseUserReturn => {
     removeUsers();
     clearKycLinkId(); // Clear KYC data when removing all users
     removeEvents();
-    router.replace(path.SIGNUP_EMAIL);
+    router.replace(path.ONBOARDING);
   }, [removeUsers, clearKycLinkId, router]);
 
   const handleSessionExpired = useCallback(() => {
