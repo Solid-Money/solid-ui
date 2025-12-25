@@ -1,19 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
-import Animated, {
-  interpolate,
-  SharedValue,
-  useAnimatedStyle,
-  useSharedValue,
-} from 'react-native-reanimated';
+import Animated, { SharedValue, useSharedValue } from 'react-native-reanimated';
 
-// Gradient colors for each slide
-const GRADIENT_COLORS: [string, string][] = [
-  ['rgba(122, 84, 234, 0.30)', 'rgba(122, 84, 234, 0.09)'], // Purple - rocket
-  ['rgba(148, 242, 127, 0.20)', 'rgba(148, 242, 127, 0.03)'], // Green - cards
-  ['rgba(255, 209, 81, 0.30)', 'rgba(255, 209, 81, 0.09)'], // Yellow/Gold - vault
-];
+import { GRADIENT_COLORS } from '@/lib/types/onboarding';
+
+import { useGradientStyles } from './useGradientStyles';
 
 interface AnimatedGradientBackgroundProps {
   scrollX: SharedValue<number>;
@@ -31,29 +23,8 @@ export function AnimatedGradientBackground({ scrollX, children }: AnimatedGradie
     widthSV.value = width;
   }, [width, widthSV]);
 
-  // Create animated styles - wrap LinearGradient in Animated.View for reliable animation
-  const gradientStyle0 = useAnimatedStyle(() => {
-    'worklet';
-    const w = widthSV.value;
-    const opacity = interpolate(scrollX.value, [0, w, w * 2], [1, 0, 0], 'clamp');
-    return { opacity };
-  });
-
-  const gradientStyle1 = useAnimatedStyle(() => {
-    'worklet';
-    const w = widthSV.value;
-    const opacity = interpolate(scrollX.value, [0, w, w * 2], [0, 1, 0], 'clamp');
-    return { opacity };
-  });
-
-  const gradientStyle2 = useAnimatedStyle(() => {
-    'worklet';
-    const w = widthSV.value;
-    const opacity = interpolate(scrollX.value, [0, w, w * 2], [0, 0, 1], 'clamp');
-    return { opacity };
-  });
-
-  const gradientStyles = [gradientStyle0, gradientStyle1, gradientStyle2];
+  // Use shared hook for gradient opacity styles (scrollX normalized by screen width)
+  const gradientStyles = useGradientStyles(scrollX, widthSV);
 
   return (
     <>
