@@ -186,11 +186,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
       }
     });
 
-  const gradientColors = [
-    getGradientColors(0),
-    getGradientColors(1),
-    getGradientColors(2),
-  ];
+  const gradientColors = [getGradientColors(0), getGradientColors(1), getGradientColors(2)];
 
   return (
     <View className="w-[30%] min-w-[280px] max-w-[400px] rounded-2xl m-4 overflow-hidden bg-[#111]">

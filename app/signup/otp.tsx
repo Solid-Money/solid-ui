@@ -233,7 +233,11 @@ export default function SignupOtp() {
       </View>
 
       {/* Continue Button */}
-      <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full font-semibold">
+      <Button
+        variant="brand"
+        onPress={handleVerifyOtp}
+        className="rounded-xl h-14 w-full font-semibold"
+      >
         {isLoading ? (
           <ActivityIndicator color="gray" />
         ) : (
@@ -323,7 +327,11 @@ export default function SignupOtp() {
 
           {/* Bottom section: Continue Button */}
           <View className="px-6 pb-8">
-            <Button variant="brand" onPress={handleVerifyOtp} className="rounded-xl h-14 w-full font-semibold">
+            <Button
+              variant="brand"
+              onPress={handleVerifyOtp}
+              className="rounded-xl h-14 w-full font-semibold"
+            >
               {isLoading ? (
                 <ActivityIndicator color="gray" />
               ) : (
