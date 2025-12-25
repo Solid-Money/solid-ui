@@ -46,6 +46,7 @@ export interface DirectDepositSessionResponse {
   fee: string;
   detectedAmount?: string;
   transactionHash?: string;
+  clientTxId?: string;
 }
 
 export interface DepositBonusConfig {

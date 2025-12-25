@@ -76,8 +76,8 @@ export interface UseSyncActivitiesOptions {
 }
 
 export interface UseSyncActivitiesReturn {
-  /** Trigger a sync manually (for pull-to-refresh) */
-  sync: (options?: SyncActivitiesOptions) => Promise<SyncActivitiesResponse | undefined>;
+  /** Trigger a sync manually (for pull-to-refresh). Pass force=true to bypass cooldown and min interval */
+  sync: (options?: SyncActivitiesOptions, force?: boolean) => Promise<SyncActivitiesResponse | undefined>;
   /** Whether a sync is currently in progress */
   isSyncing: boolean;
   /** Last sync result */
@@ -154,10 +154,10 @@ export function useSyncActivities(
     [userId, canSync, syncMutation],
   );
 
-  // Manual sync for pull-to-refresh (respects min interval throttle)
+  // Manual sync for pull-to-refresh (respects min interval throttle by default)
   const sync = useCallback(
-    async (syncOptions?: SyncActivitiesOptions) => {
-      return smartSync(syncOptions, false);
+    async (syncOptions?: SyncActivitiesOptions, force = false) => {
+      return smartSync(syncOptions, force);
     },
     [smartSync],
   );

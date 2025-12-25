@@ -67,7 +67,7 @@ const DepositDirectlyTokens = () => {
       setDirectDepositSession({ selectedToken: token.symbol });
 
       // Create direct deposit session
-      const session = await createDirectDepositSession(chainId);
+      const session = await createDirectDepositSession(chainId, token.symbol);
 
       // Track session creation
       track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
