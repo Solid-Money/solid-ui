@@ -107,10 +107,7 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
               {data.title}
             </Text>
             {data.subtitle && (
-              <Text
-                style={{ fontSize: subtitleSize }}
-                className="text-white/70 text-center mt-2"
-              >
+              <Text style={{ fontSize: subtitleSize }} className="text-white/70 text-center mt-2">
                 {data.subtitle}
               </Text>
             )}
