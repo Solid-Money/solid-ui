@@ -41,8 +41,8 @@ export default function Onboarding() {
 
   // Responsive layout for small screens (iPhone SE)
   const isSmallScreen = screenHeight < 700;
-  const contentFlex = isSmallScreen ? 0.6 : 0.7;
-  const buttonsFlex = isSmallScreen ? 0.4 : 0.3;
+  // Fixed button area height - content area uses flex: 1 to fill remaining space
+  const buttonAreaHeight = isSmallScreen ? 200 : 240;
 
   // Track screen width as shared value for use in worklets
   const widthSV = useSharedValue(screenWidth);
@@ -91,8 +91,8 @@ export default function Onboarding() {
         <AnimatedGradientBackground scrollX={scrollX}>
           <SafeAreaView className="flex-1">
             <View className="flex-1">
-              {/* Top section - Animation and Title (responsive) */}
-              <View style={{ flex: contentFlex }}>
+              {/* Top section - Animation and Title (fills remaining space) */}
+              <View className="flex-1 justify-end">
                 <Animated.ScrollView
                   horizontal
                   pagingEnabled
@@ -108,9 +108,9 @@ export default function Onboarding() {
                 </Animated.ScrollView>
               </View>
 
-              {/* Bottom section - Dots and Buttons (responsive) */}
+              {/* Bottom section - Dots and Buttons (fixed height) */}
               <View
-                style={{ flex: buttonsFlex }}
+                style={{ height: buttonAreaHeight }}
                 className={`justify-between px-6 ${isSmallScreen ? 'pb-4' : 'pb-8'}`}
               >
                 {/* Pagination dots */}
@@ -162,7 +162,7 @@ export default function Onboarding() {
                   </Button>
 
                   {/* Dev-only Dummy Login */}
-                  {__DEV__ && (
+                  {/* {__DEV__ && (
                     <Button
                       variant="ghost"
                       className={`bg-red-500/20 border border-red-500/50 rounded-xl ${isSmallScreen ? 'h-8 mt-1' : 'h-10 mt-2'}`}
@@ -174,7 +174,7 @@ export default function Onboarding() {
                         🛠 Dev: Skip Auth
                       </Text>
                     </Button>
-                  )}
+                  )} */}
                 </View>
               </View>
             </View>
