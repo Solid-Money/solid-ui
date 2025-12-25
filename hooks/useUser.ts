@@ -8,8 +8,7 @@ import {
   login,
   signUp,
   updateSafeAddress,
-  updateUserCredentialId,
-  usernameExists,
+  usernameExists
 } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -21,7 +20,6 @@ import { Status, User } from '@/lib/types';
 import {
   getNonce,
   isHTTPError,
-  parseStampHeaderValueCredentialId,
   setGlobalLogoutHandler,
   withRefreshToken
 } from '@/lib/utils';
