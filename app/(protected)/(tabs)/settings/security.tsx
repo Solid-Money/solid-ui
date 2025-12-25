@@ -1,16 +1,18 @@
 import { Turnkey } from '@turnkey/sdk-browser';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, Text, View } from 'react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SecurityEmailModal } from '@/components/SecurityEmailModal';
+import { SecurityTotpModal } from '@/components/SecurityTotpModal';
 import { SettingsCard } from '@/components/Settings';
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { getTotpStatus } from '@/lib/api';
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
@@ -20,6 +22,7 @@ import { base64urlToUint8Array, cn } from '@/lib/utils';
 const SecurityEmailIcon = require('@/assets/images/security_email.png');
 const SecurityUnlockIcon = require('@/assets/images/security_unlock.png');
 const SecurityKeyIcon = require('@/assets/images/security_key.png');
+const SecurityTotpIcon = require('@/assets/images/security_totp.png');
 
 export default function Security() {
   const { user } = useUser();
@@ -27,6 +30,9 @@ export default function Security() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showTotpModal, setShowTotpModal] = useState(false);
+  const [isTotpVerified, setIsTotpVerified] = useState<boolean | null>(null);
+  const [isLoadingTotpStatus, setIsLoadingTotpStatus] = useState(true);
 
   const handleUnlock = async () => {
     setIsUnlocking(true);
@@ -77,6 +83,34 @@ export default function Security() {
   const handleEmailSuccess = () => {
     setShowEmailModal(false);
   };
+
+  const handleAddTotp = () => {
+    setShowTotpModal(true);
+  };
+
+  const handleTotpSuccess = () => {
+    setShowTotpModal(false);
+    // Refresh TOTP status after successful setup
+    fetchTotpStatus();
+  };
+
+  const fetchTotpStatus = async () => {
+    setIsLoadingTotpStatus(true);
+    try {
+      const status = await getTotpStatus();
+      setIsTotpVerified(status.verified);
+    } catch (error) {
+      console.error('Failed to fetch TOTP status:', error);
+      // If TOTP is not set up, API might return 404, which is fine
+      setIsTotpVerified(false);
+    } finally {
+      setIsLoadingTotpStatus(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTotpStatus();
+  }, []);
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
@@ -167,6 +201,45 @@ export default function Security() {
               }
             />
           </View>
+
+          {/* Totp Section */}
+          <Text className="text-white text-base font-bold mt-9 mb-2">
+            Two-factor authentication (2FA)
+          </Text>
+          <Text className="text-[#ACACAC] text-base font-medium mb-4">
+            Two-factor authentication adds an additional layer of security to your account.
+          </Text>
+          <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
+            <SettingsCard
+              title={
+                isLoadingTotpStatus
+                  ? 'Loading...'
+                  : isTotpVerified
+                    ? 'Authenticator app registered'
+                    : 'No authenticator app registered'
+              }
+              description={isTotpVerified ? 'Active' : undefined}
+              descriptionStyle="text-[#94F27F]"
+              descriptionContainerStyle="bg-[#94F27F]/15 rounded-full px-2 py-0.5 mt-1"
+              icon={<Image source={SecurityTotpIcon} style={{ width: 50, height: 50 }} />}
+              isDesktop={isDesktop}
+              hideIconBackground
+              titleStyle="font-medium"
+              customAction={
+                isUnlocked ? (
+                  isLoadingTotpStatus ? (
+                    <ActivityIndicator color="#ACACAC" size="small" />
+                  ) : (
+                    !isTotpVerified && (
+                      <Pressable onPress={handleAddTotp} className="active:opacity-70">
+                        <Text className="text-[#ACACAC] text-base">Add</Text>
+                      </Pressable>
+                    )
+                  )
+                ) : null
+              }
+            />
+          </View>
         </View>
       </PageLayout>
 
@@ -175,6 +248,13 @@ export default function Security() {
         open={showEmailModal}
         onOpenChange={setShowEmailModal}
         onSuccess={handleEmailSuccess}
+      />
+
+      {/* TOTP Modal */}
+      <SecurityTotpModal
+        open={showTotpModal}
+        onOpenChange={setShowTotpModal}
+        onSuccess={handleTotpSuccess}
       />
     </>
   );

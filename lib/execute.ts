@@ -7,11 +7,13 @@ import { entryPoint07Address } from 'viem/account-abstraction';
 
 export const USER_CANCELLED_TRANSACTION = Symbol('USER_CANCELLED_TRANSACTION');
 
-export type TransactionResult = {
-  transaction: any;
-  userOpHash: `0x${string}`;
-  transactionHash: string;
-} | typeof USER_CANCELLED_TRANSACTION;
+export type TransactionResult =
+  | {
+      transaction: any;
+      userOpHash: `0x${string}`;
+      transactionHash: string;
+    }
+  | typeof USER_CANCELLED_TRANSACTION;
 
 const isWebAuthnUserCancelledError = (error: any): boolean => {
   const message = error?.message?.toLowerCase() || '';
@@ -40,7 +42,7 @@ export const getTransaction = (result: TransactionResult): TransactionResult => 
   return result && typeof result === 'object' && 'transaction' in result
     ? result.transaction
     : result;
-}
+};
 
 export const executeTransactions = async (
   smartAccountClient: SmartAccountClient,
@@ -48,6 +50,7 @@ export const executeTransactions = async (
   errorMessage: string,
   chain: Chain,
   onUserOpHash?: (userOpHash: `0x${string}`) => void,
+  onBeforeBroadcast?: () => Promise<void>,
 ): Promise<TransactionResult> => {
   let userOpHash: `0x${string}` | undefined;
 
@@ -68,7 +71,12 @@ export const executeTransactions = async (
       },
     });
 
-    // Get userOpHash immediately
+    // If TOTP verification is required, do it before sending the transaction
+    if (onBeforeBroadcast) {
+      await onBeforeBroadcast();
+    }
+
+    // Get userOpHash immediately (this triggers passkey signing)
     userOpHash = await smartAccountClient.sendUserOperation({
       calls: transactions,
       nonce,
