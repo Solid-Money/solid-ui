@@ -23,8 +23,8 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
   const isSmallScreen = screenHeight < SMALL_SCREEN_HEIGHT;
   const illustrationSize = isSmallScreen ? 260 : 350;
   const lottieSize = isSmallScreen ? 220 : 280;
-  const lottieScale = isSmallScreen ? 1.15 : 1.3;
-  const titleSize = isSmallScreen ? 24 : 28;
+  const lottieScale = isSmallScreen ? 1.15 : 1.5;
+  const titleSize = isSmallScreen ? 24 : 26;
   const subtitleSize = isSmallScreen ? 16 : 20;
   const textMarginTop = isSmallScreen ? 12 : 24;
 
