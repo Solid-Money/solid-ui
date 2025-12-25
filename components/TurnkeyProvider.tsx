@@ -4,7 +4,6 @@ import {
 } from '@/lib/config';
 import {
   type TurnkeyProviderConfig,
-  StamperType,
   TurnkeyProvider as TurnkeyProviderKit,
 } from '@turnkey/react-native-wallet-kit';
 import { Platform } from 'react-native';
@@ -23,7 +22,6 @@ const TURNKEY_CONFIG: TurnkeyProviderConfig = {
     // We manage sessions via our backend, so disable SDK session management
     autoRefreshSession: false,
   },
-  defaultStamperType: StamperType.Passkey,
 };
 
 export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => (

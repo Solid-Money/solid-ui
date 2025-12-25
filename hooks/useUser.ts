@@ -1,4 +1,3 @@
-import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { ERRORS } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -13,20 +12,18 @@ import {
   usernameExists,
 } from '@/lib/api';
 import {
-  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-  USER,
+  USER
 } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import {
-  base64urlToUint8Array,
   getNonce,
   isHTTPError,
   parseStampHeaderValueCredentialId,
   setGlobalLogoutHandler,
-  withRefreshToken,
+  withRefreshToken
 } from '@/lib/utils';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { publicClient } from '@/lib/wagmi';
@@ -73,10 +70,7 @@ const useUser = (): UseUserReturn => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const intercom = useIntercom();
-  // Get Turnkey client from the new SDK
-  // httpClient is the base client, we'll pass StamperType.Passkey to operations that need passkey auth
-  // loginWithPasskey establishes a session with ephemeral API keys for signing operations
-  const { httpClient, createPasskey, logout, loginWithPasskey } = useTurnkey();
+  const { httpClient, createHttpClient, createPasskey, logout } = useTurnkey();
 
   const {
     users,
@@ -104,11 +98,14 @@ const useUser = (): UseUserReturn => {
       subOrganization: string,
       signWith: string,
     ) => {
-      if (!httpClient) {
-        throw new Error('Turnkey client not initialized');
-      }
+      // Create a passkey-specific HTTP client that always requires passkey signing
+      // This ensures every transaction requires explicit user confirmation via passkey
+      const passkeyClient = createHttpClient({
+        defaultStamperType: StamperType.Passkey,
+      });
+
       const turnkeyAccount = await createAccount({
-        client: httpClient,
+        client: passkeyClient,
         organizationId: subOrganization,
         signWith: signWith,
       });
@@ -174,7 +171,7 @@ const useUser = (): UseUserReturn => {
         bundlerTransport: http(USER.pimlicoUrl(chain.id)),
       });
     },
-    [httpClient, user?.userId, user?.safeAddress],
+    [createHttpClient, user?.userId, user?.safeAddress],
   );
 
   const checkBalance = useCallback(
@@ -299,13 +296,6 @@ const useUser = (): UseUserReturn => {
           referralCode,
           credentialId,
         );
-
-        // After signup, establish a Turnkey session with ephemeral API keys.
-        // This is required for signing operations (like EIP-712 typed data signing for Safe smart accounts).
-        // We use the new sub-organization that was just created by the backend.
-        await loginWithPasskey({
-          organizationId: user.subOrganizationId,
-        });
 
         const smartAccountClient = await safeAA(
           mainnet,
@@ -433,32 +423,28 @@ const useUser = (): UseUserReturn => {
         console.error(error);
       }
     },
-    [createPasskey, loginWithPasskey, checkBalance, safeAA, setSignupInfo, storeUser, router],
+    [createPasskey, checkBalance, safeAA, setSignupInfo, storeUser, router],
   );
 
   const handleLogin = useCallback(async () => {
     try {
       setLoginInfo({ status: Status.PENDING });
+
+      // Ensure httpClient is initialized
       if (!httpClient) {
-        throw new Error('Turnkey client not initialized');
+        console.error('[handleLogin] Turnkey client not initialized');
+        throw new Error('Turnkey client is not initialized. Please wait and try again.');
       }
 
-      // Step 1: Use passkey stamping to identify the user and get their sub-organization
-      // This prompts for passkey authentication
+      // Get a signed whoami request to identify the user's sub-organization
+      // Uses passkey stamping - prompts user for passkey confirmation
       const stamp = await httpClient.stampGetWhoami(
         { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
         StamperType.Passkey,
       );
 
+      // Step 3: Authenticate with our backend using the signed request
       const user = await login(stamp);
-
-      // Step 3: Establish a Turnkey session for the USER'S SUB-ORGANIZATION (not root org!)
-      // This is critical - the wallet lives in the sub-org, so the session must be for that org.
-      // This prompts for passkey again, but it's necessary for signing operations.
-      const { credentialId } = await loginWithPasskey({
-        organizationId: user.subOrganizationId,
-      });
-
 
       const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
 
@@ -490,15 +476,6 @@ const useUser = (): UseUserReturn => {
         markSafeAddressSynced(user._id);
       }
 
-      // For backward compatibility: if user doesn't have credentialId stored, update it
-      if (credentialId && !user.credentialId) {
-        try {
-          await withRefreshToken(() => updateUserCredentialId(credentialId));
-        } catch (error) {
-          console.error('Failed to update credentialId for existing user:', error);
-        }
-      }
-
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
         walletAddress: user.walletAddress,
@@ -511,7 +488,7 @@ const useUser = (): UseUserReturn => {
         email: user.email,
         referralCode: user.referralCode,
         turnkeyUserId: user.turnkeyUserId,
-        credentialId: credentialId || user.credentialId,
+        credentialId: user.credentialId,
       };
       storeUser(selectedUser);
       await checkBalance(selectedUser);
@@ -596,7 +573,7 @@ const useUser = (): UseUserReturn => {
         setLoginInfo({ status: Status.IDLE, message: '' });
       }, 3000);
     }
-  }, [checkBalance, setLoginInfo, storeUser, router, safeAA, markSafeAddressSynced]);
+  }, [checkBalance, setLoginInfo, storeUser, router, safeAA, markSafeAddressSynced, httpClient, login]);
 
   const handleDummyLogin = useCallback(async () => {
     try {
@@ -672,48 +649,15 @@ const useUser = (): UseUserReturn => {
       // We reauth if web to get a new session cookie
       // and bind it to the selected user
       const reauthIfWeb = async () => {
-        if (Platform.OS === 'web') {
+        if (Platform.OS === 'web' && httpClient) {
           try {
-            //@ts-ignore
-            const { Turnkey } = await import('@turnkey/sdk-browser');
-            const turnkey = new Turnkey({
-              apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-              defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-              rpId: getRuntimeRpId(),
-            });
-
-            // Prepare allowCredentials if we have a credential ID for this user
-            const allowCredentials = selectedUser?.credentialId
-              ? [
-                  {
-                    id: base64urlToUint8Array(selectedUser.credentialId) as BufferSource,
-                    type: 'public-key' as const,
-                  },
-                ]
-              : undefined;
-
-            const passkeyClient = turnkey.passkeyClient(
-              allowCredentials ? { allowCredentials } : undefined,
+            // Use passkey stamping for re-authentication
+            const result = await httpClient.stampGetWhoami(
+              { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
+              StamperType.Passkey,
             );
 
-            const result = await passkeyClient.stampGetWhoami({
-              organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-            });
-            let credentialId: string | undefined;
-            if (result?.stamp?.stampHeaderValue) {
-              credentialId = parseStampHeaderValueCredentialId(result.stamp.stampHeaderValue);
-            }
             const authedUser = await login(result);
-
-            // For backward compatibility: if user doesn't have credentialId stored, update it
-            if (credentialId && !authedUser.credentialId) {
-              try {
-                await withRefreshToken(() => updateUserCredentialId(credentialId));
-                await updateUser({ ...selectedUser!, credentialId });
-              } catch (error) {
-                console.error('Failed to update credentialId for existing user:', error);
-              }
-            }
 
             if (authedUser?.username && authedUser.username !== username) {
               selectUser(authedUser.username);
@@ -771,22 +715,7 @@ const useUser = (): UseUserReturn => {
               StamperType.Passkey,
             );
 
-            let credentialId: string | undefined;
-            if (result?.stamp?.stampHeaderValue) {
-              credentialId = parseStampHeaderValueCredentialId(result.stamp.stampHeaderValue);
-            }
-
             const authedUser = await login(result);
-
-            // For backward compatibility: if user doesn't have credentialId stored, update it
-            if (credentialId && !authedUser.credentialId) {
-              try {
-                await withRefreshToken(() => updateUserCredentialId(credentialId));
-                await updateUser({ ...selectedUser!, credentialId });
-              } catch (error) {
-                console.error('Failed to update credentialId for existing user:', error);
-              }
-            }
 
             // If returned user is different, select by userId
             if (authedUser?.userId && authedUser.userId !== userId) {

@@ -1,7 +1,7 @@
 import { withRefreshToken } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Alert, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -81,9 +81,7 @@ export const useEmailManagement = (
   const [emailValue, setEmailValue] = useState('');
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [isSkip, setIsSkip] = useState(false);
-
-  // Use httpClient directly to bypass proxyGetAccount check which requires Auth Proxy
-  const { httpClient } = useTurnkey();
+  const { createHttpClient } = useTurnkey();
 
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
@@ -122,19 +120,17 @@ export const useEmailManagement = (
     }
   }, [step, hasInitializedOtp, otpForm]);
 
-  const handleUpdateUserEmail = async (email: string, verificationToken: string) => {
-    // Use httpClient.updateUserEmail directly to bypass proxyGetAccount check
-    // which requires Auth Proxy (we don't use Auth Proxy, only passkeys)
-    await httpClient?.updateUserEmail(
-      {
-        userId: user?.turnkeyUserId as string,
-        userEmail: email,
-        organizationId: user?.suborgId,
-        verificationToken,
-      },
-      StamperType.Passkey,
-    );
-  };
+  const handleUpdateUserEmail = useCallback(async (email: string, verificationToken: string) => {
+    const passkeyClient = createHttpClient({
+      defaultStamperType: StamperType.Passkey,
+    });
+    await passkeyClient.updateUserEmail({
+      userId: user?.turnkeyUserId as string,
+      userEmail: email,
+      organizationId: user?.suborgId,
+      verificationToken,
+    });
+  }, [createHttpClient, user?.turnkeyUserId, user?.suborgId]);
 
   const handleSendOtp = async (data: EmailFormData) => {
     setIsLoading(true);

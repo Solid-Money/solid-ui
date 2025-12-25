@@ -26,9 +26,7 @@ export default function SignupPasskey() {
   const { isDesktop } = useDimension();
   const { email, verificationToken, setStep, setPasskeyData, setError } = useSignupFlowStore();
   const [isLoading, setIsLoading] = useState(false);
-  // Get Turnkey client from the new SDK
-  // httpClient is the base client, we'll pass StamperType.Passkey to operations that need passkey auth
-  const { httpClient, createPasskey, logout } = useTurnkey();
+  const { createPasskey } = useTurnkey();
 
   useEffect(() => {
     // Redirect if no verification token (user hasn't completed OTP)
