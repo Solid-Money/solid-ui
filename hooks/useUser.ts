@@ -570,6 +570,9 @@ const useUser = (): UseUserReturn => {
       setTimeout(() => {
         setLoginInfo({ status: Status.IDLE, message: '' });
       }, 3000);
+
+      // Re-throw so callers can handle (e.g., redirect to signup)
+      throw error;
     }
   }, [checkBalance, setLoginInfo, storeUser, router, safeAA, markSafeAddressSynced, httpClient, login]);
 
