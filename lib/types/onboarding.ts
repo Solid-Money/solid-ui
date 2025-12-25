@@ -7,17 +7,14 @@ export interface OnboardingPageData {
 }
 
 // Gradient colors for each slide (start opacity, end opacity)
+export const GRADIENT_COLORS: [string, string][] = [
+  ['rgba(122, 84, 234, 0.30)', 'rgba(122, 84, 234, 0.09)'], // Purple - rocket
+  ['rgba(148, 242, 127, 0.20)', 'rgba(148, 242, 127, 0.03)'], // Green - cards
+  ['rgba(255, 209, 81, 0.30)', 'rgba(255, 209, 81, 0.09)'], // Yellow/Gold - vault
+];
+
 export const getGradientColors = (index: number): [string, string] => {
-  switch (index) {
-    case 0: // Purple - rocket
-      return ['rgba(122, 84, 234, 0.30)', 'rgba(122, 84, 234, 0.09)'];
-    case 1: // Green - cards
-      return ['rgba(148, 242, 127, 0.20)', 'rgba(148, 242, 127, 0.03)'];
-    case 2: // Yellow/Gold - vault
-      return ['rgba(255, 209, 81, 0.30)', 'rgba(255, 209, 81, 0.09)'];
-    default:
-      return ['rgba(122, 84, 234, 0.30)', 'rgba(122, 84, 234, 0.09)'];
-  }
+  return GRADIENT_COLORS[index] ?? GRADIENT_COLORS[0];
 };
 
 // Background images for each slide
