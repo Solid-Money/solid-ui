@@ -123,7 +123,7 @@ const ResponsiveModal = ({
         className={cn(
           'p-4 md:p-8 md:max-w-md',
           contentClassName,
-          !isScreenMedium ? 'w-screen max-w-full mt-8 justify-start' : '',
+          !isScreenMedium ? 'w-screen max-w-full mt-[5vh] justify-start' : '',
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
         showCloseButton={false}
@@ -158,7 +158,7 @@ const ResponsiveModal = ({
                     entering={enteringAnimation}
                     exiting={exitingAnimation}
                   >
-                    <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
+                    <DialogTitle className="text-xl font-semibold">{title}</DialogTitle>
                   </Animated.View>
                 )}
                 {hasActionButton && (

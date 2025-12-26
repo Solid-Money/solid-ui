@@ -1,31 +1,53 @@
 export interface OnboardingPageData {
   id: string;
   title: string;
+  subtitle?: string;
   animation?: any;
-  image?: any; // Static image source for last page
   isLastPage?: boolean;
 }
+
+// Gradient colors for each slide (start opacity, end opacity)
+export const GRADIENT_COLORS: [string, string][] = [
+  ['rgba(122, 84, 234, 0.30)', 'rgba(122, 84, 234, 0.09)'], // Purple - rocket
+  ['rgba(148, 242, 127, 0.20)', 'rgba(148, 242, 127, 0.03)'], // Green - cards
+  ['rgba(255, 209, 81, 0.30)', 'rgba(255, 209, 81, 0.09)'], // Yellow/Gold - vault
+];
+
+export const getGradientColors = (index: number): [string, string] => {
+  return GRADIENT_COLORS[index] ?? GRADIENT_COLORS[0];
+};
+
+// Background images for each slide
+export const getBackgroundImage = (index: number) => {
+  switch (index) {
+    case 0:
+      return require('@/assets/images/purple_onboarding_bg.png');
+    case 1:
+      return require('@/assets/images/green_onboarding_bg.png');
+    case 2:
+      return require('@/assets/images/yellow_onboarding_bg.png');
+    default:
+      return null;
+  }
+};
 
 export const ONBOARDING_DATA: OnboardingPageData[] = [
   {
     id: '1',
-    title: 'Earn 3x the rate of your bank account',
+    title: 'Grow your savings',
+    subtitle: 'Earn 10%+ yield on\nyour stablecoins',
     animation: require('@/assets/animations/rocket.json'),
   },
   {
     id: '2',
-    title: 'We cover you with Biometric login & Bank-grade security',
-    animation: require('@/assets/animations/vault.json'),
+    title: 'Spend while you earn',
+    subtitle: 'Your funds instantly spendable at over 200M merchants worldwide',
+    animation: require('@/assets/animations/card.json'),
   },
   {
     id: '3',
-    title: 'Fast. Free. Simple.',
-    animation: require('@/assets/animations/lightning.json'),
-  },
-  {
-    id: '4',
-    title: '',
-    image: require('@/assets/images/onboarding_solid.png'),
-    isLastPage: true,
+    title: 'Your money, made simple',
+    subtitle: 'No gas. No seed phrases.\nNo bridging. Non-custodial.',
+    animation: require('@/assets/animations/vault.json'),
   },
 ];

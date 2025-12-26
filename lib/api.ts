@@ -19,6 +19,7 @@ import {
 import {
   ActivityEvent,
   ActivityEvents,
+  AddressBookEntry,
   APYs,
   BlockscoutTransactions,
   BridgeCustomerEndorsement,
@@ -1209,6 +1210,105 @@ export const usernameExists = async (username: string) => {
   return response;
 };
 
+// ============================================
+// Email-First Signup Flow API Functions
+// ============================================
+
+/**
+ * Step 1: Initiate OTP for signup (public - no auth required)
+ * Checks if email is already registered before sending OTP
+ */
+export const initSignupOtp = async (email: string) => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-signup-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ email }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data as { otpId: string };
+};
+
+/**
+ * Step 2: Verify OTP for signup (public - no auth required)
+ * Returns verification token to use in emailSignUp
+ */
+export const verifySignupOtp = async (otpId: string, otpCode: string, email: string) => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-signup-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ otpId, otpCode, email }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data as { verificationToken: string; email: string };
+};
+
+/**
+ * Step 3: Create account with email and passkey (public - no auth required)
+ * Creates sub-org with passkey authenticator and wallet in a single step
+ */
+export const emailSignUp = async (
+  email: string,
+  verificationToken: string,
+  challenge: string,
+  attestation: any,
+  credentialId?: string,
+  referralCode?: string,
+  marketingConsent?: boolean,
+) => {
+  const body: Record<string, any> = {
+    email,
+    verificationToken,
+    challenge,
+    attestation,
+    marketingConsent,
+  };
+  if (credentialId) body.credentialId = credentialId;
+  if (referralCode) body.referralCode = referralCode;
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email-signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+    },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/**
+ * Check if email is already registered (public)
+ * Returns true if email exists, false otherwise
+ */
+export const emailExists = async (email: string): Promise<boolean> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email/${encodeURIComponent(email)}`,
+    {
+      method: 'HEAD',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+  return response.status === 200;
+};
+
 export const createActivityEvent = async (
   event: ActivityEvent,
 ): Promise<{ transactionHash: string }> => {
@@ -1565,6 +1665,9 @@ export const fetchHistoricalAPY = async (days: string = '30') => {
   return response.data;
 };
 
+/**
+ * @deprecated Use initRecoveryOtp instead (new OTP-based flow)
+ */
 export const startPasskeyRecovery = async (username: string, targetPublicKey: string) => {
   const response = await axios.post(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-user-email-recovery`,
@@ -1576,6 +1679,53 @@ export const startPasskeyRecovery = async (username: string, targetPublicKey: st
   return response.data;
 };
 
+/**
+ * Step 1: Initiate OTP for passkey recovery (public - no auth required)
+ * Sends OTP to user's registered email
+ */
+export const initRecoveryOtp = async (email: string): Promise<{ otpId: string }> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-recovery-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ email }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data;
+};
+
+/**
+ * Step 2: Verify OTP for passkey recovery (public - no auth required)
+ * Backend verifies OTP and calls otpLogin, returns credentialBundle for SDK session
+ */
+export const verifyRecoveryOtp = async (
+  otpId: string,
+  otpCode: string,
+  email: string,
+  publicKey: string,
+): Promise<{ credentialBundle: string; userId: string; organizationId: string }> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-recovery-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ otpId, otpCode, email, publicKey }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data;
+};
+
 export const fetchTokenList = async (params: SwapTokenRequest) => {
   const response = await axios.get<SwapTokenResponse[]>(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/swap-tokens`,
@@ -1584,6 +1734,39 @@ export const fetchTokenList = async (params: SwapTokenRequest) => {
     },
   );
   return response.data;
+};
+
+export const fetchAddressBook = async (): Promise<AddressBookEntry[]> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/address-book`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const addToAddressBook = async (data: AddressBookEntry): Promise<AddressBookEntry> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/address-book`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) throw response;
+  return response.json();
 };
 
 export const getDepositBonusConfig = async (): Promise<DepositBonusConfig> => {

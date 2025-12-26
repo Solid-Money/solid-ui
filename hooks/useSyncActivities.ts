@@ -141,17 +141,14 @@ export function useSyncActivities(
 
       // Check if we can sync (respects min interval)
       if (!force && !canSync(userId)) {
-        console.log('[Sync] Skipping - within minimum interval');
         return undefined;
       }
 
       // Check if already syncing
       if (syncMutation.isPending) {
-        console.log('[Sync] Skipping - already in progress');
         return undefined;
       }
 
-      console.log('[Sync] Starting sync...');
       return syncMutation.mutateAsync(syncOptions);
     },
     [userId, canSync, syncMutation],
@@ -176,16 +173,13 @@ export function useSyncActivities(
     // Sync immediately for new users or stale data
     if (neverSynced || stale) {
       hasInitialSynced.current = true;
-      console.log('[Sync] Initial sync -', neverSynced ? 'new user' : 'stale data');
       smartSync(undefined, true);
     } else if (!isWithinCooldown(userId)) {
       // Background sync if not within cooldown
       hasInitialSynced.current = true;
-      console.log('[Sync] Background sync on mount');
       smartSync();
     } else {
       hasInitialSynced.current = true;
-      console.log('[Sync] Skipping initial sync - within cooldown');
     }
   }, [userId, syncOnMount, getLastSync, isStale, isWithinCooldown, smartSync]);
 
@@ -196,13 +190,9 @@ export function useSyncActivities(
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       // App is becoming active from background/inactive
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        console.log('[Sync] App became active');
-
         if (!isWithinCooldown(userId)) {
-          console.log('[Sync] Triggering background sync on app active');
           smartSync();
         } else {
-          console.log('[Sync] Skipping sync on app active - within cooldown');
         }
       }
       appState.current = nextAppState;

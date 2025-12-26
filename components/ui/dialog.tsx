@@ -40,7 +40,7 @@ const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrim
     return (
       <DialogPrimitive.Overlay
         className={cn(
-          'web:backdrop-blur-[4px] bg-black/40 flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
+          'web:backdrop-blur-[4px] bg-black/80 flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
           className,
         )}
         onPointerDown={handlePointerDown}
@@ -157,7 +157,7 @@ const DialogContent = React.forwardRef<
           ref={ref}
           className={cn(
             'max-w-lg gap-4 web:cursor-default bg-popup p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
-            !isScreenMedium && shouldAlignTop && 'min-h-[90vh]',
+            !isScreenMedium && shouldAlignTop && 'min-h-[95vh] rounded-b-none',
             className,
           )}
           onCloseAutoFocus={onCloseAutoFocus}

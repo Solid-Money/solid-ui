@@ -117,6 +117,11 @@ export const TRACKING_EVENTS = {
   EMAIL_VERIFICATION_FAILED: 'email_verification_failed',
   EMAIL_SKIPPED: 'email_skipped',
 
+  // Passkey Events
+  PASSKEY_ADDED: 'passkey_added',
+  PASSKEY_SKIPPED: 'passkey_skipped',
+  PASSKEY_CREATION_FAILED: 'passkey_creation_failed',
+
   // Quest Wallet Events
   QUEST_WALLET_PAGE_VIEWED: 'quest_wallet_page_viewed',
   QUEST_WALLET_ADDRESS_SUBMITTED: 'quest_wallet_address_submitted',

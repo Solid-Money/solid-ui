@@ -66,8 +66,9 @@ const TokenCard: React.FC<TokenCardProps> = ({
   const balanceString = useMemo(() => {
     if (isBalanceLoading) return '...';
     if (!balance) return '0.00';
-    return formatNumber(balanceValue);
-  }, [balance, isBalanceLoading, balanceValue]);
+    const formattedValue = formatNumber(balanceValue);
+    return `${formattedValue} ${currency?.symbol}`;
+  }, [balance, isBalanceLoading, balanceValue, currency?.symbol]);
 
   const handleInput = useCallback(
     (inputValue: string) => {
@@ -87,16 +88,36 @@ const TokenCard: React.FC<TokenCardProps> = ({
   );
 
   return (
-    <View className="bg-card flex flex-col w-full gap-2 transition-all duration-300 ease-out p-4 rounded-xl">
+    <View className="flex flex-col w-full gap-3">
       {title && (
         <View className="flex-row items-center justify-between gap-2 px-1">
-          <Text className="text-sm text-muted-foreground font-medium tracking-wide">{title}</Text>
+          <Text className="text-base text-white/70 font-medium tracking-wide">{title}</Text>
+          {currency && account && (
+            <View className="flex-row items-center gap-2">
+              {showBalance && (
+                <View className="flex-row items-center gap-1.5">
+                  <Wallet
+                    size={16}
+                    color={Platform.OS === 'web' ? undefined : 'rgb(161, 161, 161)'}
+                    className="text-muted-foreground"
+                  />
+                  <Text className="text-white/50 text-left text-base font-medium">
+                    {isBalanceLoading ? '...' : balanceString}
+                  </Text>
+                </View>
+              )}
+              {!isBalanceLoading && balanceValue > 0 && showMaxButton && handleMaxValue && (
+                <Max onPress={handleMaxValue} />
+              )}
+            </View>
+          )}
         </View>
       )}
-      <View className="flex-row items-center justify-between w-full transition-all duration-300">
-        <View className="flex-1 mr-4">
+
+      <View className="bg-card flex flex-row w-full items-center transition-all duration-300 ease-out px-4 py-3 rounded-2xl">
+        <View className="flex-1 flex-col justify-center mr-4">
           {disabled ? (
-            <Text className="text-4xl font-semibold text-foreground">
+            <Text className="text-3xl font-semibold text-foreground">
               {isLoading ? '...' : value || '0.0'}
             </Text>
           ) : (
@@ -105,7 +126,7 @@ const TokenCard: React.FC<TokenCardProps> = ({
               onChangeText={handleInput}
               placeholder="0.0"
               keyboardType="numeric"
-              className="text-4xl font-semibold text-foreground web:focus:outline-none"
+              className="text-3xl font-semibold text-foreground web:focus:outline-none"
               style={{
                 fontWeight: '600',
                 padding: 0,
@@ -114,6 +135,16 @@ const TokenCard: React.FC<TokenCardProps> = ({
               placeholderTextColor="rgba(255, 255, 255, 0.4)"
             />
           )}
+
+          <View className="flex-row items-center">
+            {fiatValue && fiatValue > 0 ? (
+              <Text className="text-base text-muted-foreground">${fiatValue.toFixed(2)}</Text>
+            ) : value && Number(value) > 0 ? (
+              <Text className="text-base text-muted-foreground opacity-60">~$0.00</Text>
+            ) : (
+              <Text className="text-base text-muted-foreground opacity-60">$0.00</Text>
+            )}
+          </View>
         </View>
 
         <SwapTokenSelectorModal
@@ -124,35 +155,6 @@ const TokenCard: React.FC<TokenCardProps> = ({
           otherCurrency={otherCurrency}
           showNativeToken={showNativeToken}
         />
-      </View>
-      <View className="flex-row items-center justify-between">
-        {fiatValue && fiatValue > 0 ? (
-          <Text className="text-sm text-muted-foreground mt-1">${fiatValue.toFixed(2)}</Text>
-        ) : value && Number(value) > 0 ? (
-          <Text className="text-sm text-muted-foreground mt-1 opacity-60">~$0.00</Text>
-        ) : (
-          <Text className="text-sm text-muted-foreground mt-1 opacity-60">$0.00</Text>
-        )}
-
-        {currency && account && (
-          <View className="flex-row items-center gap-2">
-            {showBalance && (
-              <View className="flex-row items-center gap-1.5">
-                <Wallet
-                  size={16}
-                  color={Platform.OS === 'web' ? undefined : 'rgb(161, 161, 161)'}
-                  className="text-muted-foreground"
-                />
-                <Text className="text-muted-foreground text-left">
-                  {isBalanceLoading ? '...' : balanceString}
-                </Text>
-              </View>
-            )}
-            {!isBalanceLoading && balanceValue > 0 && showMaxButton && handleMaxValue && (
-              <Max onPress={handleMaxValue} />
-            )}
-          </View>
-        )}
       </View>
     </View>
   );

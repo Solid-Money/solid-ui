@@ -15,6 +15,7 @@ interface UserState {
   storeUser: (user: User) => void;
   updateUser: (user: User) => void;
   selectUser: (username: string) => void;
+  selectUserById: (userId: string) => void;
   unselectUser: () => void;
   removeUsers: () => void;
   setSignupInfo: (info: StatusInfo) => void;
@@ -37,9 +38,12 @@ export const useUserStore = create<UserState>()(
           produce(state => {
             let isUserExists = false;
             state.users.forEach((prevUser: User) => {
-              if (prevUser.username === user.username) {
+              // Use userId for identification (backward compatible: also check username)
+              if (prevUser.userId === user.userId || prevUser.username === user.username) {
                 isUserExists = true;
                 prevUser.selected = true;
+                // Update existing user with new data
+                Object.assign(prevUser, user);
               } else {
                 prevUser.selected = false;
               }
@@ -56,18 +60,34 @@ export const useUserStore = create<UserState>()(
         set(
           produce(state => {
             state.users = state.users.map((prevUser: User) =>
-              prevUser.username === user.username ? user : prevUser,
+              // Use userId for identification (backward compatible: also check username)
+              prevUser.userId === user.userId || prevUser.username === user.username
+                ? user
+                : prevUser,
             );
           }),
         );
       },
 
+      // Legacy: select by username (for backward compatibility)
       selectUser: (username: string) => {
         set(
           produce(state => {
             state.users = state.users.map((user: User) => ({
               ...user,
               selected: user.username === username,
+            }));
+          }),
+        );
+      },
+
+      // New: select by userId (preferred method)
+      selectUserById: (userId: string) => {
+        set(
+          produce(state => {
+            state.users = state.users.map((user: User) => ({
+              ...user,
+              selected: user.userId === userId,
             }));
           }),
         );

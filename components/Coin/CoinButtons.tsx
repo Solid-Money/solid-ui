@@ -1,14 +1,14 @@
-import { useRouter } from 'expo-router';
 import { ArrowDownLeft, ArrowUp, Minus } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 import { Address } from 'viem';
 
 import CircleButton from '@/components/CircleButton';
+import SendModal from '@/components/Send/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
+import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
-import { path } from '@/constants/path';
 import { isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
 
 import HomeSend from '@/assets/images/home-send';
@@ -34,8 +34,6 @@ const Trigger = ({ icon, label, ...props }: TriggerProps) => {
 };
 
 const CoinButtons = ({ contractAddress }: CoinButtonsProps) => {
-  const router = useRouter();
-
   return (
     <View className="flex-row justify-between gap-8 items-center mx-auto">
       {isSoUSDFuse(contractAddress) ? (
@@ -51,20 +49,12 @@ const CoinButtons = ({ contractAddress }: CoinButtonsProps) => {
         )
       )}
 
-      <CircleButton
-        icon={HomeSend}
-        label="Send"
-        onPress={() => router.push(path.SEND)}
-        scale={0.9}
-        viewBox="0 0 25 24"
+      <SendModal
+        trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
       />
 
-      <CircleButton
-        icon={HomeSwap}
-        label="Swap"
-        onPress={() => router.push(path.SWAP)}
-        scale={1}
-        viewBox="0 0 29 28"
+      <SwapModal
+        trigger={<CircleButton icon={HomeSwap} label="Swap" scale={1} viewBox="0 0 29 28" />}
       />
     </View>
   );

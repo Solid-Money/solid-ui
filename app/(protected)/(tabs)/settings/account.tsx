@@ -10,7 +10,7 @@ import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { cn, eclipseAddress } from '@/lib/utils';
+import { cn, eclipseAddress, getUserDisplayName } from '@/lib/utils';
 import { Address } from 'viem';
 
 const AccountDetailsIcon = require('@/assets/images/settings_account_details.png');
@@ -133,17 +133,53 @@ export default function Account() {
       >
         {/* Top Content */}
         <View>
-          {/* User Name Section */}
-          <Text className="text-white text-base font-bold mb-4">User Name</Text>
-          <View className="bg-[#1c1c1c] rounded-xl overflow-hidden mb-6">
-            <SettingsCard
-              title={user?.username || 'Unknown'}
-              icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
-              isDesktop={isDesktop}
-              hideIconBackground
-              titleStyle="font-medium"
-            />
-          </View>
+          {/* Email Section - shown for all users who have email */}
+          {/* {user?.email && (
+            <>
+              <Text className="text-white text-base font-bold mb-4">Email</Text>
+              <View className="bg-[#1c1c1c] rounded-xl overflow-hidden mb-6">
+                <SettingsCard
+                  title={user.email}
+                  icon={<Mail color="#ffffff" size={22} />}
+                  isDesktop={isDesktop}
+                  hideIconBackground
+                  titleStyle="font-medium"
+                />
+              </View>
+            </>
+          )} */}
+
+          {/* User Name Section - shown for legacy users or users with custom username */}
+          {user?.username && !user.username.startsWith('user_') && (
+            <>
+              <Text className="text-white text-base font-bold mb-4">User Name</Text>
+              <View className="bg-[#1c1c1c] rounded-xl overflow-hidden mb-6">
+                <SettingsCard
+                  title={user.username}
+                  icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
+                  isDesktop={isDesktop}
+                  hideIconBackground
+                  titleStyle="font-medium"
+                />
+              </View>
+            </>
+          )}
+
+          {/* Fallback for users with neither email nor username (should not happen) */}
+          {!user?.email && (!user?.username || user.username.startsWith('user_')) && (
+            <>
+              <Text className="text-white text-base font-bold mb-4">Account</Text>
+              <View className="bg-[#1c1c1c] rounded-xl overflow-hidden mb-6">
+                <SettingsCard
+                  title={getUserDisplayName(user)}
+                  icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
+                  isDesktop={isDesktop}
+                  hideIconBackground
+                  titleStyle="font-medium"
+                />
+              </View>
+            </>
+          )}
 
           {/* Wallet Address Section */}
           <Text className="text-white text-base font-bold mt-2 mb-4">Wallet address</Text>

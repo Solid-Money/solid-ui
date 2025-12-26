@@ -222,9 +222,9 @@ export function useDerivedSwapInfo(): {
     !isExactIn ? parsedAmount : undefined,
   );
 
-  const currentTrade = useMemo(() =>
-    isExactIn ? bestTradeExactIn : bestTradeExactOut,
-    [isExactIn, bestTradeExactIn, bestTradeExactOut]
+  const currentTrade = useMemo(
+    () => (isExactIn ? bestTradeExactIn : bestTradeExactOut),
+    [isExactIn, bestTradeExactIn, bestTradeExactOut],
   );
 
   const slippage = useSwapSlippageTolerance().divide(100);
@@ -329,7 +329,7 @@ export function useDerivedSwapInfo(): {
     inputError = `Connect Wallet`;
   }
 
-  if (!parsedAmount) {
+  if (typedValue !== '' && !parsedAmount) {
     inputError = inputError ?? `Enter an amount`;
   }
 
@@ -364,11 +364,11 @@ export function useDerivedSwapInfo(): {
   const poolAddress = isWrap
     ? undefined
     : currencies[SwapField.INPUT] &&
-    currencies[SwapField.OUTPUT] &&
-    (computePoolAddress({
-      tokenA: currencies[SwapField.INPUT]!.wrapped,
-      tokenB: currencies[SwapField.OUTPUT]!.wrapped,
-    }).toLowerCase() as Address);
+      currencies[SwapField.OUTPUT] &&
+      (computePoolAddress({
+        tokenA: currencies[SwapField.INPUT]!.wrapped,
+        tokenB: currencies[SwapField.OUTPUT]!.wrapped,
+      }).toLowerCase() as Address);
   const { data: globalState } = useReadAlgebraPoolGlobalState({
     address: poolAddress,
     chainId: fuse.id,

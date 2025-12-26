@@ -20,7 +20,8 @@ export default function Settings() {
   const { isDesktop } = useDimension();
 
   const handleLegalPress = () => {
-    const url = 'https://support.solid.xyz/en/articles/13184959-legal-privacy-policy-terms-conditions#h_5cf45398ce';
+    const url =
+      'https://support.solid.xyz/en/articles/13184959-legal-privacy-policy-terms-conditions#h_5cf45398ce';
     if (Platform.OS === 'web') {
       window.open(url, '_blank');
     } else {

@@ -12,6 +12,7 @@ import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
 import DepositBuyCryptoOptions from '@/components/DepositOption/DepositBuyCryptoOptions';
 import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress';
 import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
+import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTokens';
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
@@ -19,6 +20,7 @@ import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositTo
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
@@ -81,6 +83,8 @@ const useDepositOption = ({
   const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
+  const isDepositDirectlyTokens =
+    currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS.name;
   const isTokenSelector = currentModal.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
@@ -100,7 +104,7 @@ const useDepositOption = ({
     return (
       <Pressable
         {...props}
-        className='flex-1'
+        className="flex-1"
         onPress={e => {
           if (props?.onPress) {
             props.onPress(e);
@@ -195,6 +199,10 @@ const useDepositOption = ({
       return <DepositDirectlyAddress />;
     }
 
+    if (isDepositDirectlyTokens) {
+      return <DepositDirectlyTokens />;
+    }
+
     if (isTokenSelector) {
       return <DepositTokenSelector />;
     }
@@ -218,6 +226,7 @@ const useDepositOption = ({
     if (isPublicAddress) return 'public-address';
     if (isDepositDirectly) return 'deposit-directly-networks';
     if (isDepositDirectlyAddress) return 'deposit-directly-address';
+    if (isDepositDirectlyTokens) return 'deposit-directly-tokens';
     if (isTokenSelector) return 'token-selector';
     return 'deposit-options';
   };
@@ -233,6 +242,7 @@ const useDepositOption = ({
     if (isBuyCryptoOptions) return 'Buy crypto';
     if (isPublicAddress) return 'Solid address';
     if (isDepositDirectly) return 'Choose network';
+    if (isDepositDirectlyTokens) return 'Choose token';
     if (isTokenSelector) return 'Select a token';
     return 'Deposit';
   };
@@ -318,6 +328,18 @@ const useDepositOption = ({
     } else if (isDepositDirectly) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isDepositDirectlyAddress) {
+      // Go back to token selection if multiple tokens available, otherwise to network selection
+      const { directDepositSession } = useDepositStore.getState();
+      const chainId = directDepositSession.chainId;
+      const network = chainId ? BRIDGE_TOKENS[chainId] : null;
+      const hasMultipleTokens = network?.tokens?.USDC && network?.tokens?.USDT;
+
+      if (hasMultipleTokens) {
+        setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS);
+      } else {
+        setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+      }
+    } else if (isDepositDirectlyTokens) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
     } else if (isTokenSelector) {
       setModal(DEPOSIT_MODAL.OPEN_FORM);
@@ -369,6 +391,7 @@ const useDepositOption = ({
       !isClose &&
       !isDepositDirectly &&
       !isDepositDirectlyAddress &&
+      !isDepositDirectlyTokens &&
       !isExternalWalletOptions &&
       !isBuyCryptoOptions
     ) {
@@ -380,6 +403,7 @@ const useDepositOption = ({
     isClose,
     isDepositDirectly,
     isDepositDirectlyAddress,
+    isDepositDirectlyTokens,
     isExternalWalletOptions,
     isBuyCryptoOptions,
     currentModal.name,
@@ -402,6 +426,7 @@ const useDepositOption = ({
     isPublicAddress ||
     isDepositDirectly ||
     isDepositDirectlyAddress ||
+    isDepositDirectlyTokens ||
     isTokenSelector;
 
   return {

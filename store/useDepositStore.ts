@@ -36,6 +36,7 @@ interface DirectDepositSession {
   sessionId?: string;
   walletAddress?: string;
   chainId?: number;
+  selectedToken?: 'USDC' | 'USDT';
   status?: 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
   expiresAt?: number;
   minDeposit?: string;
@@ -81,11 +82,6 @@ export const useDepositStore = create<DepositState>()(
       directDepositSession: {},
 
       setModal: modal => {
-        // eslint-disable-next-line no-console
-        console.log('[DepositStore] Modal change:', {
-          from: get().currentModal.name,
-          to: modal.name,
-        });
         set({
           previousModal: get().currentModal,
           currentModal: modal,

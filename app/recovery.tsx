@@ -1,204 +1,257 @@
 import InfoError from '@/assets/images/info-error';
-import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
+import Input from '@/components/ui/input';
+import { OtpInput } from '@/components/ui/otp-input';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { startPasskeyRecovery } from '@/lib/api';
-import {
-  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-} from '@/lib/config';
-import { Turnkey, TurnkeyIframeClient } from '@turnkey/sdk-browser';
+import { initRecoveryOtp, verifyRecoveryOtp } from '@/lib/api';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { z } from 'zod';
+
+// Validation schemas
+const emailSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+});
+
+const otpSchema = z.object({
+  otpCode: z
+    .string()
+    .length(6, 'Verification code must be 6 digits')
+    .regex(/^\d+$/, 'Verification code must only contain numbers'),
+});
+
+type EmailFormData = z.infer<typeof emailSchema>;
+type OtpFormData = z.infer<typeof otpSchema>;
+
+const STEPS = {
+  EMAIL_INPUT: 'email-input',
+  OTP_VERIFY: 'otp-verify',
+  ADD_PASSKEY: 'add-passkey',
+  SUCCESS: 'success',
+} as const;
+
+type Step = (typeof STEPS)[keyof typeof STEPS];
 
 export default function RecoveryPasskey() {
-  const turnkey = new Turnkey({
-    apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-    defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-    rpId: getRuntimeRpId(),
-  });
-  const steps = {
-    USERNAME_INPUT: 'username-input',
-    BUNDLE_SUBMIT: 'bundle-submit',
-    ADD_PASSKEY: 'add-passkey',
-    SUCCESS: 'success',
-  };
-  const [step, setStep] = useState(steps.USERNAME_INPUT);
-  const [error, setError] = useState('');
+  const { createApiKeyPair, addPasskey, storeSession } = useTurnkey();
 
-  const iframeContainerId = 'turnkey-auth-iframe-container-id';
-  const iframeContainer = document.getElementById(iframeContainerId);
-  const [iframeClient, setIframeClient] = useState<TurnkeyIframeClient | null>(null);
-
-  const [username, setUsername] = useState('');
-  const [bundle, setBundle] = useState('');
-  const [userId, setUserId] = useState('');
-  const [subOrganizationId, setSubOrganizationId] = useState('');
+  const [step, setStep] = useState<Step>(STEPS.EMAIL_INPUT);
+  const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmitUsername = async () => {
+  const [email, setEmail] = useState('');
+  const [otpId, setOtpId] = useState('');
+  const [recoveryData, setRecoveryData] = useState<{
+    credentialBundle: string;
+    userId: string;
+    organizationId: string;
+  } | null>(null);
+
+  // Step 1: Send OTP to user's email via backend
+  const handleSendOtp = useCallback(async (data: EmailFormData) => {
     setLoading(true);
-    setError('');
-    const iframeClient = await turnkey.iframeClient({
-      iframeContainer: iframeContainer as HTMLElement,
-      iframeUrl: 'https://auth.turnkey.com',
-    });
-    setIframeClient(iframeClient);
+    setApiError('');
+
     try {
-      const recoveryResponse = await startPasskeyRecovery(
-        username,
-        iframeClient.iframePublicKey ?? '',
-      );
-      if (recoveryResponse.success) {
-        setUserId(recoveryResponse.userId);
-        setSubOrganizationId(recoveryResponse.subOrganizationId);
-        setStep(steps.BUNDLE_SUBMIT);
+      const response = await initRecoveryOtp(data.email);
+
+      if (!response.otpId) {
+        throw new Error('Failed to send verification code');
       }
-    } catch {
-      setError('Invalid username or not found');
-      setLoading(false);
+
+      setEmail(data.email);
+      setOtpId(response.otpId);
+      setStep(STEPS.OTP_VERIFY);
+    } catch (err: any) {
+      console.error('Failed to send OTP:', err);
+      setApiError(err?.message || 'Failed to send verification code. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleSubmitBundle = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const authenticationResponse = await iframeClient?.injectCredentialBundle(bundle);
-      if (authenticationResponse) {
-        setStep(steps.ADD_PASSKEY);
-      }
-    } catch {
-      setError('Invalid code');
-      setLoading(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Step 2: Verify OTP via backend and establish session
+  const handleVerifyOtp = useCallback(
+    async (data: OtpFormData) => {
+      setLoading(true);
+      setApiError('');
 
-  const handleSubmitAddPasskey = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const passkeyClient = turnkey.passkeyClient();
-      const passkey = await passkeyClient.createUserPasskey({
-        publicKey: {
-          user: {
-            name: username,
-            displayName: username,
-          },
-        },
-      });
-      if (passkey) {
-        const authenticatorsResponse = await iframeClient?.createAuthenticators({
-          authenticators: [
-            {
-              authenticatorName: 'New Passkey Authenticator',
-              challenge: passkey.encodedChallenge,
-              attestation: passkey.attestation,
-            },
-          ],
-          userId: userId,
-          organizationId: subOrganizationId,
-        });
-        if (authenticatorsResponse?.activity.id) {
-          setStep(steps.SUCCESS);
+      try {
+        // Create API key pair FIRST - this stores the private key locally
+        const publicKey = await createApiKeyPair();
+
+        if (!publicKey) {
+          throw new Error('Failed to create session key');
         }
+
+        // Verify OTP via backend - backend also calls otpLogin and returns credentialBundle
+        const verifyResponse = await verifyRecoveryOtp(otpId, data.otpCode, email, publicKey);
+
+        if (!verifyResponse.credentialBundle) {
+          throw new Error('Failed to verify code');
+        }
+
+        // Import the session using the credential bundle (JWT)
+        await storeSession({ sessionToken: verifyResponse.credentialBundle });
+
+        // Store recovery data for passkey creation
+        setRecoveryData(verifyResponse);
+        setStep(STEPS.ADD_PASSKEY);
+      } catch (err: any) {
+        console.error('Failed to verify OTP:', err);
+        setApiError(err?.message || 'Invalid verification code. Please try again.');
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setError('Invalid code');
+    },
+    [otpId, email, createApiKeyPair, storeSession],
+  );
+
+  // Step 3: Add new passkey
+  const handleAddPasskey = useCallback(async () => {
+    setLoading(true);
+    setApiError('');
+
+    try {
+      if (!recoveryData) {
+        throw new Error('Recovery data not found');
+      }
+
+      await addPasskey({
+        name: `Recovery Passkey - ${new Date().toLocaleDateString()}`,
+        userId: recoveryData.userId,
+        organizationId: recoveryData.organizationId,
+      });
+
+      setStep(STEPS.SUCCESS);
+    } catch (err: any) {
+      console.error('Failed to add passkey:', err);
+      setApiError(err?.message || 'Failed to create passkey. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [addPasskey, recoveryData]);
+
+  // Resend OTP
+  const handleResendOtp = useCallback(async () => {
+    setLoading(true);
+    setApiError('');
+
+    try {
+      const response = await initRecoveryOtp(email);
+
+      if (!response.otpId) {
+        throw new Error('Failed to resend verification code');
+      }
+
+      setOtpId(response.otpId);
+    } catch (err: any) {
+      console.error('Failed to resend OTP:', err);
+      setApiError(err?.message || 'Failed to resend code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [email]);
 
   return (
     <SafeAreaView className="bg-background text-foreground flex-1">
-      <View id={iframeContainerId} className="hidden" />
-      {/* Email modal */}
       <View className="w-full max-w-lg mx-auto pt-12 px-4">
         <Text className="text-white text-xl md:text-2xl font-semibold text-center mb-8">
           Passkey Recovery
         </Text>
-        {step === steps.USERNAME_INPUT && (
-          <UsernameSelector
-            username={username}
-            onChangeUsername={setUsername}
-            onSubmit={handleSubmitUsername}
+        {step === STEPS.EMAIL_INPUT && (
+          <EmailInput onSubmit={handleSendOtp} loading={loading} apiError={apiError} />
+        )}
+        {step === STEPS.OTP_VERIFY && (
+          <OtpVerify
+            email={email}
+            onSubmit={handleVerifyOtp}
+            onResend={handleResendOtp}
             loading={loading}
-            error={error}
+            apiError={apiError}
           />
         )}
-        {step === steps.BUNDLE_SUBMIT && (
-          <BundleSubmit
-            bundle={bundle}
-            onChangeBundle={setBundle}
-            onSubmit={handleSubmitBundle}
-            loading={loading}
-            error={error}
-          />
+        {step === STEPS.ADD_PASSKEY && (
+          <AddPasskey onSubmit={handleAddPasskey} loading={loading} error={apiError} />
         )}
-        {step === steps.ADD_PASSKEY && (
-          <AddPasskey onSubmit={handleSubmitAddPasskey} loading={loading} error={error} />
-        )}
-        {step === steps.SUCCESS && <Success />}
+        {step === STEPS.SUCCESS && <Success />}
       </View>
     </SafeAreaView>
   );
 }
 
-// Email Selector Component
-interface UsernameSelectorProps {
-  username: string;
-  onChangeUsername: (text: string) => void;
-  onSubmit: () => void;
+// Email Input Component with react-hook-form
+interface EmailInputProps {
+  onSubmit: (data: EmailFormData) => Promise<void>;
   loading: boolean;
-  error: string;
+  apiError: string;
 }
 
-function UsernameSelector({
-  username,
-  onChangeUsername,
-  onSubmit,
-  loading,
-  error,
-}: UsernameSelectorProps) {
+function EmailInput({ onSubmit, loading, apiError }: EmailInputProps) {
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isValid },
+  } = useForm<EmailFormData>({
+    resolver: zodResolver(emailSchema),
+    mode: 'onChange',
+    defaultValues: {
+      email: '',
+    },
+  });
+
+  const fieldError = errors.email?.message;
+  const displayError = fieldError || apiError;
+
   return (
     <View className="flex-1 justify-center">
       <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
-        <Text className="text-white text-2xl font-semibold mb-2 text-center">Username</Text>
+        <Text className="text-white text-2xl font-semibold mb-2 text-center">Enter your email</Text>
         <Text className="text-white/60 text-sm mb-6 text-center">
-          Please enter your username to recover your passkey
+          We&apos;ll send a verification code to recover your account
         </Text>
 
-        <TextInput
-          className="bg-[#1A1A1A] rounded-xl px-4 h-12 text-white mb-4"
-          placeholder="Enter your username"
-          placeholderTextColor="#666"
-          value={username}
-          onChangeText={onChangeUsername}
-          autoFocus
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <Input
+              id="email"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              className="bg-[#2F2F2F] font-normal"
+              error={!!errors.email}
+              autoCorrect={false}
+              autoFocus
+            />
+          )}
         />
-        {error && (
+        {displayError && (
           <View className="flex-row items-center gap-2 mb-4">
             <InfoError />
-            <Text className="text-sm text-red-400">{error}</Text>
+            <Text className="text-sm text-red-400">{displayError}</Text>
           </View>
         )}
         <Button
           className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
-          onPress={onSubmit}
-          disabled={!username || loading}
+          onPress={handleSubmit(onSubmit)}
+          disabled={!isValid || loading}
         >
           {loading ? (
             <ActivityIndicator color="gray" />
           ) : (
-            <Text className="text-base font-bold text-black">Next</Text>
+            <Text className="text-base font-bold text-black">Send Code</Text>
           )}
         </Button>
       </View>
@@ -206,53 +259,95 @@ function UsernameSelector({
   );
 }
 
-interface BundleSubmitProps {
-  bundle: string;
-  onChangeBundle: (text: string) => void;
-  onSubmit: () => Promise<void>;
+// OTP Verification Component with react-hook-form
+interface OtpVerifyProps {
+  email: string;
+  onSubmit: (data: OtpFormData) => Promise<void>;
+  onResend: () => void;
   loading: boolean;
-  error: string;
+  apiError: string;
 }
 
-function BundleSubmit({ bundle, onChangeBundle, onSubmit, loading, error }: BundleSubmitProps) {
+function OtpVerify({ email, onSubmit, onResend, loading, apiError }: OtpVerifyProps) {
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset,
+  } = useForm<OtpFormData>({
+    resolver: zodResolver(otpSchema),
+    mode: 'onChange',
+    defaultValues: {
+      otpCode: '',
+    },
+  });
+
+  const maskedEmail = email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+  const fieldError = errors.otpCode?.message;
+  const displayError = fieldError || apiError;
+
+  const handleResend = useCallback(() => {
+    reset();
+    onResend();
+  }, [reset, onResend]);
+
   return (
     <View className="flex-1 justify-center">
       <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
-        <Text className="text-white text-2xl font-semibold mb-2 text-center">Unique Code</Text>
+        <Text className="text-white text-2xl font-semibold mb-2 text-center">
+          Enter verification code
+        </Text>
         <Text className="text-white/60 text-sm mb-6 text-center">
-          Please enter your unique code sent to your email
+          We sent a 6-digit code to {maskedEmail}
         </Text>
 
-        <TextInput
-          className="bg-[#1A1A1A] rounded-xl px-4 h-12 text-white mb-4"
-          placeholder="Code"
-          placeholderTextColor="#666"
-          value={bundle}
-          onChangeText={onChangeBundle}
-          autoFocus
-        />
-        {error && (
-          <View className="flex-row items-center gap-2 mb-4">
-            <InfoError />
-            <Text className="text-sm text-red-400">{error}</Text>
-          </View>
-        )}
+        <View className="mb-6">
+          <Controller
+            control={control}
+            name="otpCode"
+            render={({ field: { onChange, value } }) => (
+              <OtpInput
+                value={value}
+                onChange={onChange}
+                length={6}
+                autoFocus
+                error={!!displayError}
+                disabled={loading}
+              />
+            )}
+          />
+          {displayError && (
+            <View className="flex-row items-center justify-center gap-2 mt-4">
+              <InfoError />
+              <Text className="text-sm text-red-400">{displayError}</Text>
+            </View>
+          )}
+        </View>
         <Button
           className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
-          onPress={onSubmit}
-          disabled={!bundle || loading}
+          onPress={handleSubmit(onSubmit)}
+          disabled={!isValid || loading}
         >
           {loading ? (
             <ActivityIndicator color="gray" />
           ) : (
-            <Text className="text-base font-bold text-black">Submit</Text>
+            <Text className="text-base font-bold text-black">Verify</Text>
           )}
+        </Button>
+
+        <Button
+          className="rounded-xl h-11 w-full bg-transparent"
+          onPress={handleResend}
+          disabled={loading}
+        >
+          <Text className="text-base text-white/60">Resend Code</Text>
         </Button>
       </View>
     </View>
   );
 }
 
+// Add Passkey Component
 interface AddPasskeyProps {
   onSubmit: () => Promise<void>;
   loading: boolean;
@@ -290,6 +385,7 @@ function AddPasskey({ onSubmit, loading, error }: AddPasskeyProps) {
   );
 }
 
+// Success Component
 function Success() {
   const router = useRouter();
   return (

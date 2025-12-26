@@ -110,7 +110,9 @@ Sentry.init({
     }),
     Sentry.feedbackIntegration(),
     Sentry.reactNativeTracingIntegration(),
-    Sentry.reactNavigationIntegration(),
+    Sentry.reactNavigationIntegration({
+      routeChangeTimeoutMs: 50,
+    }),
   ],
 
   // Attachments
@@ -319,6 +321,14 @@ export default Sentry.wrap(function RootLayout() {
                           name="onboarding"
                           options={{
                             headerShown: false,
+                            animation: 'none',
+                          }}
+                        />
+                        <Stack.Screen
+                          name="signup"
+                          options={{
+                            headerShown: false,
+                            animation: 'none',
                           }}
                         />
                         <Stack.Screen

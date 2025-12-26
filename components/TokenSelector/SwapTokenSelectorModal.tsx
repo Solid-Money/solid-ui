@@ -52,7 +52,7 @@ const SwapTokenSelectorModal = ({
     () => (
       <View className="flex flex-row items-center gap-1">
         <CurrencyLogo currency={currentCurrency} size={24} />
-        <Text className="text-sm font-bold text-white">{buttonText}</Text>
+        <Text className="text-lg font-semibold text-white">{buttonText}</Text>
         <ChevronDown className="text-white" />
       </View>
     ),
@@ -68,7 +68,7 @@ const SwapTokenSelectorModal = ({
       trigger={
         <Button
           className={cn(
-            'bg-accent h-10 px-3 rounded-full text-white flex items-center active:bg-accent web:hover:bg-accent',
+            'bg-accent h-10 px-3 py-6 rounded-full text-white flex items-center active:bg-accent web:hover:bg-accent',
             className,
           )}
           disabled={disabled}
