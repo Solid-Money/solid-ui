@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCountdownTimer } from '@/hooks/useCountdownTimer';
 import { useDimension } from '@/hooks/useDimension';
+import { useHoldingFundsPointsMultiplier } from '@/hooks/useHoldingFundsPointsMultiplier';
 import { usePoints } from '@/hooks/usePoints';
 import { RewardsType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
@@ -17,6 +18,7 @@ import { ImageBackground, Platform, Pressable, View } from 'react-native';
 
 export default function Savings() {
   const { points, isLoading: isPointsLoading } = usePoints();
+  const { multiplier } = useHoldingFundsPointsMultiplier();
   const { isScreenMedium } = useDimension();
   const countdownTime = useCountdownTimer(points.nextRewardTime);
 
@@ -149,14 +151,16 @@ export default function Savings() {
                 end={{ x: 0.7962, y: 1 }}
                 className="md:h-[90px] md:w-[90px] h-[70px] w-[70px] rounded-full flex justify-center items-center"
               >
-                <Text className="md:text-2xl text-xl font-semibold text-[#C693E5]">5X</Text>
+                <Text className="md:text-2xl text-xl font-semibold text-[#C693E5]">
+                  {multiplier}X
+                </Text>
               </LinearGradient>
               <View className="flex-col flex-1 md:ml-5 ml-2">
                 <Text className="md:text-2xl text-xl font-semibold">
                   Deposit and earn points automatically
                 </Text>
                 <Text className="md:text-lg text-base text-white/70">
-                  Earn 5 points per $1 per hour
+                  Earn {multiplier} points per $1 per hour
                 </Text>
               </View>
             </View>
