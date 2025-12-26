@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
+import { useHoldingFundsPointsMultiplier } from '@/hooks/useHoldingFundsPointsMultiplier';
 
 const PointsBanner = () => {
   const { isScreenMedium } = useDimension();
+  const { multiplier } = useHoldingFundsPointsMultiplier();
 
   return (
     <SwipeableBanner onPress={() => router.push(path.POINTS)}>
@@ -31,7 +33,7 @@ const PointsBanner = () => {
           <View className="justify-between items-start md:gap-2 py-5 md:py-8">
             <View className="inline max-w-40 md:max-w-64">
               <Text className="text-xl md:text-3xl font-semibold">
-                Earn <Text className="text-rewards">5X</Text> points on your deposits
+                Earn <Text className="text-rewards">{multiplier}X</Text> points on your deposits
               </Text>
             </View>
             <View className="flex-row items-center gap-4">

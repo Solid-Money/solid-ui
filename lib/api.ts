@@ -48,6 +48,7 @@ import {
   ExchangeRateResponse,
   FromCurrency,
   GetLifiQuoteParams,
+  HoldingFundsPointsMultiplierConfig,
   KycLink,
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
@@ -1600,3 +1601,20 @@ export const getDepositBonusConfig = async (): Promise<DepositBonusConfig> => {
 
   return response.json();
 };
+
+export const getHoldingFundsPointsMultiplier =
+  async (): Promise<HoldingFundsPointsMultiplierConfig> => {
+    const response = await fetch(
+      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/holding-funds-points-multiplier`,
+      {
+        credentials: 'include',
+        headers: {
+          ...getPlatformHeaders(),
+        },
+      },
+    );
+
+    if (!response.ok) throw response;
+
+    return response.json();
+  };

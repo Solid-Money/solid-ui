@@ -54,6 +54,10 @@ export interface DepositBonusConfig {
   cap: number;
 }
 
+export interface HoldingFundsPointsMultiplierConfig {
+  holdingFundsPointsMultiplier: number;
+}
+
 export enum Status {
   IDLE = 'idle',
   PENDING = 'pending',
