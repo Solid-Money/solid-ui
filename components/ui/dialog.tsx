@@ -40,7 +40,7 @@ const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrim
     return (
       <DialogPrimitive.Overlay
         className={cn(
-          'web:backdrop-blur-[4px] bg-black/40 flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
+          'web:backdrop-blur-[4px] bg-black/80 flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
           className,
         )}
         onPointerDown={handlePointerDown}
