@@ -2,11 +2,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Text } from '@/components/ui/text';
+import { useActivity } from '@/hooks/useActivity';
 import { ActivityTab } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent } from 'react-native';
+import { LayoutChangeEvent, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import ActivityRefreshButton from './ActivityRefreshButton';
 import ActivityTransactions from './ActivityTransactions';
 import CardTransactions from './CardTransactions';
 enum TabElement {
@@ -32,6 +34,8 @@ const ActivityTabs = () => {
   const translateX = useSharedValue(0);
   const width = useSharedValue(0);
   const isMountedRef = useRef(true);
+  const { refetchAll, isSyncing, activityEvents } = useActivity();
+  const { isLoading } = activityEvents;
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -118,43 +122,46 @@ const ActivityTabs = () => {
       onValueChange={value => handleTabChange(value as ActivityTab)}
       className="flex-1 gap-8"
     >
-      <TabsList className="flex-row bg-[#1C1C1E] rounded-full p-1 self-start h-auto">
-        <Animated.View style={underlineStyle} />
-        <TabsTrigger
-          value={ActivityTab.WALLET}
-          className={cn(
-            'py-2.5 px-5 web:py-3 web:px-6 rounded-full shadow-none items-center justify-center',
-            tab === ActivityTab.WALLET ? 'bg-black' : 'bg-transparent',
-          )}
-          onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.WALLET)}
-        >
-          <Text
+      <View className="flex-row items-center justify-between">
+        <TabsList className="flex-row bg-[#1C1C1E] rounded-full p-1 self-start h-auto">
+          <Animated.View style={underlineStyle} />
+          <TabsTrigger
+            value={ActivityTab.WALLET}
             className={cn(
-              'text-base font-semibold leading-none',
-              tab === ActivityTab.WALLET ? 'text-white' : 'text-[rgba(255,255,255,0.6)]',
+              'py-2.5 px-5 web:py-3 web:px-6 rounded-full shadow-none items-center justify-center',
+              tab === ActivityTab.WALLET ? 'bg-black' : 'bg-transparent',
             )}
+            onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.WALLET)}
           >
-            Wallet
-          </Text>
-        </TabsTrigger>
-        <TabsTrigger
-          value={ActivityTab.CARD}
-          className={cn(
-            'py-2.5 px-5 web:py-3 web:px-6 rounded-full shadow-none items-center justify-center',
-            tab === ActivityTab.CARD ? 'bg-black' : 'bg-transparent',
-          )}
-          onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.CARD)}
-        >
-          <Text
+            <Text
+              className={cn(
+                'text-base font-semibold leading-none',
+                tab === ActivityTab.WALLET ? 'text-white' : 'text-[rgba(255,255,255,0.6)]',
+              )}
+            >
+              Wallet
+            </Text>
+          </TabsTrigger>
+          <TabsTrigger
+            value={ActivityTab.CARD}
             className={cn(
-              'text-base font-semibold leading-none',
-              tab === ActivityTab.CARD ? 'text-white' : 'text-[rgba(255,255,255,0.6)]',
+              'py-2.5 px-5 web:py-3 web:px-6 rounded-full shadow-none items-center justify-center',
+              tab === ActivityTab.CARD ? 'bg-black' : 'bg-transparent',
             )}
+            onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.CARD)}
           >
-            Card
-          </Text>
-        </TabsTrigger>
-      </TabsList>
+            <Text
+              className={cn(
+                'text-base font-semibold leading-none',
+                tab === ActivityTab.CARD ? 'text-white' : 'text-[rgba(255,255,255,0.6)]',
+              )}
+            >
+              Card
+            </Text>
+          </TabsTrigger>
+        </TabsList>
+        <ActivityRefreshButton onRefresh={refetchAll} isSyncing={isSyncing} isLoading={isLoading} />
+      </View>
       <TabsContent value={ActivityTab.WALLET} className="flex-1">
         <ActivityTransactions tab={ActivityTab.WALLET} />
       </TabsContent>

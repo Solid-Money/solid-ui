@@ -63,7 +63,7 @@ const DepositDirectlyNetworks = () => {
 
         setDirectDepositSession({ selectedToken: availableToken });
 
-        const session = await createDirectDepositSession(chainId);
+        const session = await createDirectDepositSession(chainId, availableToken);
 
         track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
           user_id: user?.userId,

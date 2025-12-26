@@ -9,7 +9,6 @@ import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
-import { useActivity } from '@/hooks/useActivity';
 import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -62,7 +61,6 @@ const Transaction = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { deleteDirectDepositSession } = useDirectDepositSession();
-  const { refetchAll } = useActivity();
   const { isScreenMedium } = useDimension();
 
   const isPending = status === TransactionStatus.PENDING;
@@ -120,26 +118,19 @@ const Transaction = ({
   const isPendingOrProcessing = isPending || isProcessing;
   const directDepositIsPendingOrProcessing = isDirectDeposit && isPendingOrProcessing;
 
-  // Extract session ID from clientTxId (format: direct_deposit_{sessionId})
-  const sessionId =
-    isDirectDeposit && clientTxId ? clientTxId.replace('direct_deposit_', '') : null;
-
   const handleDeleteConfirm = async () => {
-    if (!sessionId) return;
+    if (!isDirectDeposit || !clientTxId) return;
 
     try {
       setIsDeleting(true);
-      await deleteDirectDepositSession(sessionId);
+      await deleteDirectDepositSession(clientTxId);
       setIsDeleteDialogOpen(false);
-
-      // Refresh the activity list
-      refetchAll();
     } catch (error) {
       console.error('Failed to delete direct deposit session:', error);
       Sentry.captureException(error, {
         tags: {
           type: 'delete_direct_deposit_error',
-          sessionId,
+          clientTxId,
         },
       });
     } finally {

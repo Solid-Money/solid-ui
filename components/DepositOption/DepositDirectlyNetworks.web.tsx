@@ -52,7 +52,7 @@ const DepositDirectlyNetworks = () => {
             : 'USDC';
         setDirectDepositSession({ selectedToken: availableToken });
 
-        const session = await createDirectDepositSession(id);
+        const session = await createDirectDepositSession(id, availableToken);
 
         // Track session creation
         track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {

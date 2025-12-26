@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, PressableProps, View } from 'react-native';
+import { ActivityIndicator, Pressable, PressableProps, View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
 
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
@@ -353,11 +353,16 @@ const useDepositOption = ({
   };
 
   const handleDeleteDeposit = useCallback(async () => {
-    if (!directDepositSession.sessionId) return;
+    const { directDepositSession } = useDepositStore.getState();
+    let {clientTxId, sessionId} = directDepositSession;
+    if (!clientTxId) {
+      if (!sessionId) return;
+      clientTxId = `direct_deposit_${sessionId}`;
+    }
 
     try {
       setIsDeleting(true);
-      await deleteDirectDepositSession(directDepositSession.sessionId);
+      await deleteDirectDepositSession(clientTxId);
       setModal(DEPOSIT_MODAL.CLOSE);
     } catch (error) {
       console.error('Failed to delete deposit session:', error);
@@ -378,7 +383,9 @@ const useDepositOption = ({
           onPress={handleDeleteDeposit}
           disabled={isDeleting}
         >
-          <Trash2 size={20} color="white" />
+          {isDeleting ? <ActivityIndicator size="small" color="white" /> : (
+            <Trash2 size={20} color="white" />
+          )}
         </Button>
       );
     }
