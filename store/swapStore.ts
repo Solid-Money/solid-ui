@@ -329,7 +329,7 @@ export function useDerivedSwapInfo(): {
     inputError = `Connect Wallet`;
   }
 
-  if (!parsedAmount) {
+  if (typedValue !== '' && !parsedAmount) {
     inputError = inputError ?? `Enter an amount`;
   }
 

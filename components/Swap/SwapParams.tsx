@@ -242,9 +242,7 @@ const SwapParams = () => {
           </View>
           <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-white/10">
             <Text className="text-base text-white/70 font-medium">Price impact</Text>
-            <View>
-              <PriceImpact priceImpact={priceImpact} />
-            </View>
+            <PriceImpact priceImpact={priceImpact} />
           </View>
           <View className="flex flex-row items-center justify-between p-4 md:p-6">
             <Text className="text-base text-white/70 font-medium">Slippage tolerance</Text>
@@ -282,7 +280,7 @@ const PriceImpact = ({ priceImpact }: { priceImpact: Percent | undefined }) => {
         : 'text-foreground';
 
   return (
-    <Text className={cn('text-sm', color)}>
+    <Text className={cn('text-base font-semibold', color)}>
       {priceImpact ? `${priceImpact.multiply(-1).toFixed(2)}%` : '-'}
     </Text>
   );
