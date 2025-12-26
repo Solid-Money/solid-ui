@@ -20,6 +20,7 @@ import { computeRealizedLPFeePercent, warningSeverity } from '@/lib/utils/swap/p
 import { useDerivedSwapInfo, useSwapState } from '@/store/swapStore';
 import { useUserState } from '@/store/userStore';
 import { tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+import { Address } from 'viem';
 
 const SwapButton: React.FC = () => {
   const { isExpertMode } = useUserState();
@@ -57,7 +58,7 @@ const SwapButton: React.FC = () => {
       () => {
         setTransaction({
           amount: Number(inputAmount),
-          address: currencies[SwapField.INPUT]?.wrapped.address,
+          address: currencies[SwapField.INPUT]?.wrapped.address as Address,
           inputCurrencySymbol: inputSymbol,
           outputCurrencySymbol: outputSymbol,
         });
@@ -180,7 +181,7 @@ const SwapButton: React.FC = () => {
   );
 
   const priceImpactSeverity = useMemo(() => {
-    if (!trade) return 4;
+    if (!trade) return 0;
     const realizedLpFeePercent = computeRealizedLPFeePercent(trade);
     const priceImpact = isVoltageTrade
       ? voltageTrade?.trade?.priceImpact?.subtract(realizedLpFeePercent)
@@ -421,7 +422,7 @@ const SwapButton: React.FC = () => {
         if (onWrap) {
           setTransaction({
             amount: Number(typedValue || '0'),
-            address: currencies[SwapField.INPUT]?.wrapped.address,
+            address: currencies[SwapField.INPUT]?.wrapped.address as Address,
             inputCurrencySymbol: currencies[SwapField.INPUT]?.symbol,
             outputCurrencySymbol: currencies[SwapField.OUTPUT]?.symbol,
           });
@@ -504,6 +505,7 @@ const SwapButton: React.FC = () => {
 
   const isButtonDisabled =
     !isValid ||
+    !typedValue ||
     priceImpactTooHigh ||
     isVoltageTradeLoading ||
     (isVoltageTrade && isVoltageSwapLoading) ||
@@ -528,6 +530,8 @@ const SwapButton: React.FC = () => {
           <Text className="font-semibold text-base">Swap Anyway</Text>
         ) : needsApproval ? (
           <Text className="font-semibold text-base">Approve & Swap</Text>
+        ) : !typedValue ? (
+          <Text className="font-semibold text-base">Enter an amount</Text>
         ) : (
           <View className="flex-row items-center gap-2">
             <Image
