@@ -61,12 +61,16 @@ const SendSearch: React.FC = () => {
   const filteredRecentActivities = useMemo(() => {
     if (!searchQuery.trim()) return sendActivities;
     const query = searchQuery.toLowerCase();
-    return sendActivities.filter(
-      activity =>
+    return sendActivities.filter(activity => {
+      const addressBookEntry = addressBook.find(
+        entry => entry.walletAddress.toLowerCase() === activity.walletAddress.toLowerCase(),
+      );
+      return (
         activity.walletAddress.toLowerCase().includes(query) ||
-        activity.metadata?.description?.toLowerCase().includes(query),
-    );
-  }, [sendActivities, searchQuery]);
+        addressBookEntry?.name?.toLowerCase().includes(query)
+      );
+    });
+  }, [sendActivities, searchQuery, addressBook]);
 
   const handleToInput = (walletAddress: string, name?: string) => {
     setAddress(walletAddress);
