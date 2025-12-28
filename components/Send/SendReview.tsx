@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react-native';
 import React from 'react';
-import { ActivityIndicator, Image, View } from 'react-native';
+import { Controller } from 'react-hook-form';
+import { ActivityIndicator, Image, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Address } from 'viem';
 
@@ -8,10 +9,12 @@ import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useAddressBook } from '@/hooks/useAddressBook';
 import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
 import { track } from '@/lib/analytics';
@@ -20,12 +23,15 @@ import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
+import { useActivity } from '@/hooks/useActivity';
 
 import Key from '@/assets/images/key';
 import Wallet from '@/assets/images/wallet';
 
 const SendReview: React.FC = () => {
-  const { selectedToken, amount, address, name, setTransaction, setModal } = useSendStore();
+  const { selectedToken, amount, address, name, setTransaction, setModal, setName } =
+    useSendStore();
+  const { refetchAll } = useActivity();
 
   const { send, sendStatus } = useSend({
     tokenAddress: selectedToken?.contractAddress as any,
@@ -41,7 +47,23 @@ const SendReview: React.FC = () => {
     enabled: !!address && !!selectedToken?.chainId,
   });
 
+  const {
+    control: nameControl,
+    watch: watchName,
+    handleAddContact,
+    errors: nameErrors,
+    hasSkipped2fa,
+  } = useAddressBook({
+    defaultAddress: address || '',
+    defaultName: name || '',
+    optionalName: true,
+    onSuccess: () => {
+      // Prevent navigation
+    },
+  });
+
   const isSendLoading = sendStatus === Status.PENDING;
+  const isContact = !name || !hasSkipped2fa;
 
   const getButtonText = () => {
     if (isSendLoading) return 'Sending';
@@ -50,6 +72,17 @@ const SendReview: React.FC = () => {
 
   const handleSend = async () => {
     if (!selectedToken || !amount || !address) return;
+
+    const nameValue = watchName('name');
+    const skip2fa = watchName('skip2fa');
+    if ((nameValue && nameValue.trim()) || skip2fa) {
+      try {
+        await handleAddContact();
+        setName(nameValue?.trim() || '');
+      } catch (error) {
+        console.error('Failed to add to address book:', error);
+      }
+    }
 
     try {
       track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_INITIATED, {
@@ -73,6 +106,8 @@ const SendReview: React.FC = () => {
         transaction_hash: transaction.transactionHash,
         source: 'send_modal',
       });
+
+      refetchAll();
 
       setModal(SEND_MODAL.OPEN_TRANSACTION_STATUS);
 
@@ -220,6 +255,51 @@ const SendReview: React.FC = () => {
           </View>
         ))}
       </View>
+
+      {isContact && (
+        <View className="bg-card rounded-2xl p-5 gap-4">
+          <Text className="text-base font-medium">Save to contacts</Text>
+          <View className="gap-4">
+            {!name && (
+              <View className="gap-2">
+                <Text className="text-base opacity-70 font-medium">Name</Text>
+                <Controller
+                  control={nameControl}
+                  name="name"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      className="text-white text-base web:focus:outline-none flex-1 bg-popup rounded-2xl p-5"
+                      placeholder="Enter a name for this address"
+                      placeholderTextColor="#ffffff80"
+                      value={value}
+                      onChangeText={onChange}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  )}
+                />
+              </View>
+            )}
+            {nameErrors.name && (
+              <Text className="text-sm text-red-500">{nameErrors.name.message}</Text>
+            )}
+            {!hasSkipped2fa && (
+              <View className="flex-row items-center gap-3">
+                <Controller
+                  control={nameControl}
+                  name="skip2fa"
+                  render={({ field: { onChange, value } }) => (
+                    <Checkbox checked={value || false} onCheckedChange={onChange} />
+                  )}
+                />
+                <Text className="text-base opacity-70 flex-1">
+                  Skip 2FA when sending to this address
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
 
       <Button
         variant="brand"

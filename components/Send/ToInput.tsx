@@ -53,32 +53,35 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
     return searchQuery.trim() && isAddress(searchQuery.trim());
   }, [searchQuery]);
 
-  const isValidName = useMemo(() => {
-    if (!searchQuery.trim()) return false;
-    return addressBook.some(
-      entry => entry.name?.toLowerCase() === searchQuery.trim().toLowerCase(),
+  const getValidEntry = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return addressBook.find(
+      entry => entry.name?.toLowerCase() === query || entry.walletAddress.toLowerCase() === query,
     );
   }, [searchQuery, addressBook]);
+
+  const isValidName = useMemo(() => {
+    if (!searchQuery.trim()) return false;
+    return !!getValidEntry?.name;
+  }, [searchQuery, getValidEntry?.name]);
 
   const isValid = isValidAddress || isValidName;
 
   const handleContinue = () => {
-    if (isValidAddress) {
-      const trimmedQuery = searchQuery.trim();
-      setAddress(trimmedQuery);
-      setName('');
-      setSearchQuery(trimmedQuery);
-      setModal(SEND_MODAL.OPEN_FORM);
-    } else if (isValidName) {
-      const entry = addressBook.find(
-        entry => entry.name?.toLowerCase() === searchQuery.trim().toLowerCase(),
-      );
+    if (isValidName) {
+      const entry = getValidEntry;
       if (entry) {
         setAddress(entry.walletAddress);
         setName(entry.name || '');
         setSearchQuery(entry.name || entry.walletAddress);
         setModal(SEND_MODAL.OPEN_FORM);
       }
+    } else if (isValidAddress) {
+      const trimmedQuery = searchQuery.trim();
+      setAddress(trimmedQuery);
+      setName('');
+      setSearchQuery(trimmedQuery);
+      setModal(SEND_MODAL.OPEN_FORM);
     }
   };
 
@@ -103,6 +106,10 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
       setAddress('');
     }
     setSearchQuery(text);
+
+    if (isValidName) {
+      handleContinue();
+    }
   };
 
   const handleKeyPress = (e: any) => {

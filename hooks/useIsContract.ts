@@ -27,10 +27,12 @@ export function useIsContract({
         return null;
       }
 
-      return getBytecode(config, {
+      const bytecode = await getBytecode(config, {
         address: address as Address,
         chainId,
       });
+
+      return bytecode ?? null;
     },
     enabled: enabled && !!address && !!chainId,
     staleTime: 5 * 60 * 1000,

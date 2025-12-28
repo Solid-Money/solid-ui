@@ -1,81 +1,20 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
 import { TextInput, View } from 'react-native';
-import Toast from 'react-native-toast-message';
-import { isAddress } from 'viem';
-import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { SEND_MODAL } from '@/constants/modals';
-import { addToAddressBook } from '@/lib/api';
+import { useAddressBook } from '@/hooks/useAddressBook';
 import { useSendStore } from '@/store/useSendStore';
-import { withRefreshToken } from '@/lib/utils';
-import { AddressBookEntry } from '@/lib/types';
-
-const addressBookSchema = z.object({
-  walletAddress: z
-    .string()
-    .refine(val => val.trim().length > 0, 'Address is required')
-    .refine(val => isAddress(val.trim()), 'Please enter a valid Ethereum address')
-    .transform(val => val.trim()),
-  name: z
-    .string()
-    .min(1, 'Name is required')
-    .transform(val => val.trim()),
-});
-
-type AddressBookFormData = z.infer<typeof addressBookSchema>;
 
 const AddressBook: React.FC = () => {
-  const { address, setModal } = useSendStore();
-  const queryClient = useQueryClient();
+  const { address } = useSendStore();
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors, isValid },
-  } = useForm<AddressBookFormData>({
-    resolver: zodResolver(addressBookSchema),
-    mode: 'onChange',
-    defaultValues: {
-      walletAddress: address || '',
-      name: '',
-    },
-  });
-
-  const addToAddressBookMutation = useMutation({
-    mutationFn: (data: AddressBookEntry) => withRefreshToken(() => addToAddressBook(data)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['address-book'] });
-      Toast.show({
-        type: 'success',
-        text1: 'Added to address book',
-        props: {
-          badgeText: 'Success',
-        },
-      });
-      setModal(SEND_MODAL.OPEN_SEND_SEARCH);
-    },
-    onError: () => {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to add to address book',
-        props: {
-          badgeText: 'Error',
-        },
-      });
-    },
-  });
-
-  const handleAddContact = async (data: AddressBookFormData) => {
-    await addToAddressBookMutation.mutateAsync({
-      walletAddress: data.walletAddress,
-      name: data.name,
+  const { control, handleSubmit, errors, isValid, handleAddContact, addToAddressBookMutation } =
+    useAddressBook({
+      defaultAddress: address || '',
+      defaultName: '',
     });
-  };
 
   return (
     <View className="gap-8">
