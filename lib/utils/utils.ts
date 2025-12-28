@@ -6,7 +6,7 @@ import { Address, keccak256, toHex } from 'viem';
 
 import { refreshToken } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { AuthTokens, CardResponse, User } from '@/lib/types';
+import { AuthTokens, CardResponse, CardStatus, CardStatusResponse, User } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -281,4 +281,8 @@ export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
   return cardDetails?.additional_funding_instructions?.find(
     instruction => instruction.chain === ARBITRUM_CHAIN,
   )?.address;
+};
+
+export const hasCard = (cardStatus: CardStatusResponse | null | undefined): boolean => {
+  return cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN;
 };

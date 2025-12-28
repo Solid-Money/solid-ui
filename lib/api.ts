@@ -1569,6 +1569,7 @@ export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEv
 // Direct Deposit Session API
 export const createDirectDepositSession = async (
   chainId: number,
+  tokenSymbol: string,
 ): Promise<DirectDepositSessionResponse> => {
   const jwt = getJWTToken();
 
@@ -1582,7 +1583,7 @@ export const createDirectDepositSession = async (
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify({ chainId }),
+      body: JSON.stringify({ chainId, tokenSymbol }),
     },
   );
 
@@ -1613,12 +1614,12 @@ export const getDirectDepositSession = async (
 };
 
 export const deleteDirectDepositSession = async (
-  sessionId: string,
+  clientTxId: string,
 ): Promise<{ success: boolean; message: string }> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session/${sessionId}`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session/${clientTxId}`,
     {
       method: 'DELETE',
       headers: {

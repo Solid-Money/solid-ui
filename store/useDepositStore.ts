@@ -44,6 +44,7 @@ interface DirectDepositSession {
   fee?: string;
   detectedAmount?: string;
   transactionHash?: string;
+  clientTxId?: string;
   // If opened from the Activity screen, we hide back navigation in the UI
   fromActivity?: boolean;
 }
