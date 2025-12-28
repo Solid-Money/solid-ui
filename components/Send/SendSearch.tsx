@@ -4,6 +4,7 @@ import { EllipsisVertical, Plus } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { isAddress } from 'viem';
 
 import Avatar from '@/components/Avatar';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import { fetchAddressBook } from '@/lib/api';
 import { TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
+import AddAddress from './AddAddress';
 import ToInput from './ToInput';
 
 const SendSearch: React.FC = () => {
@@ -185,15 +187,21 @@ const SendSearch: React.FC = () => {
 
         {filteredAddressBook.length === 0 &&
           filteredRecentActivities.length === 0 &&
-          !isLoadingAddressBook && (
-            <View className="py-8 items-center">
-              <Text className="text-muted-foreground text-center">
-                {searchQuery.trim()
-                  ? 'No matches found'
-                  : 'No address book entries or recent sends'}
-              </Text>
-            </View>
-          )}
+          !isLoadingAddressBook &&
+          (() => {
+            if (searchQuery.trim() && isAddress(searchQuery.trim())) {
+              return <AddAddress address={searchQuery.trim()} />;
+            }
+            return (
+              <View className="py-8 items-center">
+                <Text className="text-muted-foreground text-center">
+                  {searchQuery.trim()
+                    ? 'No matches found'
+                    : 'No address book entries or recent sends'}
+                </Text>
+              </View>
+            );
+          })()}
       </ScrollView>
     </View>
   );
