@@ -42,7 +42,6 @@ const SendSearch: React.FC = () => {
           activity.toAddress &&
           activity.status === TransactionStatus.SUCCESS,
       )
-      .slice(0, 10)
       .map(activity => ({
         ...activity,
         walletAddress: activity.toAddress!,
@@ -93,34 +92,6 @@ const SendSearch: React.FC = () => {
       <ToInput />
 
       <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
-        {filteredAddressBook.length > 0 && (
-          <View className="gap-4">
-            <Text className="text-base opacity-70 font-medium">Address Book</Text>
-            <View className="bg-card rounded-2xl">
-              {filteredAddressBook.map((entry, index) => (
-                <Pressable
-                  key={`${entry.walletAddress}-${index}`}
-                  className={cn(
-                    'flex-row items-center justify-between border-b border-foreground/10 p-4',
-                    filteredAddressBook.length - 1 === index && 'border-b-0',
-                  )}
-                  onPress={() => handleToInput(entry.walletAddress, entry.name)}
-                >
-                  <View className="flex-row items-center gap-3 flex-1">
-                    <Avatar name={entry.name || entry.walletAddress} />
-                    <View className="flex-1">
-                      {entry.name && <Text className="text-base font-semibold">{entry.name}</Text>}
-                      <Text className="text-sm opacity-50">
-                        {eclipseAddress(entry.walletAddress)}
-                      </Text>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
-
         {filteredRecentActivities.length > 0 && (
           <View className="gap-4">
             <Text className="text-base opacity-70 font-medium">Recent</Text>
