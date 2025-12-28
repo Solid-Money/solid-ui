@@ -231,75 +231,77 @@ const SendReview: React.FC = () => {
 
   return (
     <View className="gap-8">
-      <View className="items-center">
-        <Text className="text-2xl font-semibold">
-          <Text className="opacity-50">Send</Text> {formatNumber(Number(amount))}{' '}
-          {selectedToken.contractTickerSymbol}
-        </Text>
-        <Text className="text-2xl font-semibold">
-          <Text className="opacity-50">to</Text> {name || eclipseAddress(address)}
-        </Text>
-      </View>
-
-      <View className="bg-card rounded-2xl">
-        {rows.map((row, index) => (
-          <View
-            key={index}
-            className={cn(
-              'flex-row items-center justify-between border-b border-foreground/10 p-5',
-              rows.length - 1 === index && 'border-b-0',
-            )}
-          >
-            <Text className="text-base opacity-70 font-medium">{row.label}</Text>
-            {row.value}
-          </View>
-        ))}
-      </View>
-
-      {isContact && (
-        <View className="bg-card rounded-2xl p-5 gap-4">
-          <Text className="text-base font-medium">Save to contacts</Text>
-          <View className="gap-4">
-            {!name && (
-              <View className="gap-2">
-                <Text className="text-base opacity-70 font-medium">Name</Text>
-                <Controller
-                  control={nameControl}
-                  name="name"
-                  render={({ field: { onChange, value } }) => (
-                    <TextInput
-                      className="text-white text-base web:focus:outline-none flex-1 bg-popup rounded-2xl p-5"
-                      placeholder="Enter a name for this address"
-                      placeholderTextColor="#ffffff80"
-                      value={value}
-                      onChangeText={onChange}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                  )}
-                />
-              </View>
-            )}
-            {nameErrors.name && (
-              <Text className="text-sm text-red-500">{nameErrors.name.message}</Text>
-            )}
-            {!hasSkipped2fa && (
-              <View className="flex-row items-center gap-3">
-                <Controller
-                  control={nameControl}
-                  name="skip2fa"
-                  render={({ field: { onChange, value } }) => (
-                    <Checkbox checked={value || false} onCheckedChange={onChange} />
-                  )}
-                />
-                <Text className="text-base opacity-70 flex-1">
-                  Skip 2FA when sending to this address
-                </Text>
-              </View>
-            )}
-          </View>
+      <View className="gap-8 min-h-[30rem]">
+        <View className="items-center">
+          <Text className="text-2xl font-semibold">
+            <Text className="opacity-50">Send</Text> {formatNumber(Number(amount))}{' '}
+            {selectedToken.contractTickerSymbol}
+          </Text>
+          <Text className="text-2xl font-semibold">
+            <Text className="opacity-50">to</Text> {name || eclipseAddress(address)}
+          </Text>
         </View>
-      )}
+
+        <View className="bg-card rounded-2xl">
+          {rows.map((row, index) => (
+            <View
+              key={index}
+              className={cn(
+                'flex-row items-center justify-between border-b border-foreground/10 p-5',
+                rows.length - 1 === index && 'border-b-0',
+              )}
+            >
+              <Text className="text-base opacity-70 font-medium">{row.label}</Text>
+              {row.value}
+            </View>
+          ))}
+        </View>
+
+        {isContact && (
+          <View className="bg-card rounded-2xl p-5 gap-4">
+            <Text className="text-base font-medium">Save to contacts</Text>
+            <View className="gap-4">
+              {!name && (
+                <View className="gap-2">
+                  <Text className="text-base opacity-70 font-medium">Name</Text>
+                  <Controller
+                    control={nameControl}
+                    name="name"
+                    render={({ field: { onChange, value } }) => (
+                      <TextInput
+                        className="text-white text-base web:focus:outline-none flex-1 bg-popup rounded-2xl p-5"
+                        placeholder="Enter a name for this address"
+                        placeholderTextColor="#ffffff80"
+                        value={value}
+                        onChangeText={onChange}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                    )}
+                  />
+                </View>
+              )}
+              {nameErrors.name && (
+                <Text className="text-sm text-red-500">{nameErrors.name.message}</Text>
+              )}
+              {!hasSkipped2fa && (
+                <View className="flex-row items-center gap-3">
+                  <Controller
+                    control={nameControl}
+                    name="skip2fa"
+                    render={({ field: { onChange, value } }) => (
+                      <Checkbox checked={value || false} onCheckedChange={onChange} />
+                    )}
+                  />
+                  <Text className="text-base opacity-70 flex-1">
+                    Skip 2FA when sending to this address
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
 
       <Button
         variant="brand"

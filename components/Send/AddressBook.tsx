@@ -18,50 +18,52 @@ const AddressBook: React.FC = () => {
 
   return (
     <View className="gap-8">
-      <View className="gap-4">
-        <Text className="text-base opacity-70 font-medium">To</Text>
-        <View className="flex-row items-center gap-2 bg-card rounded-2xl p-5">
-          <Controller
-            control={control}
-            name="walletAddress"
-            render={({ field: { onChange, value } }) => (
-              <TextInput
-                className="text-white text-base web:focus:outline-none flex-1"
-                placeholder="Address"
-                placeholderTextColor="#ffffff80"
-                value={value}
-                onChangeText={onChange}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            )}
-          />
+      <View className="gap-8 min-h-[30rem]">
+        <View className="gap-4">
+          <Text className="text-base opacity-70 font-medium">To</Text>
+          <View className="flex-row items-center gap-2 bg-card rounded-2xl p-5">
+            <Controller
+              control={control}
+              name="walletAddress"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  className="text-white text-base web:focus:outline-none flex-1"
+                  placeholder="Address"
+                  placeholderTextColor="#ffffff80"
+                  value={value}
+                  onChangeText={onChange}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              )}
+            />
+          </View>
+          {errors.walletAddress && (
+            <Text className="text-sm text-red-500">{errors.walletAddress.message}</Text>
+          )}
         </View>
-        {errors.walletAddress && (
-          <Text className="text-sm text-red-500">{errors.walletAddress.message}</Text>
-        )}
-      </View>
 
-      <View className="gap-4">
-        <Text className="text-base opacity-70 font-medium">Name</Text>
-        <View className="flex-row items-center gap-2 bg-card rounded-2xl p-5">
-          <Controller
-            control={control}
-            name="name"
-            render={({ field: { onChange, value } }) => (
-              <TextInput
-                className="text-white text-base web:focus:outline-none flex-1"
-                placeholder="Full name"
-                placeholderTextColor="#ffffff80"
-                value={value}
-                onChangeText={onChange}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            )}
-          />
+        <View className="gap-4">
+          <Text className="text-base opacity-70 font-medium">Name</Text>
+          <View className="flex-row items-center gap-2 bg-card rounded-2xl p-5">
+            <Controller
+              control={control}
+              name="name"
+              render={({ field: { onChange, value } }) => (
+                <TextInput
+                  className="text-white text-base web:focus:outline-none flex-1"
+                  placeholder="Full name"
+                  placeholderTextColor="#ffffff80"
+                  value={value}
+                  onChangeText={onChange}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              )}
+            />
+          </View>
+          {errors.name && <Text className="text-sm text-red-500">{errors.name.message}</Text>}
         </View>
-        {errors.name && <Text className="text-sm text-red-500">{errors.name.message}</Text>}
       </View>
 
       <Button
