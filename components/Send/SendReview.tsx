@@ -1,13 +1,18 @@
+import { AlertTriangle } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
-import { Address } from 'viem';
 import Toast from 'react-native-toast-message';
+import { Address } from 'viem';
 
+import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { getBridgeChain } from '@/constants/bridge';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -15,11 +20,9 @@ import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
-import NeedHelp from '@/components/NeedHelp';
-import { getBridgeChain } from '@/constants/bridge';
 
-import Wallet from '@/assets/images/wallet';
 import Key from '@/assets/images/key';
+import Wallet from '@/assets/images/wallet';
 
 const SendReview: React.FC = () => {
   const { selectedToken, amount, address, name, setTransaction, setModal } = useSendStore();
@@ -30,6 +33,12 @@ const SendReview: React.FC = () => {
     tokenSymbol: selectedToken?.contractTickerSymbol || 'TOKEN',
     chainId: selectedToken?.chainId || 1,
     tokenType: selectedToken?.type || TokenType.ERC20,
+  });
+
+  const { isContract } = useIsContract({
+    address: address as Address | undefined,
+    chainId: selectedToken?.chainId,
+    enabled: !!address && !!selectedToken?.chainId,
   });
 
   const isSendLoading = sendStatus === Status.PENDING;
@@ -55,7 +64,7 @@ const SendReview: React.FC = () => {
       const transaction = await send(amount.toString(), address as Address);
       setTransaction({
         amount: Number(amount),
-        address: address,
+        address: address as Address,
       });
 
       track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_COMPLETED, {
@@ -155,7 +164,33 @@ const SendReview: React.FC = () => {
     },
     {
       label: 'To',
-      value: <Text className="text-right text-base font-semibold max-w-56">{address}</Text>,
+      value: (
+        <View className="flex-row items-start gap-2">
+          {isContract && (
+            <TooltipPopover
+              trigger={
+                <View className="mt-1">
+                  <AlertTriangle size={18} color="#F59E0B" />
+                </View>
+              }
+              content={
+                <View className="gap-1">
+                  <Text className="text-sm font-semibold leading-5">
+                    This appears to be a smart contract address
+                  </Text>
+                  <Text className="text-sm leading-5 opacity-90">
+                    Please check the recipient is able to receive assets on{' '}
+                    {getBridgeChain(selectedToken?.chainId || 1).name}
+                  </Text>
+                </View>
+              }
+              side="top"
+              analyticsContext="send_review_contract_warning"
+            />
+          )}
+          <Text className="text-right text-base font-semibold max-w-52">{address}</Text>
+        </View>
+      ),
     },
   ];
 
