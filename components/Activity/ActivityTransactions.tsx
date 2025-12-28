@@ -168,8 +168,11 @@ export default function ActivityTransactions({
         onPress={() => {
           const clientTxId = transaction.clientTxId;
           const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
+          const isPending = transaction.status === TransactionStatus.PENDING;
+          const isProcessing = transaction.status === TransactionStatus.PROCESSING;
+          const isPendingOrProcessing = isPending || isProcessing;
 
-          if (isDirectDeposit) {
+          if (isDirectDeposit && isPendingOrProcessing) {
             const sessionId = clientTxId.replace('direct_deposit_', '');
             // Seed the store for the address screen and mark it as coming from activity
             setDirectDepositSession({
