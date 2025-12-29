@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react-native';
 import React from 'react';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Image, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Address } from 'viem';
 
@@ -14,6 +14,7 @@ import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useActivity } from '@/hooks/useActivity';
 import { useAddressBook } from '@/hooks/useAddressBook';
 import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
@@ -23,7 +24,6 @@ import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
-import { useActivity } from '@/hooks/useActivity';
 
 import Key from '@/assets/images/key';
 import Wallet from '@/assets/images/wallet';
@@ -230,8 +230,8 @@ const SendReview: React.FC = () => {
   ];
 
   return (
-    <View className="gap-8">
-      <View className="gap-8 min-h-[30rem]">
+    <View className="gap-8 flex-1 justify-between">
+      <View className="gap-8 flex-1">
         <View className="items-center">
           <Text className="text-2xl font-semibold">
             <Text className="opacity-50">Send</Text> {formatNumber(Number(amount))}{' '}
@@ -285,18 +285,21 @@ const SendReview: React.FC = () => {
                 <Text className="text-sm text-red-500">{nameErrors.name.message}</Text>
               )}
               {!hasSkipped2fa && (
-                <View className="flex-row items-center gap-3">
-                  <Controller
-                    control={nameControl}
-                    name="skip2fa"
-                    render={({ field: { onChange, value } }) => (
+                <Controller
+                  control={nameControl}
+                  name="skip2fa"
+                  render={({ field: { onChange, value } }) => (
+                    <Pressable
+                      onPress={() => onChange(!value)}
+                      className="flex-row items-center gap-3"
+                    >
                       <Checkbox checked={value || false} onCheckedChange={onChange} />
-                    )}
-                  />
-                  <Text className="text-base opacity-70 flex-1">
-                    Skip 2FA when sending to this address
-                  </Text>
-                </View>
+                      <Text className="text-base opacity-70 flex-1">
+                        Skip 2FA when sending to this address
+                      </Text>
+                    </Pressable>
+                  )}
+                />
               )}
             </View>
           </View>
