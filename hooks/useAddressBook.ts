@@ -96,7 +96,7 @@ export const useAddressBook = (options?: {
             badgeText: 'Success',
           },
         });
-        setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+        setModal(SEND_MODAL.OPEN_FORM);
       }
     },
     onError: () => {
