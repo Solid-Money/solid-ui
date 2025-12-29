@@ -751,7 +751,7 @@ const useUser = (): UseUserReturn => {
 
   const handleSessionExpired = useCallback(() => {
     clearKycLinkId(); // Clear KYC data when session expires
-    router.replace(`${path.SIGNUP_EMAIL}?session=expired` as any);
+    router.replace(`${path.WELCOME}?session=expired`);
   }, [clearKycLinkId, router]);
 
   const handleDeleteAccount = useCallback(async () => {

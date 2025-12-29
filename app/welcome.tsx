@@ -1,9 +1,3 @@
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { DesktopCarousel } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
@@ -14,6 +8,12 @@ import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { eclipseUsername } from '@/lib/utils/utils';
 import { useUserStore } from '@/store/useUserStore';
+import { Image } from 'expo-image';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 export default function Welcome() {
   const { handleRemoveUsers, handleSelectUserById } = useUser();
@@ -21,19 +21,36 @@ export default function Welcome() {
   const router = useRouter();
   const { isDesktop } = useDimension();
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
+  const { session } = useLocalSearchParams<{ session: string }>();
 
-  const handleSelectUser = async (userId: string) => {
-    setLoadingUserId(userId);
-    try {
-      await handleSelectUserById(userId);
-    } finally {
-      setLoadingUserId(null);
+  useEffect(() => {
+    if (session === 'expired') {
+      Toast.show({
+        type: 'error',
+        text1: 'Session expired',
+        text2: 'Due to inactivity. Please login again.',
+        props: {
+          badgeText: '',
+        },
+      });
     }
-  };
+  }, [session]);
 
-  const handleUseAnotherAccount = () => {
+  const handleSelectUser = useCallback(
+    async (userId: string) => {
+      setLoadingUserId(userId);
+      try {
+        await handleSelectUserById(userId);
+      } finally {
+        setLoadingUserId(null);
+      }
+    },
+    [handleSelectUserById],
+  );
+
+  const handleUseAnotherAccount = useCallback(() => {
     router.push(path.ONBOARDING);
-  };
+  }, [router]);
 
   // Form content (shared between mobile and desktop)
   const formContent = (
