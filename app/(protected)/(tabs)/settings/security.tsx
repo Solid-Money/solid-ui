@@ -1,7 +1,7 @@
 import { Turnkey } from '@turnkey/sdk-browser';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, Text, View } from 'react-native';
 
 import Navbar from '@/components/Navbar';
@@ -88,13 +88,7 @@ export default function Security() {
     setShowTotpModal(true);
   };
 
-  const handleTotpSuccess = () => {
-    setShowTotpModal(false);
-    // Refresh TOTP status after successful setup
-    fetchTotpStatus();
-  };
-
-  const fetchTotpStatus = async () => {
+  const fetchTotpStatus = useCallback(async () => {
     setIsLoadingTotpStatus(true);
     try {
       const status = await getTotpStatus();
@@ -106,11 +100,17 @@ export default function Security() {
     } finally {
       setIsLoadingTotpStatus(false);
     }
-  };
+  }, []);
+
+  const handleTotpSuccess = useCallback(() => {
+    setShowTotpModal(false);
+    // Refresh TOTP status after successful setup
+    fetchTotpStatus();
+  }, [fetchTotpStatus]);
 
   useEffect(() => {
     fetchTotpStatus();
-  }, []);
+  }, [fetchTotpStatus]);
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
