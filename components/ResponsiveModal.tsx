@@ -121,7 +121,7 @@ const ResponsiveModal = ({
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         className={cn(
-          'p-4 md:p-8 md:max-w-md',
+          'pt-4 px-4 pb-0 md:pt-8 md:px-8 md:pb-0 md:max-w-md',
           contentClassName,
           !isScreenMedium ? 'w-screen max-w-full mt-[5vh] justify-start' : '',
         )}
@@ -176,6 +176,7 @@ const ResponsiveModal = ({
             <View className="relative">
               <ScrollView
                 className="max-h-[80vh]"
+                contentContainerClassName="pb-4 md:pb-8"
                 showsVerticalScrollIndicator={false}
                 onLayout={e => {
                   containerHeightRef.current = e.nativeEvent.layout.height;
@@ -206,14 +207,10 @@ const ResponsiveModal = ({
               {showBottomFade && (
                 <View
                   pointerEvents="none"
-                  style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 24 }}
+                  style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 48 }}
                 >
                   <LinearGradient
-                    colors={[
-                      'rgba(30, 30, 30, 0)',
-                      'rgba(30, 30, 30, 0.5)',
-                      'rgba(30, 30, 30, 0.85)',
-                    ]}
+                    colors={['rgba(16, 16, 16, 0)', 'rgba(16, 16, 16, 0.5)', 'rgba(16, 16, 16, 1)']}
                     locations={[0, 0.6, 1]}
                     style={{ flex: 1 }}
                   />
