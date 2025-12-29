@@ -1,4 +1,4 @@
-import { platformSelect } from "nativewind/theme";
+import { platformSelect } from 'nativewind/theme';
 
 const { hairlineWidth } = require('nativewind/theme');
 
@@ -11,12 +11,13 @@ module.exports = {
     extend: {
       fontFamily: {
         system: platformSelect({
-          ios: 'MonaSans',
+          ios: 'MonaSans_400Regular',
           android: 'MonaSans_400Regular',
+          web: "MonaSans_400Regular, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
         }),
       },
       borderRadius: {
-        'twice': '1.25rem',
+        twice: '1.25rem',
       },
       fontSize: {
         '3.5xl': '2.125rem',
@@ -118,7 +119,7 @@ module.exports = {
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
       screens: {
-        'xs': '425px',
+        xs: '425px',
       },
     },
   },

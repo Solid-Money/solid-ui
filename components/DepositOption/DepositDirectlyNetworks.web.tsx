@@ -13,7 +13,7 @@ import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 const DepositDirectlyNetworks = () => {
-  const { setModal } = useDepositStore();
+  const { setModal, setDirectDepositSession } = useDepositStore();
   const { user } = useUser();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const [selectedChainId, setSelectedChainId] = useState<number | null>(null);
@@ -33,20 +33,40 @@ const DepositDirectlyNetworks = () => {
         deposit_method: 'external_wallet_direct',
       });
 
-      // Create direct deposit session
-      const session = await createDirectDepositSession(id);
+      // Store chainId in session
+      setDirectDepositSession({ chainId: id });
 
-      // Track session creation
-      track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        session_id: session.sessionId,
-        wallet_address: session.walletAddress,
-        chain_id: id,
-      });
+      // Check if this chain has multiple tokens
+      const hasMultipleTokens = network?.tokens?.USDC && network?.tokens?.USDT;
 
-      // Navigate to address display screen
-      setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);
+      if (hasMultipleTokens) {
+        // Navigate to token selection
+        setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS);
+        setSelectedChainId(null);
+      } else {
+        // Single token available - get the first available token
+        const availableToken = network?.tokens?.USDC
+          ? 'USDC'
+          : network?.tokens?.USDT
+            ? 'USDT'
+            : 'USDC';
+        setDirectDepositSession({ selectedToken: availableToken });
+
+        const session = await createDirectDepositSession(id, availableToken);
+
+        // Track session creation
+        track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+          user_id: user?.userId,
+          safe_address: user?.safeAddress,
+          session_id: session.sessionId,
+          wallet_address: session.walletAddress,
+          chain_id: id,
+          token_symbol: availableToken,
+        });
+
+        // Navigate to address display screen
+        setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);
+      }
     } catch (error) {
       console.error('Failed to create direct deposit session:', error);
       setSelectedChainId(null);

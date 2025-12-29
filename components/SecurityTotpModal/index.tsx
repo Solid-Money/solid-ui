@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Image } from 'expo-image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
 import { z } from 'zod';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
@@ -146,9 +146,7 @@ const TotpInput: React.FC<{
 const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSetup, setIsLoadingSetup] = useState(true);
-  const [showManualEntry, setShowManualEntry] = useState(false);
-  const [totpUri, setTotpUri] = useState<string>('');
-  const [manualCode, setManualCode] = useState<string>('');
+  const [qrCode, setQrCode] = useState<string>('');
   const [apiError, setApiError] = useState<string>('');
 
   const {
@@ -172,9 +170,8 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
       setIsLoadingSetup(true);
       setApiError('');
       try {
-        const data = await setupTotp();
-        setTotpUri(data.uri);
-        setManualCode(data.secret);
+        const { qrCode } = await setupTotp();
+        setQrCode(qrCode);
       } catch (err: any) {
         console.error('Failed to setup TOTP:', err);
         setApiError('Failed to setup TOTP. Please try again.');
@@ -235,12 +232,12 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
           </View>
         ) : (
           <View className="bg-[#1c1c1c] rounded-[15px] p-8 items-center">
-            {totpUri && (
+            {qrCode && (
               <View className="bg-white rounded-[15px] p-3">
-                <QRCode value={totpUri} size={228} backgroundColor="white" color="black" />
+                <Image source={{ uri: qrCode }} className="w-full h-full" />
               </View>
             )}
-            {!showManualEntry && (
+            {/* {!showManualEntry && (
               <Pressable onPress={() => setShowManualEntry(true)} className="mt-4">
                 <Text className="text-[rgba(255,255,255,0.7)] text-sm font-medium text-center">
                   Can&apos;t scan the QR code?
@@ -254,7 +251,7 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
                 </Text>
                 <Text className="text-white text-base font-semibold font-mono">{manualCode}</Text>
               </View>
-            )}
+            )} */}
           </View>
         )}
       </View>

@@ -53,7 +53,7 @@ export default function SignupEmail() {
   const {
     control,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors },
     watch,
   } = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
@@ -161,109 +161,106 @@ export default function SignupEmail() {
     router.replace(path.ONBOARDING);
   };
 
-  const getButtonText = () => {
-    if (rateLimitError) return 'Please wait before trying again';
-    if (errors.email?.message) return errors.email.message;
-    if (!isValid || !watchedEmail) return 'Enter email address';
-    if (isLoading) return 'Creating...';
-    return 'Create account';
-  };
-
-  const isButtonDisabled = !isValid || !watchedEmail || isLoading || !!rateLimitError;
-
-  const displayError = error || rateLimitError;
+  // Show validation error, API error, or rate limit error
+  const displayError = errors.email?.message || error || rateLimitError;
 
   // Form content (shared between mobile and desktop)
   const formContent = (
-    <View className="w-full max-w-[400px]">
-      {/* Back button - positioned above form on desktop */}
-      {isDesktop && (
-        <Pressable
-          onPress={handleBack}
-          className="w-10 h-10 rounded-full bg-white/10 items-center justify-center web:hover:bg-white/20 mb-6"
-        >
-          <ArrowLeft size={20} color="#ffffff" />
-        </Pressable>
-      )}
+    <View className="w-full max-w-[440px] flex-1 flex flex-col">
+      {/* Form content wrapper - centered vertically */}
+      <View className="my-auto">
+        {/* Back button - positioned above form on desktop */}
+        {isDesktop && (
+          <Pressable
+            onPress={handleBack}
+            className="w-10 h-10 rounded-full bg-white/10 items-center justify-center web:hover:bg-white/20 mb-20"
+          >
+            <ArrowLeft size={20} color="#ffffff" />
+          </Pressable>
+        )}
 
-      {/* Header */}
-      <View className="mb-8">
-        <Text className="text-white text-[38px] md:text-4xl font-medium text-center mb-2">
-          Create your account
-        </Text>
-        <Text className="text-white/60 text-center text-sm">
-          Get premium benefits in under 5 mints
-        </Text>
-      </View>
-
-      {/* Email Input */}
-      <View className="gap-5 mb-6">
-        <View>
-          <Text className="text-white/60 text-[16px] text-sm mb-2">Email</Text>
-          <Controller
-            control={control}
-            name="email"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <Input
-                id="email"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                error={!!errors.email || !!error}
-              />
-            )}
-          />
+        {/* Header */}
+        <View className="mb-8">
+          <Text className="text-white text-[38px] font-medium mb-4 text-center -tracking-[1px]">
+            Create your account
+          </Text>
+          <Text className="text-white/60 text-center text-base font-medium">
+            Setup in minutes. Start earning{'\n'}and spending right away
+          </Text>
         </View>
 
-        {/* Marketing consent checkbox */}
-        <Controller
-          control={control}
-          name="marketingConsent"
-          render={({ field: { onChange, value } }) => (
-            <Pressable onPress={() => onChange(!value)} className="flex-row items-start gap-3">
-              <Checkbox checked={value} onCheckedChange={onChange} className="mt-0.5" />
-              <Text className="text-sm text-white/60 flex-1">
-                I consent to receive marketing messages about Solid products and services.
-              </Text>
-            </Pressable>
-          )}
-        />
-
-        {displayError ? (
-          <View className="flex-row items-center gap-2">
-            <InfoError />
-            <Text className="text-sm text-red-400">{displayError}</Text>
+        {/* Email Input */}
+        <View className="gap-5 mb-6">
+          <View>
+            <Text className="text-white/60 text-base font-medium mb-2">Email</Text>
+            <Controller
+              control={control}
+              name="email"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  id="email"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  className="bg-[#2F2F2F] font-normal"
+                  error={!!errors.email || !!error}
+                />
+              )}
+            />
           </View>
-        ) : null}
+
+          {/* Marketing consent checkbox */}
+          <Controller
+            control={control}
+            name="marketingConsent"
+            render={({ field: { onChange, value } }) => (
+              <Pressable onPress={() => onChange(!value)} className="flex-row items-start gap-3">
+                <Checkbox checked={value} onCheckedChange={onChange} className="mt-0.5" />
+                <Text className="text-base font-medium text-white/60 flex-1">
+                  I consent to receive marketing messages about Solid products and services.
+                </Text>
+              </Pressable>
+            )}
+          />
+
+          {displayError ? (
+            <View className="flex-row items-center gap-2">
+              <InfoError />
+              <Text className="text-sm text-red-400">{displayError}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Create Account Button */}
+        <Button
+          variant="brand"
+          onPress={handleSubmit(handleSendOtp)}
+          className="rounded-xl h-14 w-full font-semibold"
+        >
+          {isLoading ? (
+            <ActivityIndicator color="gray" />
+          ) : (
+            <Text className="text-lg font-semibold">Create account</Text>
+          )}
+        </Button>
       </View>
 
-      {/* Create Account Button */}
-      <Button
-        variant="brand"
-        onPress={handleSubmit(handleSendOtp)}
-        disabled={isButtonDisabled}
-        className="rounded-xl h-14 w-full"
-      >
-        <Text className="text-lg font-semibold">{getButtonText()}</Text>
-        {isLoading && <ActivityIndicator color="gray" />}
-      </Button>
-
-      {/* Terms and Conditions */}
+      {/* Terms and Conditions - pushed to bottom */}
       <View className="mt-auto pt-8">
-        <Text className="text-sm text-white/40 text-center">
+        <Text className="text-sm text-white/70 text-center">
           I acknowledge that I have read and agreed to{'\n'}
-          <Link href="https://solid.xyz/terms" target="_blank" className="underline text-white/60">
+          <Link href="https://solid.xyz/terms" target="_blank" className="underline text-white/70">
             Terms and Conditions
           </Link>{' '}
           and{' '}
           <Link
             href="https://solid.xyz/privacy"
             target="_blank"
-            className="underline text-white/60"
+            className="underline text-white/70"
           >
             Privacy Policy
           </Link>
@@ -293,18 +290,18 @@ export default function SignupEmail() {
             <View className="w-full">
               {/* Header */}
               <View className="mb-8 mt-4">
-                <Text className="text-white text-[38px] font-semibold text-center mb-4">
+                <Text className="text-white text-[38px] font-semibold text-center mb-4 -tracking-[1px] leading-10">
                   Create your{'\n'}account
                 </Text>
                 <Text className="text-white/60 text-center text-[16px]">
-                  Get premium benefits{'\n'}in under 5 mints
+                  Setup in minutes. Start earning{'\n'}and spending right away
                 </Text>
               </View>
 
               {/* Email Input */}
               <View className="gap-5 mb-6">
                 <View>
-                  <Text className="text-white/60 text-sm mb-2">Email</Text>
+                  <Text className="text-white/60 text-base mb-2">Email</Text>
                   <Controller
                     control={control}
                     name="email"
@@ -318,6 +315,7 @@ export default function SignupEmail() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoComplete="email"
+                        className="bg-[#2F2F2F] font-normal"
                         error={!!errors.email || !!error}
                       />
                     )}
@@ -334,7 +332,7 @@ export default function SignupEmail() {
                       className="flex-row items-start gap-3"
                     >
                       <Checkbox checked={value} onCheckedChange={onChange} className="mt-0.5" />
-                      <Text className="text-sm text-white/60 flex-1">
+                      <Text className="text-[16px] text-white/60 flex-1">
                         I consent to receive marketing messages about Solid products and services.
                       </Text>
                     </Pressable>
@@ -377,11 +375,13 @@ export default function SignupEmail() {
               <Button
                 variant="brand"
                 onPress={handleSubmit(handleSendOtp)}
-                disabled={isButtonDisabled}
-                className="rounded-xl h-14 w-full"
+                className="rounded-xl h-14 w-full font-semibold"
               >
-                <Text className="text-lg font-semibold">{getButtonText()}</Text>
-                {isLoading && <ActivityIndicator color="gray" />}
+                {isLoading ? (
+                  <ActivityIndicator color="gray" />
+                ) : (
+                  <Text className="text-lg font-semibold">Create account</Text>
+                )}
               </Button>
             </View>
           </View>
@@ -409,7 +409,7 @@ export default function SignupEmail() {
         </View>
 
         {/* Form Content */}
-        <View className="flex-1 justify-center items-center px-8">{formContent}</View>
+        <View className="flex-1 items-center px-8 pt-24 pb-8">{formContent}</View>
       </View>
     </View>
   );

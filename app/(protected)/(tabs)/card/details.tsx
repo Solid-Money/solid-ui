@@ -340,10 +340,10 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
 
   return (
     <LinearGradient
-      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.175)']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={{ borderRadius: 20, padding: 24, height: '100%' }}
+      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.1)']}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      className="rounded-[20px] py-[30px] px-[36px] h-full"
     >
       <View className="flex-1 justify-between">
         {/* Spending Balance Section */}
@@ -353,29 +353,26 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
         </View>
 
         {/* Cashback Section */}
-        <View className="flex-row items-end justify-between">
+        <View className="flex-row items-center justify-between">
           <View>
-            <Text className="text-white/70 text-lg mb-1 font-medium">Cashback earned</Text>
+            <Text className="text-white/50 text-lg mb-1 font-medium">Cashback earned</Text>
             <Text className="text-[#94F27F] text-2xl font-semibold">${totalUsdValue}</Text>
           </View>
 
           {/* Cashback Badge */}
-          <View className="px-4 py-3 flex-row items-center gap-1">
+          <View className="px-4  flex-row items-center gap-1">
             <Image
               source={require('@/assets/images/diamond.png')}
-              style={{ width: 92, height: 86 }}
+              style={{ width: 82, aspectRatio: 72 / 66 }}
               contentFit="contain"
             />
-            <View>
-              <Text className="text-white text-lg">you are receiving</Text>
-              <Text className="text-white text-lg">
-                <Text className="text-[#94F27F] font-bold">
-                  {Math.round(cashbackPercentage * 100)}%
-                </Text>
-                <Text className="text-white"> cashback on all</Text>
-              </Text>
-              <Text className="text-white text-lg">purchases</Text>
-            </View>
+            <Text className="text-white text-lg font-light" style={{ lineHeight: 20 }}>
+              you are receiving{'\n'}
+              <Text className="text-[#94F27F] font-bold">
+                {Math.round(cashbackPercentage * 100)}%
+              </Text>{' '}
+              cashback on all{'\n'}purchases
+            </Text>
           </View>
         </View>
       </View>
@@ -719,9 +716,12 @@ function DepositBonusBanner() {
 
   if (isScreenMedium) {
     return (
-      <View
-        className="border-[#FFD151]/40 rounded-2xl p-4 md:p-5 flex-row items-center gap-4 h-full bg-black/40"
-        style={{ borderWidth: 1 }}
+      <LinearGradient
+        colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
+        locations={[0.0964, 0.6892]}
+        className="rounded-2xl p-4 md:p-5 flex-row items-center gap-4 h-full border border-[#FFD15126]"
       >
         <Link
           href={
@@ -732,47 +732,48 @@ function DepositBonusBanner() {
         >
           <Text className="text-[#FFD151] font-bold text-sm">Receive your $50 sign up bonus!</Text>
         </Link>
-        <Text className="text-[#FFD151] text-sm flex-1 font-medium">
-          On a minimum deposit of $100{' '}
-          <Link
-            target="_blank"
-            href={
-              'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-            }
-            className="underline"
-          >
-            Learn more
-          </Link>
-          <Text className="text-[#FFD151]"> {'>'}</Text>
-        </Text>
-      </View>
+        <View className="flex-1 flex-row items-center justify-between">
+          <Text className="text-[#FFD151] text-sm font-medium">On a minimum deposit of $100</Text>
+          <View className="flex-row items-center gap-1">
+            <Link
+              target="_blank"
+              href={
+                'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
+              }
+              className="font-bold text-[#FFD151]"
+            >
+              Learn more
+            </Link>
+            <View className="pt-0.5">
+              <ChevronRight size={16} color="#FFD151" />
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View
-      className="border-[#FFD151]/40 rounded-2xl p-3 flex-row  gap-3 bg-black/40 mb-4"
-      style={{ borderWidth: 1 }}
+    <LinearGradient
+      colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
+      start={{ x: 0.15, y: 0 }}
+      end={{ x: 0.85, y: 1 }}
+      locations={[0.0964, 0.6892]}
+      className="rounded-3xl p-4 flex-col items-center gap-3 mb-4 border border-[#FFD15126]"
     >
-      <View style={{ width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}>
-        <Image
-          source={require('@/assets/images/exclamation_mark.png')}
-          style={{ width: '100%', height: '100%' }}
-          contentFit="contain"
-        />
-      </View>
       <Link
         href={
           'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
         }
         target="_blank"
-        className="w-full"
+        className="bg-[#FFD151]/20 rounded-full px-4 py-1.5"
       >
-        <Text className="text-[#FFD151] font-bold text-base text-center">
-          Deposit $100 to receive your $50 sign up bonus!
-        </Text>
+        <Text className="text-[#FFD151] font-bold text-lg">Receive your $50 sign up bonus!</Text>
       </Link>
-    </View>
+      <Text className="text-[#FFD151] text-lg font-medium text-center">
+        On a minimum deposit of $100
+      </Text>
+    </LinearGradient>
   );
 }
 
@@ -793,10 +794,10 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
 
   return (
     <LinearGradient
-      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.175)']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={{ borderRadius: 20, marginBottom: 16, paddingBottom: 10, paddingTop: 10 }}
+      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.1)']}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      className="rounded-[20px] mb-4 py-[10px]"
     >
       {/* Top Section */}
       <View className="flex-row justify-between items-start mb-2 px-4">
@@ -816,9 +817,10 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
 
       {/* Bottom Text */}
       <View>
-        <Text className="text-white text-lg pl-4 pb-2">
+        <Text className="text-white text-lg pl-4 pb-2 font-light" style={{ lineHeight: 20 }}>
           you are receiving{' '}
-          <Text className="text-[#94F27F] font-bold">{cashbackPercentage * 100}%</Text> cashback on
+          <Text className="text-[#94F27F] font-bold">{Math.round(cashbackPercentage * 100)}%</Text>{' '}
+          cashback on
           {'\n'}
           all purchases
         </Text>

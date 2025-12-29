@@ -6,23 +6,18 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { v4 as uuidv4 } from 'uuid';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import PasskeySvg from '@/assets/images/passkey-svg';
 import { DesktopCarousel } from '@/components/Onboarding';
-import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
-import {
-  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-} from '@/lib/config';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
+import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 
 const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
 
@@ -31,6 +26,7 @@ export default function SignupPasskey() {
   const { isDesktop } = useDimension();
   const { email, verificationToken, setStep, setPasskeyData, setError } = useSignupFlowStore();
   const [isLoading, setIsLoading] = useState(false);
+  const { createPasskey } = useTurnkey();
 
   useEffect(() => {
     // Redirect if no verification token (user hasn't completed OTP)
@@ -44,53 +40,19 @@ export default function SignupPasskey() {
     setError(null);
 
     try {
-      let challenge: string;
-      let attestation: any;
-      let credentialId: string;
+      // Use the unified createPasskey from the new SDK
+      // This works on both web and native platforms automatically
+      // Sanitize email for passkey name using same logic as backend generateUniqueUsername
+      const passkeyName = email
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, '')
+        .substring(0, 64);
+      const passkey = await createPasskey({
+        name: passkeyName,
+      });
 
-      if (Platform.OS === 'web') {
-        // Web: Use Turnkey browser SDK
-        const { Turnkey } = await import('@turnkey/sdk-browser');
-        const turnkey = new Turnkey({
-          apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-          defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-          rpId: getRuntimeRpId(),
-        });
-
-        const passkeyClient = turnkey.passkeyClient();
-        const passkey = await passkeyClient.createUserPasskey({
-          publicKey: {
-            user: {
-              name: email,
-              displayName: email,
-            },
-            timeout: 120000,
-          },
-        });
-
-        challenge = passkey.encodedChallenge;
-        attestation = passkey.attestation;
-        credentialId = passkey.attestation.credentialId;
-      } else {
-        // Native: Use React Native passkey stamper
-        const { createPasskey } = await import('@turnkey/react-native-passkey-stamper');
-        const passkey = await createPasskey({
-          authenticatorName: 'End-User Passkey',
-          rp: {
-            id: getRuntimeRpId(),
-            name: 'Solid',
-          },
-          user: {
-            id: uuidv4(),
-            name: email,
-            displayName: email,
-          },
-        });
-
-        challenge = passkey.challenge;
-        attestation = passkey.attestation;
-        credentialId = passkey.attestation.credentialId;
-      }
+      const { encodedChallenge: challenge, attestation } = passkey;
+      const credentialId = attestation.credentialId;
 
       // Store passkey data in the signup flow store
       setPasskeyData({ challenge, attestation, credentialId });
@@ -150,40 +112,52 @@ export default function SignupPasskey() {
 
   // Form content (used for desktop)
   const formContent = (
-    <View className="w-full max-w-[400px] items-center">
-      {/* Passkey Icon */}
-      <PasskeySvg />
-
-      {/* Header */}
-      <View className="mt-8 mb-8 items-center">
-        <Text className="text-white text-[32px] font-medium text-center mb-4">
-          Your account is{'\n'}protected with{'\n'}Passkey
-        </Text>
-        <Text className="text-white/60 text-center text-[14px] px-4">
-          Passkeys let you sign in using biometrics or your device PIN—no email needed. They&apos;re
-          fast, secure, and act as 2FA to protect your account.{' '}
-          <Text className="text-white underline" onPress={handleLearnMore}>
-            Learn more
-          </Text>
-        </Text>
-      </View>
-
-      {/* Continue Button */}
-      <Button
-        variant="brand"
-        onPress={handleContinue}
-        disabled={isLoading}
-        className="rounded-xl h-14 w-full"
-      >
-        {isLoading ? (
-          <ActivityIndicator color="#000" />
-        ) : (
-          <>
-            <LoginKeyIcon color="#000" />
-            <Text className="text-lg font-semibold text-black ml-2">Continue</Text>
-          </>
+    <View className="w-full max-w-[440px] flex-1 flex flex-col">
+      {/* Form content wrapper - centered vertically */}
+      <View className="my-auto items-center">
+        {/* Back button - positioned above form on desktop */}
+        {isDesktop && (
+          <Pressable
+            onPress={handleBack}
+            className="self-start w-10 h-10 rounded-full bg-white/10 items-center justify-center web:hover:bg-white/20 mb-20"
+          >
+            <ArrowLeft size={20} color="#ffffff" />
+          </Pressable>
         )}
-      </Button>
+
+        {/* Passkey Icon */}
+        <PasskeySvg />
+
+        {/* Header */}
+        <View className="mt-8 mb-8 items-center">
+          <Text className="text-white text-[38px] font-semibold text-center mb-4 leading-none -tracking-[1px]">
+            Secure sign-in{'\n'}with Passkey
+          </Text>
+          <Text className="text-white/60 text-center text-base px-4">
+            Passkeys let you sign in using biometrics or your device PIN—no email needed.
+            They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
+            <Text className="text-white/60 underline" onPress={handleLearnMore}>
+              Learn more
+            </Text>
+          </Text>
+        </View>
+
+        {/* Continue Button */}
+        <Button
+          variant="brand"
+          onPress={handleContinue}
+          className="rounded-xl h-14 w-full font-semibold"
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <View className="flex-row items-center">
+              <LoginKeyIcon color="#000" />
+              <Text className="text-lg font-semibold text-black ml-2">Continue</Text>
+            </View>
+          )}
+        </Button>
+      </View>
     </View>
   );
 
@@ -209,13 +183,13 @@ export default function SignupPasskey() {
 
             {/* Header */}
             <View className="mt-8 items-center">
-              <Text className="text-white text-[38px] font-semibold text-center mb-4">
+              <Text className="text-white text-[38px] font-semibold text-center mb-4 -tracking-[1px] leading-10">
                 Your account is{'\n'}protected with{'\n'}Passkey
               </Text>
-              <Text className="text-white/60 text-center text-[14px] px-4">
+              <Text className="text-white/60 text-center text-[16px] px-4">
                 Passkeys let you sign in using biometrics or your device PIN—no email needed.
                 They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
-                <Text className="text-white/60 underline" onPress={handleLearnMore}>
+                <Text className="text-white/60 underline font-medium" onPress={handleLearnMore}>
                   Learn more
                 </Text>
               </Text>
@@ -230,8 +204,7 @@ export default function SignupPasskey() {
             <Button
               variant="brand"
               onPress={handleContinue}
-              disabled={isLoading}
-              className="rounded-xl h-14 w-full"
+              className="rounded-xl h-14 w-full font-semibold"
             >
               {isLoading ? (
                 <ActivityIndicator color="#000" />

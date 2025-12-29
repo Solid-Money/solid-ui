@@ -1,23 +1,19 @@
-import { Turnkey } from '@turnkey/sdk-browser';
+import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SecurityEmailModal } from '@/components/SecurityEmailModal';
 import { SecurityTotpModal } from '@/components/SecurityTotpModal';
 import { SettingsCard } from '@/components/Settings';
-import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getTotpStatus } from '@/lib/api';
-import {
-  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-} from '@/lib/config';
-import { base64urlToUint8Array, cn } from '@/lib/utils';
+import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
+import { cn } from '@/lib/utils';
 
 const SecurityEmailIcon = require('@/assets/images/security_email.png');
 const SecurityUnlockIcon = require('@/assets/images/security_unlock.png');
@@ -26,6 +22,7 @@ const SecurityTotpIcon = require('@/assets/images/security_totp.png');
 
 export default function Security() {
   const { user } = useUser();
+  const { createHttpClient } = useTurnkey();
   const { isDesktop } = useDimension();
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
@@ -34,47 +31,25 @@ export default function Security() {
   const [isTotpVerified, setIsTotpVerified] = useState<boolean | null>(null);
   const [isLoadingTotpStatus, setIsLoadingTotpStatus] = useState(true);
 
-  const handleUnlock = async () => {
+  const handleUnlock = useCallback(async () => {
     setIsUnlocking(true);
     try {
-      if (Platform.OS === 'web') {
-        const turnkey = new Turnkey({
-          apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-          defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-          rpId: getRuntimeRpId(),
-        });
+      const passkeyClient = createHttpClient({
+        defaultStamperType: StamperType.Passkey,
+      });
+      // Trigger passkey prompt to verify user identity
+      await passkeyClient.stampGetWhoami(
+        { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
+        StamperType.Passkey,
+      );
 
-        // Prepare allowCredentials if we have a credential ID for this user
-        const allowCredentials = user?.credentialId
-          ? [
-              {
-                id: base64urlToUint8Array(user.credentialId) as BufferSource,
-                type: 'public-key' as const,
-              },
-            ]
-          : undefined;
-
-        const passkeyClient = turnkey.passkeyClient(
-          allowCredentials ? { allowCredentials } : undefined,
-        );
-
-        // This will trigger the passkey prompt
-        await passkeyClient.stampGetWhoami({
-          organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-        });
-
-        setIsUnlocked(true);
-      } else {
-        // For native, we would use the native passkey API
-        // For now, just unlock
-        setIsUnlocked(true);
-      }
+      setIsUnlocked(true);
     } catch (error) {
       console.error('Failed to unlock:', error);
     } finally {
       setIsUnlocking(false);
     }
-  };
+  }, [createHttpClient]);
 
   const handleChangeEmail = () => {
     setShowEmailModal(true);

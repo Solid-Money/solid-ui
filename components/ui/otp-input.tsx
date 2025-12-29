@@ -21,10 +21,14 @@ export function OtpInput({
 }: OtpInputProps) {
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
-  // Focus first empty input or last input on mount
+  // Focus first input on mount
   useEffect(() => {
-    if (autoFocus && inputRefs.current[0]) {
-      inputRefs.current[0]?.focus();
+    if (autoFocus) {
+      // Use requestAnimationFrame to ensure refs are populated after render
+      const frameId = requestAnimationFrame(() => {
+        inputRefs.current[0]?.focus();
+      });
+      return () => cancelAnimationFrame(frameId);
     }
   }, [autoFocus]);
 
@@ -92,12 +96,15 @@ export function OtpInput({
         <Pressable
           key={index}
           onPress={() => handlePress(index)}
-          className={cn('w-12 h-14 rounded-xl border-2 items-center justify-center bg-[#1F1F1F]', {
-            'border-transparent': !error && !value[index],
-            'border-white/50': !error && value[index],
-            'border-red-500': error,
-            'opacity-50': disabled,
-          })}
+          className={cn(
+            'w-12 h-14 md:w-[65px] md:h-[78px] rounded-[15px] border items-center justify-center bg-[#2F2F2F]',
+            {
+              'border-transparent': !error && !value[index],
+              'border-white/50': !error && value[index],
+              'border-red-500': error,
+              'opacity-50': disabled,
+            },
+          )}
         >
           <TextInput
             ref={ref => {

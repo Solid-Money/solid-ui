@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform, View } from 'react-native';
 import Animated, {
   Easing,
@@ -12,25 +12,17 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
-import { v4 as uuidv4 } from 'uuid';
 import { mainnet } from 'viem/chains';
 
-import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track, trackIdentity } from '@/lib/analytics';
 import { emailSignUp } from '@/lib/api';
-import {
-  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-} from '@/lib/config';
 import { User } from '@/lib/types';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 import { useUserStore } from '@/store/useUserStore';
-// React Native Turnkey SDK for native session management
-import { useTurnkey } from '@turnkey/sdk-react-native';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
@@ -122,9 +114,8 @@ export default function SignupCreating() {
     setStep,
     setError,
   } = useSignupFlowStore();
-  // Native Turnkey SDK for session management (only used on native)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const turnkeyContext = Platform.OS !== 'web' ? useTurnkey() : null;
+  // Guard against duplicate execution (React Strict Mode double-invokes effects in dev)
+  const isCreatingRef = useRef(false);
 
   useEffect(() => {
     // Redirect if missing required data
@@ -133,8 +124,13 @@ export default function SignupCreating() {
       return;
     }
 
+    // Prevent duplicate API calls
+    if (isCreatingRef.current) return;
+    isCreatingRef.current = true;
+
     createAccount();
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const createAccount = async () => {
     track(TRACKING_EVENTS.SIGNUP_STARTED, {
@@ -142,36 +138,10 @@ export default function SignupCreating() {
     });
 
     try {
-      // Generate session key pair for Turnkey (used for OTP login validation + native sessions)
-      let sessionPublicKey: string;
-      let indexedDbClient: any = null;
-
-      if (Platform.OS === 'web') {
-        const { Turnkey } = await import('@turnkey/sdk-browser');
-        const turnkey = new Turnkey({
-          apiBaseUrl: EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-          defaultOrganizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-          rpId: getRuntimeRpId(),
-        });
-
-        indexedDbClient = await turnkey.indexedDbClient();
-        await indexedDbClient?.init();
-        await indexedDbClient!.resetKeyPair();
-        const key = await indexedDbClient!.getPublicKey();
-        sessionPublicKey = key || uuidv4();
-      } else {
-        // For React Native, generate a proper embedded key for Turnkey session
-        if (!turnkeyContext) {
-          throw new Error('Turnkey context not available on native');
-        }
-        sessionPublicKey = await turnkeyContext.createEmbeddedKey();
-      }
-
       // Create account via backend (creates sub-org with passkey + wallet)
       const user = await emailSignUp(
         email,
         verificationToken,
-        sessionPublicKey,
         challenge,
         attestation,
         credentialId,
@@ -179,23 +149,7 @@ export default function SignupCreating() {
         marketingConsent,
       );
 
-      // On native, create Turnkey session using credential bundle
-      if (Platform.OS !== 'web' && turnkeyContext && user.credentialBundle) {
-        await turnkeyContext.createSession({
-          bundle: user.credentialBundle,
-        });
-      }
-
-      // Create Safe smart account (requires Turnkey session for signing)
-      // On native, pass the session-based client; on web, the indexedDb session is used automatically
-      const clientToPass = Platform.OS !== 'web' ? turnkeyContext?.client : undefined;
-
-      const smartAccountClient = await safeAA(
-        mainnet,
-        user.subOrganizationId,
-        user.walletAddress,
-        clientToPass,
-      );
+      const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
 
       if (!smartAccountClient?.account?.address) {
         throw new Error('Failed to create smart account');
@@ -283,7 +237,7 @@ export default function SignupCreating() {
         {/* Header section */}
         <View className="items-center mb-10">
           <Text className="text-white/60 text-[16px] mb-2">Please wait</Text>
-          <Text className="text-white text-[38px] md:text-4xl font-semibold text-center">
+          <Text className="text-white text-[38px] md:text-4xl font-semibold text-center -tracking-[1px]">
             Creating your wallet
           </Text>
         </View>

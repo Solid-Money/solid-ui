@@ -71,6 +71,10 @@ export const DEPOSIT_MODAL = {
     name: 'open_token_selector',
     number: 16,
   },
+  OPEN_DEPOSIT_DIRECTLY_TOKENS: {
+    name: 'open_deposit_directly_tokens',
+    number: 17,
+  },
 };
 
 export const SEND_MODAL = {
@@ -185,9 +189,13 @@ export const SWAP_MODAL = {
     name: 'close',
     number: 0,
   },
+  OPEN_FORM: {
+    name: 'open_form',
+    number: 1,
+  },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
-    number: 1,
+    number: 2,
   },
 };
 

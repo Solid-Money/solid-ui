@@ -6,7 +6,7 @@ import { Address, keccak256, toHex } from 'viem';
 
 import { refreshToken } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { AuthTokens, CardResponse, User } from '@/lib/types';
+import { AuthTokens, CardResponse, CardStatus, CardStatusResponse, User } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -250,19 +250,22 @@ export const isTransactionStuck = (timestamp: string): boolean => {
   return isBefore(transactionDate, oneDayAgo);
 };
 
-// Convert base64url string to Uint8Array for WebAuthn API
 export const base64urlToUint8Array = (base64url: string): Uint8Array => {
   // Convert base64url to base64
-  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-  // Decode base64 string to binary string
+  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  // Add padding if needed
+  const padLen = (4 - (base64.length % 4)) % 4;
+  base64 += '='.repeat(padLen);
+
+  // Decode base64 to binary string
   const binaryString = atob(base64);
-  // Convert binary string to Uint8Array
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
 };
+
 
 export const parseStampHeaderValueCredentialId = (stampHeaderValue: string) => {
   return JSON.parse(stampHeaderValue).credentialId;
@@ -278,4 +281,8 @@ export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
   return cardDetails?.additional_funding_instructions?.find(
     instruction => instruction.chain === ARBITRUM_CHAIN,
   )?.address;
+};
+
+export const hasCard = (cardStatus: CardStatusResponse | null | undefined): boolean => {
+  return cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN;
 };
