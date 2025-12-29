@@ -102,6 +102,10 @@ export const SEND_MODAL = {
     name: 'open_address_book',
     number: 6,
   },
+  OPEN_TOTP_VERIFICATION: {
+    name: 'open_totp_verification',
+    number: 7,
+  },
 };
 
 export const WITHDRAW_MODAL = {

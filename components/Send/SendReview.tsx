@@ -1,30 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
-import { Address } from 'viem';
 import Toast from 'react-native-toast-message';
+import { Address } from 'viem';
 
+import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { getBridgeChain } from '@/constants/bridge';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useSend from '@/hooks/useSend';
 import { track } from '@/lib/analytics';
+import { getTotpStatus } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
-import NeedHelp from '@/components/NeedHelp';
-import { getBridgeChain } from '@/constants/bridge';
 
-import Wallet from '@/assets/images/wallet';
 import Key from '@/assets/images/key';
+import Wallet from '@/assets/images/wallet';
 
 const SendReview: React.FC = () => {
   const { selectedToken, amount, address, name, setTransaction, setModal } = useSendStore();
 
-  const { send, sendStatus, totpModal } = useSend({
+  const { send, sendStatus } = useSend({
     tokenAddress: selectedToken?.contractAddress as any,
     tokenDecimals: selectedToken?.contractDecimals || 18,
     tokenSymbol: selectedToken?.contractTickerSymbol || 'TOKEN',
@@ -32,9 +33,11 @@ const SendReview: React.FC = () => {
     tokenType: selectedToken?.type || TokenType.ERC20,
   });
 
+  const [isCheckingTotp, setIsCheckingTotp] = useState(false);
   const isSendLoading = sendStatus === Status.PENDING;
 
   const getButtonText = () => {
+    if (isCheckingTotp) return 'Checking...';
     if (isSendLoading) return 'Sending';
     return 'Send';
   };
@@ -43,6 +46,27 @@ const SendReview: React.FC = () => {
     if (!selectedToken || !amount || !address) return;
 
     try {
+      setIsCheckingTotp(true);
+
+      // Check if TOTP is required
+      let requiresTotp = false;
+      try {
+        const totpStatus = await getTotpStatus();
+        requiresTotp = totpStatus.verified;
+      } catch (err) {
+        // If TOTP check fails, assume it's not enabled
+        console.error('Failed to check TOTP status:', err);
+      }
+
+      setIsCheckingTotp(false);
+
+      // If TOTP is required, navigate to TOTP verification step
+      if (requiresTotp) {
+        setModal(SEND_MODAL.OPEN_TOTP_VERIFICATION);
+        return;
+      }
+
+      // TOTP not required, proceed with send directly
       track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_INITIATED, {
         token_symbol: selectedToken.contractTickerSymbol,
         token_address: selectedToken.contractAddress,
@@ -82,6 +106,7 @@ const SendReview: React.FC = () => {
         },
       });
     } catch (error) {
+      setIsCheckingTotp(false);
       console.error('Send failed:', error);
       track(TRACKING_EVENTS.SEND_PAGE_TRANSACTION_FAILED, {
         token_symbol: selectedToken?.contractTickerSymbol,
@@ -190,15 +215,14 @@ const SendReview: React.FC = () => {
         variant="brand"
         className="rounded-xl h-12"
         onPress={handleSend}
-        disabled={isSendLoading}
+        disabled={isSendLoading || isCheckingTotp}
       >
         <Key />
         <Text className="text-base font-bold">{getButtonText()}</Text>
-        {isSendLoading && <ActivityIndicator color="gray" />}
+        {(isSendLoading || isCheckingTotp) && <ActivityIndicator color="gray" />}
       </Button>
 
       <NeedHelp />
-      {totpModal}
     </View>
   );
 };

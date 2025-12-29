@@ -7,7 +7,6 @@ import { z } from 'zod';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
 import { setupTotp, verifyTotp } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -297,21 +296,6 @@ export const SecurityTotpModal: React.FC<SecurityTotpModalProps> = ({
   onOpenChange,
   onSuccess,
 }) => {
-  if (Platform.OS === 'web') {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="sr-only">Two-Factor Authentication</DialogTitle>
-          </DialogHeader>
-          <View className="p-6">
-            <SecurityTotpModalContent onSuccess={onSuccess} />
-          </View>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   const modalState = {
     name: 'security-totp-modal',
     number: 1,
