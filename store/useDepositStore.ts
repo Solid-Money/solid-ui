@@ -36,6 +36,7 @@ interface DirectDepositSession {
   sessionId?: string;
   walletAddress?: string;
   chainId?: number;
+  selectedToken?: 'USDC' | 'USDT';
   status?: 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
   expiresAt?: number;
   minDeposit?: string;

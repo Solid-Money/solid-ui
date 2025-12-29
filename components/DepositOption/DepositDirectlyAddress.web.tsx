@@ -24,7 +24,13 @@ import QRCode from 'react-native-qrcode-svg';
 import { formatUnits } from 'viem';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
+const USDT_ICON = require('@/assets/images/usdt.png');
 const SOUSD_ICON = require('@/assets/images/sousd-4x.png');
+
+const TOKEN_ICONS: Record<string, any> = {
+  USDC: USDC_ICON,
+  USDT: USDT_ICON,
+};
 
 const STATUS_TEXT = {
   pending: 'Waiting for transfer',
@@ -59,15 +65,20 @@ const DepositDirectlyAddress = () => {
   const { user } = useUser();
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
   const chainId = directDepositSession.chainId || 1;
+  const selectedToken = directDepositSession.selectedToken || 'USDC';
+  const tokenIcon = TOKEN_ICONS[selectedToken] || USDC_ICON;
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<'copied' | 'error' | null>(null);
   const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
   const intercom = useIntercom();
-  const { exchangeRate } = usePreviewDeposit(
-    '10',
-    BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address,
-    chainId,
-  );
+
+  // Get token address for exchange rate calculation
+  const tokenAddress =
+    BRIDGE_TOKENS[chainId]?.tokens?.[selectedToken]?.address ||
+    BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address;
+
+  const { exchangeRate } = usePreviewDeposit('10', tokenAddress, chainId);
+
   const network = BRIDGE_TOKENS[chainId];
   const walletAddress = directDepositSession.walletAddress;
 
@@ -121,16 +132,16 @@ const DepositDirectlyAddress = () => {
 
   const infoRows: InfoRow[] = useMemo(
     () => [
-      { label: 'Min deposit', value: `${minDeposit} USDC` },
+      { label: 'Min deposit', value: `${minDeposit} ${selectedToken}` },
       { label: 'Estimated time', value: estimatedTime },
       {
         label: 'Status',
         value: STATUS_TEXT[status],
         valueClassName: `${STATUS_TONE_CLASSES[status]} font-medium`,
       },
-      { label: 'Fee', value: `${fee} USDC`, icon: <Fuel size={16} color="#A1A1AA" /> },
+      { label: 'Fee', value: `${fee} ${selectedToken}`, icon: <Fuel size={16} color="#A1A1AA" /> },
     ],
-    [minDeposit, estimatedTime, status, fee],
+    [minDeposit, estimatedTime, status, fee, selectedToken],
   );
 
   const priceRows: InfoRow[] = useMemo(() => {
@@ -161,7 +172,7 @@ const DepositDirectlyAddress = () => {
       valueContent: (
         <Text className="font-medium text-white text-base">
           1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
-          USDC
+          {selectedToken}
         </Text>
       ),
     });
@@ -183,8 +194,8 @@ const DepositDirectlyAddress = () => {
       <View className="flex flex-row flex-wrap items-center justify-center">
         <Text className="text-xl md:text-2xl font-bold text-[#ACACAC]">Transfer</Text>
         <View className="flex flex-row items-center gap-1 px-1">
-          <Image source={USDC_ICON} style={{ width: 21, height: 21 }} contentFit="cover" />
-          <Text className="text-xl md:text-2xl font-bold text-white">USDC</Text>
+          <Image source={tokenIcon} style={{ width: 21, height: 21 }} contentFit="cover" />
+          <Text className="text-xl md:text-2xl font-bold text-white">{selectedToken}</Text>
         </View>
         <Text className="text-xl md:text-2xl font-semibold text-[#ACACAC]">to this</Text>
         <View className="flex flex-row items-center gap-1 px-2 2xl:px-3">
@@ -249,7 +260,7 @@ const DepositDirectlyAddress = () => {
       <View className="flex flex-row items-center justify-center gap-1.5 px-4">
         <Info size={16} color="#A1A1AA" />
         <Text className="text-[#A1A1AA] text-sm text-center md:my-0 my-2">
-          Please send only USDC to this address
+          Please send only {selectedToken} to this address
         </Text>
         <TooltipPopover
           text="Sending any other token may result in permanent loss of funds."
