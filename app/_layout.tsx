@@ -1,3 +1,5 @@
+import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
+import SwapModalProvider from '@/components/Swap/SwapModalProvider';
 import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom';
 import { toastProps } from '@/components/Toast';
@@ -340,6 +342,8 @@ export default Sentry.wrap(function RootLayout() {
                         />
                       </Stack>
                       <PortalHost />
+                      <DepositModalProvider />
+                      <SwapModalProvider />
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>
                 </Intercom>
