@@ -20,7 +20,6 @@ type SendProps = {
   tokenSymbol: string;
   chainId: number;
   tokenType: TokenType;
-  skipTotpCheck?: boolean;
 };
 
 type SendResult = {
@@ -37,7 +36,6 @@ const useSend = ({
   chainId,
   tokenSymbol,
   tokenType,
-  skipTotpCheck = false,
 }: SendProps): SendResult => {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivity();
@@ -94,16 +92,14 @@ const useSend = ({
               },
             ];
 
-      // Check if TOTP is enabled (skip if already verified in modal flow)
+      // Check if TOTP is enabled
       let requiresTotp = false;
-      if (!skipTotpCheck) {
-        try {
-          const totpStatus = await getTotpStatus();
-          requiresTotp = totpStatus.verified;
-        } catch (err) {
-          // If TOTP check fails, assume it's not enabled
-          console.error('Failed to check TOTP status:', err);
-        }
+      try {
+        const totpStatus = await getTotpStatus();
+        requiresTotp = totpStatus.verified;
+      } catch (err) {
+        // If TOTP check fails, assume it's not enabled
+        console.error('Failed to check TOTP status:', err);
       }
 
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);

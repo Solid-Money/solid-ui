@@ -231,11 +231,20 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
             <ActivityIndicator color="#94F27F" size="large" />
           </View>
         ) : (
-          <View className="bg-[#1c1c1c] rounded-[15px] p-8 items-center">
+          <View className="bg-[#1c1c1c] rounded-[15px] p-8 items-center justify-center min-h-[250px] min-w-[250px]">
             {qrCode && (
-              <View className="bg-white rounded-[15px] p-3">
-                <Image source={{ uri: qrCode }} className="w-full h-full" />
-              </View>
+              <Image
+                source={{
+                  uri: qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`,
+                }}
+                alt="QR code"
+                style={{ width: 256, height: 256 }}
+                contentFit="contain"
+                onError={error => {
+                  console.error('QR code image error:', error);
+                  setApiError('Failed to load QR code image');
+                }}
+              />
             )}
             {/* {!showManualEntry && (
               <Pressable onPress={() => setShowManualEntry(true)} className="mt-4">

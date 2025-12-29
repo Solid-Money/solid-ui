@@ -6,7 +6,6 @@ import AddressBook from '@/components/Send/AddressBook';
 import SendForm from '@/components/Send/SendForm';
 import SendReview from '@/components/Send/SendReview';
 import SendSearch from '@/components/Send/SendSearch';
-import SendTotpVerification from '@/components/Send/SendTotpVerification';
 import TokenSelector from '@/components/Send/TokenSelector';
 import TransactionStatus from '@/components/TransactionStatus';
 import { buttonVariants } from '@/components/ui/button';
@@ -45,7 +44,6 @@ const useSendOption = ({
   const isReview = currentModal.name === SEND_MODAL.OPEN_REVIEW.name;
   const isTransactionStatus = currentModal.name === SEND_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isAddressBook = currentModal.name === SEND_MODAL.OPEN_ADDRESS_BOOK.name;
-  const isTotpVerification = currentModal.name === SEND_MODAL.OPEN_TOTP_VERIFICATION.name;
   const isClose = currentModal.name === SEND_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== SEND_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -116,10 +114,6 @@ const useSendOption = ({
       );
     }
 
-    if (isTotpVerification) {
-      return <SendTotpVerification />;
-    }
-
     if (isReview) {
       return <SendReview />;
     }
@@ -141,7 +135,6 @@ const useSendOption = ({
 
   const getContentKey = () => {
     if (isTransactionStatus) return 'transaction-status';
-    if (isTotpVerification) return 'totp-verification';
     if (isReview) return 'review';
     if (isTokenSelector) return 'token-selector';
     if (isForm) return 'form';
@@ -151,7 +144,6 @@ const useSendOption = ({
 
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
-    if (isTotpVerification) return 'Verify';
     if (isReview) return 'Review';
     if (isTokenSelector) return 'Select token';
     if (isForm) return 'Send';
@@ -181,9 +173,7 @@ const useSendOption = ({
   );
 
   const handleBackPress = () => {
-    if (isTotpVerification) {
-      setModal(SEND_MODAL.OPEN_REVIEW);
-    } else if (isReview) {
+    if (isReview) {
       setModal(SEND_MODAL.OPEN_FORM);
     } else if (isTokenSelector) {
       setModal(SEND_MODAL.OPEN_FORM);
@@ -198,7 +188,7 @@ const useSendOption = ({
 
   const shouldOpen = !isClose;
 
-  const showBackButton = isForm || isTokenSelector || isReview || isAddressBook || isTotpVerification;
+  const showBackButton = isForm || isTokenSelector || isReview || isAddressBook;
 
   return {
     shouldOpen,
