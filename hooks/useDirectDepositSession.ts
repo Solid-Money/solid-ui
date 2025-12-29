@@ -8,18 +8,20 @@ import {
 import { DirectDepositSessionResponse } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { withRefreshToken } from '@/lib/utils';
+import { useActivity } from './useActivity';
 
 export const useDirectDepositSession = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setDirectDepositSession, clearDirectDepositSession } = useDepositStore();
+  const { refetchAll } = useActivity();
 
-  const createDirectDepositSession = async (chainId: number) => {
+  const createDirectDepositSession = async (chainId: number, tokenSymbol: string) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const data = await withRefreshToken(() => createDirectDepositSessionApi(chainId));
+      const data = await withRefreshToken(() => createDirectDepositSessionApi(chainId, tokenSymbol));
 
       if (!data) throw new Error('Failed to create direct deposit session');
 
@@ -28,6 +30,8 @@ export const useDirectDepositSession = () => {
         ...data,
         fromActivity: false,
       });
+
+      refetchAll(true);
 
       return data;
     } catch (err) {
@@ -49,15 +53,18 @@ export const useDirectDepositSession = () => {
     }
   };
 
-  const deleteDirectDepositSession = async (sessionId: string) => {
+  const deleteDirectDepositSession = async (clientTxId: string) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const data = await withRefreshToken(() => deleteDirectDepositSessionApi(sessionId));
+      const data = await withRefreshToken(() => deleteDirectDepositSessionApi(clientTxId));
 
       // Clear from zustand store
       clearDirectDepositSession();
+
+      refetchAll(true);
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       return data;
     } catch (err) {

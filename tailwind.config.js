@@ -11,7 +11,7 @@ module.exports = {
     extend: {
       fontFamily: {
         system: platformSelect({
-          ios: 'MonaSans',
+          ios: 'MonaSans_400Regular',
           android: 'MonaSans_400Regular',
           web: "MonaSans_400Regular, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
         }),
@@ -60,6 +60,7 @@ module.exports = {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+          hover: 'hsl(var(--card-hover))',
         },
         brand: {
           DEFAULT: 'hsl(var(--brand))',
@@ -78,10 +79,6 @@ module.exports = {
         },
         popup: {
           DEFAULT: 'hsl(var(--popup))',
-        },
-        option: {
-          DEFAULT: 'hsl(var(--option))',
-          hover: 'hsl(var(--option-hover))',
         },
         'button-secondary': {
           DEFAULT: 'hsl(var(--button-secondary))',

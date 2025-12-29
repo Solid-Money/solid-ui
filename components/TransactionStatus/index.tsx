@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TokenIcon } from '@/lib/types';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
+import NeedHelp from '@/components/NeedHelp';
 
 type TransactionStatusProps = {
   amount: number;
@@ -79,6 +80,8 @@ const TransactionStatus = ({
           {isLoading && <ActivityIndicator color="white" />}
         </Button>
       </View>
+
+      <NeedHelp />
     </View>
   );
 };

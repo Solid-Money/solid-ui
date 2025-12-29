@@ -44,6 +44,7 @@ interface DirectDepositSession {
   fee?: string;
   detectedAmount?: string;
   transactionHash?: string;
+  clientTxId?: string;
   // If opened from the Activity screen, we hide back navigation in the UI
   fromActivity?: boolean;
 }
@@ -82,11 +83,6 @@ export const useDepositStore = create<DepositState>()(
       directDepositSession: {},
 
       setModal: modal => {
-        // eslint-disable-next-line no-console
-        console.log('[DepositStore] Modal change:', {
-          from: get().currentModal.name,
-          to: modal.name,
-        });
         set({
           previousModal: get().currentModal,
           currentModal: modal,

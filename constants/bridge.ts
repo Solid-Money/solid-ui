@@ -135,3 +135,7 @@ export const getUsdcAddress = (chainId: number) => {
   }
   return usdcAddress;
 };
+
+export const getBridgeChain = (chainId: number) => {
+  return BRIDGE_TOKENS[chainId];
+};

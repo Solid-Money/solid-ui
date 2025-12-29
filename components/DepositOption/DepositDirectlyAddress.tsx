@@ -10,7 +10,6 @@ import { path } from '@/constants/path';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
-import useUser from '@/hooks/useUser';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
@@ -63,7 +62,6 @@ type InfoRow = {
 };
 
 const DepositDirectlyAddress = () => {
-  const { user } = useUser();
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
   const chainId = directDepositSession.chainId || mainnet.id;
   const selectedToken = directDepositSession.selectedToken || 'USDC';
@@ -177,7 +175,7 @@ const DepositDirectlyAddress = () => {
     });
 
     return rows;
-  }, [exchangeRate, isAPYsLoading, formattedAPY]);
+  }, [exchangeRate, isAPYsLoading, formattedAPY, selectedToken]);
 
   return (
     <View className="flex-col gap-3">

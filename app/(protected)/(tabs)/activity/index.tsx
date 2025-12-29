@@ -5,24 +5,37 @@ import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useCardStatus } from '@/hooks/useCardStatus';
-import { ActivityTab, CardStatus } from '@/lib/types';
+import { ActivityTab } from '@/lib/types';
+import { hasCard } from '@/lib/utils';
+import ActivityRefreshButton from '@/components/Activity/ActivityRefreshButton';
+import { useActivity } from '@/hooks/useActivity';
 
 export default function Activity() {
   const { data: cardStatus, isLoading: isCardLoading } = useCardStatus();
-
-  const hasCard =
-    cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN;
-
-  // Native: scrollable={false} keeps tx list scroll separate; Web: whole page scrolls
-  const isNative = Platform.OS !== 'web';
+  const { refetchAll, isSyncing, isLoading } = useActivity();
+  const isWeb = Platform.OS === 'web';
+  const userHasCard = hasCard(cardStatus);
 
   return (
-    <PageLayout desktopOnly isLoading={isCardLoading} scrollable={!isNative}>
+    <PageLayout desktopOnly isLoading={isCardLoading} scrollable={isWeb}>
       <View
-        className={`gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto ${isNative ? 'flex-1' : ''}`}
+        className={`gap-8 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto ${isWeb ? '' : 'flex-1'}`}
       >
-        <Text className="text-xl md:text-3xl font-semibold">Activity</Text>
-        {hasCard ? <ActivityTabs /> : <ActivityTransactions tab={ActivityTab.WALLET} />}
+        <View className="flex-row items-center justify-between">
+          <Text className="text-xl md:text-3xl font-semibold">Activity</Text>
+
+          {/* Web-only refresh button (pull-to-refresh doesn't work on web) */}
+          {isWeb && !userHasCard && (
+            <View className="flex-row justify-end px-4 py-2">
+              <ActivityRefreshButton
+                onRefresh={refetchAll}
+                isSyncing={isSyncing}
+                isLoading={isLoading}
+              />
+            </View>
+          )}
+        </View>
+        {userHasCard ? <ActivityTabs /> : <ActivityTransactions tab={ActivityTab.WALLET} />}
       </View>
       {/* Hidden modal that responds to store state changes from activity clicks */}
       <DepositOptionModal trigger={null} />

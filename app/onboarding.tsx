@@ -1,6 +1,8 @@
+import LoginKeyIcon from '@/assets/images/login_key_icon';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Dimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, useWindowDimensions, View } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedScrollHandler,
@@ -9,24 +11,44 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { OnboardingPage, OnboardingPagination } from '@/components/Onboarding';
+import {
+  AnimatedGradientBackground,
+  DesktopCarousel,
+  OnboardingPage,
+  OnboardingPagination,
+} from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { Status } from '@/lib/types';
 import { ONBOARDING_DATA } from '@/lib/types/onboarding';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
 import { useUserStore } from '@/store/useUserStore';
 
-const { width: screenWidth } = Dimensions.get('window');
-
 export default function Onboarding() {
   const router = useRouter();
-  const { handleLogin } = useUser();
-  const { users } = useUserStore();
+  const { handleLogin, handleDummyLogin } = useUser();
   const { setHasSeenOnboarding } = useOnboardingStore();
+  const { loginInfo } = useUserStore();
+  const { isDesktop } = useDimension();
+
+  const isLoginPending = loginInfo.status === Status.PENDING;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useSharedValue(0);
+
+  // Responsive layout for small screens (iPhone SE)
+  const isSmallScreen = screenHeight < 700;
+  // Fixed button area height - content area uses flex: 1 to fill remaining space
+  const buttonAreaHeight = isSmallScreen ? 200 : 240;
+
+  // Track screen width as shared value for use in worklets
+  const widthSV = useSharedValue(screenWidth);
+  useEffect(() => {
+    widthSV.value = screenWidth;
+  }, [screenWidth, widthSV]);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
@@ -36,7 +58,7 @@ export default function Onboarding() {
 
   // Derive current index from scroll position
   useDerivedValue(() => {
-    const index = Math.round(scrollX.value / screenWidth);
+    const index = Math.round(scrollX.value / widthSV.value);
     runOnJS(setCurrentIndex)(index);
   });
 
@@ -44,71 +66,215 @@ export default function Onboarding() {
     // Mark onboarding as seen
     setHasSeenOnboarding(true);
 
-    // If users exist, automatically trigger passkey login
-    if (users.length > 0) {
-      try {
-        await handleLogin();
-        // Login successful - user will be redirected by the login handler
-      } catch (error) {
-        // If passkey login fails, stay on current screen
-        console.error('Passkey login failed:', error);
-      }
-    } else {
-      // No users exist, go to register page
-      router.replace(path.REGISTER);
+    try {
+      await handleLogin();
+    } catch {
+      // If no existing users, redirect to signup
+      router.replace(path.SIGNUP_EMAIL);
     }
-  }, [users.length, handleLogin, router, setHasSeenOnboarding]);
+  }, [handleLogin, router, setHasSeenOnboarding]);
 
   const handleCreateAccount = useCallback(() => {
-    // Mark onboarding as seen
     setHasSeenOnboarding(true);
-    router.replace(path.REGISTER);
+    router.replace(path.SIGNUP_EMAIL);
   }, [router, setHasSeenOnboarding]);
 
+  const handleHelpCenter = useCallback(() => {
+    // TODO: Add help center link
+    // Linking.openURL(HELP_CENTER_URL);
+  }, []);
+
+  // Mobile Layout
+  if (!isDesktop) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+        <AnimatedGradientBackground scrollX={scrollX}>
+          <SafeAreaView className="flex-1">
+            <View className="flex-1">
+              {/* Top section - Animation and Title (fills remaining space) */}
+              <View className="flex-1 justify-end">
+                <Animated.ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onScroll={scrollHandler}
+                  scrollEventThrottle={16}
+                  bounces={false}
+                  contentContainerStyle={{ flexGrow: 1 }}
+                >
+                  {ONBOARDING_DATA.map((item, index) => (
+                    <OnboardingPage key={item.id} data={item} index={index} scrollX={scrollX} />
+                  ))}
+                </Animated.ScrollView>
+              </View>
+
+              {/* Bottom section - Dots and Buttons (fixed height) */}
+              <View
+                style={{ height: buttonAreaHeight }}
+                className={`justify-between px-6 ${isSmallScreen ? 'pb-4' : 'pb-8'}`}
+              >
+                {/* Pagination dots */}
+                <View className="pt-2">
+                  <OnboardingPagination data={ONBOARDING_DATA} currentIndex={currentIndex} />
+                </View>
+
+                {/* Bottom buttons */}
+                <View className={isSmallScreen ? 'gap-2' : 'gap-3'}>
+                  <Button
+                    variant="brand"
+                    className={`rounded-xl ${isSmallScreen ? 'h-12' : 'h-14'}`}
+                    onPress={handleCreateAccount}
+                  >
+                    <Text className={`font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
+                      Create account
+                    </Text>
+                  </Button>
+
+                  {/* OR Divider */}
+                  <View
+                    className={`flex-row items-center gap-4 ${isSmallScreen ? 'my-0' : 'my-1'}`}
+                  >
+                    <View className="flex-1 h-[1px] bg-white/20" />
+                    <Text className="text-white/50 text-sm">OR</Text>
+                    <View className="flex-1 h-[1px] bg-white/20" />
+                  </View>
+
+                  <Button
+                    variant="ghost"
+                    className={`bg-white/15 rounded-xl ${isSmallScreen ? 'h-12' : 'h-14'}`}
+                    onPress={handleLoginPress}
+                    disabled={isLoginPending}
+                  >
+                    {isLoginPending ? (
+                      <View className="flex-row items-center">
+                        <ActivityIndicator size="small" color="white" />
+                        <Text
+                          className={`font-bold ml-2 ${isSmallScreen ? 'text-base' : 'text-lg'}`}
+                        >
+                          Authenticating...
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text className={`font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
+                        Login
+                      </Text>
+                    )}
+                  </Button>
+
+                  {/* Dev-only Dummy Login */}
+                  {/* {__DEV__ && (
+                    <Button
+                      variant="ghost"
+                      className={`bg-red-500/20 border border-red-500/50 rounded-xl ${isSmallScreen ? 'h-8 mt-1' : 'h-10 mt-2'}`}
+                      onPress={handleDummyLogin}
+                    >
+                      <Text
+                        className={`text-red-400 font-medium ${isSmallScreen ? 'text-xs' : 'text-sm'}`}
+                      >
+                        🛠 Dev: Skip Auth
+                      </Text>
+                    </Button>
+                  )} */}
+                </View>
+              </View>
+            </View>
+          </SafeAreaView>
+        </AnimatedGradientBackground>
+      </View>
+    );
+  }
+
+  // Desktop Layout - Split Screen
   return (
-    <SafeAreaView className="bg-background text-foreground flex-1">
-      <View className="flex-1">
-        {/* Top section - Animation and Title (60%) */}
-        <View style={{ flex: 0.7 }}>
-          <Animated.ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={scrollHandler}
-            scrollEventThrottle={16}
-            bounces={false}
-            contentContainerStyle={{ flexGrow: 1 }}
-          >
-            {ONBOARDING_DATA.map((item, index) => (
-              <OnboardingPage
-                key={item.id}
-                data={item}
-                isActive={currentIndex === index}
-                index={index}
-              />
-            ))}
-          </Animated.ScrollView>
+    <View className="flex-1 flex-row bg-background">
+      {/* Left Section - Interactive Carousel */}
+      <DesktopCarousel onHelpCenterPress={handleHelpCenter} />
+
+      {/* Right Section - Auth Options (70%) */}
+      <View className="flex-1 relative">
+        {/* Logo at top center */}
+        <View className="absolute top-6 left-0 right-0 items-center">
+          <Image
+            source={require('@/assets/images/solid-logo-4x.png')}
+            alt="Solid logo"
+            style={{ width: 40, height: 44 }}
+            contentFit="contain"
+          />
         </View>
 
-        {/* Bottom section - Dots and Buttons (40%) */}
-        <View style={{ flex: 0.3 }} className="justify-between px-6 pb-8">
-          {/* Pagination dots */}
-          <View className="pt-2">
-            <OnboardingPagination data={ONBOARDING_DATA} currentIndex={currentIndex} />
-          </View>
+        {/* Content centered vertically */}
+        <View className="flex-1 justify-center items-center px-8">
+          <View className="w-full max-w-[440px] items-center">
+            {/* Welcome Text */}
+            <View className="mb-8 items-center">
+              <Text className="text-white/60 text-base font-medium mb-2">Welcome!</Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                className="text-white text-[38px] font-semibold text-center mb-3 -tracking-[1px]"
+              >
+                Your Stablecoin Super-app
+              </Text>
+              <Text className="text-white/60 text-center text-base font-normal max-w-[320px]">
+                Save, earn yield and pay worldwide -
+              </Text>
+              <Text className="text-white/60 text-center text-base font-normal max-w-[320px]">
+                powered by DeFi, without the complexity
+              </Text>
+            </View>
 
-          {/* Bottom buttons */}
-          <View className="gap-3">
-            <Button variant="brand" className="rounded-xl h-14" onPress={handleLoginPress}>
-              <Text className="text-lg font-bold">{'Login'}</Text>
-            </Button>
+            {/* Auth Buttons */}
+            <View className="w-full gap-4 mt-4">
+              {/* Create Account Button */}
+              <Button
+                variant="brand"
+                className="rounded-xl h-14 w-full"
+                onPress={handleCreateAccount}
+              >
+                <Text className="text-lg font-semibold">Create account</Text>
+              </Button>
 
-            <Button variant="ghost" className="rounded-xl h-14" onPress={handleCreateAccount}>
-              <Text className="text-lg font-bold">Create Account</Text>
-            </Button>
+              {/* OR Divider */}
+              <View className="flex-row items-center gap-4 my-2">
+                <View className="flex-1 h-[1px] bg-white/10" />
+                <Text className="text-white/40 text-sm">OR</Text>
+                <View className="flex-1 h-[1px] bg-white/10" />
+              </View>
+
+              {/* Login Button */}
+              <Button
+                variant="secondary"
+                className="rounded-xl h-14 w-full border-0"
+                onPress={handleLoginPress}
+                disabled={isLoginPending}
+              >
+                {isLoginPending ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="white" />
+                    <Text className="text-lg font-semibold ml-2">Authenticating...</Text>
+                  </View>
+                ) : (
+                  <View className="flex-row items-center">
+                    <LoginKeyIcon />
+                    <Text className="text-lg font-semibold ml-2">Login</Text>
+                  </View>
+                )}
+              </Button>
+
+              {/* Dev-only Dummy Login */}
+              {__DEV__ && (
+                <Button
+                  variant="ghost"
+                  className="bg-red-500/20 border border-red-500/50 rounded-xl h-10 mt-2"
+                  onPress={handleDummyLogin}
+                >
+                  <Text className="text-red-400 text-sm font-medium">🛠 Dev: Skip Auth</Text>
+                </Button>
+              )}
+            </View>
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

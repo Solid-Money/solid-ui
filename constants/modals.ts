@@ -82,13 +82,29 @@ export const SEND_MODAL = {
     name: 'close',
     number: 0,
   },
+  OPEN_SEND_SEARCH: {
+    name: 'open_send_search',
+    number: 1,
+  },
   OPEN_FORM: {
     name: 'open_form',
-    number: 1,
+    number: 2,
+  },
+  OPEN_TOKEN_SELECTOR: {
+    name: 'open_token_selector',
+    number: 3,
+  },
+  OPEN_REVIEW: {
+    name: 'open_review',
+    number: 4,
   },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
-    number: 2,
+    number: 5,
+  },
+  OPEN_ADDRESS_BOOK: {
+    name: 'open_address_book',
+    number: 6,
   },
 };
 
@@ -169,9 +185,13 @@ export const SWAP_MODAL = {
     name: 'close',
     number: 0,
   },
+  OPEN_FORM: {
+    name: 'open_form',
+    number: 1,
+  },
   OPEN_TRANSACTION_STATUS: {
     name: 'open_transaction_status',
-    number: 1,
+    number: 2,
   },
 };
 

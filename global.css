@@ -4,9 +4,10 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
+    --background: 0 0% 7%;
     --foreground: 0 0% 100%;
-    --card: 0 0% 13%;
+    --card: 0 0% 11%;
+    --card-hover: 0 0% 13%;
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 18.43%;
     --popover-foreground: 0 0% 98%;
@@ -31,9 +32,7 @@
     --button-secondary: 0 0% 23%;
     --qr-background: 0 0% 27%;
     --modal-background: 0 0% 19%;
-    --popup: 0 0% 6%;
-    --option: 0 0% 11%;
-    --option-hover: 0 0% 13%;
+    --popup: 0 0% 6.27%;
     --purple: 270 39% 44%;
     --rewards: 44 100% 66%;
   }
@@ -59,7 +58,7 @@
   #root,
   #__next {
     height: 100%;
-    background-color: #000;
+    background-color: #111111;
     overscroll-behavior-y: none;
     overscroll-behavior-x: none;
     color-scheme: dark;

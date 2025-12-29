@@ -46,6 +46,7 @@ export interface DirectDepositSessionResponse {
   fee: string;
   detectedAmount?: string;
   transactionHash?: string;
+  clientTxId?: string;
 }
 
 export interface DepositBonusConfig {
@@ -1058,4 +1059,16 @@ export interface SwapTokenResponse {
   isFeatured: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AddressBookRequest {
+  name?: string;
+  walletAddress: string;
+  skip2fa?: boolean;
+}
+
+export interface AddressBookResponse {
+  name?: string;
+  walletAddress: string;
+  skipped2faAt?: Date;
 }

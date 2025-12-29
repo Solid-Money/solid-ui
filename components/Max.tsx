@@ -8,8 +8,11 @@ type MaxProps = {
 
 const Max = ({ onPress }: MaxProps) => {
   return (
-    <Pressable onPress={onPress}>
-      <Text className="font-medium text-base web:hover:opacity-70">Max</Text>
+    <Pressable
+      onPress={onPress}
+      className="items-center justify-center bg-secondary rounded-xl px-3 py-1 web:hover:bg-secondary-hover"
+    >
+      <Text className="text-sm font-medium opacity-50">Max</Text>
     </Pressable>
   );
 };

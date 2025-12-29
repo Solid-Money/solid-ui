@@ -40,16 +40,6 @@ export const useKycLinkFromBridge = (kycLinkId?: string) => {
       // Poll every 5s while KYC is in a non-final state; stop when final
       const next = !hasData ? 5000 : isFinalKycStatus(status) ? false : 5000;
 
-      try {
-        console.log('[KYC Poll] tick', {
-          kycLinkId,
-          status,
-          next,
-          ts: new Date().toISOString(),
-          qState: query?.state?.status,
-        });
-      } catch {}
-
       return next as any;
     },
     refetchIntervalInBackground: true,

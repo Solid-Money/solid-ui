@@ -136,18 +136,21 @@ export function useActivity() {
   // IMPORTANT: Do NOT call refetchActivityEvents() here!
   // syncFromBackend() invalidates the 'activity-events' query on success,
   // which triggers React Query to auto-refetch. Calling both causes double fetches.
-  const refetchAll = useCallback(() => {
-    if (isSyncing || isRefetching) {
-      return;
-    }
-    // Trigger backend sync - this will:
-    // 1. Call /v1/activity/sync API
-    // 2. On success, invalidate 'activity-events' query (useSyncActivities.ts:130)
-    // 3. React Query auto-refetches the invalidated query
-    syncFromBackend().catch((error: any) => {
-      console.error('Background sync failed:', error);
-    });
-  }, [isSyncing, isRefetching, syncFromBackend]);
+  const refetchAll = useCallback(
+    (force = false) => {
+      if (isSyncing || isRefetching) {
+        return;
+      }
+      // Trigger backend sync - this will:
+      // 1. Call /v1/activity/sync API
+      // 2. On success, invalidate 'activity-events' query (useSyncActivities.ts:130)
+      // 3. React Query auto-refetches the invalidated query
+      syncFromBackend(undefined, force).catch((error: any) => {
+        console.error('Background sync failed:', error);
+      });
+    },
+    [isSyncing, isRefetching, syncFromBackend],
+  );
 
   // Get user's activities from local storage
   const activities = useMemo(() => {

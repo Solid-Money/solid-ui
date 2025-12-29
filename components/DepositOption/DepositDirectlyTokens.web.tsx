@@ -67,7 +67,7 @@ const DepositDirectlyTokens = () => {
       setDirectDepositSession({ selectedToken: token.symbol });
 
       // Create direct deposit session
-      const session = await createDirectDepositSession(chainId);
+      const session = await createDirectDepositSession(chainId, token.symbol);
 
       // Track session creation
       track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -113,9 +113,7 @@ const DepositDirectlyTokens = () => {
 
   return (
     <View className="gap-y-2">
-      <Text className="text-muted-foreground font-medium text-[1rem]">
-        Choose a token
-      </Text>
+      <Text className="text-muted-foreground font-medium text-[1rem]">Choose a token</Text>
 
       <View className="gap-y-1.5">
         {availableTokens.map(token => {
