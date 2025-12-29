@@ -19,7 +19,8 @@ import {
 import {
   ActivityEvent,
   ActivityEvents,
-  AddressBookEntry,
+  AddressBookRequest,
+  AddressBookResponse,
   APYs,
   BlockscoutTransactions,
   BridgeCustomerEndorsement,
@@ -1737,7 +1738,7 @@ export const fetchTokenList = async (params: SwapTokenRequest) => {
   return response.data;
 };
 
-export const fetchAddressBook = async (): Promise<AddressBookEntry[]> => {
+export const fetchAddressBook = async (): Promise<AddressBookResponse[]> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/address-book`, {
     method: 'GET',
@@ -1753,7 +1754,7 @@ export const fetchAddressBook = async (): Promise<AddressBookEntry[]> => {
   return response.json();
 };
 
-export const addToAddressBook = async (data: AddressBookEntry): Promise<AddressBookEntry> => {
+export const addToAddressBook = async (data: AddressBookRequest): Promise<AddressBookResponse> => {
   const jwt = getJWTToken();
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/address-book`, {
     method: 'POST',

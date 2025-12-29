@@ -7,6 +7,7 @@ import { formatUnits, zeroAddress } from 'viem';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
 
+import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -19,8 +20,6 @@ import { TokenType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
 import ToInput from './ToInput';
-import Max from '@/components/Max';
-import NeedHelp from '@/components/NeedHelp';
 
 interface SendFormProps {
   onNext: () => void;
@@ -129,79 +128,85 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
   };
 
   return (
-    <View className="gap-8">
-      <ToInput />
+    <View className="gap-8 flex-1 justify-between">
+      <View className="gap-8 flex-1 min-h-[17rem]">
+        <ToInput />
 
-      <View className="gap-4">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-base opacity-70 font-medium">Amount</Text>
-          {selectedToken && (
-            <View className="flex-row items-center gap-2">
-              <Wallet size={16} color="#ffffff80" />
-              <Text className="text-base opacity-50">
-                {isLoading
-                  ? '...'
-                  : `${formatNumber(balanceAmount)} ${selectedToken.contractTickerSymbol}`}
-              </Text>
-              {balanceAmount > 0 && <Max onPress={handleMaxPress} />}
+        <View className="gap-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base opacity-70 font-medium">Amount</Text>
+            {selectedToken && (
+              <View className="flex-row items-center gap-2">
+                <Wallet size={16} color="#ffffff80" />
+                <Text className="text-base opacity-50">
+                  {isLoading
+                    ? '...'
+                    : `${formatNumber(balanceAmount)} ${selectedToken.contractTickerSymbol}`}
+                </Text>
+                {balanceAmount > 0 && <Max onPress={handleMaxPress} />}
+              </View>
+            )}
+          </View>
+          <View className="flex-row items-center justify-between gap-2 bg-card rounded-2xl p-4">
+            <View className="flex-1">
+              <Controller
+                control={control}
+                name="amount"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextInput
+                    className={cn(
+                      'flex-1 web:focus:outline-none text-white text-3xl font-semibold',
+                    )}
+                    placeholder="0.0"
+                    placeholderTextColor="#ffffff80"
+                    value={value}
+                    onChangeText={text => {
+                      onChange(text);
+                      handleAmountChange(text);
+                    }}
+                    onBlur={onBlur}
+                    keyboardType="decimal-pad"
+                    style={{ minWidth: 80 }}
+                    returnKeyType="done"
+                  />
+                )}
+              />
+
+              <Text className="text-sm opacity-50">${formatNumber(balanceUSD, 2)}</Text>
             </View>
+
+            <Pressable
+              className="flex-row items-center gap-1.5 bg-foreground/10 web:hover:bg-foreground/20 rounded-full px-3 h-12"
+              onPress={handleTokenSelectorPress}
+            >
+              {selectedToken ? (
+                <>
+                  <RenderTokenIcon
+                    tokenIcon={getTokenIcon({
+                      logoUrl: selectedToken.logoUrl,
+                      tokenSymbol: selectedToken.contractTickerSymbol,
+                      size: 28,
+                    })}
+                    size={28}
+                  />
+                  <Text className="text-lg font-semibold">
+                    {selectedToken.contractTickerSymbol}
+                  </Text>
+                  <ChevronDown size={20} color="white" />
+                </>
+              ) : (
+                <>
+                  <View className="w-6 h-6 bg-primary/20 rounded-full" />
+                  <Text className="text-muted-foreground text-lg font-semibold">Select token</Text>
+                  <ChevronDown size={20} color="white" />
+                </>
+              )}
+            </Pressable>
+          </View>
+          {errors.amount && (
+            <Text className="text-red-400 text-sm">{errors.amount.message as string}</Text>
           )}
         </View>
-        <View className="flex-row items-center justify-between gap-2 bg-card rounded-2xl p-4">
-          <View className="flex-1">
-            <Controller
-              control={control}
-              name="amount"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  className={cn('flex-1 web:focus:outline-none text-white text-3xl font-semibold')}
-                  placeholder="0.0"
-                  placeholderTextColor="#ffffff80"
-                  value={value}
-                  onChangeText={text => {
-                    onChange(text);
-                    handleAmountChange(text);
-                  }}
-                  onBlur={onBlur}
-                  keyboardType="decimal-pad"
-                  style={{ minWidth: 80 }}
-                  returnKeyType="done"
-                />
-              )}
-            />
-
-            <Text className="text-sm opacity-50">${formatNumber(balanceUSD, 2)}</Text>
-          </View>
-
-          <Pressable
-            className="flex-row items-center gap-1.5 bg-foreground/10 web:hover:bg-foreground/20 rounded-full px-3 h-12"
-            onPress={handleTokenSelectorPress}
-          >
-            {selectedToken ? (
-              <>
-                <RenderTokenIcon
-                  tokenIcon={getTokenIcon({
-                    logoUrl: selectedToken.logoUrl,
-                    tokenSymbol: selectedToken.contractTickerSymbol,
-                    size: 28,
-                  })}
-                  size={28}
-                />
-                <Text className="text-lg font-semibold">{selectedToken.contractTickerSymbol}</Text>
-                <ChevronDown size={20} color="white" />
-              </>
-            ) : (
-              <>
-                <View className="w-6 h-6 bg-primary/20 rounded-full" />
-                <Text className="text-muted-foreground text-lg font-semibold">Select token</Text>
-                <ChevronDown size={20} color="white" />
-              </>
-            )}
-          </Pressable>
-        </View>
-        {errors.amount && (
-          <Text className="text-red-400 text-sm">{errors.amount.message as string}</Text>
-        )}
       </View>
 
       <Button
@@ -213,8 +218,6 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
       >
         <Text className="text-base font-bold">Review</Text>
       </Button>
-
-      <NeedHelp />
     </View>
   );
 };

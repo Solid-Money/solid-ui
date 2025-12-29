@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight } from 'lucide-react-native';
+import { ArrowRight, X } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Platform, Pressable, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import { isAddress } from 'viem';
 
 import Avatar from '@/components/Avatar';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { fetchAddressBook } from '@/lib/api';
-import { cn, withRefreshToken } from '@/lib/utils';
+import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
 
 interface ToInputProps {
@@ -53,33 +53,42 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
     return searchQuery.trim() && isAddress(searchQuery.trim());
   }, [searchQuery]);
 
-  const isValidName = useMemo(() => {
-    if (!searchQuery.trim()) return false;
-    return addressBook.some(
-      entry => entry.name?.toLowerCase() === searchQuery.trim().toLowerCase(),
+  const getValidEntry = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return addressBook.find(
+      entry => entry.name?.toLowerCase() === query || entry.walletAddress.toLowerCase() === query,
     );
   }, [searchQuery, addressBook]);
+
+  const isValidName = useMemo(() => {
+    if (!searchQuery.trim()) return false;
+    return !!getValidEntry?.name;
+  }, [searchQuery, getValidEntry?.name]);
 
   const isValid = isValidAddress || isValidName;
 
   const handleContinue = () => {
-    if (isValidAddress) {
-      const trimmedQuery = searchQuery.trim();
-      setAddress(trimmedQuery);
-      setName('');
-      setSearchQuery(trimmedQuery);
-      setModal(SEND_MODAL.OPEN_FORM);
-    } else if (isValidName) {
-      const entry = addressBook.find(
-        entry => entry.name?.toLowerCase() === searchQuery.trim().toLowerCase(),
-      );
+    if (isValidName) {
+      const entry = getValidEntry;
       if (entry) {
         setAddress(entry.walletAddress);
         setName(entry.name || '');
         setSearchQuery(entry.name || entry.walletAddress);
         setModal(SEND_MODAL.OPEN_FORM);
       }
+    } else if (isValidAddress) {
+      const trimmedQuery = searchQuery.trim();
+      setAddress(trimmedQuery);
+      setName('');
+      setSearchQuery(trimmedQuery);
+      setModal(SEND_MODAL.OPEN_FORM);
     }
+  };
+
+  const handleClear = () => {
+    setAddress('');
+    setName('');
+    setSearchQuery('');
   };
 
   const handleEnterKeyPress = () => {
@@ -97,6 +106,10 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
       setAddress('');
     }
     setSearchQuery(text);
+
+    if (isValidName) {
+      handleContinue();
+    }
   };
 
   const handleKeyPress = (e: any) => {
@@ -108,54 +121,60 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
     }
   };
 
-  // Show placeholder only when there's no name and no search query
-  const showPlaceholder = !name && !searchQuery;
+  const to = name || address;
 
   return (
     <View className="gap-4">
       <Text className="text-base opacity-70 font-medium">To</Text>
-      <View className="flex-row items-center gap-2 bg-card rounded-2xl px-5 h-16 relative">
+      <Pressable
+        className="flex-row items-center gap-2 bg-card rounded-2xl px-5 h-16 relative"
+        onPress={() => {
+          if (!isSearch) {
+            setSearchQuery('');
+            setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+          }
+        }}
+      >
         <View className="flex-1 relative">
-          <TextInput
-            ref={inputRef}
-            className={cn('flex-1 text-base web:focus:outline-none')}
-            placeholder={showPlaceholder ? placeholder : ''}
-            placeholderTextColor="#ffffff80"
-            value={searchQuery}
-            onChangeText={handleTextChange}
-            onKeyPress={handleKeyPress}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="next"
-            onSubmitEditing={handleEnterKeyPress}
-            style={{
-              width: '100%',
-              color: name ? 'transparent' : 'white',
-            }}
-          />
-          {name && (
-            <View
-              className="absolute left-0 top-0 bottom-0 flex-row items-center pointer-events-none"
-              style={{
-                paddingVertical: Platform.OS === 'web' ? 0 : 2,
-              }}
-            >
+          {to ? (
+            <View className="flex-row items-center pointer-events-none">
               <View className="flex-row justify-center items-center gap-2 px-3 py-2 bg-foreground/10 rounded-full">
-                <Avatar name={name} className="w-7 h-7" />
-                <Text className="text-base font-semibold">{name}</Text>
+                <Avatar name={to} className="w-7 h-7" />
+                <Text className="text-base font-semibold">{name ? to : eclipseAddress(to)}</Text>
               </View>
             </View>
+          ) : (
+            <TextInput
+              ref={inputRef}
+              className={cn('flex-1 text-base web:focus:outline-none')}
+              placeholder={placeholder}
+              placeholderTextColor="#ffffff80"
+              value={searchQuery}
+              onChangeText={handleTextChange}
+              onKeyPress={handleKeyPress}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              onSubmitEditing={handleEnterKeyPress}
+            />
           )}
         </View>
-        {isSearch && isValid && (
+        {isSearch && to ? (
+          <Pressable
+            onPress={handleClear}
+            className="h-10 w-10 flex items-center justify-center bg-popover rounded-full web:transition-colors web:hover:bg-muted"
+          >
+            <X size={20} color="white" />
+          </Pressable>
+        ) : isSearch && isValid ? (
           <Pressable
             onPress={handleContinue}
             className="h-10 w-10 flex items-center justify-center bg-popover rounded-full web:transition-colors web:hover:bg-muted"
           >
             <ArrowRight size={20} color="white" />
           </Pressable>
-        )}
-      </View>
+        ) : null}
+      </Pressable>
     </View>
   );
 };

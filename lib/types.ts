@@ -1061,7 +1061,14 @@ export interface SwapTokenResponse {
   updatedAt: string;
 }
 
-export interface AddressBookEntry {
-  name: string;
+export interface AddressBookRequest {
+  name?: string;
   walletAddress: string;
+  skip2fa?: boolean;
+}
+
+export interface AddressBookResponse {
+  name?: string;
+  walletAddress: string;
+  skipped2faAt?: Date;
 }

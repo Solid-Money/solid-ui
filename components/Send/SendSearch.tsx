@@ -4,6 +4,7 @@ import { EllipsisVertical, Plus } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { isAddress } from 'viem';
 
 import Avatar from '@/components/Avatar';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import { fetchAddressBook } from '@/lib/api';
 import { TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
+import AddAddress from './AddAddress';
 import ToInput from './ToInput';
 
 const SendSearch: React.FC = () => {
@@ -40,7 +42,6 @@ const SendSearch: React.FC = () => {
           activity.toAddress &&
           activity.status === TransactionStatus.SUCCESS,
       )
-      .slice(0, 10)
       .map(activity => ({
         ...activity,
         walletAddress: activity.toAddress!,
@@ -60,12 +61,16 @@ const SendSearch: React.FC = () => {
   const filteredRecentActivities = useMemo(() => {
     if (!searchQuery.trim()) return sendActivities;
     const query = searchQuery.toLowerCase();
-    return sendActivities.filter(
-      activity =>
+    return sendActivities.filter(activity => {
+      const addressBookEntry = addressBook.find(
+        entry => entry.walletAddress.toLowerCase() === activity.walletAddress.toLowerCase(),
+      );
+      return (
         activity.walletAddress.toLowerCase().includes(query) ||
-        activity.metadata?.description?.toLowerCase().includes(query),
-    );
-  }, [sendActivities, searchQuery]);
+        addressBookEntry?.name?.toLowerCase().includes(query)
+      );
+    });
+  }, [sendActivities, searchQuery, addressBook]);
 
   const handleToInput = (walletAddress: string, name?: string) => {
     setAddress(walletAddress);
@@ -91,34 +96,6 @@ const SendSearch: React.FC = () => {
       <ToInput />
 
       <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
-        {filteredAddressBook.length > 0 && (
-          <View className="gap-4">
-            <Text className="text-base opacity-70 font-medium">Address Book</Text>
-            <View className="bg-card rounded-2xl">
-              {filteredAddressBook.map((entry, index) => (
-                <Pressable
-                  key={`${entry.walletAddress}-${index}`}
-                  className={cn(
-                    'flex-row items-center justify-between border-b border-foreground/10 p-4',
-                    filteredAddressBook.length - 1 === index && 'border-b-0',
-                  )}
-                  onPress={() => handleToInput(entry.walletAddress, entry.name)}
-                >
-                  <View className="flex-row items-center gap-3 flex-1">
-                    <Avatar name={entry.name || entry.walletAddress} />
-                    <View className="flex-1">
-                      {entry.name && <Text className="text-base font-semibold">{entry.name}</Text>}
-                      <Text className="text-sm opacity-50">
-                        {eclipseAddress(entry.walletAddress)}
-                      </Text>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
-
         {filteredRecentActivities.length > 0 && (
           <View className="gap-4">
             <Text className="text-base opacity-70 font-medium">Recent</Text>
@@ -185,15 +162,21 @@ const SendSearch: React.FC = () => {
 
         {filteredAddressBook.length === 0 &&
           filteredRecentActivities.length === 0 &&
-          !isLoadingAddressBook && (
-            <View className="py-8 items-center">
-              <Text className="text-muted-foreground text-center">
-                {searchQuery.trim()
-                  ? 'No matches found'
-                  : 'No address book entries or recent sends'}
-              </Text>
-            </View>
-          )}
+          !isLoadingAddressBook &&
+          (() => {
+            if (searchQuery.trim() && isAddress(searchQuery.trim())) {
+              return <AddAddress address={searchQuery.trim()} />;
+            }
+            return (
+              <View className="py-8 items-center">
+                <Text className="text-muted-foreground text-center">
+                  {searchQuery.trim()
+                    ? 'No matches found'
+                    : 'No address book entries or recent sends'}
+                </Text>
+              </View>
+            );
+          })()}
       </ScrollView>
     </View>
   );
