@@ -87,15 +87,15 @@ export const useAddressBook = (options?: {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['address-book'] });
       if (options?.onSuccess) {
-      Toast.show({
-        type: 'success',
-        text1: 'Added to address book',
-        props: {
-          badgeText: 'Success',
-        },
-      });
         options.onSuccess();
       } else {
+        Toast.show({
+          type: 'success',
+          text1: 'Added to address book',
+          props: {
+            badgeText: 'Success',
+          },
+        });
         setModal(SEND_MODAL.OPEN_SEND_SEARCH);
       }
     },
