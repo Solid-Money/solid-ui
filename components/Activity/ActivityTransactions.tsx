@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, RefreshControl, View } from 'react-native';
 
-import ActivityRefreshButton from '@/components/Activity/ActivityRefreshButton';
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,7 +10,6 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useCardDepositPoller } from '@/hooks/useCardDepositPoller';
-import { useCardStatus } from '@/hooks/useCardStatus';
 import {
   ActivityEvent,
   ActivityGroup,
@@ -19,7 +17,7 @@ import {
   TransactionStatus,
   TransactionType,
 } from '@/lib/types';
-import { cn, hasCard, isTransactionStuck } from '@/lib/utils';
+import { cn, isTransactionStuck } from '@/lib/utils';
 import { deduplicateTransactions } from '@/lib/utils/deduplicateTransactions';
 import { groupTransactionsByTime, TimeGroup, TimeGroupHeaderData } from '@/lib/utils/timeGrouping';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -44,7 +42,6 @@ export default function ActivityTransactions({
   const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
-  const { data: cardStatus } = useCardStatus();
   useCardDepositPoller();
 
   const filteredTransactions = useMemo(() => {
@@ -272,21 +269,9 @@ export default function ActivityTransactions({
   }
 
   const isWeb = Platform.OS === 'web';
-  const userHasCard = hasCard(cardStatus);
 
   return (
     <View className="flex-1">
-      {/* Web-only refresh button (pull-to-refresh doesn't work on web) */}
-      {isWeb && !userHasCard && (
-        <View className="flex-row justify-end px-4 py-2">
-          <ActivityRefreshButton
-            onRefresh={refetchAll}
-            isSyncing={isSyncing}
-            isLoading={isLoading}
-          />
-        </View>
-      )}
-
       {/* Subtle syncing indicator for background syncs (native only) */}
       {!isWeb && renderSyncingIndicator()}
 
