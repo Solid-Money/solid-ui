@@ -7,6 +7,7 @@ import { formatUnits, zeroAddress } from 'viem';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
 
+import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -19,8 +20,6 @@ import { TokenType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
 import ToInput from './ToInput';
-import Max from '@/components/Max';
-import NeedHelp from '@/components/NeedHelp';
 
 interface SendFormProps {
   onNext: () => void;
@@ -129,8 +128,8 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
   };
 
   return (
-    <View className="gap-8">
-      <View className="gap-8 min-h-[30rem]">
+    <View className="gap-8 flex-1 justify-between">
+      <View className="gap-8 flex-1 min-h-[17rem]">
         <ToInput />
 
         <View className="gap-4">
@@ -219,8 +218,6 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
       >
         <Text className="text-base font-bold">Review</Text>
       </Button>
-
-      <NeedHelp />
     </View>
   );
 };

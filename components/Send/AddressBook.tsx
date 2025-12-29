@@ -17,8 +17,8 @@ const AddressBook: React.FC = () => {
     });
 
   return (
-    <View className="gap-8">
-      <View className="gap-8 min-h-[30rem]">
+    <View className="gap-8 flex-1 justify-between">
+      <View className="gap-8 flex-1 min-h-[17rem]">
         <View className="gap-4">
           <Text className="text-base opacity-70 font-medium">To</Text>
           <View className="flex-row items-center gap-2 bg-card rounded-2xl p-5">
