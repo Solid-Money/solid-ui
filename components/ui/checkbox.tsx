@@ -18,9 +18,12 @@ const Checkbox = React.forwardRef<View, CheckboxProps>(
         onPress={() => !disabled && onCheckedChange?.(!checked)}
         disabled={disabled}
         className={cn(
-          'h-5 w-5 rounded border-2 items-center justify-center',
-          checked ? 'bg-primary border-primary' : 'bg-[#1F1F1F] border-[#3A3A3A]',
-          disabled && 'opacity-50',
+          'w-[25px] h-[25px] rounded-[8px] border-transparent items-center justify-center',
+          {
+            'bg-primary border-primary': checked,
+            'bg-[#2F2F2F]': !checked,
+            'border-transparent': disabled,
+          },
           className,
         )}
       >

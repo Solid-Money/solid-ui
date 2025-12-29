@@ -24,7 +24,13 @@ import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 
 const USDC_ICON = require('@/assets/images/usdc.png');
+const USDT_ICON = require('@/assets/images/usdt.png');
 const SOUSD_ICON = require('@/assets/images/sousd-4x.png');
+
+const TOKEN_ICONS: Record<string, any> = {
+  USDC: USDC_ICON,
+  USDT: USDT_ICON,
+};
 
 const STATUS_TEXT = {
   pending: 'Waiting for transfer',
@@ -58,15 +64,19 @@ type InfoRow = {
 const DepositDirectlyAddress = () => {
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
   const chainId = directDepositSession.chainId || mainnet.id;
+  const selectedToken = directDepositSession.selectedToken || 'USDC';
+  const tokenIcon = TOKEN_ICONS[selectedToken] || USDC_ICON;
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareError, setShareError] = useState(false);
   const { maxAPY, isAPYsLoading } = useMaxAPY();
   const intercom = useIntercom();
-  const { exchangeRate } = usePreviewDeposit(
-    '10',
-    BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address,
-    chainId,
-  );
+
+  // Get token address for exchange rate calculation
+  const tokenAddress =
+    BRIDGE_TOKENS[chainId]?.tokens?.[selectedToken]?.address ||
+    BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address;
+  const { exchangeRate } = usePreviewDeposit('10', tokenAddress, chainId);
+
   const network = BRIDGE_TOKENS[chainId];
   const walletAddress = directDepositSession.walletAddress;
 
@@ -110,16 +120,16 @@ const DepositDirectlyAddress = () => {
 
   const infoRows: InfoRow[] = useMemo(
     () => [
-      { label: 'Min deposit', value: `${minDeposit} USDC` },
+      { label: 'Min deposit', value: `${minDeposit} ${selectedToken}` },
       { label: 'Estimated time', value: estimatedTime },
       {
         label: 'Status',
         value: STATUS_TEXT[status],
         valueClassName: `${STATUS_TONE_CLASSES[status]} font-medium`,
       },
-      { label: 'Fee', value: `${fee} USDC`, icon: <Fuel size={16} color="#A1A1AA" /> },
+      { label: 'Fee', value: `${fee} ${selectedToken}`, icon: <Fuel size={16} color="#A1A1AA" /> },
     ],
-    [minDeposit, estimatedTime, status, fee],
+    [minDeposit, estimatedTime, status, fee, selectedToken],
   );
 
   const priceRows: InfoRow[] = useMemo(() => {
@@ -150,7 +160,7 @@ const DepositDirectlyAddress = () => {
       valueContent: (
         <Text className="font-bold text-white text-base">
           1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
-          USDC
+          {selectedToken}
         </Text>
       ),
     });
@@ -165,16 +175,16 @@ const DepositDirectlyAddress = () => {
     });
 
     return rows;
-  }, [exchangeRate, isAPYsLoading, formattedAPY]);
+  }, [exchangeRate, isAPYsLoading, formattedAPY, selectedToken]);
 
   return (
     <View className="flex-col gap-3">
-      {/* Header - Transfer USDC to this address */}
+      {/* Header - Transfer token to this address */}
       <View className="flex-row flex-wrap items-center justify-center">
         <Text className="text-xl font-bold text-[#ACACAC]">Transfer</Text>
         <View className="flex-row items-center gap-1 px-1">
-          <Image source={USDC_ICON} style={{ width: 21, height: 21 }} contentFit="cover" />
-          <Text className="text-xl font-bold text-white">USDC</Text>
+          <Image source={tokenIcon} style={{ width: 21, height: 21 }} contentFit="cover" />
+          <Text className="text-xl font-bold text-white">{selectedToken}</Text>
         </View>
         <Text className="text-xl font-semibold text-[#ACACAC]">to this</Text>
         <View className="flex-row items-center gap-1 px-2">
@@ -228,12 +238,11 @@ const DepositDirectlyAddress = () => {
         </View>
       </View>
 
-      {/* Info rows */}
       {/* Warning Text */}
       <View className="flex-row items-center justify-center gap-1.5 px-4 md:my-0 my-2">
         <Info size={16} color="#A1A1AA" />
         <Text className="text-[#A1A1AA] text-sm text-center">
-          Please send only USDC to this address
+          Please send only {selectedToken} to this address
         </Text>
         <TooltipPopover
           text="Sending any other token may result in permanent loss of funds."

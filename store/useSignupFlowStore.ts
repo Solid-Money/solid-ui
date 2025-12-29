@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 
-export type SignupStep = 'email' | 'otp' | 'creating' | 'passkey' | 'complete';
+export type SignupStep = 'email' | 'otp' | 'passkey' | 'creating' | 'complete';
 
 interface SignupFlowState {
   // Current step in the signup flow
@@ -81,7 +81,7 @@ export const useSignupFlowStore = create<SignupFlowState & SignupFlowActions>()(
 
       goBack: () =>
         set(state => {
-          const stepOrder: SignupStep[] = ['email', 'otp', 'creating', 'passkey', 'complete'];
+          const stepOrder: SignupStep[] = ['email', 'otp', 'passkey', 'creating', 'complete'];
           const currentIndex = stepOrder.indexOf(state.step);
           if (currentIndex > 0) {
             return { step: stepOrder[currentIndex - 1], error: null };

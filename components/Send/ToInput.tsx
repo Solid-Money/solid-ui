@@ -8,7 +8,7 @@ import Avatar from '@/components/Avatar';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { fetchAddressBook } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, withRefreshToken } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
 
 interface ToInputProps {
@@ -28,7 +28,7 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
   } = useSendStore();
   const { data: addressBook = [] } = useQuery({
     queryKey: ['address-book'],
-    queryFn: fetchAddressBook,
+    queryFn: () => withRefreshToken(() => fetchAddressBook()),
   });
 
   const prevNameRef = useRef(name);

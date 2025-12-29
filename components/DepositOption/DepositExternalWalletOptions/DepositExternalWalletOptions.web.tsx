@@ -4,11 +4,11 @@ import DepositOption from '@/components/DepositOption/DepositOption';
 import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
 
 const DepositExternalWalletOptions = () => {
-  const { EXTERNAL_WALLET_OPTIONS } = useDepositExternalWalletOptions();
+  const { externalWalletOptions } = useDepositExternalWalletOptions();
 
   return (
     <View className="gap-y-2.5">
-      {EXTERNAL_WALLET_OPTIONS.map(option => (
+      {externalWalletOptions.map(option => (
         <DepositOption
           key={option.text}
           text={option.text}

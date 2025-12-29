@@ -13,13 +13,11 @@ import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
 import { trackIdentity } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useOnboardingStore } from '@/store/useOnboardingStore';
 import { useUserStore } from '@/store/useUserStore';
 
 export default function ProtectedLayout() {
   const { user } = useUser();
   const { users } = useUserStore();
-  const { hasSeenOnboarding } = useOnboardingStore();
   const searchParams = useLocalSearchParams();
 
   // Run post-signup/login initialization (lazy loading of balance, points, etc.)
@@ -81,7 +79,7 @@ export default function ProtectedLayout() {
 
   if (!users.length) {
     // Show onboarding first (if not seen), then signup flow
-    return <Redirect href={hasSeenOnboarding ? path.SIGNUP_EMAIL : path.ONBOARDING} />;
+    return <Redirect href={path.ONBOARDING} />;
   }
 
   if (users.length && !user) {
@@ -118,13 +116,6 @@ export default function ProtectedLayout() {
       />
       <Stack.Screen
         name="coins/[id]"
-        options={{
-          headerShown: false,
-          animation: 'slide_from_right',
-        }}
-      />
-      <Stack.Screen
-        name="swap"
         options={{
           headerShown: false,
           animation: 'slide_from_right',

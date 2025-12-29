@@ -18,7 +18,7 @@ import { SEND_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { fetchAddressBook } from '@/lib/api';
 import { TransactionStatus, TransactionType } from '@/lib/types';
-import { cn, eclipseAddress } from '@/lib/utils';
+import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
 import ToInput from './ToInput';
 
@@ -29,7 +29,7 @@ const SendSearch: React.FC = () => {
 
   const { data: addressBook = [], isLoading: isLoadingAddressBook } = useQuery({
     queryKey: ['address-book'],
-    queryFn: fetchAddressBook,
+    queryFn: () => withRefreshToken(() => fetchAddressBook()),
   });
 
   const sendActivities = useMemo(() => {

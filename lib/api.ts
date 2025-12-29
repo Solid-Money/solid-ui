@@ -49,6 +49,7 @@ import {
   ExchangeRateResponse,
   FromCurrency,
   GetLifiQuoteParams,
+  HoldingFundsPointsMultiplierConfig,
   KycLink,
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
@@ -1262,7 +1263,6 @@ export const verifySignupOtp = async (otpId: string, otpCode: string, email: str
 export const emailSignUp = async (
   email: string,
   verificationToken: string,
-  sessionPublicKey: string,
   challenge: string,
   attestation: any,
   credentialId?: string,
@@ -1272,7 +1272,6 @@ export const emailSignUp = async (
   const body: Record<string, any> = {
     email,
     verificationToken,
-    sessionPublicKey,
     challenge,
     attestation,
     marketingConsent,
@@ -1642,6 +1641,7 @@ export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEv
 // Direct Deposit Session API
 export const createDirectDepositSession = async (
   chainId: number,
+  tokenSymbol: string,
 ): Promise<DirectDepositSessionResponse> => {
   const jwt = getJWTToken();
 
@@ -1655,7 +1655,7 @@ export const createDirectDepositSession = async (
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify({ chainId }),
+      body: JSON.stringify({ chainId, tokenSymbol }),
     },
   );
 
@@ -1686,12 +1686,12 @@ export const getDirectDepositSession = async (
 };
 
 export const deleteDirectDepositSession = async (
-  sessionId: string,
+  clientTxId: string,
 ): Promise<{ success: boolean; message: string }> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session/${sessionId}`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/deposit/direct-session/${clientTxId}`,
     {
       method: 'DELETE',
       headers: {
@@ -1738,6 +1738,9 @@ export const fetchHistoricalAPY = async (days: string = '30') => {
   return response.data;
 };
 
+/**
+ * @deprecated Use initRecoveryOtp instead (new OTP-based flow)
+ */
 export const startPasskeyRecovery = async (username: string, targetPublicKey: string) => {
   const response = await axios.post(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-user-email-recovery`,
@@ -1747,6 +1750,53 @@ export const startPasskeyRecovery = async (username: string, targetPublicKey: st
     },
   );
   return response.data;
+};
+
+/**
+ * Step 1: Initiate OTP for passkey recovery (public - no auth required)
+ * Sends OTP to user's registered email
+ */
+export const initRecoveryOtp = async (email: string): Promise<{ otpId: string }> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/init-recovery-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ email }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data;
+};
+
+/**
+ * Step 2: Verify OTP for passkey recovery (public - no auth required)
+ * Backend verifies OTP and calls otpLogin, returns credentialBundle for SDK session
+ */
+export const verifyRecoveryOtp = async (
+  otpId: string,
+  otpCode: string,
+  email: string,
+  publicKey: string,
+): Promise<{ credentialBundle: string; userId: string; organizationId: string }> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-recovery-otp`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+      },
+      body: JSON.stringify({ otpId, otpCode, email, publicKey }),
+    },
+  );
+  const data = await response.json();
+  if (!response.ok) throw data;
+  return data;
 };
 
 export const fetchTokenList = async (params: SwapTokenRequest) => {
@@ -1807,3 +1857,20 @@ export const getDepositBonusConfig = async (): Promise<DepositBonusConfig> => {
 
   return response.json();
 };
+
+export const getHoldingFundsPointsMultiplier =
+  async (): Promise<HoldingFundsPointsMultiplierConfig> => {
+    const response = await fetch(
+      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/holding-funds-points-multiplier`,
+      {
+        credentials: 'include',
+        headers: {
+          ...getPlatformHeaders(),
+        },
+      },
+    );
+
+    if (!response.ok) throw response;
+
+    return response.json();
+  };

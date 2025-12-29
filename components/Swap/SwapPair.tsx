@@ -1,14 +1,11 @@
-import { ArrowUpDown } from 'lucide-react-native';
-import React, { useCallback, useMemo } from 'react';
-import { View } from 'react-native';
-
-import { Button } from '@/components/ui/button';
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import { useUSDCValue } from '@/hooks/useUSDCValue';
 import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
 import { useDerivedSwapInfo, useSwapActionHandlers, useSwapState } from '@/store/swapStore';
 import { Currency, CurrencyAmount, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+import React, { useCallback, useMemo } from 'react';
+import { Image, Pressable, View } from 'react-native';
 import TokenCard from './TokenCard';
 
 const SwapPair: React.FC = () => {
@@ -181,7 +178,7 @@ const SwapPair: React.FC = () => {
   );
 
   return (
-    <View className="flex flex-col gap-2 relative">
+    <View className="flex flex-col gap-4 relative">
       <TokenCard
         value={formattedAmounts[SwapField.INPUT] || ''}
         currency={baseCurrency}
@@ -192,18 +189,17 @@ const SwapPair: React.FC = () => {
         fiatValue={fiatValueInputFormatted ?? undefined}
         showMaxButton={showMaxButton}
         showBalance={true}
-        title="Pay"
+        title="From"
       />
 
-      <View className="flex-row justify-center absolute top-1/2 -translate-y-1/2 left-0 right-0 z-10">
-        <Button
-          variant="outline"
-          size="icon"
-          onPress={onSwitchTokens}
-          className="bg-background border-0 rounded-full w-12 h-12 z-10 shadow-sm web:hover:bg-accent"
-        >
-          <ArrowUpDown size={20} color="white" />
-        </Button>
+      <View className="flex-row justify-center items-center z-10 mt-2">
+        <View className="absolute left-0 right-0 h-[1px] bg-white/20" />
+        <Pressable onPress={onSwitchTokens} className="z-10">
+          <Image
+            source={require('@/assets/images/swap_circle.png')}
+            style={{ width: 34, height: 34 }}
+          />
+        </Pressable>
       </View>
 
       <TokenCard
@@ -213,8 +209,8 @@ const SwapPair: React.FC = () => {
         handleTokenSelection={handleOutputSelect}
         handleValueChange={handleTypeOutput}
         fiatValue={fiatValueOutputFormatted ?? undefined}
-        showBalance={true}
-        title="Receive"
+        showBalance={false}
+        title="To"
         isLoading={isVoltageTradeLoading || tradeState.state === 'LOADING'}
       />
     </View>

@@ -46,12 +46,17 @@ export interface DirectDepositSessionResponse {
   fee: string;
   detectedAmount?: string;
   transactionHash?: string;
+  clientTxId?: string;
 }
 
 export interface DepositBonusConfig {
   isEnabled: boolean;
   percentage: number;
   cap: number;
+}
+
+export interface HoldingFundsPointsMultiplierConfig {
+  holdingFundsPointsMultiplier: number;
 }
 
 export enum Status {
