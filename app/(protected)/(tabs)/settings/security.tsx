@@ -2,7 +2,7 @@ import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
@@ -12,11 +12,8 @@ import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getTotpStatus } from '@/lib/api';
-import {
-  EXPO_PUBLIC_TURNKEY_API_BASE_URL,
-  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-} from '@/lib/config';
-import { base64urlToUint8Array, cn } from '@/lib/utils';
+import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
+import { cn } from '@/lib/utils';
 
 const SecurityEmailIcon = require('@/assets/images/security_email.png');
 const SecurityUnlockIcon = require('@/assets/images/security_unlock.png');

@@ -1314,9 +1314,7 @@ export const emailExists = async (email: string): Promise<boolean> => {
  * Returns secret and URI for QR code generation
  */
 export const setupTotp = async (): Promise<{
-  secret: string;
-  uri: string;
-  qrCode?: string;
+  qrCode: string;
 }> => {
   const jwt = getJWTToken();
 
