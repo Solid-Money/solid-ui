@@ -17,7 +17,7 @@ const AddAddress: React.FC<AddAddressProps> = ({ address }) => {
 
   const handlePress = () => {
     setAddress(address);
-    setModal(SEND_MODAL.OPEN_ADDRESS_BOOK);
+    setModal(SEND_MODAL.OPEN_FORM);
   };
 
   return (
