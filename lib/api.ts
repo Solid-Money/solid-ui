@@ -1238,8 +1238,19 @@ export const initSignupOtp = async (email: string) => {
 /**
  * Step 2: Verify OTP for signup (public - no auth required)
  * Returns verification token to use in emailSignUp
+ * Also stores pending signup for follow-up emails if user doesn't complete registration
  */
-export const verifySignupOtp = async (otpId: string, otpCode: string, email: string) => {
+export const verifySignupOtp = async (
+  otpId: string,
+  otpCode: string,
+  email: string,
+  referralCode?: string,
+  marketingConsent?: boolean,
+) => {
+  const body: Record<string, any> = { otpId, otpCode, email };
+  if (referralCode) body.referralCode = referralCode;
+  if (marketingConsent !== undefined) body.marketingConsent = marketingConsent;
+
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/verify-signup-otp`,
     {
@@ -1248,7 +1259,7 @@ export const verifySignupOtp = async (otpId: string, otpCode: string, email: str
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
       },
-      body: JSON.stringify({ otpId, otpCode, email }),
+      body: JSON.stringify(body),
     },
   );
   const data = await response.json();
