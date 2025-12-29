@@ -44,6 +44,8 @@ export default function SignupOtp() {
     error,
     rateLimitError,
     lastOtpSentAt,
+    referralCode,
+    marketingConsent,
     setOtpId,
     setVerificationToken,
     setStep,
@@ -102,7 +104,13 @@ export default function SignupOtp() {
       setError(null);
 
       try {
-        const { verificationToken } = await verifySignupOtp(otpId, data.otp, email);
+        const { verificationToken } = await verifySignupOtp(
+          otpId,
+          data.otp,
+          email,
+          referralCode || undefined,
+          marketingConsent,
+        );
         setVerificationToken(verificationToken);
 
         track(TRACKING_EVENTS.EMAIL_OTP_VERIFIED, { email, context: 'signup' });
@@ -123,7 +131,17 @@ export default function SignupOtp() {
         setIsLoading(false);
       }
     },
-    [otpId, email, setIsLoading, setError, setVerificationToken, setStep, router],
+    [
+      otpId,
+      email,
+      referralCode,
+      marketingConsent,
+      setIsLoading,
+      setError,
+      setVerificationToken,
+      setStep,
+      router,
+    ],
   );
 
   // Wrap onSubmit with handleSubmit for validation
