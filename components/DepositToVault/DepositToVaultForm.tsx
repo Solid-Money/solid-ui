@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { formatUnits } from 'viem';
+import { Address, formatUnits } from 'viem';
 import { z } from 'zod';
 
 import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
@@ -48,7 +48,7 @@ function DepositToVaultForm() {
   }, [srcChainId, outputToken]);
 
   const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA(
-    selectedTokenInfo?.address || '',
+    selectedTokenInfo?.address as Address || '',
     selectedTokenInfo?.name || '',
     selectedTokenInfo?.version,
   );

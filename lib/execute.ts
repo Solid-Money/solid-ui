@@ -11,7 +11,7 @@ export type TransactionResult =
   | {
       transaction: any;
       userOpHash: `0x${string}`;
-      transactionHash: string;
+      transactionHash: `0x${string}`;
     }
   | typeof USER_CANCELLED_TRANSACTION;
 

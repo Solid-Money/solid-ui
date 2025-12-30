@@ -7,7 +7,7 @@ import { TrackTransaction } from '@/hooks/useActivity';
 import MerklDistributorABI from '@/lib/abis/MerklDistributor';
 import { ADDRESSES, EXPO_PUBLIC_MERKL_CAMPAIGN_ID } from '@/lib/config';
 import { executeTransactions, getTransaction, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { TransactionStatus, TransactionType, MerklRewards, MerklReward } from '@/lib/types';
+import { MerklReward, MerklRewards, TransactionStatus, TransactionType } from '@/lib/types';
 
 export const calculateUnclaimedMerklRewards = (rewards: MerklRewards) => {
   let value = 0;
@@ -64,14 +64,15 @@ export const claimMerklRewards = async (
 
   const rewards = await getMerklRewards(safeAddress, chain.id, campaignId)
 
-  const users: string[] = []
-  const tokens: string[] = []
+  const users: `0x${string}`[] = []
+  const tokens: `0x${string}`[] = []
   const amounts: bigint[] = []
   const proofs: `0x${string}`[][] = []
 
   for (const reward of rewards) {
+    const tokenAddress = reward.token.address as `0x${string}`
     users.push(safeAddress)
-    tokens.push(reward.token.address)
+    tokens.push(tokenAddress)
     amounts.push(BigInt(reward.amount))
     proofs.push(reward.proofs as `0x${string}`[])
   }

@@ -113,11 +113,13 @@ const useUser = (): UseUserReturn => {
       // but Turnkey expects JSON typed data. This causes Turnkey to sign wrong data.
       // Fix: Compute hash locally, use the account's `sign` method for raw hash signing.
       // TODO: Remove this workaround when @turnkey/viem fixes the bug
-      const originalSign = turnkeyAccount.sign.bind(turnkeyAccount);
-      turnkeyAccount.signTypedData = async (typedData: any) => {
-        const hash = hashTypedData(typedData);
-        return originalSign({ hash });
-      };
+      if (turnkeyAccount.sign) {
+        const originalSign = turnkeyAccount.sign.bind(turnkeyAccount);
+        turnkeyAccount.signTypedData = async (typedData: any) => {
+          const hash = hashTypedData(typedData);
+          return originalSign({ hash });
+        };
+      }
 
       // Create a wallet client from the turnkeyAccount
       // const smartAccountOwner = createWalletClient({
@@ -751,7 +753,7 @@ const useUser = (): UseUserReturn => {
 
   const handleSessionExpired = useCallback(() => {
     clearKycLinkId(); // Clear KYC data when session expires
-    router.replace(`${path.WELCOME}?session=expired`);
+    router.replace({ pathname: '/welcome', params: { session: 'expired' } });
   }, [clearKycLinkId, router]);
 
   const handleDeleteAccount = useCallback(async () => {
