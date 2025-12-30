@@ -1,48 +1,72 @@
-import ResponsiveModal from '@/components/ResponsiveModal';
-import useWithdrawOption from '@/hooks/useWithdrawOption';
-import { useUnstakeStore } from '@/store/useUnstakeStore';
 import React from 'react';
+import { Pressable, View } from 'react-native';
+import { Minus } from 'lucide-react-native';
+
+import { buttonVariants } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { UNSTAKE_MODAL } from '@/constants/modals';
+import { UnstakeModal as UnstakeModalType } from '@/lib/types';
+import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 type UnstakeModalProps = {
   trigger?: React.ReactNode;
+  buttonText?: string;
+  modal?: UnstakeModalType;
 };
 
-const UnstakeModal = ({ trigger }: UnstakeModalProps) => {
-  const {
-    shouldOpen,
-    showBackButton,
-    shouldAnimate,
-    isForward,
-    getTrigger,
-    getContent,
-    getContentKey,
-    getTitle,
-    getContentClassName,
-    getContainerClassName,
-    handleOpenChange,
-    handleBackPress,
-  } = useWithdrawOption({ trigger });
+/**
+ * Default trigger component for opening the unstake modal.
+ */
+const DefaultUnstakeTrigger = ({ buttonText = 'Withdraw' }: { buttonText?: string }) => (
+  <View
+    className={buttonVariants({
+      variant: 'secondary',
+      className: 'h-12 px-6 rounded-xl bg-[#303030] border-0',
+    })}
+  >
+    <View className="flex-row items-center gap-2">
+      <Minus size={20} color="white" />
+      <Text className="text-base text-white font-bold">{buttonText}</Text>
+    </View>
+  </View>
+);
 
-  const { currentModal, previousModal } = useUnstakeStore();
+/**
+ * UnstakeModal - now a thin wrapper around trigger components.
+ *
+ * The actual modal is rendered by UnstakeModalProvider at the app root.
+ * This component only renders the trigger button to open the modal.
+ *
+ * For headless usage (trigger={null}), this component renders nothing
+ * since the global UnstakeModalProvider handles the modal state.
+ */
+const UnstakeModal = ({
+  trigger,
+  buttonText = 'Withdraw',
+  modal = UNSTAKE_MODAL.OPEN_OPTIONS,
+}: UnstakeModalProps) => {
+  const { setModal } = useUnstakeStore();
 
+  const handlePress = () => {
+    setModal(modal);
+  };
+
+  // Headless usage - the global UnstakeModalProvider handles the modal
+  if (trigger === null) {
+    return null;
+  }
+
+  // Use default trigger if not provided
+  const triggerElement = trigger || <DefaultUnstakeTrigger buttonText={buttonText} />;
+
+  // Always wrap with Pressable to ensure click handling works
+  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
-    <ResponsiveModal
-      currentModal={currentModal}
-      previousModal={previousModal}
-      isOpen={shouldOpen}
-      onOpenChange={handleOpenChange}
-      trigger={trigger ? trigger : getTrigger()}
-      title={getTitle()}
-      contentClassName={getContentClassName()}
-      containerClassName={getContainerClassName()}
-      showBackButton={showBackButton}
-      onBackPress={handleBackPress}
-      shouldAnimate={shouldAnimate}
-      isForward={isForward}
-      contentKey={getContentKey()}
-    >
-      {getContent()}
-    </ResponsiveModal>
+    <Pressable onPress={handlePress} className="flex-1">
+      <View pointerEvents="none" className="flex-1">
+        {triggerElement}
+      </View>
+    </Pressable>
   );
 };
 

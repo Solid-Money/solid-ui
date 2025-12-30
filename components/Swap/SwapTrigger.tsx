@@ -1,8 +1,7 @@
-import React, { isValidElement, ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { SWAP_MODAL } from '@/constants/modals';
-import { useDimension } from '@/hooks/useDimension';
 import { useSwapState } from '@/store/swapStore';
 
 type SwapTriggerProps = {
@@ -20,7 +19,6 @@ const SwapTrigger = ({ trigger, children }: SwapTriggerProps) => {
   const {
     actions: { setModal },
   } = useSwapState();
-  const { isScreenMedium } = useDimension();
 
   const handlePress = () => {
     setModal(SWAP_MODAL.OPEN_FORM);
@@ -32,15 +30,8 @@ const SwapTrigger = ({ trigger, children }: SwapTriggerProps) => {
     return null;
   }
 
-  // On web/tablet, clone the element and inject onPress directly
-  // This handles cases where the trigger is already a Pressable (like CircleButton)
-  if (isScreenMedium && isValidElement(content)) {
-    return React.cloneElement(content as React.ReactElement<{ onPress?: () => void }>, {
-      onPress: handlePress,
-    });
-  }
-
-  // On mobile, wrap with pointerEvents="none" so parent Pressable captures touch
+  // Always wrap with Pressable to ensure click handling works
+  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
     <Pressable onPress={handlePress}>
       <View pointerEvents="none" className="flex-1">

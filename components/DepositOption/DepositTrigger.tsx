@@ -1,11 +1,10 @@
 import { Plus } from 'lucide-react-native';
-import React, { isValidElement } from 'react';
+import React from 'react';
 import { Pressable, View } from 'react-native';
 
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { DepositModal } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -29,7 +28,6 @@ const DepositTrigger = ({
 }: DepositTriggerProps) => {
   const { user } = useUser();
   const { setModal, srcChainId } = useDepositStore();
-  const { isScreenMedium } = useDimension();
 
   const handlePress = () => {
     // Check if user has email when opening deposit modal
@@ -63,15 +61,8 @@ const DepositTrigger = ({
     return defaultTrigger;
   }
 
-  // On web/tablet, clone the element and inject onPress directly
-  // This handles cases where the trigger is already a Pressable (like CircleButton)
-  if (isScreenMedium && isValidElement(trigger)) {
-    return React.cloneElement(trigger as React.ReactElement<{ onPress?: () => void }>, {
-      onPress: handlePress,
-    });
-  }
-
-  // On mobile, wrap with pointerEvents="none" so parent Pressable captures touch
+  // Always wrap with Pressable to ensure click handling works
+  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
     <Pressable onPress={handlePress} className="flex-1">
       <View pointerEvents="none" className="flex-1">

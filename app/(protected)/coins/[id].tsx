@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { formatUnits } from 'viem';
+import { Address, formatUnits } from 'viem';
 
 import ActivityTransactions from '@/components/Activity/ActivityTransactions';
 import AreaChart from '@/components/AreaChart';
@@ -132,7 +132,7 @@ export default function Coin() {
             <CoinChartTime />
           </View>
 
-          <CoinButtons contractAddress={contractAddress} />
+          <CoinButtons contractAddress={contractAddress as Address} />
 
           <View className="bg-card rounded-twice p-5 flex-row items-center justify-between">
             <Text className="text-lg font-bold">Balance</Text>

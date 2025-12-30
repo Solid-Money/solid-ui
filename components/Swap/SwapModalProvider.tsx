@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import SwapButton from '@/components/Swap/SwapButton';
