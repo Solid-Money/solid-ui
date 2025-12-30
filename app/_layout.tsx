@@ -1,3 +1,11 @@
+import CardDepositModalProvider from '@/components/Card/CardDepositModalProvider';
+import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
+import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
+import SendModalProvider from '@/components/Send/SendModalProvider';
+import StakeModalProvider from '@/components/Stake/StakeModalProvider';
+import SwapModalProvider from '@/components/Swap/SwapModalProvider';
+import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
+import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
 import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom';
 import { toastProps } from '@/components/Toast';
@@ -345,6 +353,14 @@ export default Sentry.wrap(function RootLayout() {
                         />
                       </Stack>
                       <PortalHost />
+                      <DepositModalProvider />
+                      <SendModalProvider />
+                      <SwapModalProvider />
+                      <WithdrawModalProvider />
+                      <StakeModalProvider />
+                      <UnstakeModalProvider />
+                      <DepositFromSafeAccountModalProvider />
+                      <CardDepositModalProvider />
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>
                 </Intercom>

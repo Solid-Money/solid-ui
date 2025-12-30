@@ -1,87 +1,51 @@
-import { useRouter } from 'expo-router';
 import React from 'react';
+import { Pressable, View } from 'react-native';
 
-import ResponsiveModal from '@/components/ResponsiveModal';
-import TransactionStatus from '@/components/TransactionStatus';
 import { WITHDRAW_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import getTokenIcon from '@/lib/getTokenIcon';
 import { useWithdrawStore } from '@/store/useWithdrawStore';
-import { Withdraw, WithdrawTrigger } from '.';
+import { WithdrawTrigger } from '.';
 
 type WithdrawModalProps = {
   trigger?: React.ReactNode;
 };
 
+/**
+ * WithdrawModal - now a thin wrapper around trigger components.
+ *
+ * The actual modal is rendered by WithdrawModalProvider at the app root.
+ * This component only renders the trigger button to open the modal.
+ *
+ * For headless usage (trigger={null}), this component renders nothing
+ * since the global WithdrawModalProvider handles the modal state.
+ */
 const WithdrawModal = ({ trigger }: WithdrawModalProps) => {
-  const router = useRouter();
-  const { currentModal, previousModal, setModal, transaction } = useWithdrawStore();
+  const { setModal } = useWithdrawStore();
 
-  const isTransactionStatus = currentModal.name === WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS.name;
-  const isClose = currentModal.name === WITHDRAW_MODAL.CLOSE.name;
-
-  const getTitle = () => {
-    if (isTransactionStatus) return undefined;
-    return 'Withdraw';
-  };
-
-  const handleTransactionStatusPress = () => {
-    track(TRACKING_EVENTS.WITHDRAW_TRANSACTION_STATUS_PRESSED, {
-      amount: transaction.amount,
+  const handlePress = () => {
+    track(TRACKING_EVENTS.WITHDRAW_MODAL_OPENED, {
       source: 'withdraw_modal',
     });
-    setModal(WITHDRAW_MODAL.CLOSE);
-    router.push(path.ACTIVITY);
+    setModal(WITHDRAW_MODAL.OPEN_FORM);
   };
 
-  const getContentKey = () => {
-    if (isTransactionStatus) return 'transaction-status';
-    return 'withdraw-form';
-  };
+  // Headless usage - the global WithdrawModalProvider handles the modal
+  if (trigger === null) {
+    return null;
+  }
 
-  const getContent = () => {
-    if (isTransactionStatus) {
-      return (
-        <TransactionStatus
-          amount={transaction.amount ?? 0}
-          onPress={handleTransactionStatusPress}
-          token={'SoUSD'}
-          icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
-        />
-      );
-    }
+  // Use default trigger if not provided
+  const triggerElement = trigger || <WithdrawTrigger />;
 
-    return <Withdraw />;
-  };
-
-  const handleOpenChange = (value: boolean) => {
-    if (value) {
-      track(TRACKING_EVENTS.WITHDRAW_MODAL_OPENED, {
-        source: 'withdraw_modal',
-      });
-      setModal(WITHDRAW_MODAL.OPEN_FORM);
-    } else {
-      track(TRACKING_EVENTS.WITHDRAW_MODAL_CLOSED, {
-        source: 'withdraw_modal',
-      });
-      setModal(WITHDRAW_MODAL.CLOSE);
-    }
-  };
-
+  // Always wrap with Pressable to ensure click handling works
+  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
-    <ResponsiveModal
-      currentModal={currentModal}
-      previousModal={previousModal}
-      isOpen={!isClose}
-      onOpenChange={handleOpenChange}
-      trigger={trigger || <WithdrawTrigger />}
-      title={getTitle()}
-      contentKey={getContentKey()}
-    >
-      {getContent()}
-    </ResponsiveModal>
+    <Pressable onPress={handlePress} className="flex-1">
+      <View pointerEvents="none" className="flex-1">
+        {triggerElement}
+      </View>
+    </Pressable>
   );
 };
 
