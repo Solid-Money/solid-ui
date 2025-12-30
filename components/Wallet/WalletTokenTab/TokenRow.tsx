@@ -62,11 +62,6 @@ const TokenRow = memo(
                 </Text>
               </View>
             </View>
-            {isSoUSDEthereum(token.contractAddress) && (
-              <View className="bg-accent rounded-full px-4 py-2 flex-row items-center gap-2 w-fit">
-                <Text className="text-sm font-semibold">Ready to withdraw</Text>
-              </View>
-            )}
           </View>
         </View>
 

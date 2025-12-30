@@ -204,7 +204,7 @@ export default function Savings() {
         )}
 
         <View className="px-4 md:px-0 mt-4 gap-3">
-          <Text className="text-lg text-muted-foreground font-semibold">Your assets</Text>
+          <Text className="text-lg text-muted-foreground font-semibold">Assets</Text>
           {tokenError ? (
             <View className="flex-1 justify-center items-center p-4">
               <WalletInfo text="Failed to load tokens" />
