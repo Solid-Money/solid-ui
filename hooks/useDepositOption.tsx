@@ -283,8 +283,7 @@ const useDepositOption = ({
   };
 
   const handleOpenChange = (value: boolean) => {
-    // Prevent closing when Reown modal is open
-    if (!address && isForm) {
+    if (!value && isFormAndAddress && status === 'connecting') {
       return;
     }
 
