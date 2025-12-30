@@ -34,8 +34,10 @@ import { Appearance, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { ThirdwebProvider } from 'thirdweb/react';
 import { WagmiProvider } from 'wagmi';
+
+// Lazy-loaded to defer 265MB thirdweb bundle until actually needed
+import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 
 Sentry.init({
   dsn: 'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952',
@@ -158,6 +160,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes - data considered fresh
+      gcTime: 10 * 60 * 1000, // 10 minutes - garbage collect unused queries
+      retry: 2,
     },
   },
 });
@@ -237,7 +242,7 @@ export default Sentry.wrap(function RootLayout() {
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <TurnkeyProvider>
-        <ThirdwebProvider>
+        <LazyThirdwebProvider>
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={infoClient}>
@@ -346,7 +351,7 @@ export default Sentry.wrap(function RootLayout() {
               </ApolloProvider>
             </QueryClientProvider>
           </WagmiProvider>
-        </ThirdwebProvider>
+        </LazyThirdwebProvider>
         <Toast {...toastProps} />
       </TurnkeyProvider>
     </SafeAreaProvider>
