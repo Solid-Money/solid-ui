@@ -258,7 +258,7 @@ export default function CountrySelection() {
         // Pass countryConfirmed param to skip the country check on activate page
         if (accessCheck.hasAccess) {
           router.push({
-            pathname: path.CARD_ACTIVATE,
+            pathname: '/card/activate',
             params: { countryConfirmed: 'true' },
           });
           return;

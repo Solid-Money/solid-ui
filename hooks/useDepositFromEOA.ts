@@ -66,7 +66,7 @@ const useDepositFromEOA = (
   const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<Address | undefined>();
-  const eoaAddress = account?.address;
+  const eoaAddress = account?.address as Address;
   const { updateUser } = useUserStore();
   const { srcChainId } = useDepositStore();
   const isEthereum = srcChainId === mainnet.id;
@@ -388,8 +388,8 @@ const useDepositFromEOA = (
 
       const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
       const spender = isSponsor
-        ? EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS
-        : ADDRESSES.ethereum.vault;
+        ? EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address
+        : ADDRESSES.ethereum.vault as Address;
 
       // Track deposit validation passed
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
@@ -420,8 +420,8 @@ const useDepositFromEOA = (
 
       const amountWei = parseUnits(amount, 6);
 
-      let txHash: Address | undefined;
-      let transaction: { transactionHash: Address } | undefined = { transactionHash: '' };
+      let txHash: `0x${string}` | undefined;
+      let transaction: { transactionHash: `0x${string}` } | undefined = { transactionHash: '' as `0x${string}` };
       if (isEthereum && token === 'USDC') {
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
@@ -575,11 +575,11 @@ const useDepositFromEOA = (
               permitSignature:
                 signatureData && deadline
                   ? {
-                      v: Number(signatureData.v),
-                      r: signatureData.r,
-                      s: signatureData.s,
-                      deadline: Number(deadline),
-                    }
+                    v: Number(signatureData.v),
+                    r: signatureData.r,
+                    s: signatureData.s,
+                    deadline: Number(deadline),
+                  }
                   : undefined,
               trackingId,
             }),
@@ -615,7 +615,7 @@ const useDepositFromEOA = (
           await checkAndSetAllowanceToken(
             tokenAddress,
             eoaAddress,
-            quote.estimate.approvalAddress,
+            quote.estimate.approvalAddress as `0x${string}`,
             BigInt(quote.estimate.fromAmount),
             srcChainId,
           );
@@ -638,7 +638,13 @@ const useDepositFromEOA = (
             to_token: BRIDGE_TOKENS[mainnet.id]?.tokens?.USDC.address,
           });
 
-          const bridgeTxHash = await sendTransaction(srcChainId, quote.transactionRequest);
+          const { gasLimit, from, to, ...rest } = quote.transactionRequest;
+          const bridgeTxHash = await sendTransaction(srcChainId, {
+            ...rest,
+            from: from as `0x${string}`,
+            to: to as `0x${string}`,
+            gas: gasLimit,
+          });
           setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 15 min)' });
 
           Sentry.addBreadcrumb({

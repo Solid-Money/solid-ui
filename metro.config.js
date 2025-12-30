@@ -98,4 +98,17 @@ config.transformer.minifierConfig = {
   },
 };
 
+// Memory optimization: Limit parallel workers during bundling
+// Reduces peak memory usage at the cost of slightly slower builds
+config.maxWorkers = process.env.METRO_MAX_WORKERS
+  ? parseInt(process.env.METRO_MAX_WORKERS, 10)
+  : Math.max(1, Math.floor(require('os').cpus().length / 2));
+
+// Enable file-based caching to reduce memory pressure
+config.cacheStores = [
+  new (require('metro-cache').FileStore)({
+    root: `${__dirname}/.metro-cache`,
+  }),
+];
+
 module.exports = withNativeWind(config, { input: './global.css' });

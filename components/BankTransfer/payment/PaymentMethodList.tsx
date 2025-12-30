@@ -251,7 +251,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
     });
 
     if (isModal) {
-      setBankTransferData({ instructions: sourceDepositInstructions });
+      setBankTransferData({ instructions: sourceDepositInstructions.source_deposit_instructions });
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
     } else {
       router.push({

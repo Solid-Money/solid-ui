@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
+import { Address } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { EXPO_PUBLIC_FLASH_API_BASE_URL } from '@/lib/config';
-import { TokenListItem } from '@/lib/types/tokens';
 import { SwapTokenResponse } from '@/lib/types';
+import { TokenListItem } from '@/lib/types/tokens';
 
 // Fallback to the original URL if backend is not available
 const VOLTAGE_SWAP_DEFAULT_TOKEN_LIST_URL =
@@ -47,7 +48,7 @@ export function useFetchTokenList() {
         // Map to TokenListItem format for compatibility
         const tokens: TokenListItem[] = sortedSwapTokens.map((swapToken) => ({
           name: swapToken.name,
-          address: swapToken.address,
+          address: swapToken.address as Address,
           symbol: swapToken.symbol,
           decimals: swapToken.decimals,
           chainId: swapToken.chainId,
