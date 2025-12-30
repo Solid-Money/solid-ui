@@ -1,7 +1,6 @@
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import CountUp from '@/components/CountUp';
-import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import WalletCardIcons from '@/components/Wallet/WalletCardIcons';
@@ -9,9 +8,9 @@ import { useDimension } from '@/hooks/useDimension';
 import { TokenBalance } from '@/lib/types';
 import { cn, fontSize } from '@/lib/utils';
 
-import WalletIcon from '@/assets/images/wallet';
+import CardIcon from '@/assets/images/card';
 
-type WalletCardProps = {
+type CardProps = {
   balance: number;
   className?: string;
   tokens: TokenBalance[];
@@ -19,7 +18,7 @@ type WalletCardProps = {
   decimalPlaces?: number;
 };
 
-const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: WalletCardProps) => {
+const Card = ({ balance, className, tokens, isLoading, decimalPlaces }: CardProps) => {
   const { isScreenMedium } = useDimension();
 
   return (
@@ -30,8 +29,8 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
       )}
     >
       <View className="flex-row items-center gap-2 opacity-50">
-        <WalletIcon rotate={180} />
-        <Text className="text-lg font-medium">Wallet</Text>
+        <CardIcon />
+        <Text className="text-lg font-medium">Card</Text>
       </View>
 
       <View className="flex-row justify-between items-center">
@@ -53,38 +52,23 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
                   wholeText: {
                     fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
                     fontWeight: '500',
-                    //fontFamily: 'MonaSans_600SemiBold',
                     color: '#ffffff',
                     marginRight: -1,
                   },
                   decimalText: {
                     fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
                     fontWeight: '500',
-                    //fontFamily: 'MonaSans_600SemiBold',
                     color: '#ffffff',
                   },
                 }}
               />
             )}
           </View>
-          <TooltipPopover text="All coins balance excluding soUSD" />
         </View>
-        <TooltipPopover
-          trigger={
-            <Pressable>
-              <WalletCardIcons tokens={tokens} />
-            </Pressable>
-          }
-          content={
-            <Text className="max-w-[16.2rem] text-base">
-              Displaying top three tokens by balance. Wallet can contain any ERC-20 and native token
-              in Ethereum and Fuse for Swap and Send.
-            </Text>
-          }
-        />
+        <WalletCardIcons tokens={tokens} />
       </View>
     </View>
   );
 };
 
-export default WalletCard;
+export default Card;

@@ -6,10 +6,13 @@ import PageLayout from '@/components/PageLayout';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
+import { Card, SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
 import WalletTabs from '@/components/Wallet/WalletTabs';
+import { USDC_TOKEN_BALANCE } from '@/constants/tokens';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
+import { useCardDetails } from '@/hooks/useCardDetails';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { useCalculateSavings } from '@/hooks/useFinancial';
@@ -19,7 +22,7 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
-import { fontSize } from '@/lib/utils';
+import { fontSize, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 import React, { useEffect } from 'react';
 import { TouchableOpacity, View } from 'react-native';
@@ -37,6 +40,10 @@ export default function Savings() {
   } = useVaultBalance(user?.safeAddress as Address);
   const { updateUser } = useUserStore();
   const intercom = useIntercom();
+  const { data: cardStatus } = useCardStatus();
+  const { data: cardDetails } = useCardDetails();
+
+  const userHasCard = hasCard(cardStatus);
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -93,6 +100,8 @@ export default function Savings() {
   const topThreeTokens = uniqueTokens.slice(0, 3);
   const isDeposited = !!userDepositTransactions?.deposits?.length;
 
+  const cardBalance = Number(cardDetails?.balances.available?.amount || '0');
+
   useEffect(() => {
     refetchBalance();
     refetchTransactions();
@@ -136,7 +145,7 @@ export default function Savings() {
                 ) : (
                   <CountUp
                     prefix="$"
-                    count={totalUSDExcludingSoUSD + savings}
+                    count={totalUSDExcludingSoUSD + savings + cardBalance}
                     isTrailingZero={false}
                     decimalPlaces={2}
                     classNames={{
@@ -162,16 +171,16 @@ export default function Savings() {
                 )}
               </View>
             </View>
-            <DashboardHeaderButtons hasTokens={hasTokens} />
+            <DashboardHeaderButtons />
           </View>
         ) : (
           <DashboardHeaderMobile
-            balance={totalUSDExcludingSoUSD + (savings ?? 0)}
+            balance={totalUSDExcludingSoUSD + (savings ?? 0) + cardBalance}
             mode={SavingMode.BALANCE_ONLY}
           />
         )}
         {isScreenMedium ? (
-          <View className="md:flex-row gap-8 min-h-44">
+          <View className="md:flex-row gap-6 min-h-44">
             <WalletCard
               balance={totalUSDExcludingSoUSD}
               className="flex-1"
@@ -179,6 +188,15 @@ export default function Savings() {
               isLoading={isLoadingTokens}
               decimalPlaces={2}
             />
+            {!userHasCard && (
+              <Card
+                balance={cardBalance}
+                className="flex-1"
+                tokens={[USDC_TOKEN_BALANCE]}
+                isLoading={isLoadingTokens}
+                decimalPlaces={2}
+              />
+            )}
             <SavingCard className="flex-1" decimalPlaces={2} />
           </View>
         ) : (

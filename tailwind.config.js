@@ -100,6 +100,9 @@ module.exports = {
           DEFAULT: 'hsl(var(--rewards))',
           hover: 'color-mix(in srgb, hsl(var(--rewards)) 90%, white 10%)',
         },
+        indigo: {
+          DEFAULT: 'hsl(var(--indigo))',
+        },
       },
       borderWidth: {
         hairline: hairlineWidth(),
