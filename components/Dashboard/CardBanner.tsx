@@ -104,10 +104,10 @@ const CardBanner = () => {
       >
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
           <View className="max-w-40 md:max-w-64 justify-between items-start gap-1 md:gap-4 py-4 md:py-7">
-            <Text className="text-xl md:text-3xl font-semibold native:text-base">
+            <Text className="text-xl md:text-3xl font-semibold native:text-lg">
               {bannerContent.title}
             </Text>
-            <Text className="text-muted-foreground font-semibold native:text-sm">
+            <Text className="text-muted-foreground font-semibold native:text-base">
               {bannerContent.description}
               {bannerContent.showPromo && (
                 <>

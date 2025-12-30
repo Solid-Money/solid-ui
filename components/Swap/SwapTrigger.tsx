@@ -34,7 +34,7 @@ const SwapTrigger = ({ trigger, children }: SwapTriggerProps) => {
   // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
     <Pressable onPress={handlePress}>
-      <View pointerEvents="none" className="flex-1">
+      <View pointerEvents="none">
         {content}
       </View>
     </Pressable>
