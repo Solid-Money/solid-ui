@@ -36,7 +36,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { WagmiProvider } from 'wagmi';
 
-// Lazy-loaded to defer 265MB thirdweb bundle until actually needed
+// Lazy-loaded to defer thirdweb bundle until actually needed
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 
 Sentry.init({
