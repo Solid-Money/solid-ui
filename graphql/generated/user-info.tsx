@@ -1138,7 +1138,6 @@ export type _Meta_ = {
    * will be null if the _meta field has a block constraint that asks for
    * a block number. It will be filled if the _meta field has no block constraint
    * and therefore asks for the latest  block
-   *
    */
   block: _Block_;
   /** The deployment ID */
@@ -1209,6 +1208,9 @@ export function useGetExchangeRateUpdatesLazyQuery(baseOptions?: Apollo.LazyQuer
           const options = {...defaultOptions, ...baseOptions}
           return Apollo.useLazyQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
         }
+// @ts-ignore
+export function useGetExchangeRateUpdatesSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>): Apollo.UseSuspenseQueryResult<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>;
+export function useGetExchangeRateUpdatesSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>): Apollo.UseSuspenseQueryResult<GetExchangeRateUpdatesQuery | undefined, GetExchangeRateUpdatesQueryVariables>;
 export function useGetExchangeRateUpdatesSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>) {
           const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
           return Apollo.useSuspenseQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
@@ -1271,6 +1273,9 @@ export function useGetUserTransactionsLazyQuery(baseOptions?: Apollo.LazyQueryHo
           const options = {...defaultOptions, ...baseOptions}
           return Apollo.useLazyQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
         }
+// @ts-ignore
+export function useGetUserTransactionsSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>): Apollo.UseSuspenseQueryResult<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>;
+export function useGetUserTransactionsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>): Apollo.UseSuspenseQueryResult<GetUserTransactionsQuery | undefined, GetUserTransactionsQueryVariables>;
 export function useGetUserTransactionsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>) {
           const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
           return Apollo.useSuspenseQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
