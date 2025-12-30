@@ -42,8 +42,8 @@ const SendModal = ({ token, trigger, modal }: SendModalProps) => {
   // Always wrap with Pressable to ensure click handling works
   // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
-    <Pressable onPress={handlePress} className="flex-1">
-      <View pointerEvents="none" className="flex-1">
+    <Pressable onPress={handlePress}>
+      <View pointerEvents="none">
         {trigger}
       </View>
     </Pressable>
