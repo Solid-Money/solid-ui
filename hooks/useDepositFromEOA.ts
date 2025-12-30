@@ -575,11 +575,11 @@ const useDepositFromEOA = (
               permitSignature:
                 signatureData && deadline
                   ? {
-                      v: Number(signatureData.v),
-                      r: signatureData.r,
-                      s: signatureData.s,
-                      deadline: Number(deadline),
-                    }
+                    v: Number(signatureData.v),
+                    r: signatureData.r,
+                    s: signatureData.s,
+                    deadline: Number(deadline),
+                  }
                   : undefined,
               trackingId,
             }),
@@ -615,7 +615,7 @@ const useDepositFromEOA = (
           await checkAndSetAllowanceToken(
             tokenAddress,
             eoaAddress,
-            quote.estimate.approvalAddress,
+            quote.estimate.approvalAddress as `0x${string}`,
             BigInt(quote.estimate.fromAmount),
             srcChainId,
           );
@@ -638,7 +638,13 @@ const useDepositFromEOA = (
             to_token: BRIDGE_TOKENS[mainnet.id]?.tokens?.USDC.address,
           });
 
-          const bridgeTxHash = await sendTransaction(srcChainId, quote.transactionRequest);
+          const { gasLimit, from, to, ...rest } = quote.transactionRequest;
+          const bridgeTxHash = await sendTransaction(srcChainId, {
+            ...rest,
+            from: from as `0x${string}`,
+            to: to as `0x${string}`,
+            gas: gasLimit,
+          });
           setDepositStatus({ status: Status.PENDING, message: 'Bridging (takes 15 min)' });
 
           Sentry.addBreadcrumb({

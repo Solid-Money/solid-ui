@@ -48,7 +48,7 @@ function DepositToVaultForm() {
   }, [srcChainId, outputToken]);
 
   const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA(
-    selectedTokenInfo?.address as Address || '',
+    (selectedTokenInfo?.address as Address) || '',
     selectedTokenInfo?.name || '',
     selectedTokenInfo?.version,
   );
