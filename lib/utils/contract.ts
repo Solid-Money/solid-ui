@@ -20,7 +20,7 @@ export const approveUsdc = async (
     const usdcAddress = getUsdcAddress(chainId);
 
     const hash = await writeContract(config, {
-      address: usdcAddress,
+      address: usdcAddress as Address,
       abi: erc20Abi,
       functionName: 'approve',
       args: [spender, amount],
@@ -64,7 +64,7 @@ export const getUsdcAllowance = async (
     const usdcAddress = getUsdcAddress(chainId);
 
     const allowance = (await readContract(config, {
-      address: usdcAddress,
+      address: usdcAddress as Address,
       abi: erc20Abi,
       functionName: 'allowance',
       args: [owner, spender],

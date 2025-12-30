@@ -1,5 +1,4 @@
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { TermsOfServiceStatus } from '@/lib/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -38,7 +37,7 @@ export default function BridgeTermsOfServiceIframe() {
           event.data.signedAgreementId.length > 0
         ) {
           router.replace({
-            pathname: path.CARD_ACTIVATE,
+            pathname: '/card/activate',
             params: {
               tosStatus: TermsOfServiceStatus.APPROVED,
             },
