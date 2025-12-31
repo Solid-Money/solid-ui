@@ -38,7 +38,7 @@ export default function MobileCards({
       isLoading={isLoadingTokens}
       decimalPlaces={2}
     />,
-    ...(!userHasCard
+    ...(userHasCard
       ? [
           <Card
             key="card"
