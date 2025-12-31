@@ -72,12 +72,11 @@ const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
       onPress={() => router.push(path.SAVINGS)}
       onHoverIn={() => setIsHovered(true)}
       onHoverOut={() => setIsHovered(false)}
-      className="flex-1"
+      className={className}
     >
       <View
         className={cn(
           'rounded-twice overflow-hidden relative p-[30px] pb-[21px] justify-between w-full h-full',
-          className,
         )}
       >
         {/* Base gradient */}
@@ -100,11 +99,19 @@ const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
           className="transition-opacity duration-200"
         />
         <LinearGradient
-          colors={['rgba(122, 84, 234, 0.3)', 'rgba(122, 84, 234, 0.2)']}
+          colors={['rgba(122, 84, 234, 1)', 'rgba(122, 84, 234, 0.5)']}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.6, y: 1 }}
           pointerEvents="none"
-          style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: -1 }}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: -1,
+            opacity: 0.3,
+          }}
         />
         <View className="relative flex-row justify-between items-center">
           <View className="flex-row items-center gap-2 opacity-50">

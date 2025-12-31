@@ -132,7 +132,7 @@ const BalanceBreakdown = ({ token, className }: BalanceBreakdownProps) => {
 
   return (
     <View className={cn('bg-card rounded-twice border-4 border-popup', className)}>
-      <View className="gap-2 justify-center items-center px-4 py-6">
+      <View className="gap-1 md:gap-2 justify-center items-center px-4 py-6">
         <Text className="text-lg font-medium opacity-50">Balance across</Text>
         <Text className="text-3.5xl font-semibold">
           {totalBalanceFormatted} {token?.contractTickerSymbol}
