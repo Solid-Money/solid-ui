@@ -1,5 +1,5 @@
 import { infoClient } from '@/graphql/clients';
-import { QueryClient, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
@@ -139,6 +139,7 @@ export const userTransactionsQueryOptions = (safeAddress: string | undefined) =>
   enabled: !!safeAddress,
   staleTime: secondsToMilliseconds(60), // Data is fresh for 60 seconds
   gcTime: secondsToMilliseconds(300), // Keep in cache for 5 minutes
+  placeholderData: keepPreviousData, // Show stale data while fetching new data
 });
 
 export const useUserTransactions = (safeAddress: string | undefined) => {

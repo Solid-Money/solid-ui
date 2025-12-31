@@ -132,17 +132,17 @@ export default function Home() {
   }
 
   return (
-    <PageLayout isLoading={isBalanceLoading || isTransactionsLoading}>
+    <PageLayout isLoading={isBalanceLoading}>
       <View className="gap-8 md:gap-12 px-0 md:px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center">
             <View className="flex-row items-center gap-2">
               <View className="flex-row items-center">
                 {isLoadingTokens ||
-                  isBalanceLoading ||
-                  isAPYsLoading ||
-                  firstDepositTimestamp === undefined ||
-                  savings === undefined ? (
+                isBalanceLoading ||
+                isAPYsLoading ||
+                firstDepositTimestamp === undefined ||
+                savings === undefined ? (
                   <Skeleton className="w-56 h-[4.5rem] rounded-xl" />
                 ) : (
                   <CountUp
