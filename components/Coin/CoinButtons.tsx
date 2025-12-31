@@ -43,8 +43,8 @@ const CoinButtons = ({ contractAddress }: CoinButtonsProps) => {
       ) : (
         isSoUSDEthereum(contractAddress) && (
           <>
-            <WithdrawModal trigger={<Trigger icon={<Minus color="white" />} label="Withdraw" />} />
             <StakeModal trigger={<Trigger icon={<ArrowUp color="white" />} label="Deposit" />} />
+            <WithdrawModal trigger={<Trigger icon={<Minus color="white" />} label="Withdraw" />} />
           </>
         )
       )}

@@ -7,58 +7,72 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import UnstakeModal from '@/components/Unstake/UnstakeModal';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
+import HomeWithdraw from '@/assets/images/withdraw';
 
-type DashboardHeaderButtonsProps = {
-  hasTokens: boolean;
-};
+const DashboardHeaderButtons = () => {
+  const withdrawTrigger = (
+    <Button
+      variant="secondary"
+      className="h-12 px-6 rounded-xl bg-[#303030] border-0"
+      onPress={() => {
+        track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
+          button_name: 'withdraw',
+          source: 'dashboard_header',
+        });
+      }}
+    >
+      <View className="flex-row items-center gap-2">
+        <HomeWithdraw />
+        <Text className="text-base text-white font-bold">Withdraw</Text>
+      </View>
+    </Button>
+  );
 
-const DashboardHeaderButtons = ({ hasTokens }: DashboardHeaderButtonsProps) => {
   return (
     <View className="flex-row gap-2">
+      <UnstakeModal trigger={withdrawTrigger} />
+
+      <SwapModal
+        trigger={
+          <Button
+            variant="secondary"
+            className="h-12 px-6 rounded-xl bg-[#303030] border-0"
+            onPress={() => {
+              track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
+                button_name: 'swap',
+                source: 'dashboard_header',
+              });
+            }}
+          >
+            <View className="flex-row items-center gap-2">
+              <HomeSwap />
+              <Text className="text-base text-white font-bold">Swap</Text>
+            </View>
+          </Button>
+        }
+      />
+
+      <SendModal
+        trigger={
+          <View
+            className={buttonVariants({
+              variant: 'secondary',
+              className: 'h-12 px-6 rounded-xl bg-[#303030] border-0',
+            })}
+          >
+            <View className="flex-row items-center gap-2">
+              <HomeSend />
+              <Text className="text-base text-white font-bold">Send</Text>
+            </View>
+          </View>
+        }
+      />
+
       <DepositOptionModal buttonText="Add funds" />
-
-      {hasTokens && (
-        <>
-          <SendModal
-            trigger={
-              <View
-                className={buttonVariants({
-                  variant: 'secondary',
-                  className: 'h-12 px-6 rounded-xl bg-[#303030] border-0',
-                })}
-              >
-                <View className="flex-row items-center gap-2">
-                  <HomeSend />
-                  <Text className="text-base text-white font-bold">Send</Text>
-                </View>
-              </View>
-            }
-          />
-
-          <SwapModal
-            trigger={
-              <Button
-                variant="secondary"
-                className="h-12 px-6 rounded-xl bg-[#303030] border-0"
-                onPress={() => {
-                  track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
-                    button_name: 'swap',
-                    source: 'dashboard_header',
-                  });
-                }}
-              >
-                <View className="flex-row items-center gap-2">
-                  <HomeSwap />
-                  <Text className="text-base text-white font-bold">Swap</Text>
-                </View>
-              </Button>
-            }
-          />
-        </>
-      )}
     </View>
   );
 };

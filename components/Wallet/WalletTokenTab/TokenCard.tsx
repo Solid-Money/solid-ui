@@ -6,7 +6,7 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
-import { compactNumberFormat, isSoUSDEthereum } from '@/lib/utils';
+import { compactNumberFormat } from '@/lib/utils';
 
 interface TokenCardProps {
   token: TokenBalance;
@@ -33,11 +33,6 @@ const TokenCard = memo(
           <RenderTokenIcon tokenIcon={tokenIcon} size={40} />
           <View>
             <Text className="font-bold text-lg">{token.contractTickerSymbol || 'Unknown'}</Text>
-            {isSoUSDEthereum(token.contractAddress) && (
-              <View className="bg-accent rounded-full px-2 py-1 flex-row items-center gap-2 w-fit">
-                <Text className="text-xs font-semibold">Ready to withdraw</Text>
-              </View>
-            )}
           </View>
         </View>
 

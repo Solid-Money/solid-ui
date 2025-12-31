@@ -16,7 +16,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { ImageBackground, Platform, Pressable, View } from 'react-native';
 
-export default function Savings() {
+export default function Points() {
   const { points, isLoading: isPointsLoading } = usePoints();
   const { multiplier } = useHoldingFundsPointsMultiplier();
   const { isScreenMedium } = useDimension();

@@ -4,9 +4,14 @@ import { View } from 'react-native';
 import HomeWithdraw from '@/assets/images/withdraw';
 import CircleButton from '@/components/CircleButton';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import SendModal from '@/components/Send/SendModal';
+import SwapModal from '@/components/Swap/SwapModal';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+
+import HomeSend from '@/assets/images/home-send';
+import HomeSwap from '@/assets/images/home-swap';
 
 const SavingsHeaderButtonsMobile = () => {
   const withdrawTrigger = (
@@ -19,13 +24,13 @@ const SavingsHeaderButtonsMobile = () => {
           source: 'savings_mobile',
         });
       }}
-      scale={0.9}
-      viewBox="0 0 20 16"
+      scale={1.1}
+      viewBox="0 0 14 14"
     />
   );
 
   return (
-    <View className="flex-row justify-center gap-12 items-center">
+    <View className="flex-row justify-center gap-8 items-center">
       <DepositOptionModal
         trigger={
           <CircleButton
@@ -38,6 +43,14 @@ const SavingsHeaderButtonsMobile = () => {
       />
 
       <UnstakeModal trigger={withdrawTrigger} />
+
+      <SwapModal
+        trigger={<CircleButton icon={HomeSwap} label="Swap" scale={1} viewBox="0 0 29 28" />}
+      />
+
+      <SendModal
+        trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
+      />
     </View>
   );
 };

@@ -22,6 +22,7 @@ const buttonVariants = cva(
         accent: 'bg-accent web:hover:bg-accent-hover active:opacity-90',
         purple: 'bg-purple/60 web:hover:bg-purple-hover active:opacity-90',
         rewards: 'bg-rewards/20 web:hover:bg-rewards/30 active:opacity-90',
+        indigo: 'bg-indigo/30 web:hover:bg-indigo/40 active:opacity-90',
       },
       size: {
         default: 'h-10 px-4 py-2 native:h-12 native:px-5 native:py-3',
@@ -52,6 +53,7 @@ const buttonTextVariants = cva(
         accent: 'text-primary-foreground',
         purple: 'text-primary-foreground',
         rewards: 'text-primary-foreground',
+        indigo: 'text-primary-foreground',
       },
       size: {
         default: '',
