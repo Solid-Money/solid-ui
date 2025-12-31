@@ -17,7 +17,7 @@ const SwitchStuckTransaction = ({ showStuck, onToggle }: SwitchStuckTransactionP
     <TooltipPopover
       trigger={
         <View className="flex-row items-center gap-2">
-          <Text className="text-sm md:text-base text-muted-foreground">
+          <Text className="text-sm text-muted-foreground md:text-base">
             {showStuck ? 'Hide inactive' : 'Show all'}
           </Text>
           <Switch checked={showStuck} onCheckedChange={handleToggle} />

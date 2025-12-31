@@ -162,8 +162,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   ): TokenBalance => {
     const address = getAddress(item);
     const tokenFromList = tokenListData.find(
-      token =>
-        token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
+      token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
     );
     return {
       contractTickerSymbol: symbols[item.token.symbol as keyof typeof symbols] || item.token.symbol,
@@ -349,22 +348,25 @@ const fetchTokenBalances = async (safeAddress: string) => {
   );
 
   const unifiedTokensMap = new Map<string, UnifiedTokenBalance>();
-  
+
   allTokens.forEach(token => {
     const key = token.commonId || token.contractTickerSymbol;
     const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
     const balanceUSD = balance * (token.quoteRate || 0);
-    
+
     const existing = unifiedTokensMap.get(key);
-    
+
     if (existing) {
-      const unifiedBalanceStr = formatUnits(BigInt(existing.unifiedBalance || '0'), existing.contractDecimals);
+      const unifiedBalanceStr = formatUnits(
+        BigInt(existing.unifiedBalance || '0'),
+        existing.contractDecimals,
+      );
       const tokenBalanceStr = formatUnits(BigInt(token.balance || '0'), token.contractDecimals);
       const totalBalanceNum = Number(unifiedBalanceStr) + Number(tokenBalanceStr);
-      
+
       const maxDecimals = Math.max(existing.contractDecimals, token.contractDecimals);
       const totalBalanceBigInt = parseUnits(totalBalanceNum.toFixed(maxDecimals), maxDecimals);
-      
+
       existing.unifiedBalance = totalBalanceBigInt.toString();
       existing.contractDecimals = maxDecimals;
       existing.unifiedBalanceUSD += balanceUSD;

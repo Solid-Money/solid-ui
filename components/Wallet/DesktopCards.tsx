@@ -1,5 +1,6 @@
 import { Card, SavingCard, WalletCard } from '@/components/Wallet';
 import { USDC_TOKEN_BALANCE } from '@/constants/tokens';
+import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { TokenBalance } from '@/lib/types';
 import React from 'react';
 import { View } from 'react-native';
@@ -10,6 +11,10 @@ type DesktopCardsProps = {
   isLoadingTokens: boolean;
   userHasCard: boolean;
   cardBalance: number;
+  balance?: number;
+  isBalanceLoading?: boolean;
+  firstDepositTimestamp?: number;
+  userDepositTransactions?: GetUserTransactionsQuery;
 };
 
 export default function DesktopCards({
@@ -18,9 +23,13 @@ export default function DesktopCards({
   isLoadingTokens,
   userHasCard,
   cardBalance,
+  balance,
+  isBalanceLoading,
+  firstDepositTimestamp,
+  userDepositTransactions,
 }: DesktopCardsProps) {
   return (
-    <View className="flex-row gap-6 min-h-44">
+    <View className="min-h-44 flex-row gap-6">
       <WalletCard
         balance={totalUSDExcludingSoUSD}
         className="flex-1"
@@ -37,7 +46,14 @@ export default function DesktopCards({
           decimalPlaces={2}
         />
       )}
-      <SavingCard className="flex-1" decimalPlaces={2} />
+      <SavingCard
+        className="flex-1"
+        decimalPlaces={2}
+        balance={balance}
+        isBalanceLoading={isBalanceLoading}
+        firstDepositTimestamp={firstDepositTimestamp}
+        userDepositTransactions={userDepositTransactions}
+      />
     </View>
   );
 }

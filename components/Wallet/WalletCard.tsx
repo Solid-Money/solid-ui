@@ -23,18 +23,18 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
   const { isScreenMedium } = useDimension();
 
   return (
-    <View className={cn('bg-card rounded-twice justify-between w-full h-full', className)}>
-      <View className="p-[30px] pb-[21px] justify-between h-full">
+    <View className={cn('h-full w-full justify-between rounded-twice bg-card', className)}>
+      <View className="h-full justify-between p-[30px] pb-[21px]">
         <View className="flex-row items-center gap-2 opacity-50">
           <WalletIcon rotate={180} />
           <Text className="text-lg font-medium">Wallet</Text>
         </View>
 
-        <View className="flex-row justify-between items-center">
+        <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
             <View className="flex-row items-center">
               {isLoading ? (
-                <Skeleton className="w-36 h-11 rounded-xl" />
+                <Skeleton className="h-11 w-36 rounded-xl" />
               ) : (
                 <CountUp
                   prefix="$"

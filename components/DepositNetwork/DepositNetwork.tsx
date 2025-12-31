@@ -26,7 +26,7 @@ const DepositNetwork = ({
 }: DepositNetworkProps) => {
   return (
     <Button
-      className="flex-row items-center justify-between bg-primary/10 rounded-2xl p-6 web:hover:bg-accent disabled:opacity-100 disabled:web:hover:opacity-100"
+      className="flex-row items-center justify-between rounded-2xl bg-primary/10 p-6 disabled:opacity-100 web:hover:bg-accent disabled:web:hover:opacity-100"
       style={{ height: 88 }}
       onPress={onPress}
       disabled={isComingSoon || disabled}
@@ -34,8 +34,8 @@ const DepositNetwork = ({
       <View className="flex-row items-center gap-x-2">
         <Image source={icon} style={{ width: 34, height: 34 }} />
         <View>
-          <Text className="text-primary text-lg leading-5 font-semibold">{name}</Text>
-          <Text className="text-muted-foreground leading-4">{description}</Text>
+          <Text className="text-lg font-semibold leading-5 text-primary">{name}</Text>
+          <Text className="leading-4 text-muted-foreground">{description}</Text>
         </View>
       </View>
       {isComingSoon ? (

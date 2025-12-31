@@ -21,12 +21,12 @@ const DefaultUnstakeTrigger = ({ buttonText = 'Withdraw' }: { buttonText?: strin
   <View
     className={buttonVariants({
       variant: 'secondary',
-      className: 'h-12 px-6 rounded-xl bg-[#303030] border-0',
+      className: 'h-12 rounded-xl border-0 bg-[#303030] px-6',
     })}
   >
     <View className="flex-row items-center gap-2">
       <Minus size={20} color="white" />
-      <Text className="text-base text-white font-bold">{buttonText}</Text>
+      <Text className="text-base font-bold text-white">{buttonText}</Text>
     </View>
   </View>
 );
@@ -63,9 +63,7 @@ const UnstakeModal = ({
   // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
     <Pressable onPress={handlePress}>
-      <View pointerEvents="none">
-        {triggerElement}
-      </View>
+      <View pointerEvents="none">{triggerElement}</View>
     </Pressable>
   );
 };

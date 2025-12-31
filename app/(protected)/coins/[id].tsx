@@ -31,7 +31,7 @@ const ResponsiveBalanceBreakdown = ({ token }: { token: TokenBalance | undefined
   return (
     <View style={{ flex: isScreenMedium ? 0.3 : 1 }} className="relative md:min-w-[406px]">
       <BalanceBreakdown token={token} className="z-10" />
-      <EarningYield token={token} className="rounded-t-none -mt-4" />
+      <EarningYield token={token} className="-mt-4 rounded-t-none" />
     </View>
   );
 };
@@ -83,11 +83,11 @@ export default function Coin() {
   return (
     <PageLayout desktopOnly isLoading={isLoading}>
       {!token && !isLoading ? (
-        <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
+        <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 md:gap-16 md:py-12">
           <CoinBackButton title={`Coin ${eclipseAddress(contractAddress)} not found`} />
         </View>
       ) : (
-        <View className="flex-1 gap-12 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
+        <View className="mx-auto w-full max-w-7xl flex-1 gap-12 px-4 py-8 md:py-12">
           {isScreenMedium && (
             <View className="flex-row items-center justify-between gap-2">
               <View className="flex-row items-center gap-5">
@@ -101,7 +101,7 @@ export default function Coin() {
             </View>
           )}
 
-          <View className="md:flex-row justify-between gap-8 md:gap-10">
+          <View className="justify-between gap-8 md:flex-row md:gap-10">
             {!isScreenMedium && (
               <View className="items-start">
                 <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
@@ -117,7 +117,7 @@ export default function Coin() {
                     />
                   )}
 
-                  <Text className="text-4xl md:text-5xl font-semibold">
+                  <Text className="text-4xl font-semibold md:text-5xl">
                     {selectedPrice
                       ? `$${formatNumber(selectedPrice)}`
                       : formattedChartData.length > 0
@@ -147,7 +147,7 @@ export default function Coin() {
                 {isScreenMedium && <CoinChartTime />}
               </View>
 
-              <View className="px-4 -mt-2 md:mt-0">
+              <View className="-mt-2 px-4 md:mt-0">
                 {isLoadingCoinHistoricalChart ? (
                   <View className="h-[200px] items-center justify-center">
                     <ActivityIndicator size="large" color="white" />
@@ -170,7 +170,7 @@ export default function Coin() {
 
           {token?.contractTickerSymbol && (
             <View className="gap-4">
-              <Text className="text-lg text-muted-foreground font-semibold">Recent activity</Text>
+              <Text className="text-lg font-semibold text-muted-foreground">Recent activity</Text>
               <ActivityTransactions symbol={token.contractTickerSymbol} showTimestamp={false} />
             </View>
           )}

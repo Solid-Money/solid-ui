@@ -23,7 +23,7 @@ const Footer = ({ selectedToken }: { selectedToken: Token }) => {
     <View className="gap-2">
       {instructions.map((instruction, index) => (
         <View key={index} className={cn('flex-row items-start gap-2', instruction.className)}>
-          <View className="w-6 h-6 rounded-full">{instruction.icon}</View>
+          <View className="h-6 w-6 rounded-full">{instruction.icon}</View>
           <Text className="text-sm text-muted-foreground">{instruction.text}</Text>
         </View>
       ))}

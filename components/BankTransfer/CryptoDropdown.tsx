@@ -26,7 +26,7 @@ export default function CryptoDropdown({ value, allowed, onChange }: CryptoDropd
       contentClassName="md:max-w-sm"
       trigger={
         <Button
-          className="bg-[#404040] h-12 px-4 rounded-full text-white"
+          className="h-12 rounded-full bg-[#404040] px-4 text-white"
           onPress={() => setOpen(true)}
         >
           <View className="flex-row items-center gap-2">
@@ -34,7 +34,7 @@ export default function CryptoDropdown({ value, allowed, onChange }: CryptoDropd
               const Icon = getCryptoIcon(value);
               return Icon ? <Icon width={21} height={21} /> : null;
             })()}
-            <Text className="native:text-lg native:leading-[20px] text-lg ml-1 font-bold text-white">
+            <Text className="native:text-lg native:leading-[20px] ml-1 text-lg font-bold text-white">
               {CRYPTO_LABEL[value]}
             </Text>
             <ChevronDown className="text-white" />
@@ -47,7 +47,7 @@ export default function CryptoDropdown({ value, allowed, onChange }: CryptoDropd
           <Button
             key={item}
             variant={item === value ? 'secondary' : 'ghost'}
-            className="h-12 rounded-xl justify-start"
+            className="h-12 justify-start rounded-xl"
             onPress={() => {
               onChange(item);
               setOpen(false);

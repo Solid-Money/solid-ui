@@ -43,13 +43,13 @@ export function useApprove(
     ],
     query: {
       enabled: Boolean(
-        amountToApprove && 
-        spender && 
+        amountToApprove &&
+        spender &&
         spender !== '0x0000000000000000000000000000000000000000' &&
-        account && 
-        amountToApprove.greaterThan(0) && 
+        account &&
+        amountToApprove.greaterThan(0) &&
         !amountToApprove.currency.isNative &&
-        needAllowance
+        needAllowance,
       ),
     },
   });
@@ -67,18 +67,23 @@ export function useApprove(
 
   // Create fallback config if simulation fails but we need approval
   const fallbackConfig = useMemo(() => {
-    if (config || !needAllowance || !amountToApprove || !spender || amountToApprove.currency.isNative) {
+    if (
+      config ||
+      !needAllowance ||
+      !amountToApprove ||
+      !spender ||
+      amountToApprove.currency.isNative
+    ) {
       return null;
     }
-    
-    
+
     return {
       request: {
         address: amountToApprove.currency.wrapped.address as Address,
         abi: erc20Abi,
         functionName: 'approve' as const,
         args: [spender, BigInt(amountToApprove.quotient.toString())] as [Address, bigint],
-      }
+      },
     };
   }, [config, needAllowance, amountToApprove, spender]);
 
@@ -149,7 +154,16 @@ export function useApprove(
       });
       throw error;
     }
-  }, [config, fallbackConfig, user?.suborgId, user?.signWith, account, safeAA, amountToApprove, spender]);
+  }, [
+    config,
+    fallbackConfig,
+    user?.suborgId,
+    user?.signWith,
+    account,
+    safeAA,
+    amountToApprove,
+    spender,
+  ]);
 
   const { isLoading, isSuccess } = useTransactionAwait(approvalData?.transactionHash);
 
@@ -183,12 +197,16 @@ export function useApproveCallbackFromTrade(
   // Use custom spender if provided, otherwise default to ALGEBRA_ROUTER
   const spender = customSpender || ALGEBRA_ROUTER;
 
-  const { approvalState, approvalConfig, needAllowance, approvalCallback } = useApprove(amountToApprove, spender);
+  const { approvalState, approvalConfig, needAllowance, approvalCallback } = useApprove(
+    amountToApprove,
+    spender,
+  );
 
   // Force needAllowance to true for token inputs when no approval config is generated
   // This ensures we always generate approval configs for token inputs
-  const actualNeedAllowance = trade?.inputAmount.currency.isToken ?
-    (needAllowance || !approvalConfig) : needAllowance;
+  const actualNeedAllowance = trade?.inputAmount.currency.isToken
+    ? needAllowance || !approvalConfig
+    : needAllowance;
 
   return {
     approvalState,
@@ -212,7 +230,9 @@ export function useApproveCallbackFromVoltageTrade(
   // Use allowanceTarget from Voltage API, which is the contract that needs approval
   // This is different from 'to' which is the transaction target
   // Fallback to a zero address if neither is available (this will disable the hook)
-  const spender = (trade?.allowanceTarget || trade?.to || '0x0000000000000000000000000000000000000000') as Address;
+  const spender = (trade?.allowanceTarget ||
+    trade?.to ||
+    '0x0000000000000000000000000000000000000000') as Address;
   return useApprove(amountToApprove, spender);
 }
 

@@ -23,7 +23,7 @@ const DashboardHeaderButtons = ({ deposit }: DashboardHeaderButtonsProps) => {
   const withdrawTrigger = (
     <Button
       variant="secondary"
-      className="h-12 px-6 rounded-xl bg-[#303030] border-0"
+      className="h-12 rounded-xl border-0 bg-[#303030] px-6"
       onPress={() => {
         track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
           button_name: 'withdraw',
@@ -33,7 +33,7 @@ const DashboardHeaderButtons = ({ deposit }: DashboardHeaderButtonsProps) => {
     >
       <View className="flex-row items-center gap-2">
         <HomeWithdraw />
-        <Text className="text-base text-white font-bold">Withdraw</Text>
+        <Text className="text-base font-bold text-white">Withdraw</Text>
       </View>
     </Button>
   );
@@ -46,7 +46,7 @@ const DashboardHeaderButtons = ({ deposit }: DashboardHeaderButtonsProps) => {
         trigger={
           <Button
             variant="secondary"
-            className="h-12 px-6 rounded-xl bg-[#303030] border-0"
+            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
             onPress={() => {
               track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
                 button_name: 'swap',
@@ -56,7 +56,7 @@ const DashboardHeaderButtons = ({ deposit }: DashboardHeaderButtonsProps) => {
           >
             <View className="flex-row items-center gap-2">
               <HomeSwap />
-              <Text className="text-base text-white font-bold">Swap</Text>
+              <Text className="text-base font-bold text-white">Swap</Text>
             </View>
           </Button>
         }
@@ -67,12 +67,12 @@ const DashboardHeaderButtons = ({ deposit }: DashboardHeaderButtonsProps) => {
           <View
             className={buttonVariants({
               variant: 'secondary',
-              className: 'h-12 px-6 rounded-xl bg-[#303030] border-0',
+              className: 'h-12 rounded-xl border-0 bg-[#303030] px-6',
             })}
           >
             <View className="flex-row items-center gap-2">
               <HomeSend />
-              <Text className="text-base text-white font-bold">Send</Text>
+              <Text className="text-base font-bold text-white">Send</Text>
             </View>
           </View>
         }

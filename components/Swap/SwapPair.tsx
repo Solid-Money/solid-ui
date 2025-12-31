@@ -178,7 +178,7 @@ const SwapPair: React.FC = () => {
   );
 
   return (
-    <View className="flex flex-col gap-4 relative">
+    <View className="relative flex flex-col gap-4">
       <TokenCard
         value={formattedAmounts[SwapField.INPUT] || ''}
         currency={baseCurrency}
@@ -192,7 +192,7 @@ const SwapPair: React.FC = () => {
         title="From"
       />
 
-      <View className="flex-row justify-center items-center z-10 mt-2">
+      <View className="z-10 mt-2 flex-row items-center justify-center">
         <View className="absolute left-0 right-0 h-[1px] bg-white/20" />
         <Pressable onPress={onSwitchTokens} className="z-10">
           <Image

@@ -55,9 +55,9 @@ const Row = ({ leaderboardUser, position, isStar, skipAnimation }: RowProps) => 
       entering={
         skipAnimation ? undefined : FadeInDown.duration(150).delay((position % PAGE_SIZE) * 100)
       }
-      className="bg-card rounded-twice flex-row items-center gap-2.5 text-lg font-medium px-4 py-5 md:pr-10"
+      className="flex-row items-center gap-2.5 rounded-twice bg-card px-4 py-5 text-lg font-medium md:pr-10"
     >
-      <View className="md:w-20 flex justify-center items-center relative">
+      <View className="relative flex items-center justify-center md:w-20">
         {isStar && (
           <Image
             source={positionStars[position].icon}
@@ -69,7 +69,7 @@ const Row = ({ leaderboardUser, position, isStar, skipAnimation }: RowProps) => 
           className={cn(
             isStar
               ? 'absolute top-[53%] -translate-y-1/2'
-              : 'bg-white/10 h-full px-2 rounded-twice mx-auto',
+              : 'mx-auto h-full rounded-twice bg-white/10 px-2',
           )}
         >
           <Text className="text-lg font-semibold">{formatNumber(position, 0, 0)}</Text>
@@ -78,7 +78,7 @@ const Row = ({ leaderboardUser, position, isStar, skipAnimation }: RowProps) => 
       <View className="grow md:w-8/12">
         <Text className="text-base">{eclipseAddress(leaderboardUser.walletAddress, 6, 4)}</Text>
       </View>
-      <Text className="text-lg text-rewards font-bold">
+      <Text className="text-lg font-bold text-rewards">
         {formatNumber(leaderboardUser.points || 0, 0, 0)}
       </Text>
     </Animated.View>
@@ -123,7 +123,7 @@ const Leaderboard = () => {
   };
 
   const renderItem = ({ item }: { item: LeaderboardUser }) => (
-    <View className="w-full max-w-7xl mx-auto px-4">
+    <View className="mx-auto w-full max-w-7xl px-4">
       <Row
         leaderboardUser={item}
         position={item.leaderboardPosition}
@@ -134,15 +134,15 @@ const Leaderboard = () => {
 
   const renderLoading = () => {
     return (
-      <View className="w-full max-w-7xl mx-auto px-4 mt-2.5">
-        <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+      <View className="mx-auto mt-2.5 w-full max-w-7xl px-4">
+        <Skeleton className="h-16 w-full rounded-xl bg-card md:rounded-twice" />
       </View>
     );
   };
 
   const renderHeader = () => (
-    <View className="gap-8 md:gap-16 px-4 w-full max-w-7xl mx-auto">
-      <Text className="text-white text-xl md:text-3xl font-semibold">Points Leaderboard</Text>
+    <View className="mx-auto w-full max-w-7xl gap-8 px-4 md:gap-16">
+      <Text className="text-xl font-semibold text-white md:text-3xl">Points Leaderboard</Text>
       <View className="gap-10">
         <View className="gap-4">
           <Text className="text-lg font-semibold">Your Ranking</Text>
@@ -174,7 +174,6 @@ const Leaderboard = () => {
             fetchNextPage();
           }
         }}
-        estimatedItemSize={80}
         ItemSeparatorComponent={() => <View className="h-2.5" />}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={() => (isFetchingNextPage ? renderLoading() : null)}

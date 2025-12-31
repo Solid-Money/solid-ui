@@ -8,21 +8,13 @@ import {
   login,
   signUp,
   updateSafeAddress,
-  usernameExists
+  usernameExists,
 } from '@/lib/api';
-import {
-  EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
-  USER
-} from '@/lib/config';
+import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
-import {
-  getNonce,
-  isHTTPError,
-  setGlobalLogoutHandler,
-  withRefreshToken
-} from '@/lib/utils';
+import { getNonce, isHTTPError, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
@@ -91,11 +83,7 @@ const useUser = (): UseUserReturn => {
   const user = useMemo(() => users.find((user: User) => user.selected), [users]);
 
   const safeAA = useCallback(
-    async (
-      chain: Chain,
-      subOrganization: string,
-      signWith: string,
-    ) => {
+    async (chain: Chain, subOrganization: string, signWith: string) => {
       // Create a passkey-specific HTTP client that always requires passkey signing
       // This ensures every transaction requires explicit user confirmation via passkey
       const passkeyClient = createHttpClient({
@@ -177,7 +165,8 @@ const useUser = (): UseUserReturn => {
   const checkBalance = useCallback(
     async (user: User): Promise<boolean> => {
       try {
-        const isDeposited = await fetchIsDeposited(queryClient, user.safeAddress);
+        const depositCount = await fetchIsDeposited(queryClient, user.safeAddress);
+        const isDeposited = depositCount > 0;
         if (isDeposited) {
           updateUser({
             ...user,
@@ -576,7 +565,16 @@ const useUser = (): UseUserReturn => {
       // Re-throw so callers can handle (e.g., redirect to signup)
       throw error;
     }
-  }, [checkBalance, setLoginInfo, storeUser, router, safeAA, markSafeAddressSynced, httpClient, login]);
+  }, [
+    checkBalance,
+    setLoginInfo,
+    storeUser,
+    router,
+    safeAA,
+    markSafeAddressSynced,
+    httpClient,
+    login,
+  ]);
 
   const handleDummyLogin = useCallback(async () => {
     try {

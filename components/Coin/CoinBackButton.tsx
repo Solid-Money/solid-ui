@@ -34,13 +34,13 @@ const CoinBackButton = ({ title, tokenSymbol, size = 32, className }: CoinBackBu
     <View className="flex-row items-center justify-between gap-2">
       <Pressable
         onPress={handleBackPress}
-        className="h-10 w-10 flex items-center justify-center bg-popover rounded-full web:transition-colors web:hover:bg-muted"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
       >
         <ArrowLeft color="white" />
       </Pressable>
       {tokenSymbol && <RenderTokenIcon tokenIcon={tokenIcon} size={size} />}
       {title && (
-        <Text className={cn('text-white text-lg font-semibold text-center', className)}>
+        <Text className={cn('text-center text-lg font-semibold text-white', className)}>
           {title}
         </Text>
       )}

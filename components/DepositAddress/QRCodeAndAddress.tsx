@@ -10,8 +10,8 @@ const QRCodeAndAddress = () => {
   const { user } = useUser();
 
   return (
-    <View className="bg-qr-background rounded-xl">
-      <View className="justify-center items-center px-2 py-6 border-b border-border/50">
+    <View className="rounded-xl bg-qr-background">
+      <View className="items-center justify-center border-b border-border/50 px-2 py-6">
         <View className="rounded-xl bg-white p-4">
           <QRCode value={user?.safeAddress} size={200} />
         </View>

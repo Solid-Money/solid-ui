@@ -45,7 +45,7 @@ const TokenRow = memo(
     return (
       <Pressable
         className={cn(
-          'flex-row bg-card active:bg-secondary items-center border-border/40 border-b',
+          'flex-row items-center border-b border-border/40 bg-card active:bg-secondary',
           isFirst && 'rounded-t-twice',
           isLast && 'rounded-b-twice border-0',
         )}
@@ -57,7 +57,7 @@ const TokenRow = memo(
             <View className="flex-row items-center gap-2">
               <RenderTokenIcon tokenIcon={tokenIcon} size={34} />
               <View className="items-start">
-                <Text className="font-bold text-base">
+                <Text className="text-base font-bold">
                   {token.contractTickerSymbol || 'Unknown'}
                 </Text>
               </View>
@@ -68,7 +68,7 @@ const TokenRow = memo(
         {/* Balance Column */}
         <View className="p-6" style={{ width: DESKTOP_COLUMNS[1].width }}>
           <View className="items-start">
-            <Text className="font-bold text-base">
+            <Text className="text-base font-bold">
               {formatNumber(balance)} {token.contractTickerSymbol}
             </Text>
             <Text className="text-sm text-muted-foreground">${formatNumber(balanceUSD, 2)}</Text>
@@ -78,7 +78,7 @@ const TokenRow = memo(
         {/* Price Column */}
         <View className="p-6" style={{ width: DESKTOP_COLUMNS[2].width }}>
           <View className="items-start">
-            <Text className="font-bold text-base">${formatNumber(token.quoteRate || 0, 2)}</Text>
+            <Text className="text-base font-bold">${formatNumber(token.quoteRate || 0, 2)}</Text>
           </View>
         </View>
 
@@ -91,7 +91,7 @@ const TokenRow = memo(
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="bg-card border-none rounded-xl p-1 min-w-[12rem]"
+                className="min-w-[12rem] rounded-xl border-none bg-card p-1"
               >
                 <View className="gap-2">
                   {!isSoUSDEthereum(token.contractAddress) && <SendModal token={token} />}
