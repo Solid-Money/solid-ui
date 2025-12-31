@@ -37,7 +37,7 @@ export default function DesktopCards({
         isLoading={isLoadingTokens}
         decimalPlaces={2}
       />
-      {!userHasCard && (
+      {userHasCard && (
         <Card
           balance={cardBalance}
           className="flex-1"
