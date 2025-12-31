@@ -1,56 +1,52 @@
 import React from 'react';
+import { Pressable, View } from 'react-native';
 
-import ResponsiveModal from '@/components/ResponsiveModal';
 import { SEND_MODAL } from '@/constants/modals';
-import useSendOption, { SendOptionProps } from '@/hooks/useSendOption';
-import { TokenBalance } from '@/lib/types';
+import { SendOptionProps } from '@/hooks/useSendOption';
+import { SendModal as SendModalType, TokenBalance } from '@/lib/types';
 import { useSendStore } from '@/store/useSendStore';
 import SendTrigger from './SendTrigger';
 
 interface SendModalProps extends Omit<SendOptionProps, 'trigger'> {
   token?: TokenBalance;
   trigger?: React.ReactNode;
+  modal?: SendModalType;
 }
 
-const SendModal = ({ buttonText = 'Send', token, trigger, modal }: SendModalProps) => {
-  const {
-    shouldOpen,
-    showBackButton,
-    shouldAnimate,
-    isForward,
-    getTrigger,
-    getContent,
-    getContentKey,
-    getTitle,
-    getContentClassName,
-    getContainerClassName,
-    handleOpenChange,
-    handleBackPress,
-  } = useSendOption({
-    buttonText,
-    trigger: token ? <SendTrigger token={token} /> : trigger,
-    modal: modal || SEND_MODAL.OPEN_SEND_SEARCH,
-  });
-  const { currentModal, previousModal } = useSendStore();
+/**
+ * SendModal - now a thin wrapper around trigger components.
+ *
+ * The actual modal is rendered by SendModalProvider at the app root.
+ * This component only renders the trigger button to open the modal.
+ *
+ * For headless usage (no trigger or token), this component renders nothing
+ * since the global SendModalProvider handles the modal state.
+ */
+const SendModal = ({ token, trigger, modal }: SendModalProps) => {
+  const { setModal } = useSendStore();
 
+  // If token is provided, use the specialized SendTrigger
+  if (token) {
+    return <SendTrigger token={token} />;
+  }
+
+  // Headless usage - the global SendModalProvider handles the modal
+  if (!trigger) {
+    return null;
+  }
+
+  const handlePress = () => {
+    setModal(modal || SEND_MODAL.OPEN_SEND_SEARCH);
+  };
+
+  // Always wrap with Pressable to ensure click handling works
+  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
-    <ResponsiveModal
-      currentModal={currentModal}
-      previousModal={previousModal}
-      isOpen={shouldOpen}
-      onOpenChange={handleOpenChange}
-      trigger={token || trigger ? getTrigger() : null}
-      title={getTitle()}
-      contentClassName={getContentClassName()}
-      containerClassName={getContainerClassName()}
-      showBackButton={showBackButton}
-      onBackPress={handleBackPress}
-      shouldAnimate={shouldAnimate}
-      isForward={isForward}
-      contentKey={getContentKey()}
-    >
-      {getContent()}
-    </ResponsiveModal>
+    <Pressable onPress={handlePress}>
+      <View pointerEvents="none">
+        {trigger}
+      </View>
+    </Pressable>
   );
 };
 

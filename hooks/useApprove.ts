@@ -7,7 +7,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { VoltageTrade } from '@/hooks/swap/useVoltageRouter';
 import { useNeedAllowance } from '@/hooks/tokens/useNeedAllowance';
 import { track } from '@/lib/analytics';
-import { executeTransactions } from '@/lib/execute';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { ApprovalState, ApprovalStateType } from '@/lib/types/approve-state';
 import { computeSlippageAdjustedAmounts } from '@/lib/utils/swap/prices';
 import { Address, encodeFunctionData, erc20Abi } from 'viem';
@@ -123,6 +123,10 @@ export function useApprove(
         'Approve failed',
         fuse,
       );
+
+      if (result === USER_CANCELLED_TRANSACTION) {
+        throw new Error('User cancelled transaction');
+      }
 
       track(TRACKING_EVENTS.APPROVE_COMPLETED, {
         token_address: amountToApprove?.currency?.wrapped?.address,

@@ -16,6 +16,7 @@ type ClassNames = {
 type Styles = {
   wholeText?: TextStyle;
   decimalText?: TextStyle;
+  decimalSeparator?: TextStyle;
 };
 
 interface SavingCountUpProps {

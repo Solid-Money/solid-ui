@@ -3,7 +3,6 @@ import { View } from 'react-native';
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import SavingCountUp from '@/components/SavingCountUp';
 import { SavingMode } from '@/lib/types';
-import { fontSize } from '@/lib/utils';
 
 interface DashboardHeaderMobileProps {
   balance: number;
@@ -22,7 +21,7 @@ const DashboardHeaderMobile = ({
 }: DashboardHeaderMobileProps) => {
   return (
     <View className="gap-8">
-      <View className="flex-row justify-center items-center">
+      <View className="flex-row justify-center items-center pt-20 pb-6">
         <SavingCountUp
           prefix="$"
           balance={balance ?? 0}
@@ -32,19 +31,24 @@ const DashboardHeaderMobile = ({
           decimalPlaces={decimalPlaces}
           classNames={{
             wrapper: 'text-foreground',
-            decimalSeparator: 'text-2xl sm:text-lg font-medium',
           }}
           styles={{
             wholeText: {
-              fontSize: fontSize(3),
-              fontWeight: '500',
-              //fontFamily: 'MonaSans_600SemiBold',
+              fontSize: 60,
+              fontWeight: '600',
+              fontFamily: 'MonaSans_600SemiBold',
               color: '#ffffff',
             },
             decimalText: {
-              fontSize: fontSize(3),
-              fontWeight: '500',
-              //fontFamily: 'MonaSans_600SemiBold',
+              fontSize: 60,
+              fontWeight: '600',
+              fontFamily: 'MonaSans_600SemiBold',
+              color: '#ffffff',
+            },
+            decimalSeparator: {
+              fontSize: 60,
+              fontWeight: '600',
+              fontFamily: 'MonaSans_600SemiBold',
               color: '#ffffff',
             },
           }}

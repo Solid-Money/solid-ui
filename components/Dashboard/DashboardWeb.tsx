@@ -9,12 +9,10 @@ import Navbar from '@/components/Navbar';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
-import { useCalculateSavings } from '@/hooks/useFinancial';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
-import { SavingMode } from '@/lib/types';
 import { DashboardCards } from './DashboardCards';
 import { DashboardCardsNoFunds } from './DashboardCardsNoFunds';
 import DashboardHeader from './DashboardHeader';
@@ -26,6 +24,7 @@ export function DashboardWeb() {
   const { data: blockNumber } = useBlockNumber({ watch: true, chainId: mainnet.id });
   const {
     totalUSD,
+    tokens,
     isLoading: isTokensLoading,
     hasTokens,
     error: tokenError,
@@ -51,16 +50,6 @@ export function DashboardWeb() {
     lastTimestamp,
   );
 
-  const { savings } = useCalculateSavings(
-    balance ?? 0,
-    totalAPY ?? 0,
-    firstDepositTimestamp ?? 0,
-    Math.floor(Date.now() / 1000),
-    SavingMode.INTEREST_ONLY,
-    userDepositTransactions,
-    user?.safeAddress,
-  );
-
   useEffect(() => {
     refetchBalance();
     refetchTransactions();
@@ -81,7 +70,7 @@ export function DashboardWeb() {
           />
 
           {hasTokens ? (
-            <DashboardCards totalUSD={totalUSD} savings={savings ?? 0} />
+            <DashboardCards totalUSD={totalUSD} tokens={tokens} />
           ) : (
             <DashboardCardsNoFunds />
           )}

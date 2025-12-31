@@ -33,7 +33,7 @@ const SendReview: React.FC = () => {
     useSendStore();
   const { refetchAll } = useActivity();
 
-  const { send, sendStatus } = useSend({
+  const { send, sendStatus, totpModal } = useSend({
     tokenAddress: selectedToken?.contractAddress as any,
     tokenDecimals: selectedToken?.contractDecimals || 18,
     tokenSymbol: selectedToken?.contractTickerSymbol || 'TOKEN',
@@ -318,6 +318,7 @@ const SendReview: React.FC = () => {
       </Button>
 
       <NeedHelp />
+      {totpModal}
     </View>
   );
 };

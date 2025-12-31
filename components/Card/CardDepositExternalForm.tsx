@@ -167,7 +167,7 @@ export default function CardDepositExternalForm() {
         data: encodeFunctionData({
           abi: erc20Abi,
           functionName: 'transfer',
-          args: [fundingAddress, amountWei],
+          args: [fundingAddress as Address, amountWei],
         }),
         value: 0n,
       });

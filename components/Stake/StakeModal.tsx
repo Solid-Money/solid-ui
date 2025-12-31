@@ -1,87 +1,51 @@
-import { useRouter } from 'expo-router';
 import React from 'react';
+import { Pressable, View } from 'react-native';
 
-import ResponsiveModal from '@/components/ResponsiveModal';
-import TransactionStatus from '@/components/TransactionStatus';
 import { STAKE_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import getTokenIcon from '@/lib/getTokenIcon';
 import { useStakeStore } from '@/store/useStakeStore';
-import { Stake, StakeTrigger } from '.';
+import { StakeTrigger } from '.';
 
 type StakeModalProps = {
   trigger?: React.ReactNode;
 };
 
+/**
+ * StakeModal - now a thin wrapper around trigger components.
+ *
+ * The actual modal is rendered by StakeModalProvider at the app root.
+ * This component only renders the trigger button to open the modal.
+ *
+ * For headless usage (trigger={null}), this component renders nothing
+ * since the global StakeModalProvider handles the modal state.
+ */
 const StakeModal = ({ trigger }: StakeModalProps) => {
-  const router = useRouter();
-  const { currentModal, previousModal, setModal, transaction } = useStakeStore();
+  const { setModal } = useStakeStore();
 
-  const isTransactionStatus = currentModal.name === STAKE_MODAL.OPEN_TRANSACTION_STATUS.name;
-  const isClose = currentModal.name === STAKE_MODAL.CLOSE.name;
-
-  const getTitle = () => {
-    if (isTransactionStatus) return undefined;
-    return 'Deposit';
-  };
-
-  const handleTransactionStatusPress = () => {
-    track(TRACKING_EVENTS.STAKE_TRANSACTION_STATUS_PRESSED, {
-      amount: transaction.amount,
+  const handlePress = () => {
+    track(TRACKING_EVENTS.STAKE_MODAL_OPENED, {
       source: 'stake_modal',
     });
-    setModal(STAKE_MODAL.CLOSE);
-    router.push(path.ACTIVITY);
+    setModal(STAKE_MODAL.OPEN_FORM);
   };
 
-  const getContentKey = () => {
-    if (isTransactionStatus) return 'transaction-status';
-    return 'stake-form';
-  };
+  // Headless usage - the global StakeModalProvider handles the modal
+  if (trigger === null) {
+    return null;
+  }
 
-  const getContent = () => {
-    if (isTransactionStatus) {
-      return (
-        <TransactionStatus
-          amount={transaction.amount ?? 0}
-          onPress={handleTransactionStatusPress}
-          token={'SoUSD'}
-          icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
-        />
-      );
-    }
+  // Use default trigger if not provided
+  const triggerElement = trigger || <StakeTrigger />;
 
-    return <Stake />;
-  };
-
-  const handleOpenChange = (value: boolean) => {
-    if (value) {
-      track(TRACKING_EVENTS.STAKE_MODAL_OPENED, {
-        source: 'stake_modal',
-      });
-      setModal(STAKE_MODAL.OPEN_FORM);
-    } else {
-      track(TRACKING_EVENTS.STAKE_MODAL_CLOSED, {
-        source: 'stake_modal',
-      });
-      setModal(STAKE_MODAL.CLOSE);
-    }
-  };
-
+  // Always wrap with Pressable to ensure click handling works
+  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
-    <ResponsiveModal
-      currentModal={currentModal}
-      previousModal={previousModal}
-      isOpen={!isClose}
-      onOpenChange={handleOpenChange}
-      trigger={trigger || <StakeTrigger />}
-      title={getTitle()}
-      contentKey={getContentKey()}
-    >
-      {getContent()}
-    </ResponsiveModal>
+    <Pressable onPress={handlePress}>
+      <View pointerEvents="none">
+        {triggerElement}
+      </View>
+    </Pressable>
   );
 };
 

@@ -230,9 +230,16 @@ const DialogCloseButton = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Close>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Close> & {
     className?: string;
+    onPress?: () => void;
   }
->(({ className, ...props }, ref) => {
-  const { open } = DialogPrimitive.useRootContext();
+>(({ className, onPress, ...props }, ref) => {
+  const { open, onOpenChange } = DialogPrimitive.useRootContext();
+
+  const handlePress = () => {
+    onOpenChange?.(false);
+    onPress?.();
+  };
+
   return (
     <DialogPrimitive.Close
       ref={ref}
@@ -240,6 +247,7 @@ const DialogCloseButton = React.forwardRef<
         'h-10 w-10 flex items-center justify-center bg-popover border-0 rounded-full web:group web:ring-offset-background web:transition-colors web:hover:bg-muted web:focus:outline-none web:focus:ring-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none',
         className,
       )}
+      onPress={handlePress}
       {...props}
     >
       <X

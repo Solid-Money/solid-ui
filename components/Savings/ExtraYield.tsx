@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
+import { Href, Link } from 'expo-router';
 import { ChevronRight, Plus } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -232,7 +232,7 @@ const ExtraYield = () => {
               ? 'Read the terms and claim your yield'
               : 'Limited time offer - Get 3% extra boosted yield if you deposit now.'}
           </Text>
-          <Link href="#" target="_blank" className="hover:opacity-70">
+          <Link href={'#' as Href} target="_blank" className="hover:opacity-70">
             <View className="flex-row items-center">
               <Text className="text-base underline leading-4 text-muted-foreground font-medium">
                 Read more
