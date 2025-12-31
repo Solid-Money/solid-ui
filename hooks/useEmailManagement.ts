@@ -120,20 +120,17 @@ export const useEmailManagement = (
     }
   }, [step, hasInitializedOtp, otpForm]);
 
-  const handleUpdateUserEmail = useCallback(
-    async (email: string, verificationToken: string) => {
-      const passkeyClient = createHttpClient({
-        defaultStamperType: StamperType.Passkey,
-      });
-      await passkeyClient.updateUserEmail({
-        userId: user?.turnkeyUserId as string,
-        userEmail: email,
-        organizationId: user?.suborgId,
-        verificationToken,
-      });
-    },
-    [createHttpClient, user?.turnkeyUserId, user?.suborgId],
-  );
+  const handleUpdateUserEmail = useCallback(async (email: string, verificationToken: string) => {
+    const passkeyClient = createHttpClient({
+      defaultStamperType: StamperType.Passkey,
+    });
+    await passkeyClient.updateUserEmail({
+      userId: user?.turnkeyUserId as string,
+      userEmail: email,
+      organizationId: user?.suborgId,
+      verificationToken,
+    });
+  }, [createHttpClient, user?.turnkeyUserId, user?.suborgId]);
 
   const handleSendOtp = async (data: EmailFormData) => {
     setIsLoading(true);

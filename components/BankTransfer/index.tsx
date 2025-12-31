@@ -72,7 +72,7 @@ export default function BankTransferAmount() {
       />
 
       <Button
-        className="mt-4 h-14 rounded-2xl"
+        className="rounded-2xl h-14 mt-4"
         style={{ backgroundColor: '#94F27F' }}
         onPress={() => {
           router.push({
@@ -86,7 +86,7 @@ export default function BankTransferAmount() {
           });
         }}
       >
-        <Text className="text-lg font-bold text-black">Continue</Text>
+        <Text className="font-bold text-black text-lg">Continue</Text>
       </Button>
     </View>
   );

@@ -5,34 +5,34 @@ import { Text } from '@/components/ui/text';
 
 const SavingDepositBenefits = () => {
   return (
-    <View className="flex-row items-center justify-between gap-x-4 gap-y-5">
-      <View className="items-center gap-4 md:items-start">
+    <View className="flex-row justify-between items-center gap-x-4 gap-y-5">
+      <View className="items-center md:items-start gap-4">
         <Image
           source={require('@/assets/images/deposit-purple.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
-        <Text className="max-w-24 text-center text-base leading-4 md:max-w-36 md:text-start md:text-2xl md:leading-[29px]">
+        <Text className="leading-4 text-base md:text-2xl md:leading-[29px] max-w-24 md:max-w-36 text-center md:text-start">
           Earn from as little as $1
         </Text>
       </View>
-      <View className="items-center gap-4 md:items-start">
+      <View className="items-center md:items-start gap-4">
         <Image
           source={require('@/assets/images/withdraw-purple.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
-        <Text className="max-w-24 text-center text-base leading-4 md:max-w-32 md:text-start md:text-2xl md:leading-[29px]">
+        <Text className="leading-4 text-base md:text-2xl md:leading-[29px] max-w-24 md:max-w-32 text-center md:text-start">
           Withdraw anytime
         </Text>
       </View>
-      <View className="items-center gap-4 md:items-start">
+      <View className="items-center md:items-start gap-4">
         <Image
           source={require('@/assets/images/earn-purple.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
-        <Text className="max-w-24 text-center text-base leading-4 md:max-w-32 md:text-start md:text-2xl md:leading-[29px]">
+        <Text className="leading-4 text-base md:text-2xl md:leading-[29px] max-w-24 md:max-w-32 text-center md:text-start">
           Earn every second
         </Text>
       </View>

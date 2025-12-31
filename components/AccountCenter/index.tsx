@@ -16,12 +16,12 @@ const AccountCenterTrigger = (props: any) => {
   const { user } = useUser();
 
   if (!user?.safeAddress) {
-    return <Button size="sm" className="w-full animate-pulse rounded-full" disabled />;
+    return <Button size="sm" className="w-full rounded-full animate-pulse" disabled />;
   }
 
   return (
     <Pressable
-      className="flex-row items-center justify-between gap-1 rounded-full bg-[#2C2C2C] px-3 py-2 transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className="flex-row items-center justify-between bg-[#2C2C2C] rounded-full px-3 py-2 active:scale-95 transition-all web:hover:bg-secondary-hover active:opacity-80 gap-1"
       {...props}
     >
       <ProfileIcon width={20} height={20} />
@@ -38,7 +38,7 @@ const AccountCenterUsername = () => {
 
   return (
     <>
-      <View className="h-8 w-8 items-center justify-center rounded-full bg-black">
+      <View className="w-8 h-8 bg-black rounded-full items-center justify-center">
         <Text className="font-semibold text-white">{avatarChar}</Text>
       </View>
       <Text className="font-semibold">{displayName}</Text>

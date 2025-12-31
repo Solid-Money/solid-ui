@@ -56,10 +56,10 @@ const useBridgeToCard = (): BridgeResult => {
         }
 
         // Get card's Arbitrum funding address
-        if (!cardDetails) {
+        if(!cardDetails) {
           throw new Error('Card details not found');
         }
-
+        
         const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
 
         if (!arbitrumFundingAddress) {

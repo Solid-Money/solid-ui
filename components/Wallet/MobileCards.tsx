@@ -42,7 +42,7 @@ export default function MobileCards({
     <WalletCard
       key="wallet"
       balance={totalUSDExcludingSoUSD}
-      className="h-full w-full"
+      className="w-full h-full"
       tokens={topThreeTokens}
       isLoading={isLoadingTokens}
       decimalPlaces={2}
@@ -52,7 +52,7 @@ export default function MobileCards({
           <Card
             key="card"
             balance={cardBalance}
-            className="h-full w-full"
+            className="w-full h-full"
             tokens={[USDC_TOKEN_BALANCE]}
             isLoading={isLoadingTokens}
             decimalPlaces={2}
@@ -61,7 +61,7 @@ export default function MobileCards({
       : []),
     <SavingCard
       key="saving"
-      className="h-full w-full"
+      className="w-full h-full"
       decimalPlaces={2}
       balance={balance}
       isBalanceLoading={isBalanceLoading}

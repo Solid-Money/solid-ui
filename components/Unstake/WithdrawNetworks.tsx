@@ -21,7 +21,7 @@ const WithdrawNetworks = () => {
 
   return (
     <View className="gap-y-2">
-      <Text className="font-medium text-muted-foreground">Select a network to withdraw to</Text>
+      <Text className="text-muted-foreground font-medium">Select a network to withdraw to</Text>
 
       <View className="gap-y-1.5">
         {sortedNetworks.map(([id, network]) => (

@@ -14,14 +14,14 @@ export function PreviewTitle({ amount, currency }: Props) {
   return (
     <View className="items-center gap-1">
       <View className="flex-row items-center">
-        <Text className="text-2xl font-bold text-white">Transfer </Text>
+        <Text className="text-white text-2xl font-bold">Transfer </Text>
         {FiatIcon ? <FiatIcon width={22} height={22} /> : null}
-        <Text className="ml-0.5 text-2xl font-bold text-white">
+        <Text className="text-white text-2xl font-bold ml-0.5">
           {amount} {upperCurrency}{' '}
         </Text>
-        <Text className="text-2xl font-bold text-muted-foreground">to</Text>
+        <Text className="text-muted-foreground text-2xl font-bold">to</Text>
       </View>
-      <Text className="text-2xl font-bold text-muted-foreground">this bank account</Text>
+      <Text className="text-muted-foreground text-2xl font-bold">this bank account</Text>
     </View>
   );
 }

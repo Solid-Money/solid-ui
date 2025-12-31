@@ -112,7 +112,7 @@ const Deposit = () => {
 
         <View
           className={cn(
-            'w-full flex-row items-center justify-between gap-4 rounded-2xl bg-accent px-5 py-3',
+            'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
             depositErrors.amount && 'border border-red-500',
           )}
         >
@@ -122,7 +122,7 @@ const Deposit = () => {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="w-full text-2xl font-semibold text-white web:focus:outline-none"
+                className="w-full text-2xl text-white font-semibold web:focus:outline-none"
                 value={value.toString()}
                 placeholder="0.0"
                 placeholderTextColor="#666"
@@ -137,14 +137,14 @@ const Deposit = () => {
               alt="USDC"
               style={{ width: 34, height: 34 }}
             />
-            <Text className="text-lg font-semibold text-white">USDC</Text>
+            <Text className="font-semibold text-white text-lg">USDC</Text>
           </View>
         </View>
 
-        <Text className="flex items-center gap-1.5 text-left text-muted-foreground">
+        <Text className="flex items-center gap-1.5 text-muted-foreground text-left">
           <Wallet size={16} />{' '}
           {isEthereumBalanceLoading ? (
-            <Skeleton className="h-4 w-16 rounded-md" />
+            <Skeleton className="w-16 h-4 rounded-md" />
           ) : ethereumBalance ? (
             `${formatNumber(ethereumBalance)} USDC`
           ) : (
@@ -166,11 +166,11 @@ const Deposit = () => {
 
       <Button
         variant="brand"
-        className="mt-32 h-12 rounded-2xl"
+        className="rounded-2xl h-12 mt-32"
         onPress={handleDepositSubmit(onDepositSubmit)}
         disabled={isDepositFormDisabled()}
       >
-        <Text className="text-lg font-semibold text-black">{getDepositText()}</Text>
+        <Text className="font-semibold text-black text-lg">{getDepositText()}</Text>
         {isDepositLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>
@@ -183,7 +183,7 @@ const DepositTrigger = (props: any) => {
       variant="outline"
       className={buttonVariants({
         variant: 'secondary',
-        className: 'rounded-xl border-0 md:h-12 md:pr-6',
+        className: 'border-0 md:h-12 md:pr-6 rounded-xl',
       })}
       {...props}
     >

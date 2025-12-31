@@ -39,12 +39,12 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
       contentClassName="md:max-w-sm"
       trigger={
         <Button
-          className="h-12 rounded-full bg-[#4D4D4D] px-4 text-white"
+          className="bg-[#4D4D4D] h-12 px-4 rounded-full text-white"
           onPress={() => setOpen(true)}
         >
           <View className="flex-row items-center gap-2">
             {renderFlag(value)}
-            <Text className="native:text-lg native:leading-[20px] ml-1 text-lg font-bold text-white">
+            <Text className="native:text-lg native:leading-[20px] text-lg ml-1 font-bold text-white">
               {FIAT_LABEL[value]}
             </Text>
             <ChevronDown className="text-white" />
@@ -57,7 +57,7 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
           <Button
             key={item}
             variant={item === value ? 'secondary' : 'ghost'}
-            className="h-12 justify-start rounded-xl"
+            className="h-12 rounded-xl justify-start"
             onPress={() => {
               onChange(item);
               setOpen(false);

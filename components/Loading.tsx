@@ -2,7 +2,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 export default function Loading() {
   return (
-    <View className="h-full flex-1 items-center justify-center bg-background">
+    <View className="bg-background flex-1 justify-center items-center h-full">
       <ActivityIndicator size="large" color="#cccccc" />
     </View>
   );

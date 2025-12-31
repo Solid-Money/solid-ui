@@ -8,7 +8,7 @@ const CardWaitlistBackButton = () => {
   const router = useRouter();
 
   return (
-    <Button variant="brand" className="h-12 rounded-xl px-8" onPress={() => router.push(path.HOME)}>
+    <Button variant="brand" className="rounded-xl h-12 px-8" onPress={() => router.push(path.HOME)}>
       <Text className="text-base font-bold">Back to home</Text>
     </Button>
   );

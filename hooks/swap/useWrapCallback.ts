@@ -58,24 +58,21 @@ export default function useWrapCallback(
   });
 
   const wrapSuccessInfo = useMemo(() => {
-    const successInfo =
-      inputAmount && inputCurrency && outputCurrency
-        ? {
-            title: 'Wrap transaction completed',
-            description: `${inputAmount.toSignificant()} ${inputCurrency.symbol} → ${outputCurrency.symbol}`,
-            inputAmount: inputAmount.toSignificant(),
-            inputSymbol: inputCurrency.symbol,
-            outputSymbol: outputCurrency.symbol,
-            chainId: 122,
-          }
-        : undefined;
+    const successInfo = inputAmount && inputCurrency && outputCurrency ? {
+      title: 'Wrap transaction completed',
+      description: `${inputAmount.toSignificant()} ${inputCurrency.symbol} → ${outputCurrency.symbol}`,
+      inputAmount: inputAmount.toSignificant(),
+      inputSymbol: inputCurrency.symbol,
+      outputSymbol: outputCurrency.symbol,
+      chainId: 122,
+    } : undefined;
 
     return successInfo;
   }, [inputAmount, inputCurrency, outputCurrency]);
 
   const { isLoading: isWrapLoading, isSuccess: isWrapSuccess } = useTransactionAwait(
     wrapData?.transactionHash,
-    capturedWrapSuccessInfo,
+    capturedWrapSuccessInfo
   );
 
   const { data: unwrapConfig } = useSimulateWrappedNativeWithdraw({
@@ -85,24 +82,21 @@ export default function useWrapCallback(
   });
 
   const unwrapSuccessInfo = useMemo(() => {
-    const successInfo =
-      inputAmount && inputCurrency && outputCurrency
-        ? {
-            title: 'Unwrap transaction completed',
-            description: `${inputAmount.toSignificant()} ${inputCurrency.symbol} → ${outputCurrency.symbol}`,
-            inputAmount: inputAmount.toSignificant(),
-            inputSymbol: inputCurrency.symbol,
-            outputSymbol: outputCurrency.symbol,
-            chainId: 122,
-          }
-        : undefined;
+    const successInfo = inputAmount && inputCurrency && outputCurrency ? {
+      title: 'Unwrap transaction completed',
+      description: `${inputAmount.toSignificant()} ${inputCurrency.symbol} → ${outputCurrency.symbol}`,
+      inputAmount: inputAmount.toSignificant(),
+      inputSymbol: inputCurrency.symbol,
+      outputSymbol: outputCurrency.symbol,
+      chainId: 122,
+    } : undefined;
 
     return successInfo;
   }, [inputAmount, inputCurrency, outputCurrency]);
 
   const { isLoading: isUnwrapLoading, isSuccess: isUnwrapSuccess } = useTransactionAwait(
     unwrapData?.transactionHash,
-    capturedUnwrapSuccessInfo,
+    capturedUnwrapSuccessInfo
   );
 
   const wrap = useCallback(async () => {
@@ -141,14 +135,18 @@ export default function useWrapCallback(
             description: `Wrap ${inputCurrency?.symbol} to ${outputCurrency?.symbol}`,
           },
         },
-        onUserOpHash =>
-          executeTransactions(smartAccountClient, transactions, 'Wrap failed', fuse, onUserOpHash),
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Wrap failed',
+          fuse,
+          onUserOpHash
+        )
       );
 
-      const transaction =
-        result && typeof result === 'object' && 'transaction' in result
-          ? result.transaction
-          : result;
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
@@ -212,20 +210,18 @@ export default function useWrapCallback(
             description: `Unwrap ${inputCurrency?.symbol} to ${outputCurrency?.symbol}`,
           },
         },
-        onUserOpHash =>
-          executeTransactions(
-            smartAccountClient,
-            transactions,
-            'Unwrap failed',
-            fuse,
-            onUserOpHash,
-          ),
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Unwrap failed',
+          fuse,
+          onUserOpHash
+        )
       );
 
-      const transaction =
-        result && typeof result === 'object' && 'transaction' in result
-          ? result.transaction
-          : result;
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         return;

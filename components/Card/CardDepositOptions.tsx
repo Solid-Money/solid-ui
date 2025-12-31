@@ -13,7 +13,7 @@ export default function CardDepositOptions() {
   const Item = ({ text, onPress }: { text: string; onPress: () => void }) => (
     <Button
       variant="ghost"
-      className="flex-row items-center justify-between rounded-2xl bg-primary/10 p-6 disabled:opacity-100 disabled:web:hover:opacity-100"
+      className="flex-row items-center justify-between bg-primary/10 rounded-2xl p-6 disabled:opacity-100 disabled:web:hover:opacity-100"
       style={{ height: 78 }}
       onPress={onPress}
     >

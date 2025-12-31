@@ -77,10 +77,10 @@ export default function CardTransactions() {
           getTransactionClassName(allTransactions.length, index),
         )}
       >
-        <View className="mr-2 flex-1 flex-row items-center gap-2 md:gap-4">
+        <View className="flex-row items-center gap-2 md:gap-4 flex-1 mr-2">
           {isPurchase ? (
             <View
-              className="items-center justify-center overflow-hidden rounded-full"
+              className="rounded-full overflow-hidden items-center justify-center"
               style={{ width: 34, height: 34, backgroundColor: color.bg }}
             >
               <Text className="text-base font-semibold" style={{ color: color.text }}>
@@ -107,8 +107,8 @@ export default function CardTransactions() {
             </Text>
           </View>
         </View>
-        <View className="flex-shrink-0 flex-row items-center gap-2 md:gap-10">
-          <Text className={`text-right font-bold text-white`}>
+        <View className="flex-row items-center gap-2 md:gap-10 flex-shrink-0">
+          <Text className={`font-bold text-right text-white`}>
             {formatCardAmountWithCurrency(item.amount, item.currency)}
           </Text>
           {Platform.OS === 'web' ? (
@@ -127,10 +127,10 @@ export default function CardTransactions() {
     return (
       <PageLayout desktopOnly scrollable={false}>
         <View className="flex-1 items-center justify-center">
-          <Text className="mb-4 text-gray-400">Failed to load transactions</Text>
+          <Text className="text-gray-400 mb-4">Failed to load transactions</Text>
           <Pressable
             onPress={() => refetch()}
-            className="flex-row items-center rounded-lg bg-[#2E2E2E] px-4 py-2"
+            className="flex-row items-center bg-[#2E2E2E] rounded-lg px-4 py-2"
           >
             <RotateCw size={16} color="white" className="mr-2" />
             <Text className="text-white">Try Again</Text>
@@ -142,9 +142,9 @@ export default function CardTransactions() {
 
   return (
     <PageLayout desktopOnly scrollable={false} isLoading={isLoading}>
-      <View className="mx-auto w-full max-w-[600px] flex-1">
+      <View className="flex-1 w-full max-w-[600px] mx-auto">
         <View className="px-8 pt-8">
-          <View className="mb-8 flex-row items-center justify-between">
+          <View className="flex-row items-center justify-between mb-8">
             <Pressable
               onPress={() =>
                 router.canGoBack() ? router.back() : router.replace(path.CARD_DETAILS)
@@ -153,7 +153,7 @@ export default function CardTransactions() {
             >
               <ArrowLeft color="white" />
             </Pressable>
-            <Text className="text-center text-xl font-semibold text-white md:text-2xl">
+            <Text className="text-white text-xl md:text-2xl font-semibold text-center">
               Solid card transactions
             </Text>
             <Pressable
@@ -173,7 +173,7 @@ export default function CardTransactions() {
 
         {allTransactions.length ? (
           <View className="flex-1 px-4">
-            <View className="flex-1 overflow-hidden rounded-xl bg-card md:rounded-twice">
+            <View className="bg-card rounded-xl md:rounded-twice overflow-hidden flex-1">
               <FlatList
                 data={allTransactions}
                 renderItem={renderTransaction}
@@ -200,7 +200,7 @@ export default function CardTransactions() {
             </View>
           </View>
         ) : (
-          <View className="items-center px-4 py-8">
+          <View className="items-center py-8 px-4">
             <Text className="text-muted-foreground">No transactions yet</Text>
           </View>
         )}

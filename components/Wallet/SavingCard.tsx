@@ -50,7 +50,7 @@ const SavingCard = memo(
       >
         <View
           className={cn(
-            'relative h-full w-full justify-between overflow-hidden rounded-twice p-[30px] pb-[21px]',
+            'rounded-twice overflow-hidden relative p-[30px] pb-[21px] justify-between w-full h-full',
             className,
           )}
         >
@@ -80,7 +80,7 @@ const SavingCard = memo(
             pointerEvents="none"
             style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: -1 }}
           />
-          <View className="relative flex-row items-center justify-between">
+          <View className="relative flex-row justify-between items-center">
             <View className="flex-row items-center gap-2 opacity-50">
               <SavingsIcon />
               <Text className="text-lg font-medium">Savings</Text>
@@ -88,13 +88,13 @@ const SavingCard = memo(
 
             <View className="flex-row items-center gap-2 pr-[5px]">
               {isMaxAPYsLoading ? (
-                <Skeleton className="h-6 w-24 rounded-xl bg-purple/50" />
+                <Skeleton className="w-24 h-6 rounded-xl bg-purple/50" />
               ) : isScreenMedium ? (
-                <Text className="text-sm font-semibold text-brand md:text-base">
+                <Text className="text-sm md:text-base text-brand font-semibold">
                   Earning {maxAPY ? `${formatNumber(maxAPY, 2)}%` : '0%'} yield
                 </Text>
               ) : (
-                <Text className="text-sm font-semibold text-brand md:text-base">
+                <Text className="text-sm md:text-base text-brand font-semibold">
                   {maxAPY ? `${formatNumber(maxAPY, 2)}%` : '0%'} APY
                 </Text>
               )}
@@ -102,11 +102,11 @@ const SavingCard = memo(
             </View>
           </View>
 
-          <View className="relative flex-row items-center justify-between">
+          <View className="relative flex-row justify-between items-center">
             <View className="flex-row items-center gap-2">
               <View className="flex-row items-center">
                 {isBalanceLoading || isMaxAPYsLoading || firstDepositTimestamp === undefined ? (
-                  <Skeleton className="h-11 w-36 rounded-xl bg-purple/50" />
+                  <Skeleton className="w-36 h-11 rounded-xl bg-purple/50" />
                 ) : (
                   <SavingCountUp
                     prefix="$"

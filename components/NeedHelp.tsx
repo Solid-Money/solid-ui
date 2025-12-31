@@ -13,7 +13,7 @@ const NeedHelp = () => {
       onPress={() => intercom?.show()}
     >
       <MessageCircle color="#ffffffb3" />
-      <Text className="text-base font-medium opacity-70">Need help?</Text>
+      <Text className="text-base opacity-70 font-medium">Need help?</Text>
     </Button>
   );
 };

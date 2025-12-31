@@ -77,10 +77,7 @@ export interface UseSyncActivitiesOptions {
 
 export interface UseSyncActivitiesReturn {
   /** Trigger a sync manually (for pull-to-refresh). Pass force=true to bypass cooldown and min interval */
-  sync: (
-    options?: SyncActivitiesOptions,
-    force?: boolean,
-  ) => Promise<SyncActivitiesResponse | undefined>;
+  sync: (options?: SyncActivitiesOptions, force?: boolean) => Promise<SyncActivitiesResponse | undefined>;
   /** Whether a sync is currently in progress */
   isSyncing: boolean;
   /** Last sync result */
@@ -105,7 +102,9 @@ export interface UseSyncActivitiesReturn {
  * - App opened after 24+ hours: Full sync with prominent indicator
  * - Pull-to-refresh: Always sync (respects 30s min interval)
  */
-export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSyncActivitiesReturn {
+export function useSyncActivities(
+  options: UseSyncActivitiesOptions = {},
+): UseSyncActivitiesReturn {
   const { syncOnAppActive = true, syncOnMount = true } = options;
   const { user } = useUser();
   const queryClient = useQueryClient();
@@ -207,12 +206,10 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
   }, [userId, syncOnAppActive, isWithinCooldown, smartSync]);
 
   // Calculate time since last sync
-  const timeSinceLastSync = userId
-    ? (() => {
-        const lastSync = getLastSync(userId);
-        return lastSync ? Date.now() - lastSync : null;
-      })()
-    : null;
+  const timeSinceLastSync = userId ? (() => {
+    const lastSync = getLastSync(userId);
+    return lastSync ? Date.now() - lastSync : null;
+  })() : null;
 
   return {
     sync,

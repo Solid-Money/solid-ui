@@ -27,25 +27,25 @@ const DepositOption = ({
 
   return (
     <Pressable
-      className="native:py-10 flex-row items-center justify-between rounded-2xl bg-card px-5 web:py-6 web:hover:bg-card-hover"
+      className="flex-row items-center justify-between bg-card web:hover:bg-card-hover rounded-2xl px-5 native:py-10 web:py-6"
       onPress={onPress}
       disabled={isDisabled}
     >
-      <View className="flex-1 flex-row items-start gap-x-4">
+      <View className="flex-row gap-x-4 flex-1 items-start">
         <View className="mt-0.5">{icon}</View>
-        <View className="flex-1 flex-col gap-y-1">
-          <Text className="text-lg font-semibold leading-6 text-primary">{text}</Text>
+        <View className="flex-col gap-y-1 flex-1">
+          <Text className="text-primary text-lg font-semibold leading-6">{text}</Text>
           {subtitle && (
             <Text
-              className="text-sm leading-5 text-muted-foreground"
+              className="text-muted-foreground text-sm leading-5"
               style={Platform.OS === 'web' ? ({ whiteSpace: 'pre-line' } as any) : undefined}
             >
               {subtitle}
             </Text>
           )}
           {bannerText && (
-            <View className="mt-1 self-start rounded-2xl bg-[#94F27F]/20 px-3 py-1">
-              <Text className="text-base font-bold text-[#94F27F]">{bannerText}</Text>
+            <View className="bg-[#94F27F]/20 self-start px-3 py-1 rounded-2xl mt-1">
+              <Text className="text-[#94F27F] font-bold text-base">{bannerText}</Text>
             </View>
           )}
         </View>

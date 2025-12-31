@@ -52,7 +52,7 @@ const TransactionStatus = ({
       </View>
 
       <View className="gap-4">
-        <View className="flex-row items-center justify-between gap-2 rounded-2xl bg-accent p-4">
+        <View className="flex-row justify-between items-center gap-2 bg-accent rounded-2xl p-4">
           <View className="flex-row items-center gap-2">
             <RenderTokenIcon tokenIcon={icon} size={40} />
             <View>
@@ -68,11 +68,11 @@ const TransactionStatus = ({
               )}
             </View>
           </View>
-          <Text className="font-medium text-muted-foreground">{status}</Text>
+          <Text className="text-muted-foreground font-medium">{status}</Text>
         </View>
         <Button
           variant="brand"
-          className="h-12 rounded-2xl"
+          className="rounded-2xl h-12"
           onPress={handlePress}
           disabled={isLoading}
         >

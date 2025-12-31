@@ -67,9 +67,9 @@ const ConnectedWalletDropdown = ({ chainId }: ConnectedWalletDropdownProps = {})
   };
 
   return (
-    <View className="rounded-2xl bg-accent">
+    <View className="bg-accent rounded-2xl">
       <Pressable
-        className="flex-row items-center justify-between gap-2 px-5 py-4 web:hover:opacity-70"
+        className="flex-row justify-between items-center gap-2 px-5 py-4 web:hover:opacity-70"
         onPress={toggleDropdown}
       >
         <View className="flex-row items-center gap-4">

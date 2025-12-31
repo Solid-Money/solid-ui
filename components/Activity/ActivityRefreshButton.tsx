@@ -46,7 +46,7 @@ export default function ActivityRefreshButton({
     <Pressable
       onPress={onRefresh}
       disabled={isLoading || isSyncing}
-      className="flex-row items-center gap-2 rounded-full bg-card px-3 py-1.5 active:opacity-70"
+      className="flex-row items-center gap-2 px-3 py-1.5 rounded-full bg-card active:opacity-70"
     >
       <Animated.View style={{ transform: [{ rotate: spin }] }}>
         <RefreshCw size={14} color={isLoading || isSyncing ? '#666' : '#fff'} />

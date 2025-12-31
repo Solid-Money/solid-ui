@@ -29,7 +29,7 @@ export default function DesktopCards({
   userDepositTransactions,
 }: DesktopCardsProps) {
   return (
-    <View className="min-h-44 flex-row gap-6">
+    <View className="flex-row gap-6 min-h-44">
       <WalletCard
         balance={totalUSDExcludingSoUSD}
         className="flex-1"

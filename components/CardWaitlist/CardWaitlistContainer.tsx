@@ -15,7 +15,7 @@ const CardWaitlistContainer = ({ children }: CardWaitlistContainerProps) => {
       colors={['rgba(148, 242, 127, 0.25)', 'rgba(148, 242, 127, 0)']}
       start={isScreenMedium ? { x: 0.5, y: 0 } : { x: 0, y: 0.5 }}
       end={isScreenMedium ? { x: 0.6, y: 1 } : { x: 1, y: 0.7 }}
-      className="overflow-hidden rounded-twice web:md:flex web:md:flex-row"
+      className="web:md:flex web:md:flex-row rounded-twice overflow-hidden"
       style={{ minHeight: 500, ...(Platform.OS === 'web' ? {} : { borderRadius: 20 }) }}
     >
       {isScreenMedium ? (

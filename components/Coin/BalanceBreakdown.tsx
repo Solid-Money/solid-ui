@@ -131,8 +131,8 @@ const BalanceBreakdown = ({ token, className }: BalanceBreakdownProps) => {
   const totalBalanceUSDFormatted = formatNumber(breakdown.totalBalanceUSD, 2, 2);
 
   return (
-    <View className={cn('rounded-twice border-4 border-popup bg-card', className)}>
-      <View className="items-center justify-center gap-2 px-4 py-6">
+    <View className={cn('bg-card rounded-twice border-4 border-popup', className)}>
+      <View className="gap-2 justify-center items-center px-4 py-6">
         <Text className="text-lg font-medium opacity-50">Balance across</Text>
         <Text className="text-3.5xl font-semibold">
           {totalBalanceFormatted} {token?.contractTickerSymbol}
@@ -140,7 +140,7 @@ const BalanceBreakdown = ({ token, className }: BalanceBreakdownProps) => {
         <Text className="text-sm font-medium opacity-50">${totalBalanceUSDFormatted}</Text>
       </View>
 
-      <View className="gap-5 border-t border-foreground/20 p-5">
+      <View className="gap-5 p-5 border-t border-foreground/20">
         <Text className="text-base font-medium opacity-50">Network breakdown</Text>
 
         <View className="gap-5">
@@ -150,14 +150,14 @@ const BalanceBreakdown = ({ token, className }: BalanceBreakdownProps) => {
 
             return (
               <View key={`${item.chainId}-${item.heldIn}-${index}`} className="gap-2">
-                <View className="h-1 overflow-hidden rounded-full bg-foreground/20">
+                <View className="h-1 bg-foreground/20 rounded-full overflow-hidden">
                   <View
-                    className="h-full rounded-full bg-foreground/30"
+                    className="h-full bg-foreground/30 rounded-full"
                     style={{ width: `${item.percentage}%` }}
                   />
                 </View>
                 <View className="flex-row items-center justify-between">
-                  <View className="flex-1 flex-row items-center gap-3">
+                  <View className="flex-row items-center gap-3 flex-1">
                     {chainIcon && (
                       <Image
                         source={chainIcon}

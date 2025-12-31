@@ -6,21 +6,21 @@ import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 
 // see: https://github.com/stellar/smart-wallet-demo-app/blob/develop/apps/web/src/helpers/browser-environment/index.ts
 export function isWebView(): boolean {
-  const userAgent = navigator.userAgent.toLowerCase();
+  const userAgent = navigator.userAgent.toLowerCase()
 
   // 1. Check for React Native WebView
   if ((window as unknown as { ReactNativeWebView?: unknown }).ReactNativeWebView !== undefined) {
-    return true;
+    return true
   }
 
   // 2. Check for Android WebView (look for 'wv' in user agent)
   if (userAgent.includes('wv') && userAgent.includes('android')) {
-    return true;
+    return true
   }
 
   // 3. Check for Google App on Android
   if (userAgent.includes('android') && userAgent.includes('googleapp')) {
-    return true;
+    return true
   }
 
   // 4. Check for other Android webviews
@@ -29,7 +29,7 @@ export function isWebView(): boolean {
     ((userAgent.includes('version/') && userAgent.includes('mobile safari')) ||
       (userAgent.includes('chrome/') && !userAgent.includes('crios/')))
   ) {
-    return true;
+    return true
   }
 
   // 5. Check for iOS WebView (WKWebView)
@@ -38,29 +38,28 @@ export function isWebView(): boolean {
     const isKnownBrowser =
       userAgent.includes('crios/') || // Chrome iOS
       userAgent.includes('fxios/') || // Firefox iOS
-      (userAgent.includes('version/') && userAgent.includes('safari/')); // Safari
+      (userAgent.includes('version/') && userAgent.includes('safari/')) // Safari
 
     // If it's iOS and has webkit message handlers, but NOT a known browser
     if (
-      (window as unknown as { webkit?: { messageHandlers?: unknown } }).webkit?.messageHandlers !==
-        undefined &&
+      (window as unknown as { webkit?: { messageHandlers?: unknown } }).webkit?.messageHandlers !== undefined &&
       !isKnownBrowser
     ) {
-      return true;
+      return true
     }
     // If it's iOS standalone mode (added to home screen)
     if ((window.navigator as unknown as { standalone?: boolean }).standalone === true) {
-      return true;
+      return true
     }
     // If it's iOS but missing typical Safari indicators AND not a known browser
     if (!userAgent.includes('version/') && !userAgent.includes('safari/') && !isKnownBrowser) {
-      return true;
+      return true
     }
   }
 
   // 6. Check for specific webview user agents
   if (userAgent.includes('webview') || userAgent.includes('webviewapp')) {
-    return true;
+    return true
   }
 
   // 7. Check for Cordova/PhoneGap
@@ -68,20 +67,20 @@ export function isWebView(): boolean {
     (window as unknown as { cordova?: unknown; phonegap?: unknown }).cordova !== undefined ||
     (window as unknown as { cordova?: unknown; phonegap?: unknown }).phonegap !== undefined
   ) {
-    return true;
+    return true
   }
 
   // 8. Check for Ionic
   if ((window as unknown as { Ionic?: unknown }).Ionic !== undefined) {
-    return true;
+    return true
   }
 
   // 9. Check if we're in an iframe
   if (window !== window.top) {
-    return true;
+    return true
   }
 
-  return false;
+  return false
 }
 
 function isNotSupportedPublicKeyCredentialsError(err: unknown): boolean {
@@ -121,8 +120,7 @@ export function detectPasskeySupported() {
   if (!window.isSecureContext) return 'Not secure context';
   if (window.self !== window.top) return 'Not top level window';
   if (!('PublicKeyCredential' in window)) return 'No PublicKeyCredential';
-  if (typeof window.PublicKeyCredential !== 'function')
-    return 'PublicKeyCredential is not a function';
+  if (typeof window.PublicKeyCredential !== 'function') return 'PublicKeyCredential is not a function';
 
   const inIosWebview =
     browserDetection.isIosWebview() ||
@@ -134,9 +132,7 @@ export function detectPasskeySupported() {
 }
 
 export function usePasskey() {
-  const [isPasskeySupported, setIsPasskeySupported] = useState<boolean | null>(
-    Platform.OS === 'web' ? null : true,
-  );
+  const [isPasskeySupported, setIsPasskeySupported] = useState<boolean | null>(Platform.OS === 'web' ? null : true);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;

@@ -66,7 +66,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
 
   if (isLoadingCustomer) {
     return (
-      <View className="items-center justify-center gap-3 py-10">
+      <View className="items-center justify-center py-10 gap-3">
         <ActivityIndicator size="large" color="gray" />
         <Text className="text-muted-foreground">Loading payment methods...</Text>
       </View>

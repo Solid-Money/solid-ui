@@ -101,7 +101,7 @@ const TotpInput: React.FC<{
             key={index}
             onPress={() => handlePress(index)}
             className={cn(
-              'h-[49px] w-[39px] items-center justify-center rounded-[10px] border-2 bg-[#1c1c1c]',
+              'h-[49px] w-[39px] rounded-[10px] bg-[#1c1c1c] border-2 items-center justify-center',
               {
                 'border-[rgba(255,255,255,0.7)]': index === 0 && !value[index],
                 'border-transparent': index !== 0 || value[index],
@@ -118,7 +118,7 @@ const TotpInput: React.FC<{
               onKeyPress={e => handleKeyPress(e, index)}
               keyboardType="number-pad"
               selectTextOnFocus
-              className="h-full w-full text-center text-xl font-bold text-white"
+              className="text-center text-xl font-bold text-white w-full h-full"
               style={{
                 ...(Platform.OS === 'web' && {
                   outline: 'none',
@@ -138,7 +138,7 @@ const TotpInput: React.FC<{
           </Pressable>
         ))}
       </View>
-      {error && <Text className="mt-1 text-center text-xs text-red-400">{error}</Text>}
+      {error && <Text className="text-red-400 text-xs text-center mt-1">{error}</Text>}
     </View>
   );
 };
@@ -209,16 +209,16 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
   return (
     <View className="flex-1 gap-4">
       <View className="items-center gap-2">
-        <Text className="text-center text-2xl font-bold text-white">Two-Factor Authentication</Text>
-        <Text className="max-w-xs text-center text-base font-medium text-[#ACACAC] opacity-70">
+        <Text className="text-2xl font-bold text-center text-white">Two-Factor Authentication</Text>
+        <Text className="text-[#ACACAC] text-center font-medium text-base max-w-xs opacity-70">
           Scan the below QR code or manually enter the code in an authenticator app like Authy or
           1Password.
         </Text>
       </View>
 
       {(apiError || formErrors.otpCode) && (
-        <View className="rounded-2xl border border-red-300 p-2.5">
-          <Text className="text-center text-sm text-red-400">
+        <View className="p-2.5 border border-red-300 rounded-2xl">
+          <Text className="text-red-400 text-sm text-center">
             {apiError || formErrors.otpCode?.message}
           </Text>
         </View>
@@ -227,11 +227,11 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
       {/* QR Code Section */}
       <View className="items-center gap-3">
         {isLoadingSetup ? (
-          <View className="min-h-[300px] items-center justify-center rounded-[15px] bg-[#1c1c1c] p-8">
+          <View className="bg-[#1c1c1c] rounded-[15px] p-8 items-center justify-center min-h-[300px]">
             <ActivityIndicator color="#94F27F" size="large" />
           </View>
         ) : (
-          <View className="min-h-[250px] min-w-[250px] items-center justify-center rounded-[15px] bg-[#1c1c1c] p-8">
+          <View className="bg-[#1c1c1c] rounded-[15px] p-8 items-center justify-center min-h-[250px] min-w-[250px]">
             {qrCode && (
               <Image
                 source={{
@@ -267,7 +267,7 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
 
       {/* OTP Input Section */}
       <View className="gap-4">
-        <Text className="text-center text-base font-medium text-[#ACACAC] opacity-70">
+        <Text className="text-[#ACACAC] text-center font-medium text-base opacity-70">
           Enter the 6-digit code from your authenticator app to verify.
         </Text>
         <Controller
@@ -284,12 +284,12 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
         <Button
           onPress={handleSubmit(onSubmit)}
           disabled={otpCode.length !== 6 || isLoading}
-          className="h-12 rounded-xl bg-[#94F27F] active:opacity-80"
+          className="rounded-xl h-12 bg-[#94F27F] active:opacity-80"
         >
           {isLoading ? (
             <ActivityIndicator color="#000000" size="small" />
           ) : (
-            <Text className="text-base font-bold text-black">Submit</Text>
+            <Text className="text-black text-base font-bold">Submit</Text>
           )}
         </Button>
       </View>

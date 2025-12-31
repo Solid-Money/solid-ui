@@ -166,14 +166,14 @@ export default function SignupEmail() {
 
   // Form content (shared between mobile and desktop)
   const formContent = (
-    <View className="flex w-full max-w-[440px] flex-1 flex-col">
+    <View className="w-full max-w-[440px] flex-1 flex flex-col">
       {/* Form content wrapper - centered vertically */}
       <View className="my-auto">
         {/* Back button - positioned above form on desktop */}
         {isDesktop && (
           <Pressable
             onPress={handleBack}
-            className="mb-20 h-10 w-10 items-center justify-center rounded-full bg-white/10 web:hover:bg-white/20"
+            className="w-10 h-10 rounded-full bg-white/10 items-center justify-center web:hover:bg-white/20 mb-20"
           >
             <ArrowLeft size={20} color="#ffffff" />
           </Pressable>
@@ -181,18 +181,18 @@ export default function SignupEmail() {
 
         {/* Header */}
         <View className="mb-8">
-          <Text className="mb-4 text-center text-[38px] font-medium -tracking-[1px] text-white">
+          <Text className="text-white text-[38px] font-medium mb-4 text-center -tracking-[1px]">
             Create your account
           </Text>
-          <Text className="text-center text-base font-medium text-white/60">
+          <Text className="text-white/60 text-center text-base font-medium">
             Setup in minutes. Start earning{'\n'}and spending right away
           </Text>
         </View>
 
         {/* Email Input */}
-        <View className="mb-6 gap-5">
+        <View className="gap-5 mb-6">
           <View>
-            <Text className="mb-2 text-base font-medium text-white/60">Email</Text>
+            <Text className="text-white/60 text-base font-medium mb-2">Email</Text>
             <Controller
               control={control}
               name="email"
@@ -220,7 +220,7 @@ export default function SignupEmail() {
             render={({ field: { onChange, value } }) => (
               <Pressable onPress={() => onChange(!value)} className="flex-row items-start gap-3">
                 <Checkbox checked={value} onCheckedChange={onChange} className="mt-0.5" />
-                <Text className="flex-1 text-base font-medium text-white/60">
+                <Text className="text-base font-medium text-white/60 flex-1">
                   I consent to receive marketing messages about Solid products and services.
                 </Text>
               </Pressable>
@@ -239,7 +239,7 @@ export default function SignupEmail() {
         <Button
           variant="brand"
           onPress={handleSubmit(handleSendOtp)}
-          className="h-14 w-full rounded-xl font-semibold"
+          className="rounded-xl h-14 w-full font-semibold"
         >
           {isLoading ? (
             <ActivityIndicator color="gray" />
@@ -251,16 +251,16 @@ export default function SignupEmail() {
 
       {/* Terms and Conditions - pushed to bottom */}
       <View className="mt-auto pt-8">
-        <Text className="text-center text-sm text-white/70">
+        <Text className="text-sm text-white/70 text-center">
           I acknowledge that I have read and agreed to{'\n'}
-          <Link href="https://solid.xyz/terms" target="_blank" className="text-white/70 underline">
+          <Link href="https://solid.xyz/terms" target="_blank" className="underline text-white/70">
             Terms and Conditions
           </Link>{' '}
           and{' '}
           <Link
             href="https://solid.xyz/privacy"
             target="_blank"
-            className="text-white/70 underline"
+            className="underline text-white/70"
           >
             Privacy Policy
           </Link>
@@ -272,36 +272,36 @@ export default function SignupEmail() {
   // Mobile Layout
   if (!isDesktop) {
     return (
-      <SafeAreaView className="flex-1 bg-background text-foreground">
+      <SafeAreaView className="bg-background text-foreground flex-1">
         <View className="flex-1">
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
             <Pressable
               onPress={handleBack}
-              className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
+              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
             >
               <ArrowLeft size={20} color="#ffffff" />
             </Pressable>
           </View>
 
           {/* Content - flex between to push button to bottom */}
-          <View className="flex-1 justify-between px-6 pb-8">
+          <View className="flex-1 px-6 pb-8 justify-between">
             {/* Top section: Form content */}
             <View className="w-full">
               {/* Header */}
               <View className="mb-8 mt-4">
-                <Text className="mb-4 text-center text-[38px] font-semibold leading-10 -tracking-[1px] text-white">
+                <Text className="text-white text-[38px] font-semibold text-center mb-4 -tracking-[1px] leading-10">
                   Create your{'\n'}account
                 </Text>
-                <Text className="text-center text-[16px] text-white/60">
+                <Text className="text-white/60 text-center text-[16px]">
                   Setup in minutes. Start earning{'\n'}and spending right away
                 </Text>
               </View>
 
               {/* Email Input */}
-              <View className="mb-6 gap-5">
+              <View className="gap-5 mb-6">
                 <View>
-                  <Text className="mb-2 text-base text-white/60">Email</Text>
+                  <Text className="text-white/60 text-base mb-2">Email</Text>
                   <Controller
                     control={control}
                     name="email"
@@ -332,7 +332,7 @@ export default function SignupEmail() {
                       className="flex-row items-start gap-3"
                     >
                       <Checkbox checked={value} onCheckedChange={onChange} className="mt-0.5" />
-                      <Text className="flex-1 text-[16px] text-white/60">
+                      <Text className="text-[16px] text-white/60 flex-1">
                         I consent to receive marketing messages about Solid products and services.
                       </Text>
                     </Pressable>
@@ -352,12 +352,12 @@ export default function SignupEmail() {
             <View className="w-full">
               {/* Terms and Conditions */}
               <View className="mb-8">
-                <Text className="text-center text-sm text-white/60">
+                <Text className="text-sm text-white/60 text-center">
                   I acknowledge that I have read and agreed to{'\n'}
                   <Link
                     href="https://solid.xyz/terms"
                     target="_blank"
-                    className="text-white/60 underline"
+                    className="underline text-white/60"
                   >
                     Terms and Conditions
                   </Link>{' '}
@@ -365,7 +365,7 @@ export default function SignupEmail() {
                   <Link
                     href="https://solid.xyz/privacy"
                     target="_blank"
-                    className="text-white/60 underline"
+                    className="underline text-white/60"
                   >
                     Privacy Policy
                   </Link>
@@ -375,7 +375,7 @@ export default function SignupEmail() {
               <Button
                 variant="brand"
                 onPress={handleSubmit(handleSendOtp)}
-                className="h-14 w-full rounded-xl font-semibold"
+                className="rounded-xl h-14 w-full font-semibold"
               >
                 {isLoading ? (
                   <ActivityIndicator color="gray" />
@@ -397,9 +397,9 @@ export default function SignupEmail() {
       <DesktopCarousel />
 
       {/* Right Section - Form (70%) */}
-      <View className="relative flex-1">
+      <View className="flex-1 relative">
         {/* Logo at top center */}
-        <View className="absolute left-0 right-0 top-6 items-center">
+        <View className="absolute top-6 left-0 right-0 items-center">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
@@ -409,7 +409,7 @@ export default function SignupEmail() {
         </View>
 
         {/* Form Content */}
-        <View className="flex-1 items-center px-8 pb-8 pt-24">{formContent}</View>
+        <View className="flex-1 items-center px-8 pt-24 pb-8">{formContent}</View>
       </View>
     </View>
   );

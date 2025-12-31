@@ -38,7 +38,7 @@ const ResponsiveModalMobile = ({
           {showBackButton && onBackPress && (
             <Button
               variant="ghost"
-              className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+              className="h-10 w-10 rounded-full p-0 bg-popover web:transition-colors web:hover:bg-muted"
               onPress={onBackPress}
             >
               <ArrowLeft color="white" size={20} />
@@ -46,7 +46,7 @@ const ResponsiveModalMobile = ({
           )}
           {title && (
             <View className="flex-1 items-center">
-              <Text className="text-center text-xl font-semibold text-white md:text-2xl">
+              <Text className="text-xl md:text-2xl font-semibold text-white text-center">
                 {title}
               </Text>
             </View>

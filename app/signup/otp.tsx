@@ -208,7 +208,7 @@ export default function SignupOtp() {
       {isDesktop && (
         <Pressable
           onPress={handleBack}
-          className="mb-20 h-10 w-10 items-center justify-center self-start rounded-full bg-white/10 web:hover:bg-white/20"
+          className="self-start w-10 h-10 rounded-full bg-white/10 items-center justify-center web:hover:bg-white/20 mb-20"
         >
           <ArrowLeft size={20} color="#ffffff" />
         </Pressable>
@@ -216,17 +216,17 @@ export default function SignupOtp() {
 
       {/* Header */}
       <View className="mb-8 items-center">
-        <Text className="mb-3 text-center text-[38px] font-medium -tracking-[1px] text-white">
+        <Text className="text-white text-[38px] font-medium text-center mb-3 -tracking-[1px]">
           Check your email
         </Text>
-        <Text className="text-center text-base leading-none text-white/60">
+        <Text className="text-white/60 text-center text-base leading-none">
           We sent a verification code to
         </Text>
-        <Text className="mt-1 text-center text-base leading-none  text-white/60">{email}</Text>
+        <Text className="text-white/60 text-center text-base mt-1  leading-none">{email}</Text>
       </View>
 
       {/* OTP Input */}
-      <View className="mb-6 w-full gap-5">
+      <View className="w-full gap-5 mb-6">
         <Controller
           control={control}
           name="otp"
@@ -254,7 +254,7 @@ export default function SignupOtp() {
       <Button
         variant="brand"
         onPress={handleVerifyOtp}
-        className="h-14 w-full rounded-xl font-semibold"
+        className="rounded-xl h-14 w-full font-semibold"
       >
         {isLoading ? (
           <ActivityIndicator color="gray" />
@@ -264,14 +264,14 @@ export default function SignupOtp() {
       </Button>
 
       {/* Resend OTP */}
-      <View className="mt-6 flex-row items-center justify-center gap-1">
-        <Text className="text-base text-white/60">Didn&apos;t receive it?</Text>
+      <View className="flex-row items-center justify-center gap-1 mt-6">
+        <Text className="text-white/60 text-base">Didn&apos;t receive it?</Text>
         {canResend ? (
           <Pressable onPress={handleResendOtp}>
-            <Text className="text-base font-semibold text-white/60 underline">Resend Code</Text>
+            <Text className="text-white/60 text-base underline font-semibold">Resend Code</Text>
           </Pressable>
         ) : (
-          <Text className="text-base text-white/60">Resend in {resendCooldown}s</Text>
+          <Text className="text-white/60 text-base">Resend in {resendCooldown}s</Text>
         )}
       </View>
     </View>
@@ -280,28 +280,28 @@ export default function SignupOtp() {
   // Mobile Layout
   if (!isDesktop) {
     return (
-      <SafeAreaView className="flex-1 bg-background text-foreground">
+      <SafeAreaView className="bg-background text-foreground flex-1">
         <View className="flex-1">
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
             <Pressable
               onPress={handleBack}
-              className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
+              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
             >
               <ArrowLeft size={20} color="#ffffff" />
             </Pressable>
           </View>
 
           {/* Content - positioned at top, centered horizontally */}
-          <View className="flex-1 items-center px-6">
+          <View className="flex-1 px-6 items-center">
             {/* Header */}
-            <View className="mb-8 mt-8 items-center">
-              <Text className="mb-4 text-center text-[38px] font-medium leading-10 -tracking-[1px] text-white">
+            <View className="mb-8 items-center mt-8">
+              <Text className="text-white text-[38px] font-medium mb-4 text-center -tracking-[1px] leading-10">
                 Check your email
               </Text>
-              <Text className="text-center text-[16px] leading-4 text-white/60">
+              <Text className="text-white/60 text-[16px] text-center leading-4">
                 We sent a verification code to{'\n'}
-                <Text className="font-semibold text-white/90">{email}</Text>
+                <Text className="text-white/90 font-semibold">{email}</Text>
               </Text>
             </View>
 
@@ -328,7 +328,7 @@ export default function SignupOtp() {
               <Text className="text-white/60">Didn&apos;t receive it?</Text>
               {canResend ? (
                 <Pressable onPress={handleResendOtp}>
-                  <Text className="font-semibold text-white/60 underline">Resend Code</Text>
+                  <Text className="text-white/60 font-semibold underline">Resend Code</Text>
                 </Pressable>
               ) : (
                 <Text className="text-white/40">Resend in {resendCooldown}s</Text>
@@ -336,7 +336,7 @@ export default function SignupOtp() {
             </View>
 
             {displayError ? (
-              <View className="mt-4 flex-row items-center gap-2">
+              <View className="flex-row items-center gap-2 mt-4">
                 <InfoError />
                 <Text className="text-sm text-red-400">{displayError}</Text>
               </View>
@@ -348,7 +348,7 @@ export default function SignupOtp() {
             <Button
               variant="brand"
               onPress={handleVerifyOtp}
-              className="h-14 w-full rounded-xl font-semibold"
+              className="rounded-xl h-14 w-full font-semibold"
             >
               {isLoading ? (
                 <ActivityIndicator color="gray" />
@@ -369,9 +369,9 @@ export default function SignupOtp() {
       <DesktopCarousel />
 
       {/* Right Section - Form (70%) */}
-      <View className="relative flex-1">
+      <View className="flex-1 relative">
         {/* Logo at top center */}
-        <View className="absolute left-0 right-0 top-6 items-center">
+        <View className="absolute top-6 left-0 right-0 items-center">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
@@ -381,7 +381,7 @@ export default function SignupOtp() {
         </View>
 
         {/* Form Content */}
-        <View className="flex-1 items-center justify-center px-8">{formContent}</View>
+        <View className="flex-1 justify-center items-center px-8">{formContent}</View>
       </View>
     </View>
   );

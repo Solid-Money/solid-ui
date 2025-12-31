@@ -18,8 +18,8 @@ const Navbar = () => {
   const { user } = useUser();
 
   return (
-    <SafeAreaView className="sticky top-0 z-50 border-b border-border/40 bg-background/40 backdrop-blur-lg">
-      <View className="mx-auto w-full max-w-7xl flex-row items-center justify-between p-4 md:py-6">
+    <SafeAreaView className="sticky top-0 z-50 bg-background/40 backdrop-blur-lg border-b border-border/40">
+      <View className="flex-row justify-between items-center p-4 md:py-6 w-full max-w-7xl mx-auto">
         <Link
           href={path.HOME}
           className="flex flex-row items-center gap-2"
@@ -40,7 +40,7 @@ const Navbar = () => {
             alt="Solid"
             contentFit="contain"
             style={{ width: 72, height: 33, marginTop: -3 }}
-            className="mt-[-3px] hidden md:block"
+            className="hidden md:block mt-[-3px]"
           />
         </Link>
         {user && isScreenMedium && <NavMenu />}

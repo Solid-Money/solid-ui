@@ -91,7 +91,7 @@ const AnimatedModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className={cn('p-6 md:max-w-md md:p-8', contentClassName)}>
+      <DialogContent className={cn('p-6 md:p-8 md:max-w-md', contentClassName)}>
         <Animated.View style={dialogAnimatedStyle} className="overflow-hidden">
           <View
             className={cn('gap-8', containerClassName)}
@@ -101,13 +101,13 @@ const AnimatedModal = ({
           >
             {title && (
               <DialogHeader
-                className={cn('flex-row items-center justify-between gap-2', titleClassName)}
+                className={cn('flex-row justify-between items-center gap-2', titleClassName)}
               >
                 {showBackButton && onBackPress && (
                   <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
                     <Button
                       variant="ghost"
-                      className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                      className="h-10 w-10 rounded-full p-0 bg-popover web:transition-colors web:hover:bg-muted"
                       onPress={onBackPress}
                     >
                       <ArrowLeft color="white" size={20} />

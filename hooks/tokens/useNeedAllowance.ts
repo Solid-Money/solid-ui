@@ -40,6 +40,8 @@ export function useNeedAllowance(
 
   // Check if current allowance is less than the amount needed
   return Boolean(
-    amount && typeof allowance === 'bigint' && amount.greaterThan(allowance.toString()),
+    amount &&
+    typeof allowance === 'bigint' &&
+    amount.greaterThan(allowance.toString()),
   );
 }

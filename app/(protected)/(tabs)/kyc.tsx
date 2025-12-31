@@ -210,7 +210,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
 
   return (
     <PageLayout desktopOnly>
-      <View className="mx-auto w-full max-w-lg flex-1 pt-8">
+      <View className="flex-1 max-w-lg mx-auto pt-8 w-full">
         <View className="flex-row items-center justify-between">
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
@@ -218,7 +218,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           >
             <ArrowLeft color="white" />
           </Pressable>
-          <Text className="text-center text-xl font-semibold text-white md:text-2xl">
+          <Text className="text-white text-xl md:text-2xl font-semibold text-center">
             Verify identity
           </Text>
           <View style={{ width: 40 }} />

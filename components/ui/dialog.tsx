@@ -40,7 +40,7 @@ const DialogOverlayWeb = React.forwardRef<DialogPrimitive.OverlayRef, DialogPrim
     return (
       <DialogPrimitive.Overlay
         className={cn(
-          'absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-black/80 p-2 web:backdrop-blur-[4px]',
+          'web:backdrop-blur-[4px] bg-black/80 flex justify-center items-center p-2 absolute top-0 right-0 bottom-0 left-0',
           className,
         )}
         onPointerDown={handlePointerDown}
@@ -73,7 +73,7 @@ const DialogOverlayNative = React.forwardRef<
     <DialogPrimitive.Overlay
       style={StyleSheet.absoluteFill}
       className={cn(
-        'flex items-center bg-black/80 p-2',
+        'flex bg-black/80 items-center p-2',
         shouldAlignTop ? 'justify-start' : 'justify-center',
         className,
       )}
@@ -156,7 +156,7 @@ const DialogContent = React.forwardRef<
         <DialogPrimitive.Content
           ref={ref}
           className={cn(
-            'mx-auto w-screen max-w-[95%] max-w-lg gap-4 rounded-2xl bg-popup p-6 web:cursor-default web:duration-200 md:rounded-twice',
+            'max-w-lg gap-4 web:cursor-default bg-popup p-6 web:duration-200 rounded-2xl md:rounded-twice w-screen mx-auto max-w-[95%]',
             !isScreenMedium && shouldAlignTop && 'min-h-[95vh] rounded-b-none',
             className,
           )}
@@ -164,7 +164,7 @@ const DialogContent = React.forwardRef<
           {...props}
         >
           {children}
-          {showCloseButton && <DialogCloseButton className="absolute right-4 top-4" />}
+          {showCloseButton && <DialogCloseButton className="absolute top-4 right-4" />}
         </DialogPrimitive.Content>
       </>
     );
@@ -194,7 +194,7 @@ DialogHeader.displayName = 'DialogHeader';
 
 const DialogFooter = ({ className, ...props }: ViewProps) => (
   <View
-    className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+    className={cn('flex flex-col-reverse sm:flex-row sm:justify-end gap-2', className)}
     {...props}
   />
 );
@@ -205,7 +205,7 @@ const DialogTitle = React.forwardRef<DialogPrimitive.TitleRef, DialogPrimitive.T
     <DialogPrimitive.Title
       ref={ref}
       className={cn(
-        'native:text-xl text-lg font-semibold leading-none tracking-tight text-foreground',
+        'text-lg native:text-xl text-foreground font-semibold leading-none tracking-tight',
         className,
       )}
       {...props}
@@ -220,7 +220,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('native:text-base text-sm text-muted-foreground', className)}
+    className={cn('text-sm native:text-base text-muted-foreground', className)}
     {...props}
   />
 ));
@@ -244,7 +244,7 @@ const DialogCloseButton = React.forwardRef<
     <DialogPrimitive.Close
       ref={ref}
       className={cn(
-        'web:group web:focus:ring-none flex h-10 w-10 items-center justify-center rounded-full border-0 bg-popover web:ring-offset-background web:transition-colors web:hover:bg-muted web:focus:outline-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none',
+        'h-10 w-10 flex items-center justify-center bg-popover border-0 rounded-full web:group web:ring-offset-background web:transition-colors web:hover:bg-muted web:focus:outline-none web:focus:ring-none web:focus:ring-ring web:focus:ring-offset-2 web:disabled:pointer-events-none',
         className,
       )}
       onPress={handlePress}

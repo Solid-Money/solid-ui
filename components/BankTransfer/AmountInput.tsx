@@ -17,8 +17,8 @@ const AmountInput = forwardRef<TextInput, AmountInputProps>(function AmountInput
       keyboardType={keyboardType}
       placeholderTextColor={'#9CA3AF'}
       className={cn(
-        'flex-1 bg-transparent px-0 py-2 font-semibold text-white',
-        isModal ? 'w-0 min-w-0 text-3xl' : 'text-4xl',
+        'flex-1 text-white font-semibold px-0 py-2 bg-transparent',
+        isModal ? 'text-3xl w-0 min-w-0' : 'text-4xl',
         className,
       )}
       {...rest}

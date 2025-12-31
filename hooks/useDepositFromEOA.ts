@@ -388,8 +388,8 @@ const useDepositFromEOA = (
 
       const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
       const spender = isSponsor
-        ? (EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address)
-        : (ADDRESSES.ethereum.vault as Address);
+        ? EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address
+        : ADDRESSES.ethereum.vault as Address;
 
       // Track deposit validation passed
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
@@ -421,9 +421,7 @@ const useDepositFromEOA = (
       const amountWei = parseUnits(amount, 6);
 
       let txHash: `0x${string}` | undefined;
-      let transaction: { transactionHash: `0x${string}` } | undefined = {
-        transactionHash: '' as `0x${string}`,
-      };
+      let transaction: { transactionHash: `0x${string}` } | undefined = { transactionHash: '' as `0x${string}` };
       if (isEthereum && token === 'USDC') {
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
@@ -577,11 +575,11 @@ const useDepositFromEOA = (
               permitSignature:
                 signatureData && deadline
                   ? {
-                      v: Number(signatureData.v),
-                      r: signatureData.r,
-                      s: signatureData.s,
-                      deadline: Number(deadline),
-                    }
+                    v: Number(signatureData.v),
+                    r: signatureData.r,
+                    s: signatureData.s,
+                    deadline: Number(deadline),
+                  }
                   : undefined,
               trackingId,
             }),

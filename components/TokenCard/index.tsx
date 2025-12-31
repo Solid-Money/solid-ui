@@ -14,14 +14,14 @@ interface TokenCardProps {
 
 const TokenCard = ({ amount, onAmountChange, balance, price }: TokenCardProps) => {
   return (
-    <View className="flex flex-col gap-2 rounded-xl bg-card p-6 md:rounded-twice md:p-10">
+    <View className="flex flex-col gap-2 bg-card rounded-xl md:rounded-twice p-6 md:p-10">
       <Text className="text-lg font-medium opacity-40">Amount to deposit</Text>
-      <View className="flex-row items-center justify-between gap-4">
+      <View className="flex-row justify-between items-center gap-4">
         <TokenSelectorModal />
-        <View className="flex flex-1 flex-col items-end">
+        <View className="flex flex-col flex-1 items-end">
           <TextInput
             keyboardType="decimal-pad"
-            className="w-full text-right text-2xl font-semibold text-primary web:focus:outline-none md:text-5xl"
+            className="w-full text-right text-primary text-2xl md:text-5xl font-semibold web:focus:outline-none"
             value={amount}
             placeholder="0"
             onChangeText={onAmountChange}
@@ -32,7 +32,7 @@ const TokenCard = ({ amount, onAmountChange, balance, price }: TokenCardProps) =
                 ${compactNumberFormat(Number(amount) * price)}
               </Text>
             ) : (
-              <Skeleton className="h-5 w-20 rounded-md" />
+              <Skeleton className="w-20 h-5 rounded-md" />
             )}
           </View>
         </View>
@@ -43,7 +43,7 @@ const TokenCard = ({ amount, onAmountChange, balance, price }: TokenCardProps) =
             Balance {balance} USDC (≈ ${compactNumberFormat(Number(balance) * price)})
           </Text>
         ) : (
-          <Skeleton className="h-5 w-40 rounded-md" />
+          <Skeleton className="w-40 h-5 rounded-md" />
         )}
       </View>
     </View>

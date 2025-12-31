@@ -57,26 +57,26 @@ export default function Welcome() {
     <View className="w-full max-w-[440px] items-center">
       {/* Header */}
       <View className="mb-4 items-center">
-        <Text className="text-center text-[38px] font-medium text-white md:text-4xl">
+        <Text className="text-white text-[38px] md:text-4xl font-medium text-center">
           Welcome back
         </Text>
       </View>
 
       {/* Subtitle */}
-      <Text className="mb-8 px-4 text-center text-base font-normal text-white/60">
+      <Text className="text-white/60 text-center text-base font-normal mb-8 px-4">
         Please select your account to continue, you will be asked to login with your passkey.
       </Text>
 
       {/* User List */}
       {!users.length ? (
-        <Skeleton className="mb-4 h-14 w-full rounded-xl bg-primary/10" />
+        <Skeleton className="bg-primary/10 rounded-xl h-14 w-full mb-4" />
       ) : (
-        <View className="mb-4 w-full gap-3">
+        <View className="w-full gap-3 mb-4">
           {users.map(user => (
             <Button
               key={user.userId}
               variant="brand"
-              className="h-14 justify-between rounded-xl border-0 px-6"
+              className="justify-between rounded-xl h-14 px-6 border-0"
               onPress={() => handleSelectUser(user.userId)}
               disabled={loadingUserId !== null}
             >
@@ -97,14 +97,14 @@ export default function Welcome() {
       <Button
         variant="secondary"
         onPress={handleUseAnotherAccount}
-        className="mb-6 h-14 w-full rounded-xl border-0"
+        className="rounded-xl h-14 w-full mb-6 border-0"
       >
-        <Text className="text-base font-semibold text-white">Use another account</Text>
+        <Text className="text-white text-base font-semibold">Use another account</Text>
       </Button>
 
       {/* Forget all users */}
       {users.length > 0 && (
-        <Button variant="ghost" className="h-14 rounded-xl" onPress={handleRemoveUsers}>
+        <Button variant="ghost" className="rounded-xl h-14" onPress={handleRemoveUsers}>
           <Text className="text-base font-bold text-muted-foreground">Forget all users</Text>
         </Button>
       )}
@@ -114,10 +114,10 @@ export default function Welcome() {
   // Mobile Layout
   if (!isDesktop) {
     return (
-      <SafeAreaView className="flex-1 bg-background text-foreground">
+      <SafeAreaView className="bg-background text-foreground flex-1">
         <View className="flex-1 px-6">
           {/* Logo at top */}
-          <View className="items-center pb-16 pt-8">
+          <View className="items-center pt-8 pb-16">
             <Image
               source={require('@/assets/images/solid-logo-4x.png')}
               alt="Solid logo"
@@ -140,9 +140,9 @@ export default function Welcome() {
       <DesktopCarousel />
 
       {/* Right Section - Form (70%) */}
-      <View className="relative flex-1">
+      <View className="flex-1 relative">
         {/* Logo at top center */}
-        <View className="absolute left-0 right-0 top-6 items-center">
+        <View className="absolute top-6 left-0 right-0 items-center">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
@@ -152,7 +152,7 @@ export default function Welcome() {
         </View>
 
         {/* Form Content */}
-        <View className="flex-1 items-center justify-center px-8">{formContent}</View>
+        <View className="flex-1 justify-center items-center px-8">{formContent}</View>
       </View>
     </View>
   );

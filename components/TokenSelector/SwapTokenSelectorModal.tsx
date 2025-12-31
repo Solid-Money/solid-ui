@@ -68,7 +68,7 @@ const SwapTokenSelectorModal = ({
       trigger={
         <Button
           className={cn(
-            'flex h-10 items-center rounded-full bg-accent px-3 py-6 text-white active:bg-accent web:hover:bg-accent',
+            'bg-accent h-10 px-3 py-6 rounded-full text-white flex items-center active:bg-accent web:hover:bg-accent',
             className,
           )}
           disabled={disabled}

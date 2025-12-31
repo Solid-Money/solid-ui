@@ -34,15 +34,15 @@ export default function Settings() {
       <Pressable onPress={() => router.back()} className="p-2">
         <ChevronLeft size={24} color="#ffffff" />
       </Pressable>
-      <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Settings</Text>
+      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Settings</Text>
     </View>
   );
 
   const desktopHeader = (
     <>
       <Navbar />
-      <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
-        <View className="mb-8 flex-row items-center justify-between">
+      <View className="max-w-[512px] mx-auto w-full px-4 pt-8 pb-8">
+        <View className="flex-row items-center justify-between mb-8">
           <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
@@ -60,13 +60,13 @@ export default function Settings() {
       useDesktopBreakpoint
     >
       <View
-        className={cn('mx-auto w-full gap-3 px-4 py-4', {
+        className={cn('w-full mx-auto gap-3 px-4 py-4', {
           'max-w-[512px]': isDesktop,
           'max-w-7xl': !isDesktop,
         })}
       >
         {/* Account Details Card */}
-        <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
           <SettingsCard
             title="Account details"
             icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
@@ -77,7 +77,7 @@ export default function Settings() {
         </View>
 
         {/* Security Card */}
-        <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
           <SettingsCard
             title="Security"
             icon={<Image source={SecurityIcon} style={{ width: 24, height: 24 }} />}
@@ -88,7 +88,7 @@ export default function Settings() {
         </View>
 
         {/* Help & Support Card */}
-        <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
           <SettingsCard
             title="Help & Support"
             icon={<Image source={HelpSupportIcon} style={{ width: 24, height: 24 }} />}
@@ -99,7 +99,7 @@ export default function Settings() {
         </View>
 
         {/* Logout Card */}
-        <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
           <SettingsCard
             title="Logout"
             icon={<Image source={LogoutIcon} style={{ width: 23, height: 20 }} />}
@@ -110,16 +110,16 @@ export default function Settings() {
         </View>
 
         {/* Legal Footer Link */}
-        <View className="items-center pb-4 pt-6">
+        <View className="items-center pt-6 pb-4">
           <Pressable onPress={handleLegalPress} className="active:opacity-70">
-            <Text className="text-base font-medium text-[#808080]">Legal</Text>
+            <Text className="text-[#808080] text-base font-medium">Legal</Text>
           </Pressable>
         </View>
 
         {/* Build Information */}
         {Platform.OS !== 'web' && (
-          <View className="items-center px-4 pb-2">
-            <Text className="text-xs text-muted-foreground">
+          <View className="px-4 pb-2 items-center">
+            <Text className="text-muted-foreground text-xs">
               {Application.applicationName || 'Solid'} v
               {Application.nativeApplicationVersion || 'Unknown'} - Build{' '}
               {Application.nativeBuildVersion || 'Unknown'}

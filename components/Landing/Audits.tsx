@@ -17,7 +17,7 @@ const Audits = ({ className }: AuditsProps) => {
         <Pressable
           key={`audit-${index}`}
           className={cn(
-            'flex-row items-center justify-between py-4 hover:opacity-70',
+            'flex-row justify-between items-center py-4 hover:opacity-70',
             index === audits.length - 1 ? 'border-b-0' : 'border-b border-border',
           )}
           onPress={() => Linking.openURL(audit.url)}

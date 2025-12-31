@@ -47,15 +47,15 @@ export default function Help() {
       <Pressable onPress={() => router.back()} className="p-2">
         <ChevronLeft size={24} color="#ffffff" />
       </Pressable>
-      <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Help & Support</Text>
+      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Help & Support</Text>
     </View>
   );
 
   const desktopHeader = (
     <>
       <Navbar />
-      <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
-        <View className="mb-8 flex-row items-center justify-between">
+      <View className="max-w-[512px] mx-auto w-full px-4 pt-8 pb-8">
+        <View className="flex-row items-center justify-between mb-8">
           <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
@@ -73,13 +73,13 @@ export default function Help() {
       useDesktopBreakpoint
     >
       <View
-        className={cn('mx-auto w-full gap-3 px-4 py-4', {
+        className={cn('w-full mx-auto gap-3 px-4 py-4', {
           'max-w-[512px]': isDesktop,
           'max-w-7xl': !isDesktop,
         })}
       >
         {/* Support Options */}
-        <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
+        <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
           {supportOptions.map((option, index) => (
             <View key={`support-${index}`}>
               <SettingsCard
@@ -95,9 +95,9 @@ export default function Help() {
         </View>
 
         {/* Additional Help Text */}
-        <View className="px-4 pb-2 pt-6">
-          <Text className="text-center text-sm text-muted-foreground">
-            Need more help? Email <Text className="font-medium text-white">hello@solid.xyz</Text>
+        <View className="px-4 pt-6 pb-2">
+          <Text className="text-muted-foreground text-sm text-center">
+            Need more help? Email <Text className="text-white font-medium">hello@solid.xyz</Text>
           </Text>
         </View>
       </View>

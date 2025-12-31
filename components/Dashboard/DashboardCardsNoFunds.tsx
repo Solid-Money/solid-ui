@@ -7,11 +7,11 @@ export function DashboardCardsNoFunds() {
 
 function DepositStableCoinsCard() {
   return (
-    <View className="w-full rounded-2xl bg-gradient-to-tr from-[rgba(165,84,234,0.25)] to-[rgba(165,84,234,0.175)] p-10 px-12  shadow-sm">
+    <View className="w-full bg-gradient-to-tr from-[rgba(165,84,234,0.25)] to-[rgba(165,84,234,0.175)] rounded-2xl p-10 px-12  shadow-sm">
       <View className="flex-1">
-        <View className="flex-row items-start justify-between">
+        <View className="flex-row justify-between items-start">
           <View className="flex-1 items-start gap-24">
-            <Text className="text-xl font-semibold text-white sm:text-2xl md:text-3xl lg:text-4xl">
+            <Text className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-white">
               Deposit your stablecoins{'\n'}and earn{' '}
               <Text className="text-[#94F27F] underline">4.5%</Text> per year
             </Text>
@@ -31,7 +31,7 @@ function DepositStableCoinsCard() {
 
 function IconsWithText() {
   return (
-    <View className="w-[65%] flex-row justify-between">
+    <View className="flex-row w-[65%] justify-between">
       <IconWithText
         iconSource={require('@/assets/images/no_funds_deposit_icon.png')}
         text={`Deposit as${'\n'}little as $1`}
@@ -52,7 +52,7 @@ function IconWithText({ iconSource, text }: { iconSource: any; text: string }) {
   return (
     <View>
       <Image source={iconSource} style={{ width: 60, height: 60 }} />
-      <Text className="mt-4 text-base text-white sm:text-lg md:text-xl lg:text-2xl">{text}</Text>
+      <Text className="text-base sm:text-lg md:text-xl lg:text-2xl text-white mt-4">{text}</Text>
     </View>
   );
 }

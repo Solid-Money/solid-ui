@@ -9,8 +9,8 @@ type CoinNameProps = {
 const CoinName = ({ contractName, contractTickerSymbol }: CoinNameProps) => {
   return (
     <View className="flex-row items-center gap-2">
-      <Text className="text-xl font-semibold md:text-3.5xl">{contractName}</Text>
-      <Text className="text-xl font-medium opacity-50 md:text-3.5xl">{contractTickerSymbol}</Text>
+      <Text className="text-xl md:text-3.5xl font-semibold">{contractName}</Text>
+      <Text className="text-xl md:text-3.5xl font-medium opacity-50">{contractTickerSymbol}</Text>
     </View>
   );
 };

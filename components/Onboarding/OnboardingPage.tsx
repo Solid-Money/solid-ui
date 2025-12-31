@@ -56,7 +56,7 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
     <View className="flex-1 items-center justify-center px-8" style={{ width: screenWidth }}>
       {/* Illustration with background - Responsive height */}
       <Animated.View
-        className="relative items-center justify-center"
+        className="items-center justify-center relative"
         style={[{ height: illustrationSize }, illustrationAnimatedStyle]}
       >
         {/* Background Image - show for all slides */}
@@ -99,16 +99,16 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
 
       {/* Title and Subtitle - Flexible height with slide animation */}
       <Animated.View
-        className="max-w-sm items-center justify-center"
+        className="items-center justify-center max-w-sm"
         style={[{ marginTop: textMarginTop }, textAnimatedStyle]}
       >
         {data.title && (
           <>
-            <Text style={{ fontSize: titleSize }} className="text-center font-semibold">
+            <Text style={{ fontSize: titleSize }} className="font-semibold text-center">
               {data.title}
             </Text>
             {data.subtitle && (
-              <Text style={{ fontSize: subtitleSize }} className="mt-2 text-center text-white/70">
+              <Text style={{ fontSize: subtitleSize }} className="text-white/70 text-center mt-2">
                 {data.subtitle}
               </Text>
             )}

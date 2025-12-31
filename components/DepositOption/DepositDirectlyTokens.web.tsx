@@ -113,7 +113,7 @@ const DepositDirectlyTokens = () => {
 
   return (
     <View className="gap-y-2">
-      <Text className="text-[1rem] font-medium text-muted-foreground">Choose a token</Text>
+      <Text className="text-muted-foreground font-medium text-[1rem]">Choose a token</Text>
 
       <View className="gap-y-1.5">
         {availableTokens.map(token => {

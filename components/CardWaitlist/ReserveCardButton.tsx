@@ -173,7 +173,7 @@ const ReserveCardButton = () => {
       />
       <Button
         variant="brand"
-        className="h-12 rounded-xl px-8"
+        className="rounded-xl h-12 px-8"
         onPress={handleReserveCard}
         disabled={loading}
       >
