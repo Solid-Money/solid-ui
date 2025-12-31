@@ -64,13 +64,13 @@ export default function AddReferrer() {
 
   return (
     <PageLayout desktopOnly>
-      <View className="flex-1 justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
-        <View className="gap-5 md:gap-5 w-full mx-auto">
+      <View className="mx-auto w-full max-w-lg flex-1 justify-center gap-10 px-4 py-8">
+        <View className="mx-auto w-full gap-5 md:gap-5">
           <View className="flex-row items-center justify-between">
             <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
               <ArrowLeft color="white" />
             </Pressable>
-            <Text className="text-white text-lg md:text-xl font-semibold text-center">
+            <Text className="text-center text-lg font-semibold text-white md:text-xl">
               Enter your friend&apos;s referral code
             </Text>
             <View className="w-10" />
@@ -81,19 +81,19 @@ export default function AddReferrer() {
                 <ActivityIndicator color="white" />
               </View>
             ) : hasReferrer ? (
-              <View className="bg-[#1A1A1A] rounded-xl p-4">
-                <Text className="text-white/70 text-sm mb-2">
+              <View className="rounded-xl bg-[#1A1A1A] p-4">
+                <Text className="mb-2 text-sm text-white/70">
                   You have already added a referrer
                 </Text>
-                <Text className="text-white text-base">Referrers cannot be changed once set.</Text>
+                <Text className="text-base text-white">Referrers cannot be changed once set.</Text>
               </View>
             ) : (
               <>
-                <View className="flex-col justify-center w-full">
-                  <Text className="text-white/70 text-left mt-8">Referral code</Text>
+                <View className="w-full flex-col justify-center">
+                  <Text className="mt-8 text-left text-white/70">Referral code</Text>
                 </View>
                 <TextInput
-                  className="bg-[#1A1A1A] rounded-xl px-4 h-14 text-white mt-6"
+                  className="mt-6 h-14 rounded-xl bg-[#1A1A1A] px-4 text-white"
                   placeholder="Enter your friend's referral code"
                   placeholderTextColor="#666"
                   value={code}
@@ -101,13 +101,13 @@ export default function AddReferrer() {
                   autoFocus
                 />
                 {error && (
-                  <View className="flex-row items-center gap-2 my-2">
+                  <View className="my-2 flex-row items-center gap-2">
                     <InfoError />
                     <Text className="text-sm text-red-400">{error}</Text>
                   </View>
                 )}
                 <Button
-                  className="rounded-xl h-12 w-full mt-6 bg-[#94F27F]"
+                  className="mt-6 h-12 w-full rounded-xl bg-[#94F27F]"
                   onPress={onSubmit}
                   disabled={!code || loading}
                 >

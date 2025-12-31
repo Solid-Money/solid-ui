@@ -10,7 +10,7 @@ import SwapModal from '@/components/Swap/SwapModal';
 
 const DashboardHeaderButtonsMobile = () => {
   return (
-    <View className="flex-row justify-center gap-12 items-center">
+    <View className="flex-row items-center justify-center gap-12">
       <DepositOptionModal
         trigger={
           <CircleButton

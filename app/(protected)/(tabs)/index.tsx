@@ -133,9 +133,9 @@ export default function Home() {
 
   return (
     <PageLayout isLoading={isBalanceLoading}>
-      <View className="gap-8 md:gap-12 px-0 md:px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
+      <View className="mx-auto mb-5 w-full max-w-7xl gap-8 px-0 py-0 pb-20 md:gap-12 md:px-4 md:py-12">
         {isScreenMedium ? (
-          <View className="flex-row justify-between items-center">
+          <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <View className="flex-row items-center">
                 {isLoadingTokens ||
@@ -143,7 +143,7 @@ export default function Home() {
                 isAPYsLoading ||
                 firstDepositTimestamp === undefined ||
                 savings === undefined ? (
-                  <Skeleton className="w-56 h-[4.5rem] rounded-xl" />
+                  <Skeleton className="h-[4.5rem] w-56 rounded-xl" />
                 ) : (
                   <CountUp
                     prefix="$"
@@ -207,15 +207,15 @@ export default function Home() {
           />
         )}
 
-        <View className="px-4 md:px-0 mt-4 gap-3">
-          <Text className="text-lg text-muted-foreground font-semibold">Assets</Text>
+        <View className="mt-4 gap-3 px-4 md:px-0">
+          <Text className="text-lg font-semibold text-muted-foreground">Assets</Text>
           {tokenError ? (
-            <View className="flex-1 justify-center items-center p-4">
+            <View className="flex-1 items-center justify-center p-4">
               <WalletInfo text="Failed to load tokens" />
-              <Text className="text-sm text-muted-foreground mt-2">{tokenError}</Text>
+              <Text className="mt-2 text-sm text-muted-foreground">{tokenError}</Text>
               <TouchableOpacity
                 onPress={retryTokens}
-                className="mt-4 px-4 py-2 bg-primary rounded-lg"
+                className="mt-4 rounded-lg bg-primary px-4 py-2"
               >
                 <Text className="text-primary-foreground">Retry</Text>
               </TouchableOpacity>
@@ -229,8 +229,8 @@ export default function Home() {
           )}
         </View>
 
-        <View className="px-4 md:px-0 md:mt-10 gap-6">
-          <Text className="text-lg text-muted-foreground font-semibold">Promotions</Text>
+        <View className="gap-6 px-4 md:mt-10 md:px-0">
+          <Text className="text-lg font-semibold text-muted-foreground">Promotions</Text>
           <HomeBanners />
         </View>
       </View>

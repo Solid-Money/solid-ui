@@ -9,12 +9,12 @@ const SavingDepositTitle = () => {
   const earnings = (total * (maxAPY ?? 0)) / 100;
 
   return (
-    <Text className="text-center md:text-start text-2xl md:text-4.5xl md:leading-[3rem] font-semibold max-w-sm md:max-w-xl mx-auto md:mx-0">
+    <Text className="mx-auto max-w-sm text-center text-2xl font-semibold md:mx-0 md:max-w-xl md:text-start md:text-4.5xl md:leading-[3rem]">
       Earn{' '}
       {isMaxAPYsLoading ? (
-        <Skeleton className="w-14 md:w-24 h-6 md:h-10 bg-purple/50" />
+        <Skeleton className="h-6 w-14 bg-purple/50 md:h-10 md:w-24" />
       ) : (
-        <Text className="text-2xl md:text-4.5xl text-brand font-semibold underline underline-offset-4">
+        <Text className="text-2xl font-semibold text-brand underline underline-offset-4 md:text-4.5xl">
           ${formatNumber(earnings, 2)}
         </Text>
       )}{' '}

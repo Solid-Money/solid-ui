@@ -34,25 +34,25 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 items-center justify-center p-6">
-        <View className="items-center max-w-screen-sm w-full">
-          <View className="h-16 w-16 items-center justify-center mb-5">
+        <View className="w-full max-w-screen-sm items-center">
+          <View className="mb-5 h-16 w-16 items-center justify-center">
             <AlertTriangle size={48} color="red" />
           </View>
-          <Text className="text-2xl font-semibold mb-2 text-center">
+          <Text className="mb-2 text-center text-2xl font-semibold">
             Oops, something went wrong
           </Text>
-          <Text className="text-muted-foreground text-center mb-4" numberOfLines={3}>
+          <Text className="mb-4 text-center text-muted-foreground" numberOfLines={3}>
             Error: {error?.message || 'An unexpected error occurred.'}
           </Text>
-          <View className="flex-row gap-3 mt-2">
+          <View className="mt-2 flex-row gap-3">
             <Button
               variant="brand"
-              className="rounded-xl h-12 px-6"
+              className="h-12 rounded-xl px-6"
               onPress={() => router.replace(path.HOME)}
             >
               <Text className="text-lg font-semibold">Visit Home</Text>
             </Button>
-            <Button variant="secondary" className="rounded-xl h-12 px-6 border-0" onPress={retry}>
+            <Button variant="secondary" className="h-12 rounded-xl border-0 px-6" onPress={retry}>
               <Text className="text-lg font-semibold">Try again</Text>
             </Button>
           </View>

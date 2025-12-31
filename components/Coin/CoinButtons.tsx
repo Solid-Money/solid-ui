@@ -27,15 +27,15 @@ interface TriggerProps {
 const Trigger = ({ icon, label, ...props }: TriggerProps) => {
   return (
     <Pressable className="items-center gap-2" {...props}>
-      <View className="h-14 w-14 rounded-full items-center justify-center bg-accent">{icon}</View>
-      <Text className="text-muted-foreground font-medium">{label}</Text>
+      <View className="h-14 w-14 items-center justify-center rounded-full bg-accent">{icon}</View>
+      <Text className="font-medium text-muted-foreground">{label}</Text>
     </Pressable>
   );
 };
 
 const CoinButtons = ({ contractAddress }: CoinButtonsProps) => {
   return (
-    <View className="flex-row justify-between gap-8 items-center mx-auto">
+    <View className="mx-auto flex-row items-center justify-between gap-8">
       {isSoUSDFuse(contractAddress) ? (
         <UnstakeModal
           trigger={<Trigger icon={<ArrowDownLeft color="white" />} label="Withdraw" />}

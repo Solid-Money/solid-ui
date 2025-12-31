@@ -56,7 +56,7 @@ const BannerItem = ({
   }, [index, dataLen, hasMultipleViews]);
 
   return (
-    <Animated.View className="flex-1 h-full" style={animatedStyle}>
+    <Animated.View className="h-full flex-1" style={animatedStyle}>
       {item}
     </Animated.View>
   );

@@ -141,9 +141,9 @@ export default function Register() {
   // }
 
   return (
-    <SafeAreaView className="bg-background text-foreground flex-1">
-      <View className="flex-1 justify-center gap-7 px-4 py-8 w-full max-w-[500px] mx-auto">
-        <View className="flex-row items-center gap-5 justify-center">
+    <SafeAreaView className="flex-1 bg-background text-foreground">
+      <View className="mx-auto w-full max-w-[500px] flex-1 justify-center gap-7 px-4 py-8">
+        <View className="flex-row items-center justify-center gap-5">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
@@ -153,8 +153,8 @@ export default function Register() {
         </View>
         <View className="gap-[60px]">
           <View className="flex-col gap-2">
-            <Text className="text-3xl font-semibold text-center">Welcome!</Text>
-            <Text className="text-muted-foreground text-center font-medium max-w-64 items-center mx-auto">
+            <Text className="text-center text-3xl font-semibold">Welcome!</Text>
+            <Text className="mx-auto max-w-64 items-center text-center font-medium text-muted-foreground">
               {`Please enter a username and click on the "Create account" button`}
             </Text>
           </View>
@@ -185,7 +185,7 @@ export default function Register() {
                 variant="brand"
                 onPress={handleSubmit(handleSignupForm)}
                 disabled={signupInfo.status === Status.PENDING || !isValid || !watchedUsername}
-                className="rounded-xl h-14"
+                className="h-14 rounded-xl"
               >
                 <Text className="text-lg font-semibold">{getSignupButtonText()}</Text>
                 {signupInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}
@@ -193,16 +193,16 @@ export default function Register() {
             </View>
 
             <View className="flex-row items-center gap-4">
-              <View className="flex-1 h-px bg-white/20" />
+              <View className="h-px flex-1 bg-white/20" />
               <Text className="text-center text-muted-foreground">OR</Text>
-              <View className="flex-1 h-px bg-white/20" />
+              <View className="h-px flex-1 bg-white/20" />
             </View>
 
             <Button
               onPress={handleLogin}
               disabled={loginInfo.status === Status.PENDING || signupInfo.status === Status.PENDING}
               variant="secondary"
-              className="rounded-xl h-14 border-0"
+              className="h-14 rounded-xl border-0"
             >
               <Text className="text-lg font-semibold">{getLoginButtonText()}</Text>
               {loginInfo.status === Status.PENDING && <ActivityIndicator color="gray" />}
@@ -226,7 +226,7 @@ export default function Register() {
 
             {/* TODO: Remove when passkey works */}
             {Platform.OS !== 'web' && __DEV__ && (
-              <Button onPress={handleDummyLogin} variant="outline" className="rounded-xl h-14">
+              <Button onPress={handleDummyLogin} variant="outline" className="h-14 rounded-xl">
                 <Text className="text-lg font-semibold">Dummy Login</Text>
               </Button>
             )}

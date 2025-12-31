@@ -16,9 +16,9 @@ const APYChart = () => {
   };
 
   return (
-    <View className="md:flex-1 md:basis-1/2 bg-card rounded-twice overflow-hidden p-5 md:p-8">
+    <View className="overflow-hidden rounded-twice bg-card p-5 md:flex-1 md:basis-1/2 md:p-8">
       <View className="flex-row items-center gap-1">
-        <Text className="text-lg text-muted-foreground font-semibold">Yield history</Text>
+        <Text className="text-lg font-semibold text-muted-foreground">Yield history</Text>
         <TooltipPopover text="Historical yield of last 30 days" />
       </View>
 

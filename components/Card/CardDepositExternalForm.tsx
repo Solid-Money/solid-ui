@@ -204,17 +204,17 @@ export default function CardDepositExternalForm() {
   const disabled = sendStatus === Status.PENDING || !formState.isValid || !watchedAmount;
 
   return (
-    <View className="gap-6 flex-1">
+    <View className="flex-1 gap-6">
       <View className="gap-2">
-        <Text className="opacity-50 font-medium">From wallet</Text>
+        <Text className="font-medium opacity-50">From wallet</Text>
         <ConnectedWalletDropdown chainId={arbitrum.id} />
       </View>
 
       <View className="gap-2">
-        <Text className="opacity-50 font-medium">Deposit amount</Text>
+        <Text className="font-medium opacity-50">Deposit amount</Text>
         <View
           className={cn(
-            'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
+            'w-full flex-row items-center justify-between gap-4 rounded-2xl bg-accent px-5 py-3',
             formState.errors.amount && 'border border-red-500',
           )}
         >
@@ -224,7 +224,7 @@ export default function CardDepositExternalForm() {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="w-full text-2xl text-white font-semibold web:focus:outline-none"
+                className="w-full text-2xl font-semibold text-white web:focus:outline-none"
                 value={value as any}
                 placeholder="0.0"
                 placeholderTextColor="#666"
@@ -239,16 +239,16 @@ export default function CardDepositExternalForm() {
               alt="USDC"
               style={{ width: 34, height: 34 }}
             />
-            <Text className="font-semibold text-white text-lg">USDC</Text>
+            <Text className="text-lg font-semibold text-white">USDC</Text>
           </View>
         </View>
         {formState.errors.amount && (
-          <Text className="text-red-500 text-sm mt-1">{formState.errors.amount.message}</Text>
+          <Text className="mt-1 text-sm text-red-500">{formState.errors.amount.message}</Text>
         )}
         <View className="flex-row items-center gap-2">
           <WalletIcon color="#A1A1A1" size={16} />
           {isEOABalanceLoading ? (
-            <Skeleton className="w-20 h-5 rounded-md" />
+            <Skeleton className="h-5 w-20 rounded-md" />
           ) : (
             <Text className="text-muted-foreground">
               {formatNumber(Number(formattedEOABalance))} USDC
@@ -267,7 +267,7 @@ export default function CardDepositExternalForm() {
 
       <Button
         variant="brand"
-        className="rounded-2xl h-12"
+        className="h-12 rounded-2xl"
         disabled={disabled}
         onPress={() => {
           if (!account) {
@@ -310,7 +310,7 @@ export default function CardDepositExternalForm() {
           handleSubmit(onSubmit)();
         }}
       >
-        <Text className="font-semibold text-black text-lg">
+        <Text className="text-lg font-semibold text-black">
           {sendStatus === Status.PENDING ? 'Processing...' : 'Deposit'}
         </Text>
       </Button>

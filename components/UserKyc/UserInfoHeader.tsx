@@ -16,5 +16,5 @@ export function UserInfoHeader({ kycMode }: UserInfoHeaderProps) {
         ? 'We need some basic information to get started with your card activation'
         : 'We need some basic information to get started';
 
-  return <Text className="text-lg text-[#ACACAC] text-center">{text}</Text>;
+  return <Text className="text-center text-lg text-[#ACACAC]">{text}</Text>;
 }

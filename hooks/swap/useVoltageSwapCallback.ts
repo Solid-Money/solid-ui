@@ -23,8 +23,10 @@ export function useVoltageSwapCallback(
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivity();
   const queryClient = useQueryClient();
-  const { needAllowance, approvalConfig } =
-    useApproveCallbackFromVoltageTrade(trade, allowedSlippage);
+  const { needAllowance, approvalConfig } = useApproveCallbackFromVoltageTrade(
+    trade,
+    allowedSlippage,
+  );
 
   // For token inputs, check if we need approval
   const isTokenInput = trade?.inputAmount?.currency?.isToken;
@@ -32,7 +34,6 @@ export function useVoltageSwapCallback(
   const account = user?.safeAddress;
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
-
 
   const swapCallback = useCallback(async () => {
     if (!trade || !account || !user?.suborgId || !user?.signWith) return;
@@ -43,9 +44,7 @@ export function useVoltageSwapCallback(
 
       const transactions: Array<{ to: Address; data: `0x${string}`; value?: bigint }> = [];
 
-
       if (needAllowance && approvalConfig) {
-
         Sentry.addBreadcrumb({
           message: 'Adding Voltage approval transaction',
           category: 'swap',
@@ -96,18 +95,20 @@ export function useVoltageSwapCallback(
             outputAmount: trade?.outputAmount?.toSignificant(6),
           },
         },
-        (onUserOpHash) => executeTransactions(
-          smartAccountClient,
-          transactions,
-          'Voltage swap failed',
-          fuse,
-          onUserOpHash
-        )
+        onUserOpHash =>
+          executeTransactions(
+            smartAccountClient,
+            transactions,
+            'Voltage swap failed',
+            fuse,
+            onUserOpHash,
+          ),
       );
 
-      const transaction = result && typeof result === 'object' && 'transaction' in result
-        ? result.transaction
-        : result;
+      const transaction =
+        result && typeof result === 'object' && 'transaction' in result
+          ? result.transaction
+          : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
@@ -143,7 +144,18 @@ export function useVoltageSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [trade, account, safeAA, user, allowedSlippage, needAllowance, approvalConfig, successInfo, trackTransaction, queryClient]);
+  }, [
+    trade,
+    account,
+    safeAA,
+    user,
+    allowedSlippage,
+    needAllowance,
+    approvalConfig,
+    successInfo,
+    trackTransaction,
+    queryClient,
+  ]);
 
   // useTransactionAwait handles balance invalidation and toast notifications
   // We don't use its isLoading state since the transaction is already confirmed

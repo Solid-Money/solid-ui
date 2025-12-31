@@ -17,7 +17,7 @@ const DepositTokenSelector = () => {
 
   return (
     <View className="gap-y-2">
-      <Text className="text-muted-foreground font-medium">Select a token</Text>
+      <Text className="font-medium text-muted-foreground">Select a token</Text>
 
       <View className="gap-y-1.5">
         {Object.entries(tokens ?? {}).map(([key, token]) => {
