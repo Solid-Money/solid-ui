@@ -147,7 +147,7 @@ export default function Coin() {
                 {isScreenMedium && <CoinChartTime />}
               </View>
 
-              <View className="px-4 -mt-4 md:mt-0">
+              <View className="px-4 -mt-2 md:mt-0">
                 {isLoadingCoinHistoricalChart ? (
                   <View className="h-[200px] items-center justify-center">
                     <ActivityIndicator size="large" color="white" />
