@@ -93,6 +93,7 @@ export default {
           ios: {
             deploymentTarget: '15.1',
             useFrameworks: 'static',
+            forceStaticLinking: ['RNFBApp', 'RNFBMessaging', 'RNFBAnalytics']
           },
           android: {
             minSdkVersion: 26,
