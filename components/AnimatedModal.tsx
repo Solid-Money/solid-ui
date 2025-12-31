@@ -7,7 +7,6 @@ import Animated, {
   FadeInRight,
   FadeOutLeft,
   FadeOutRight,
-  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -23,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-const ANIMATION_DURATION = 150;
+const ANIMATION_DURATION = 350;
 
 export interface ModalState {
   name: string;
@@ -74,6 +73,18 @@ const AnimatedModal = ({
 }: AnimatedModalProps) => {
   const dialogHeight = useSharedValue(0);
 
+  const titleEntering = shouldAnimate
+    ? (isForward ? FadeInRight : FadeInLeft).duration(10).springify()
+    : undefined;
+
+  const titleExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(10);
+
+  const contentEntering = shouldAnimate
+    ? (isForward ? FadeInRight : FadeInLeft).duration(250)
+    : undefined;
+
+  const contentExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(250);
+
   const dialogAnimatedStyle = useAnimatedStyle(() => {
     if (!shouldAnimate) {
       return {
@@ -104,37 +115,21 @@ const AnimatedModal = ({
                 className={cn('flex-row items-center justify-between gap-2', titleClassName)}
               >
                 {showBackButton && onBackPress && (
-                  <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
-                    <Button
-                      variant="ghost"
-                      className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
-                      onPress={onBackPress}
-                    >
-                      <ArrowLeft color="white" size={20} />
-                    </Button>
-                  </Animated.View>
+                  <Button
+                    variant="ghost"
+                    className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                    onPress={onBackPress}
+                  >
+                    <ArrowLeft color="white" size={20} />
+                  </Button>
                 )}
-                <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
+                <Animated.View key={contentKey} entering={titleEntering} exiting={titleExiting}>
                   <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
                 </Animated.View>
                 {showBackButton && <View className="w-10" />}
               </DialogHeader>
             )}
-            <Animated.View
-              entering={
-                shouldAnimate
-                  ? isForward
-                    ? FadeInRight.duration(ANIMATION_DURATION)
-                    : FadeInLeft.duration(ANIMATION_DURATION)
-                  : undefined
-              }
-              exiting={
-                isForward
-                  ? FadeOutLeft.duration(ANIMATION_DURATION)
-                  : FadeOutRight.duration(ANIMATION_DURATION)
-              }
-              key={contentKey}
-            >
+            <Animated.View entering={contentEntering} exiting={contentExiting} key={contentKey}>
               {children}
             </Animated.View>
           </View>
