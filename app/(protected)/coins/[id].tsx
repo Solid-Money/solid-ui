@@ -101,8 +101,12 @@ export default function Coin() {
             </View>
           )}
 
-          <View className="md:flex-row flex-wrap justify-between gap-8 md:gap-10">
-            {!isScreenMedium && <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />}
+          <View className="md:flex-row justify-between gap-8 md:gap-10">
+            {!isScreenMedium && (
+              <View className="items-start">
+                <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
+              </View>
+            )}
             <View style={{ flex: isScreenMedium ? 0.7 : 1 }}>
               <View className="flex-row items-center justify-between">
                 <View className="flex-1 gap-2">
@@ -143,7 +147,7 @@ export default function Coin() {
                 {isScreenMedium && <CoinChartTime />}
               </View>
 
-              <View className="px-4">
+              <View className="px-4 -mt-4 md:mt-0">
                 {isLoadingCoinHistoricalChart ? (
                   <View className="h-[200px] items-center justify-center">
                     <ActivityIndicator size="large" color="white" />
