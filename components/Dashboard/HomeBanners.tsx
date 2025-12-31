@@ -39,21 +39,21 @@ const BannerItem = ({
   const isWeb = Platform.OS === 'web';
 
   const animatedStyle = useAnimatedStyle(() => {
-    const currentIndex = Math.round(progress.value);
-    const nextIndex = (currentIndex + 1) % dataLen;
+    // const currentIndex = Math.round(progress.value);
+    // const nextIndex = (currentIndex + 1) % dataLen;
 
     if (hasMultipleViews) {
-      const isCurrent = index === currentIndex;
-      const isNext = index === nextIndex;
+      // const isCurrent = index === currentIndex;
+      // const isNext = index === nextIndex;
       return {
-        paddingRight: isCurrent || !isWeb ? gapPadding.value : 0,
-        paddingLeft: isNext || !isWeb ? gapPadding.value : 0,
+        paddingRight: gapPadding.value, //isCurrent ? gapPadding.value : 0,
+        paddingLeft: gapPadding.value, //isNext ? gapPadding.value : 0,
       };
     }
 
     return {
-      paddingRight: 0,
-      paddingLeft: 0,
+      paddingRight: 16,
+      paddingLeft: 16,
     };
   }, [index, dataLen, hasMultipleViews]);
 
