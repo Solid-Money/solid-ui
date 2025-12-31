@@ -1,3 +1,4 @@
+import '@/global.css';
 import CardDepositModalProvider from '@/components/Card/CardDepositModalProvider';
 import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
 import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
@@ -11,7 +12,6 @@ import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
 import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
-import '@/global.css';
 import { infoClient } from '@/graphql/clients';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';

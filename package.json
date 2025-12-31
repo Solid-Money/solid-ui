@@ -118,7 +118,7 @@
     "react-hook-form": "^7.69.0",
     "react-native": "0.81.5",
     "react-native-animated-rolling-numbers": "^2.0.0",
-    "react-native-css-interop": "^0.1.22",
+    "react-native-css-interop": "0.2.1",
     "react-native-device-info": "^11.1.0",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-get-random-values": "~1.11.0",
@@ -145,7 +145,6 @@
     "stream-browserify": "^3.0.0",
     "stream-http": "^3.2.0",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
     "thirdweb": "^5.116.1",
     "tslib": "^2.8.1",
@@ -177,6 +176,7 @@
     "jest-expo": "~54.0.16",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.5.11",
+    "tailwindcss": "^3.4.17",
     "typescript": "~5.9.3"
   },
   "overrides": {
