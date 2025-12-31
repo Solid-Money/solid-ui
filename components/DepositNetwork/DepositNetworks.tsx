@@ -33,7 +33,7 @@ const DepositNetworks = () => {
 
   return (
     <View className="gap-y-2">
-      <Text className="text-[1rem] font-medium text-muted-foreground">Choose a network</Text>
+      <Text className="text-muted-foreground font-medium text-[1rem]">Choose a network</Text>
 
       <View className="gap-y-1.5">
         {Object.entries(BRIDGE_TOKENS)

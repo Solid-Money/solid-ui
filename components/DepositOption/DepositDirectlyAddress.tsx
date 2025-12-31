@@ -147,7 +147,7 @@ const DepositDirectlyAddress = () => {
       valueContent: (
         <View className="flex-row items-center gap-1.5">
           <Image source={SOUSD_ICON} style={{ width: 18, height: 18 }} contentFit="cover" />
-          <Text className="text-base font-bold text-white">
+          <Text className="font-bold text-white text-base">
             {formatNumber(soUSDAmount, 2, 2)}{' '}
             <Text className="text-white/70">soUSD on Ethereum</Text>
           </Text>
@@ -158,7 +158,7 @@ const DepositDirectlyAddress = () => {
     rows.push({
       label: 'Price',
       valueContent: (
-        <Text className="text-base font-bold text-white">
+        <Text className="font-bold text-white text-base">
           1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
           {selectedToken}
         </Text>
@@ -170,7 +170,7 @@ const DepositDirectlyAddress = () => {
       valueContent: isAPYsLoading ? (
         <Skeleton className="h-7 w-16 bg-white/20" />
       ) : (
-        <Text className="text-base font-bold text-[#94F27F]">{formattedAPY}</Text>
+        <Text className="font-bold text-[#94F27F] text-base">{formattedAPY}</Text>
       ),
     });
 
@@ -200,10 +200,10 @@ const DepositDirectlyAddress = () => {
       </View>
 
       {/* Address card */}
-      <View className="mt-2 w-full rounded-[20px] bg-accent p-4">
+      <View className="w-full rounded-[20px] bg-accent mt-2 p-4">
         <View className="gap-4">
           <View className="flex-row items-center justify-center">
-            <Text className="text-center text-lg tracking-wide text-foreground">
+            <Text className="text-lg tracking-wide text-foreground text-center">
               {walletAddress ? eclipseAddress(walletAddress, 6, 6) : '—'}
             </Text>
             <CopyToClipboard
@@ -217,7 +217,7 @@ const DepositDirectlyAddress = () => {
             <Button
               variant="secondary"
               onPress={() => setIsQrDialogOpen(true)}
-              className="h-9 flex-1 rounded-2xl border-0 bg-secondary-hover"
+              className="h-9 flex-1 rounded-2xl bg-secondary-hover border-0"
             >
               <Copy size={14} color="white" />
               <Text className="font-bold text-white">Show QR</Text>
@@ -225,7 +225,7 @@ const DepositDirectlyAddress = () => {
             <Button
               variant="secondary"
               onPress={handleShare}
-              className="h-9 flex-1 rounded-2xl border-0 bg-secondary-hover"
+              className="h-9 flex-1 rounded-2xl bg-secondary-hover border-0"
             >
               <Share2 size={18} color="white" />
               <Text className="font-bold text-white">Share</Text>
@@ -239,9 +239,9 @@ const DepositDirectlyAddress = () => {
       </View>
 
       {/* Warning Text */}
-      <View className="my-2 flex-row items-center justify-center gap-1.5 px-4 md:my-0">
+      <View className="flex-row items-center justify-center gap-1.5 px-4 md:my-0 my-2">
         <Info size={16} color="#A1A1AA" />
-        <Text className="text-center text-sm text-[#A1A1AA]">
+        <Text className="text-[#A1A1AA] text-sm text-center">
           Please send only {selectedToken} to this address
         </Text>
         <TooltipPopover
@@ -256,14 +256,14 @@ const DepositDirectlyAddress = () => {
         <View className="w-full rounded-2xl bg-accent">
           {priceRows.map((row, index) => (
             <View key={row.label}>
-              <View className="flex-row items-center justify-between gap-1.5 px-5 py-4">
-                <Text className="text-base font-medium text-muted-foreground">{row.label}</Text>
+              <View className="flex-row items-center justify-between px-5 py-4 gap-1.5">
+                <Text className="font-medium text-base text-muted-foreground">{row.label}</Text>
                 <View className="flex-row items-center gap-2">
                   {row.valueContent ? (
                     row.valueContent
                   ) : (
                     <Text
-                      className={`text-base font-medium text-foreground ${row.valueClassName ? row.valueClassName : ''}`}
+                      className={`font-medium text-foreground text-base ${row.valueClassName ? row.valueClassName : ''}`}
                     >
                       {row.value}
                     </Text>
@@ -271,7 +271,7 @@ const DepositDirectlyAddress = () => {
                   {row.extra}
                 </View>
               </View>
-              {index !== priceRows.length - 1 && <View className="ml-5 h-px bg-primary/10" />}
+              {index !== priceRows.length - 1 && <View className="h-px bg-primary/10 ml-5" />}
             </View>
           ))}
         </View>
@@ -282,10 +282,10 @@ const DepositDirectlyAddress = () => {
         <View className="w-full rounded-2xl bg-accent">
           {infoRows.map((row, index) => (
             <View key={row.label}>
-              <View className="flex-row items-center justify-between gap-1.5 px-5 py-4">
+              <View className="flex-row items-center justify-between px-5 py-4 gap-1.5">
                 <View className="flex-row items-center gap-1.5">
                   {row.icon}
-                  <Text className="text-base font-medium text-muted-foreground">{row.label}</Text>
+                  <Text className="font-medium text-base text-muted-foreground">{row.label}</Text>
                 </View>
                 <View className="flex-row items-center gap-2">
                   {row.valueContent ? (
@@ -300,7 +300,7 @@ const DepositDirectlyAddress = () => {
                   {row.extra}
                 </View>
               </View>
-              {index !== infoRows.length - 1 && <View className="ml-5 h-px bg-primary/10" />}
+              {index !== infoRows.length - 1 && <View className="h-px bg-primary/10 ml-5" />}
             </View>
           ))}
         </View>
@@ -308,15 +308,15 @@ const DepositDirectlyAddress = () => {
 
       {/* Expired message */}
       {isExpired && (
-        <View className="w-full items-center rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-3">
-          <Text className="text-center font-medium text-red-400">
+        <View className="w-full rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-3 items-center">
+          <Text className="font-medium text-red-400 text-center">
             Session expired. Please create a new deposit session.
           </Text>
         </View>
       )}
 
       {/* Done button */}
-      <Button onPress={handleDone} className="mt-2 h-14 w-full rounded-2xl bg-[#94F27F]">
+      <Button onPress={handleDone} className="h-14 w-full rounded-2xl bg-[#94F27F] mt-2">
         <Text className="text-lg font-bold text-black">Done</Text>
       </Button>
 
@@ -328,7 +328,7 @@ const DepositDirectlyAddress = () => {
           onPress={() => intercom?.show()}
         >
           <MessageCircle size={18} color="#A1A1AA" />
-          <Text className="font-medium text-[#A1A1AA]">Need help?</Text>
+          <Text className="text-[#A1A1AA] font-medium">Need help?</Text>
         </Button>
       </View>
 

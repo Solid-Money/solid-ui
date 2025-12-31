@@ -10,8 +10,8 @@ const TokenSelectorDeposit = () => {
   const { user } = useUser();
 
   return (
-    <View className="rounded-xl bg-primary/10">
-      <View className="items-center justify-center border-b border-border/50 px-2 py-6">
+    <View className="bg-primary/10 rounded-xl">
+      <View className="justify-center items-center px-2 py-6 border-b border-border/50">
         <View className="rounded-xl bg-white p-4">
           <QRCode value={user?.safeAddress} size={200} />
         </View>

@@ -71,13 +71,13 @@ const DepositEmailModal: React.FC = () => {
         />
       </View>
 
-      <View className="mt-4 items-center gap-2">
-        <Text className="text-center text-2xl font-bold">
+      <View className="items-center gap-2 mt-4">
+        <Text className="text-2xl font-bold text-center">
           {currentStep === 'email' ? 'Email required' : 'Verify your email'}
         </Text>
         <Text
           className={cn(
-            'text-center font-medium text-muted-foreground',
+            'text-muted-foreground text-center font-medium',
             currentStep === 'email' ? 'max-w-sm' : 'max-w-xs',
           )}
         >
@@ -89,19 +89,19 @@ const DepositEmailModal: React.FC = () => {
 
       {currentStep === 'email' && (
         <View className="items-center">
-          <Text className="max-w-[23rem] text-center font-medium text-muted-foreground">
+          <Text className="text-muted-foreground text-center font-medium max-w-[23rem]">
             This email will be used for account recovery if you lose access to your passkey.
           </Text>
         </View>
       )}
 
       {rateLimitError && (
-        <View className="rounded-2xl border border-red-300 p-2.5">
-          <Text className="text-center text-sm text-red-400">{rateLimitError}</Text>
+        <View className="p-2.5 border border-red-300 rounded-2xl">
+          <Text className="text-red-400 text-sm text-center">{rateLimitError}</Text>
         </View>
       )}
 
-      <View className="mt-6 gap-4">
+      <View className="gap-4 mt-6">
         {currentStep === 'email' ? (
           <View className="gap-2">
             <Text className="font-medium text-muted-foreground">Email Address</Text>
@@ -118,7 +118,7 @@ const DepositEmailModal: React.FC = () => {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoComplete="email"
-                    className="h-14 rounded-xl bg-accent px-6 text-lg font-semibold text-foreground web:focus:outline-none"
+                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
                     placeholderTextColor="#666"
                   />
                 );
@@ -151,7 +151,7 @@ const DepositEmailModal: React.FC = () => {
                     onBlur={onBlur}
                     keyboardType="numeric"
                     maxLength={6}
-                    className="h-14 rounded-xl bg-accent px-6 text-lg font-semibold text-foreground web:focus:outline-none"
+                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
                     placeholderTextColor="#666"
                   />
                 );
@@ -169,7 +169,7 @@ const DepositEmailModal: React.FC = () => {
             }
             disabled={isFormDisabled()}
             variant="brand"
-            className="h-14 rounded-2xl"
+            className="rounded-2xl h-14"
           >
             <Text className="text-lg font-semibold">{getButtonText()}</Text>
             {isLoading && <ActivityIndicator color="gray" />}
@@ -180,13 +180,13 @@ const DepositEmailModal: React.FC = () => {
               onPress={handleEmailBack}
               variant="outline"
               disabled={isLoading}
-              className="h-14 rounded-2xl border-0"
+              className="rounded-2xl h-14 border-0"
             >
               <Text className="text-lg font-semibold">Back to Email</Text>
             </Button>
           )}
 
-          <Button onPress={handleSkip} variant="ghost" className="h-14 rounded-2xl border-0">
+          <Button onPress={handleSkip} variant="ghost" className="rounded-2xl h-14 border-0">
             <Text className="text-lg font-semibold">Skip</Text>
           </Button>
         </View>

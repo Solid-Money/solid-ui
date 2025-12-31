@@ -126,20 +126,18 @@ const useBridgeToFuse = (): BridgeResult => {
             fee: fee?.toString(),
           },
         },
-        onUserOpHash =>
-          executeTransactions(
-            smartAccountClient,
-            transactions,
-            'Bridge failed',
-            mainnet,
-            onUserOpHash,
-          ),
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Bridge failed',
+          mainnet,
+          onUserOpHash
+        )
       );
 
-      const transaction =
-        result && typeof result === 'object' && 'transaction' in result
-          ? result.transaction
-          : result;
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         const error = new Error('User cancelled transaction');
@@ -174,7 +172,7 @@ const useBridgeToFuse = (): BridgeResult => {
       return transaction;
     } catch (error) {
       console.error(error);
-
+      
       Sentry.captureException(error, {
         tags: {
           operation: 'bridge_to_fuse',
@@ -193,7 +191,7 @@ const useBridgeToFuse = (): BridgeResult => {
           address: user?.safeAddress,
         },
       });
-
+      
       setBridgeStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;

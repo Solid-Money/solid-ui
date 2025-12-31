@@ -11,7 +11,7 @@ const SavingDepositButton = () => {
       <View
         className={buttonVariants({
           variant: 'indigo',
-          className: 'h-[3.375rem] rounded-xl pr-6',
+          className: 'h-[3.375rem] pr-6 rounded-xl',
         })}
       >
         <View className="flex-row items-center gap-2">

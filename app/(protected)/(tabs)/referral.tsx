@@ -14,45 +14,45 @@ export default function Referral() {
 
   return (
     <PageLayout desktopOnly>
-      <View className="mx-auto w-full max-w-lg flex-1 justify-center gap-10 px-4 py-8">
-        <View className="mx-auto w-full gap-5 md:gap-5">
+      <View className="flex-1 justify-center gap-10 px-4 py-8 w-full max-w-lg mx-auto">
+        <View className="gap-5 md:gap-5 w-full mx-auto">
           <View className="flex-row items-center justify-between">
             <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
               <ArrowLeft color="white" />
             </Pressable>
-            <Text className="text-center text-lg font-semibold text-white md:text-xl">
+            <Text className="text-white text-lg md:text-xl font-semibold text-center">
               Share your referral code
             </Text>
             <View className="w-10" />
           </View>
-          <View className="w-full flex-col items-center justify-center">
+          <View className="flex-col items-center justify-center w-full">
             <Image
               source={require('@/assets/images/referral_large.png')}
               style={{ width: 250, height: 250 }}
             />
-            <Text className="mt-8 text-center text-white/70">
+            <Text className="text-white/70 text-center mt-8">
               Earn 10% of your referral&apos;s points
             </Text>
-            <Text className="mt-1 text-center text-white/70">
+            <Text className="text-white/70 text-center mt-1">
               Know who referred you?&nbsp;
               <Link href={path.ADD_REFERRER} className="hover:opacity-70">
-                <Text className="leading-4 underline">
+                <Text className="underline leading-4">
                   Add them so <br />
                   you both get credit
                 </Text>
               </Link>
             </Text>
-            <View className="w-full flex-col justify-center">
-              <Text className="mt-8 text-left text-white/70">Referral code</Text>
+            <View className="flex-col justify-center w-full">
+              <Text className="text-white/70 text-left mt-8">Referral code</Text>
             </View>
-            <View className="mt-4 w-full flex-row items-center justify-between rounded-2xl bg-primary/10 p-4 ps-6 font-medium text-primary">
+            <View className="flex-row w-full justify-between items-center p-4 ps-6 bg-primary/10 rounded-2xl text-primary font-medium mt-4">
               <Text className="text-base">{user?.referralCode}</Text>
               <CopyToClipboard text={user?.referralCode || ''} />
             </View>
-            <View className="mt-4 w-full flex-col justify-center">
-              <Text className="mt-8 text-left text-white/70">Referral link</Text>
+            <View className="flex-col justify-center w-full mt-4">
+              <Text className="text-white/70 text-left mt-8">Referral link</Text>
             </View>
-            <View className="mt-4 w-full flex-row items-center justify-between rounded-2xl bg-primary/10 p-4 ps-6 font-medium text-primary">
+            <View className="flex-row w-full justify-between items-center p-4 ps-6 bg-primary/10 rounded-2xl text-primary font-medium mt-4">
               <Text className="text-base">
                 https://www.solid.xyz/refer?ref={user?.referralCode}
               </Text>

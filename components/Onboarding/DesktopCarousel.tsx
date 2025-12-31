@@ -189,7 +189,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
   const contentStyles = [contentStyle0, contentStyle1, contentStyle2];
 
   return (
-    <View className="m-4 w-[30%] min-w-[280px] max-w-[400px] overflow-hidden rounded-2xl bg-[#111]">
+    <View className="w-[30%] min-w-[280px] max-w-[400px] rounded-2xl m-4 overflow-hidden bg-[#111]">
       {/* Stacked gradient backgrounds for crossfade effect */}
       {GRADIENT_COLORS.map((colors, index) => (
         <Animated.View
@@ -207,7 +207,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
 
       {/* Content Container */}
       <GestureDetector gesture={panGesture}>
-        <View className="flex-1 items-center justify-center px-6">
+        <View className="flex-1 justify-center items-center px-6">
           {/* All slides stacked, animated based on progress */}
           <View style={{ position: 'relative', width: '100%', height: 452 }}>
             {ONBOARDING_DATA.map((slide, index) => {
@@ -229,7 +229,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
                   ]}
                 >
                   {/* Illustration with background */}
-                  <View className="relative items-center justify-center" style={{ height: 320 }}>
+                  <View className="items-center justify-center relative" style={{ height: 320 }}>
                     {backgroundImage && (
                       <Image
                         source={backgroundImage}
@@ -274,11 +274,11 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
                   >
                     {slide.title && (
                       <>
-                        <Text className="text-center text-[28px] font-semibold tracking-tight text-white">
+                        <Text className="text-white text-[28px] font-semibold text-center tracking-tight">
                           {slide.title}
                         </Text>
                         {slide.subtitle && (
-                          <Text className="mt-2 text-center text-[20px] leading-6 text-white/70">
+                          <Text className="text-white/70 text-[20px] text-center mt-2 leading-6">
                             {slide.subtitle}
                           </Text>
                         )}

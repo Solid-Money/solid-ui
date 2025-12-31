@@ -25,7 +25,7 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
   return (
     <View
       className={cn(
-        'h-full w-full justify-between rounded-twice bg-card p-[30px] pb-[21px]',
+        'bg-card rounded-twice p-[30px] pb-[21px] justify-between w-full h-full',
         className,
       )}
     >
@@ -34,11 +34,11 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
         <Text className="text-lg font-medium">Wallet</Text>
       </View>
 
-      <View className="flex-row items-center justify-between">
+      <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-2">
           <View className="flex-row items-center">
             {isLoading ? (
-              <Skeleton className="h-11 w-36 rounded-xl" />
+              <Skeleton className="w-36 h-11 rounded-xl" />
             ) : (
               <CountUp
                 prefix="$"

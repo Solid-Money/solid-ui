@@ -8,7 +8,7 @@ interface WalletInfoProps {
 
 const WalletInfo = ({ text }: WalletInfoProps) => {
   return (
-    <View className="flex-1 items-center justify-center p-8">
+    <View className="flex-1 justify-center items-center p-8">
       <Text className="text-lg">{text}</Text>
     </View>
   );

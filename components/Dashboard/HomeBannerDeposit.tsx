@@ -19,7 +19,7 @@ const HomeBannerDeposit = () => {
         overflow: 'hidden',
       }}
     >
-      <View className="relative h-full flex-row items-center justify-end">
+      <View className="relative flex-row justify-end items-center h-full">
         <Image
           source={require('@/assets/images/solid-purple-large.png')}
           contentFit="contain"
@@ -31,13 +31,13 @@ const HomeBannerDeposit = () => {
             left: -40,
           }}
         />
-        <Text className="max-w-52 font-medium font-semibold leading-tight">
+        <Text className="font-semibold max-w-52 leading-tight font-medium">
           Deposit your stablecoins and earn{' '}
           {isMaxAPYsLoading ? (
-            <Skeleton className="h-4 w-14 bg-purple/50" />
+            <Skeleton className="w-14 h-4 bg-purple/50" />
           ) : (
             <Text
-              className={cn('font-bold text-brand', {
+              className={cn('text-brand font-bold', {
                 underline: Platform.OS === 'web',
               })}
             >

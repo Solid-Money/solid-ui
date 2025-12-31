@@ -47,19 +47,19 @@ export function AnimatedStepContent({
   return (
     <Animated.View style={animatedStyle}>
       {step.description && (
-        <Text className="mb-4 text-sm leading-5 text-white/60">{step.description}</Text>
+        <Text className="text-sm text-white/60 mb-4 leading-5">{step.description}</Text>
       )}
 
       {step.buttonText && !step.completed && (
         <Button
-          className={`mb-4 h-12 w-full rounded-xl ${
+          className={`rounded-xl h-12 w-full mb-4 ${
             isButtonEnabled ? 'bg-[#94F27F]' : 'bg-gray-500 opacity-50'
           }`}
           onPress={isButtonEnabled ? step.onPress : undefined}
           disabled={!isButtonEnabled || activatingCard}
         >
           <Text
-            className={`text-base font-semibold ${
+            className={`font-semibold text-base ${
               isButtonEnabled ? 'text-black' : 'text-gray-300'
             }`}
           >

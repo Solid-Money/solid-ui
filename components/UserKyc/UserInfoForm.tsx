@@ -11,9 +11,9 @@ interface UserInfoFormProps {
 
 export function UserInfoForm({ control, errors }: UserInfoFormProps) {
   return (
-    <View className="mb-8 space-y-6">
+    <View className="space-y-6 mb-8">
       <View>
-        <Text className="mb-2 text-lg font-medium text-[#ACACAC]">Full name</Text>
+        <Text className="text-lg font-medium text-[#ACACAC] mb-2">Full name</Text>
         <Controller
           control={control}
           name="fullName"
@@ -21,18 +21,18 @@ export function UserInfoForm({ control, errors }: UserInfoFormProps) {
             <TextInput
               value={value}
               onChangeText={onChange}
-              className="h-14 rounded-xl bg-[#333331] px-6 text-lg font-semibold text-foreground"
+              className="h-14 px-6 rounded-xl text-lg text-foreground font-semibold bg-[#333331]"
               autoCapitalize="words"
             />
           )}
         />
         {errors.fullName && (
-          <Text className="mt-1 text-sm text-red-500">{errors.fullName.message}</Text>
+          <Text className="text-red-500 text-sm mt-1">{errors.fullName.message}</Text>
         )}
       </View>
 
       <View>
-        <Text className="mb-2 mt-6 text-lg font-medium text-[#ACACAC]">Email Address</Text>
+        <Text className="text-lg font-medium text-[#ACACAC] mb-2 mt-6">Email Address</Text>
         <Controller
           control={control}
           name="email"
@@ -41,13 +41,13 @@ export function UserInfoForm({ control, errors }: UserInfoFormProps) {
               value={value}
               onChangeText={onChange}
               keyboardType="email-address"
-              className="h-14 rounded-xl bg-[#333331] px-6 text-lg font-semibold text-foreground"
+              className="h-14 px-6 rounded-xl text-lg text-foreground font-semibold bg-[#333331]"
               autoCapitalize="none"
               autoComplete="email"
             />
           )}
         />
-        {errors.email && <Text className="mt-1 text-sm text-red-500">{errors.email.message}</Text>}
+        {errors.email && <Text className="text-red-500 text-sm mt-1">{errors.email.message}</Text>}
       </View>
     </View>
   );

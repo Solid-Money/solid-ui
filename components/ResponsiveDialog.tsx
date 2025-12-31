@@ -47,9 +47,9 @@ const ResponsiveDialog = ({
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         className={cn(
-          'p-4 md:max-w-md md:p-8',
+          'p-4 md:p-8 md:max-w-md',
           contentClassName,
-          !isScreenMedium ? 'mt-8 w-screen max-w-full justify-start' : '',
+          !isScreenMedium ? 'w-screen max-w-full mt-8 justify-start' : '',
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
       >

@@ -31,7 +31,7 @@ const ResponsiveBalanceBreakdown = ({ token }: { token: TokenBalance | undefined
   return (
     <View style={{ flex: isScreenMedium ? 0.3 : 1 }} className="relative">
       <BalanceBreakdown token={token} className="z-10" />
-      <EarningYield token={token} className="-mt-4 rounded-t-none" />
+      <EarningYield token={token} className="rounded-t-none -mt-4" />
     </View>
   );
 };
@@ -83,11 +83,11 @@ export default function Coin() {
   return (
     <PageLayout desktopOnly isLoading={isLoading}>
       {!token && !isLoading ? (
-        <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 md:gap-16 md:py-12">
+        <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
           <CoinBackButton title={`Coin ${eclipseAddress(contractAddress)} not found`} />
         </View>
       ) : (
-        <View className="mx-auto w-full max-w-7xl flex-1 gap-12 px-4 py-8 md:py-12">
+        <View className="flex-1 gap-12 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-5">
               <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
@@ -101,7 +101,7 @@ export default function Coin() {
             {isScreenMedium && <DashboardHeaderButtons />}
           </View>
 
-          <View className="justify-between gap-10 md:flex-row">
+          <View className="md:flex-row justify-between gap-10">
             <View style={{ flex: isScreenMedium ? 0.7 : 1 }}>
               <View className="flex-row items-center justify-between">
                 <View className="flex-1 gap-2">
@@ -112,7 +112,7 @@ export default function Coin() {
                     />
                   )}
 
-                  <Text className="text-4xl font-semibold md:text-5xl">
+                  <Text className="text-4xl md:text-5xl font-semibold">
                     {selectedPrice
                       ? `$${formatNumber(selectedPrice)}`
                       : formattedChartData.length > 0
@@ -165,7 +165,7 @@ export default function Coin() {
 
           {token?.contractTickerSymbol && (
             <View className="gap-4">
-              <Text className="text-lg font-semibold text-muted-foreground">Recent activity</Text>
+              <Text className="text-lg text-muted-foreground font-semibold">Recent activity</Text>
               <ActivityTransactions symbol={token.contractTickerSymbol} showTimestamp={false} />
             </View>
           )}

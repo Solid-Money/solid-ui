@@ -44,7 +44,7 @@ const Ping = () => {
           opacity: opacityAnim,
         }}
       />
-      <View className="relative h-3.5 w-3.5 rounded-full bg-gradient-to-br from-green-200 to-green-500" />
+      <View className="relative rounded-full h-3.5 w-3.5 bg-gradient-to-br from-green-200 to-green-500" />
     </View>
   );
 };

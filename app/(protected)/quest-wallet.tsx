@@ -81,9 +81,9 @@ export default function QuestWallet() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background text-foreground">
-      <View className="mx-auto w-full max-w-lg px-4 pt-12">
-        <Text className="mb-8 text-center text-xl font-semibold text-white md:text-2xl">
+    <SafeAreaView className="bg-background text-foreground flex-1">
+      <View className="w-full max-w-lg mx-auto pt-12 px-4">
+        <Text className="text-white text-xl md:text-2xl font-semibold text-center mb-8">
           Quest Wallet Address
         </Text>
         {!success ? (
@@ -122,18 +122,18 @@ function WalletAddressInput({
 }: WalletAddressInputProps) {
   return (
     <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">
+      <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
+        <Text className="text-white text-2xl font-semibold mb-2 text-center">
           External Wallet Address
         </Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
+        <Text className="text-white/60 text-sm mb-6 text-center">
           {isUpdate
             ? 'Update your external wallet address (EOA) for completing quests on our partner platform'
             : "Enter your external wallet address (EOA) that you'll use to complete quests on our partner platform"}
         </Text>
 
         <TextInput
-          className="mb-4 h-12 rounded-xl bg-[#1A1A1A] px-4 text-white"
+          className="bg-[#1A1A1A] rounded-xl px-4 h-12 text-white mb-4"
           placeholder="0x..."
           placeholderTextColor="#666"
           value={walletAddress}
@@ -143,13 +143,13 @@ function WalletAddressInput({
           autoFocus
         />
         {error && (
-          <View className="mb-4 flex-row items-center gap-2">
+          <View className="flex-row items-center gap-2 mb-4">
             <InfoError />
             <Text className="text-sm text-red-400">{error}</Text>
           </View>
         )}
         <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
+          className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
           onPress={onSubmit}
           disabled={!walletAddress || loading}
         >
@@ -174,15 +174,15 @@ interface SuccessProps {
 function Success({ onClose, isUpdate }: SuccessProps) {
   return (
     <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">Success</Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
+      <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
+        <Text className="text-white text-2xl font-semibold mb-2 text-center">Success</Text>
+        <Text className="text-white/60 text-sm mb-6 text-center">
           {isUpdate
             ? 'Your external wallet address has been updated successfully.'
             : 'Your external wallet address has been saved successfully. You can now use it to complete quests on our partner platform.'}
         </Text>
 
-        <Button className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]" onPress={onClose}>
+        <Button className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]" onPress={onClose}>
           <Text className="text-base font-bold text-black">Done</Text>
         </Button>
       </View>

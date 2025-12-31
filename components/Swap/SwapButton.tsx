@@ -373,11 +373,11 @@ const SwapButton: React.FC = () => {
           disabled={isPegSwapLoading || !!pegSwapInputError}
         >
           {isPegSwapLoading ? (
-            <Text className="text-base font-semibold">Migrating...</Text>
+            <Text className="font-semibold text-base">Migrating...</Text>
           ) : needPegSwapAllowance ? (
-            <Text className="text-base font-semibold">Approve & Migrate</Text>
+            <Text className="font-semibold text-base">Approve & Migrate</Text>
           ) : (
-            <Text className="text-base font-semibold">Migrate</Text>
+            <Text className="font-semibold text-base">Migrate</Text>
           )}
         </Button>
       </View>
@@ -389,7 +389,7 @@ const SwapButton: React.FC = () => {
       <View>
         <ErrorMessage message={wrapInputError} />
         <Button className="rounded-xl" size="lg" disabled>
-          <Text className="text-base font-semibold">
+          <Text className="font-semibold text-base">
             {wrapType === WrapType.WRAP ? 'Wrap' : 'Unwrap'}
           </Text>
         </Button>
@@ -468,7 +468,7 @@ const SwapButton: React.FC = () => {
     return (
       <Button className="rounded-xl" size="lg" onPress={handleWrap}>
         {isWrapLoading ? (
-          <Text className="text-base font-semibold">
+          <Text className="font-semibold text-base">
             {wrapType === WrapType.WRAP ? 'Wrapping...' : 'Unwrapping...'}
           </Text>
         ) : wrapType === WrapType.WRAP ? (
@@ -477,10 +477,10 @@ const SwapButton: React.FC = () => {
               source={require('@/assets/images/security_key.png')}
               style={{ width: 21, height: 10 }}
             />
-            <Text className="text-base font-semibold">Wrap</Text>
+            <Text className="font-semibold text-base">Wrap</Text>
           </View>
         ) : (
-          <Text className="text-base font-semibold">Unwrap</Text>
+          <Text className="font-semibold text-base">Unwrap</Text>
         )}
       </Button>
     );
@@ -492,9 +492,9 @@ const SwapButton: React.FC = () => {
         {!isLoadingRoute && <ErrorMessage message="Insufficient liquidity for this trade." />}
         <Button className="rounded-xl" size="lg" disabled>
           {isLoadingRoute ? (
-            <Text className="text-base font-semibold">Finding Routes...</Text>
+            <Text className="font-semibold text-base">Finding Routes...</Text>
           ) : (
-            <Text className="text-base font-semibold">Swap</Text>
+            <Text className="font-semibold text-base">Swap</Text>
           )}
         </Button>
       </View>
@@ -525,20 +525,20 @@ const SwapButton: React.FC = () => {
         disabled={isButtonDisabled}
       >
         {isAnyLoading ? (
-          <Text className="text-base font-semibold">Processing Transaction...</Text>
+          <Text className="font-semibold text-base">Processing Transaction...</Text>
         ) : priceImpactSeverity > 2 && !priceImpactTooHigh ? (
-          <Text className="text-base font-semibold">Swap Anyway</Text>
+          <Text className="font-semibold text-base">Swap Anyway</Text>
         ) : needsApproval ? (
-          <Text className="text-base font-semibold">Approve & Swap</Text>
+          <Text className="font-semibold text-base">Approve & Swap</Text>
         ) : !typedValue ? (
-          <Text className="text-base font-semibold">Enter an amount</Text>
+          <Text className="font-semibold text-base">Enter an amount</Text>
         ) : (
           <View className="flex-row items-center gap-2">
             <Image
               source={require('@/assets/images/security_key.png')}
               style={{ width: 21, height: 10 }}
             />
-            <Text className="text-base font-semibold">Swap</Text>
+            <Text className="font-semibold text-base">Swap</Text>
           </View>
         )}
       </Button>
@@ -547,7 +547,7 @@ const SwapButton: React.FC = () => {
 };
 
 const ErrorMessage = ({ message }: { message: string }) => (
-  <View className="mb-3 flex-row items-center gap-2">
+  <View className="flex-row items-center gap-2 mb-3">
     <InfoError />
     <Text className="text-sm text-red-400">{message}</Text>
   </View>

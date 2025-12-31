@@ -60,29 +60,29 @@ export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose })
   return (
     <View className="p-6">
       {error && (
-        <View className="mb-5 rounded-lg bg-red-50 p-3">
-          <Text className="text-sm text-red-600">Error: {error}</Text>
+        <View className="bg-red-50 p-3 rounded-lg mb-5">
+          <Text className="text-red-600 text-sm">Error: {error}</Text>
         </View>
       )}
 
       {isLoading && (
         <View className="items-center py-8">
           <ActivityIndicator size="large" color="white" className="mb-4" />
-          <Text className="mb-2 text-gray-600">Securely fetching your card details...</Text>
-          <Text className="text-sm text-gray-500">This may take a few seconds</Text>
+          <Text className="text-gray-600 mb-2">Securely fetching your card details...</Text>
+          <Text className="text-gray-500 text-sm">This may take a few seconds</Text>
         </View>
       )}
 
       {!cardDetails && !isLoading && error && (
         <View className="items-center py-8">
-          <Text className="mb-4 text-center text-gray-600">
+          <Text className="text-gray-600 mb-4 text-center">
             Unable to load card details. Please try again.
           </Text>
           <TouchableOpacity
             onPress={handleRevealDetails}
-            className="items-center rounded-lg bg-blue-500 p-4 web:hover:bg-blue-600"
+            className="bg-blue-500 p-4 rounded-lg items-center web:hover:bg-blue-600"
           >
-            <Text className="font-semibold text-white">Retry</Text>
+            <Text className="text-white font-semibold">Retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -90,28 +90,28 @@ export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose })
       {cardDetails && (
         <View>
           <View className="mb-6">
-            <Text className="mb-2 text-xs font-medium tracking-wide text-gray-500">
+            <Text className="text-xs text-gray-500 mb-2 font-medium tracking-wide">
               CARD NUMBER
             </Text>
-            <Text className="font-mono text-xl tracking-wider">
+            <Text className="text-xl font-mono tracking-wider">
               {formatCardNumber(cardDetails.card_number)}
             </Text>
           </View>
 
-          <View className="mb-6 flex-row">
-            <View className="mr-4 flex-1">
-              <Text className="mb-2 text-xs font-medium tracking-wide text-gray-500">
+          <View className="flex-row mb-6">
+            <View className="flex-1 mr-4">
+              <Text className="text-xs text-gray-500 mb-2 font-medium tracking-wide">
                 EXPIRY DATE
               </Text>
-              <Text className="font-mono text-lg">{formatExpiryDate(cardDetails.expiry_date)}</Text>
+              <Text className="text-lg font-mono">{formatExpiryDate(cardDetails.expiry_date)}</Text>
             </View>
             <View className="flex-1">
-              <Text className="mb-2 text-xs font-medium tracking-wide text-gray-500">CVV</Text>
-              <Text className="font-mono text-lg">{cardDetails.card_security_code}</Text>
+              <Text className="text-xs text-gray-500 mb-2 font-medium tracking-wide">CVV</Text>
+              <Text className="text-lg font-mono">{cardDetails.card_security_code}</Text>
             </View>
           </View>
 
-          <View className="mb-6 rounded-lg bg-orange-50 p-3">
+          <View className="bg-orange-50 p-3 rounded-lg mb-6">
             <Text className="text-xs text-orange-700">
               ⚠️ Keep this information secure. Do not share or store these details.
             </Text>
@@ -119,9 +119,9 @@ export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose })
 
           <TouchableOpacity
             onPress={handleClose}
-            className="items-center rounded-lg bg-gray-600 p-4 web:hover:bg-gray-700"
+            className="bg-gray-600 p-4 rounded-lg items-center web:hover:bg-gray-700"
           >
-            <Text className="font-semibold text-white">Close</Text>
+            <Text className="text-white font-semibold">Close</Text>
           </TouchableOpacity>
         </View>
       )}

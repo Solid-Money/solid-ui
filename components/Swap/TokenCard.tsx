@@ -88,10 +88,10 @@ const TokenCard: React.FC<TokenCardProps> = ({
   );
 
   return (
-    <View className="flex w-full flex-col gap-3">
+    <View className="flex flex-col w-full gap-3">
       {title && (
         <View className="flex-row items-center justify-between gap-2 px-1">
-          <Text className="text-base font-medium tracking-wide text-white/70">{title}</Text>
+          <Text className="text-base text-white/70 font-medium tracking-wide">{title}</Text>
           {currency && account && (
             <View className="flex-row items-center gap-2">
               {showBalance && (
@@ -101,7 +101,7 @@ const TokenCard: React.FC<TokenCardProps> = ({
                     color={Platform.OS === 'web' ? undefined : 'rgb(161, 161, 161)'}
                     className="text-muted-foreground"
                   />
-                  <Text className="text-left text-base font-medium text-white/50">
+                  <Text className="text-white/50 text-left text-base font-medium">
                     {isBalanceLoading ? '...' : balanceString}
                   </Text>
                 </View>
@@ -114,8 +114,8 @@ const TokenCard: React.FC<TokenCardProps> = ({
         </View>
       )}
 
-      <View className="flex w-full flex-row items-center rounded-2xl bg-card px-4 py-3 transition-all duration-300 ease-out">
-        <View className="mr-4 flex-1 flex-col justify-center">
+      <View className="bg-card flex flex-row w-full items-center transition-all duration-300 ease-out px-4 py-3 rounded-2xl">
+        <View className="flex-1 flex-col justify-center mr-4">
           {disabled ? (
             <Text className="text-3xl font-semibold text-foreground">
               {isLoading ? '...' : value || '0.0'}

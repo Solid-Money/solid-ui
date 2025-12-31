@@ -23,21 +23,21 @@ const ReferBanner = () => {
           overflow: 'hidden',
         }}
       >
-        <View className="flex-1 flex-row items-center justify-between pl-5 md:px-10">
-          <View className="max-w-64 items-start justify-between gap-2 py-5 md:gap-4 md:py-7">
-            <Text className="text-xl font-semibold md:text-3xl">Refer & Earn</Text>
-            <Text className="font-semibold text-muted-foreground">
+        <View className="flex-1 flex-row justify-between items-center pl-5 md:px-10">
+          <View className="max-w-64 justify-between items-start gap-2 md:gap-4 py-5 md:py-7">
+            <Text className="text-xl md:text-3xl font-semibold">Refer & Earn</Text>
+            <Text className="text-muted-foreground font-semibold">
               Invite your friends and get 1% cashback on their purchases
             </Text>
             <Button
               variant="secondary"
-              className="h-12 rounded-xl border-0 px-6"
+              className="rounded-xl h-12 px-6 border-0"
               onPress={() => router.push(path.REFERRAL)}
             >
-              <Text className="text-base font-bold text-primary">Refer friends</Text>
+              <Text className="text-base text-primary font-bold">Refer friends</Text>
             </Button>
           </View>
-          <View className="pointer-events-none -ml-6 md:ml-0">
+          <View className="-ml-6 md:ml-0 pointer-events-none">
             <Image
               source={require('@/assets/images/one-percent-cashback.png')}
               contentFit="contain"

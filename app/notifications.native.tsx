@@ -27,17 +27,17 @@ export default function Notifications() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background text-foreground">
+    <SafeAreaView className="bg-background text-foreground flex-1">
       <View className="flex-1 px-6">
-        <View className="mb-8 items-center gap-4">
-          <Text className="px-4 text-center text-lg font-medium leading-6 text-gray-300">
+        <View className="gap-4 items-center mb-8">
+          <Text className="text-center text-gray-300 text-lg leading-6 px-4 font-medium">
             Allow Solid to send you notifications about your transactions, price movements, new
             features and more
           </Text>
         </View>
 
         {/* Content */}
-        <View className="flex-1 items-center justify-center gap-8">
+        <View className="flex-1 justify-center items-center gap-8">
           {/* Main image with notification previews */}
           <Image
             source={require('@/assets/images/grant_notifications.png')}
@@ -48,10 +48,10 @@ export default function Notifications() {
         </View>
 
         {/* Continue button */}
-        <View className="pb-12 pt-8">
+        <View className="pt-8 pb-12">
           <Button
             variant="brand"
-            className="h-16 w-full rounded-xl"
+            className="rounded-xl h-16 w-full"
             onPress={handleContinue}
             disabled={isLoading}
           >

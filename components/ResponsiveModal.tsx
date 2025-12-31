@@ -121,9 +121,9 @@ const ResponsiveModal = ({
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         className={cn(
-          'px-4 pb-0 pt-4 md:max-w-md md:px-8 md:pb-0 md:pt-8',
+          'pt-4 px-4 pb-0 md:pt-8 md:px-8 md:pb-0 md:max-w-md',
           contentClassName,
-          !isScreenMedium ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
+          !isScreenMedium ? 'w-screen max-w-full mt-[5vh] justify-start' : '',
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
         showCloseButton={false}
@@ -137,13 +137,13 @@ const ResponsiveModal = ({
           >
             {hasHeader ? (
               <DialogHeader
-                className={cn('flex-row items-center justify-between gap-2', titleClassName)}
+                className={cn('flex-row items-center gap-2 justify-between', titleClassName)}
               >
                 {hasBackButton ? (
                   <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
                     <Button
                       variant="ghost"
-                      className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                      className="h-10 w-10 rounded-full p-0 bg-popover web:transition-colors web:hover:bg-muted"
                       onPress={onBackPress}
                     >
                       <ArrowLeft color="white" size={20} />

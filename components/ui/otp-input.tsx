@@ -97,7 +97,7 @@ export function OtpInput({
           key={index}
           onPress={() => handlePress(index)}
           className={cn(
-            'h-14 w-12 items-center justify-center rounded-[15px] border bg-[#2F2F2F] md:h-[78px] md:w-[65px]',
+            'w-12 h-14 md:w-[65px] md:h-[78px] rounded-[15px] border items-center justify-center bg-[#2F2F2F]',
             {
               'border-transparent': !error && !value[index],
               'border-white/50': !error && value[index],
@@ -117,7 +117,7 @@ export function OtpInput({
             editable={!disabled}
             selectTextOnFocus
             className={cn(
-              'h-full w-full text-center text-2xl font-bold text-white',
+              'text-center text-2xl font-bold text-white w-full h-full',
               Platform.OS === 'web' && 'outline-none',
             )}
             style={{

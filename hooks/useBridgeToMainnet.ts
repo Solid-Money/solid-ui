@@ -45,210 +45,205 @@ const useBridgeToMainnet = (): BridgeResult => {
     chainId: fuse.id,
   });
 
-  const bridge = useCallback(
-    async (amount: string) => {
-      try {
-        if (!user) {
-          const error = new Error('User is not selected');
-          track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_ERROR, {
-            amount: amount,
-            error: 'User not found',
-            step: 'validation',
-            source: 'useBridgeToMainnet',
-          });
-          Sentry.captureException(error, {
-            tags: {
-              operation: 'bridge_to_mainnet',
-              step: 'validation',
-            },
-            extra: {
-              amount,
-              hasUser: !!user,
-            },
-          });
-          throw error;
-        }
-
-        track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_INITIATED, {
-          amount: amount,
-          fee: fee?.toString() || '0',
-          from_chain: fuse.id,
-          to_chain: 1, // mainnet
-          source: 'useBridgeToMainnet',
-        });
-
-        setBridgeStatus(Status.PENDING);
-        setError(null);
-
-        const amountWei = parseUnits(amount, 6);
-
-        Sentry.addBreadcrumb({
-          message: 'Starting bridge to Mainnet transaction',
-          category: 'bridge',
-          data: {
-            amount,
-            amountWei: amountWei.toString(),
-            userAddress: user.safeAddress,
-            chainId: fuse.id,
-          },
-        });
-
-        const callData = encodeFunctionData({
-          abi: ETHEREUM_TELLER_ABI,
-          functionName: 'bridge',
-          args: [
-            amountWei,
-            user.safeAddress,
-            encodeAbiParameters(parseAbiParameters('uint32'), [30101]),
-            ADDRESSES.fuse.nativeFeeToken,
-            fee ? fee : 0n,
-          ],
-        });
-
-        const transactions = [
-          {
-            to: ADDRESSES.fuse.vault,
-            data: encodeFunctionData({
-              abi: erc20Abi,
-              functionName: 'transfer',
-              args: [ADDRESSES.fuse.bridgePaymasterAddress, amountWei],
-            }),
-            value: 0n,
-          },
-          {
-            to: ADDRESSES.fuse.bridgePaymasterAddress,
-            data: encodeFunctionData({
-              abi: BridgePayamster_ABI,
-              functionName: 'callWithValue',
-              args: [ADDRESSES.fuse.teller, '0x05921740', callData, fee ? fee : 0n],
-            }),
-            value: 0n,
-          },
-        ];
-
-        const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
-
-        const result = await trackTransaction(
-          {
-            type: TransactionType.BRIDGE_DEPOSIT,
-            title: `Withdraw ${amount} soUSD`,
-            shortTitle: `Withdraw ${amount}`,
-            amount,
-            symbol: 'USDC',
-            chainId: fuse.id,
-            fromAddress: user.safeAddress,
-            toAddress: user.safeAddress,
-            metadata: {
-              description: `Withdraw ${amount} soUSD from Fuse to Mainnet`,
-              fee: fee?.toString(),
-            },
-          },
-          onUserOpHash =>
-            executeTransactions(
-              smartAccountClient,
-              transactions,
-              'Withdraw failed',
-              fuse,
-              onUserOpHash,
-            ),
-        );
-
-        const transaction =
-          result && typeof result === 'object' && 'transaction' in result
-            ? result.transaction
-            : result;
-
-        if (transaction === USER_CANCELLED_TRANSACTION) {
-          const error = new Error('User cancelled transaction');
-          track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_CANCELLED, {
-            amount: amount,
-            fee: fee?.toString() || '0',
-            from_chain: fuse.id,
-            to_chain: 1,
-            source: 'useBridgeToMainnet',
-          });
-          Sentry.captureException(error, {
-            tags: {
-              operation: 'bridge_to_mainnet',
-              step: 'execution',
-              reason: 'user_cancelled',
-            },
-            extra: {
-              amount,
-              userAddress: user.safeAddress,
-              chainId: fuse.id,
-              fee: fee?.toString(),
-            },
-            user: {
-              id: user?.userId,
-              address: user?.safeAddress,
-            },
-          });
-          throw error;
-        }
-
-        track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_COMPLETED, {
-          amount: amount,
-          transaction_hash: transaction.transactionHash,
-          fee: fee?.toString() || '0',
-          from_chain: fuse.id,
-          to_chain: 1,
-          source: 'useBridgeToMainnet',
-        });
-
-        Sentry.addBreadcrumb({
-          message: 'Bridge to Mainnet transaction successful',
-          category: 'bridge',
-          data: {
-            amount,
-            transactionHash: transaction.transactionHash,
-            userAddress: user.safeAddress,
-            chainId: fuse.id,
-          },
-        });
-
-        setBridgeStatus(Status.SUCCESS);
-        return transaction;
-      } catch (error) {
-        console.error(error);
-
+  const bridge = useCallback(async (amount: string) => {
+    try {
+      if (!user) {
+        const error = new Error('User is not selected');
         track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_ERROR, {
           amount: amount,
+          error: 'User not found',
+          step: 'validation',
+          source: 'useBridgeToMainnet',
+        });
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'bridge_to_mainnet',
+            step: 'validation',
+          },
+          extra: {
+            amount,
+            hasUser: !!user,
+          },
+        });
+        throw error;
+      }
+
+      track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_INITIATED, {
+        amount: amount,
+        fee: fee?.toString() || '0',
+        from_chain: fuse.id,
+        to_chain: 1, // mainnet
+        source: 'useBridgeToMainnet',
+      });
+
+      setBridgeStatus(Status.PENDING);
+      setError(null);
+
+      const amountWei = parseUnits(amount, 6);
+
+      Sentry.addBreadcrumb({
+        message: 'Starting bridge to Mainnet transaction',
+        category: 'bridge',
+        data: {
+          amount,
+          amountWei: amountWei.toString(),
+          userAddress: user.safeAddress,
+          chainId: fuse.id,
+        },
+      });
+
+      const callData = encodeFunctionData({
+        abi: ETHEREUM_TELLER_ABI,
+        functionName: 'bridge',
+        args: [
+          amountWei,
+          user.safeAddress,
+          encodeAbiParameters(parseAbiParameters('uint32'), [30101]),
+          ADDRESSES.fuse.nativeFeeToken,
+          fee ? fee : 0n,
+        ],
+      });
+
+      const transactions = [
+        {
+          to: ADDRESSES.fuse.vault,
+          data: encodeFunctionData({
+            abi: erc20Abi,
+            functionName: 'transfer',
+            args: [ADDRESSES.fuse.bridgePaymasterAddress, amountWei],
+          }),
+          value: 0n,
+        },
+        {
+          to: ADDRESSES.fuse.bridgePaymasterAddress,
+          data: encodeFunctionData({
+            abi: BridgePayamster_ABI,
+            functionName: 'callWithValue',
+            args: [ADDRESSES.fuse.teller, '0x05921740', callData, fee ? fee : 0n],
+          }),
+          value: 0n,
+        },
+      ];
+
+      const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
+
+      const result = await trackTransaction(
+        {
+          type: TransactionType.BRIDGE_DEPOSIT,
+          title: `Withdraw ${amount} soUSD`,
+          shortTitle: `Withdraw ${amount}`,
+          amount,
+          symbol: 'USDC',
+          chainId: fuse.id,
+          fromAddress: user.safeAddress,
+          toAddress: user.safeAddress,
+          metadata: {
+            description: `Withdraw ${amount} soUSD from Fuse to Mainnet`,
+            fee: fee?.toString(),
+          },
+        },
+        (onUserOpHash) => executeTransactions(
+          smartAccountClient,
+          transactions,
+          'Withdraw failed',
+          fuse,
+          onUserOpHash
+        )
+      );
+
+      const transaction = result && typeof result === 'object' && 'transaction' in result
+        ? result.transaction
+        : result;
+
+      if (transaction === USER_CANCELLED_TRANSACTION) {
+        const error = new Error('User cancelled transaction');
+        track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_CANCELLED, {
+          amount: amount,
           fee: fee?.toString() || '0',
           from_chain: fuse.id,
           to_chain: 1,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          user_cancelled: String(error).includes('cancelled'),
-          step: 'execution',
           source: 'useBridgeToMainnet',
         });
-
         Sentry.captureException(error, {
           tags: {
             operation: 'bridge_to_mainnet',
             step: 'execution',
+            reason: 'user_cancelled',
           },
           extra: {
             amount,
-            userAddress: user?.safeAddress,
+            userAddress: user.safeAddress,
             chainId: fuse.id,
             fee: fee?.toString(),
-            errorMessage: error instanceof Error ? error.message : 'Unknown error',
-            bridgeStatus,
           },
           user: {
-            id: user?.suborgId,
+            id: user?.userId,
             address: user?.safeAddress,
           },
         });
-
-        setBridgeStatus(Status.ERROR);
-        setError(error instanceof Error ? error.message : 'Unknown error');
         throw error;
       }
-    },
-    [user, fee, safeAA],
-  );
+
+      track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_COMPLETED, {
+        amount: amount,
+        transaction_hash: transaction.transactionHash,
+        fee: fee?.toString() || '0',
+        from_chain: fuse.id,
+        to_chain: 1,
+        source: 'useBridgeToMainnet',
+      });
+
+      Sentry.addBreadcrumb({
+        message: 'Bridge to Mainnet transaction successful',
+        category: 'bridge',
+        data: {
+          amount,
+          transactionHash: transaction.transactionHash,
+          userAddress: user.safeAddress,
+          chainId: fuse.id,
+        },
+      });
+
+      setBridgeStatus(Status.SUCCESS);
+      return transaction;
+    } catch (error) {
+      console.error(error);
+
+      track(TRACKING_EVENTS.BRIDGE_TO_MAINNET_ERROR, {
+        amount: amount,
+        fee: fee?.toString() || '0',
+        from_chain: fuse.id,
+        to_chain: 1,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        user_cancelled: String(error).includes('cancelled'),
+        step: 'execution',
+        source: 'useBridgeToMainnet',
+      });
+
+      Sentry.captureException(error, {
+        tags: {
+          operation: 'bridge_to_mainnet',
+          step: 'execution',
+        },
+        extra: {
+          amount,
+          userAddress: user?.safeAddress,
+          chainId: fuse.id,
+          fee: fee?.toString(),
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          bridgeStatus,
+        },
+        user: {
+          id: user?.suborgId,
+          address: user?.safeAddress,
+        },
+      });
+
+      setBridgeStatus(Status.ERROR);
+      setError(error instanceof Error ? error.message : 'Unknown error');
+      throw error;
+    }
+  }, [user, fee, safeAA]);
 
   return { bridge, bridgeStatus, error };
 };

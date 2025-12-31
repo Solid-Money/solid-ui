@@ -15,11 +15,11 @@ export function PaymentMethodTile({ title, onPress, loading, disabled }: Props) 
       onPress={onPress}
       activeOpacity={0.8}
       disabled={disabled}
-      className="rounded-2xl bg-[#1C1C1C] px-6 py-4"
+      className="bg-[#1C1C1C] rounded-2xl px-6 py-4"
     >
       <View className="flex-row items-center py-3 pl-2">
         <View className="flex-1">
-          <Text className="text-lg font-bold text-white">{title}</Text>
+          <Text className="text-white text-lg font-bold">{title}</Text>
         </View>
         {loading ? (
           <ActivityIndicator color="#ffffff" size="small" />

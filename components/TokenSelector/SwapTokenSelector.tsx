@@ -147,7 +147,7 @@ const Search = ({
             opacity: pulseAnimation,
             transform: [{ scale: pulseAnimation }],
           }}
-          className="absolute right-3 top-3 rounded-full bg-primary/10 p-2"
+          className="absolute right-3 top-3 bg-primary/10 rounded-full p-2"
         >
           <ActivityIndicator size="small" color="rgba(59, 130, 246, 0.9)" />
         </Animated.View>
@@ -155,14 +155,14 @@ const Search = ({
       {query && query.length > 0 && !isLoading && (
         <View className="absolute right-3 top-3">
           <View
-            className={`rounded-full border p-1 ${
+            className={`rounded-full p-1 border ${
               result.length > 0
-                ? 'border-green-500/20 bg-green-500/10'
-                : 'border-orange-500/20 bg-orange-500/10'
+                ? 'bg-green-500/10 border-green-500/20'
+                : 'bg-orange-500/10 border-orange-500/20'
             }`}
           >
             <Text
-              className={`px-2 text-xs font-semibold ${
+              className={`text-xs font-semibold px-2 ${
                 result.length > 0 ? 'text-green-600' : 'text-orange-600'
               }`}
             >
@@ -300,7 +300,7 @@ const TokenRow = ({
       <Animated.View>
         <Pressable
           disabled={lock}
-          className={`flex w-full flex-row items-center justify-between rounded-2xl bg-accent/50 px-5 py-4 backdrop-blur-sm web:hover:bg-accent/30 ${
+          className={`flex flex-row items-center justify-between w-full py-4 px-5 bg-accent/50 web:hover:bg-accent/30 backdrop-blur-sm rounded-2xl ${
             lock ? 'opacity-50' : ''
           }`}
           onPress={handlePress}
@@ -312,15 +312,15 @@ const TokenRow = ({
           accessibilityRole="button"
           accessibilityState={{ disabled: lock }}
         >
-          <View className="flex flex-1 flex-row items-center gap-4">
+          <View className="flex flex-row items-center gap-4 flex-1">
             <View className="relative">
               <CurrencyLogo currency={currency} size={44} />
               {hasBalance && (
-                <View className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
+                <View className="absolute -top-1 -right-1 bg-green-500 rounded-full w-3 h-3 border-2 border-card" />
               )}
             </View>
             <View className="flex-1">
-              <View className="flex flex-row flex-wrap items-center gap-2">
+              <View className="flex flex-row gap-2 items-center flex-wrap">
                 <Text
                   className={`text-base font-bold tracking-wide ${
                     isPopular ? 'text-primary' : 'text-foreground'
@@ -329,15 +329,15 @@ const TokenRow = ({
                   {token.symbol}
                 </Text>
                 {token.address === ADDRESS_ZERO && (
-                  <View className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5">
-                    <Text className="text-xs font-medium text-primary">Native</Text>
+                  <View className="bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5">
+                    <Text className="text-xs text-primary font-medium">Native</Text>
                   </View>
                 )}
-                <CopyToClipboard text={token.address} className="h-6 w-6" />
+                <CopyToClipboard text={token.address} className="w-6 h-6" />
               </View>
               <Text
-                className={`text-sm leading-tight opacity-80 ${
-                  isPopular ? 'font-medium text-muted-foreground' : 'text-muted-foreground'
+                className={`text-sm opacity-80 leading-tight ${
+                  isPopular ? 'text-muted-foreground font-medium' : 'text-muted-foreground'
                 }`}
               >
                 {token.name}
@@ -351,7 +351,7 @@ const TokenRow = ({
                   className={`font-semibold transition-colors duration-200 ${
                     hasBalance
                       ? isPopular
-                        ? 'font-bold text-primary'
+                        ? 'text-primary font-bold'
                         : 'text-foreground'
                       : 'text-muted-foreground'
                   }`}
@@ -361,7 +361,7 @@ const TokenRow = ({
                 {balanceUsdString !== '0.00' && (
                   <Text
                     className={`text-sm opacity-75 transition-colors duration-200 ${
-                      isPopular ? 'font-medium text-muted-foreground' : 'text-muted-foreground'
+                      isPopular ? 'text-muted-foreground font-medium' : 'text-muted-foreground'
                     }`}
                   >
                     ${balanceUsdString}
@@ -399,15 +399,15 @@ const EmptyState = ({ message, isSearching }: { message: string; isSearching?: b
   return (
     <Animated.View
       style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}
-      className="flex h-[534px] items-center justify-center px-8"
+      className="flex items-center justify-center h-[534px] px-8"
     >
       <View
-        className={`rounded-3xl border p-8 backdrop-blur-sm transition-all duration-300 ${
-          isSearching ? 'border-orange-200/30 bg-orange-50/50' : 'border-muted/20 bg-card/60'
+        className={`rounded-3xl p-8 border backdrop-blur-sm transition-all duration-300 ${
+          isSearching ? 'bg-orange-50/50 border-orange-200/30' : 'bg-card/60 border-muted/20'
         }`}
       >
         <Text
-          className={`mb-3 text-center text-lg font-semibold tracking-wide transition-colors duration-200 ${
+          className={`text-center text-lg font-semibold tracking-wide mb-3 transition-colors duration-200 ${
             isSearching ? 'text-orange-600' : 'text-muted-foreground'
           }`}
         >
@@ -415,15 +415,15 @@ const EmptyState = ({ message, isSearching }: { message: string; isSearching?: b
         </Text>
         {isSearching ? (
           <View>
-            <Text className="mb-2 text-center text-sm font-medium text-orange-500/80">
+            <Text className="text-orange-500/80 text-center text-sm mb-2 font-medium">
               No tokens match your search
             </Text>
-            <Text className="text-center text-xs text-muted-foreground/60">
+            <Text className="text-muted-foreground/60 text-center text-xs">
               Try searching for a different token name, symbol, or paste a token address
             </Text>
           </View>
         ) : (
-          <Text className="text-center text-sm text-muted-foreground/60">
+          <Text className="text-muted-foreground/60 text-center text-sm">
             No tokens found in your wallet
           </Text>
         )}
@@ -477,13 +477,13 @@ const LoadingState = () => {
   return (
     <Animated.View
       style={{ transform: [{ scale: pulseAnim }] }}
-      className="flex h-[534px] items-center justify-center"
+      className="flex items-center justify-center h-[534px]"
     >
       <Animated.View style={{ transform: [{ rotate: rotation }] }}>
         <ActivityIndicator size="large" color="rgba(59, 130, 246, 0.8)" />
       </Animated.View>
-      <Text className="mt-4 text-base font-medium text-muted-foreground">Loading tokens...</Text>
-      <Text className="mt-2 text-sm text-muted-foreground/60">Fetching balances and prices</Text>
+      <Text className="text-muted-foreground mt-4 text-base font-medium">Loading tokens...</Text>
+      <Text className="text-muted-foreground/60 mt-2 text-sm">Fetching balances and prices</Text>
     </Animated.View>
   );
 };
@@ -624,8 +624,8 @@ const SwapTokenSelector = ({
         isLoading={false}
         onQueryChange={setCurrentQuery}
       />
-      <View className="rounded-2xl border border-accent/40 bg-accent/50 p-4">
-        <Text className="text-center text-sm font-semibold text-foreground">
+      <View className="bg-accent/50 border border-accent/40 rounded-2xl p-4">
+        <Text className="text-foreground text-sm font-semibold text-center">
           Only tokens on the Fuse network are supported for swapping
         </Text>
       </View>

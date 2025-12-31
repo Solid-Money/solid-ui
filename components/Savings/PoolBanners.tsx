@@ -5,7 +5,7 @@ import PoolStat from '@/components/Savings/PoolStat';
 
 const PoolBanners = () => {
   return (
-    <View className="justify-between gap-8 md:flex-row">
+    <View className="md:flex-row justify-between gap-8">
       <PoolStat />
       <PointsBanner />
     </View>

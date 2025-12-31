@@ -19,12 +19,12 @@ export function DashboardMobile({ balanceData }: DashboardMobileProps) {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-background text-foreground"
+      className="bg-background text-foreground flex-1"
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1" contentContainerStyle={{ minHeight: '100%' }}>
         <NavbarMobile />
-        <View className="mx-auto w-full max-w-7xl flex-1 gap-4 px-4 pb-8 pt-4 md:gap-16">
+        <View className="gap-4 md:gap-16 px-4 pt-4 pb-8 w-full max-w-7xl mx-auto flex-1">
           <DashboardHeaderMobile
             balance={balance}
             totalAPY={totalAPY}

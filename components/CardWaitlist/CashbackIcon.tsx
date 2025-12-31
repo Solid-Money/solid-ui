@@ -12,9 +12,9 @@ export const CashbackIcon = ({ percentage }: CashbackIconProps) => {
   return (
     <View
       style={{ width: 50, height: 50 }}
-      className="items-center justify-center rounded-full bg-[#94F27F26]"
+      className="items-center justify-center bg-[#94F27F26] rounded-full"
     >
-      <Text className="text-[22px] font-light text-brand">{displayPercentage}%</Text>
+      <Text className="text-brand font-light text-[22px]">{displayPercentage}%</Text>
     </View>
   );
 };

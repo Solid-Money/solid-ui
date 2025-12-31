@@ -22,10 +22,10 @@ const AddAddress: React.FC<AddAddressProps> = ({ address }) => {
 
   return (
     <Pressable
-      className="flex-row items-center gap-3 rounded-2xl bg-card p-4"
+      className="flex-row items-center gap-3 bg-card rounded-2xl p-4"
       onPress={handlePress}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-foreground/10">
+      <View className="w-10 h-10 rounded-full bg-foreground/10 items-center justify-center">
         <Plus />
       </View>
       <View className="flex-1">

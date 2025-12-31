@@ -39,7 +39,7 @@ const EarningYield = ({ token, className }: EarningYieldProps) => {
       end={{ x: 0.6, y: 1 }}
       className={cn('rounded-twice', className)}
     >
-      <View className="flex-row items-center justify-center gap-2 px-5 pb-4 pt-6">
+      <View className="px-5 pt-6 pb-4 flex-row items-center justify-center gap-2">
         <Text className="text-base font-medium text-brand">
           Earning {formatNumber(maxAPY, 1, 1)}% yield
         </Text>

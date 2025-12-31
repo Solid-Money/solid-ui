@@ -10,7 +10,7 @@ import { useIntercom } from '@/lib/intercom';
 const InfoCenterTrigger = (props: any) => {
   return (
     <Pressable
-      className="h-9 w-9 flex-row items-center justify-center rounded-full bg-[#2C2C2C] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className="w-9 h-9 flex-row items-center justify-center bg-[#2C2C2C] rounded-full active:scale-95 transition-all web:hover:bg-secondary-hover active:opacity-80"
       {...props}
     >
       <QuestionIcon width={14} height={14} />
@@ -22,7 +22,7 @@ const InfoCenterSupport = () => {
   return (
     <>
       <SupportIcon width={20} height={20} />
-      <Text className="text-base font-semibold">Support</Text>
+      <Text className="font-semibold text-base">Support</Text>
     </>
   );
 };
@@ -38,7 +38,7 @@ const InfoCenterDocs = () => {
   return (
     <>
       <DocsIcon width={20} height={20} />
-      <Text className="text-base font-semibold">Docs</Text>
+      <Text className="font-semibold text-base">Docs</Text>
     </>
   );
 };
@@ -51,7 +51,7 @@ const InfoCenterLegal = () => {
   return (
     <>
       <DocsIcon width={20} height={20} />
-      <Text className="text-base font-semibold">Legal</Text>
+      <Text className="font-semibold text-base">Legal</Text>
     </>
   );
 };

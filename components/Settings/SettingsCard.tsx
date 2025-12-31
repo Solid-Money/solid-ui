@@ -90,9 +90,9 @@ const SettingsCard = ({
   return (
     <CardContainer link={link} onPress={onPress}>
       <View className={cn('w-full flex-row items-center justify-between', padding)}>
-        <View className={cn('flex-1 flex-row items-center', gap)}>
+        <View className={cn('flex-row items-center flex-1', gap)}>
           <View
-            className={cn(iconContainerSize, 'items-center justify-center rounded-full', {
+            className={cn(iconContainerSize, 'rounded-full items-center justify-center', {
               'bg-[#4d4d4d]': !hideIconBackground,
             })}
           >
@@ -104,7 +104,7 @@ const SettingsCard = ({
               <View className="flex-row items-center">
                 <View className={cn(descriptionContainerStyle)}>
                   <Text
-                    className={cn(descTextSize, 'font-medium text-[#acacac]', descriptionStyle)}
+                    className={cn(descTextSize, 'text-[#acacac] font-medium', descriptionStyle)}
                   >
                     {description}
                   </Text>

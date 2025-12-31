@@ -29,17 +29,17 @@ type FeatureProps = {
 
 const Feature = ({ icon, title, description, classNames }: FeatureProps) => {
   return (
-    <View className={cn('flex-row gap-2 md:w-[17rem] md:items-center', classNames?.container)}>
+    <View className={cn('flex-row md:items-center gap-2 md:w-[17rem]', classNames?.container)}>
       {React.isValidElement(icon) ? (
         icon
       ) : (
         <Image source={icon} style={{ width: 50, height: 50 }} contentFit="contain" />
       )}
       <View>
-        <Text className={cn('text-lg font-bold leading-5', classNames?.title)}>{title}</Text>
+        <Text className={cn('text-lg leading-5 font-bold', classNames?.title)}>{title}</Text>
         {typeof description === 'string' ? (
           <Text
-            className={cn('max-w-48 text-muted-foreground md:max-w-56', classNames?.description)}
+            className={cn('text-muted-foreground max-w-48 md:max-w-56', classNames?.description)}
           >
             {description}
           </Text>
@@ -120,7 +120,7 @@ const CardWaitlist = () => {
     return (
       <CardWaitlistHeader
         content={
-          <View className="md:flex-row md:items-center md:justify-between">
+          <View className="md:flex-row md:justify-between md:items-center">
             <CardWaitlistHeaderTitle />
             {isScreenMedium && <CardWaitlistHeaderButtons />}
           </View>
@@ -138,21 +138,21 @@ const CardWaitlist = () => {
   return (
     <CardWaitlistHeader
       content={
-        <View className="md:flex-row md:items-center md:justify-between">
+        <View className="md:flex-row md:justify-between md:items-center">
           <CardWaitlistHeaderTitle />
           {isScreenMedium && <CardWaitlistHeaderButtons />}
         </View>
       }
     >
       <CardWaitlistContainer>
-        <View className="flex-1 gap-8 bg-transparent p-5 py-7 pb-20 md:justify-center md:gap-14 md:px-12 md:py-10">
+        <View className="flex-1 md:justify-center gap-8 md:gap-14 bg-transparent p-5 py-7 pb-20 md:px-12 md:py-10">
           <View className="items-start gap-4">
-            <Text className="text-3.5xl font-semibold md:text-4.5xl">
+            <Text className="text-3.5xl md:text-4.5xl font-semibold">
               Introducing the Solid Card
             </Text>
           </View>
 
-          <View className="max-w-2xl flex-row flex-wrap gap-10">
+          <View className="flex-row flex-wrap gap-10 max-w-2xl">
             {getFeatures(cashbackPercentage).map(feature => (
               <Feature key={feature.title} {...feature} />
             ))}

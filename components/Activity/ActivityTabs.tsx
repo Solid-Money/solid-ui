@@ -123,12 +123,12 @@ const ActivityTabs = () => {
       className="flex-1 gap-8"
     >
       <View className="flex-row items-center justify-between">
-        <TabsList className="h-auto flex-row self-start rounded-full bg-[#1C1C1E] p-1">
+        <TabsList className="flex-row bg-[#1C1C1E] rounded-full p-1 self-start h-auto">
           <Animated.View style={underlineStyle} />
           <TabsTrigger
             value={ActivityTab.WALLET}
             className={cn(
-              'items-center justify-center rounded-full px-5 py-2.5 shadow-none web:px-6 web:py-3',
+              'py-2.5 px-5 web:py-3 web:px-6 rounded-full shadow-none items-center justify-center',
               tab === ActivityTab.WALLET ? 'bg-black' : 'bg-transparent',
             )}
             onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.WALLET)}
@@ -145,7 +145,7 @@ const ActivityTabs = () => {
           <TabsTrigger
             value={ActivityTab.CARD}
             className={cn(
-              'items-center justify-center rounded-full px-5 py-2.5 shadow-none web:px-6 web:py-3',
+              'py-2.5 px-5 web:py-3 web:px-6 rounded-full shadow-none items-center justify-center',
               tab === ActivityTab.CARD ? 'bg-black' : 'bg-transparent',
             )}
             onLayout={e => handleLayout(e, TabElement.TRIGGER, ActivityTab.CARD)}

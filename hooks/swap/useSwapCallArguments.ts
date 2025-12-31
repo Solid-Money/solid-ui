@@ -67,13 +67,11 @@ export function useSwapCallArguments(
           account,
         },
         extra: {
-          trade: trade
-            ? {
-                inputAmount: trade.inputAmount?.toSignificant(),
-                outputAmount: trade.outputAmount?.toSignificant(),
-                tradeType: trade.tradeType,
-              }
-            : undefined,
+          trade: trade ? {
+            inputAmount: trade.inputAmount?.toSignificant(),
+            outputAmount: trade.outputAmount?.toSignificant(),
+            tradeType: trade.tradeType,
+          } : undefined,
           allowedSlippage: allowedSlippage?.toSignificant(2),
           txDeadline,
         },

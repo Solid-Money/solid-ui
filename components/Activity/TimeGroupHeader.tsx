@@ -33,11 +33,11 @@ export default function TimeGroupHeader({
   hasActivePendingTransactions,
 }: TimeGroupHeaderProps) {
   return (
-    <View className={cn('bg-background py-3', index > 0 && 'pt-6')}>
+    <View className={cn('py-3 bg-background', index > 0 && 'pt-6')}>
       {isPending ? (
         <View
           className={cn(
-            'flex-row items-center justify-between',
+            'flex-row justify-between items-center',
             !hasActivePendingTransactions && 'justify-end',
           )}
         >

@@ -81,7 +81,7 @@ const Header = memo(function Header({ columns }: HeaderProps) {
               className="flex-row items-center gap-2"
               style={{ width: c.width }}
             >
-              <Text className="font-medium text-muted-foreground">{c.title}</Text>
+              <Text className="text-muted-foreground font-medium">{c.title}</Text>
               {c.tooltip && <TooltipPopover text={c.tooltip} />}
             </View>
           ),

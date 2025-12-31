@@ -160,9 +160,9 @@ export default function RecoveryPasskey() {
   }, [email]);
 
   return (
-    <SafeAreaView className="flex-1 bg-background text-foreground">
-      <View className="mx-auto w-full max-w-lg px-4 pt-12">
-        <Text className="mb-8 text-center text-xl font-semibold text-white md:text-2xl">
+    <SafeAreaView className="bg-background text-foreground flex-1">
+      <View className="w-full max-w-lg mx-auto pt-12 px-4">
+        <Text className="text-white text-xl md:text-2xl font-semibold text-center mb-8">
           Passkey Recovery
         </Text>
         {step === STEPS.EMAIL_INPUT && (
@@ -211,9 +211,9 @@ function EmailInput({ onSubmit, loading, apiError }: EmailInputProps) {
 
   return (
     <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">Enter your email</Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
+      <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
+        <Text className="text-white text-2xl font-semibold mb-2 text-center">Enter your email</Text>
+        <Text className="text-white/60 text-sm mb-6 text-center">
           We&apos;ll send a verification code to recover your account
         </Text>
 
@@ -238,13 +238,13 @@ function EmailInput({ onSubmit, loading, apiError }: EmailInputProps) {
           )}
         />
         {displayError && (
-          <View className="mb-4 flex-row items-center gap-2">
+          <View className="flex-row items-center gap-2 mb-4">
             <InfoError />
             <Text className="text-sm text-red-400">{displayError}</Text>
           </View>
         )}
         <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
+          className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
           onPress={handleSubmit(onSubmit)}
           disabled={!isValid || loading}
         >
@@ -293,11 +293,11 @@ function OtpVerify({ email, onSubmit, onResend, loading, apiError }: OtpVerifyPr
 
   return (
     <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">
+      <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
+        <Text className="text-white text-2xl font-semibold mb-2 text-center">
           Enter verification code
         </Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
+        <Text className="text-white/60 text-sm mb-6 text-center">
           We sent a 6-digit code to {maskedEmail}
         </Text>
 
@@ -317,14 +317,14 @@ function OtpVerify({ email, onSubmit, onResend, loading, apiError }: OtpVerifyPr
             )}
           />
           {displayError && (
-            <View className="mt-4 flex-row items-center justify-center gap-2">
+            <View className="flex-row items-center justify-center gap-2 mt-4">
               <InfoError />
               <Text className="text-sm text-red-400">{displayError}</Text>
             </View>
           )}
         </View>
         <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
+          className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
           onPress={handleSubmit(onSubmit)}
           disabled={!isValid || loading}
         >
@@ -336,7 +336,7 @@ function OtpVerify({ email, onSubmit, onResend, loading, apiError }: OtpVerifyPr
         </Button>
 
         <Button
-          className="h-11 w-full rounded-xl bg-transparent"
+          className="rounded-xl h-11 w-full bg-transparent"
           onPress={handleResend}
           disabled={loading}
         >
@@ -357,14 +357,14 @@ interface AddPasskeyProps {
 function AddPasskey({ onSubmit, loading, error }: AddPasskeyProps) {
   return (
     <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">Add Passkey</Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
+      <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
+        <Text className="text-white text-2xl font-semibold mb-2 text-center">Add Passkey</Text>
+        <Text className="text-white/60 text-sm mb-6 text-center">
           Create a new passkey to access your account
         </Text>
 
         <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
+          className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
           onPress={onSubmit}
           disabled={loading}
         >
@@ -375,7 +375,7 @@ function AddPasskey({ onSubmit, loading, error }: AddPasskeyProps) {
           )}
         </Button>
         {error && (
-          <View className="mb-4 flex-row items-center gap-2">
+          <View className="flex-row items-center gap-2 mb-4">
             <InfoError />
             <Text className="text-sm text-red-400">{error}</Text>
           </View>
@@ -390,14 +390,14 @@ function Success() {
   const router = useRouter();
   return (
     <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">Success</Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
+      <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
+        <Text className="text-white text-2xl font-semibold mb-2 text-center">Success</Text>
+        <Text className="text-white/60 text-sm mb-6 text-center">
           Your passkey has been created successfully
         </Text>
 
         <Button
-          className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
+          className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
           onPress={() => router.push(path.HOME)}
         >
           <Text className="text-base font-bold text-black">Home</Text>

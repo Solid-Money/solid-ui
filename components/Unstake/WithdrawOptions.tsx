@@ -18,22 +18,22 @@ const WithdrawOptions = () => {
 
   return (
     <View className="gap-4 pt-4">
-      <Text className="mb-2 text-base font-medium text-muted-foreground">
+      <Text className="text-base text-muted-foreground font-medium mb-2">
         Choose the type of withdraw
       </Text>
 
       {/* Fast Withdraw Card */}
       <TouchableOpacity
         onPress={handleFastWithdraw}
-        className="overflow-hidden rounded-[15px] bg-primary/10 p-5 active:opacity-80"
+        className="bg-primary/10 rounded-[15px] p-5 overflow-hidden active:opacity-80"
       >
-        <View className="mb-1 flex-row items-center justify-between">
+        <View className="flex-row items-center justify-between mb-1">
           <Text className="text-lg font-semibold text-foreground">Fast withdraw</Text>
           <ChevronRight size={20} color="white" />
         </View>
 
         <View className="mb-4">
-          <Text className="text-base font-medium text-muted-foreground">
+          <Text className="text-muted-foreground font-medium text-base">
             Including fee | Up to 4 mins
           </Text>
         </View>
@@ -43,7 +43,7 @@ const WithdrawOptions = () => {
           {Object.entries(BRIDGE_TOKENS).map(([id, network], index) => (
             <View
               key={id}
-              className="h-[30px] w-[30px] items-center justify-center overflow-hidden rounded-full border border-background bg-white"
+              className="border border-background rounded-full bg-white w-[30px] h-[30px] items-center justify-center overflow-hidden"
               style={{
                 zIndex: 50 - index,
                 marginLeft: index === 0 ? 0 : -12,
@@ -58,21 +58,21 @@ const WithdrawOptions = () => {
       {/* Regular Withdraw Card */}
       <TouchableOpacity
         onPress={handleRegularWithdraw}
-        className="overflow-hidden rounded-[15px] bg-primary/10 p-5 active:opacity-80"
+        className="bg-primary/10 rounded-[15px] p-5 overflow-hidden active:opacity-80"
       >
-        <View className="mb-1 flex-row items-center justify-between">
+        <View className="flex-row items-center justify-between mb-1">
           <Text className="text-lg font-semibold text-foreground">Regular withdraw</Text>
           <ChevronRight size={20} color="white" />
         </View>
 
         <View className="mb-4">
-          <Text className="text-base font-medium text-muted-foreground">
+          <Text className="text-muted-foreground font-medium text-base">
             No fee | Up to 24 hours
           </Text>
         </View>
 
         <View className="flex-row items-center">
-          <View className="h-[30px] w-[30px] items-center justify-center overflow-hidden rounded-full border border-background bg-white">
+          <View className="border border-background rounded-full bg-white w-[30px] h-[30px] items-center justify-center overflow-hidden">
             {/* Ethereum/Asset */}
             <Image
               source={{ uri: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png' }}

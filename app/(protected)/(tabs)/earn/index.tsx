@@ -30,17 +30,17 @@ export default function Earn() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-background text-foreground"
+      className="bg-background text-foreground flex-1"
       edges={isDesktop ? [] : ['top', 'right', 'left', 'bottom']}
     >
       <ScrollView className="flex-1">
-        <View className="mx-auto w-full max-w-md gap-8 px-4 py-8 md:gap-16">
+        <View className="w-full max-w-md mx-auto gap-8 md:gap-16 px-4 py-8">
           <View className="flex-1 items-center gap-5">
             <Badge variant="brand" className="px-4 py-2">
               {totalAPY ? (
                 <Text className="text-sm font-semibold">{totalAPY.toFixed(2)}% APY</Text>
               ) : (
-                <Skeleton className="h-5 w-20 rounded-md bg-brand/50" />
+                <Skeleton className="w-20 h-5 bg-brand/50 rounded-md" />
               )}
             </Badge>
             <View className="flex-row items-end gap-1">
@@ -49,22 +49,22 @@ export default function Earn() {
               <Text className="text-5xl font-semibold opacity-30">.15</Text>
             </View>
           </View>
-          <View className="min-h-96 justify-between gap-4 rounded-xl bg-primary/10 md:rounded-twice">
+          <View className="gap-4 justify-between bg-primary/10 rounded-xl md:rounded-twice min-h-96">
             <View className="flex-row items-center justify-between">
-              <View className="w-1/2 items-center gap-1 p-6">
+              <View className="w-1/2 gap-1 items-center p-6">
                 <Text className="text-2xl font-bold">$345.45</Text>
                 <Text className="text-sm opacity-50">All time earned</Text>
               </View>
-              <View className="w-1/2 items-center gap-1 p-6">
+              <View className="w-1/2 gap-1 items-center p-6">
                 <Text className="text-2xl font-bold">$12.32</Text>
                 <Text className="text-sm opacity-50">Earned this month</Text>
               </View>
             </View>
-            <View className="flex-row items-center justify-center gap-10 pb-6">
+            <View className="flex-row justify-center items-center gap-10 pb-6">
               <View className="gap-2">
                 <DepositOptionModal
                   trigger={
-                    <Button className="h-12 w-12 rounded-full p-0 text-primary-foreground">
+                    <Button className="w-12 h-12 rounded-full p-0 text-primary-foreground">
                       <Plus />
                     </Button>
                   }
@@ -73,7 +73,7 @@ export default function Earn() {
               </View>
               <View className="gap-2">
                 <Button
-                  className="h-12 w-12 rounded-full p-0 text-primary-foreground"
+                  className="w-12 h-12 rounded-full p-0 text-primary-foreground"
                   onPress={() => {}}
                 >
                   <Minus />
@@ -89,10 +89,10 @@ export default function Earn() {
                 <Button
                   key={transfer.date}
                   variant="outline"
-                  className="min-h-20 flex-row justify-between rounded-xl border-0 bg-primary/10 p-4 md:rounded-twice"
+                  className="min-h-20 flex-row justify-between bg-primary/10 border-0 rounded-xl md:rounded-twice p-4"
                 >
                   <View className="flex-row items-center gap-2">
-                    <Image source={TOKEN_IMAGES[transfer.imageId]} className="h-10 w-10" />
+                    <Image source={TOKEN_IMAGES[transfer.imageId]} className="w-10 h-10" />
                     <View className="gap-1">
                       <Text className="font-bold">Deposit {transfer.symbol}</Text>
                       <Text className="text-sm opacity-50">{transfer.date}</Text>

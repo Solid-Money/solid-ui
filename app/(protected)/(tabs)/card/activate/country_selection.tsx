@@ -253,12 +253,12 @@ export default function ActivateCountrySelection() {
 
   return (
     <PageLayout desktopOnly>
-      <View className="mx-auto w-full max-w-lg px-4 pt-12">
-        <View className="mb-10 flex-row items-center justify-between">
+      <View className="w-full max-w-lg mx-auto pt-12 px-4">
+        <View className="flex-row items-center justify-between mb-10">
           <Pressable onPress={goBack} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
-          <Text className="text-center text-xl font-semibold text-white md:text-2xl">
+          <Text className="text-white text-xl md:text-2xl font-semibold text-center">
             Solid card
           </Text>
           <View className="w-10" />
@@ -283,7 +283,7 @@ export default function ActivateCountrySelection() {
           </>
         ) : countryInfo && !countryInfo.isAvailable ? (
           <View className="flex-1 justify-center">
-            <View className="w-full items-center rounded-[20px] bg-[#1C1C1C] px-10 py-8">
+            <View className="bg-[#1C1C1C] rounded-[20px] px-10 py-8 w-full items-center">
               <CountryUnavailableView
                 countryName={countryInfo.countryName}
                 countryCode={countryInfo.countryCode}
@@ -317,14 +317,14 @@ function CountryDropdown({
 }: CountryDropdownProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable className="flex-1 items-center justify-center bg-black/50" onPress={onClose}>
+      <Pressable className="flex-1 bg-black/50 justify-center items-center" onPress={onClose}>
         <Pressable
-          className="w-[90%] max-w-md rounded-2xl bg-[#333331]"
+          className="bg-[#333331] rounded-2xl w-[90%] max-w-md"
           onPress={e => e.stopPropagation()}
         >
           <View className="p-4">
             <TextInput
-              className="mb-4 h-12 rounded-xl bg-[#1A1A1A] px-4 text-white"
+              className="bg-[#1A1A1A] rounded-xl px-4 h-12 text-white mb-4"
               placeholder="Search countries..."
               placeholderTextColor="#666"
               value={searchQuery}
@@ -339,7 +339,7 @@ function CountryDropdown({
               {filteredCountries.map(country => (
                 <Pressable
                   key={country.code}
-                  className="rounded-lg px-4 py-3 web:hover:bg-white/10"
+                  className="py-3 px-4 web:hover:bg-white/10 rounded-lg"
                   onPress={() => onCountrySelect(country)}
                 >
                   <Text className="text-white">{country.name}</Text>
@@ -369,22 +369,22 @@ function CountrySelector({
 }: CountrySelectorProps) {
   return (
     <View className="flex-1 justify-center">
-      <View className="w-full max-w-md rounded-xl bg-[#1C1C1C] p-8">
-        <Text className="mb-2 text-center text-2xl font-semibold text-white">
+      <View className="bg-[#1C1C1C] rounded-xl p-8 w-full max-w-md">
+        <Text className="text-white text-2xl font-semibold mb-2 text-center">
           Country of residence
         </Text>
-        <Text className="mb-6 text-center text-sm text-white/60">
+        <Text className="text-white/60 text-sm mb-6 text-center">
           Please select your country of residence to activate your Solid card
         </Text>
 
         {selectedCountry && (
-          <View className="mb-6 items-center">
+          <View className="items-center mb-6">
             <CountryFlagImage isoCode={selectedCountry.code} size={110} className="mb-2" />
           </View>
         )}
         <>
           <Pressable onPress={onOpenDropdown}>
-            <View className="mb-6 mt-2 h-12 flex-row items-center justify-between rounded-xl border border-[#898989] bg-[#1A1A1A] px-4">
+            <View className="bg-[#1A1A1A] rounded-xl px-4 h-12 flex-row items-center justify-between mt-2 mb-6 border border-[#898989]">
               <Text className="text-white">
                 {selectedCountry ? selectedCountry.name : 'Select country'}
               </Text>
@@ -393,7 +393,7 @@ function CountrySelector({
           </Pressable>
 
           <Button
-            className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
+            className="rounded-xl h-11 w-full mb-4 bg-[#94F27F]"
             onPress={onOk}
             disabled={!selectedCountry || processing}
           >
@@ -423,14 +423,14 @@ function CountryUnavailableView({
 }: CountryUnavailableViewProps) {
   return (
     <>
-      <CountryFlagImage isoCode={countryCode} size={110} className="mb-6 mt-4" />
-      <Text className="mb-4 text-center text-2xl font-bold text-white">
+      <CountryFlagImage isoCode={countryCode} size={110} className="mt-4 mb-6" />
+      <Text className="text-white text-2xl font-bold mb-4 text-center">
         {`We're not ready for ${countryName} just yet!`}
       </Text>
-      <Text className="font-weight-400 mb-6 text-center leading-6 text-[#ACACAC]">
+      <Text className="text-[#ACACAC] text-center font-weight-400 mb-6 leading-6">
         {`Unfortunately, Solid card isn't available in ${countryName} yet. Please select a different country or check back later.`}
       </Text>
-      <Button className="mt-6 h-11 w-full rounded-xl bg-[#94F27F]" onPress={onChangeCountry}>
+      <Button className="rounded-xl h-11 w-full mt-6 bg-[#94F27F]" onPress={onChangeCountry}>
         <Text className="text-base font-bold text-black">Change country</Text>
       </Button>
     </>

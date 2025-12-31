@@ -30,19 +30,19 @@ const TokenSelector = ({ tokens, setSelectedToken, setOpen }: TokenSelectorProps
         Array.from({ length: tokens.length }).map((_, index) => (
           <Skeleton
             key={index}
-            className="h-16 justify-between rounded-2xl border-primary/0 bg-primary/10 px-4"
+            className="bg-primary/10 border-primary/0 rounded-2xl justify-between h-16 px-4"
           />
         ))}
       {tokensWithBalance.map(token => (
         <Button
           key={token.address}
           variant="secondary"
-          className="h-16 justify-between rounded-2xl border-primary/0 bg-primary/10 px-4"
+          className="bg-primary/10 border-primary/0 rounded-2xl justify-between h-16 px-4"
           disabled={token.isComingSoon}
           onPress={() => handleTokenClick(token)}
         >
           <View className="flex-row items-center gap-2">
-            <Image source={TOKEN_IMAGES[token.imageId]} alt={token.name} className="h-8 w-8" />
+            <Image source={TOKEN_IMAGES[token.imageId]} alt={token.name} className="w-8 h-8" />
             <View className="flex-col items-start gap-0.5">
               <Text className="text-lg font-bold">{token.name}</Text>
               <Text className="text-sm opacity-40">On ethereum</Text>

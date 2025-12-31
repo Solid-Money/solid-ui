@@ -31,12 +31,12 @@ const SoUSDSection = ({ vaultBreakdown }: SoUSDSectionProps) => {
 
   return (
     <View className="gap-6 md:gap-12">
-      <View className="justify-between gap-6 md:flex-row md:items-center">
+      <View className="md:flex-row justify-between md:items-center gap-6">
         <View className="flex-1 gap-6 md:gap-10">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 gap-2">
-              <Text className="text-2xl font-semibold md:text-4.5xl">soUSD vault</Text>
-              <Text className="max-w-60 font-medium text-muted-foreground md:max-w-full md:text-lg">
+          <View className="flex-row justify-between items-center">
+            <View className="gap-2 flex-1">
+              <Text className="text-2xl md:text-4.5xl font-semibold">soUSD vault</Text>
+              <Text className="md:text-lg text-muted-foreground font-medium max-w-60 md:max-w-full">
                 USD stablecoins deployed across integrated DEXs and lending protocols on Fuse.
               </Text>
             </View>
@@ -46,7 +46,7 @@ const SoUSDSection = ({ vaultBreakdown }: SoUSDSectionProps) => {
         </View>
         {isScreenMedium && <SolidImage />}
       </View>
-      <View className="justify-between gap-6 md:flex-row md:gap-10">
+      <View className="md:flex-row justify-between gap-6 md:gap-10">
         <VaultStat />
         <APYChart />
       </View>
@@ -57,8 +57,8 @@ const SoUSDSection = ({ vaultBreakdown }: SoUSDSectionProps) => {
 const HowSection = () => {
   return (
     <View className="gap-6">
-      <Text className="text-xl font-semibold md:text-3xl">How it works?</Text>
-      <View className="justify-between gap-4 md:flex-row md:gap-10">
+      <Text className="text-xl md:text-3xl font-semibold">How it works?</Text>
+      <View className="md:flex-row justify-between gap-4 md:gap-10">
         {howItWorks.map((how, index) => (
           <HowItWorks
             key={index}
@@ -80,8 +80,8 @@ const VaultBreakdownSection = ({ vaultBreakdown }: VaultBreakdownSectionProps) =
 
   return (
     <View className="gap-6">
-      <Text className="text-xl font-semibold md:text-3xl">Vault breakdown</Text>
-      <View className="flex-col gap-4 rounded-twice bg-card p-5 md:min-h-80 md:flex-row md:justify-between md:p-10">
+      <Text className="text-xl md:text-3xl font-semibold">Vault breakdown</Text>
+      <View className="flex-col md:flex-row md:justify-between gap-4 md:min-h-80 bg-card rounded-twice p-5 md:p-10">
         <VaultBreakdownTable
           data={vaultBreakdown}
           setSelectedBreakdown={setSelectedBreakdown}
@@ -95,26 +95,26 @@ const VaultBreakdownSection = ({ vaultBreakdown }: VaultBreakdownSectionProps) =
 
 const AuditSection = () => {
   return (
-    <View className="justify-between gap-6 md:flex-row">
-      <View className="max-w-80 gap-2">
-        <Text className="text-xl font-semibold md:text-3xl">Audits</Text>
-        <Text className="text-lg font-medium text-muted-foreground">
+    <View className="md:flex-row justify-between gap-6">
+      <View className="gap-2 max-w-80">
+        <Text className="text-xl md:text-3xl font-semibold">Audits</Text>
+        <Text className="text-lg text-muted-foreground font-medium">
           Solid and the underlying protocols have been audited by industry leaders in blockchain
           security.
         </Text>
       </View>
-      <Audits className="max-w-3xl rounded-twice bg-card p-5 md:px-10 md:py-8" />
+      <Audits className="bg-card rounded-twice p-5 md:px-10 md:py-8 max-w-3xl" />
     </View>
   );
 };
 
 const FAQSection = () => {
   return (
-    <View className="justify-between gap-6 md:flex-row">
-      <Text className="text-xl font-semibold md:max-w-40 md:text-3xl">
+    <View className="md:flex-row justify-between gap-6">
+      <Text className="text-xl md:text-3xl font-semibold md:max-w-40">
         Frequently asked questions
       </Text>
-      <View className="w-full max-w-3xl rounded-twice bg-card p-2 md:p-6">
+      <View className="bg-card rounded-twice p-2 md:p-6 w-full max-w-3xl">
         <FAQ faqs={faqs} markdownStyle={{ backgroundColor: '#212121' }} />
       </View>
     </View>
@@ -126,7 +126,7 @@ const Landing = () => {
 
   return (
     <PageLayout>
-      <View className="mx-auto mb-5 w-full max-w-7xl gap-8 px-4 py-0 pb-20 md:gap-24 md:py-12">
+      <View className="gap-8 md:gap-24 px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
         <SoUSDSection vaultBreakdown={vaultBreakdown || []} />
         <HowSection />
         <VaultBreakdownSection vaultBreakdown={vaultBreakdown || []} />

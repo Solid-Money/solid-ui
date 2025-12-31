@@ -177,10 +177,10 @@ const SwapParams = () => {
     }
 
     return (
-      <View className="mt-4 flex flex-row items-center justify-between px-1">
+      <View className="flex flex-row items-center justify-between px-1 mt-4">
         <View className="flex-row items-center gap-2">
           <Fuel strokeWidth={1} stroke="white" size={16} />
-          <Text className="text-base font-semibold text-white/70">Fee</Text>
+          <Text className="text-base text-white/70 font-semibold">Fee</Text>
         </View>
         <View className="flex-row items-center gap-2">
           <Text className="text-base font-bold">0 USDC</Text>
@@ -193,12 +193,12 @@ const SwapParams = () => {
   return (
     <View>
       <Pressable
-        className="flex w-full flex-row items-center justify-between web:hover:opacity-70"
+        className="flex flex-row items-center justify-between w-full web:hover:opacity-70"
         onPress={() => toggleExpanded(!isExpanded)}
       >
         <View className="flex-row items-center gap-2">
           <Fuel strokeWidth={1} stroke="white" size={16} />
-          <Text className="text-base font-semibold text-white/70">Fee</Text>
+          <Text className="text-base text-white/70 font-semibold">Fee</Text>
         </View>
         <View className="flex-row items-center gap-2">
           <Text className="text-base font-bold">{LPFeeString}</Text>
@@ -213,15 +213,15 @@ const SwapParams = () => {
           'h-0': !isExpanded,
         })}
       >
-        <View className="mt-6 flex flex-col gap-2.5 rounded-xl bg-card">
-          <View className="flex flex-row items-center justify-between border-b border-white/10 p-4 md:p-6">
-            <Text className="text-base font-medium text-white/70">Route</Text>
+        <View className="flex flex-col gap-2.5 bg-card rounded-xl mt-6">
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-white/10">
+            <Text className="text-base text-white/70 font-medium">Route</Text>
             <View>
               <SwapRoute trade={trade} />
             </View>
           </View>
-          <View className="flex flex-row items-center justify-between border-b border-white/10 p-4 md:p-6">
-            <Text className="text-base font-medium text-white/70">
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-white/10">
+            <Text className="text-base text-white/70 font-medium">
               {trade.tradeType === TradeType.EXACT_INPUT ? 'Minimum received' : 'Maximum sent'}
             </Text>
             <Text className="text-base font-semibold">
@@ -234,18 +234,18 @@ const SwapParams = () => {
                   : `${trade.maximumAmountIn(allowedSlippage).toSignificant(6)} ${trade.inputAmount.currency.symbol}`}
             </Text>
           </View>
-          <View className="flex flex-row items-center justify-between border-b border-white/10 p-4 md:p-6">
-            <Text className="text-base font-medium text-white/70">Sliding Fee</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-white/10">
+            <Text className="text-base text-white/70 font-medium">Sliding Fee</Text>
             <Text className="text-base font-semibold">
               {slidingFee ? `${slidingFee.toFixed(4)}%` : '-'}
             </Text>
           </View>
-          <View className="flex flex-row items-center justify-between border-b border-white/10 p-4 md:p-6">
-            <Text className="text-base font-medium text-white/70">Price impact</Text>
+          <View className="flex flex-row items-center justify-between p-4 md:p-6 border-b border-white/10">
+            <Text className="text-base text-white/70 font-medium">Price impact</Text>
             <PriceImpact priceImpact={priceImpact} />
           </View>
           <View className="flex flex-row items-center justify-between p-4 md:p-6">
-            <Text className="text-base font-medium text-white/70">Slippage tolerance</Text>
+            <Text className="text-base text-white/70 font-medium">Slippage tolerance</Text>
             <Text className="text-base font-semibold">{allowedSlippage.toFixed(2)}%</Text>
           </View>
         </View>

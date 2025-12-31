@@ -29,7 +29,12 @@ const useWithdrawOption = ({
   trigger,
   modal = UNSTAKE_MODAL.OPEN_OPTIONS,
 }: WithdrawOptionProps = {}) => {
-  const { currentModal, previousModal, transaction, setModal } = useUnstakeStore();
+  const {
+    currentModal,
+    previousModal,
+    transaction,
+    setModal,
+  } = useUnstakeStore();
   const router = useRouter();
   const { isScreenMedium } = useDimension();
   const { triggerElement } = useResponsiveModal();
@@ -52,7 +57,7 @@ const useWithdrawOption = ({
     return (
       <Pressable
         {...props}
-        className="flex-1"
+        className='flex-1'
         onPress={e => {
           if (isScreenMedium) {
             props?.onPress?.(e);
@@ -77,12 +82,12 @@ const useWithdrawOption = ({
           <View
             className={buttonVariants({
               variant: 'secondary',
-              className: 'h-12 rounded-xl border-0 bg-[#303030] px-6',
+              className: 'h-12 px-6 rounded-xl bg-[#303030] border-0',
             })}
           >
             <View className="flex-row items-center gap-2">
-              <Minus size={20} color="white" />
-              <Text className="text-base font-bold text-white">{buttonText}</Text>
+               <Minus size={20} color="white" />
+              <Text className="text-base text-white font-bold">{buttonText}</Text>
             </View>
           </View>
         </Trigger>
@@ -185,3 +190,4 @@ const useWithdrawOption = ({
 };
 
 export default useWithdrawOption;
+
