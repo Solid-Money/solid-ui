@@ -52,8 +52,8 @@ const BannerItem = ({
     }
 
     return {
-      paddingRight: 16,
-      paddingLeft: 16,
+      paddingRight: 0,
+      paddingLeft: 0,
     };
   }, [index, dataLen, hasMultipleViews]);
 
