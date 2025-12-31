@@ -29,7 +29,7 @@ const ResponsiveBalanceBreakdown = ({ token }: { token: TokenBalance | undefined
   const { isScreenMedium } = useDimension();
 
   return (
-    <View style={{ flex: isScreenMedium ? 0.3 : 1 }} className="relative">
+    <View style={{ flex: isScreenMedium ? 0.3 : 1 }} className="relative md:min-w-[406px]">
       <BalanceBreakdown token={token} className="z-10" />
       <EarningYield token={token} className="rounded-t-none -mt-4" />
     </View>
