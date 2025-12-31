@@ -115,9 +115,13 @@ const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
           <View className="flex-row items-center gap-2 pr-[5px]">
             {isMaxAPYsLoading ? (
               <Skeleton className="w-24 h-6 rounded-xl bg-purple/50" />
-            ) : (
-              <Text className="text-base text-brand font-semibold">
+            ) : isScreenMedium ? (
+              <Text className="text-sm md:text-base text-brand font-semibold">
                 Earning {maxAPY ? `${formatNumber(maxAPY, 2)}%` : '0%'} yield
+              </Text>
+            ) : (
+              <Text className="text-sm md:text-base text-brand font-semibold">
+                {maxAPY ? `${formatNumber(maxAPY, 2)}%` : '0%'} APY
               </Text>
             )}
             <Ping />

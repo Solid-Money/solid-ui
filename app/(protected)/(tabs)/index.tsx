@@ -6,9 +6,10 @@ import PageLayout from '@/components/PageLayout';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { Card, SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
+import { WalletInfo } from '@/components/Wallet';
+import DesktopCards from '@/components/Wallet/DesktopCards';
+import MobileCards from '@/components/Wallet/MobileCards';
 import WalletTabs from '@/components/Wallet/WalletTabs';
-import { USDC_TOKEN_BALANCE } from '@/constants/tokens';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
@@ -161,7 +162,7 @@ export default function Savings() {
                         marginRight: -1,
                       },
                       decimalText: {
-                        fontSize: fontSize(3),
+                        fontSize: isScreenMedium ? fontSize(3) : fontSize(1.875),
                         fontWeight: '500',
                         //fontFamily: 'MonaSans_600SemiBold',
                         color: '#ffffff',
@@ -180,27 +181,21 @@ export default function Savings() {
           />
         )}
         {isScreenMedium ? (
-          <View className="md:flex-row gap-6 min-h-44">
-            <WalletCard
-              balance={totalUSDExcludingSoUSD}
-              className="flex-1"
-              tokens={topThreeTokens}
-              isLoading={isLoadingTokens}
-              decimalPlaces={2}
-            />
-            {!userHasCard && (
-              <Card
-                balance={cardBalance}
-                className="flex-1"
-                tokens={[USDC_TOKEN_BALANCE]}
-                isLoading={isLoadingTokens}
-                decimalPlaces={2}
-              />
-            )}
-            <SavingCard className="flex-1" decimalPlaces={2} />
-          </View>
+          <DesktopCards
+            totalUSDExcludingSoUSD={totalUSDExcludingSoUSD}
+            topThreeTokens={topThreeTokens}
+            isLoadingTokens={isLoadingTokens}
+            userHasCard={userHasCard}
+            cardBalance={cardBalance}
+          />
         ) : (
-          <HomeBanners />
+          <MobileCards
+            totalUSDExcludingSoUSD={totalUSDExcludingSoUSD}
+            topThreeTokens={topThreeTokens}
+            isLoadingTokens={isLoadingTokens}
+            userHasCard={userHasCard}
+            cardBalance={cardBalance}
+          />
         )}
 
         <View className="px-4 md:px-0 mt-4 gap-3">
@@ -225,7 +220,7 @@ export default function Savings() {
           )}
         </View>
 
-        <View className="hidden md:flex px-4 md:px-0 mt-10 gap-6">
+        <View className="px-4 md:px-0 md:mt-10 gap-6">
           <Text className="text-lg text-muted-foreground font-semibold">Promotions</Text>
           <HomeBanners />
         </View>

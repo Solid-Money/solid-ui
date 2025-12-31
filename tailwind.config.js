@@ -19,23 +19,24 @@ module.exports = {
       borderRadius: {
         twice: '1.25rem',
       },
-      fontSize: platformSelect({
-        native: {
-          xs: '1rem',
-          sm: '1.125rem',
-          base: '1.25rem',
-          lg: '1.375rem',
-          xl: '1.5rem',
-          '2xl': '1.75rem',
-          '3xl': '2.125rem',
-          '4xl': '2.75rem',
-          '5xl': '3.5rem',
-        },
-        default: {
-          '3.5xl': '2.125rem',
-          '4.5xl': '2.5rem',
-        },
-      }),
+      fontSize: {
+        ...platformSelect({
+          native: {
+            xs: '1rem',
+            sm: '1.125rem',
+            base: '1.25rem',
+            lg: '1.375rem',
+            xl: '1.5rem',
+            '2xl': '1.75rem',
+            '3xl': '2.125rem',
+            '4xl': '2.75rem',
+            '5xl': '3.5rem',
+          },
+          default: {},
+        }),
+        '3.5xl': '2.125rem',
+        '4.5xl': '2.5rem',
+      },
       colors: {
         border: 'hsl(var(--border) / <alpha-value>)',
         input: 'hsl(var(--input))',

@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { Address, formatUnits } from 'viem';
+import { Address } from 'viem';
 
 import ActivityTransactions from '@/components/Activity/ActivityTransactions';
 import AreaChart from '@/components/AreaChart';
@@ -24,6 +24,17 @@ import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useCoinStore } from '@/store/useCoinStore';
 
 const MAX_SAMPLE_SIZE = 20;
+
+const ResponsiveBalanceBreakdown = ({ token }: { token: TokenBalance | undefined }) => {
+  const { isScreenMedium } = useDimension();
+
+  return (
+    <View style={{ flex: isScreenMedium ? 0.3 : 1 }} className="relative">
+      <BalanceBreakdown token={token} className="z-10" />
+      <EarningYield token={token} className="rounded-t-none -mt-4" />
+    </View>
+  );
+};
 
 export default function Coin() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -69,11 +80,6 @@ export default function Coin() {
     }));
   }, [coinHistoricalChart]);
 
-  const balance = token
-    ? Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals))
-    : 0;
-  const balanceUSD = token ? balance * (token.quoteRate || 0) : 0;
-
   return (
     <PageLayout desktopOnly isLoading={isLoading}>
       {!token && !isLoading ? (
@@ -95,8 +101,8 @@ export default function Coin() {
             {isScreenMedium && <DashboardHeaderButtons />}
           </View>
 
-          <View className="flex-row justify-between gap-10">
-            <View style={{ flex: 0.7 }}>
+          <View className="md:flex-row justify-between gap-10">
+            <View style={{ flex: isScreenMedium ? 0.7 : 1 }}>
               <View className="flex-row items-center justify-between">
                 <View className="flex-1 gap-2">
                   {!isScreenMedium && (
@@ -136,7 +142,7 @@ export default function Coin() {
                 {isScreenMedium && <CoinChartTime />}
               </View>
 
-              <View className="md:px-4">
+              <View className="px-4">
                 {isLoadingCoinHistoricalChart ? (
                   <View className="h-[200px] items-center justify-center">
                     <ActivityIndicator size="large" color="white" />
@@ -148,29 +154,14 @@ export default function Coin() {
                 ) : null}
               </View>
             </View>
-            <View style={{ flex: 0.3 }} className="relative">
-              <BalanceBreakdown token={token} className="z-10" />
-              <EarningYield token={token} className="rounded-t-none -mt-4 pt-1" />
-            </View>
+            {isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
           </View>
 
           {!isScreenMedium && <CoinChartTime />}
 
           {!isScreenMedium && <CoinButtons contractAddress={contractAddress as Address} />}
 
-          {!isScreenMedium && (
-            <View className="bg-card rounded-twice p-5 flex-row items-center justify-between">
-              <Text className="text-lg font-bold">Balance</Text>
-              <View className="items-end">
-                <Text className="text-xl font-bold">
-                  {formatNumber(balance)} {token?.contractTickerSymbol}
-                </Text>
-                <Text className="text-sm text-muted-foreground font-bold">
-                  ${formatNumber(balanceUSD)}
-                </Text>
-              </View>
-            </View>
-          )}
+          {!isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
 
           {token?.contractTickerSymbol && (
             <View className="gap-4">
