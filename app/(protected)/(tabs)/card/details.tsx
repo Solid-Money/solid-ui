@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
@@ -7,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Clipboard,
   Platform,
   Pressable,
   View,

@@ -69,12 +69,11 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
     return z.object({
       amount: z
         .string()
-        .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
-        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
-        .refine(
-          val => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} ${selectedToken?.contractTickerSymbol || ''}`,
-        )
+        .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
+        .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
+        .refine(val => Number(val) <= balanceAmount, {
+          error: `Available balance is ${formatNumber(balanceAmount)} ${selectedToken?.contractTickerSymbol || ''}`,
+        })
         .transform(val => Number(val)),
     });
   }, [selectedToken, balanceAmount]);

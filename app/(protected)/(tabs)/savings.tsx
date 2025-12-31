@@ -11,8 +11,12 @@ import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useAPYs, useLatestTokenTransfer, useMaxAPY } from '@/hooks/useAnalytics';
+import {
+  useAPYs,
+  useLatestTokenTransfer,
+  useMaxAPY,
+  useUserTransactions,
+} from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -25,8 +29,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
 import { FlatList, ImageBackground, Platform, View } from 'react-native';
 import { Address } from 'viem';
-import { mainnet } from 'viem/chains';
-import { useBlockNumber } from 'wagmi';
 
 export default function Savings() {
   const { user } = useUser();
@@ -39,11 +41,6 @@ export default function Savings() {
   const { maxAPY, maxAPYDays, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
   const { data: apys, isLoading: isAPYsLoading } = useAPYs();
 
-  const { data: blockNumber } = useBlockNumber({
-    watch: true,
-    chainId: mainnet.id,
-  });
-
   const { hasTokens } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
@@ -52,13 +49,9 @@ export default function Savings() {
 
   const {
     data: userDepositTransactions,
-    loading: isTransactionsLoading,
+    isLoading: isTransactionsLoading,
     refetch: refetchTransactions,
-  } = useGetUserTransactionsQuery({
-    variables: {
-      address: user?.safeAddress?.toLowerCase() ?? '',
-    },
-  });
+  } = useUserTransactions(user?.safeAddress);
 
   const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
@@ -66,10 +59,14 @@ export default function Savings() {
     lastTimestamp,
   );
 
+  // Controlled polling for balance/transaction updates - every 60 seconds instead of every block (~12s)
   useEffect(() => {
-    refetchBalance();
-    refetchTransactions();
-  }, [blockNumber, refetchBalance, refetchTransactions]);
+    const interval = setInterval(() => {
+      refetchBalance();
+      refetchTransactions();
+    }, 60000); // 60 seconds
+    return () => clearInterval(interval);
+  }, [refetchBalance, refetchTransactions]);
 
   const isLoading = isBalanceLoading || isTransactionsLoading;
 
@@ -79,7 +76,7 @@ export default function Savings() {
 
   const renderContent = () => (
     <>
-      <View className="gap-8 md:gap-9 px-4 py-8 md:py-12 pt-8 md:py-10 w-full max-w-7xl mx-auto">
+      <View className="gap-8 md:gap-9 px-4 py-8 pt-8 md:py-10 w-full max-w-7xl mx-auto">
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center">
             <DashboardTitle />
@@ -117,6 +114,7 @@ export default function Savings() {
                     balance={balance ?? 0}
                     apy={apys?.allTime ?? 0}
                     lastTimestamp={firstDepositTimestamp ?? 0}
+                    userDepositTransactions={userDepositTransactions}
                     classNames={{
                       wrapper: 'text-foreground',
                       decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
@@ -148,6 +146,7 @@ export default function Savings() {
                     apy={apys?.allTime ?? 0}
                     lastTimestamp={firstDepositTimestamp ?? 0}
                     mode={SavingMode.CURRENT}
+                    userDepositTransactions={userDepositTransactions}
                     classNames={{
                       decimalSeparator: 'md:text-xl font-medium',
                     }}

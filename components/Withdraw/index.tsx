@@ -35,12 +35,11 @@ const Withdraw = () => {
     return z.object({
       amount: z
         .string()
-        .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
-        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
-        .refine(
-          val => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} soUSD`,
-        )
+        .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
+        .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
+        .refine(val => Number(val) <= balanceAmount, {
+          error: `Available balance is ${formatNumber(balanceAmount)} soUSD`,
+        })
         .transform(val => Number(val)),
     });
   }, [ethereumBalance]);

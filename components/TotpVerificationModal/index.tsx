@@ -13,8 +13,8 @@ import { cn } from '@/lib/utils';
 const totpSchema = z.object({
   otpCode: z
     .string()
-    .length(6, 'Verification code must be exactly 6 digits')
-    .regex(/^\d+$/, 'Verification code must contain only numbers'),
+    .length(6, { error: 'Verification code must be exactly 6 digits' })
+    .regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
 });
 
 type TotpFormData = z.infer<typeof totpSchema>;

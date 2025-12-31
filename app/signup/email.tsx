@@ -23,7 +23,7 @@ import { detectAndSaveReferralCode, getReferralCodeForSignup } from '@/lib/utils
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 const emailSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.email({ error: 'Please enter a valid email address' }),
   marketingConsent: z.boolean(),
 });
 

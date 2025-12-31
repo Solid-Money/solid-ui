@@ -88,7 +88,6 @@ const CoinsMobile = () => {
       <Title />
       <FlashList
         data={allTokens}
-        estimatedItemSize={72}
         contentContainerStyle={{
           paddingBottom: insets.bottom,
         }}

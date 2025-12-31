@@ -111,4 +111,16 @@ config.cacheStores = [
   }),
 ];
 
+// Increase server connection handling for asset requests
+config.server = {
+  ...config.server,
+  enhanceMiddleware: (middleware) => {
+    return (req, res, next) => {
+      // Increase timeout for asset requests
+      res.setTimeout(60000);
+      return middleware(req, res, next);
+    };
+  },
+};
+
 module.exports = withNativeWind(config, { input: './global.css' });

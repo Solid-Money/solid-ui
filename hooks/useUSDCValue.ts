@@ -1,16 +1,17 @@
+import { useQuery } from '@apollo/client/react';
 import { Currency, CurrencyAmount, Price, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
 import { useMemo } from 'react';
 
 import { STABLECOINS_TOKENS } from '@/constants/tokens';
 import { algebraInfoClient } from '@/graphql/clients';
-import { useNativePriceQuery, useSingleTokenQuery } from '@/graphql/generated/algebra-info';
+import { NativePriceDocument, SingleTokenDocument } from '@/graphql/generated/algebra-info';
 
 export function useUSDCPrice(currency: Currency | undefined) {
-  const { data: bundles } = useNativePriceQuery({
+  const { data: bundles } = useQuery(NativePriceDocument, {
     client: algebraInfoClient,
   });
 
-  const { data: token } = useSingleTokenQuery({
+  const { data: token } = useQuery(SingleTokenDocument, {
     variables: {
       tokenId: currency ? currency.wrapped.address.toLowerCase() : '',
     },

@@ -306,7 +306,6 @@ export default function ActivityTransactions({
           }
         }}
         onEndReachedThreshold={0.5}
-        estimatedItemSize={80}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={() => <View className="h-0" />}

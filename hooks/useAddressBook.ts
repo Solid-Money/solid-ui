@@ -15,12 +15,12 @@ import { useSendStore } from '@/store/useSendStore';
 const addressBookSchema = z.object({
   walletAddress: z
     .string()
-    .refine(val => val.trim().length > 0, 'Address is required')
-    .refine(val => isAddress(val.trim()), 'Please enter a valid Ethereum address')
+    .refine(val => val.trim().length > 0, { error: 'Address is required' })
+    .refine(val => isAddress(val.trim()), { error: 'Please enter a valid Ethereum address' })
     .transform(val => val.trim()),
   name: z
     .string()
-    .min(1, 'Name is required')
+    .min(1, { error: 'Name is required' })
     .transform(val => val.trim()),
   skip2fa: z.boolean().optional(),
 });
@@ -28,8 +28,8 @@ const addressBookSchema = z.object({
 const addressBookSchemaOptionalName = z.object({
   walletAddress: z
     .string()
-    .refine(val => val.trim().length > 0, 'Address is required')
-    .refine(val => isAddress(val.trim()), 'Please enter a valid Ethereum address')
+    .refine(val => val.trim().length > 0, { error: 'Address is required' })
+    .refine(val => isAddress(val.trim()), { error: 'Please enter a valid Ethereum address' })
     .transform(val => val.trim()),
   name: z
     .string()

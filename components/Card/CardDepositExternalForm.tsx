@@ -52,12 +52,11 @@ export default function CardDepositExternalForm() {
     return z.object({
       amount: z
         .string()
-        .refine(val => val !== '' && !isNaN(Number(val)), 'Enter a valid amount')
-        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
-        .refine(
-          val => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} USDC`,
-        ),
+        .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Enter a valid amount' })
+        .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
+        .refine(val => Number(val) <= balanceAmount, {
+          error: `Available balance is ${formatNumber(balanceAmount)} USDC`,
+        }),
     });
   }, [eoaUsdcBalance]);
 

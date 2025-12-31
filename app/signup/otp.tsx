@@ -27,9 +27,9 @@ const OTP_LENGTH = 6;
 const otpSchema = z.object({
   otp: z
     .string()
-    .min(1, 'Please enter your verification code')
-    .regex(/^\d+$/, 'Verification code must contain only numbers')
-    .length(OTP_LENGTH, `Verification code must be ${OTP_LENGTH} digits`),
+    .min(1, { error: 'Please enter your verification code' })
+    .regex(/^\d+$/, { error: 'Verification code must contain only numbers' })
+    .length(OTP_LENGTH, { error: `Verification code must be ${OTP_LENGTH} digits` }),
 });
 
 type OtpFormData = z.infer<typeof otpSchema>;

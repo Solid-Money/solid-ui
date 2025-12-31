@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
-import { SafeAreaView, View } from 'react-native';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown';
+import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
 import useUser from '@/hooks/useUser';
 import RegisterButtons from './RegisterButtons';
-import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
-import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown';
 
 const NavbarMobile = () => {
   const { user } = useUser();

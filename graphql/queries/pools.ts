@@ -1,6 +1,7 @@
 import { gql } from '@apollo/client';
 
 import { algebraInfoClient } from '@/graphql/clients';
+import { PoolPositionsByIdQuery } from '@/graphql/generated/algebra-info';
 
 export const POOL_FRAGMENT = gql`
     fragment PoolFields on Pool {
@@ -139,10 +140,10 @@ export const POOL_POSITIONS_BY_POOL_ID = gql`
 export async function getPoolPositionsByPoolPositionIdArray(positionIdArray: (string | number)[], skip: number) {
     const positionIds = positionIdArray.map(String);
 
-    const response = await algebraInfoClient.query({
+    const { data } = await algebraInfoClient.query<PoolPositionsByIdQuery>({
         query: POOL_POSITIONS_BY_POOL_ID,
         variables: { positionIds, skip },
         fetchPolicy: 'no-cache',
     });
-    return response.data.positions;
+    return data?.positions ?? [];
 }

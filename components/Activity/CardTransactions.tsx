@@ -201,7 +201,6 @@ export default function CardTransactions() {
           }
           return item.data.id || `${index}`;
         }}
-        estimatedItemSize={88}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={() => null}

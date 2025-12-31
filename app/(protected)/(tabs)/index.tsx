@@ -8,8 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
 import WalletTabs from '@/components/Wallet/WalletTabs';
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
+import { useAPYs, useLatestTokenTransfer, useUserTransactions } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { useCalculateSavings } from '@/hooks/useFinancial';
@@ -21,12 +20,9 @@ import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { fontSize } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { Address } from 'viem';
-import { mainnet } from 'viem/chains';
-import { useBlockNumber } from 'wagmi';
-
 export default function Savings() {
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
@@ -38,10 +34,15 @@ export default function Savings() {
   const { updateUser } = useUserStore();
   const intercom = useIntercom();
 
-  const { data: blockNumber } = useBlockNumber({
-    watch: true,
-    chainId: mainnet.id,
-  });
+  // Controlled timestamp state - updates every 30 seconds instead of every render
+  const [currentTime, setCurrentTime] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Math.floor(Date.now() / 1000));
+    }, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const { data: apys, isLoading: isAPYsLoading } = useAPYs();
   const {
@@ -66,13 +67,9 @@ export default function Savings() {
 
   const {
     data: userDepositTransactions,
-    loading: isTransactionsLoading,
+    isLoading: isTransactionsLoading,
     refetch: refetchTransactions,
-  } = useGetUserTransactionsQuery({
-    variables: {
-      address: user?.safeAddress?.toLowerCase() ?? '',
-    },
-  });
+  } = useUserTransactions(user?.safeAddress);
 
   const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
@@ -84,7 +81,7 @@ export default function Savings() {
     balance ?? 0,
     apys?.allTime ?? 0,
     firstDepositTimestamp ?? 0,
-    Math.floor(Date.now() / 1000),
+    currentTime,
     SavingMode.TOTAL_USD,
     userDepositTransactions,
     user?.safeAddress,
@@ -93,10 +90,14 @@ export default function Savings() {
   const topThreeTokens = uniqueTokens.slice(0, 3);
   const isDeposited = !!userDepositTransactions?.deposits?.length;
 
+  // Controlled polling for balance/transaction updates - every 60 seconds instead of every block (~12s)
   useEffect(() => {
-    refetchBalance();
-    refetchTransactions();
-  }, [blockNumber, refetchBalance, refetchTransactions]);
+    const interval = setInterval(() => {
+      refetchBalance();
+      refetchTransactions();
+    }, 60000); // 60 seconds
+    return () => clearInterval(interval);
+  }, [refetchBalance, refetchTransactions]);
 
   useEffect(() => {
     if (!user) return;
@@ -179,7 +180,14 @@ export default function Savings() {
               isLoading={isLoadingTokens}
               decimalPlaces={2}
             />
-            <SavingCard className="flex-1" decimalPlaces={2} />
+            <SavingCard
+              className="flex-1"
+              decimalPlaces={2}
+              balance={balance}
+              isBalanceLoading={isBalanceLoading}
+              firstDepositTimestamp={firstDepositTimestamp}
+              userDepositTransactions={userDepositTransactions}
+            />
           </View>
         ) : (
           <HomeBanners />

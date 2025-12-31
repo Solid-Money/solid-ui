@@ -174,7 +174,6 @@ const Leaderboard = () => {
             fetchNextPage();
           }
         }}
-        estimatedItemSize={80}
         ItemSeparatorComponent={() => <View className="h-2.5" />}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={() => (isFetchingNextPage ? renderLoading() : null)}

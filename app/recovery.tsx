@@ -16,14 +16,14 @@ import { z } from 'zod';
 
 // Validation schemas
 const emailSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.email({ error: 'Please enter a valid email address' }),
 });
 
 const otpSchema = z.object({
   otpCode: z
     .string()
-    .length(6, 'Verification code must be 6 digits')
-    .regex(/^\d+$/, 'Verification code must only contain numbers'),
+    .length(6, { error: 'Verification code must be 6 digits' })
+    .regex(/^\d+$/, { error: 'Verification code must only contain numbers' }),
 });
 
 type EmailFormData = z.infer<typeof emailSchema>;

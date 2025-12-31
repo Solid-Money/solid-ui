@@ -6,8 +6,7 @@ import { mainnet } from 'viem/chains';
 import { useBlockNumber } from 'wagmi';
 
 import Navbar from '@/components/Navbar';
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useLatestTokenTransfer, useTotalAPY } from '@/hooks/useAnalytics';
+import { useLatestTokenTransfer, useTotalAPY, useUserTransactions } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
@@ -38,12 +37,9 @@ export function DashboardWeb() {
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
   );
-  const { data: userDepositTransactions, refetch: refetchTransactions } =
-    useGetUserTransactionsQuery({
-      variables: {
-        address: user?.safeAddress?.toLowerCase() ?? '',
-      },
-    });
+  const { data: userDepositTransactions, refetch: refetchTransactions } = useUserTransactions(
+    user?.safeAddress ?? '',
+  );
   const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
     balance,
@@ -71,7 +67,13 @@ export function DashboardWeb() {
           />
 
           {hasTokens ? (
-            <DashboardCards totalUSD={totalUSD} tokens={tokens} />
+            <DashboardCards
+              totalUSD={totalUSD}
+              tokens={tokens}
+              balance={balance}
+              firstDepositTimestamp={firstDepositTimestamp}
+              userDepositTransactions={userDepositTransactions}
+            />
           ) : (
             <DashboardCardsNoFunds />
           )}

@@ -40,9 +40,7 @@ export default function DepositToCardModal({ trigger }: { trigger?: React.ReactN
   // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
     <Pressable onPress={handlePress}>
-      <View pointerEvents="none">
-        {triggerElement}
-      </View>
+      <View pointerEvents="none">{triggerElement}</View>
     </Pressable>
   );
 }

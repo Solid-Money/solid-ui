@@ -177,7 +177,8 @@ const useUser = (): UseUserReturn => {
   const checkBalance = useCallback(
     async (user: User): Promise<boolean> => {
       try {
-        const isDeposited = await fetchIsDeposited(queryClient, user.safeAddress);
+        const depositCount = await fetchIsDeposited(queryClient, user.safeAddress);
+        const isDeposited = depositCount > 0;
         if (isDeposited) {
           updateUser({
             ...user,

@@ -43,9 +43,7 @@ const SendModal = ({ token, trigger, modal }: SendModalProps) => {
   // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
     <Pressable onPress={handlePress}>
-      <View pointerEvents="none">
-        {trigger}
-      </View>
+      <View pointerEvents="none">{trigger}</View>
     </Pressable>
   );
 };

@@ -1,21 +1,21 @@
 import CardDepositModalProvider from '@/components/Card/CardDepositModalProvider';
 import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
 import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
+import AppErrorBoundary from '@/components/ErrorBoundary';
+import Intercom from '@/components/Intercom';
 import SendModalProvider from '@/components/Send/SendModalProvider';
 import StakeModalProvider from '@/components/Stake/StakeModalProvider';
 import SwapModalProvider from '@/components/Swap/SwapModalProvider';
-import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
-import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
-import AppErrorBoundary from '@/components/ErrorBoundary';
-import Intercom from '@/components/Intercom';
 import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
+import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
+import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
 import '@/global.css';
 import { infoClient } from '@/graphql/clients';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
-import { ApolloProvider } from '@apollo/client';
+import { ApolloProvider } from '@apollo/client/react';
 import {
   MonaSans_200ExtraLight,
   MonaSans_300Light,
