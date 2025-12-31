@@ -12,6 +12,8 @@ export default function Deposit() {
     getTitle,
     getContainerClassName,
     handleBackPress,
+    shouldAnimate,
+    isForward,
   } = useDepositOption();
 
   return (
@@ -28,6 +30,8 @@ export default function Deposit() {
             onBackPress={handleBackPress}
             actionButton={actionButton}
             contentKey={getContentKey()}
+            shouldAnimate={shouldAnimate}
+            isForward={isForward}
           >
             {getContent()}
           </ResponsiveModalMobile>

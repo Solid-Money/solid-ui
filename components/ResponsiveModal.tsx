@@ -8,7 +8,6 @@ import Animated, {
   FadeInRight,
   FadeOutLeft,
   FadeOutRight,
-  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -26,7 +25,7 @@ import {
 import { useDimension } from '@/hooks/useDimension';
 import { cn } from '@/lib/utils';
 
-const ANIMATION_DURATION = 150;
+const ANIMATION_DURATION = 350;
 
 export interface ModalState {
   name: string;
@@ -83,11 +82,17 @@ const ResponsiveModal = ({
   const containerHeightRef = React.useRef(0);
   const contentHeightRef = React.useRef(0);
 
-  const enteringAnimation = shouldAnimate
-    ? (isForward ? FadeInRight : FadeInLeft).duration(ANIMATION_DURATION)
+  const titleEntering = shouldAnimate
+    ? (isForward ? FadeInRight : FadeInLeft).duration(10).springify()
     : undefined;
 
-  const exitingAnimation = (isForward ? FadeOutLeft : FadeOutRight).duration(ANIMATION_DURATION);
+  const titleExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(10);
+
+  const contentEntering = shouldAnimate
+    ? (isForward ? FadeInRight : FadeInLeft).duration(250)
+    : undefined;
+
+  const contentExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(250);
 
   const dialogAnimatedStyle = useAnimatedStyle(() => {
     // on native, let the content determine its own height initially
@@ -140,32 +145,22 @@ const ResponsiveModal = ({
                 className={cn('flex-row items-center gap-2 justify-between', titleClassName)}
               >
                 {hasBackButton ? (
-                  <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
-                    <Button
-                      variant="ghost"
-                      className="h-10 w-10 rounded-full p-0 bg-popover web:transition-colors web:hover:bg-muted"
-                      onPress={onBackPress}
-                    >
-                      <ArrowLeft color="white" size={20} />
-                    </Button>
-                  </Animated.View>
+                  <Button
+                    variant="ghost"
+                    className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                    onPress={onBackPress}
+                  >
+                    <ArrowLeft color="white" size={20} />
+                  </Button>
                 ) : (
                   <View className="w-10" />
                 )}
                 {title && (
-                  <Animated.View
-                    key={contentKey}
-                    entering={enteringAnimation}
-                    exiting={exitingAnimation}
-                  >
+                  <Animated.View key={contentKey} entering={titleEntering} exiting={titleExiting}>
                     <DialogTitle className="text-xl font-semibold">{title}</DialogTitle>
                   </Animated.View>
                 )}
-                {hasActionButton && (
-                  <Animated.View layout={LinearTransition.duration(ANIMATION_DURATION)}>
-                    {actionButton}
-                  </Animated.View>
-                )}
+                {hasActionButton && actionButton}
                 <DialogCloseButton />
               </DialogHeader>
             ) : (
@@ -196,11 +191,7 @@ const ResponsiveModal = ({
                 }}
                 scrollEventThrottle={16}
               >
-                <Animated.View
-                  entering={enteringAnimation}
-                  exiting={exitingAnimation}
-                  key={contentKey}
-                >
+                <Animated.View entering={contentEntering} exiting={contentExiting} key={contentKey}>
                   {children}
                 </Animated.View>
               </ScrollView>
