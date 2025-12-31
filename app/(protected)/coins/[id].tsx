@@ -88,20 +88,21 @@ export default function Coin() {
         </View>
       ) : (
         <View className="flex-1 gap-12 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-5">
-              <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
-              {isScreenMedium && (
+          {isScreenMedium && (
+            <View className="flex-row items-center justify-between gap-2">
+              <View className="flex-row items-center gap-5">
+                <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
                 <CoinName
                   contractName={token?.contractName || ''}
                   contractTickerSymbol={token?.contractTickerSymbol || ''}
                 />
-              )}
+              </View>
+              <DashboardHeaderButtons deposit={{ title: 'Deposit' }} />
             </View>
-            {isScreenMedium && <DashboardHeaderButtons />}
-          </View>
+          )}
 
-          <View className="md:flex-row justify-between gap-10">
+          <View className="md:flex-row flex-wrap justify-between gap-8 md:gap-10">
+            {!isScreenMedium && <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />}
             <View style={{ flex: isScreenMedium ? 0.7 : 1 }}>
               <View className="flex-row items-center justify-between">
                 <View className="flex-1 gap-2">
