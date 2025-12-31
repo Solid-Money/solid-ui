@@ -6,10 +6,14 @@ import PageLayout from '@/components/PageLayout';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
+import { WalletInfo } from '@/components/Wallet';
+import DesktopCards from '@/components/Wallet/DesktopCards';
+import MobileCards from '@/components/Wallet/MobileCards';
 import WalletTabs from '@/components/Wallet/WalletTabs';
 import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
+import { useCardDetails } from '@/hooks/useCardDetails';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { useCalculateSavings } from '@/hooks/useFinancial';
@@ -19,7 +23,7 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
-import { fontSize } from '@/lib/utils';
+import { fontSize, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 import React, { useEffect } from 'react';
 import { TouchableOpacity, View } from 'react-native';
@@ -37,6 +41,10 @@ export default function Savings() {
   } = useVaultBalance(user?.safeAddress as Address);
   const { updateUser } = useUserStore();
   const intercom = useIntercom();
+  const { data: cardStatus } = useCardStatus();
+  const { data: cardDetails } = useCardDetails();
+
+  const userHasCard = hasCard(cardStatus);
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -93,6 +101,8 @@ export default function Savings() {
   const topThreeTokens = uniqueTokens.slice(0, 3);
   const isDeposited = !!userDepositTransactions?.deposits?.length;
 
+  const cardBalance = Number(cardDetails?.balances.available?.amount || '0');
+
   useEffect(() => {
     refetchBalance();
     refetchTransactions();
@@ -136,7 +146,7 @@ export default function Savings() {
                 ) : (
                   <CountUp
                     prefix="$"
-                    count={totalUSDExcludingSoUSD + savings}
+                    count={totalUSDExcludingSoUSD + savings + cardBalance}
                     isTrailingZero={false}
                     decimalPlaces={2}
                     classNames={{
@@ -152,7 +162,7 @@ export default function Savings() {
                         marginRight: -1,
                       },
                       decimalText: {
-                        fontSize: fontSize(3),
+                        fontSize: isScreenMedium ? fontSize(3) : fontSize(1.875),
                         fontWeight: '500',
                         //fontFamily: 'MonaSans_600SemiBold',
                         color: '#ffffff',
@@ -162,31 +172,34 @@ export default function Savings() {
                 )}
               </View>
             </View>
-            <DashboardHeaderButtons hasTokens={hasTokens} />
+            <DashboardHeaderButtons />
           </View>
         ) : (
           <DashboardHeaderMobile
-            balance={totalUSDExcludingSoUSD + (savings ?? 0)}
+            balance={totalUSDExcludingSoUSD + (savings ?? 0) + cardBalance}
             mode={SavingMode.BALANCE_ONLY}
           />
         )}
         {isScreenMedium ? (
-          <View className="md:flex-row gap-8 min-h-44">
-            <WalletCard
-              balance={totalUSDExcludingSoUSD}
-              className="flex-1"
-              tokens={topThreeTokens}
-              isLoading={isLoadingTokens}
-              decimalPlaces={2}
-            />
-            <SavingCard className="flex-1" decimalPlaces={2} />
-          </View>
+          <DesktopCards
+            totalUSDExcludingSoUSD={totalUSDExcludingSoUSD}
+            topThreeTokens={topThreeTokens}
+            isLoadingTokens={isLoadingTokens}
+            userHasCard={userHasCard}
+            cardBalance={cardBalance}
+          />
         ) : (
-          <HomeBanners />
+          <MobileCards
+            totalUSDExcludingSoUSD={totalUSDExcludingSoUSD}
+            topThreeTokens={topThreeTokens}
+            isLoadingTokens={isLoadingTokens}
+            userHasCard={userHasCard}
+            cardBalance={cardBalance}
+          />
         )}
 
         <View className="px-4 md:px-0 mt-4 gap-3">
-          <Text className="text-lg text-muted-foreground font-semibold">Your assets</Text>
+          <Text className="text-lg text-muted-foreground font-semibold">Assets</Text>
           {tokenError ? (
             <View className="flex-1 justify-center items-center p-4">
               <WalletInfo text="Failed to load tokens" />
@@ -207,7 +220,7 @@ export default function Savings() {
           )}
         </View>
 
-        <View className="hidden md:flex px-4 md:px-0 mt-10 gap-6">
+        <View className="px-4 md:px-0 md:mt-10 gap-6">
           <Text className="text-lg text-muted-foreground font-semibold">Promotions</Text>
           <HomeBanners />
         </View>

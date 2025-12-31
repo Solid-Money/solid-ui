@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Leaf } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Address } from 'viem';
@@ -22,6 +21,8 @@ import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { ADDRESSES } from '@/lib/config';
 import { cn, fontSize, formatNumber } from '@/lib/utils';
+
+import SavingsIcon from '@/assets/images/savings';
 
 type SavingCardProps = {
   className?: string;
@@ -83,9 +84,9 @@ const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
 
         {/* Lighter gradient (5%) revealed on hover */}
         <LinearGradient
+          colors={['rgba(122, 84, 234, 0.1)', 'rgba(122, 84, 234, 0.1)']}
           start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          colors={['rgba(156, 48, 235, 0.1)', 'rgba(156, 48, 235, 0.1)']}
+          end={{ x: 0.6, y: 1 }}
           pointerEvents="none"
           style={{
             position: 'absolute',
@@ -99,24 +100,28 @@ const SavingCard = ({ className, decimalPlaces }: SavingCardProps) => {
           className="transition-opacity duration-200"
         />
         <LinearGradient
+          colors={['rgba(122, 84, 234, 0.3)', 'rgba(122, 84, 234, 0.2)']}
           start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
+          end={{ x: 0.6, y: 1 }}
           pointerEvents="none"
           style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: -1 }}
         />
         <View className="relative flex-row justify-between items-center">
           <View className="flex-row items-center gap-2 opacity-50">
-            <Leaf size={18} />
+            <SavingsIcon />
             <Text className="text-lg font-medium">Savings</Text>
           </View>
 
           <View className="flex-row items-center gap-2 pr-[5px]">
             {isMaxAPYsLoading ? (
               <Skeleton className="w-24 h-6 rounded-xl bg-purple/50" />
-            ) : (
-              <Text className="text-base text-brand font-semibold">
+            ) : isScreenMedium ? (
+              <Text className="text-sm md:text-base text-brand font-semibold">
                 Earning {maxAPY ? `${formatNumber(maxAPY, 2)}%` : '0%'} yield
+              </Text>
+            ) : (
+              <Text className="text-sm md:text-base text-brand font-semibold">
+                {maxAPY ? `${formatNumber(maxAPY, 2)}%` : '0%'} APY
               </Text>
             )}
             <Ping />

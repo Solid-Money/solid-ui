@@ -1,11 +1,11 @@
 import { DashboardTitle } from '@/components/Dashboard';
+import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
-import SavingsHeaderButtons from '@/components/Savings/SavingsHeaderButtons';
 import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +17,6 @@ import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
-import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
@@ -44,7 +43,6 @@ export default function Savings() {
     chainId: mainnet.id,
   });
 
-  const { hasTokens } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
@@ -83,7 +81,7 @@ export default function Savings() {
         {isScreenMedium ? (
           <View className="flex-row justify-between items-center">
             <DashboardTitle />
-            <SavingsHeaderButtons hasTokens={hasTokens} />
+            <DashboardHeaderButtons />
           </View>
         ) : (
           <Text className="text-xl font-semibold">Savings</Text>

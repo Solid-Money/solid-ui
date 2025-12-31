@@ -24,12 +24,12 @@ const DashboardHeaderButtonsMobile = () => {
         }
       />
 
-      <SendModal
-        trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
-      />
-
       <SwapModal
         trigger={<CircleButton icon={HomeSwap} label="Swap" scale={1} viewBox="0 0 29 28" />}
+      />
+
+      <SendModal
+        trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
       />
     </View>
   );

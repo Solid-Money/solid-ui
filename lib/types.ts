@@ -670,6 +670,7 @@ export interface TokenBalance {
   verified?: boolean;
   chainId: number;
   tokenIcon?: TokenIcon;
+  commonId?: string;
 }
 
 export enum RewardsType {
@@ -1057,6 +1058,7 @@ export interface SwapTokenResponse {
   isActive: boolean;
   displayOrder?: number;
   isFeatured: boolean;
+  commonId?: string;
   createdAt: string;
   updatedAt: string;
 }
