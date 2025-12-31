@@ -24,7 +24,7 @@ const PointsBadge = ({ points }: PointsBadgeProps) => {
         source={require('@/assets/images/star.png')}
         style={{ width: 40, height: 40, position: 'absolute', top: 0, left: 8 }}
       />
-      <Text className="text-points text-base font-semibold">{points} Points</Text>
+      <Text className="text-base font-semibold text-points">{points} Points</Text>
     </LinearGradient>
   );
 };

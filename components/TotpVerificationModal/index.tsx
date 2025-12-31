@@ -101,7 +101,7 @@ const TotpInput: React.FC<{
             key={index}
             onPress={() => handlePress(index)}
             className={cn(
-              'h-[49px] w-[39px] rounded-[10px] bg-[#1c1c1c] border-2 items-center justify-center',
+              'h-[49px] w-[39px] items-center justify-center rounded-[10px] border-2 bg-[#1c1c1c]',
               {
                 'border-[rgba(255,255,255,0.7)]': index === 0 && !value[index],
                 'border-transparent': index !== 0 || value[index],
@@ -118,7 +118,7 @@ const TotpInput: React.FC<{
               onKeyPress={e => handleKeyPress(e, index)}
               keyboardType="number-pad"
               selectTextOnFocus
-              className="text-center text-xl font-bold text-white w-full h-full"
+              className="h-full w-full text-center text-xl font-bold text-white"
               style={{
                 ...(Platform.OS === 'web' && {
                   outline: 'none',
@@ -138,7 +138,7 @@ const TotpInput: React.FC<{
           </Pressable>
         ))}
       </View>
-      {error && <Text className="text-red-400 text-xs text-center mt-1">{error}</Text>}
+      {error && <Text className="mt-1 text-center text-xs text-red-400">{error}</Text>}
     </View>
   );
 };
@@ -188,17 +188,17 @@ const TotpVerificationModalContent: React.FC<{
   return (
     <View className="flex-1 gap-6">
       <View className="items-center gap-2">
-        <Text className="text-2xl font-semibold text-center text-white">
+        <Text className="text-center text-2xl font-semibold text-white">
           Verify Two-Factor Authentication
         </Text>
-        <Text className="text-[#ACACAC] text-center font-medium text-base max-w-xs opacity-70">
+        <Text className="max-w-xs text-center text-base font-medium text-[#ACACAC] opacity-70">
           Enter the 6-digit code from your authenticator app to verify.
         </Text>
       </View>
 
       {(apiError || formErrors.otpCode) && (
-        <View className="p-2.5 border border-red-300 rounded-2xl">
-          <Text className="text-red-400 text-sm text-center">
+        <View className="rounded-2xl border border-red-300 p-2.5">
+          <Text className="text-center text-sm text-red-400">
             {apiError || formErrors.otpCode?.message}
           </Text>
         </View>
@@ -220,12 +220,12 @@ const TotpVerificationModalContent: React.FC<{
         <Button
           onPress={handleSubmit(onSubmit)}
           disabled={otpCode.length !== 6 || isLoading}
-          className="rounded-xl h-12 bg-[#94F27F] active:opacity-80"
+          className="h-12 rounded-xl bg-[#94F27F] active:opacity-80"
         >
           {isLoading ? (
             <ActivityIndicator color="#000000" size="small" />
           ) : (
-            <Text className="text-black text-base font-bold">Verify</Text>
+            <Text className="text-base font-bold text-black">Verify</Text>
           )}
         </Button>
         {onCancel && (
@@ -233,9 +233,9 @@ const TotpVerificationModalContent: React.FC<{
             onPress={onCancel}
             disabled={isLoading}
             variant="outline"
-            className="rounded-xl h-12 bg-[#303030] border-0 active:opacity-80"
+            className="h-12 rounded-xl border-0 bg-[#303030] active:opacity-80"
           >
-            <Text className="text-white text-base font-bold">Cancel</Text>
+            <Text className="text-base font-bold text-white">Cancel</Text>
           </Button>
         )}
       </View>
@@ -252,7 +252,7 @@ export const TotpVerificationModal: React.FC<TotpVerificationModalProps> = ({
   if (Platform.OS === 'web') {
     return (
       <Dialog open={open} onOpenChange={onCancel}>
-        <DialogContent className="sm:max-w-md bg-[#101010] rounded-[30px]">
+        <DialogContent className="rounded-[30px] bg-[#101010] sm:max-w-md">
           <DialogHeader className="flex-row items-center justify-end">
             <DialogTitle className="sr-only">Verify Two-Factor Authentication</DialogTitle>
           </DialogHeader>

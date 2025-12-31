@@ -18,7 +18,7 @@ const getInitials = (text: string) => {
 const Avatar = ({ name, className }: AvatarProps) => {
   return (
     <View
-      className={cn('w-10 h-10 rounded-full items-center justify-center', className)}
+      className={cn('h-10 w-10 items-center justify-center rounded-full', className)}
       style={{ backgroundColor: getColorForTransaction(name).bg }}
     >
       <Text className="text-xl font-medium" style={{ color: getColorForTransaction(name).text }}>

@@ -91,11 +91,11 @@ const BankTransferAmountModal = () => {
       />
 
       <Button
-        className="rounded-2xl h-14 mt-4"
+        className="mt-4 h-14 rounded-2xl"
         style={{ backgroundColor: '#94F27F' }}
         onPress={handleContinue}
       >
-        <Text className="font-bold text-black text-lg">Continue</Text>
+        <Text className="text-lg font-bold text-black">Continue</Text>
       </Button>
     </View>
   );
@@ -132,28 +132,28 @@ const BankTransferPreviewModal = () => {
     withDivider?: boolean;
   }) => (
     <View>
-      <View className="flex-row justify-between items-center py-4 px-4">
-        <Text className="text-gray-400 text-base">{label}</Text>
-        <Text className="text-white text-base font-medium">{value}</Text>
+      <View className="flex-row items-center justify-between px-4 py-4">
+        <Text className="text-base text-gray-400">{label}</Text>
+        <Text className="text-base font-medium text-white">{value}</Text>
       </View>
-      {withDivider && <View className="h-[1px] bg-[#2C2C2C] mx-4" />}
+      {withDivider && <View className="mx-4 h-[1px] bg-[#2C2C2C]" />}
     </View>
   );
 
   const PreviewTitle = ({ amount, currency }: { amount?: string; currency?: string }) => (
-    <View className="items-center gap-2 mb-4">
-      <Text className="text-white text-3xl font-bold">
+    <View className="mb-4 items-center gap-2">
+      <Text className="text-3xl font-bold text-white">
         {amount} {currency?.toUpperCase()}
       </Text>
-      <Text className="text-gray-400 text-base">Transfer details</Text>
+      <Text className="text-base text-gray-400">Transfer details</Text>
     </View>
   );
 
   return (
-    <View className="gap-4 flex-1">
+    <View className="flex-1 gap-4">
       <PreviewTitle amount={data?.amount} currency={data?.currency} />
 
-      <View className="bg-[#1C1C1C] rounded-2xl overflow-hidden mt-6">
+      <View className="mt-6 overflow-hidden rounded-2xl bg-[#1C1C1C]">
         <Row
           label="Amount"
           value={`${data?.amount ?? ''} ${data?.currency?.toUpperCase() ?? ''}`}
@@ -166,16 +166,16 @@ const BankTransferPreviewModal = () => {
         <Row label="Deposit message" value={data?.deposit_message ?? ''} />
       </View>
 
-      <View className="bg-[#1C1C1C] rounded-2xl overflow-hidden">
+      <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">
         <Row label="Status" value={'Waiting for transfer'} />
       </View>
 
       <Button
-        className="rounded-2xl h-14 mt-auto sm:mt-8"
+        className="mt-auto h-14 rounded-2xl sm:mt-8"
         style={{ backgroundColor: '#94F27F' }}
         onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
       >
-        <Text className="font-bold text-black text-lg">Done</Text>
+        <Text className="text-lg font-bold text-black">Done</Text>
       </Button>
     </View>
   );

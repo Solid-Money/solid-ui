@@ -143,7 +143,7 @@ const SendReview: React.FC = () => {
   if (!selectedToken || !amount || !address) {
     return (
       <View className="items-center">
-        <Text className="text-base font-medium max-w-64 text-center">
+        <Text className="max-w-64 text-center text-base font-medium">
           Missing or invalid information. Please go back and fill all fields.
         </Text>
       </View>
@@ -223,15 +223,15 @@ const SendReview: React.FC = () => {
               analyticsContext="send_review_contract_warning"
             />
           )}
-          <Text className="text-right text-base font-semibold max-w-52">{address}</Text>
+          <Text className="max-w-52 text-right text-base font-semibold">{address}</Text>
         </View>
       ),
     },
   ];
 
   return (
-    <View className="gap-8 flex-1 justify-between">
-      <View className="gap-8 flex-1">
+    <View className="flex-1 justify-between gap-8">
+      <View className="flex-1 gap-8">
         <View className="items-center">
           <Text className="text-2xl font-semibold">
             <Text className="opacity-50">Send</Text> {formatNumber(Number(amount))}{' '}
@@ -242,7 +242,7 @@ const SendReview: React.FC = () => {
           </Text>
         </View>
 
-        <View className="bg-card rounded-2xl">
+        <View className="rounded-2xl bg-card">
           {rows.map((row, index) => (
             <View
               key={index}
@@ -251,25 +251,25 @@ const SendReview: React.FC = () => {
                 rows.length - 1 === index && 'border-b-0',
               )}
             >
-              <Text className="text-base opacity-70 font-medium">{row.label}</Text>
+              <Text className="text-base font-medium opacity-70">{row.label}</Text>
               {row.value}
             </View>
           ))}
         </View>
 
         {isContact && (
-          <View className="bg-card rounded-2xl p-5 gap-4">
+          <View className="gap-4 rounded-2xl bg-card p-5">
             <Text className="text-base font-medium">Save to contacts</Text>
             <View className="gap-4">
               {!name && (
                 <View className="gap-2">
-                  <Text className="text-base opacity-70 font-medium">Name</Text>
+                  <Text className="text-base font-medium opacity-70">Name</Text>
                   <Controller
                     control={nameControl}
                     name="name"
                     render={({ field: { onChange, value } }) => (
                       <TextInput
-                        className="text-white text-base web:focus:outline-none flex-1 bg-popup rounded-2xl p-5"
+                        className="flex-1 rounded-2xl bg-popup p-5 text-base text-white web:focus:outline-none"
                         placeholder="Enter a name for this address"
                         placeholderTextColor="#ffffff80"
                         value={value}
@@ -294,7 +294,7 @@ const SendReview: React.FC = () => {
                       className="flex-row items-center gap-3"
                     >
                       <Checkbox checked={value || false} onCheckedChange={onChange} />
-                      <Text className="text-base opacity-70 flex-1">
+                      <Text className="flex-1 text-base opacity-70">
                         Skip 2FA when sending to this address
                       </Text>
                     </Pressable>
@@ -308,7 +308,7 @@ const SendReview: React.FC = () => {
 
       <Button
         variant="brand"
-        className="rounded-xl h-12"
+        className="h-12 rounded-xl"
         onPress={handleSend}
         disabled={isSendLoading}
       >

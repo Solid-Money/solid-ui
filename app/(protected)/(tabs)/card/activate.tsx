@@ -79,7 +79,7 @@ export default function ActivateMobile() {
 
   return (
     <PageLayout desktopOnly contentClassName="pb-10">
-      <View className="w-full max-w-lg mx-auto pt-8 px-4">
+      <View className="mx-auto w-full max-w-lg px-4 pt-8">
         <View className="flex-row items-center justify-between">
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.push(path.CARD))}
@@ -87,12 +87,12 @@ export default function ActivateMobile() {
           >
             <ArrowLeft color="white" />
           </Pressable>
-          <Text className="text-white text-xl md:text-2xl font-semibold text-center">
+          <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Solid card
           </Text>
           <View className="w-10" />
         </View>
-        <View className="items-center justify-center mt-8">
+        <View className="mt-8 items-center justify-center">
           <Image
             source={require('@/assets/images/activate_card_steps.png')}
             alt="Solid Card"
@@ -103,8 +103,8 @@ export default function ActivateMobile() {
 
         {/* Under review state (endorsement has pending items) */}
         {isUnderReview ? (
-          <View className="mt-8 mb-10">
-            <View className="bg-[#1C1C1C] rounded-2xl p-12 items-center border border-white/5">
+          <View className="mb-10 mt-8">
+            <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] p-12">
               <View className="mb-4">
                 <Image
                   source={require('@/assets/images/kyc_under_review.png')}
@@ -114,8 +114,8 @@ export default function ActivateMobile() {
                 />
               </View>
 
-              <Text className="text-white text-2xl font-bold mt-6">Your card is on its way!</Text>
-              <Text className="text-[#ACACAC] text-center my-3">
+              <Text className="mt-6 text-2xl font-bold text-white">Your card is on its way!</Text>
+              <Text className="my-3 text-center text-[#ACACAC]">
                 Thanks for your submission. Your
                 <br />
                 identity is now being verified.
@@ -124,25 +124,25 @@ export default function ActivateMobile() {
           </View>
         ) : (
           /* Card issuance status */
-          <View className="mt-8 mb-4">
-            <Text className="text-lg font-medium text-white/70 mb-4">Card issuance status</Text>
+          <View className="mb-4 mt-8">
+            <Text className="mb-4 text-lg font-medium text-white/70">Card issuance status</Text>
 
             {isCardPending && (
-              <View className="bg-[#1C1C1C] rounded-xl p-4 border border-yellow-500/30 mb-4">
-                <Text className="text-white text-base font-semibold">Your card is on its way</Text>
-                <Text className="text-white/70 mt-2 text-sm">
+              <View className="mb-4 rounded-xl border border-yellow-500/30 bg-[#1C1C1C] p-4">
+                <Text className="text-base font-semibold text-white">Your card is on its way</Text>
+                <Text className="mt-2 text-sm text-white/70">
                   We&rsquo;re finishing up your card. This may take some time.
                 </Text>
               </View>
             )}
             {isCardBlocked && (
-              <View className="bg-[#1C1C1C] rounded-xl p-4 border border-red-500/30 mb-4">
-                <Text className="text-white text-base font-semibold">Card activation rejected</Text>
-                <Text className="text-white/70 mt-2 text-sm">{activationBlockedReason}</Text>
+              <View className="mb-4 rounded-xl border border-red-500/30 bg-[#1C1C1C] p-4">
+                <Text className="text-base font-semibold text-white">Card activation rejected</Text>
+                <Text className="mt-2 text-sm text-white/70">{activationBlockedReason}</Text>
               </View>
             )}
 
-            <View className="bg-[#1C1C1C] rounded-xl p-6">
+            <View className="rounded-xl bg-[#1C1C1C] p-6">
               {steps.map((step, index) => (
                 <CardActivationStep
                   key={step.id}

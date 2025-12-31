@@ -27,7 +27,7 @@ export function useFetchTokenList() {
               isActive: true,
               chainId: fuse.id,
             },
-          }
+          },
         );
 
         // Sort swap tokens by featured first, then by display order, then by symbol
@@ -46,7 +46,7 @@ export function useFetchTokenList() {
         });
 
         // Map to TokenListItem format for compatibility
-        const tokens: TokenListItem[] = sortedSwapTokens.map((swapToken) => ({
+        const tokens: TokenListItem[] = sortedSwapTokens.map(swapToken => ({
           name: swapToken.name,
           address: swapToken.address as Address,
           symbol: swapToken.symbol,
@@ -57,7 +57,10 @@ export function useFetchTokenList() {
 
         setTokenList(tokens);
       } catch (backendError) {
-        console.warn('Failed to fetch swap tokens from backend, falling back to original source:', backendError);
+        console.warn(
+          'Failed to fetch swap tokens from backend, falling back to original source:',
+          backendError,
+        );
 
         // Fallback to original source if backend fails
         try {

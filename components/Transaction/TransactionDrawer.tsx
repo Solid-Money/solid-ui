@@ -53,7 +53,7 @@ const TransactionDrawer = ({
           }}
         >
           <Pressable
-            className="w-full flex-row items-center gap-2 bg-card p-4 rounded-xl"
+            className="w-full flex-row items-center gap-2 rounded-xl bg-card p-4"
             onPress={() => {
               if (type === TransactionType.BANK_TRANSFER && onPress) {
                 onPress();
@@ -68,7 +68,7 @@ const TransactionDrawer = ({
           </Pressable>
           {showCancelButton && (
             <Pressable
-              className="w-full flex-row items-center gap-2 bg-card p-4 rounded-xl"
+              className="w-full flex-row items-center gap-2 rounded-xl bg-card p-4"
               onPress={onCancelWithdraw}
             >
               <TransactionCancelContent />

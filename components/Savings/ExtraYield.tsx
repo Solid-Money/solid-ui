@@ -173,7 +173,7 @@ const ExtraYield = () => {
       <View
         className={buttonVariants({
           variant: 'accent',
-          className: 'h-12 pr-6 rounded-xl',
+          className: 'h-12 rounded-xl pr-6',
         })}
       >
         <View className="flex-row items-center gap-2">
@@ -188,12 +188,12 @@ const ExtraYield = () => {
     return (
       <Button
         variant="accent"
-        className="h-12 px-6 rounded-xl"
+        className="h-12 rounded-xl px-6"
         disabled={isDisabled}
         onPress={() => handleClaimMerklRewards()}
       >
         <View className="flex-row items-center gap-2">
-          <Text className="text-foreground font-semibold">{getClaimText()}</Text>
+          <Text className="font-semibold text-foreground">{getClaimText()}</Text>
           {isLoading && <ActivityIndicator color="gray" />}
         </View>
       </Button>
@@ -217,14 +217,14 @@ const ExtraYield = () => {
   };
 
   return (
-    <View className="md:flex-1 relative bg-card rounded-twice p-5 md:p-8 md:flex-row md:items-center justify-between gap-4">
-      <View className="md:items-start gap-4">
+    <View className="relative justify-between gap-4 rounded-twice bg-card p-5 md:flex-1 md:flex-row md:items-center md:p-8">
+      <View className="gap-4 md:items-start">
         {isScreenMedium ? null : getImage()}
-        <Text className="text-2xl leading-6 font-semibold md:max-w-72">Get 3% boosted yield!</Text>
-        <View className="flex-row items-center gap-1 flex-wrap">
+        <Text className="text-2xl font-semibold leading-6 md:max-w-72">Get 3% boosted yield!</Text>
+        <View className="flex-row flex-wrap items-center gap-1">
           <Text
             className={cn(
-              'text-muted-foreground font-medium text-base',
+              'text-base font-medium text-muted-foreground',
               isScreenMedium ? (hasDeposited ? 'max-w-56' : 'max-w-xs') : 'max-w-full',
             )}
           >
@@ -234,7 +234,7 @@ const ExtraYield = () => {
           </Text>
           <Link href={'#' as Href} target="_blank" className="hover:opacity-70">
             <View className="flex-row items-center">
-              <Text className="text-base underline leading-4 text-muted-foreground font-medium">
+              <Text className="text-base font-medium leading-4 text-muted-foreground underline">
                 Read more
               </Text>
               <ChevronRight size={18} color="white" className="mt-0.5" />

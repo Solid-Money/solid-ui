@@ -4,9 +4,9 @@ import { Text } from '@/components/ui/text';
 
 const DepositComingSoon = () => {
   return (
-    <View className="px-2 py-1 bg-accent-foreground/20 rounded-lg">
-      <Text className="hidden md:block text-sm text-primary font-semibold">Coming Soon</Text>
-      <Text className="block md:hidden text-sm text-primary font-semibold">Soon</Text>
+    <View className="rounded-lg bg-accent-foreground/20 px-2 py-1">
+      <Text className="hidden text-sm font-semibold text-primary md:block">Coming Soon</Text>
+      <Text className="block text-sm font-semibold text-primary md:hidden">Soon</Text>
     </View>
   );
 };

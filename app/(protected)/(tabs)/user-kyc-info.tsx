@@ -95,18 +95,18 @@ export default function UserKycInfo() {
 
   return (
     <PageLayout desktopOnly>
-      <View className="flex-1 w-full max-w-lg mx-auto pt-8 px-6">
+      <View className="mx-auto w-full max-w-lg flex-1 px-6 pt-8">
         <View className="flex-row items-center justify-between">
           <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
-          <Text className="text-white text-xl md:text-2xl font-semibold text-center">
+          <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Identity verification
           </Text>
           <View className="w-10" />
         </View>
 
-        <View className="flex-1 mt-8 mb-32 justify-evenly">
+        <View className="mb-32 mt-8 flex-1 justify-evenly">
           <UserInfoHeader kycMode={kycMode as any} />
 
           <UserInfoForm control={control} errors={errors} />

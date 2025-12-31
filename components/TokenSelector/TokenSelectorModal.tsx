@@ -23,7 +23,7 @@ const TokenSelectorModal = () => {
       title="Select token"
       contentClassName="md:gap-8 md:max-w-sm"
       trigger={
-        <Button className="bg-[#404040] h-12 gap-1 rounded-full text-white">
+        <Button className="h-12 gap-1 rounded-full bg-[#404040] text-white">
           <Image
             source={TOKEN_IMAGES[selectedToken.imageId]}
             alt={selectedToken.symbol}

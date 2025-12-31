@@ -17,10 +17,10 @@ export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
 
   const renderContent = () => (
-    <View className="w-full max-w-7xl mx-auto gap-[40px] pt-12 pb-8">
+    <View className="mx-auto w-full max-w-7xl gap-[40px] pb-8 pt-12">
       <View className="px-4">
         {isScreenMedium ? (
-          <View className="md:flex-row justify-between md:items-center gap-y-4">
+          <View className="justify-between gap-y-4 md:flex-row md:items-center">
             <View className="flex-row items-baseline">
               <Text className="text-5xl font-semibold">$0</Text>
               <Text className="text-2xl">.00</Text>
@@ -28,7 +28,7 @@ export default function SavingsEmptyState() {
             <DashboardHeaderButtons />
           </View>
         ) : (
-          <View className="flex-row justify-center items-baseline">
+          <View className="flex-row items-baseline justify-center">
             <Text className="text-5xl font-semibold">$0</Text>
             <Text className="text-2xl">.00</Text>
           </View>
@@ -49,8 +49,8 @@ export default function SavingsEmptyState() {
           }}
         >
           {isScreenMedium ? (
-            <View className="flex-col md:flex-row justify-between gap-10 md:gap-0">
-              <View className="justify-between gap-10 md:gap-0 w-full max-w-2xl">
+            <View className="flex-col justify-between gap-10 md:flex-row md:gap-0">
+              <View className="w-full max-w-2xl justify-between gap-10 md:gap-0">
                 <View className="gap-4">
                   <SavingDepositTitle />
                   <SavingDepositDescription />
@@ -73,8 +73,8 @@ export default function SavingsEmptyState() {
           )}
         </LinearGradient>
       </View>
-      <View className="px-4 md:px-0 mt-10 gap-6">
-        <Text className="text-lg text-muted-foreground font-semibold">Promotions</Text>
+      <View className="mt-10 gap-6 px-4 md:px-0">
+        <Text className="text-lg font-semibold text-muted-foreground">Promotions</Text>
         <HomeBanners />
       </View>
     </View>

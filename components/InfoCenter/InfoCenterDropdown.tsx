@@ -38,7 +38,7 @@ const InfoCenterDropdown = () => {
       <DropdownMenuContent
         insets={contentInsets}
         align="end"
-        className="w-44 mt-1 bg-card border-none rounded-3xl"
+        className="mt-1 w-44 rounded-3xl border-none bg-card"
       >
         <DropdownMenuItem
           className={cn(dropdownMenuItemClassName, 'rounded-t-3xl')}

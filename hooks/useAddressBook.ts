@@ -134,4 +134,3 @@ export const useAddressBook = (options?: {
     hasSkipped2fa,
   };
 };
-

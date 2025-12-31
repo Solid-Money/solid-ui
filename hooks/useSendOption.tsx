@@ -28,13 +28,7 @@ const useSendOption = ({
   trigger,
   modal = SEND_MODAL.OPEN_SEND_SEARCH,
 }: SendOptionProps = {}) => {
-  const {
-    currentModal,
-    previousModal,
-    transaction,
-    selectedToken,
-    setModal,
-  } = useSendStore();
+  const { currentModal, previousModal, transaction, selectedToken, setModal } = useSendStore();
   const router = useRouter();
   const { triggerElement } = useResponsiveModal();
 
@@ -87,10 +81,10 @@ const useSendOption = ({
           <View
             className={buttonVariants({
               variant: 'brand',
-              className: 'h-12 pr-6 rounded-xl',
+              className: 'h-12 rounded-xl pr-6',
             })}
           >
-            <Text className="text-primary-foreground font-bold text-base">{buttonText}</Text>
+            <Text className="text-base font-bold text-primary-foreground">{buttonText}</Text>
           </View>
         </Trigger>
       );
@@ -156,8 +150,8 @@ const useSendOption = ({
   };
 
   const getContainerClassName = () => {
-    if(isSearch) return 'min-h-[40rem]';
-    if(isReview) return 'min-h-[30rem]';
+    if (isSearch) return 'min-h-[40rem]';
+    if (isReview) return 'min-h-[30rem]';
     return '';
   };
 

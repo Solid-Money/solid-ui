@@ -12,7 +12,7 @@ const NavbarMobile = () => {
 
   return (
     <SafeAreaView className="bg-background">
-      <View className="flex-row justify-between items-center p-4">
+      <View className="flex-row items-center justify-between p-4">
         <Image
           source={require('@/assets/images/solid-logo-4x.png')}
           alt="Solid logo"

@@ -19,11 +19,11 @@ const FundWallet = ({ className }: FundWalletProps) => {
       <View
         className={buttonVariants({
           variant: 'accent',
-          className: 'w-36 h-12 rounded-xl',
+          className: 'h-12 w-36 rounded-xl',
         })}
       >
         <View className="flex-row items-center gap-4">
-          <Text className="font-bold text-base">Add funds</Text>
+          <Text className="text-base font-bold">Add funds</Text>
         </View>
       </View>
     );
@@ -38,11 +38,11 @@ const FundWallet = ({ className }: FundWalletProps) => {
       }}
       className={className}
     >
-      <View className="flex-col md:flex-row justify-between gap-y-4 h-full">
+      <View className="h-full flex-col justify-between gap-y-4 md:flex-row">
         <View className="justify-between gap-4">
           <View className="gap-2">
-            <Text className="text-3xl font-semibold max-w-lg">Fund your wallet</Text>
-            <Text className="text-muted-foreground text-base md:max-w-60">
+            <Text className="max-w-lg text-3xl font-semibold">Fund your wallet</Text>
+            <Text className="text-base text-muted-foreground md:max-w-60">
               Fund your account with crypto you already own or with cash
             </Text>
           </View>

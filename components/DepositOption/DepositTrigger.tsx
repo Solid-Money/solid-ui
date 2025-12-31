@@ -46,12 +46,12 @@ const DepositTrigger = ({
       <View
         className={buttonVariants({
           variant: 'brand',
-          className: 'h-12 pr-6 rounded-xl',
+          className: 'h-12 rounded-xl pr-6',
         })}
       >
         <View className="flex-row items-center gap-1">
           <Plus color="black" />
-          <Text className="text-primary-foreground font-bold text-base">{buttonText}</Text>
+          <Text className="text-base font-bold text-primary-foreground">{buttonText}</Text>
         </View>
       </View>
     </Pressable>
