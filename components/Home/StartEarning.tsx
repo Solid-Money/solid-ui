@@ -22,7 +22,7 @@ const StartEarning = ({ className }: StartEarningProps) => {
       <View
         className={buttonVariants({
           variant: 'purple',
-          className: 'w-40 h-12 rounded-xl',
+          className: 'h-12 w-40 rounded-xl',
         })}
       >
         <View className="flex-row items-center gap-4">
@@ -41,14 +41,14 @@ const StartEarning = ({ className }: StartEarningProps) => {
       }}
       className={className}
     >
-      <View className="flex-col md:flex-row justify-between gap-y-4 h-full">
+      <View className="h-full flex-col justify-between gap-y-4 md:flex-row">
         <View className="justify-between gap-4">
-          <Text className="text-3xl font-semibold max-w-sm">
+          <Text className="max-w-sm text-3xl font-semibold">
             Deposit your stablecoins and earn{' '}
             {isTotalAPYLoading ? (
-              <Skeleton className="w-24 h-10 bg-purple/50" />
+              <Skeleton className="h-10 w-24 bg-purple/50" />
             ) : (
-              <Text className="text-3xl text-brand font-bold underline">
+              <Text className="text-3xl font-bold text-brand underline">
                 {totalAPY?.toFixed(2)}%
               </Text>
             )}{' '}

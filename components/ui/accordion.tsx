@@ -89,17 +89,17 @@ function AccordionTrigger({
         <AccordionPrimitive.Trigger {...props} asChild>
           <Trigger
             className={cn(
-              'flex flex-row web:flex-1 items-center gap-6 p-4 web:transition-all group web:focus-visible:outline-none web:focus-visible:ring-1 web:focus-visible:ring-muted-foreground',
+              'group flex flex-row items-center gap-6 p-4 web:flex-1 web:transition-all web:focus-visible:outline-none web:focus-visible:ring-1 web:focus-visible:ring-muted-foreground',
               className,
             )}
           >
             {isExpanded ? (
               <Animated.View style={minusStyle}>
-                <Minus size={18} className={'text-foreground shrink-0'} />
+                <Minus size={18} className={'shrink-0 text-foreground'} />
               </Animated.View>
             ) : (
               <Animated.View style={plusStyle}>
-                <Plus size={18} className={'text-foreground shrink-0'} />
+                <Plus size={18} className={'shrink-0 text-foreground'} />
               </Animated.View>
             )}
             {children}

@@ -227,17 +227,17 @@ const Transaction = ({
     <Pressable
       onPress={onPress}
       className={cn(
-        'flex-row items-center justify-between px-4 py-4 bg-[#1C1C1E]',
+        'flex-row items-center justify-between bg-[#1C1C1E] px-4 py-4',
         !isLast && 'border-b border-[#2C2C2E]',
         isFirst && 'rounded-t-[20px]',
         isLast && 'rounded-b-[20px]',
         classNames?.container,
       )}
     >
-      <View className="flex-row items-center gap-2 md:gap-4 flex-[1.5] min-w-0">
+      <View className="min-w-0 flex-[1.5] flex-row items-center gap-2 md:gap-4">
         <RenderTokenIcon tokenIcon={tokenIcon} size={44} />
-        <View className="flex-shrink min-w-0">
-          <Text className="text-base web:text-lg font-medium" numberOfLines={1}>
+        <View className="min-w-0 flex-shrink">
+          <Text className="text-base font-medium web:text-lg" numberOfLines={1}>
             {title}
           </Text>
           <View className="flex-row items-center gap-1">
@@ -249,11 +249,11 @@ const Transaction = ({
               />
             )}
             {isPending && <ActivityIndicator color="gray" size={14} />}
-            <Text className="text-sm text-muted-foreground font-medium">{getDescription()}</Text>
+            <Text className="text-sm font-medium text-muted-foreground">{getDescription()}</Text>
           </View>
         </View>
         {(isFailed || isExpired || isRefunded) && statusBadge && (
-          <View className={cn(statusBadge.bgColor, 'px-2 py-1 rounded-full flex-shrink-0')}>
+          <View className={cn(statusBadge.bgColor, 'flex-shrink-0 rounded-full px-2 py-1')}>
             <Text className={cn(statusBadge.textColor, 'text-xs font-bold')}>
               {statusBadge.text}
             </Text>
@@ -263,13 +263,13 @@ const Transaction = ({
 
       {formattedTimestamp && isScreenMedium && showTimestamp && (
         <View className="flex-[1.5] flex-row items-center justify-center px-2">
-          <Text className="text-sm text-muted-foreground font-medium text-center">
+          <Text className="text-center text-sm font-medium text-muted-foreground">
             {formattedTimestamp}
           </Text>
         </View>
       )}
 
-      <View className="items-end flex-[1] min-w-0">
+      <View className="min-w-0 flex-[1] items-end">
         {directDepositStatusMessage || amount === '0' ? (
           <Text
             className={cn(
@@ -286,7 +286,7 @@ const Transaction = ({
             {directDepositStatusMessage}
           </Text>
         ) : (
-          <Text className={cn('text-base web:text-lg font-medium', statusTextColor)}>
+          <Text className={cn('text-base font-medium web:text-lg', statusTextColor)}>
             {statusSign}
             {formatNumber(Number(amount), 2)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
@@ -312,14 +312,14 @@ const Transaction = ({
           <View className="flex flex-row gap-3">
             <Button
               onPress={() => setIsDeleteDialogOpen(false)}
-              className="flex-1 h-12 rounded-2xl bg-white/10 web:hover:bg-white/15"
+              className="h-12 flex-1 rounded-2xl bg-white/10 web:hover:bg-white/15"
               disabled={isDeleting}
             >
               <Text className="text-base font-semibold text-white">Cancel</Text>
             </Button>
             <Button
               onPress={handleDeleteConfirm}
-              className="flex-1 h-12 rounded-2xl bg-red-500 web:hover:bg-red-600"
+              className="h-12 flex-1 rounded-2xl bg-red-500 web:hover:bg-red-600"
               disabled={isDeleting}
             >
               {isDeleting ? (

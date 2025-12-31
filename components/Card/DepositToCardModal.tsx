@@ -7,8 +7,8 @@ import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 const DefaultTrigger = () => (
-  <Button className="rounded-xl h-12 px-6" style={{ backgroundColor: '#94F27F' }}>
-    <Text className="text-black font-bold">Add funds</Text>
+  <Button className="h-12 rounded-xl px-6" style={{ backgroundColor: '#94F27F' }}>
+    <Text className="font-bold text-black">Add funds</Text>
   </Button>
 );
 

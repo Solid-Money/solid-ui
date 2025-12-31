@@ -32,9 +32,9 @@ export default function Points() {
 
   return (
     <PageLayout desktopOnly isLoading={isPointsLoading}>
-      <View className="gap-6 md:gap-9 px-4 pt-4 pb-8 md:py-12 w-full max-w-7xl mx-auto">
+      <View className="mx-auto w-full max-w-7xl gap-6 px-4 pb-8 pt-4 md:gap-9 md:py-12">
         {isScreenMedium ? (
-          <View className="flex-row justify-between items-center ">
+          <View className="flex-row items-center justify-between ">
             <PointsTitle />
           </View>
         ) : (
@@ -42,7 +42,7 @@ export default function Points() {
             <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
               <ArrowLeft color="white" />
             </Pressable>
-            <Text className="text-white text-xl md:text-3xl font-semibold text-center">Points</Text>
+            <Text className="text-center text-xl font-semibold text-white md:text-3xl">Points</Text>
             <View className="w-10" />
           </View>
         )}
@@ -50,7 +50,7 @@ export default function Points() {
           colors={['rgba(255, 209, 81, 0.25)', 'rgba(255, 209, 81, 0.17)']}
           start={{ x: 0.1965, y: 0 }}
           end={{ x: 0.7962, y: 1 }}
-          className="web:md:flex web:md:flex-row rounded-twice overflow-hidden min-h-96"
+          className="min-h-96 overflow-hidden rounded-twice web:md:flex web:md:flex-row"
           style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
         >
           <ImageBackground
@@ -65,13 +65,13 @@ export default function Points() {
               marginLeft: 'auto',
             }}
           >
-            <View className="flex-1 bg-transparent p-6 pb-16 md:px-10 md:py-8 justify-between gap-12 md:gap-4 border-b border-r border-rewards/20 md:border-b-0 md:border-r">
+            <View className="flex-1 justify-between gap-12 border-b border-r border-rewards/20 bg-transparent p-6 pb-16 md:gap-4 md:border-b-0 md:border-r md:px-10 md:py-8">
               <View>
-                <Text className="md:text-lg text-rewards/70">Your Total Points</Text>
+                <Text className="text-rewards/70 md:text-lg">Your Total Points</Text>
                 <View className="flex-row items-center">
                   {/** Used fontSize and lineHeight specifically to have 5rem as font size.*/}
                   <Text
-                    className="text-rewards font-semibold"
+                    className="font-semibold text-rewards"
                     style={{ fontSize: 80, lineHeight: 88 }}
                   >
                     {formatNumber(points.userRewardsSummary.totalPoints, 0, 0)}
@@ -79,24 +79,24 @@ export default function Points() {
                 </View>
               </View>
               <View className="flex-col gap-4">
-                <View className="flex-col md:flex-row gap-6 md:gap-28">
+                <View className="flex-col gap-6 md:flex-row md:gap-28">
                   <View className="gap-1">
-                    <Text className="md:text-lg text-rewards/70">From deposits</Text>
+                    <Text className="text-rewards/70 md:text-lg">From deposits</Text>
                     <View className="flex-row items-center">
-                      <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
+                      <Text className="native:leading-[1.2] text-4xl font-semibold text-rewards md:text-4.5xl">
                         {formatNumber(depositPoints, 0, 0)}
                       </Text>
                     </View>
                   </View>
                   <View className="gap-1">
-                    <Text className="md:text-lg text-rewards/70">From referrals</Text>
+                    <Text className="text-rewards/70 md:text-lg">From referrals</Text>
                     <View className="flex-row items-end">
-                      <Text className="text-4xl md:text-4.5xl native:leading-[1.2] text-rewards font-semibold">
+                      <Text className="native:leading-[1.2] text-4xl font-semibold text-rewards md:text-4.5xl">
                         {points.userRewardsSummary.rewardsByType.find(
                           r => r.type === RewardsType.RECURRING_REFERRAL,
                         )?.totalPoints || 0}
                       </Text>
-                      <Text className="text-base text-rewards/70 ml-2">
+                      <Text className="ml-2 text-base text-rewards/70">
                         {points.userRewardsSummary.referredUsersCount || 0} referred |{' '}
                         {points.userRewardsSummary.referredUsersDepositedCount || 0} deposited
                       </Text>
@@ -114,23 +114,23 @@ export default function Points() {
             </View>
           </ImageBackground>
 
-          <View className="flex-col web:md:w-80 bg-transparent justify-between">
+          <View className="flex-col justify-between bg-transparent web:md:w-80">
             <View className="p-6 md:p-7">
               <Text className="text-lg text-rewards/70">Next points drop in</Text>
               <View className="flex-row items-center gap-2">
-                <Text className="text-3xl text-rewards font-semibold mt-2">{countdownTime}</Text>
+                <Text className="mt-2 text-3xl font-semibold text-rewards">{countdownTime}</Text>
               </View>
-              <Text className="mt-4 text-rewards/70 text-sm">
+              <Text className="mt-4 text-sm text-rewards/70">
                 Earned yesterday: {formatNumber(points.pointsLast24Hours, 0, 0)} points
               </Text>
             </View>
 
-            <View className="p-6 md:p-7 flex">
+            <View className="flex p-6 md:p-7">
               <Button
                 variant="rewards"
                 className={buttonVariants({
                   variant: 'rewards',
-                  className: 'h-12 md:pr-6 rounded-xl',
+                  className: 'h-12 rounded-xl md:pr-6',
                 })}
                 onPress={() => router.push(path.POINTS_LEADERBOARD)}
               >
@@ -142,31 +142,31 @@ export default function Points() {
           </View>
         </LinearGradient>
 
-        <View className="md:flex-row gap-6 min-h-44">
-          <View className="bg-card rounded-twice p-6 justify-between w-full h-full flex-col flex-1">
+        <View className="min-h-44 gap-6 md:flex-row">
+          <View className="h-full w-full flex-1 flex-col justify-between rounded-twice bg-card p-6">
             <View className="flex-row items-center gap-2">
               <LinearGradient
                 colors={['rgba(165, 84, 234, 0.25)', 'rgba(165, 84, 234, 0.17)']}
                 start={{ x: 0.1965, y: 0 }}
                 end={{ x: 0.7962, y: 1 }}
-                className="md:h-[90px] md:w-[90px] h-[70px] w-[70px] rounded-full flex justify-center items-center"
+                className="flex h-[70px] w-[70px] items-center justify-center rounded-full md:h-[90px] md:w-[90px]"
               >
-                <Text className="md:text-2xl text-xl font-semibold text-[#C693E5]">
+                <Text className="text-xl font-semibold text-[#C693E5] md:text-2xl">
                   {multiplier}X
                 </Text>
               </LinearGradient>
-              <View className="flex-col flex-1 md:ml-5 ml-2">
-                <Text className="md:text-2xl text-xl font-semibold">
+              <View className="ml-2 flex-1 flex-col md:ml-5">
+                <Text className="text-xl font-semibold md:text-2xl">
                   Deposit and earn points automatically
                 </Text>
-                <Text className="md:text-lg text-base text-white/70">
+                <Text className="text-base text-white/70 md:text-lg">
                   Earn {multiplier} points per $1 per hour
                 </Text>
               </View>
             </View>
             <Button
               variant="secondary"
-              className="md:h-12 h-10 px-6 rounded-xl bg-[#303030] border-0 mt-7"
+              className="mt-7 h-10 rounded-xl border-0 bg-[#303030] px-6 md:h-12"
               onPress={() => {
                 router.push(path.SAVINGS);
               }}
@@ -176,23 +176,23 @@ export default function Points() {
               </View>
             </Button>
           </View>
-          <View className="bg-card rounded-twice p-6 justify-between w-full h-full flex-col flex-1">
+          <View className="h-full w-full flex-1 flex-col justify-between rounded-twice bg-card p-6">
             <View className="flex-row items-center gap-2">
               <Image
                 source={require('@/assets/images/refer_friend.png')}
                 style={{ width: isScreenMedium ? 90 : 70, height: isScreenMedium ? 90 : 70 }}
                 contentFit="contain"
               />
-              <View className="flex-col flex-1 md:ml-5 ml-2">
-                <Text className="md:text-2xl text-xl font-semibold">Share your referral code</Text>
-                <Text className="md:text-lg text-base text-white/70">
+              <View className="ml-2 flex-1 flex-col md:ml-5">
+                <Text className="text-xl font-semibold md:text-2xl">Share your referral code</Text>
+                <Text className="text-base text-white/70 md:text-lg">
                   Earn 10% of their daily points.
                 </Text>
               </View>
             </View>
             <Button
               variant="secondary"
-              className="md:h-12 h-10 px-6 rounded-xl bg-[#303030] border-0 mt-7"
+              className="mt-7 h-10 rounded-xl border-0 bg-[#303030] px-6 md:h-12"
               onPress={() => {
                 router.push(path.REFERRAL);
               }}

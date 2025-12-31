@@ -94,7 +94,7 @@ export function useVoltageRouter(
             setQuoteLoading(false);
           }
         })
-        .catch((error) => {
+        .catch(error => {
           console.error('Failed to get Voltage trade quote:', error);
           Sentry.captureException(error, {
             tags: {
@@ -131,7 +131,10 @@ export function useVoltageRouter(
       data: quote.data,
       allowanceTarget: quote.allowanceTarget,
       value: CurrencyAmount.fromRawAmount(WFUSE_TOKEN, quote.value),
-      priceImpact: new Percent(String(parseInt(String(+quote.estimatedPriceImpact * 100))), String(10000)),
+      priceImpact: new Percent(
+        String(parseInt(String(+quote.estimatedPriceImpact * 100))),
+        String(10000),
+      ),
       price: parseFloat(quote.price),
       to: quote.to,
       tradeType: isExactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,

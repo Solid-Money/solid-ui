@@ -106,7 +106,7 @@ export default function PageLayout({
   // Show loading state with navbar
   if (isLoading) {
     return (
-      <SafeAreaView className={`bg-background text-foreground flex-1 ${className}`} edges={edges}>
+      <SafeAreaView className={`flex-1 bg-background text-foreground ${className}`} edges={edges}>
         {renderNavbar()}
         <Loading />
       </SafeAreaView>
@@ -116,7 +116,7 @@ export default function PageLayout({
   // Build the main content
   if (scrollable) {
     return (
-      <SafeAreaView className={`bg-background text-foreground flex-1 ${className}`} edges={edges}>
+      <SafeAreaView className={`flex-1 bg-background text-foreground ${className}`} edges={edges}>
         <ScrollView className={`flex-1 ${contentClassName}`}>
           {renderNavbar()}
           {children}
@@ -127,7 +127,7 @@ export default function PageLayout({
   }
 
   return (
-    <SafeAreaView className={`bg-background text-foreground flex-1 ${className}`} edges={edges}>
+    <SafeAreaView className={`flex-1 bg-background text-foreground ${className}`} edges={edges}>
       <View className={`flex-1 ${contentClassName}`}>
         {renderNavbar()}
         {children}

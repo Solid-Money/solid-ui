@@ -19,8 +19,8 @@ export default function AmountCard({
   isModal = false,
 }: AmountCardProps) {
   return (
-    <View className="bg-[#1C1C1C] rounded-2xl px-6 py-8 gap-4">
-      <Text className="text-[#ACACAC] text-lg font-medium">{title}</Text>
+    <View className="gap-4 rounded-2xl bg-[#1C1C1C] px-6 py-8">
+      <Text className="text-lg font-medium text-[#ACACAC]">{title}</Text>
       <View className="flex-row items-center gap-3">
         <AmountInput value={amount} onChangeText={onChangeAmount} isModal={isModal} />
         {rightComponent}

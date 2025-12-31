@@ -30,7 +30,7 @@ const SavingsHeaderButtonsMobile = () => {
   );
 
   return (
-    <View className="flex-row justify-center gap-8 items-center">
+    <View className="flex-row items-center justify-center gap-8">
       <DepositOptionModal
         trigger={
           <CircleButton

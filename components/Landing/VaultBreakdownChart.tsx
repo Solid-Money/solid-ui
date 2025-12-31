@@ -50,7 +50,7 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
   });
 
   return (
-    <View className="flex-1 md:grow-0 md:basis-1/3 justify-center items-center py-8 md:p-6">
+    <View className="flex-1 items-center justify-center py-8 md:grow-0 md:basis-1/3 md:p-6">
       <View className="relative items-center justify-center" style={{ width: size, height: size }}>
         <Svg width={size} height={size}>
           <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>

@@ -60,7 +60,7 @@ function SourceSelectorNative({
   return (
     <View>
       <Pressable
-        className="bg-accent rounded-2xl p-4 flex-row justify-between items-center"
+        className="flex-row items-center justify-between rounded-2xl bg-accent p-4"
         onPress={() => setIsOpen(!isOpen)}
       >
         <View className="flex-row items-center gap-2">
@@ -79,7 +79,7 @@ function SourceSelectorNative({
         </View>
       </Pressable>
       {isOpen && (
-        <View className="bg-accent rounded-2xl mt-1 overflow-hidden">
+        <View className="mt-1 overflow-hidden rounded-2xl bg-accent">
           <Pressable
             className="flex-row items-center gap-2 px-4 py-3"
             onPress={() => {
@@ -118,7 +118,7 @@ function SourceSelectorWeb({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Pressable className="bg-accent rounded-2xl p-4 flex-row justify-between items-center">
+        <Pressable className="flex-row items-center justify-between rounded-2xl bg-accent p-4">
           <View className="flex-row items-center gap-2">
             {value === 'wallet' ? (
               <WalletIcon color="#A1A1A1" size={24} />
@@ -137,7 +137,7 @@ function SourceSelectorWeb({
           </View>
         </Pressable>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-full min-w-[380px] border-0 rounded-t-none rounded-b-2xl -mt-4">
+      <DropdownMenuContent className="-mt-4 w-full min-w-[380px] rounded-b-2xl rounded-t-none border-0">
         <DropdownMenuItem
           onPress={() => onChange('savings')}
           className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
@@ -160,7 +160,7 @@ function SourceSelectorWeb({
 function SourceSelector({ control, from }: SourceSelectorProps) {
   return (
     <View className="gap-2">
-      <Text className="opacity-50 font-medium">From</Text>
+      <Text className="font-medium opacity-50">From</Text>
       <Controller
         control={control}
         name="from"
@@ -185,10 +185,10 @@ type AmountInputProps = {
 function AmountInput({ control, errors, from }: AmountInputProps) {
   return (
     <View className="gap-2">
-      <Text className="opacity-50 font-medium">Deposit amount</Text>
+      <Text className="font-medium opacity-50">Deposit amount</Text>
       <View
         className={cn(
-          'flex-row items-center justify-between gap-4 w-full bg-accent rounded-2xl px-5 py-3',
+          'w-full flex-row items-center justify-between gap-4 rounded-2xl bg-accent px-5 py-3',
           errors.amount && 'border border-red-500',
         )}
       >
@@ -198,7 +198,7 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
               keyboardType="decimal-pad"
-              className="web:w-full text-2xl text-white font-semibold web:focus:outline-none"
+              className="text-2xl font-semibold text-white web:w-full web:focus:outline-none"
               value={value as any}
               placeholder="0.0"
               placeholderTextColor="#666"
@@ -207,7 +207,7 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
             />
           )}
         />
-        <View className="flex-row items-center gap-2 native:shrink-0">
+        <View className="native:shrink-0 flex-row items-center gap-2">
           <Image
             source={
               from === 'wallet'
@@ -217,7 +217,7 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
             alt={from === 'wallet' ? 'USDC.e' : 'soUSD'}
             style={{ width: 34, height: 34 }}
           />
-          <Text className="font-semibold text-white text-lg">
+          <Text className="text-lg font-semibold text-white">
             {from === 'wallet' ? 'USDC.e' : 'soUSD'}
           </Text>
         </View>
@@ -249,7 +249,7 @@ function BalanceDisplay({
     <View className="flex-row items-center gap-2">
       <WalletIcon color="#A1A1A1" size={16} />
       {isBalanceLoading ? (
-        <Skeleton className="w-20 h-5 rounded-md" />
+        <Skeleton className="h-5 w-20 rounded-md" />
       ) : (
         <Text className="text-muted-foreground">
           {formatNumber(balanceAmount)} {tokenSymbol}
@@ -272,14 +272,14 @@ type EstimatedReceiveProps = {
 
 function EstimatedReceive({ estimatedUSDC, isLoading }: EstimatedReceiveProps) {
   return (
-    <View className="bg-accent/50 rounded-2xl p-4 flex-row items-center gap-3">
+    <View className="flex-row items-center gap-3 rounded-2xl bg-accent/50 p-4">
       <Info color="#60A5FA" size={20} />
       <View className="flex-1">
         <Text className="text-sm text-muted-foreground">You will receive (estimated)</Text>
         {isLoading ? (
-          <Skeleton className="w-24 h-6 rounded-md mt-1" />
+          <Skeleton className="mt-1 h-6 w-24 rounded-md" />
         ) : (
-          <Text className="text-lg font-semibold text-white mt-0.5">
+          <Text className="mt-0.5 text-lg font-semibold text-white">
             ~{formatNumber(estimatedUSDC)} USDC
           </Text>
         )}
@@ -291,8 +291,8 @@ function EstimatedReceive({ estimatedUSDC, isLoading }: EstimatedReceiveProps) {
 function DestinationDisplay() {
   return (
     <View className="gap-2">
-      <Text className="opacity-50 font-medium">To</Text>
-      <View className="bg-accent rounded-2xl p-4 flex-row justify-between items-center">
+      <Text className="font-medium opacity-50">To</Text>
+      <View className="flex-row items-center justify-between rounded-2xl bg-accent p-4">
         <View className="flex-row items-center gap-2">
           <Text className="text-lg font-semibold">Card (Arbitrum)</Text>
         </View>
@@ -310,8 +310,8 @@ function ErrorDisplay({ error }: ErrorDisplayProps) {
   if (!error) return null;
 
   return (
-    <View className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
-      <Text className="text-red-500 text-sm">{error}</Text>
+    <View className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+      <Text className="text-sm text-red-500">{error}</Text>
     </View>
   );
 }
@@ -325,11 +325,11 @@ type SubmitButtonProps = {
 
 function SubmitButton({ disabled, bridgeStatus, swapAndBridgeStatus, onPress }: SubmitButtonProps) {
   return (
-    <Button variant="brand" className="rounded-2xl h-12" disabled={disabled} onPress={onPress}>
+    <Button variant="brand" className="h-12 rounded-2xl" disabled={disabled} onPress={onPress}>
       {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
         <ActivityIndicator color="black" />
       ) : (
-        <Text className="font-semibold text-black text-lg">Deposit to Card</Text>
+        <Text className="text-lg font-semibold text-black">Deposit to Card</Text>
       )}
     </Button>
   );
@@ -510,7 +510,7 @@ export default function CardDepositInternalForm() {
   }, [watchedAmount, schema]);
 
   return (
-    <View className="gap-3 flex-1">
+    <View className="flex-1 gap-3">
       <SourceSelector control={control} from={watchedFrom} />
 
       <View className="gap-2">

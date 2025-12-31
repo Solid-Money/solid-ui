@@ -40,7 +40,7 @@ const useWithdraw = (): WithdrawResult => {
   const withdraw = async (amount: string) => {
     const amountWei = parseUnits(amount, 6);
     const needsApproval = (allowance as bigint) < amountWei;
-    
+
     try {
       if (!user) {
         throw new Error('User not found');
@@ -98,18 +98,20 @@ const useWithdraw = (): WithdrawResult => {
             needsApproval,
           },
         },
-        (onUserOpHash) => executeTransactions(
-          smartAccountClient,
-          transactions,
-          'Withdraw failed',
-          mainnet,
-          onUserOpHash
-        )
+        onUserOpHash =>
+          executeTransactions(
+            smartAccountClient,
+            transactions,
+            'Withdraw failed',
+            mainnet,
+            onUserOpHash,
+          ),
       );
 
-      const transaction = result && typeof result === 'object' && 'transaction' in result
-        ? result.transaction
-        : result;
+      const transaction =
+        result && typeof result === 'object' && 'transaction' in result
+          ? result.transaction
+          : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         throw new Error('User cancelled transaction');

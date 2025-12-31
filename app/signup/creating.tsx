@@ -232,12 +232,12 @@ export default function SignupCreating() {
   };
 
   return (
-    <SafeAreaView className="bg-background text-foreground flex-1">
-      <View className="flex-1 justify-center items-center px-4">
+    <SafeAreaView className="flex-1 bg-background text-foreground">
+      <View className="flex-1 items-center justify-center px-4">
         {/* Header section */}
-        <View className="items-center mb-10">
-          <Text className="text-white/60 text-[16px] mb-2">Please wait</Text>
-          <Text className="text-white text-[38px] md:text-4xl font-semibold text-center -tracking-[1px]">
+        <View className="mb-10 items-center">
+          <Text className="mb-2 text-[16px] text-white/60">Please wait</Text>
+          <Text className="text-center text-[38px] font-semibold -tracking-[1px] text-white md:text-4xl">
             Creating your wallet
           </Text>
         </View>
