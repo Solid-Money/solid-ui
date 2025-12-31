@@ -29,7 +29,7 @@ const ResponsiveBalanceBreakdown = ({ token }: { token: TokenBalance | undefined
   const { isScreenMedium } = useDimension();
 
   return (
-    <View style={{ flex: isScreenMedium ? 0.3 : 1 }} className="relative">
+    <View style={{ flex: isScreenMedium ? 0.3 : 1 }} className="relative md:min-w-[406px]">
       <BalanceBreakdown token={token} className="z-10" />
       <EarningYield token={token} className="-mt-4 rounded-t-none" />
     </View>
@@ -88,20 +88,25 @@ export default function Coin() {
         </View>
       ) : (
         <View className="mx-auto w-full max-w-7xl flex-1 gap-12 px-4 py-8 md:py-12">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-5">
-              <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
-              {isScreenMedium && (
+          {isScreenMedium && (
+            <View className="flex-row items-center justify-between gap-2">
+              <View className="flex-row items-center gap-5">
+                <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
                 <CoinName
                   contractName={token?.contractName || ''}
                   contractTickerSymbol={token?.contractTickerSymbol || ''}
                 />
-              )}
+              </View>
+              <DashboardHeaderButtons deposit={{ title: 'Deposit' }} />
             </View>
-            {isScreenMedium && <DashboardHeaderButtons />}
-          </View>
+          )}
 
-          <View className="justify-between gap-10 md:flex-row">
+          <View className="justify-between gap-8 md:flex-row md:gap-10">
+            {!isScreenMedium && (
+              <View className="items-start">
+                <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
+              </View>
+            )}
             <View style={{ flex: isScreenMedium ? 0.7 : 1 }}>
               <View className="flex-row items-center justify-between">
                 <View className="flex-1 gap-2">
@@ -142,7 +147,7 @@ export default function Coin() {
                 {isScreenMedium && <CoinChartTime />}
               </View>
 
-              <View className="px-4">
+              <View className="-mt-2 px-4 md:mt-0">
                 {isLoadingCoinHistoricalChart ? (
                   <View className="h-[200px] items-center justify-center">
                     <ActivityIndicator size="large" color="white" />

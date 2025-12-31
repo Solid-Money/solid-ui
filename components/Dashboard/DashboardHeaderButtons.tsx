@@ -13,7 +13,13 @@ import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
 import HomeWithdraw from '@/assets/images/withdraw';
 
-const DashboardHeaderButtons = () => {
+type DashboardHeaderButtonsProps = {
+  deposit?: {
+    title: string;
+  };
+};
+
+const DashboardHeaderButtons = ({ deposit }: DashboardHeaderButtonsProps) => {
   const withdrawTrigger = (
     <Button
       variant="secondary"
@@ -72,7 +78,7 @@ const DashboardHeaderButtons = () => {
         }
       />
 
-      <DepositOptionModal buttonText="Add funds" />
+      <DepositOptionModal buttonText={deposit?.title || 'Add funds'} />
     </View>
   );
 };

@@ -79,7 +79,7 @@ export default function MobileCards({
       isBalanceLoading,
       firstDepositTimestamp,
       userDepositTransactions,
-    ]
+    ],
   );
 
   const totalCards = cards.length;

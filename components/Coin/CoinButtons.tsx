@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUp, Minus } from 'lucide-react-native';
+import { ArrowUp } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 import { Address } from 'viem';
 
@@ -8,11 +8,11 @@ import StakeModal from '@/components/Stake/StakeModal';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
-import WithdrawModal from '@/components/Withdraw/WithdrawModal';
-import { isSoUSDEthereum, isSoUSDFuse } from '@/lib/utils';
+import { isSoUSDEthereum } from '@/lib/utils';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
+import HomeWithdraw from '@/assets/images/withdraw';
 
 type CoinButtonsProps = {
   contractAddress: Address;
@@ -36,18 +36,11 @@ const Trigger = ({ icon, label, ...props }: TriggerProps) => {
 const CoinButtons = ({ contractAddress }: CoinButtonsProps) => {
   return (
     <View className="mx-auto flex-row items-center justify-between gap-8">
-      {isSoUSDFuse(contractAddress) ? (
-        <UnstakeModal
-          trigger={<Trigger icon={<ArrowDownLeft color="white" />} label="Withdraw" />}
-        />
-      ) : (
-        isSoUSDEthereum(contractAddress) && (
-          <>
-            <StakeModal trigger={<Trigger icon={<ArrowUp color="white" />} label="Deposit" />} />
-            <WithdrawModal trigger={<Trigger icon={<Minus color="white" />} label="Withdraw" />} />
-          </>
-        )
+      {isSoUSDEthereum(contractAddress) && (
+        <StakeModal trigger={<Trigger icon={<ArrowUp color="white" />} label="Deposit" />} />
       )}
+
+      <UnstakeModal trigger={<Trigger icon={<HomeWithdraw />} label="Withdraw" />} />
 
       <SendModal
         trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
