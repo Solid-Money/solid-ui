@@ -65,17 +65,11 @@ const ResponsiveModalMobile = ({
           )}
           {title && (
             <View className="flex-1 items-center">
-<<<<<<< HEAD
-              <Text className="text-xl md:text-2xl font-semibold text-white text-center">
-                {title}
-              </Text>
-=======
               <Animated.View key={contentKey} entering={titleEntering} exiting={titleExiting}>
                 <Text className="text-center text-xl font-semibold text-white md:text-2xl">
                   {title}
                 </Text>
               </Animated.View>
->>>>>>> 62e68bf (Enhance modal animations and integrate new props for animation control)
             </View>
           )}
           {showBackButton && (actionButton ? actionButton : <View className="w-10" />)}
