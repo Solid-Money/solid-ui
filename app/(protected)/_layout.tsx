@@ -17,7 +17,7 @@ import { useUserStore } from '@/store/useUserStore';
 
 export default function ProtectedLayout() {
   const { user } = useUser();
-  const { users } = useUserStore();
+  const { users, _hasHydrated } = useUserStore();
   const searchParams = useLocalSearchParams();
 
   // Run post-signup/login initialization (lazy loading of balance, points, etc.)
@@ -75,6 +75,12 @@ export default function ProtectedLayout() {
   if (Platform.OS === 'web') {
     // Since we wait for passkey check in root layout, this should never be null
     if (Boolean(detectPasskeySupported())) return <Redirect href={path.PASSKEY_NOT_SUPPORTED} />;
+  }
+
+  // Wait for Zustand store to hydrate before making redirect decisions
+  // This prevents incorrect redirects when users array is empty during hydration
+  if (!_hasHydrated) {
+    return null;
   }
 
   if (!users.length) {

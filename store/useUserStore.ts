@@ -12,6 +12,7 @@ interface UserState {
   loginInfo: StatusInfo;
   signupUser: SignupUser;
   safeAddressSynced: Record<string, boolean>;
+  _hasHydrated: boolean;
   storeUser: (user: User) => void;
   updateUser: (user: User) => void;
   selectUser: (username: string) => void;
@@ -22,6 +23,7 @@ interface UserState {
   setLoginInfo: (info: StatusInfo) => void;
   setSignupUser: (user: SignupUser) => void;
   markSafeAddressSynced: (userId: string) => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useUserStore = create<UserState>()(
@@ -32,6 +34,8 @@ export const useUserStore = create<UserState>()(
       loginInfo: { status: Status.IDLE, message: '' },
       signupUser: { username: '' },
       safeAddressSynced: {},
+      _hasHydrated: false,
+      setHasHydrated: (state: boolean) => set({ _hasHydrated: state }),
 
       storeUser: (user: User) => {
         set(
@@ -120,6 +124,9 @@ export const useUserStore = create<UserState>()(
     {
       name: USER.storageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.storageKey)),
+      onRehydrateStorage: () => state => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );
