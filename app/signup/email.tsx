@@ -47,7 +47,6 @@ export default function SignupEmail() {
     setIsLoading,
     setError,
     setRateLimitError,
-    reset,
   } = useSignupFlowStore();
 
   const {
@@ -86,9 +85,11 @@ export default function SignupEmail() {
   }, [watchedEmail, email, rateLimitError, setRateLimitError]);
 
   // Reset flow state on mount
+  // Note: Using getState() to avoid dependency on reset function reference
+  // which can change during Zustand hydration and cause infinite loops
   useEffect(() => {
-    reset();
-  }, [reset]);
+    useSignupFlowStore.getState().reset();
+  }, []);
 
   const handleSendOtp = async (data: EmailFormData) => {
     setIsLoading(true);
