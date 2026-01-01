@@ -1,0 +1,130 @@
+diff --git a/node_modules/permissionless/_cjs/clients/decorators/pimlico.js b/node_modules/permissionless/_cjs/clients/decorators/pimlico.js
+index 7735058..dae0256 100644
+--- a/node_modules/permissionless/_cjs/clients/decorators/pimlico.js
++++ b/node_modules/permissionless/_cjs/clients/decorators/pimlico.js
+@@ -1,7 +1,9 @@
+ "use strict";
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.pimlicoActions = void 0;
+-const pimlico_js_1 = require("../../actions/pimlico.js");
++const getTokenQuotes_js_1 = require("../../actions/pimlico/getTokenQuotes.js");
++const sendCompressedUserOperation_js_1 = require("../../actions/pimlico/sendCompressedUserOperation.js");
++const validateSponsorshipPolicies_js_1 = require("../../actions/pimlico/validateSponsorshipPolicies.js");
+ const estimateErc20PaymasterCost_js_1 = require("../../actions/pimlico/estimateErc20PaymasterCost.js");
+ const getUserOperationGasPrice_js_1 = require("../../actions/pimlico/getUserOperationGasPrice.js");
+ const getUserOperationStatus_js_1 = require("../../actions/pimlico/getUserOperationStatus.js");
+@@ -9,7 +11,7 @@ const sponsorUserOperation_js_1 = require("../../actions/pimlico/sponsorUserOper
+ const pimlicoActions = ({ entryPoint }) => (client) => ({
+     getUserOperationGasPrice: async () => (0, getUserOperationGasPrice_js_1.getUserOperationGasPrice)(client),
+     getUserOperationStatus: async (args) => (0, getUserOperationStatus_js_1.getUserOperationStatus)(client, args),
+-    sendCompressedUserOperation: async (args) => (0, pimlico_js_1.sendCompressedUserOperation)(client, {
++    sendCompressedUserOperation: async (args) => (0, sendCompressedUserOperation_js_1.sendCompressedUserOperation)(client, {
+         ...args,
+         entryPointAddress: entryPoint.address
+     }),
+@@ -17,11 +19,11 @@ const pimlicoActions = ({ entryPoint }) => (client) => ({
+         ...args,
+         entryPoint
+     }),
+-    validateSponsorshipPolicies: async (args) => (0, pimlico_js_1.validateSponsorshipPolicies)(client, {
++    validateSponsorshipPolicies: async (args) => (0, validateSponsorshipPolicies_js_1.validateSponsorshipPolicies)(client, {
+         ...args,
+         entryPointAddress: entryPoint.address
+     }),
+-    getTokenQuotes: async (args) => (0, pimlico_js_1.getTokenQuotes)(client, {
++    getTokenQuotes: async (args) => (0, getTokenQuotes_js_1.getTokenQuotes)(client, {
+         ...args,
+         chain: args.chain,
+         entryPointAddress: entryPoint.address
+diff --git a/node_modules/permissionless/_esm/clients/decorators/pimlico.js b/node_modules/permissionless/_esm/clients/decorators/pimlico.js
+index 8eded87..58bb14d 100644
+--- a/node_modules/permissionless/_esm/clients/decorators/pimlico.js
++++ b/node_modules/permissionless/_esm/clients/decorators/pimlico.js
+@@ -1,4 +1,6 @@
+-import { getTokenQuotes, sendCompressedUserOperation, validateSponsorshipPolicies } from "../../actions/pimlico.js";
++import { getTokenQuotes } from "../../actions/pimlico/getTokenQuotes.js";
++import { sendCompressedUserOperation } from "../../actions/pimlico/sendCompressedUserOperation.js";
++import { validateSponsorshipPolicies } from "../../actions/pimlico/validateSponsorshipPolicies.js";
+ import { estimateErc20PaymasterCost } from "../../actions/pimlico/estimateErc20PaymasterCost.js";
+ import { getUserOperationGasPrice } from "../../actions/pimlico/getUserOperationGasPrice.js";
+ import { getUserOperationStatus } from "../../actions/pimlico/getUserOperationStatus.js";
+diff --git a/node_modules/permissionless/actions/pimlico.ts b/node_modules/permissionless/actions/pimlico.ts
+index 48190d9..6494cb6 100644
+--- a/node_modules/permissionless/actions/pimlico.ts
++++ b/node_modules/permissionless/actions/pimlico.ts
+@@ -1,38 +1,32 @@
+ export {
+-    type GetTokenQuotesParameters,
+-    type GetTokenQuotesReturnType,
+-    getTokenQuotes
++    getTokenQuotes, type GetTokenQuotesParameters,
++    type GetTokenQuotesReturnType
+ } from "./pimlico/getTokenQuotes.js"
+ 
+ export {
+-    type GetUserOperationGasPriceReturnType,
+-    getUserOperationGasPrice
++    getUserOperationGasPrice, type GetUserOperationGasPriceReturnType
+ } from "./pimlico/getUserOperationGasPrice.js"
+ 
+ export {
+-    type GetUserOperationStatusParameters,
+-    type GetUserOperationStatusReturnType,
+-    getUserOperationStatus
++    getUserOperationStatus, type GetUserOperationStatusParameters,
++    type GetUserOperationStatusReturnType
+ } from "./pimlico/getUserOperationStatus.js"
+ 
+ export {
+-    type SendCompressedUserOperationParameters,
+-    sendCompressedUserOperation
++    sendCompressedUserOperation, type SendCompressedUserOperationParameters
+ } from "./pimlico/sendCompressedUserOperation.js"
+ 
+ export {
+-    type PimlicoSponsorUserOperationParameters,
+-    type SponsorUserOperationReturnType,
+-    sponsorUserOperation
++    sponsorUserOperation, type PimlicoSponsorUserOperationParameters,
++    type SponsorUserOperationReturnType
+ } from "./pimlico/sponsorUserOperation.js"
+ 
+ export {
+-    type PimlicoActions,
+-    pimlicoActions
++    pimlicoActions, type PimlicoActions
+ } from "../clients/decorators/pimlico.js"
+ 
+ export {
+-    type ValidateSponsorshipPolicies,
+-    type ValidateSponsorshipPoliciesParameters,
+-    validateSponsorshipPolicies
++    validateSponsorshipPolicies, type ValidateSponsorshipPolicies,
++    type ValidateSponsorshipPoliciesParameters
+ } from "./pimlico/validateSponsorshipPolicies.js"
++
+diff --git a/node_modules/permissionless/clients/decorators/pimlico.ts b/node_modules/permissionless/clients/decorators/pimlico.ts
+index 82810dc..9287338 100644
+--- a/node_modules/permissionless/clients/decorators/pimlico.ts
++++ b/node_modules/permissionless/clients/decorators/pimlico.ts
+@@ -3,13 +3,17 @@ import type { EntryPointVersion } from "viem/account-abstraction"
+ import {
+     type GetTokenQuotesParameters,
+     type GetTokenQuotesReturnType,
++    getTokenQuotes
++} from "../../actions/pimlico/getTokenQuotes.js"
++import {
+     type SendCompressedUserOperationParameters,
++    sendCompressedUserOperation
++} from "../../actions/pimlico/sendCompressedUserOperation.js"
++import {
+     type ValidateSponsorshipPolicies,
+     type ValidateSponsorshipPoliciesParameters,
+-    getTokenQuotes,
+-    sendCompressedUserOperation,
+     validateSponsorshipPolicies
+-} from "../../actions/pimlico.js"
++} from "../../actions/pimlico/validateSponsorshipPolicies.js"
+ import {
+     type EstimateErc20PaymasterCostParameters,
+     type EstimateErc20PaymasterCostReturnType,

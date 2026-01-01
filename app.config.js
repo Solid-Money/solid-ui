@@ -1,3 +1,5 @@
+const IS_PROD = process.env.NODE_ENV === 'production';
+
 export default {
   expo: {
     name: 'Solid',
@@ -53,7 +55,7 @@ export default {
     },
     web: {
       bundler: 'metro',
-      output: 'static',
+      output: IS_PROD ? 'static' : 'single',
       favicon: './assets/images/favicon.png',
     },
     plugins: [
