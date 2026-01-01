@@ -60,4 +60,11 @@ config.resolver = {
   unstable_enablePackageExports: true,
 };
 
+config.transformer.minifierConfig = {
+  compress: {
+    // The option below removes all console logs statements in production.
+    drop_console: true,
+  },
+};
+
 module.exports = withNativeWind(config, { input: './global.css' });
