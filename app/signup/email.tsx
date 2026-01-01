@@ -38,6 +38,7 @@ export default function SignupEmail() {
     isLoading,
     error,
     rateLimitError,
+    _hasHydrated,
     setEmail,
     setMarketingConsent,
     setOtpId,
@@ -67,6 +68,8 @@ export default function SignupEmail() {
 
   // Detect and save referral code from URL on mount
   useEffect(() => {
+    // Wait for store hydration before any actions
+    if (!_hasHydrated) return;
     try {
       const detectedReferralCode = detectAndSaveReferralCode();
       if (detectedReferralCode) {
@@ -75,21 +78,30 @@ export default function SignupEmail() {
     } catch (err) {
       console.warn('Error detecting referral code:', err);
     }
-  }, []);
+  }, [_hasHydrated]);
 
   // Clear rate limit error when email changes
   useEffect(() => {
+    // Wait for store hydration before any actions
+    if (!_hasHydrated) return;
     if (rateLimitError && watchedEmail !== email) {
       setRateLimitError(null);
     }
-  }, [watchedEmail, email, rateLimitError, setRateLimitError]);
+  }, [_hasHydrated, watchedEmail, email, rateLimitError, setRateLimitError]);
 
-  // Reset flow state on mount
+  // Reset flow state on mount (only after hydration completes)
   // Note: Using getState() to avoid dependency on reset function reference
   // which can change during Zustand hydration and cause infinite loops
   useEffect(() => {
+    // Wait for store hydration before resetting to prevent race conditions
+    if (!_hasHydrated) return;
     useSignupFlowStore.getState().reset();
-  }, []);
+  }, [_hasHydrated]);
+
+  // Wait for store hydration before rendering
+  if (!_hasHydrated) {
+    return null;
+  }
 
   const handleSendOtp = async (data: EmailFormData) => {
     setIsLoading(true);

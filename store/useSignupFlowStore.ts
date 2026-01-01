@@ -31,6 +31,9 @@ interface SignupFlowState {
   // Rate limiting
   rateLimitError: string | null;
   lastOtpSentAt: number | null;
+
+  // Hydration tracking to prevent race conditions
+  _hasHydrated: boolean;
 }
 
 interface SignupFlowActions {
@@ -52,6 +55,9 @@ interface SignupFlowActions {
   setRateLimitError: (error: string | null) => void;
   setLastOtpSentAt: (timestamp: number | null) => void;
 
+  // Hydration tracking
+  setHasHydrated: (state: boolean) => void;
+
   // Reset the entire flow
   reset: () => void;
 }
@@ -70,12 +76,15 @@ const initialState: SignupFlowState = {
   isLoading: false,
   rateLimitError: null,
   lastOtpSentAt: null,
+  _hasHydrated: false,
 };
 
 export const useSignupFlowStore = create<SignupFlowState & SignupFlowActions>()(
   persist(
     set => ({
       ...initialState,
+
+      setHasHydrated: (state: boolean) => set({ _hasHydrated: state }),
 
       setStep: step => set({ step, error: null }),
 
@@ -102,7 +111,7 @@ export const useSignupFlowStore = create<SignupFlowState & SignupFlowActions>()(
       setRateLimitError: rateLimitError => set({ rateLimitError }),
       setLastOtpSentAt: lastOtpSentAt => set({ lastOtpSentAt }),
 
-      reset: () => set(initialState),
+      reset: () => set({ ...initialState, _hasHydrated: true }),
     }),
     {
       name: `${USER.storageKey}_signup_flow`,
@@ -116,6 +125,9 @@ export const useSignupFlowStore = create<SignupFlowState & SignupFlowActions>()(
         step: state.step,
         lastOtpSentAt: state.lastOtpSentAt,
       }),
+      onRehydrateStorage: () => state => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );
