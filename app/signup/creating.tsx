@@ -102,7 +102,7 @@ function WalletLoadingIcon() {
 export default function SignupCreating() {
   const router = useRouter();
   const { safeAA } = useUser();
-  const { storeUser } = useUserStore();
+  const { users, storeUser, _hasHydrated: userStoreHydrated } = useUserStore();
   const {
     email,
     verificationToken,
@@ -111,6 +111,7 @@ export default function SignupCreating() {
     credentialId,
     marketingConsent,
     referralCode,
+    _hasHydrated,
     setStep,
     setError,
   } = useSignupFlowStore();
@@ -118,6 +119,20 @@ export default function SignupCreating() {
   const isCreatingRef = useRef(false);
 
   useEffect(() => {
+    // Wait for both stores to hydrate before making decisions
+    if (!_hasHydrated || !userStoreHydrated) return;
+
+    // If user already exists (signup previously succeeded), redirect to home
+    // This prevents duplicate createAccount() calls if user navigates back
+    if (users.length > 0) {
+      if (Platform.OS === 'web') {
+        router.replace(path.HOME);
+      } else {
+        router.replace(path.NOTIFICATIONS);
+      }
+      return;
+    }
+
     // Redirect if missing required data
     if (!verificationToken || !email || !challenge || !attestation) {
       router.replace(path.SIGNUP_PASSKEY);
@@ -130,7 +145,7 @@ export default function SignupCreating() {
 
     createAccount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [_hasHydrated, userStoreHydrated, users.length]);
 
   const createAccount = async () => {
     track(TRACKING_EVENTS.SIGNUP_STARTED, {
@@ -230,6 +245,11 @@ export default function SignupCreating() {
       router.replace(path.SIGNUP_PASSKEY);
     }
   };
+
+  // Wait for stores to hydrate before rendering
+  if (!_hasHydrated || !userStoreHydrated) {
+    return null;
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-background text-foreground">

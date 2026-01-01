@@ -46,6 +46,7 @@ export default function SignupOtp() {
     lastOtpSentAt,
     referralCode,
     marketingConsent,
+    _hasHydrated,
     setOtpId,
     setVerificationToken,
     setStep,
@@ -91,12 +92,14 @@ export default function SignupOtp() {
     return () => clearInterval(interval);
   }, [lastOtpSentAt]);
 
-  // Redirect to email step if no email is set
+  // Redirect to email step if no email is set (only after hydration)
   useEffect(() => {
+    // Wait for store hydration before redirect decisions
+    if (!_hasHydrated) return;
     if (!email || !otpId) {
       router.replace(path.SIGNUP_EMAIL);
     }
-  }, [email, otpId, router]);
+  }, [_hasHydrated, email, otpId, router]);
 
   const onSubmit = useCallback(
     async (data: OtpFormData) => {
@@ -149,11 +152,18 @@ export default function SignupOtp() {
 
   // Auto-submit when all digits are entered (only once per unique OTP value)
   useEffect(() => {
+    // Wait for store hydration before auto-submit
+    if (!_hasHydrated) return;
     if (otpValue.length === OTP_LENGTH && isValid && otpValue !== lastSubmittedOtpRef.current) {
       lastSubmittedOtpRef.current = otpValue;
       handleVerifyOtp();
     }
-  }, [otpValue, isValid, handleVerifyOtp]);
+  }, [_hasHydrated, otpValue, isValid, handleVerifyOtp]);
+
+  // Wait for store hydration before rendering
+  if (!_hasHydrated) {
+    return null;
+  }
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0 || isLoading) return;

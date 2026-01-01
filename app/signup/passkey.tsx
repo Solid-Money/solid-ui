@@ -24,16 +24,24 @@ const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
 export default function SignupPasskey() {
   const router = useRouter();
   const { isDesktop } = useDimension();
-  const { email, verificationToken, setStep, setPasskeyData, setError } = useSignupFlowStore();
+  const { email, verificationToken, _hasHydrated, setStep, setPasskeyData, setError } =
+    useSignupFlowStore();
   const [isLoading, setIsLoading] = useState(false);
   const { createPasskey } = useTurnkey();
 
   useEffect(() => {
+    // Wait for store hydration before redirect decisions
+    if (!_hasHydrated) return;
     // Redirect if no verification token (user hasn't completed OTP)
     if (!verificationToken || !email) {
       router.replace(path.SIGNUP_EMAIL);
     }
-  });
+  }, [_hasHydrated, verificationToken, email, router]);
+
+  // Wait for store hydration before rendering
+  if (!_hasHydrated) {
+    return null;
+  }
 
   const handleContinue = async () => {
     setIsLoading(true);
