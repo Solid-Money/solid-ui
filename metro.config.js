@@ -4,12 +4,12 @@ const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getSentryExpoConfig(__dirname);
 
-const originalResolveRequest = config.resolver?.resolveRequest;
-let isResolving = false;
-
+// Custom resolver to handle platform-specific modules
 config.resolver = {
   ...config.resolver,
-  blockList: [/node_modules\/.*\/ox\/tempo\/.*/],
+  blockList: [
+    /node_modules\/.*\/ox\/tempo\/.*/,
+  ],
   alias: {
     ...config.resolver?.alias,
     stream: 'stream-browserify',
@@ -19,30 +19,45 @@ config.resolver = {
     events: 'events',
   },
   resolveRequest: (context, moduleName, platform) => {
-    // Prevent infinite recursion
-    if (isResolving) {
-      return originalResolveRequest
-        ? originalResolveRequest(context, moduleName, platform)
-        : context.resolveRequest(context, moduleName, platform);
+    // Block browser-specific modules when building for native platforms
+    if (
+      platform !== 'web' &&
+      (moduleName === '@turnkey/sdk-browser' ||
+        moduleName === '@hpke/core' ||
+        moduleName === 'hpke-js' ||
+        moduleName === 'ws' ||
+        moduleName === 'react-use-intercom' ||
+        moduleName === 'recharts')
+    ) {
+      // Return an empty module for these packages on native platforms
+      return {
+        type: 'empty',
+      };
     }
 
-    // Fix tslib ESM compatibility issue on web
-    if (platform === 'web' && moduleName === 'tslib') {
-      isResolving = true;
-      try {
-        return originalResolveRequest
-          ? originalResolveRequest(context, 'tslib/tslib.es6.js', platform)
-          : context.resolveRequest(context, 'tslib/tslib.es6.js', platform);
-      } finally {
-        isResolving = false;
+    // Handle Node.js built-ins for React Native
+    if (platform !== 'web') {
+      const nodeModuleMappings = {
+        stream: 'stream-browserify',
+        crypto: 'react-native-quick-crypto',
+        http: 'stream-http',
+        https: 'https-browserify',
+        events: 'events',
+      };
+
+      if (nodeModuleMappings[moduleName]) {
+        return context.resolveRequest(context, nodeModuleMappings[moduleName], platform);
       }
     }
 
-    // Use default resolver
-    return originalResolveRequest
-      ? originalResolveRequest(context, moduleName, platform)
-      : context.resolveRequest(context, moduleName, platform);
+    if (platform === 'web' && moduleName === 'tslib') {
+      return context.resolveRequest(context, 'tslib/tslib.es6.js', platform);
+    }
+
+    // Default resolver for all other modules
+    return context.resolveRequest(context, moduleName, platform);
   },
+  unstable_enablePackageExports: true,
 };
 
 module.exports = withNativeWind(config, { input: './global.css' });
