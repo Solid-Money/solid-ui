@@ -41,7 +41,7 @@ const TokenSelector: React.FC = () => {
       <ToInput />
 
       <View className="gap-4">
-        <Text className="text-base opacity-70 font-medium">Select an asset</Text>
+        <Text className="text-base font-medium opacity-70">Select an asset</Text>
         <ScrollView className="md:h-[50vh]" showsVerticalScrollIndicator={false}>
           <View className="gap-2">
             {allTokens.map(token => {
@@ -57,12 +57,12 @@ const TokenSelector: React.FC = () => {
                 <Pressable
                   key={`${token.contractAddress}-${token.chainId}`}
                   className={cn(
-                    'bg-card rounded-2xl px-4 py-4 flex-row items-center justify-between web:hover:bg-accent/50',
+                    'flex-row items-center justify-between rounded-2xl bg-card px-4 py-4 web:hover:bg-accent/50',
                     isSelected && 'border border-green-500',
                   )}
                   onPress={() => handleTokenSelect(token)}
                 >
-                  <View className="flex-row items-center gap-3 flex-1">
+                  <View className="flex-1 flex-row items-center gap-3">
                     <RenderTokenIcon
                       tokenIcon={getTokenIcon({
                         logoUrl: token.logoUrl,
@@ -73,7 +73,7 @@ const TokenSelector: React.FC = () => {
                     />
                     <View className="flex-1">
                       <Text className="text-lg font-semibold">{token.contractTickerSymbol}</Text>
-                      <Text className="text-sm opacity-50 font-medium">
+                      <Text className="text-sm font-medium opacity-50">
                         {token.contractTickerSymbol} on {getBridgeChain(token.chainId).name}
                       </Text>
                     </View>
@@ -81,7 +81,7 @@ const TokenSelector: React.FC = () => {
 
                   <View className="items-end">
                     <Text className="text-lg font-semibold">${formatNumber(balanceUSD, 2)}</Text>
-                    <Text className="text-sm opacity-50 font-medium">
+                    <Text className="text-sm font-medium opacity-50">
                       {formatNumber(balance, 2)}
                     </Text>
                   </View>

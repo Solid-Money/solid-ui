@@ -98,8 +98,8 @@ const SendSearch: React.FC = () => {
       <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
         {filteredRecentActivities.length > 0 && (
           <View className="gap-4">
-            <Text className="text-base opacity-70 font-medium">Recent</Text>
-            <View className="bg-card rounded-2xl">
+            <Text className="text-base font-medium opacity-70">Recent</Text>
+            <View className="rounded-2xl bg-card">
               {filteredRecentActivities.map((activity, index) => {
                 const walletAddress = activity.walletAddress;
                 const addressBookEntry = addressBook.find(
@@ -117,7 +117,7 @@ const SendSearch: React.FC = () => {
                     )}
                   >
                     <Pressable
-                      className="flex-row items-center gap-3 flex-1"
+                      className="flex-1 flex-row items-center gap-3"
                       onPress={() => handleToInput(walletAddress, addressBookEntry?.name)}
                     >
                       <Avatar name={addressBookEntry?.name || walletAddress} />
@@ -134,17 +134,17 @@ const SendSearch: React.FC = () => {
                     {!isInAddressBook && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="w-8 h-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
                             <EllipsisVertical color="white" size={20} />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           insets={contentInsets}
                           align="end"
-                          className="w-44 bg-card border-none rounded-xl"
+                          className="w-44 rounded-xl border-none bg-card"
                         >
                           <DropdownMenuItem
-                            className="h-10 flex-row items-center gap-2 px-4 web:cursor-pointer rounded-xl"
+                            className="h-10 flex-row items-center gap-2 rounded-xl px-4 web:cursor-pointer"
                             onPress={() => handleAddToAddressBook(walletAddress)}
                           >
                             <Plus size={16} color="white" />
@@ -168,8 +168,8 @@ const SendSearch: React.FC = () => {
               return <AddAddress address={searchQuery.trim()} />;
             }
             return (
-              <View className="py-8 items-center">
-                <Text className="text-muted-foreground text-center">
+              <View className="items-center py-8">
+                <Text className="text-center text-muted-foreground">
                   {searchQuery.trim()
                     ? 'No matches found'
                     : 'No address book entries or recent sends'}

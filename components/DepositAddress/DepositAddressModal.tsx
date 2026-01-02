@@ -25,7 +25,7 @@ const DepositAddressModal = ({
         <View className={buttonVariants({ variant: 'brand', className: 'h-12 rounded-xl' })}>
           <View className="flex-row items-center gap-2">
             <Plus color="black" />
-            <Text className="text-primary-foreground font-bold hidden md:block">Add funds</Text>
+            <Text className="hidden font-bold text-primary-foreground md:block">Add funds</Text>
           </View>
         </View>
       }

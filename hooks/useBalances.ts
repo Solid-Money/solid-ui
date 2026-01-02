@@ -5,7 +5,7 @@ import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib
 import { isSoUSDToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { useQuery } from '@tanstack/react-query';
-import { zeroAddress } from 'viem';
+import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
 import { base, fuse, mainnet } from 'viem/chains';
 import useUser from './useUser';
@@ -41,6 +41,12 @@ type CalculatedTokenValue = {
   value: number;
 };
 
+interface UnifiedTokenBalance extends TokenBalance {
+  unifiedBalance: string;
+  unifiedBalanceUSD: number;
+  chainBalances: TokenBalance[];
+}
+
 interface BalanceData {
   totalUSD: number;
   totalSoUSD: number;
@@ -52,6 +58,7 @@ interface BalanceData {
   fuseTokens: TokenBalance[];
   baseTokens: TokenBalance[];
   tokens: TokenBalance[];
+  unifiedTokens: UnifiedTokenBalance[];
   isLoading: boolean;
   isRefreshing: boolean;
   error: string | null;
@@ -154,6 +161,9 @@ const fetchTokenBalances = async (safeAddress: string) => {
     chainId: number,
   ): TokenBalance => {
     const address = getAddress(item);
+    const tokenFromList = tokenListData.find(
+      token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
+    );
     return {
       contractTickerSymbol: symbols[item.token.symbol as keyof typeof symbols] || item.token.symbol,
       contractName: item.token.name,
@@ -169,6 +179,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       type: item.token.type as TokenType,
       verified: true,
       chainId,
+      commonId: tokenFromList?.commonId,
     };
   };
 
@@ -229,6 +240,9 @@ const fetchTokenBalances = async (safeAddress: string) => {
   // Process native token balances
   if (ethBalance.status === PromiseStatus.FULFILLED && Number(ethBalance.value)) {
     const ethPriceValue = ethPrice.status === PromiseStatus.FULFILLED ? Number(ethPrice.value) : 0;
+    const ethTokenFromList = tokenListData.find(
+      token => token.chainId === ETHEREUM_CHAIN_ID && token.symbol === 'ETH',
+    );
     ethereumTokens.push({
       contractTickerSymbol: 'ETH',
       contractName: 'Ethereum',
@@ -239,12 +253,16 @@ const fetchTokenBalances = async (safeAddress: string) => {
       type: TokenType.NATIVE,
       verified: true,
       chainId: ETHEREUM_CHAIN_ID,
+      commonId: ethTokenFromList?.commonId,
     });
   }
 
   if (fuseBalance.status === PromiseStatus.FULFILLED && Number(fuseBalance.value)) {
     const fusePriceValue =
       fusePrice.status === PromiseStatus.FULFILLED ? Number(fusePrice.value) : 0;
+    const fuseTokenFromList = tokenListData.find(
+      token => token.chainId === FUSE_CHAIN_ID && token.symbol === 'FUSE',
+    );
     fuseTokens.push({
       contractTickerSymbol: 'FUSE',
       contractName: 'Fuse',
@@ -255,12 +273,16 @@ const fetchTokenBalances = async (safeAddress: string) => {
       type: TokenType.NATIVE,
       verified: true,
       chainId: FUSE_CHAIN_ID,
+      commonId: fuseTokenFromList?.commonId,
     });
   }
 
   if (baseBalance.status === PromiseStatus.FULFILLED && Number(baseBalance.value)) {
     const basePriceValue =
       basePrice.status === PromiseStatus.FULFILLED ? Number(basePrice.value) : 0;
+    const baseEthTokenFromList = tokenListData.find(
+      token => token.chainId === BASE_CHAIN_ID && token.symbol === 'ETH',
+    );
     baseTokens.push({
       contractTickerSymbol: 'ETH',
       contractName: 'Ether',
@@ -271,6 +293,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       type: TokenType.NATIVE,
       verified: true,
       chainId: BASE_CHAIN_ID,
+      commonId: baseEthTokenFromList?.commonId,
     });
   }
 
@@ -324,12 +347,49 @@ const fetchTokenBalances = async (safeAddress: string) => {
     },
   );
 
+  const unifiedTokensMap = new Map<string, UnifiedTokenBalance>();
+
+  allTokens.forEach(token => {
+    const key = token.commonId || token.contractTickerSymbol;
+    const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
+    const balanceUSD = balance * (token.quoteRate || 0);
+
+    const existing = unifiedTokensMap.get(key);
+
+    if (existing) {
+      const unifiedBalanceStr = formatUnits(
+        BigInt(existing.unifiedBalance || '0'),
+        existing.contractDecimals,
+      );
+      const tokenBalanceStr = formatUnits(BigInt(token.balance || '0'), token.contractDecimals);
+      const totalBalanceNum = Number(unifiedBalanceStr) + Number(tokenBalanceStr);
+
+      const maxDecimals = Math.max(existing.contractDecimals, token.contractDecimals);
+      const totalBalanceBigInt = parseUnits(totalBalanceNum.toFixed(maxDecimals), maxDecimals);
+
+      existing.unifiedBalance = totalBalanceBigInt.toString();
+      existing.contractDecimals = maxDecimals;
+      existing.unifiedBalanceUSD += balanceUSD;
+      existing.chainBalances.push(token);
+    } else {
+      unifiedTokensMap.set(key, {
+        ...token,
+        unifiedBalance: token.balance,
+        unifiedBalanceUSD: balanceUSD,
+        chainBalances: [token],
+      });
+    }
+  });
+
+  const unifiedTokens = Array.from(unifiedTokensMap.values());
+
   return {
     ...totals,
     ethereumTokens,
     fuseTokens,
     baseTokens,
     tokens: allTokens,
+    unifiedTokens,
   };
 };
 
@@ -362,6 +422,7 @@ export const useBalances = (): BalanceData => {
     fuseTokens: [],
     baseTokens: [],
     tokens: [],
+    unifiedTokens: [],
   };
 
   return {

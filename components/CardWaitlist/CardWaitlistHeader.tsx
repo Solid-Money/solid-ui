@@ -14,12 +14,12 @@ const CardWaitlistHeader = ({ children, content }: CardWaitlistHeaderProps) => {
 
   return (
     <SafeAreaView
-      className="bg-background text-foreground flex-1"
+      className="flex-1 bg-background text-foreground"
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
         {isScreenMedium && <Navbar />}
-        <View className="gap-8 md:gap-9 px-4 pt-8 pb-24 md:py-12 w-full max-w-7xl mx-auto">
+        <View className="mx-auto w-full max-w-7xl gap-8 px-4 pb-24 pt-8 md:gap-9 md:py-12">
           {content}
           {children}
         </View>

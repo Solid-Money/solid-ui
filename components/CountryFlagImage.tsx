@@ -27,7 +27,7 @@ const CountryFlagImage: React.FC<CountryFlagImageProps> = ({
 
   return (
     <View
-      className={`bg-white rounded-full overflow-hidden items-center justify-center ${className}`}
+      className={`items-center justify-center overflow-hidden rounded-full bg-white ${className}`}
       style={[
         {
           width: size,

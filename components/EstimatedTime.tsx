@@ -19,7 +19,7 @@ export default function EstimatedTime({ currentTime, setCurrentTime }: Estimated
   }, [currentTime, setCurrentTime]);
 
   if (currentTime <= 0) {
-    return <Text className="md:text-lg font-bold">Taking longer than usual</Text>;
+    return <Text className="font-bold md:text-lg">Taking longer than usual</Text>;
   }
 
   const duration = intervalToDuration({ start: 0, end: currentTime * 1000 });

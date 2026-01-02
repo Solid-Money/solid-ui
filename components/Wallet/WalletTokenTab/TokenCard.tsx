@@ -6,7 +6,7 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
-import { compactNumberFormat, isSoUSDEthereum } from '@/lib/utils';
+import { compactNumberFormat } from '@/lib/utils';
 
 interface TokenCardProps {
   token: TokenBalance;
@@ -26,24 +26,19 @@ const TokenCard = memo(
 
     return (
       <Pressable
-        className="flex-row items-center justify-between p-4 py-5 bg-[#1C1C1C] rounded-[20px] mb-2"
+        className="mb-2 flex-row items-center justify-between rounded-[20px] bg-[#1C1C1C] p-4 py-5"
         onPress={onPress}
       >
         <View className="flex-row items-center gap-3">
           <RenderTokenIcon tokenIcon={tokenIcon} size={40} />
           <View>
-            <Text className="font-bold text-lg">{token.contractTickerSymbol || 'Unknown'}</Text>
-            {isSoUSDEthereum(token.contractAddress) && (
-              <View className="bg-accent rounded-full px-2 py-1 flex-row items-center gap-2 w-fit">
-                <Text className="text-xs font-semibold">Ready to withdraw</Text>
-              </View>
-            )}
+            <Text className="text-lg font-bold">{token.contractTickerSymbol || 'Unknown'}</Text>
           </View>
         </View>
 
         <View className="flex-row items-center gap-3">
           <View className="items-end">
-            <Text className="font-bold text-base">{compactNumberFormat(balance)}</Text>
+            <Text className="text-base font-bold">{compactNumberFormat(balance)}</Text>
             <Text className="text-sm font-medium text-muted-foreground">
               ${compactNumberFormat(balanceUSD)}
             </Text>

@@ -13,13 +13,13 @@ interface DashboardTokensProps {
 
 const renderInfo = (text: string, error?: string | null, onRetry?: () => void) => {
   return (
-    <View className="flex-1 justify-center items-center p-8">
+    <View className="flex-1 items-center justify-center p-8">
       <Text className="text-lg">{text}</Text>
       {error && (
         <>
-          <Text className="text-sm text-muted-foreground mt-2">{error}</Text>
+          <Text className="mt-2 text-sm text-muted-foreground">{error}</Text>
           {onRetry && (
-            <TouchableOpacity onPress={onRetry} className="mt-4 px-4 py-2 bg-primary rounded-lg">
+            <TouchableOpacity onPress={onRetry} className="mt-4 rounded-lg bg-primary px-4 py-2">
               <Text className="text-primary-foreground">Retry</Text>
             </TouchableOpacity>
           )}

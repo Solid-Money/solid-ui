@@ -98,7 +98,6 @@ export function useTransactionAwait(
   }, [isError]);
 
   useEffect(() => {
-
     if (isSuccess && hash && !processedHashes.current.has(hash)) {
       // Mark this hash as processed to prevent duplicate calls
       processedHashes.current.add(hash);

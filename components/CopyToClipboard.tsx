@@ -37,7 +37,7 @@ const CopyToClipboard = ({
       size="icon"
       onPress={handleCopy}
       className={cn(
-        'transition-all duration-200 web:hover:bg-primary/10 active:scale-95',
+        'transition-all duration-200 active:scale-95 web:hover:bg-primary/10',
         className,
       )}
     >

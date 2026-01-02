@@ -22,7 +22,7 @@ import {
 import { ChainsId } from './chains';
 
 import { ADDRESSES } from '@/lib/config';
-import { TokenMap } from '@/lib/types';
+import { TokenBalance, TokenMap, TokenType } from '@/lib/types';
 
 export const TOKEN_MAP: TokenMap = {
   [mainnet.id]: [
@@ -91,3 +91,13 @@ export const soUSDC_TOKEN = new Token(
   'soUSDC',
   'Solid USD',
 );
+
+export const USDC_TOKEN_BALANCE: TokenBalance = {
+  contractTickerSymbol: 'USDC',
+  contractName: 'USD Coin',
+  contractAddress: USDC,
+  balance: '0',
+  contractDecimals: 6,
+  type: TokenType.ERC20,
+  chainId: fuse.id,
+};

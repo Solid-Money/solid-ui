@@ -70,7 +70,7 @@ const SendTrigger: React.FC<SendTriggerProps> = ({
       variant="outline"
       className={buttonVariants({
         variant: 'secondary',
-        className: 'border-0 md:h-12 rounded-xl gap-4 md:pr-6',
+        className: 'gap-4 rounded-xl border-0 md:h-12 md:pr-6',
       })}
       onPress={handlePress}
     >

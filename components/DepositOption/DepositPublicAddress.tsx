@@ -12,14 +12,14 @@ const DepositPublicAddress = () => {
 
   return (
     <View className="flex items-center justify-center gap-8">
-      <View className="bg-primary/10 rounded-xl w-full max-w-md">
-        <View className="justify-center items-center px-4 pt-14 pb-4 border-border/50">
+      <View className="w-full max-w-md rounded-xl bg-primary/10">
+        <View className="items-center justify-center border-border/50 px-4 pb-4 pt-14">
           <View className="rounded-xl bg-white p-4">
             <QRCode value={user?.safeAddress} size={200} />
           </View>
         </View>
         <View className="flex-col items-center justify-center gap-2">
-          <View className="flex-row items-center gap-1.5 bg-primary/20 px-3 py-1.5 mt-4 rounded-full">
+          <View className="mt-4 flex-row items-center gap-1.5 rounded-full bg-primary/20 px-3 py-1.5">
             <Image
               source={require('@/assets/images/fuse-4x.png')}
               style={{ width: 20, height: 20 }}
@@ -27,8 +27,8 @@ const DepositPublicAddress = () => {
             />
             <Text className="text-lg font-medium">Fuse network</Text>
           </View>
-          <View className="w-full h-[1px] bg-[#303030] mt-4" />
-          <View className="flex-row items-center gap-2 mb-2">
+          <View className="mt-4 h-[1px] w-full bg-[#303030]" />
+          <View className="mb-2 flex-row items-center gap-2">
             <Text className="text-base">
               {user?.safeAddress ? eclipseAddress(user?.safeAddress, 6, 6) : ''}
             </Text>

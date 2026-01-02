@@ -10,7 +10,7 @@ const Max = ({ onPress }: MaxProps) => {
   return (
     <Pressable
       onPress={onPress}
-      className="items-center justify-center bg-secondary rounded-xl px-3 py-1 web:hover:bg-secondary-hover"
+      className="items-center justify-center rounded-xl bg-secondary px-3 py-1 web:hover:bg-secondary-hover"
     >
       <Text className="text-sm font-medium opacity-50">Max</Text>
     </Pressable>

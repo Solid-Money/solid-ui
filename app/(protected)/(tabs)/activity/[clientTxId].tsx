@@ -68,7 +68,7 @@ const Row = memo(function Row({ label, value, isLast }: RowProps) {
   return (
     <View
       className={cn(
-        'flex-row justify-between p-5 border-b border-[#2C2C2E]',
+        'flex-row justify-between border-b border-[#2C2C2E] p-5',
         isLast && 'border-b-0',
       )}
     >
@@ -79,7 +79,7 @@ const Row = memo(function Row({ label, value, isLast }: RowProps) {
 });
 
 const Label = memo(function Label({ children }: LabelProps) {
-  return <Text className="text-[#8E8E93] font-medium text-base">{children}</Text>;
+  return <Text className="text-base font-medium text-[#8E8E93]">{children}</Text>;
 });
 
 const Value = memo(function Value({ children, className }: ValueProps) {
@@ -104,7 +104,7 @@ const Back = memo(function Back({ title, className }: BackProps) {
       <Pressable onPress={handleBackPress} className="web:hover:opacity-70">
         <ChevronLeft color="white" />
       </Pressable>
-      <Text className={cn('text-white text-lg font-semibold text-center', className)}>{title}</Text>
+      <Text className={cn('text-center text-lg font-semibold text-white', className)}>{title}</Text>
       <View className="w-10" />
     </View>
   );
@@ -123,13 +123,13 @@ const SupportSection = memo(function SupportSection({ transactionContext }: Supp
   }, [intercom, transactionContext]);
 
   return (
-    <View className="items-center mt-6">
+    <View className="mt-6 items-center">
       <Pressable
         onPress={handleSupportPress}
-        className="flex-row items-center gap-2 web:hover:opacity-80 active:opacity-70"
+        className="flex-row items-center gap-2 active:opacity-70 web:hover:opacity-80"
       >
         <SupportIcon width={18} height={18} />
-        <Text className="text-white/70 text-sm">
+        <Text className="text-sm text-white/70">
           Got question? <Text className="underline">Click here</Text> to talk with support
         </Text>
       </Pressable>
@@ -204,14 +204,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   return (
     <PageLayout desktopOnly>
-      <View className="flex-1 gap-10 px-4 py-8 md:py-12 pb-32 w-full max-w-lg mx-auto">
+      <View className="mx-auto w-full max-w-lg flex-1 gap-10 px-4 py-8 pb-32 md:py-12">
         <Back title={merchantName} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
           {/* Avatar with initials or token icon */}
           {isPurchase ? (
             <View
-              className="w-[75px] h-[75px] rounded-full items-center justify-center"
+              className="h-[75px] w-[75px] items-center justify-center rounded-full"
               style={{ backgroundColor: color.bg }}
             >
               <Text className="text-5xl font-semibold" style={{ color: color.text }}>
@@ -226,14 +226,14 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             <Text className="text-4xl font-bold text-white">
               {formatCardAmount(transaction.amount)}
             </Text>
-            <Text className="text-muted-foreground font-semibold mt-2">Savings account</Text>
-            <Text className="text-muted-foreground font-semibold">
+            <Text className="mt-2 font-semibold text-muted-foreground">Savings account</Text>
+            <Text className="font-semibold text-muted-foreground">
               {format(postedDate, DATE_FORMAT)}
             </Text>
           </View>
         </View>
 
-        <View className="bg-[#1C1C1E] rounded-[20px]">
+        <View className="rounded-[20px] bg-[#1C1C1E]">
           {rows.map((row, index) => (
             <Row
               key={row.key}
@@ -452,7 +452,7 @@ export default function ActivityDetail() {
   if (!finalActivity && !isCardTransaction && !isAnyLoading) {
     return (
       <PageLayout desktopOnly>
-        <View className="gap-8 md:gap-16 px-4 py-8 md:py-12 w-full max-w-lg mx-auto">
+        <View className="mx-auto w-full max-w-lg gap-8 px-4 py-8 md:gap-16 md:py-12">
           <Back title={`Transaction ${eclipseAddress(clientTxId)} not found`} />
         </View>
       </PageLayout>
@@ -470,7 +470,7 @@ export default function ActivityDetail() {
 
   return (
     <PageLayout desktopOnly isLoading={isAnyLoading}>
-      <View className="flex-1 gap-10 px-4 py-8 md:py-12 pb-32 w-full max-w-lg mx-auto">
+      <View className="mx-auto w-full max-w-lg flex-1 gap-10 px-4 py-8 pb-32 md:py-12">
         <Back title={finalActivity.title} className="text-xl md:text-3xl" />
 
         <View className="items-center gap-4">
@@ -481,14 +481,14 @@ export default function ActivityDetail() {
               {statusSign}
               {formatNumber(Number(finalActivity.amount))} {formatSymbol(finalActivity.symbol)}
             </Text>
-            <Text className="text-muted-foreground font-semibold mt-2">{description}</Text>
-            <Text className="text-muted-foreground font-semibold">
+            <Text className="mt-2 font-semibold text-muted-foreground">{description}</Text>
+            <Text className="font-semibold text-muted-foreground">
               {format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}
             </Text>
           </View>
         </View>
 
-        <View className="bg-card rounded-twice">
+        <View className="rounded-twice bg-card">
           {rows.map((row, index) => (
             <Row
               key={row.key}
@@ -503,7 +503,7 @@ export default function ActivityDetail() {
           <Button
             onPress={handleCancelWithdraw}
             variant="secondary"
-            className="rounded-xl h-14 border-0"
+            className="h-14 rounded-xl border-0"
           >
             <X color="white" size={16} />
             <Text className="text-base">Cancel Withdraw</Text>

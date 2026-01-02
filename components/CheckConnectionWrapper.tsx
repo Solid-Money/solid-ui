@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
-import { useUserStore } from '@/store/useUserStore';
 import { Status } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useUserStore } from '@/store/useUserStore';
 
 type CheckConnectionWrapperProps = {
   children: React.ReactNode;
@@ -14,9 +14,9 @@ export const CheckConnectionWrapper = ({
   className,
   props,
 }: CheckConnectionWrapperProps) => {
-  const { userStatus } = useUserStore();
+  const { loginInfo } = useUserStore();
 
-  if (userStatus === Status.PENDING) {
+  if (loginInfo.status === Status.PENDING) {
     return <Button className={cn('animate-pulse', className)} disabled {...props} />;
   }
 

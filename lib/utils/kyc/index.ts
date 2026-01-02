@@ -1,4 +1,3 @@
-import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
@@ -28,7 +27,7 @@ export function startKycFlow(params: StartKycFlowParams) {
     // On web, we render the KYC widget in /kyc, forwarding the link and redirectUri
 
     router.push({
-      pathname: path.KYC,
+      pathname: '/kyc',
       params: { url: kycLink },
     });
   }

@@ -12,12 +12,12 @@ export function StepIndicator({ stepId, completed, onPress }: StepIndicatorProps
   return (
     <Pressable className="mt-1" onPress={onPress}>
       {completed ? (
-        <View className="w-8 h-8 rounded-full bg-[#94F27F] items-center justify-center">
+        <View className="h-8 w-8 items-center justify-center rounded-full bg-[#94F27F]">
           <Check size={16} color="black" strokeWidth={3} />
         </View>
       ) : (
-        <View className="w-8 h-8 rounded-full bg-[#4D4D4D] items-center justify-center">
-          <Text className="text-white font-semibold text-sm">{stepId}</Text>
+        <View className="h-8 w-8 items-center justify-center rounded-full bg-[#4D4D4D]">
+          <Text className="text-sm font-semibold text-white">{stepId}</Text>
         </View>
       )}
     </Pressable>

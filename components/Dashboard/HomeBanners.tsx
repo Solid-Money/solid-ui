@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
 import type { PanGesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
@@ -33,9 +33,11 @@ const BannerItem = ({
   item,
   dataLen,
   hasMultipleViews,
-  // progress,
+  progress,
   gapPadding,
 }: BannerItemProps) => {
+  const isWeb = Platform.OS === 'web';
+
   const animatedStyle = useAnimatedStyle(() => {
     // const currentIndex = Math.round(progress.value);
     // const nextIndex = (currentIndex + 1) % dataLen;
@@ -56,7 +58,7 @@ const BannerItem = ({
   }, [index, dataLen, hasMultipleViews]);
 
   return (
-    <Animated.View className="flex-1 h-full" style={animatedStyle}>
+    <Animated.View className="h-full flex-1" style={animatedStyle}>
       {item}
     </Animated.View>
   );

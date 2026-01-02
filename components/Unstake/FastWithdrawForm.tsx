@@ -55,14 +55,13 @@ const FastWithdrawForm = () => {
     return z.object({
       amount: z
         .string()
-        .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
-        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
-        .refine(val => Number(val) >= 5, 'Amount must be at least 5 soUSD')
-        .refine(val => Number(val) <= 1000, 'Amount must be at most 1000 soUSD')
-        .refine(
-          val => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} soUSD`,
-        )
+        .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
+        .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
+        .refine(val => Number(val) >= 5, { error: 'Amount must be at least 5 soUSD' })
+        .refine(val => Number(val) <= 1000, { error: 'Amount must be at most 1000 soUSD' })
+        .refine(val => Number(val) <= balanceAmount, {
+          error: `Available balance is ${formatNumber(balanceAmount)} soUSD`,
+        })
         .transform(val => Number(val)),
       address: z
         .string()
@@ -201,15 +200,15 @@ const FastWithdrawForm = () => {
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground text-base">Destination address</Text>
-          <View className="px-5 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
+          <Text className="text-base text-muted-foreground">Destination address</Text>
+          <View className="w-full flex-row items-center justify-between gap-2 rounded-2xl bg-accent px-5 py-4">
             <Controller
               control={control}
               name="address"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
                   keyboardType="default"
-                  className="w-full text-2xl text-white font-semibold web:focus:outline-none"
+                  className="w-full text-2xl font-semibold text-white web:focus:outline-none"
                   value={value.toString()}
                   placeholder="0x..."
                   placeholderTextColor="#666"
@@ -222,19 +221,19 @@ const FastWithdrawForm = () => {
             />
           </View>
           {errors.address && (
-            <Text className="text-red-500 text-sm mt-1">{errors.address.message}</Text>
+            <Text className="mt-1 text-sm text-red-500">{errors.address.message}</Text>
           )}
         </View>
         <View className="gap-2">
-          <Text className="text-muted-foreground text-base">Amount</Text>
-          <View className="px-5 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
+          <Text className="text-base text-muted-foreground">Amount</Text>
+          <View className="w-full flex-row items-center justify-between gap-2 rounded-2xl bg-accent px-5 py-4">
             <Controller
               control={control}
               name="amount"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
                   keyboardType="decimal-pad"
-                  className="w-full text-2xl text-white font-semibold web:focus:outline-none"
+                  className="w-full text-2xl font-semibold text-white web:focus:outline-none"
                   value={value.toString()}
                   placeholder="0.0"
                   placeholderTextColor="#666"
@@ -245,7 +244,7 @@ const FastWithdrawForm = () => {
                 />
               )}
             />
-            <View className="flex-row items-center gap-2 flex-shrink-0">
+            <View className="flex-shrink-0 flex-row items-center gap-2">
               <Pressable
                 onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
                 className="flex-row items-center gap-2"
@@ -255,7 +254,7 @@ const FastWithdrawForm = () => {
                   alt="soUSD"
                   style={{ width: 32, height: 32 }}
                 />
-                <Text className="font-semibold text-white text-lg">soUSD</Text>
+                <Text className="text-lg font-semibold text-white">soUSD</Text>
               </Pressable>
             </View>
           </View>
@@ -272,24 +271,24 @@ const FastWithdrawForm = () => {
             />
           </View>
           {errors.amount && (
-            <Text className="text-red-500 text-sm mt-1">{errors.amount.message}</Text>
+            <Text className="mt-1 text-sm text-red-500">{errors.amount.message}</Text>
           )}
         </View>
         <TokenDetails>
-          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <View className="flex-row items-center gap-2">
               <Text className="text-base text-muted-foreground">Network</Text>
             </View>
-            <View className="flex-row items-center gap-2 ml-auto flex-shrink-0">
+            <View className="ml-auto flex-shrink-0 flex-row items-center gap-2">
               <Image source={selectedNetwork?.icon} style={{ width: 24, height: 24 }} />
               <Text className="text-base font-semibold">{selectedNetwork?.name}</Text>
             </View>
           </View>
-          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Estimated Receive</Text>
-            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               {isPreviewLoading ? (
-                <Skeleton className="w-20 h-7 bg-white/20" />
+                <Skeleton className="h-7 w-20 bg-white/20" />
               ) : (
                 <Text className="text-base font-semibold">
                   {formatNumber(Number(previewData?.minAmountOut ?? 0) / 1e6)} USDC
@@ -297,9 +296,9 @@ const FastWithdrawForm = () => {
               )}
             </View>
           </View>
-          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Estimated Time</Text>
-            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               {selectedNetwork?.name === 'Fuse' ? (
                 <Text className="text-base font-semibold">Instant</Text>
               ) : (
@@ -307,11 +306,11 @@ const FastWithdrawForm = () => {
               )}
             </View>
           </View>
-          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Fee</Text>
-            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               {isPreviewLoading ? (
-                <Skeleton className="w-20 h-7 bg-white/20" />
+                <Skeleton className="h-7 w-20 bg-white/20" />
               ) : (
                 <Text className="text-base font-semibold">{`$${formatNumber(
                   Number(
@@ -327,14 +326,14 @@ const FastWithdrawForm = () => {
         <CheckConnectionWrapper props={{ size: 'xl' }}>
           <Button
             variant="brand"
-            className="rounded-2xl h-12"
+            className="h-12 rounded-2xl"
             onPress={handleSubmit(onSubmit)}
             disabled={isFormDisabled()}
           >
             {isLoading ? (
               <ActivityIndicator color="gray" />
             ) : (
-              <Text className="font-semibold text-black text-lg">Withdraw</Text>
+              <Text className="text-lg font-semibold text-black">Withdraw</Text>
             )}
           </Button>
         </CheckConnectionWrapper>

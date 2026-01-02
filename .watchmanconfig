@@ -1,0 +1,12 @@
+{
+  "ignore_dirs": [
+    ".git",
+    ".expo",
+    ".metro-cache",
+    "dist",
+    "ios/build",
+    "android/build",
+    "android/.gradle",
+    ".yarn"
+  ]
+}

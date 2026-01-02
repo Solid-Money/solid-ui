@@ -14,12 +14,12 @@ const FAQs = ({ faqs, className }: FAQsProps) => {
   return (
     <View
       className={cn(
-        'md:flex-row relative justify-between gap-y-6 w-full md:mt-8 rounded-twice p-4 py-6 md:p-10',
+        'relative w-full justify-between gap-y-6 rounded-twice p-4 py-6 md:mt-8 md:flex-row md:p-10',
         className,
       )}
     >
-      <View className="md:border-t border-border/50 absolute top-0 left-0 w-full h-full"></View>
-      <Text className="text-3xl font-semibold text-center md:text-start md:max-w-40">
+      <View className="absolute left-0 top-0 h-full w-full border-border/50 md:border-t"></View>
+      <Text className="text-center text-3xl font-semibold md:max-w-40 md:text-start">
         Frequently asked questions
       </Text>
       <FAQ faqs={faqs} className="max-w-screen-md" />

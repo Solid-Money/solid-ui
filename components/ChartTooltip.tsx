@@ -93,7 +93,7 @@ const ChartTooltip = ({
   };
 
   return (
-    <View className="p-3 bg-primary shadow-md rounded-xl">
+    <View className="rounded-xl bg-primary p-3 shadow-md">
       <View className="gap-1">
         <Text className="text-lg font-semibold text-primary-foreground">
           {formatToolTip ? formatToolTip(selectedPrice) : format(selectedPrice)}

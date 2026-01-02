@@ -134,14 +134,14 @@ export default function Onboarding() {
                   <View
                     className={`flex-row items-center gap-4 ${isSmallScreen ? 'my-0' : 'my-1'}`}
                   >
-                    <View className="flex-1 h-[1px] bg-white/20" />
-                    <Text className="text-white/50 text-sm">OR</Text>
-                    <View className="flex-1 h-[1px] bg-white/20" />
+                    <View className="h-[1px] flex-1 bg-white/20" />
+                    <Text className="text-sm text-white/50">OR</Text>
+                    <View className="h-[1px] flex-1 bg-white/20" />
                   </View>
 
                   <Button
                     variant="ghost"
-                    className={`bg-white/15 rounded-xl ${isSmallScreen ? 'h-12' : 'h-14'}`}
+                    className={`rounded-xl bg-white/15 ${isSmallScreen ? 'h-12' : 'h-14'}`}
                     onPress={handleLoginPress}
                     disabled={isLoginPending}
                   >
@@ -149,7 +149,7 @@ export default function Onboarding() {
                       <View className="flex-row items-center">
                         <ActivityIndicator size="small" color="white" />
                         <Text
-                          className={`font-bold ml-2 ${isSmallScreen ? 'text-base' : 'text-lg'}`}
+                          className={`ml-2 font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}
                         >
                           Authenticating...
                         </Text>
@@ -191,9 +191,9 @@ export default function Onboarding() {
       <DesktopCarousel onHelpCenterPress={handleHelpCenter} />
 
       {/* Right Section - Auth Options (70%) */}
-      <View className="flex-1 relative">
+      <View className="relative flex-1">
         {/* Logo at top center */}
-        <View className="absolute top-6 left-0 right-0 items-center">
+        <View className="absolute left-0 right-0 top-6 items-center">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
@@ -203,60 +203,60 @@ export default function Onboarding() {
         </View>
 
         {/* Content centered vertically */}
-        <View className="flex-1 justify-center items-center px-8">
+        <View className="flex-1 items-center justify-center px-8">
           <View className="w-full max-w-[440px] items-center">
             {/* Welcome Text */}
             <View className="mb-8 items-center">
-              <Text className="text-white/60 text-base font-medium mb-2">Welcome!</Text>
+              <Text className="mb-2 text-base font-medium text-white/60">Welcome!</Text>
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
-                className="text-white text-[38px] font-semibold text-center mb-3 -tracking-[1px]"
+                className="mb-3 text-center text-[38px] font-semibold -tracking-[1px] text-white"
               >
                 Your Stablecoin Super-app
               </Text>
-              <Text className="text-white/60 text-center text-base font-normal max-w-[320px]">
+              <Text className="max-w-[320px] text-center text-base font-normal text-white/60">
                 Save, earn yield and pay worldwide -
               </Text>
-              <Text className="text-white/60 text-center text-base font-normal max-w-[320px]">
+              <Text className="max-w-[320px] text-center text-base font-normal text-white/60">
                 powered by DeFi, without the complexity
               </Text>
             </View>
 
             {/* Auth Buttons */}
-            <View className="w-full gap-4 mt-4">
+            <View className="mt-4 w-full gap-4">
               {/* Create Account Button */}
               <Button
                 variant="brand"
-                className="rounded-xl h-14 w-full"
+                className="h-14 w-full rounded-xl"
                 onPress={handleCreateAccount}
               >
                 <Text className="text-lg font-semibold">Create account</Text>
               </Button>
 
               {/* OR Divider */}
-              <View className="flex-row items-center gap-4 my-2">
-                <View className="flex-1 h-[1px] bg-white/10" />
-                <Text className="text-white/40 text-sm">OR</Text>
-                <View className="flex-1 h-[1px] bg-white/10" />
+              <View className="my-2 flex-row items-center gap-4">
+                <View className="h-[1px] flex-1 bg-white/10" />
+                <Text className="text-sm text-white/40">OR</Text>
+                <View className="h-[1px] flex-1 bg-white/10" />
               </View>
 
               {/* Login Button */}
               <Button
                 variant="secondary"
-                className="rounded-xl h-14 w-full border-0"
+                className="h-14 w-full rounded-xl border-0"
                 onPress={handleLoginPress}
                 disabled={isLoginPending}
               >
                 {isLoginPending ? (
                   <View className="flex-row items-center">
                     <ActivityIndicator size="small" color="white" />
-                    <Text className="text-lg font-semibold ml-2">Authenticating...</Text>
+                    <Text className="ml-2 text-lg font-semibold">Authenticating...</Text>
                   </View>
                 ) : (
                   <View className="flex-row items-center">
                     <LoginKeyIcon />
-                    <Text className="text-lg font-semibold ml-2">Login</Text>
+                    <Text className="ml-2 text-lg font-semibold">Login</Text>
                   </View>
                 )}
               </Button>
@@ -265,10 +265,10 @@ export default function Onboarding() {
               {__DEV__ && (
                 <Button
                   variant="ghost"
-                  className="bg-red-500/20 border border-red-500/50 rounded-xl h-10 mt-2"
+                  className="mt-2 h-10 rounded-xl border border-red-500/50 bg-red-500/20"
                   onPress={handleDummyLogin}
                 >
-                  <Text className="text-red-400 text-sm font-medium">🛠 Dev: Skip Auth</Text>
+                  <Text className="text-sm font-medium text-red-400">🛠 Dev: Skip Auth</Text>
                 </Button>
               )}
             </View>

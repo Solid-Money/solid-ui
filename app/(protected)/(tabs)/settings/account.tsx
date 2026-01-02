@@ -42,15 +42,15 @@ export default function Account() {
       <Pressable onPress={() => router.back()} className="p-2">
         <ChevronLeft size={24} color="#ffffff" />
       </Pressable>
-      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Account details</Text>
+      <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Account details</Text>
     </View>
   );
 
   const desktopHeader = (
     <>
       <Navbar />
-      <View className="max-w-[512px] mx-auto w-full px-4 pt-8 pb-8">
-        <View className="flex-row items-center justify-between mb-8">
+      <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
+        <View className="mb-8 flex-row items-center justify-between">
           <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
@@ -68,38 +68,38 @@ export default function Account() {
       visible={showDeleteModal}
       onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
     >
-      <View className="flex-1 bg-black/70 justify-center items-center px-4">
-        <View className="bg-[#1c1c1c] rounded-3xl p-6 w-full max-w-sm">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-white text-xl font-bold">Delete Account</Text>
+      <View className="flex-1 items-center justify-center bg-black/70 px-4">
+        <View className="w-full max-w-sm rounded-3xl bg-[#1c1c1c] p-6">
+          <View className="mb-4 flex-row items-center justify-between">
+            <Text className="text-xl font-bold text-white">Delete Account</Text>
             <Pressable onPress={() => !isDeleting && setShowDeleteModal(false)}>
               <X size={24} color="#ffffff" />
             </Pressable>
           </View>
 
-          <Text className="text-gray-300 text-base mb-6">
+          <Text className="mb-6 text-base text-gray-300">
             Are you sure you want to delete your account? This action cannot be undone and will:
           </Text>
 
           <View className="mb-6">
-            <Text className="text-gray-300 text-sm mb-2">• Remove all your data</Text>
-            <Text className="text-gray-300 text-sm mb-2">• Cancel any active cards</Text>
-            <Text className="text-gray-300 text-sm mb-2">• Delete your transaction history</Text>
-            <Text className="text-gray-300 text-sm">• Remove access to your wallet</Text>
+            <Text className="mb-2 text-sm text-gray-300">• Remove all your data</Text>
+            <Text className="mb-2 text-sm text-gray-300">• Cancel any active cards</Text>
+            <Text className="mb-2 text-sm text-gray-300">• Delete your transaction history</Text>
+            <Text className="text-sm text-gray-300">• Remove access to your wallet</Text>
           </View>
 
           <View className="flex-row justify-between">
             <Pressable
               onPress={() => setShowDeleteModal(false)}
-              className="flex-1 mr-2 bg-gray-700 rounded-xl py-4"
+              className="mr-2 flex-1 rounded-xl bg-gray-700 py-4"
               disabled={isDeleting}
             >
-              <Text className="text-white text-center font-semibold">Cancel</Text>
+              <Text className="text-center font-semibold text-white">Cancel</Text>
             </Pressable>
 
             <Pressable
               onPress={confirmDelete}
-              className={cn('flex-1 ml-2 rounded-xl py-4', {
+              className={cn('ml-2 flex-1 rounded-xl py-4', {
                 'bg-red-400': isDeleting,
                 'bg-red-600': !isDeleting,
               })}
@@ -108,7 +108,7 @@ export default function Account() {
               {isDeleting ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text className="text-white text-center font-semibold">Delete Account</Text>
+                <Text className="text-center font-semibold text-white">Delete Account</Text>
               )}
             </Pressable>
           </View>
@@ -126,7 +126,7 @@ export default function Account() {
       scrollable={false}
     >
       <View
-        className={cn('w-full mx-auto px-4 py-4 flex-1', {
+        className={cn('mx-auto w-full flex-1 px-4 py-4', {
           'max-w-[512px]': isDesktop,
           'max-w-7xl': !isDesktop,
         })}
@@ -152,8 +152,8 @@ export default function Account() {
           {/* User Name Section - shown for legacy users or users with custom username */}
           {user?.username && !user.username.startsWith('user_') && (
             <>
-              <Text className="text-white text-base font-bold mb-4">User Name</Text>
-              <View className="bg-[#1c1c1c] rounded-xl overflow-hidden mb-6">
+              <Text className="mb-4 text-base font-bold text-white">User Name</Text>
+              <View className="mb-6 overflow-hidden rounded-xl bg-[#1c1c1c]">
                 <SettingsCard
                   title={user.username}
                   icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
@@ -168,8 +168,8 @@ export default function Account() {
           {/* Fallback for users with neither email nor username (should not happen) */}
           {!user?.email && (!user?.username || user.username.startsWith('user_')) && (
             <>
-              <Text className="text-white text-base font-bold mb-4">Account</Text>
-              <View className="bg-[#1c1c1c] rounded-xl overflow-hidden mb-6">
+              <Text className="mb-4 text-base font-bold text-white">Account</Text>
+              <View className="mb-6 overflow-hidden rounded-xl bg-[#1c1c1c]">
                 <SettingsCard
                   title={getUserDisplayName(user)}
                   icon={<Image source={AccountDetailsIcon} style={{ width: 22, height: 22 }} />}
@@ -182,8 +182,8 @@ export default function Account() {
           )}
 
           {/* Wallet Address Section */}
-          <Text className="text-white text-base font-bold mt-2 mb-4">Wallet address</Text>
-          <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
+          <Text className="mb-4 mt-2 text-base font-bold text-white">Wallet address</Text>
+          <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
             <SettingsCard
               title={eclipseAddress(user?.safeAddress as Address)}
               icon={<WalletIcon color="#ffffff" width={21} height={21} />}
@@ -210,7 +210,7 @@ export default function Account() {
         <View className={cn('pb-4', { 'pb-24': !isDesktop })}>
           <Pressable
             onPress={handleDeletePress}
-            className="bg-[#1c1c1c] rounded-xl overflow-hidden"
+            className="overflow-hidden rounded-xl bg-[#1c1c1c]"
           >
             <SettingsCard
               title="Delete account"

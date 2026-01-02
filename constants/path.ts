@@ -13,8 +13,6 @@ type Path = {
   SAVINGS: Href;
   ACTIVITY: Href;
   DEPOSIT: Href;
-  SEND: Href;
-  SWAP: Href;
   CARD: Href;
   USER_KYC_INFO: Href;
   BANK_TRANSFER: Href;
@@ -55,8 +53,6 @@ export const path: Path = {
   SAVINGS: '/savings',
   ACTIVITY: '/activity',
   DEPOSIT: '/deposit',
-  SEND: '/send',
-  SWAP: '/swap',
   CARD: '/card',
   USER_KYC_INFO: '/user-kyc-info',
   KYC: '/kyc',

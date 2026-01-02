@@ -199,18 +199,18 @@ export default function ActivityTransactions({
 
   const renderLoading = () => (
     <View className="gap-3">
-      <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
-      <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
-      <Skeleton className="w-full h-16 bg-card rounded-xl md:rounded-twice" />
+      <Skeleton className="h-16 w-full rounded-xl bg-card md:rounded-twice" />
+      <Skeleton className="h-16 w-full rounded-xl bg-card md:rounded-twice" />
+      <Skeleton className="h-16 w-full rounded-xl bg-card md:rounded-twice" />
     </View>
   );
 
   const renderSyncingIndicator = () => {
     if (!isSyncing) return null;
     return (
-      <View className="flex-row items-center justify-center py-2 gap-2">
-        <View className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-        <Text className="text-muted-foreground text-sm">
+      <View className="flex-row items-center justify-center gap-2 py-2">
+        <View className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+        <Text className="text-sm text-muted-foreground">
           {isSyncStale ? 'Syncing your transaction history...' : 'Syncing...'}
         </Text>
       </View>
@@ -218,24 +218,24 @@ export default function ActivityTransactions({
   };
 
   const renderEmpty = () => (
-    <View className="py-16 px-4">
+    <View className="px-4 py-16">
       {isSyncing && isSyncStale ? (
         <>
-          <Text className="text-muted-foreground text-center text-lg">
+          <Text className="text-center text-lg text-muted-foreground">
             Syncing your transaction history...
           </Text>
-          <Text className="text-muted-foreground text-center text-sm mt-2">
+          <Text className="mt-2 text-center text-sm text-muted-foreground">
             This may take a moment for new accounts
           </Text>
           <View className="mt-4">{renderLoading()}</View>
         </>
       ) : (
         <>
-          <Text className="text-muted-foreground text-center text-lg">
+          <Text className="text-center text-lg text-muted-foreground">
             {tab === ActivityTab.PROGRESS ? 'No pending transactions' : 'No transactions found'}
           </Text>
           {tab === ActivityTab.WALLET && (
-            <Text className="text-muted-foreground text-center text-sm mt-2">
+            <Text className="mt-2 text-center text-sm text-muted-foreground">
               Start by making a swap or sending tokens
             </Text>
           )}
@@ -256,10 +256,10 @@ export default function ActivityTransactions({
     return (
       <View className="flex-1 px-4">
         <View className="py-8">
-          <Text className="text-muted-foreground text-center text-lg mb-2">
+          <Text className="mb-2 text-center text-lg text-muted-foreground">
             Syncing your transaction history...
           </Text>
-          <Text className="text-muted-foreground text-center text-sm mb-4">
+          <Text className="mb-4 text-center text-sm text-muted-foreground">
             This may take a moment for new accounts
           </Text>
         </View>
@@ -306,7 +306,6 @@ export default function ActivityTransactions({
           }
         }}
         onEndReachedThreshold={0.5}
-        estimatedItemSize={80}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={() => <View className="h-0" />}

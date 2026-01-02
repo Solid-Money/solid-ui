@@ -1,12 +1,14 @@
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { erc20Abi, TransactionReceipt } from 'viem';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 
+import { TotpVerificationModal } from '@/components/TotpVerificationModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
 import { track } from '@/lib/analytics';
+import { getTotpStatus, verifyTotp } from '@/lib/api';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TokenType, TransactionType } from '@/lib/types';
 import { getChain } from '@/lib/wagmi';
@@ -25,6 +27,7 @@ type SendResult = {
   sendStatus: Status;
   error: string | null;
   resetSendStatus: () => void;
+  totpModal: React.ReactNode;
 };
 
 const useSend = ({
@@ -38,6 +41,11 @@ const useSend = ({
   const { trackTransaction } = useActivity();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
+  const [showTotpModal, setShowTotpModal] = useState(false);
+  const [totpVerificationPromise, setTotpVerificationPromise] = useState<{
+    resolve: () => void;
+    reject: (error: Error) => void;
+  } | null>(null);
   const chain = getChain(chainId);
 
   const send = async (amount: string, to: Address) => {
@@ -84,6 +92,16 @@ const useSend = ({
               },
             ];
 
+      // Check if TOTP is enabled
+      let requiresTotp = false;
+      try {
+        const totpStatus = await getTotpStatus();
+        requiresTotp = totpStatus.verified;
+      } catch (err) {
+        // If TOTP check fails, assume it's not enabled
+        console.error('Failed to check TOTP status:', err);
+      }
+
       const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 
       const result = await trackTransaction(
@@ -103,7 +121,22 @@ const useSend = ({
           },
         },
         onUserOpHash =>
-          executeTransactions(smartAccountClient, transactions, 'Send failed', chain, onUserOpHash),
+          executeTransactions(
+            smartAccountClient,
+            transactions,
+            'Send failed',
+            chain,
+            onUserOpHash,
+            requiresTotp
+              ? async () => {
+                  // Show TOTP modal and wait for verification
+                  return new Promise<void>((resolve, reject) => {
+                    setTotpVerificationPromise({ resolve, reject });
+                    setShowTotpModal(true);
+                  });
+                }
+              : undefined,
+          ),
       );
 
       // Extract transaction from result
@@ -167,7 +200,45 @@ const useSend = ({
     setError(null);
   };
 
-  return { send, sendStatus, error, resetSendStatus };
+  const handleTotpVerify = async (code: string) => {
+    try {
+      await verifyTotp(code, 'transaction');
+      setShowTotpModal(false);
+      if (totpVerificationPromise) {
+        totpVerificationPromise.resolve();
+        setTotpVerificationPromise(null);
+      }
+    } catch (err) {
+      if (totpVerificationPromise) {
+        totpVerificationPromise.reject(
+          err instanceof Error ? err : new Error('TOTP verification failed'),
+        );
+        setTotpVerificationPromise(null);
+      }
+      throw err;
+    }
+  };
+
+  const handleTotpCancel = () => {
+    setShowTotpModal(false);
+    if (totpVerificationPromise) {
+      totpVerificationPromise.reject(new Error('User cancelled TOTP verification'));
+      setTotpVerificationPromise(null);
+    }
+  };
+
+  return {
+    send,
+    sendStatus,
+    error,
+    resetSendStatus,
+    totpModal: React.createElement(TotpVerificationModal, {
+      open: showTotpModal,
+      onOpenChange: setShowTotpModal,
+      onVerify: handleTotpVerify,
+      onCancel: handleTotpCancel,
+    }),
+  };
 };
 
 export default useSend;

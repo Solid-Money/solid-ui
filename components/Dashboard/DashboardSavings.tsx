@@ -25,7 +25,7 @@ const DashboardSavings = ({
   const { isScreenMedium } = useDimension();
   return (
     <View className="flex-row items-center">
-      <Text className="text-5xl md:text-8xl text-foreground font-medium">$</Text>
+      <Text className="text-5xl font-medium text-foreground md:text-8xl">$</Text>
       <SavingCountUp
         balance={balance}
         apy={totalAPY ?? 0}

@@ -18,11 +18,11 @@ export default function Deposit() {
 
   return (
     <SafeAreaView
-      className="bg-background text-foreground flex-1"
+      className="flex-1 bg-background text-foreground"
       edges={['right', 'left', 'bottom', 'top']}
     >
       <ScrollView className="flex-1">
-        <View className="gap-8 md:gap-9 px-4 pt-6 pb-24 md:py-12 w-full max-w-md mx-auto">
+        <View className="mx-auto w-full max-w-md gap-8 px-4 pb-24 pt-6 md:gap-9 md:py-12">
           <ResponsiveModalMobile
             containerClassName={getContainerClassName()}
             title={getTitle()}

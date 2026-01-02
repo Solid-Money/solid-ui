@@ -12,7 +12,7 @@ type CurrencyPillProps = {
 export default function CurrencyPill({ label, onPress, disabled }: CurrencyPillProps) {
   return (
     <Button
-      className="bg-[#404040] h-12 px-4 rounded-full text-white"
+      className="h-12 rounded-full bg-[#404040] px-4 text-white"
       onPress={onPress}
       disabled={disabled}
     >

@@ -63,15 +63,15 @@ export default function Email() {
       <Pressable onPress={() => router.back()} className="p-2">
         <ChevronLeft size={24} color="#ffffff" />
       </Pressable>
-      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Email</Text>
+      <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Email</Text>
     </View>
   );
 
   const desktopHeader = (
     <>
       <Navbar />
-      <View className="max-w-[512px] mx-auto w-full px-4 pt-8 pb-8">
-        <View className="flex-row items-center justify-between mb-8">
+      <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
+        <View className="mb-8 flex-row items-center justify-between">
           <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
@@ -90,7 +90,7 @@ export default function Email() {
     >
       <View className="flex-1">
         <View
-          className={cn('w-full mx-auto px-4 py-4', {
+          className={cn('mx-auto w-full px-4 py-4', {
             'max-w-[512px]': isDesktop,
             'max-w-7xl': !isDesktop,
           })}
@@ -98,17 +98,17 @@ export default function Email() {
           {step === 'success' ? (
             <View className="flex-1 items-center justify-center py-12">
               <Checkmark width={120} height={120} color="#94F27F" />
-              <Text className="text-2xl font-semibold text-white mt-6 text-center">
+              <Text className="mt-6 text-center text-2xl font-semibold text-white">
                 Email verified!
               </Text>
-              <Text className="text-muted-foreground mt-2 text-center">{emailValue}</Text>
-              <Text className="text-sm text-muted-foreground mt-4 text-center max-w-xs">
+              <Text className="mt-2 text-center text-muted-foreground">{emailValue}</Text>
+              <Text className="mt-4 max-w-xs text-center text-sm text-muted-foreground">
                 This email will be used for notifications and wallet recovery.
               </Text>
             </View>
           ) : (
             <>
-              <Text className="text-sm text-muted-foreground font-medium mb-8">
+              <Text className="mb-8 text-sm font-medium text-muted-foreground">
                 {step === 'existing'
                   ? 'Your current email address is used for notifications and wallet recovery.'
                   : step === 'email'
@@ -117,17 +117,17 @@ export default function Email() {
               </Text>
 
               {step === 'otp' && (
-                <Text className="text-sm text-muted-foreground mb-6">Sent to: {emailValue}</Text>
+                <Text className="mb-6 text-sm text-muted-foreground">Sent to: {emailValue}</Text>
               )}
 
               {rateLimitError && (
-                <View className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <View className="flex-row items-center mb-2">
-                    <Text className="text-red-600 text-lg mr-2">⏰</Text>
+                <View className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+                  <View className="mb-2 flex-row items-center">
+                    <Text className="mr-2 text-lg text-red-600">⏰</Text>
                     <Text className="font-semibold text-red-800">Rate Limit Reached</Text>
                   </View>
-                  <Text className="text-red-700 text-sm leading-5">{rateLimitError}</Text>
-                  <Text className="text-red-600 text-xs mt-2">
+                  <Text className="text-sm leading-5 text-red-700">{rateLimitError}</Text>
+                  <Text className="mt-2 text-xs text-red-600">
                     This is a security measure to prevent spam. You can try again in a few minutes.
                   </Text>
                   <Button
@@ -135,7 +135,7 @@ export default function Email() {
                     variant="outline"
                     className="mt-3 h-10 border-red-300"
                   >
-                    <Text className="text-red-700 text-sm">Try Again</Text>
+                    <Text className="text-sm text-red-700">Try Again</Text>
                   </Button>
                 </View>
               )}
@@ -143,7 +143,7 @@ export default function Email() {
               {step === 'existing' ? (
                 <View className="gap-2">
                   <Text className="text-muted-foreground">Current Email</Text>
-                  <View className="px-5 py-4 bg-accent rounded-2xl">
+                  <View className="rounded-2xl bg-accent px-5 py-4">
                     <Text className="text-lg font-semibold text-white">{user?.email}</Text>
                   </View>
                 </View>
@@ -152,7 +152,7 @@ export default function Email() {
                   <Text className="text-muted-foreground">
                     {step === 'email' ? 'Email address' : 'Verification Code'}
                   </Text>
-                  <View className="px-5 py-4 bg-accent rounded-2xl">
+                  <View className="rounded-2xl bg-accent px-5 py-4">
                     {step === 'email' ? (
                       <Controller
                         key="email-input"
@@ -185,7 +185,7 @@ export default function Email() {
                             onBlur={onBlur}
                             keyboardType="numeric"
                             maxLength={6}
-                            className="text-lg font-semibold text-white text-center web:focus:outline-none"
+                            className="text-center text-lg font-semibold text-white web:focus:outline-none"
                             placeholderTextColor="#666"
                           />
                         )}
@@ -202,7 +202,7 @@ export default function Email() {
             <View className="mt-8 gap-3">
               <Button
                 variant="brand"
-                className="rounded-2xl h-12 w-auto px-8"
+                className="h-12 w-auto rounded-2xl px-8"
                 onPress={
                   step === 'existing'
                     ? handleChangeEmail
@@ -218,11 +218,11 @@ export default function Email() {
 
               <Button
                 variant="outline"
-                className="rounded-2xl h-12 w-auto px-8"
+                className="h-12 w-auto rounded-2xl px-8"
                 onPress={handleBack}
                 disabled={isLoading}
               >
-                <Text className="text-muted-foreground font-semibold">
+                <Text className="font-semibold text-muted-foreground">
                   {step === 'existing' ? 'Back' : step === 'otp' ? 'Back to Email' : 'Cancel'}
                 </Text>
               </Button>
@@ -233,12 +233,12 @@ export default function Email() {
         {/* Mobile buttons - at bottom */}
         {!isDesktop && step !== 'success' && (
           <View
-            className="px-4 pt-4 gap-3 bg-black"
+            className="gap-3 bg-black px-4 pt-4"
             style={{ paddingBottom: insets.bottom + 80 }} // Tab bar height + padding
           >
             <Button
               variant="brand"
-              className="rounded-2xl h-12"
+              className="h-12 rounded-2xl"
               onPress={
                 step === 'existing'
                   ? handleChangeEmail
@@ -254,11 +254,11 @@ export default function Email() {
 
             <Button
               variant="outline"
-              className="rounded-2xl h-12"
+              className="h-12 rounded-2xl"
               onPress={handleBack}
               disabled={isLoading}
             >
-              <Text className="text-muted-foreground font-semibold">
+              <Text className="font-semibold text-muted-foreground">
                 {step === 'existing' ? 'Back' : step === 'otp' ? 'Back to Email' : 'Cancel'}
               </Text>
             </Button>

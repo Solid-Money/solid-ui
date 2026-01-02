@@ -21,7 +21,9 @@ export const useDirectDepositSession = () => {
       setIsLoading(true);
       setError(null);
 
-      const data = await withRefreshToken(() => createDirectDepositSessionApi(chainId, tokenSymbol));
+      const data = await withRefreshToken(() =>
+        createDirectDepositSessionApi(chainId, tokenSymbol),
+      );
 
       if (!data) throw new Error('Failed to create direct deposit session');
 

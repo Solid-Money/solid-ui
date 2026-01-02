@@ -1,5 +1,4 @@
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { KycStatus } from '@/lib/types';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -26,7 +25,7 @@ export default function KycMobile() {
           // Navigate to success regardless of specific status
           // The backend will validate the actual status
           router.replace({
-            pathname: path.CARD_ACTIVATE,
+            pathname: '/card/activate',
             params: {
               kycStatus: KycStatus.APPROVED,
               inquiryId: inquiryId || '',

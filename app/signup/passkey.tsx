@@ -120,14 +120,14 @@ export default function SignupPasskey() {
 
   // Form content (used for desktop)
   const formContent = (
-    <View className="w-full max-w-[440px] flex-1 flex flex-col">
+    <View className="flex w-full max-w-[440px] flex-1 flex-col">
       {/* Form content wrapper - centered vertically */}
       <View className="my-auto items-center">
         {/* Back button - positioned above form on desktop */}
         {isDesktop && (
           <Pressable
             onPress={handleBack}
-            className="self-start w-10 h-10 rounded-full bg-white/10 items-center justify-center web:hover:bg-white/20 mb-20"
+            className="mb-20 h-10 w-10 items-center justify-center self-start rounded-full bg-white/10 web:hover:bg-white/20"
           >
             <ArrowLeft size={20} color="#ffffff" />
           </Pressable>
@@ -137,11 +137,11 @@ export default function SignupPasskey() {
         <PasskeySvg />
 
         {/* Header */}
-        <View className="mt-8 mb-8 items-center">
-          <Text className="text-white text-[38px] font-semibold text-center mb-4 leading-none -tracking-[1px]">
+        <View className="mb-8 mt-8 items-center">
+          <Text className="mb-4 text-center text-[38px] font-semibold leading-none -tracking-[1px] text-white">
             Secure sign-in{'\n'}with Passkey
           </Text>
-          <Text className="text-white/60 text-center text-base px-4">
+          <Text className="px-4 text-center text-base text-white/60">
             Passkeys let you sign in using biometrics or your device PIN—no email needed.
             They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
             <Text className="text-white/60 underline" onPress={handleLearnMore}>
@@ -154,14 +154,14 @@ export default function SignupPasskey() {
         <Button
           variant="brand"
           onPress={handleContinue}
-          className="rounded-xl h-14 w-full font-semibold"
+          className="h-14 w-full rounded-xl font-semibold"
         >
           {isLoading ? (
             <ActivityIndicator color="#000" />
           ) : (
             <View className="flex-row items-center">
               <LoginKeyIcon color="#000" />
-              <Text className="text-lg font-semibold text-black ml-2">Continue</Text>
+              <Text className="ml-2 text-lg font-semibold text-black">Continue</Text>
             </View>
           )}
         </Button>
@@ -172,32 +172,32 @@ export default function SignupPasskey() {
   // Mobile Layout
   if (!isDesktop) {
     return (
-      <SafeAreaView className="bg-background text-foreground flex-1">
+      <SafeAreaView className="flex-1 bg-background text-foreground">
         <View className="flex-1">
           {/* Header with back button */}
           <View className="flex-row items-center px-6 py-3">
             <Pressable
               onPress={handleBack}
-              className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
+              className="h-10 w-10 items-center justify-center rounded-full bg-white/10"
             >
               <ArrowLeft size={20} color="#ffffff" />
             </Pressable>
           </View>
 
           {/* Content - positioned at top, centered horizontally */}
-          <View className="px-6 items-center mt-8">
+          <View className="mt-8 items-center px-6">
             {/* Passkey Icon */}
             <PasskeySvg />
 
             {/* Header */}
             <View className="mt-8 items-center">
-              <Text className="text-white text-[38px] font-semibold text-center mb-4 -tracking-[1px] leading-10">
+              <Text className="mb-4 text-center text-[38px] font-semibold leading-10 -tracking-[1px] text-white">
                 Your account is{'\n'}protected with{'\n'}Passkey
               </Text>
-              <Text className="text-white/60 text-center text-[16px] px-4">
+              <Text className="px-4 text-center text-[16px] text-white/60">
                 Passkeys let you sign in using biometrics or your device PIN—no email needed.
                 They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
-                <Text className="text-white/60 underline font-medium" onPress={handleLearnMore}>
+                <Text className="font-medium text-white/60 underline" onPress={handleLearnMore}>
                   Learn more
                 </Text>
               </Text>
@@ -212,14 +212,14 @@ export default function SignupPasskey() {
             <Button
               variant="brand"
               onPress={handleContinue}
-              className="rounded-xl h-14 w-full font-semibold"
+              className="h-14 w-full rounded-xl font-semibold"
             >
               {isLoading ? (
                 <ActivityIndicator color="#000" />
               ) : (
                 <>
                   <LoginKeyIcon color="#000" />
-                  <Text className="text-lg font-semibold text-black ml-2">Continue</Text>
+                  <Text className="ml-2 text-lg font-semibold text-black">Continue</Text>
                 </>
               )}
             </Button>
@@ -236,9 +236,9 @@ export default function SignupPasskey() {
       <DesktopCarousel />
 
       {/* Right Section - Form (70%) */}
-      <View className="flex-1 relative">
+      <View className="relative flex-1">
         {/* Logo at top center */}
-        <View className="absolute top-6 left-0 right-0 items-center">
+        <View className="absolute left-0 right-0 top-6 items-center">
           <Image
             source={require('@/assets/images/solid-logo-4x.png')}
             alt="Solid logo"
@@ -248,7 +248,7 @@ export default function SignupPasskey() {
         </View>
 
         {/* Form Content */}
-        <View className="flex-1 justify-center items-center px-8">{formContent}</View>
+        <View className="flex-1 items-center justify-center px-8">{formContent}</View>
       </View>
     </View>
   );

@@ -43,9 +43,9 @@ const TransactionDropdown = ({
       <DropdownMenuTrigger>
         <TransactionCredenzaTrigger />
       </DropdownMenuTrigger>
-      <DropdownMenuContent insets={contentInsets} className="w-38 bg-card border-none rounded-xl">
+      <DropdownMenuContent insets={contentInsets} className="w-38 rounded-xl border-none bg-card">
         <DropdownMenuItem
-          className="h-10 web:cursor-pointer rounded-lg"
+          className="h-10 rounded-lg web:cursor-pointer"
           onPress={() => {
             if (type === TransactionType.BANK_TRANSFER && onPress) {
               onPress();
@@ -60,7 +60,7 @@ const TransactionDropdown = ({
         </DropdownMenuItem>
         {showCancelButton && (
           <DropdownMenuItem
-            className="h-10 web:cursor-pointer rounded-lg"
+            className="h-10 rounded-lg web:cursor-pointer"
             onPress={onCancelWithdraw}
           >
             <TransactionCancelContent />

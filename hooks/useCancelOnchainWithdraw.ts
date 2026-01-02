@@ -76,18 +76,20 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
             requestId,
           },
         },
-        (onUserOpHash) => executeTransactions(
-          smartAccountClient,
-          transactions,
-          'Cancel onchain withdraw failed',
-          mainnet,
-          onUserOpHash
-        )
+        onUserOpHash =>
+          executeTransactions(
+            smartAccountClient,
+            transactions,
+            'Cancel onchain withdraw failed',
+            mainnet,
+            onUserOpHash,
+          ),
       );
 
-      const transaction = result && typeof result === 'object' && 'transaction' in result
-        ? result.transaction
-        : result;
+      const transaction =
+        result && typeof result === 'object' && 'transaction' in result
+          ? result.transaction
+          : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         track(TRACKING_EVENTS.CANCEL_WITHDRAW_CANCELLED, {
@@ -108,7 +110,7 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
       return transaction;
     } catch (error) {
       console.error(error);
-      
+
       track(TRACKING_EVENTS.CANCEL_WITHDRAW_ERROR, {
         request_id: requestId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -116,7 +118,7 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
         step: 'execution',
         source: 'useCancelOnchainWithdraw',
       });
-      
+
       setCancelOnchainWithdrawStatus(Status.ERROR);
       setError(error instanceof Error ? error.message : 'Unknown error');
       throw error;

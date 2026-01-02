@@ -60,13 +60,13 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
         />
       </View>
 
-      <View className="items-center gap-2 mt-4">
-        <Text className="text-2xl font-bold text-center">
+      <View className="mt-4 items-center gap-2">
+        <Text className="text-center text-2xl font-bold">
           {currentStep === 'email' ? 'Email required' : 'Verify your email'}
         </Text>
         <Text
           className={cn(
-            'text-muted-foreground text-center font-medium text-base',
+            'text-center text-base font-medium text-muted-foreground',
             currentStep === 'email' ? 'max-w-sm' : 'max-w-xs',
           )}
         >
@@ -77,18 +77,18 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
       </View>
 
       {currentStep === 'email' && (
-        <Text className="text-muted-foreground text-center font-medium max-w-[23rem]">
+        <Text className="max-w-[23rem] text-center font-medium text-muted-foreground">
           This email will also be used for account recovery if you lose access to your passkey.
         </Text>
       )}
 
       {rateLimitError && (
-        <View className="p-2.5 border border-red-300 rounded-2xl">
-          <Text className="text-red-400 text-sm text-center">{rateLimitError}</Text>
+        <View className="rounded-2xl border border-red-300 p-2.5">
+          <Text className="text-center text-sm text-red-400">{rateLimitError}</Text>
         </View>
       )}
 
-      <View className="gap-4 mt-6">
+      <View className="mt-6 gap-4">
         {currentStep === 'email' ? (
           <View className="gap-2">
             <Text className="font-medium text-muted-foreground">Email Address</Text>
@@ -105,7 +105,7 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoComplete="email"
-                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
+                    className="h-14 rounded-xl bg-accent px-6 text-lg font-semibold text-foreground web:focus:outline-none"
                     placeholderTextColor="#666"
                   />
                 );
@@ -138,7 +138,7 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
                     onBlur={onBlur}
                     keyboardType="numeric"
                     maxLength={6}
-                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
+                    className="h-14 rounded-xl bg-accent px-6 text-lg font-semibold text-foreground web:focus:outline-none"
                     placeholderTextColor="#666"
                   />
                 );
@@ -156,7 +156,7 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
             }
             disabled={isFormDisabled()}
             variant="brand"
-            className="rounded-2xl h-14"
+            className="h-14 rounded-2xl"
           >
             <Text className="text-lg font-semibold">{getButtonText()}</Text>
             {isLoading && <ActivityIndicator color="gray" />}
@@ -167,7 +167,7 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
               onPress={handleEmailBack}
               variant="outline"
               disabled={isLoading}
-              className="rounded-2xl h-14 border-0"
+              className="h-14 rounded-2xl border-0"
             >
               <Text className="text-lg font-semibold">Back to Email</Text>
             </Button>

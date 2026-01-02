@@ -126,9 +126,9 @@ const ResponsiveModal = ({
       {trigger !== null && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent
         className={cn(
-          'pt-4 px-4 pb-0 md:pt-8 md:px-8 md:pb-0 md:max-w-md',
+          'px-4 pb-0 pt-4 md:max-w-md md:px-8 md:pb-0 md:pt-8',
           contentClassName,
-          !isScreenMedium ? 'w-screen max-w-full mt-[5vh] justify-start' : '',
+          !isScreenMedium ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
         showCloseButton={false}
@@ -142,7 +142,7 @@ const ResponsiveModal = ({
           >
             {hasHeader ? (
               <DialogHeader
-                className={cn('flex-row items-center gap-2 justify-between', titleClassName)}
+                className={cn('flex-row items-center justify-between gap-2', titleClassName)}
               >
                 {hasBackButton ? (
                   <Button

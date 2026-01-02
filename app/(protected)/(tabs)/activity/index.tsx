@@ -19,10 +19,10 @@ export default function Activity() {
   return (
     <PageLayout desktopOnly isLoading={isCardLoading} scrollable={isWeb}>
       <View
-        className={`gap-8 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto ${isWeb ? '' : 'flex-1'}`}
+        className={`mx-auto w-full max-w-7xl gap-8 px-4 py-8 md:py-12 ${isWeb ? '' : 'flex-1'}`}
       >
         <View className="flex-row items-center justify-between">
-          <Text className="text-xl md:text-3xl font-semibold">Activity</Text>
+          <Text className="text-xl font-semibold md:text-3xl">Activity</Text>
 
           {/* Web-only refresh button (pull-to-refresh doesn't work on web) */}
           {isWeb && !userHasCard && (

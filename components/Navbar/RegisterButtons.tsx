@@ -11,7 +11,7 @@ const RegisterButtons = () => {
       <Button
         onPress={() => router.push(path.HOME)}
         variant="ghost"
-        className="rounded-xl px-6 border-0"
+        className="rounded-xl border-0 px-6"
       >
         <Text className="text-lg font-semibold">Log in</Text>
       </Button>
@@ -19,7 +19,7 @@ const RegisterButtons = () => {
       <Button
         onPress={() => router.push(path.HOME)}
         variant="brand"
-        className="rounded-xl px-6 border-0"
+        className="rounded-xl border-0 px-6"
       >
         <Text className="text-lg font-semibold">Sign up</Text>
       </Button>

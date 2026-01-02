@@ -12,6 +12,7 @@ type ClassNames = {
 type Styles = {
   wholeText?: TextStyle;
   decimalText?: TextStyle;
+  decimalSeparator?: TextStyle;
   suffixText?: TextStyle;
 };
 
@@ -54,7 +55,9 @@ const CountUp = ({
       />
       {decimalPlaces > 0 ? (
         <>
-          <Text className={classNames?.decimalSeparator}>.</Text>
+          <Text className={classNames?.decimalSeparator} style={styles?.decimalSeparator}>
+            .
+          </Text>
           <AnimatedRollingNumber
             value={Number(formattedText)}
             formattedText={formattedText}

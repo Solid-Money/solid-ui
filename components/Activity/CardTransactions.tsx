@@ -91,17 +91,17 @@ export default function CardTransactions() {
         key={`${transaction.id}-${index}`}
         onPress={() => router.push(`/activity/card-${transaction.id}?tab=${ActivityTab.CARD}`)}
         className={cn(
-          'flex-row items-center justify-between px-4 py-4 bg-[#1C1C1E]',
+          'flex-row items-center justify-between bg-[#1C1C1E] px-4 py-4',
           !isLast && 'border-b border-[#2C2C2E]',
           isFirst && 'rounded-t-[20px]',
           isLast && 'rounded-b-[20px]',
         )}
       >
-        <View className="flex-row items-center gap-3 flex-1 mr-4">
+        <View className="mr-4 flex-1 flex-row items-center gap-3">
           {/* Avatar with initials */}
           {isPurchase ? (
             <View
-              className="w-[44px] h-[44px] rounded-full items-center justify-center"
+              className="h-[44px] w-[44px] items-center justify-center rounded-full"
               style={{ backgroundColor: color.bg }}
             >
               <Text className="text-lg font-semibold" style={{ color: color.text }}>
@@ -123,7 +123,7 @@ export default function CardTransactions() {
             <Text className="text-lg font-medium text-white" numberOfLines={1}>
               {merchantName}
             </Text>
-            <View className="flex-row items-center gap-1 mt-0.5">
+            <View className="mt-0.5 flex-row items-center gap-1">
               <Diamond />
               <Text className="text-sm text-[#8E8E93]">Cashback</Text>
             </View>
@@ -135,7 +135,7 @@ export default function CardTransactions() {
           <Text className="text-xl font-semibold text-white">
             {formatCardAmount(transaction.amount)}
           </Text>
-          <Text className="text-sm font-medium text-[#34C759] mt-0.5">
+          <Text className="mt-0.5 text-sm font-medium text-[#34C759]">
             {getCashbackAmount(transaction.id, cashbacks)}
           </Text>
         </View>
@@ -146,7 +146,7 @@ export default function CardTransactions() {
   const renderEmpty = () => {
     if (isLoading) {
       return (
-        <View className="py-16 px-4 items-center">
+        <View className="items-center px-4 py-16">
           <ActivityIndicator size="large" color="#fff" />
         </View>
       );
@@ -154,21 +154,21 @@ export default function CardTransactions() {
 
     if (error) {
       return (
-        <View className="py-16 px-4">
-          <Text className="text-muted-foreground text-center text-lg">
+        <View className="px-4 py-16">
+          <Text className="text-center text-lg text-muted-foreground">
             Error loading transactions
           </Text>
-          <Text className="text-muted-foreground text-center text-sm mt-2">{error.message}</Text>
+          <Text className="mt-2 text-center text-sm text-muted-foreground">{error.message}</Text>
         </View>
       );
     }
 
     return (
-      <View className="py-16 px-4">
-        <Text className="text-muted-foreground text-center text-lg">
+      <View className="px-4 py-16">
+        <Text className="text-center text-lg text-muted-foreground">
           No card transactions found
         </Text>
-        <Text className="text-muted-foreground text-center text-sm mt-2">
+        <Text className="mt-2 text-center text-sm text-muted-foreground">
           Your card transactions will appear here
         </Text>
       </View>
@@ -178,7 +178,7 @@ export default function CardTransactions() {
   const renderFooter = () => {
     if (!isFetchingNextPage) return null;
     return (
-      <View className="py-4 items-center">
+      <View className="items-center py-4">
         <ActivityIndicator size="small" color="#fff" />
       </View>
     );
@@ -201,7 +201,6 @@ export default function CardTransactions() {
           }
           return item.data.id || `${index}`;
         }}
-        estimatedItemSize={88}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={() => null}

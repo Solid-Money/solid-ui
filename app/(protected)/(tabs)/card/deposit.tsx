@@ -183,18 +183,18 @@ const DepositToCard = () => {
 
   return (
     <PageLayout desktopOnly contentClassName="px-4 py-8">
-      <View className="max-w-md mx-auto w-full h-full">
+      <View className="mx-auto h-full w-full max-w-md">
         {/* Header */}
-        <View className="flex-row items-center justify-between mb-8">
+        <View className="mb-8 flex-row items-center justify-between">
           <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
-          <Text className="text-xl md:text-2xl font-semibold text-center">Deposit to card</Text>
+          <Text className="text-center text-xl font-semibold md:text-2xl">Deposit to card</Text>
           <View className="w-6" />
         </View>
 
         {/* Token Selection */}
-        <View className="bg-card rounded-xl p-4 mb-6">
+        <View className="mb-6 rounded-xl bg-card p-4">
           <View className="flex-row items-center justify-between">
             {selectedToken ? (
               <>
@@ -202,34 +202,34 @@ const DepositToCard = () => {
                   source={require('@/assets/images/usdc-4x.png')}
                   style={{ width: 42, height: 42 }}
                 />
-                <View className="flex-1 ml-3">
-                  <Text className="text-white font-bold text-lg">
+                <View className="ml-3 flex-1">
+                  <Text className="text-lg font-bold text-white">
                     {selectedToken.contractTickerSymbol}
                   </Text>
-                  <Text className="text-[#ACACAC] font-medium">{selectedToken.contractName}</Text>
+                  <Text className="font-medium text-[#ACACAC]">{selectedToken.contractName}</Text>
                 </View>
                 <View className="flex-row items-center gap-4">
-                  <Text className=" text-[#ACACAC] font-medium text-base">
+                  <Text className=" text-base font-medium text-[#ACACAC]">
                     {formatNumber(availableBalance)} available
                   </Text>
-                  <Pressable onPress={handleMaxPress} className="bg-[#4D4D4D] px-3 py-1 rounded-xl">
-                    <Text className="text-primary font-bold text-base">Max</Text>
+                  <Pressable onPress={handleMaxPress} className="rounded-xl bg-[#4D4D4D] px-3 py-1">
+                    <Text className="text-base font-bold text-primary">Max</Text>
                   </Pressable>
                 </View>
               </>
             ) : (
-              <Text className="text-muted-foreground text-base">No stablecoins available</Text>
+              <Text className="text-base text-muted-foreground">No stablecoins available</Text>
             )}
           </View>
         </View>
 
-        <Text className="text-center text-muted-foreground font-medium text-base mb-4">
+        <Text className="mb-4 text-center text-base font-medium text-muted-foreground">
           Only stablecoins allowed to deposit to card
         </Text>
 
         {/* Amount Display */}
-        <View className="justify-center items-center my-16">
-          <Text className="text-6xl md:text-5xl font-bold text-white mb-2">
+        <View className="my-16 items-center justify-center">
+          <Text className="mb-2 text-6xl font-bold text-white md:text-5xl">
             {amount || '0'} {selectedToken?.contractTickerSymbol || 'USDC'}
           </Text>
         </View>
@@ -237,7 +237,7 @@ const DepositToCard = () => {
         {/* Virtual Keypad */}
         <View className="mb-6">
           {keypadNumbers.map((row, rowIndex) => (
-            <View key={rowIndex} className="flex-row justify-around mb-4">
+            <View key={rowIndex} className="mb-4 flex-row justify-around">
               {row.map(key => (
                 <Pressable
                   key={key}
@@ -248,7 +248,7 @@ const DepositToCard = () => {
                       handleNumberPress(key);
                     }
                   }}
-                  className="w-20 h-20 items-center justify-center web:hover:bg-card rounded-full"
+                  className="h-20 w-20 items-center justify-center rounded-full web:hover:bg-card"
                 >
                   {key === 'backspace' ? (
                     <Image
@@ -272,7 +272,7 @@ const DepositToCard = () => {
           onPress={handleContinue}
           disabled={!isValidAmount || isDepositing}
         >
-          <Text className="font-bold text-base">{isDepositing ? 'Depositing...' : 'Continue'}</Text>
+          <Text className="text-base font-bold">{isDepositing ? 'Depositing...' : 'Continue'}</Text>
           {isDepositing && <ActivityIndicator color="gray" size="small" />}
         </Button>
       </View>

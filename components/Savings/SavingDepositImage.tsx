@@ -7,7 +7,7 @@ const SavingDepositImage = () => {
 
   return (
     <Image
-      source={require('@/assets/images/solid-purple-large.png')}
+      source={require('@/assets/images/solid-indigo.png')}
       contentFit="contain"
       style={{
         width: isScreenMedium ? 349 : 233,

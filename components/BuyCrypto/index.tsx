@@ -61,7 +61,7 @@ const BuyCrypto = () => {
   }, [user]);
 
   return (
-    <View className="flex-1 md:max-h-[65vh] lg:max-h-[70vh] 2xl:max-h-[75vh] overflow-y-auto">
+    <View className="flex-1 overflow-y-auto md:max-h-[65vh] lg:max-h-[70vh] 2xl:max-h-[75vh]">
       {loading && (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#000" />
@@ -70,12 +70,12 @@ const BuyCrypto = () => {
 
       {error ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-center mt-5 text-red-500 text-base">{error}</Text>
+          <Text className="mt-5 text-center text-base text-red-500">{error}</Text>
         </View>
       ) : finalUrl ? (
         <iframe
           src={finalUrl}
-          className="w-full min-h-[100vh]"
+          className="min-h-[100vh] w-full"
           onLoad={handleIframeLoad}
           onError={handleIframeError}
           allow="camera; microphone; geolocation; payment"

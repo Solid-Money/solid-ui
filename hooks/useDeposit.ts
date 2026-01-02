@@ -149,18 +149,20 @@ const useDeposit = (): DepositResult => {
             fee: fee?.toString(),
           },
         },
-        (onUserOpHash) => executeTransactions(
-          smartAccountClient,
-          transactions,
-          'Deposit failed',
-          mainnet,
-          onUserOpHash
-        )
+        onUserOpHash =>
+          executeTransactions(
+            smartAccountClient,
+            transactions,
+            'Deposit failed',
+            mainnet,
+            onUserOpHash,
+          ),
       );
 
-      const transaction = result && typeof result === 'object' && 'transaction' in result
-        ? result.transaction
-        : result;
+      const transaction =
+        result && typeof result === 'object' && 'transaction' in result
+          ? result.transaction
+          : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         const error = new Error('User cancelled transaction');

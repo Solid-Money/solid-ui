@@ -104,7 +104,7 @@ const BankTransferKycInfoModal = () => {
   }
 
   return (
-    <View className="flex-1 gap-6 pt-4 pb-1">
+    <View className="flex-1 gap-6 pb-1 pt-4">
       <UserInfoHeader kycMode={kycMode} />
       <View className="px-1">
         <UserInfoForm control={control} errors={errors} />
@@ -200,7 +200,7 @@ const BankTransferKycFrameModal = () => {
   }, [kyc.kycLink]);
 
   return (
-    <View className="flex-1 md:max-h-[65vh] lg:max-h-[70vh] 2xl:max-h-[75vh] overflow-y-auto">
+    <View className="flex-1 overflow-y-auto md:max-h-[65vh] lg:max-h-[70vh] 2xl:max-h-[75vh]">
       {loading && (
         <View className="flex-1 items-center justify-center">
           <Text className="text-white">Loading verification...</Text>
@@ -209,12 +209,12 @@ const BankTransferKycFrameModal = () => {
 
       {error ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-red-500 text-center">{error}</Text>
+          <Text className="text-center text-red-500">{error}</Text>
         </View>
       ) : finalUrl ? (
         <iframe
           src={finalUrl}
-          className="w-full min-h-[100vh]"
+          className="min-h-[100vh] w-full"
           onLoad={handleIframeLoad}
           onError={handleIframeError}
           allow="camera; microphone; geolocation"

@@ -1,21 +1,24 @@
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SecurityEmailModal } from '@/components/SecurityEmailModal';
+import { SecurityTotpModal } from '@/components/SecurityTotpModal';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { getTotpStatus } from '@/lib/api';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
 import { cn } from '@/lib/utils';
 
 const SecurityEmailIcon = require('@/assets/images/security_email.png');
 const SecurityUnlockIcon = require('@/assets/images/security_unlock.png');
 const SecurityKeyIcon = require('@/assets/images/security_key.png');
+const SecurityTotpIcon = require('@/assets/images/security_totp.png');
 
 export default function Security() {
   const { user } = useUser();
@@ -24,6 +27,9 @@ export default function Security() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showTotpModal, setShowTotpModal] = useState(false);
+  const [isTotpVerified, setIsTotpVerified] = useState<boolean | null>(null);
+  const [isLoadingTotpStatus, setIsLoadingTotpStatus] = useState(true);
 
   const handleUnlock = useCallback(async () => {
     setIsUnlocking(true);
@@ -53,20 +59,48 @@ export default function Security() {
     setShowEmailModal(false);
   };
 
+  const handleAddTotp = () => {
+    setShowTotpModal(true);
+  };
+
+  const fetchTotpStatus = useCallback(async () => {
+    setIsLoadingTotpStatus(true);
+    try {
+      const status = await getTotpStatus();
+      setIsTotpVerified(status.verified);
+    } catch (error) {
+      console.error('Failed to fetch TOTP status:', error);
+      // If TOTP is not set up, API might return 404, which is fine
+      setIsTotpVerified(false);
+    } finally {
+      setIsLoadingTotpStatus(false);
+    }
+  }, []);
+
+  const handleTotpSuccess = useCallback(() => {
+    setShowTotpModal(false);
+    // Refresh TOTP status after successful setup
+    fetchTotpStatus();
+  }, [fetchTotpStatus]);
+
+  useEffect(() => {
+    fetchTotpStatus();
+  }, [fetchTotpStatus]);
+
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
       <Pressable onPress={() => router.back()} className="p-2">
         <ChevronLeft size={24} color="#ffffff" />
       </Pressable>
-      <Text className="text-white text-xl font-bold flex-1 text-center mr-10">Security</Text>
+      <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Security</Text>
     </View>
   );
 
   const desktopHeader = (
     <>
       <Navbar />
-      <View className="max-w-[512px] mx-auto w-full px-4 pt-8 pb-8">
-        <View className="flex-row items-center justify-between mb-8">
+      <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
+        <View className="mb-8 flex-row items-center justify-between">
           <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
             <ArrowLeft color="white" />
           </Pressable>
@@ -86,31 +120,31 @@ export default function Security() {
         scrollable={false}
       >
         <View
-          className={cn('w-full mx-auto px-4 py-4 flex-1', {
+          className={cn('mx-auto w-full flex-1 px-4 py-4', {
             'max-w-[512px]': isDesktop,
             'max-w-7xl': !isDesktop,
           })}
         >
           {/* Unlock Banner - only show when locked */}
           {!isUnlocked && (
-            <View className="bg-[#94F27F]/20 rounded-xl p-6 mb-6">
-              <View className="flex-row items-center justify-center gap-2 mb-3">
+            <View className="mb-6 rounded-xl bg-[#94F27F]/20 p-6">
+              <View className="mb-3 flex-row items-center justify-center gap-2">
                 <Image source={SecurityUnlockIcon} style={{ width: 15, height: 17 }} />
-                <Text className="text-[#94F27F] text-base font-bold">
+                <Text className="text-base font-bold text-[#94F27F]">
                   Unlock to change settings
                 </Text>
               </View>
               <Pressable
                 onPress={handleUnlock}
                 disabled={isUnlocking}
-                className="bg-[#94F27F] rounded-xl mt-2 py-3 flex-row items-center justify-center gap-2 active:opacity-80"
+                className="mt-2 flex-row items-center justify-center gap-2 rounded-xl bg-[#94F27F] py-3 active:opacity-80"
               >
                 {isUnlocking ? (
                   <ActivityIndicator color="#000000" size="small" />
                 ) : (
                   <>
                     <Image source={SecurityKeyIcon} style={{ width: 23, height: 11 }} />
-                    <Text className="text-black text-base font-bold">Unlock</Text>
+                    <Text className="text-base font-bold text-black">Unlock</Text>
                   </>
                 )}
               </Pressable>
@@ -118,12 +152,12 @@ export default function Security() {
           )}
 
           {/* Email Section */}
-          <Text className="text-white text-base font-bold mb-2">Email</Text>
-          <Text className="text-[#ACACAC] text-base font-medium mb-4">
+          <Text className="mb-2 text-base font-bold text-white">Email</Text>
+          <Text className="mb-4 text-base font-medium text-[#ACACAC]">
             This email will receive important alerts regarding your account and be used for Wallet
             funds recovery.
           </Text>
-          <View className="bg-[#1c1c1c] rounded-xl overflow-hidden">
+          <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
             <SettingsCard
               title={user?.email || 'No email'}
               description={user?.email ? 'Verified' : undefined}
@@ -136,8 +170,47 @@ export default function Security() {
               customAction={
                 isUnlocked ? (
                   <Pressable onPress={handleChangeEmail} className="active:opacity-70">
-                    <Text className="text-[#ACACAC] text-base">Change</Text>
+                    <Text className="text-base text-[#ACACAC]">Change</Text>
                   </Pressable>
+                ) : null
+              }
+            />
+          </View>
+
+          {/* Totp Section */}
+          <Text className="mb-2 mt-9 text-base font-bold text-white">
+            Two-factor authentication (2FA)
+          </Text>
+          <Text className="mb-4 text-base font-medium text-[#ACACAC]">
+            Two-factor authentication adds an additional layer of security to your account.
+          </Text>
+          <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
+            <SettingsCard
+              title={
+                isLoadingTotpStatus
+                  ? 'Loading...'
+                  : isTotpVerified
+                    ? 'Authenticator app registered'
+                    : 'No authenticator app registered'
+              }
+              description={isTotpVerified ? 'Active' : undefined}
+              descriptionStyle="text-[#94F27F]"
+              descriptionContainerStyle="bg-[#94F27F]/15 rounded-full px-2 py-0.5 mt-1"
+              icon={<Image source={SecurityTotpIcon} style={{ width: 50, height: 50 }} />}
+              isDesktop={isDesktop}
+              hideIconBackground
+              titleStyle="font-medium"
+              customAction={
+                isUnlocked ? (
+                  isLoadingTotpStatus ? (
+                    <ActivityIndicator color="#ACACAC" size="small" />
+                  ) : (
+                    !isTotpVerified && (
+                      <Pressable onPress={handleAddTotp} className="active:opacity-70">
+                        <Text className="text-base text-[#ACACAC]">Add</Text>
+                      </Pressable>
+                    )
+                  )
                 ) : null
               }
             />
@@ -150,6 +223,13 @@ export default function Security() {
         open={showEmailModal}
         onOpenChange={setShowEmailModal}
         onSuccess={handleEmailSuccess}
+      />
+
+      {/* TOTP Modal */}
+      <SecurityTotpModal
+        open={showTotpModal}
+        onOpenChange={setShowTotpModal}
+        onSuccess={handleTotpSuccess}
       />
     </>
   );

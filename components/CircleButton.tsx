@@ -33,8 +33,8 @@ const CircleButton = ({
   const { width, height } = getDimensions();
 
   return (
-    <Pressable className="gap-2 items-center" onPress={onPress}>
-      <View className={cn('h-14 w-14 rounded-full items-center justify-center', backgroundColor)}>
+    <Pressable className="items-center gap-2" onPress={onPress}>
+      <View className={cn('h-14 w-14 items-center justify-center rounded-full', backgroundColor)}>
         <Icon
           width={width}
           height={height}
@@ -43,7 +43,7 @@ const CircleButton = ({
           preserveAspectRatio="xMidYMid meet"
         />
       </View>
-      <Text className="text-primary/70 font-medium">{label}</Text>
+      <Text className="font-medium text-primary/70">{label}</Text>
     </Pressable>
   );
 };

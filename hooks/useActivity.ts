@@ -124,6 +124,8 @@ export function useActivity() {
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchOnReconnect: false, // Don't refetch on network reconnect
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 5 * 60 * 1000, // Garbage collect after 5 minutes to free memory
+    maxPages: 5, // Keep only 5 most recent pages in memory (TanStack Query v5)
     // Query will only refetch when:
     // 1. Explicitly invalidated (by sync success)
     // 2. Manually triggered (pull-to-refresh)

@@ -125,9 +125,9 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
 
   return (
     <View className="gap-4">
-      <Text className="text-base opacity-70 font-medium">To</Text>
+      <Text className="text-base font-medium opacity-70">To</Text>
       <Pressable
-        className="flex-row items-center gap-2 bg-card rounded-2xl px-5 h-16 relative"
+        className="relative h-16 flex-row items-center gap-2 rounded-2xl bg-card px-5"
         onPress={() => {
           if (!isSearch) {
             setSearchQuery('');
@@ -135,11 +135,11 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
           }
         }}
       >
-        <View className="flex-1 relative">
+        <View className="relative flex-1">
           {to ? (
-            <View className="flex-row items-center pointer-events-none">
-              <View className="flex-row justify-center items-center gap-2 px-3 py-2 bg-foreground/10 rounded-full">
-                <Avatar name={to} className="w-7 h-7" />
+            <View className="pointer-events-none flex-row items-center">
+              <View className="flex-row items-center justify-center gap-2 rounded-full bg-foreground/10 px-3 py-2">
+                <Avatar name={to} className="h-7 w-7" />
                 <Text className="text-base font-semibold">{name ? to : eclipseAddress(to)}</Text>
               </View>
             </View>
@@ -162,14 +162,14 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
         {isSearch && to ? (
           <Pressable
             onPress={handleClear}
-            className="h-10 w-10 flex items-center justify-center bg-popover rounded-full web:transition-colors web:hover:bg-muted"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
           >
             <X size={20} color="white" />
           </Pressable>
         ) : isSearch && isValid ? (
           <Pressable
             onPress={handleContinue}
-            className="h-10 w-10 flex items-center justify-center bg-popover rounded-full web:transition-colors web:hover:bg-muted"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
           >
             <ArrowRight size={20} color="white" />
           </Pressable>

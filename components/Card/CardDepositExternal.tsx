@@ -8,7 +8,7 @@ import { Text } from '@/components/ui/text';
 export default function CardDepositExternal() {
   return (
     <View className="flex-1 items-center justify-center p-6">
-      <Text className="text-muted-foreground text-center">
+      <Text className="text-center text-muted-foreground">
         External wallet deposit is only available on web.
       </Text>
     </View>

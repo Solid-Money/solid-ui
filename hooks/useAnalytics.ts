@@ -1,5 +1,5 @@
 import { infoClient } from '@/graphql/clients';
-import { QueryClient, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
@@ -123,22 +123,27 @@ const filterTransfers = (transfers: BlockscoutTransactions) => {
   });
 };
 
-export const useUserTransactions = (safeAddress: string) => {
-  return useQuery({
-    queryKey: ['user-transactions', safeAddress?.toLowerCase()],
-    queryFn: async () => {
-      if (!safeAddress) return undefined;
-      const { data } = await infoClient.query({
-        query: GetUserTransactionsDocument,
-        variables: {
-          address: safeAddress.toLowerCase(),
-        },
-      });
-      return data;
-    },
-    enabled: !!safeAddress,
-    staleTime: secondsToMilliseconds(30),
-  });
+export const userTransactionsQueryOptions = (safeAddress: string | undefined) => ({
+  queryKey: ['user-transactions', safeAddress?.toLowerCase()],
+  queryFn: async () => {
+    if (!safeAddress) return undefined;
+    const { data } = await infoClient.query<GetUserTransactionsQuery>({
+      query: GetUserTransactionsDocument,
+      variables: {
+        address: safeAddress.toLowerCase(),
+      },
+      fetchPolicy: 'cache-first',
+    });
+    return data;
+  },
+  enabled: !!safeAddress,
+  staleTime: secondsToMilliseconds(60), // Data is fresh for 60 seconds
+  gcTime: secondsToMilliseconds(300), // Keep in cache for 5 minutes
+  placeholderData: keepPreviousData, // Show stale data while fetching new data
+});
+
+export const useUserTransactions = (safeAddress: string | undefined) => {
+  return useQuery(userTransactionsQueryOptions(safeAddress));
 };
 
 export const useSendTransactions = (address: string) => {
@@ -501,14 +506,14 @@ export const isDepositedQueryOptions = (safeAddress: string) => {
   return {
     queryKey: [ANALYTICS, 'isDeposited', safeAddress],
     queryFn: async () => {
-      const { data } = await infoClient.query({
+      const { data } = await infoClient.query<GetUserTransactionsQuery>({
         query: GetUserTransactionsDocument,
         variables: {
           address: safeAddress,
         },
       });
 
-      return data?.deposits?.length;
+      return data?.deposits?.length ?? 0;
     },
     enabled: !!safeAddress,
   };

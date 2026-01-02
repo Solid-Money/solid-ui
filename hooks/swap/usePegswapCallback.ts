@@ -20,7 +20,7 @@ import {
   USDT,
   USDT_V2,
   WETH,
-  WETH_V2
+  WETH_V2,
 } from '@/constants/addresses';
 import { useReadPegSwapGetSwappableAmount, useSimulatePegSwapSwap } from '@/generated/wagmi';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -164,7 +164,10 @@ export default function usePegSwapCallback(
     [inputCurrency, typedValue],
   );
 
-  const { approvalState, needAllowance, approvalConfig } = useApproveCallbackFromPegSwap(inputAmount, pegSwapAddress);
+  const { approvalState, needAllowance, approvalConfig } = useApproveCallbackFromPegSwap(
+    inputAmount,
+    pegSwapAddress,
+  );
 
   const { data: swapConfig, refetch: refetchSwapConfig } = useSimulatePegSwapSwap({
     address: pegSwapAddress,
@@ -254,7 +257,17 @@ export default function usePegSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [swapConfig, user?.suborgId, user?.signWith, account, safeAA, needAllowance, approvalConfig, successInfo, queryClient]);
+  }, [
+    swapConfig,
+    user?.suborgId,
+    user?.signWith,
+    account,
+    safeAA,
+    needAllowance,
+    approvalConfig,
+    successInfo,
+    queryClient,
+  ]);
 
   // useTransactionAwait handles balance invalidation and toast notifications
   // We don't use its isLoading state since the transaction is already confirmed

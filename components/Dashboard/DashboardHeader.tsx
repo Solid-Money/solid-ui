@@ -10,7 +10,6 @@ interface DashboardHeaderProps {
   totalAPY?: number;
   firstDepositTimestamp?: number;
   mode?: SavingMode;
-  hasTokens: boolean;
   tooltipText?: string;
 }
 
@@ -19,7 +18,6 @@ export default function DashboardHeader({
   totalAPY,
   firstDepositTimestamp,
   mode,
-  hasTokens,
   tooltipText,
 }: DashboardHeaderProps) {
   return (
@@ -33,7 +31,7 @@ export default function DashboardHeader({
           tooltipText={tooltipText}
         />
       </View>
-      <DashboardHeaderButtons hasTokens={hasTokens} />
+      <DashboardHeaderButtons />
     </View>
   );
 }
