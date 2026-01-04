@@ -223,7 +223,7 @@ const SendReview: React.FC = () => {
               analyticsContext="send_review_contract_warning"
             />
           )}
-          <Text className="max-w-52 text-right text-base font-semibold">{address}</Text>
+          <Text className="text-right text-xs font-semibold">{address}</Text>
         </View>
       ),
     },
@@ -247,7 +247,7 @@ const SendReview: React.FC = () => {
             <View
               key={index}
               className={cn(
-                'flex-row items-center justify-between border-b border-foreground/10 p-5',
+                'flex-row items-center justify-between gap-1 border-b border-foreground/10 p-5',
                 rows.length - 1 === index && 'border-b-0',
               )}
             >
