@@ -21,17 +21,24 @@ export type TimeGroup<T = ActivityEvent> =
       data: T;
     };
 
+export const TITLE_GROUPS = {
+  pending: 'Pending activity',
+  today: 'Today',
+  yesterday: 'Yesterday',
+  date: 'dd MMM yyyy',
+}
+
 export const formatTimeGroup = (timestamp: string): string => {
   if (!timestamp) return '';
 
   const transactionDate = new Date(Number(timestamp) * 1000);
 
   if (isToday(transactionDate)) {
-    return 'Today';
+    return TITLE_GROUPS.today;
   } else if (isYesterday(transactionDate)) {
-    return 'Yesterday';
+    return TITLE_GROUPS.yesterday;
   } else {
-    return format(transactionDate, "dd MMM yyyy");
+    return format(transactionDate, TITLE_GROUPS.date);
   }
 };
 
@@ -55,7 +62,7 @@ export const groupTransactionsByTime = (transactions: ActivityEvent[]): TimeGrou
     grouped.push({
       type: ActivityGroup.HEADER,
       data: {
-        title: 'Pending activity',
+        title: TITLE_GROUPS.pending,
         key: 'header-pending',
         status: TransactionStatus.PENDING,
         hasPendingTransactions: pendingTransactions.length > 0,
