@@ -1,4 +1,3 @@
-import { AlertTriangle } from 'lucide-react-native';
 import React from 'react';
 import { Controller } from 'react-hook-form';
 import { ActivityIndicator, Image, Pressable, TextInput, View } from 'react-native';
@@ -7,7 +6,6 @@ import { Address } from 'viem';
 
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
-import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
@@ -24,6 +22,7 @@ import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
+import ContractAddressWarning from './ContractAddressWarning';
 
 import Key from '@/assets/images/key';
 import Wallet from '@/assets/images/wallet';
@@ -199,39 +198,13 @@ const SendReview: React.FC = () => {
     },
     {
       label: 'To',
-      value: (
-        <View className="flex-row items-start gap-2">
-          {isContract && (
-            <TooltipPopover
-              trigger={
-                <View className="mt-1">
-                  <AlertTriangle size={18} color="#F59E0B" />
-                </View>
-              }
-              content={
-                <View className="gap-1">
-                  <Text className="text-sm font-semibold leading-5">
-                    This appears to be a smart contract address
-                  </Text>
-                  <Text className="text-sm leading-5 opacity-90">
-                    Please check the recipient is able to receive assets on{' '}
-                    {getBridgeChain(selectedToken?.chainId || 1).name}
-                  </Text>
-                </View>
-              }
-              side="top"
-              analyticsContext="send_review_contract_warning"
-            />
-          )}
-          <Text className="text-right text-xs font-semibold">{address}</Text>
-        </View>
-      ),
+      value: <Text className="text-right text-xs font-semibold">{address}</Text>,
     },
   ];
 
   return (
     <View className="flex-1 justify-between gap-8">
-      <View className="flex-1 gap-8">
+      <View className="flex-1 gap-5">
         <View className="items-center">
           <Text className="text-2xl font-semibold">
             <Text className="opacity-50">Send</Text> {formatNumber(Number(amount))}{' '}
@@ -241,6 +214,10 @@ const SendReview: React.FC = () => {
             <Text className="opacity-50">to</Text> {name || eclipseAddress(address)}
           </Text>
         </View>
+
+        {isContract && (
+          <ContractAddressWarning chainName={getBridgeChain(selectedToken?.chainId || 1).name} />
+        )}
 
         <View className="rounded-2xl bg-card">
           {rows.map((row, index) => (
