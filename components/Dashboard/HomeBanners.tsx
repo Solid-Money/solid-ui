@@ -59,11 +59,7 @@ const BannerItem = ({
     };
   }, [index, dataLen, hasMultipleViews]);
 
-  return (
-    <Animated.View style={[animatedStyle, { height: bannerHeight }]}>
-      {item}
-    </Animated.View>
-  );
+  return <Animated.View style={[animatedStyle, { height: bannerHeight }]}>{item}</Animated.View>;
 };
 
 const HomeBannersContent = () => {
@@ -110,10 +106,7 @@ const HomeBannersContent = () => {
     });
   };
 
-  const handleProgressChange = (
-    _offsetProgress: number,
-    absoluteProgress: number,
-  ) => {
+  const handleProgressChange = (_offsetProgress: number, absoluteProgress: number) => {
     progress.value = absoluteProgress;
     // Snap back if scrolled past max
     if (absoluteProgress > MAX_INDEX + 0.1) {
