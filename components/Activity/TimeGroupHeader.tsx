@@ -1,6 +1,6 @@
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { TITLE_GROUPS } from '@/lib/utils/timeGrouping';
 import { View } from 'react-native';
 
 interface HeaderProps {
@@ -27,30 +27,22 @@ const Header = ({ title }: HeaderProps) => {
 };
 
 export default function TimeGroupHeader({
-  index,
   title,
   isPending,
   hasActivePendingTransactions,
 }: TimeGroupHeaderProps) {
-  return (
-    <View className={cn('bg-background py-3', index > 0 && 'pt-6')}>
-      {isPending ? (
-        <View
-          className={cn(
-            'flex-row items-center justify-between',
-            !hasActivePendingTransactions && 'justify-end',
-          )}
-        >
-          {hasActivePendingTransactions && (
-            <TooltipPopover
-              trigger={<Header title={title} />}
-              text="Updates automatically every few seconds"
-            />
-          )}
-        </View>
-      ) : (
-        <Header title={title} />
-      )}
+  return isPending && hasActivePendingTransactions ? (
+    <View className="bg-background pb-3 pt-6">
+      <View className="flex-row items-center justify-between">
+        <TooltipPopover
+          trigger={<Header title={title} />}
+          text="Updates automatically every few seconds"
+        />
+      </View>
     </View>
-  );
+  ) : title !== TITLE_GROUPS.pending ? (
+    <View className="bg-background pb-3 pt-6">
+      <Header title={title} />
+    </View>
+  ) : null;
 }

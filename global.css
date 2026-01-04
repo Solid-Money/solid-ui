@@ -36,6 +36,7 @@
     --purple: 270 39% 44%;
     --rewards: 44 100% 66%;
     --indigo: 255.2 78.12% 62.35%;
+    --warning: 44.14 100% 65.88%;
   }
 
   /* Override Tailwind's default system stack on web */

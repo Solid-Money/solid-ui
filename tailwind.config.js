@@ -117,6 +117,9 @@ module.exports = {
         indigo: {
           DEFAULT: 'hsl(var(--indigo))',
         },
+        warning: {
+          DEFAULT: 'hsl(var(--warning))',
+        },
       },
       borderWidth: {
         hairline: hairlineWidth(),

@@ -141,7 +141,7 @@ const useSendOption = ({
     if (isReview) return 'Review';
     if (isTokenSelector) return 'Select token';
     if (isForm) return 'Send';
-    if (isAddressBook) return 'Address Book';
+    if (isAddressBook) return 'Contacts';
     return 'Send';
   };
 
