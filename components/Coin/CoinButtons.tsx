@@ -8,6 +8,7 @@ import StakeModal from '@/components/Stake/StakeModal';
 import SwapModal from '@/components/Swap/SwapModal';
 import { Text } from '@/components/ui/text';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
+import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { isSoUSDEthereum } from '@/lib/utils';
 
 import HomeSend from '@/assets/images/home-send';
@@ -16,6 +17,7 @@ import HomeWithdraw from '@/assets/images/withdraw';
 
 type CoinButtonsProps = {
   contractAddress: Address;
+  isWithdraw: boolean;
 };
 
 interface TriggerProps {
@@ -33,14 +35,18 @@ const Trigger = ({ icon, label, ...props }: TriggerProps) => {
   );
 };
 
-const CoinButtons = ({ contractAddress }: CoinButtonsProps) => {
+const CoinButtons = ({ contractAddress, isWithdraw }: CoinButtonsProps) => {
   return (
     <View className="mx-auto flex-row items-center justify-between gap-8">
       {isSoUSDEthereum(contractAddress) && (
         <StakeModal trigger={<Trigger icon={<ArrowUp color="white" />} label="Deposit" />} />
       )}
 
-      <UnstakeModal trigger={<Trigger icon={<HomeWithdraw />} label="Withdraw" />} />
+      {isWithdraw ? (
+        <WithdrawModal trigger={<Trigger icon={<HomeWithdraw />} label="Withdraw" />} />
+      ) : (
+        <UnstakeModal trigger={<Trigger icon={<HomeWithdraw />} label="Withdraw" />} />
+      )}
 
       <SendModal
         trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}

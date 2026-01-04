@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
+import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -17,9 +18,12 @@ type DashboardHeaderButtonsProps = {
   deposit?: {
     title: string;
   };
+  withdraw?: {
+    isWithdraw: boolean;
+  };
 };
 
-const DashboardHeaderButtons = ({ deposit }: DashboardHeaderButtonsProps) => {
+const DashboardHeaderButtons = ({ deposit, withdraw }: DashboardHeaderButtonsProps) => {
   const withdrawTrigger = (
     <Button
       variant="secondary"
@@ -40,7 +44,11 @@ const DashboardHeaderButtons = ({ deposit }: DashboardHeaderButtonsProps) => {
 
   return (
     <View className="flex-row gap-2">
-      <UnstakeModal trigger={withdrawTrigger} />
+      {withdraw?.isWithdraw ? (
+        <WithdrawModal trigger={withdrawTrigger} />
+      ) : (
+        <UnstakeModal trigger={withdrawTrigger} />
+      )}
 
       <SwapModal
         trigger={
