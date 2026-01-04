@@ -26,6 +26,7 @@ type BannerItemProps = {
   hasMultipleViews: boolean;
   progress: SharedValue<number>;
   gapPadding: SharedValue<number>;
+  bannerHeight: number;
 };
 
 const BannerItem = ({
@@ -35,6 +36,7 @@ const BannerItem = ({
   hasMultipleViews,
   progress,
   gapPadding,
+  bannerHeight,
 }: BannerItemProps) => {
   const isWeb = Platform.OS === 'web';
 
@@ -58,7 +60,7 @@ const BannerItem = ({
   }, [index, dataLen, hasMultipleViews]);
 
   return (
-    <Animated.View className="h-full flex-1" style={animatedStyle}>
+    <Animated.View style={[animatedStyle, { height: bannerHeight }]}>
       {item}
     </Animated.View>
   );
@@ -129,6 +131,7 @@ const HomeBannersContent = () => {
         hasMultipleViews={HAS_MULTIPLE_VIEWS}
         progress={progress}
         gapPadding={gapPadding}
+        bannerHeight={BANNER_HEIGHT}
       />
     );
   };

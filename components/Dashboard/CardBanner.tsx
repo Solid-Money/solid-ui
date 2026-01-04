@@ -97,13 +97,13 @@ const CardBanner = () => {
         end={{ x: 0.6, y: 1 }}
         style={{
           borderRadius: 20,
-          height: '100%',
+          flex: 1,
           width: '100%',
           overflow: 'hidden',
         }}
       >
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
-          <View className="max-w-40 items-start justify-between gap-1 py-4 md:max-w-64 md:gap-4 md:py-7">
+          <View className="max-w-40 flex-1 items-start justify-between gap-1 py-4 md:max-w-64 md:gap-4 md:py-7">
             <Text className="native:text-lg text-lg font-semibold md:text-3xl">
               {bannerContent.title}
             </Text>
