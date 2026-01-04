@@ -87,6 +87,12 @@ const HomeBannersContent = () => {
   const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
   const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
   const IS_PAGINATION = data.length > VIEW_COUNT;
+  const MAX_INDEX = data.length - VIEW_COUNT;
+
+  const paginationData = useMemo(
+    () => (HAS_MULTIPLE_VIEWS ? data.slice(0, data.length - (VIEW_COUNT - 1)) : data),
+    [data, HAS_MULTIPLE_VIEWS, VIEW_COUNT],
+  );
 
   useEffect(() => {
     const target = HAS_MULTIPLE_VIEWS ? GAP / 2 : 0;
@@ -95,10 +101,22 @@ const HomeBannersContent = () => {
   }, [HAS_MULTIPLE_VIEWS, GAP, gapPadding]);
 
   const onPressPagination = (index: number) => {
+    const targetIndex = Math.min(index, MAX_INDEX);
     ref.current?.scrollTo({
-      count: index - progress.value,
+      count: targetIndex - progress.value,
       animated: true,
     });
+  };
+
+  const handleProgressChange = (
+    _offsetProgress: number,
+    absoluteProgress: number,
+  ) => {
+    progress.value = absoluteProgress;
+    // Snap back if scrolled past max
+    if (absoluteProgress > MAX_INDEX + 0.1) {
+      ref.current?.scrollTo({ index: MAX_INDEX, animated: true });
+    }
   };
 
   const renderItem = ({ item, index }: CarouselRenderItemInfo<BannerData[number]>) => {
@@ -137,7 +155,7 @@ const HomeBannersContent = () => {
             data={data}
             loop={false}
             autoPlay={false}
-            onProgressChange={progress}
+            onProgressChange={handleProgressChange}
             scrollAnimationDuration={200}
             onScrollStart={() => {
               //  if (HAS_MULTIPLE_VIEWS) return;
@@ -182,7 +200,7 @@ const HomeBannersContent = () => {
           {IS_PAGINATION && (
             <Pagination.Custom
               progress={progress}
-              data={data}
+              data={paginationData}
               dotStyle={styles.dotStyle}
               activeDotStyle={styles.activeDot}
               containerStyle={styles.paginationContainer}
