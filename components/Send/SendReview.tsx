@@ -65,7 +65,8 @@ const SendReview: React.FC = () => {
   const { isVerified: isTotpVerified } = useTotp();
 
   const isSendLoading = sendStatus === Status.PENDING;
-  const isContact = !name || (isTotpVerified && !hasSkipped2fa);
+  const showSkip2fa = isTotpVerified && !hasSkipped2fa;
+  const isContact = !name || showSkip2fa;
 
   const getButtonText = () => {
     if (isSendLoading) return 'Sending';
@@ -226,7 +227,7 @@ const SendReview: React.FC = () => {
           <SaveContact
             control={nameControl as Control<AddressBookFormData>}
             errors={nameErrors}
-            hasSkipped2fa={hasSkipped2fa}
+            showSkip2fa={showSkip2fa}
             name={name}
           />
         )}

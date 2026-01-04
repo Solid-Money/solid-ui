@@ -16,16 +16,11 @@ import type { AddressBookFormData } from '@/hooks/useAddressBook';
 type SaveContactProps = {
   control: UseFormReturn<AddressBookFormData>['control'];
   errors: FieldErrors<AddressBookFormData>;
-  hasSkipped2fa: boolean;
+  showSkip2fa: boolean;
   name?: string;
 };
 
-const SaveContact: React.FC<SaveContactProps> = ({
-  control,
-  errors,
-  hasSkipped2fa,
-  name,
-}) => {
+const SaveContact: React.FC<SaveContactProps> = ({ control, errors, showSkip2fa, name }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const contentHeight = useSharedValue(0);
@@ -80,7 +75,7 @@ const SaveContact: React.FC<SaveContactProps> = ({
             </View>
           )}
           {errors.name && <Text className="text-sm text-red-500">{errors.name.message}</Text>}
-          {!hasSkipped2fa && (
+          {showSkip2fa && (
             <Controller
               control={control}
               name="skip2fa"

@@ -20,7 +20,7 @@ const AddressBook: React.FC = () => {
     <View className="flex-1 justify-between gap-8">
       <View className="min-h-[17rem] flex-1 gap-8">
         <View className="gap-4">
-          <Text className="text-base font-medium opacity-70">To</Text>
+          <Text className="text-base font-medium opacity-70">Address</Text>
           <View className="flex-row items-center gap-2 rounded-2xl bg-card p-5">
             <Controller
               control={control}
@@ -44,7 +44,7 @@ const AddressBook: React.FC = () => {
         </View>
 
         <View className="gap-4">
-          <Text className="text-base font-medium opacity-70">Name</Text>
+          <Text className="text-base font-medium opacity-70">Contact name</Text>
           <View className="flex-row items-center gap-2 rounded-2xl bg-card p-5">
             <Controller
               control={control}
@@ -52,7 +52,6 @@ const AddressBook: React.FC = () => {
               render={({ field: { onChange, value } }) => (
                 <TextInput
                   className="flex-1 text-base text-white web:focus:outline-none"
-                  placeholder="Full name"
                   placeholderTextColor="#ffffff80"
                   value={value}
                   onChangeText={onChange}
