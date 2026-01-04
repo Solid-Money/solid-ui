@@ -1,19 +1,18 @@
 import React from 'react';
-import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Image, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Address } from 'viem';
+import { Control } from 'react-hook-form';
 
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
-import { useAddressBook } from '@/hooks/useAddressBook';
+import { AddressBookFormData, useAddressBook } from '@/hooks/useAddressBook';
 import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
 import { track } from '@/lib/analytics';
@@ -23,6 +22,7 @@ import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
 import ContractAddressWarning from './ContractAddressWarning';
+import SaveContact from './SaveContact';
 
 import Key from '@/assets/images/key';
 import Wallet from '@/assets/images/wallet';
@@ -219,6 +219,15 @@ const SendReview: React.FC = () => {
           <ContractAddressWarning chainName={getBridgeChain(selectedToken?.chainId || 1).name} />
         )}
 
+        {isContact && (
+          <SaveContact
+            control={nameControl as Control<AddressBookFormData>}
+            errors={nameErrors}
+            hasSkipped2fa={hasSkipped2fa}
+            name={name}
+          />
+        )}
+
         <View className="rounded-2xl bg-card">
           {rows.map((row, index) => (
             <View
@@ -233,54 +242,6 @@ const SendReview: React.FC = () => {
             </View>
           ))}
         </View>
-
-        {isContact && (
-          <View className="gap-4 rounded-2xl bg-card p-5">
-            <Text className="text-base font-medium">Save to contacts</Text>
-            <View className="gap-4">
-              {!name && (
-                <View className="gap-2">
-                  <Text className="text-base font-medium opacity-70">Name</Text>
-                  <Controller
-                    control={nameControl}
-                    name="name"
-                    render={({ field: { onChange, value } }) => (
-                      <TextInput
-                        className="flex-1 rounded-2xl bg-popup p-5 text-base text-white web:focus:outline-none"
-                        placeholder="Enter a name for this address"
-                        placeholderTextColor="#ffffff80"
-                        value={value}
-                        onChangeText={onChange}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                      />
-                    )}
-                  />
-                </View>
-              )}
-              {nameErrors.name && (
-                <Text className="text-sm text-red-500">{nameErrors.name.message}</Text>
-              )}
-              {!hasSkipped2fa && (
-                <Controller
-                  control={nameControl}
-                  name="skip2fa"
-                  render={({ field: { onChange, value } }) => (
-                    <Pressable
-                      onPress={() => onChange(!value)}
-                      className="flex-row items-center gap-3"
-                    >
-                      <Checkbox checked={value || false} onCheckedChange={onChange} />
-                      <Text className="flex-1 text-base opacity-70">
-                        Skip 2FA when sending to this address
-                      </Text>
-                    </Pressable>
-                  )}
-                />
-              )}
-            </View>
-          </View>
-        )}
       </View>
 
       <Button
