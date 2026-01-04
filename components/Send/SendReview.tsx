@@ -1,8 +1,8 @@
 import React from 'react';
+import { Control } from 'react-hook-form';
 import { ActivityIndicator, Image, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Address } from 'viem';
-import { Control } from 'react-hook-form';
 
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -15,6 +15,7 @@ import { useActivity } from '@/hooks/useActivity';
 import { AddressBookFormData, useAddressBook } from '@/hooks/useAddressBook';
 import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
+import { useTotp } from '@/hooks/useTotp';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
@@ -61,8 +62,10 @@ const SendReview: React.FC = () => {
     },
   });
 
+  const { isVerified: isTotpVerified } = useTotp();
+
   const isSendLoading = sendStatus === Status.PENDING;
-  const isContact = !name || !hasSkipped2fa;
+  const isContact = !name || (isTotpVerified && !hasSkipped2fa);
 
   const getButtonText = () => {
     if (isSendLoading) return 'Sending';
