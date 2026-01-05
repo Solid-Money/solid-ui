@@ -1,4 +1,3 @@
-import '@/global.css';
 import CardDepositModalProvider from '@/components/Card/CardDepositModalProvider';
 import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
 import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
@@ -11,8 +10,11 @@ import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
 import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
+import WhatsNewModal from '@/components/WhatsNewModal';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
+import '@/global.css';
 import { infoClient } from '@/graphql/clients';
+import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
 import { ApolloProvider } from '@apollo/client/react';
@@ -178,6 +180,8 @@ const queryClient = new QueryClient({
 export default Sentry.wrap(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
+  const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
+
   const [loaded, error] = useFonts({
     MonaSans_200ExtraLight,
     MonaSans_300Light,
@@ -361,6 +365,13 @@ export default Sentry.wrap(function RootLayout() {
                       <UnstakeModalProvider />
                       <DepositFromSafeAccountModalProvider />
                       <CardDepositModalProvider />
+                      {whatsNew && (
+                        <WhatsNewModal
+                          whatsNew={whatsNew}
+                          isOpen={isVisible}
+                          onClose={closeWhatsNew}
+                        />
+                      )}
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>
                 </Intercom>
