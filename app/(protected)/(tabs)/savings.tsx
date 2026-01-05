@@ -1,6 +1,5 @@
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
-import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
@@ -74,33 +73,45 @@ export default function Savings() {
 
   const renderContent = () => (
     <>
-      <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-8 md:gap-9 md:py-10">
+      <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-6 md:gap-9 md:py-10">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
             <DashboardTitle />
             <DashboardHeaderButtons />
           </View>
         ) : (
-          <Text className="text-xl font-semibold">Savings</Text>
+          <Text className="text-3xl font-semibold">Savings</Text>
         )}
-        <LinearGradient
-          colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="overflow-hidden rounded-twice web:md:flex web:md:flex-row"
+        <View
+          className="relative overflow-hidden rounded-twice web:md:flex web:md:flex-row"
           style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
         >
+          <LinearGradient
+            colors={['rgba(122, 84, 234, 1)', 'rgba(122, 84, 234, 0.5)']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.6, y: 1 }}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: -1,
+              opacity: 0.3,
+            }}
+          />
           <ImageBackground
-            source={require('@/assets/images/solid-purple-large.png')}
+            source={require('@/assets/images/solid-black-large.png')}
             resizeMode="contain"
-            className="flex-1"
+            className="relative flex-1"
+            style={{ mixBlendMode: 'luminosity' }}
             imageStyle={{
               width: 461,
               height: 625,
               marginTop: isScreenMedium ? -100 : -50,
               marginRight: isScreenMedium ? 50 : -250,
               marginLeft: 'auto',
-              opacity: 0.5,
             }}
           >
             <View className="flex-1 justify-between gap-12 border-b border-[#ffffff]/20 bg-transparent p-6 pb-10 md:gap-4 md:border-b-0 md:border-r md:px-10 md:py-8">
@@ -168,7 +179,7 @@ export default function Savings() {
             </View>
           </ImageBackground>
 
-          <View className="justify-left flex-row bg-transparent md:flex-col md:justify-center web:md:w-80">
+          <View className="justify-left relative flex-row bg-transparent md:flex-col md:justify-center web:md:w-80">
             <View className="yield-box p-6 md:p-7">
               <View className="flex-row items-center gap-2 pb-1">
                 <Text className="text-[1rem] text-primary/70 md:text-lg">Current Yield</Text>
@@ -217,12 +228,9 @@ export default function Savings() {
               </Text>
             </View>
           </View>
-        </LinearGradient>
+        </View>
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile />}
-      </View>
-      <View className="mx-auto w-full max-w-7xl md:px-0">
-        <HomeBanners />
       </View>
       <View className="mx-auto w-full max-w-7xl px-4">
         <FAQs faqs={faqs} className="md:mt-20" />
@@ -231,7 +239,7 @@ export default function Savings() {
   );
 
   return (
-    <PageLayout desktopOnly isLoading={isLoading} scrollable={false}>
+    <PageLayout isLoading={isLoading} scrollable={false}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}

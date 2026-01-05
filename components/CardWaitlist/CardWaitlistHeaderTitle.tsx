@@ -8,7 +8,7 @@ const CardWaitlistHeaderTitle = () => {
 
   return (
     <View className="gap-3">
-      <Text className="text-xl font-bold md:text-3xl md:font-semibold">Card</Text>
+      <Text className="text-3xl font-semibold">Card</Text>
 
       {isScreenMedium ? (
         <View className="gap-1">

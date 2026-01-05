@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Copy, Plus } from 'lucide-react-native';
+import { ChevronRight, Copy, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Platform, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -31,10 +31,6 @@ import {
   getInitials,
 } from '@/lib/utils/cardHelpers';
 import { cn } from '@/lib/utils/utils';
-
-interface CardHeaderProps {
-  onBackPress: () => void;
-}
 
 export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
@@ -177,9 +173,9 @@ export default function CardDetails() {
 
   // Mobile layout (unchanged)
   return (
-    <PageLayout desktopOnly isLoading={isLoading}>
-      <View className="mx-auto w-full max-w-lg px-4 pt-8">
-        <MobileHeader onBackPress={handleBackPress} />
+    <PageLayout isLoading={isLoading}>
+      <View className="mx-auto w-full max-w-lg px-4 pt-6">
+        <MobileHeader />
 
         <View className="flex-1">
           <BalanceDisplay amount={availableAmount} />
@@ -222,15 +218,9 @@ export default function CardDetails() {
   );
 }
 
-function MobileHeader({ onBackPress }: CardHeaderProps) {
+function MobileHeader() {
   return (
-    <View className="flex-row items-center justify-between">
-      <Pressable onPress={onBackPress} className="web:hover:opacity-70">
-        <ArrowLeft color="white" />
-      </Pressable>
-      <Text className="text-center text-xl font-semibold text-white md:text-2xl">Solid card</Text>
-      <View className="w-4" />
-    </View>
+      <Text className="text-3xl font-semibold">Card</Text>
   );
 }
 
