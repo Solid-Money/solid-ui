@@ -170,7 +170,7 @@ export default function Security() {
               customAction={
                 isUnlocked ? (
                   <Pressable onPress={handleChangeEmail} className="active:opacity-70">
-                    <Text className="text-base text-[#ACACAC]">Change</Text>
+                    <Text className="text-base text-[#ACACAC] font-medium">Change</Text>
                   </Pressable>
                 ) : null
               }
@@ -207,7 +207,7 @@ export default function Security() {
                   ) : (
                     !isTotpVerified && (
                       <Pressable onPress={handleAddTotp} className="active:opacity-70">
-                        <Text className="text-base text-[#ACACAC]">Add</Text>
+                        <Text className="text-base text-[#ACACAC] font-medium">Add</Text>
                       </Pressable>
                     )
                   )
