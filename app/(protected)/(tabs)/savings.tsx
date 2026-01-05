@@ -1,6 +1,5 @@
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
-import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
@@ -232,9 +231,6 @@ export default function Savings() {
         </View>
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile />}
-      </View>
-      <View className="mx-auto w-full max-w-7xl md:px-0">
-        <HomeBanners />
       </View>
       <View className="mx-auto w-full max-w-7xl px-4">
         <FAQs faqs={faqs} className="md:mt-20" />
