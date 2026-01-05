@@ -29,8 +29,8 @@ export default function SavingsEmptyState() {
           </View>
         ) : (
           <View className="flex-row items-baseline justify-center">
-            <Text className="text-5xl font-semibold leading-normal">$0</Text>
-            <Text className="text-2xl">.00</Text>
+            <Text className="text-6xl font-semibold leading-normal">$0</Text>
+            <Text className="text-3xl">.00</Text>
           </View>
         )}
       </View>
