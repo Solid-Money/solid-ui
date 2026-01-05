@@ -12,9 +12,8 @@ import { formatNumber } from '@/lib/utils';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
-import { ImageBackground, Platform, Pressable, View } from 'react-native';
+import { ImageBackground, Platform, View } from 'react-native';
 
 export default function Points() {
   const { points, isLoading: isPointsLoading } = usePoints();
@@ -31,20 +30,14 @@ export default function Points() {
   const depositPoints = depositRewards?.totalPoints || 0;
 
   return (
-    <PageLayout desktopOnly isLoading={isPointsLoading}>
+    <PageLayout isLoading={isPointsLoading}>
       <View className="mx-auto w-full max-w-7xl gap-6 px-4 pb-8 pt-4 md:gap-9 md:py-12">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between ">
             <PointsTitle />
           </View>
         ) : (
-          <View className="flex-row items-center justify-between">
-            <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
-              <ArrowLeft color="white" />
-            </Pressable>
-            <Text className="text-center text-xl font-semibold text-white md:text-3xl">Points</Text>
-            <View className="w-10" />
-          </View>
+          <Text className="text-3xl font-semibold">Points</Text>
         )}
         <LinearGradient
           colors={['rgba(255, 209, 81, 0.25)', 'rgba(255, 209, 81, 0.17)']}

@@ -73,14 +73,14 @@ export default function Savings() {
 
   const renderContent = () => (
     <>
-      <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-8 md:gap-9 md:py-10">
+      <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-6 md:gap-9 md:py-10">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
             <DashboardTitle />
             <DashboardHeaderButtons />
           </View>
         ) : (
-          <Text className="text-xl font-semibold">Savings</Text>
+          <Text className="text-3xl font-semibold">Savings</Text>
         )}
         <View
           className="relative overflow-hidden rounded-twice web:md:flex web:md:flex-row"
@@ -239,7 +239,7 @@ export default function Savings() {
   );
 
   return (
-    <PageLayout desktopOnly isLoading={isLoading} scrollable={false}>
+    <PageLayout isLoading={isLoading} scrollable={false}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}
