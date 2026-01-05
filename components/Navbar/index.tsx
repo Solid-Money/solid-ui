@@ -11,6 +11,7 @@ import { track } from '@/lib/analytics';
 import { NavMenu } from './NavMenu';
 import RegisterButtons from './RegisterButtons';
 import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
+import WhatsNewButton from './WhatsNewButton';
 
 const Navbar = () => {
   const { isScreenMedium } = useDimension();
@@ -45,6 +46,7 @@ const Navbar = () => {
         {user && isScreenMedium && <NavMenu />}
         {user && Platform.OS === 'web' && (
           <View className="flex-row items-center gap-2">
+            <WhatsNewButton />
             <InfoCenterDropdown />
             <AccountCenterDropdown />
           </View>
