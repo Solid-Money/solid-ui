@@ -25,7 +25,7 @@ export interface BridgeTransferSourceDepositInstructions {
   amount: string;
   deposit_message: string;
   bank_name: string;
-  bank_address: string;
+  bank_address?: string;
 
   // ACH/Wire fields
   bank_account_number?: string;
@@ -37,6 +37,9 @@ export interface BridgeTransferSourceDepositInstructions {
   iban?: string;
   bic?: string;
   account_holder_name?: string;
+
+  // SPEI fields
+  clabe?: string;
 }
 
 export interface BridgeApiTransfer {
