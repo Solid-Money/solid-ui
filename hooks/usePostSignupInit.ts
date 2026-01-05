@@ -1,11 +1,7 @@
 import * as Sentry from '@sentry/react-native';
 import { useEffect, useRef } from 'react';
 
-import {
-  ensureWebhookSubscription,
-  getWebhookStatus,
-  updateSafeAddress,
-} from '@/lib/api';
+import { ensureWebhookSubscription, getWebhookStatus, updateSafeAddress } from '@/lib/api';
 import { User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { usePointsStore } from '@/store/usePointsStore';

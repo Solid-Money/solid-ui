@@ -8,6 +8,7 @@ import {
 } from '@/components/BankTransfer/enums';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
@@ -22,6 +23,10 @@ export default function ProtectedLayout() {
 
   // Run post-signup/login initialization (lazy loading of balance, points, etc.)
   usePostSignupInit(user);
+
+  // Start real-time activity updates via SSE as soon as the user is authenticated
+  // This enables instant transaction notifications across all screens, not just Activity
+  useActivitySSE({ enabled: !!user?.userId });
 
   useEffect(() => {
     if (!user) return;
