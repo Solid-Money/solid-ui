@@ -8,7 +8,12 @@ import { View } from 'react-native';
 import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
 import CryptoDropdown from './CryptoDropdown';
-import { BridgeTransferCryptoCurrency, BridgeTransferFiatCurrency } from './enums';
+import {
+  BridgeTransferCryptoCurrency,
+  BridgeTransferFiatCurrency,
+  FIAT_LABEL,
+  getMinimumAmount,
+} from './enums';
 import { ExchangeRateDisplay } from './ExchangeRateDisplay';
 import FiatDropdown from './FiatDropdown';
 import { PaymentMethodList } from './payment/PaymentMethodList';
@@ -50,6 +55,18 @@ const BankTransferAmountModal = () => {
     }
   }, [fiatAmount, rate, loading]);
 
+  const minimumAmountError = useMemo(() => {
+    const minAmount = getMinimumAmount(fiat);
+    if (!minAmount) return null;
+
+    const amount = parseFloat(fiatAmount) || 0;
+    if (amount < minAmount) {
+      return `Minimum amount is ${minAmount} ${FIAT_LABEL[fiat]}`;
+    }
+
+    return null;
+  }, [fiat, fiatAmount]);
+
   const handleContinue = () => {
     setBankTransferData({
       fiatAmount,
@@ -90,12 +107,21 @@ const BankTransferAmountModal = () => {
         initialLoading={loading && !rate}
       />
 
+      {minimumAmountError && (
+        <Text className="text-center text-sm text-red-400">{minimumAmountError}</Text>
+      )}
+
       <Button
-        className="rounded-2xl h-14 mt-4"
-        style={{ backgroundColor: '#94F27F' }}
+        className="mt-4 h-14 rounded-2xl"
+        style={{ backgroundColor: minimumAmountError ? '#4A4A4A' : '#94F27F' }}
+        disabled={!!minimumAmountError}
         onPress={handleContinue}
       >
-        <Text className="font-bold text-black text-lg">Continue</Text>
+        <Text
+          className={`text-lg font-bold ${minimumAmountError ? 'text-gray-400' : 'text-black'}`}
+        >
+          Continue
+        </Text>
       </Button>
     </View>
   );
@@ -149,6 +175,11 @@ const BankTransferPreviewModal = () => {
     </View>
   );
 
+  const isSepa = data?.payment_rail === 'sepa';
+  const accountNumber = isSepa ? data?.iban : data?.bank_account_number;
+  const routingCode = isSepa ? data?.bic : data?.bank_routing_number;
+  const beneficiaryName = isSepa ? data?.account_holder_name : data?.bank_beneficiary_name;
+
   return (
     <View className="gap-4 flex-1">
       <PreviewTitle amount={data?.amount} currency={data?.currency} />
@@ -160,9 +191,13 @@ const BankTransferPreviewModal = () => {
           withDivider
         />
         <Row label="Bank Name" value={data?.bank_name ?? ''} withDivider />
-        <Row label="Account number" value={data?.bank_account_number ?? ''} withDivider />
-        <Row label="Routing / SWIFT / BIC" value={data?.bank_routing_number ?? ''} withDivider />
-        <Row label="Beneficiary name" value={data?.bank_beneficiary_name ?? ''} withDivider />
+        <Row label={isSepa ? 'IBAN' : 'Account number'} value={accountNumber ?? ''} withDivider />
+        <Row
+          label={isSepa ? 'BIC' : 'Routing / SWIFT / BIC'}
+          value={routingCode ?? ''}
+          withDivider
+        />
+        <Row label="Beneficiary name" value={beneficiaryName ?? ''} withDivider />
         <Row label="Deposit message" value={data?.deposit_message ?? ''} />
       </View>
 
