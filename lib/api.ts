@@ -46,6 +46,7 @@ import {
   DepositBonusConfig,
   DepositTransaction,
   DirectDepositSessionResponse,
+  EnsureWebhookResponse,
   EphemeralKeyResponse,
   ExchangeRateResponse,
   FromCurrency,
@@ -72,6 +73,7 @@ import {
   UpdateActivityEvent,
   User,
   VaultBreakdown,
+  WebhookStatus,
   WhatsNew,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
@@ -1902,3 +1904,64 @@ export const getHoldingFundsPointsMultiplier =
 
     return response.json();
   };
+
+// ============================================
+// Real-Time Activity SSE & Webhook API Functions
+// ============================================
+
+/**
+ * Get the SSE stream URL for real-time activity updates.
+ * The URL includes the base path - caller needs to add auth headers via fetch.
+ */
+export const getActivityStreamUrl = (): string => {
+  return `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity-stream`;
+};
+
+/**
+ * Get current webhook registration status for the user.
+ * Returns which chains are registered for activity webhooks.
+ */
+export const getWebhookStatus = async (): Promise<WebhookStatus> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/webhook-status`,
+    {
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Ensure user is subscribed to activity webhooks.
+ * Safe to call multiple times - won't create duplicates.
+ * Automatically registers for Ethereum and Fuse chains.
+ */
+export const ensureWebhookSubscription = async (): Promise<EnsureWebhookResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/activity/ensure-webhook-subscription`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};

@@ -4,11 +4,12 @@ import { Hash } from 'viem';
 
 import useUser from '@/hooks/useUser';
 import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
-import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
+import { ActivityEvent, SSEConnectionState, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
+import { useActivitySSE } from './useActivitySSE';
 import { useSyncActivities } from './useSyncActivities';
 
 // Get explorer URL for a transaction hash based on chain ID
@@ -89,6 +90,14 @@ export function useActivity() {
   const { user } = useUser();
   const { events, bulkUpsertEvent, upsertEvent } = useActivityStore();
   const [cachedActivities, setCachedActivities] = useState<ActivityEvent[]>([]);
+
+  // Real-time activity updates via SSE
+  const {
+    connectionState: sseConnectionState,
+    error: sseError,
+    reconnect: sseReconnect,
+    lastEventTime: sseLastEventTime,
+  } = useActivitySSE({ enabled: !!user?.userId });
 
   // Sync all activities from backend (handles smart caching internally)
   // Backend now syncs: Blockscout, deposits, bridges, and bank transfers
@@ -387,5 +396,10 @@ export function useActivity() {
     isSyncing,
     isSyncStale,
     canSync,
+    // SSE real-time state
+    sseConnectionState,
+    sseError,
+    sseReconnect,
+    sseLastEventTime,
   };
 }

@@ -1,7 +1,11 @@
 import * as Sentry from '@sentry/react-native';
 import { useEffect, useRef } from 'react';
 
-import { updateSafeAddress } from '@/lib/api';
+import {
+  ensureWebhookSubscription,
+  getWebhookStatus,
+  updateSafeAddress,
+} from '@/lib/api';
 import { User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { usePointsStore } from '@/store/usePointsStore';
@@ -100,6 +104,28 @@ export const usePostSignupInit = (user: User | undefined) => {
             },
             level: 'warning',
           });
+        }
+
+        // 4. Ensure webhook subscription for real-time activity updates (non-blocking)
+        if (user.safeAddress) {
+          try {
+            const status = await withRefreshToken(() => getWebhookStatus());
+            if (status && !status.registered) {
+              await withRefreshToken(() => ensureWebhookSubscription());
+            }
+          } catch (error) {
+            console.warn('Failed to ensure webhook subscription:', error);
+            Sentry.captureException(error, {
+              tags: {
+                type: 'webhook_subscription_error_lazy',
+              },
+              user: {
+                id: user.userId,
+                address: user.safeAddress,
+              },
+              level: 'warning',
+            });
+          }
         }
       } catch (error) {
         console.error('Error in post-signup initialization:', error);
