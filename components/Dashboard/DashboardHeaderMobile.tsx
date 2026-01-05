@@ -21,7 +21,7 @@ const DashboardHeaderMobile = ({
 }: DashboardHeaderMobileProps) => {
   return (
     <View className="gap-8">
-      <View className="flex-row items-center justify-center pb-6 pt-20">
+      <View className="flex-row items-center justify-center py-6">
         <SavingCountUp
           prefix="$"
           balance={balance ?? 0}
