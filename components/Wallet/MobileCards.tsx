@@ -113,7 +113,7 @@ export default function MobileCards({
       </ScrollView>
       {showLeftBlur && (
         <LinearGradient
-          colors={['rgba(0,0,0,0.8)', 'transparent']}
+          colors={['rgba(28,28,28,0.8)', 'transparent']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{
@@ -128,7 +128,7 @@ export default function MobileCards({
       )}
       {showRightBlur && (
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.8)']}
+          colors={['transparent', 'rgba(28,28,28,0.8)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{
