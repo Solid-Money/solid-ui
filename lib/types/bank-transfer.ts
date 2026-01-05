@@ -24,12 +24,19 @@ export interface BridgeTransferSourceDepositInstructions {
   currency: string;
   amount: string;
   deposit_message: string;
-  bank_account_number: string;
-  bank_routing_number: string;
-  bank_beneficiary_name: string;
-  bank_beneficiary_address: string;
   bank_name: string;
   bank_address: string;
+
+  // ACH/Wire fields
+  bank_account_number?: string;
+  bank_routing_number?: string;
+  bank_beneficiary_name?: string;
+  bank_beneficiary_address?: string;
+
+  // SEPA fields
+  iban?: string;
+  bic?: string;
+  account_holder_name?: string;
 }
 
 export interface BridgeApiTransfer {
