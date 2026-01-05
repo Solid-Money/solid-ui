@@ -2,16 +2,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { FlatList, View } from 'react-native';
 
+import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import SavingDepositButton from './SavingDepositButton';
+import SavingDepositDescription from './SavingDepositDescription';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
 import SavingsHeaderButtonsMobile from './SavingsHeaderButtonsMobile';
-import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
-import SavingDepositDescription from './SavingDepositDescription';
-import SavingDepositButton from './SavingDepositButton';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
@@ -29,7 +29,7 @@ export default function SavingsEmptyState() {
           </View>
         ) : (
           <View className="flex-row items-baseline justify-center">
-            <Text className="text-5xl font-semibold">$0</Text>
+            <Text className="text-5xl font-semibold leading-normal">$0</Text>
             <Text className="text-2xl">.00</Text>
           </View>
         )}

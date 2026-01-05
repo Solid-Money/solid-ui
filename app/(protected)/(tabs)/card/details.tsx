@@ -17,7 +17,6 @@ import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
 import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
@@ -41,7 +40,6 @@ export default function CardDetails() {
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
-  const router = useRouter();
 
   const {
     data: transactionsData,
@@ -54,10 +52,6 @@ export default function CardDetails() {
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
-
-  const handleBackPress = () => {
-    router.push(path.HOME);
-  };
 
   const handleFreezeToggle = async () => {
     try {
@@ -219,9 +213,7 @@ export default function CardDetails() {
 }
 
 function MobileHeader() {
-  return (
-      <Text className="text-3xl font-semibold">Card</Text>
-  );
+  return <Text className="text-3xl font-semibold">Card</Text>;
 }
 
 interface DesktopHeaderProps {
