@@ -17,20 +17,31 @@ const PointsBanner = () => {
 
   return (
     <SwipeableBanner onPress={() => router.push(path.POINTS)}>
-      <LinearGradient
-        colors={['rgba(255, 209, 81, 0.25)', 'rgba(255, 209, 81, 0.17)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
+      <View
         style={{
           borderRadius: 20,
-          height: '100%',
+          flex: 1,
           width: '100%',
           overflow: 'hidden',
           position: 'relative',
         }}
       >
+        <LinearGradient
+          colors={['rgba(255, 209, 81, 1)', 'rgba(255, 209, 81, 0.68)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.6, y: 1 }}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            opacity: 0.15,
+          }}
+        />
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
-          <View className="items-start justify-between py-5 md:gap-2 md:py-8">
+          <View className="flex-1 items-start justify-between py-5 md:gap-2 md:py-8">
             <View className="inline max-w-40 md:max-w-64">
               <Text className="text-xl font-semibold md:text-3xl">
                 Earn <Text className="text-rewards">{multiplier}X</Text> points on your deposits
@@ -61,7 +72,7 @@ const PointsBanner = () => {
             />
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </SwipeableBanner>
   );
 };

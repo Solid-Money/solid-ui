@@ -20,7 +20,7 @@ import { useSearchCoinHistoricalChart } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
-import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
+import { cn, eclipseAddress, formatNumber, isSoUSDEthereum } from '@/lib/utils';
 import { useCoinStore } from '@/store/useCoinStore';
 
 const MAX_SAMPLE_SIZE = 20;
@@ -97,7 +97,10 @@ export default function Coin() {
                   contractTickerSymbol={token?.contractTickerSymbol || ''}
                 />
               </View>
-              <DashboardHeaderButtons deposit={{ title: 'Deposit' }} />
+              <DashboardHeaderButtons
+                deposit={{ title: 'Deposit' }}
+                withdraw={{ isWithdraw: isSoUSDEthereum(contractAddress) }}
+              />
             </View>
           )}
 
@@ -164,7 +167,12 @@ export default function Coin() {
 
           {!isScreenMedium && <CoinChartTime />}
 
-          {!isScreenMedium && <CoinButtons contractAddress={contractAddress as Address} />}
+          {!isScreenMedium && (
+            <CoinButtons
+              contractAddress={contractAddress as Address}
+              isWithdraw={isSoUSDEthereum(contractAddress)}
+            />
+          )}
 
           {!isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
 

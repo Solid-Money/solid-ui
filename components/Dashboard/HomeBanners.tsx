@@ -26,6 +26,7 @@ type BannerItemProps = {
   hasMultipleViews: boolean;
   progress: SharedValue<number>;
   gapPadding: SharedValue<number>;
+  bannerHeight: number;
 };
 
 const BannerItem = ({
@@ -35,33 +36,30 @@ const BannerItem = ({
   hasMultipleViews,
   progress,
   gapPadding,
+  bannerHeight,
 }: BannerItemProps) => {
   const isWeb = Platform.OS === 'web';
 
   const animatedStyle = useAnimatedStyle(() => {
-    // const currentIndex = Math.round(progress.value);
-    // const nextIndex = (currentIndex + 1) % dataLen;
+    const currentIndex = Math.round(progress.value);
+    const nextIndex = (currentIndex + 1) % dataLen;
 
     if (hasMultipleViews) {
-      // const isCurrent = index === currentIndex;
-      // const isNext = index === nextIndex;
+      const isCurrent = index === currentIndex;
+      const isNext = index === nextIndex;
       return {
-        paddingRight: gapPadding.value, //isCurrent ? gapPadding.value : 0,
-        paddingLeft: gapPadding.value, //isNext ? gapPadding.value : 0,
+        paddingRight: isCurrent || !isWeb ? gapPadding.value : 0,
+        paddingLeft: isNext || !isWeb ? gapPadding.value : 0,
       };
     }
 
     return {
-      paddingRight: 16,
-      paddingLeft: 16,
+      paddingRight: 0,
+      paddingLeft: 0,
     };
   }, [index, dataLen, hasMultipleViews]);
 
-  return (
-    <Animated.View className="h-full flex-1" style={animatedStyle}>
-      {item}
-    </Animated.View>
-  );
+  return <Animated.View style={[animatedStyle, { height: bannerHeight }]}>{item}</Animated.View>;
 };
 
 const HomeBannersContent = () => {
@@ -87,6 +85,12 @@ const HomeBannersContent = () => {
   const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
   const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
   const IS_PAGINATION = data.length > VIEW_COUNT;
+  const MAX_INDEX = data.length - VIEW_COUNT;
+
+  const paginationData = useMemo(
+    () => (HAS_MULTIPLE_VIEWS ? data.slice(0, data.length - (VIEW_COUNT - 1)) : data),
+    [data, HAS_MULTIPLE_VIEWS, VIEW_COUNT],
+  );
 
   useEffect(() => {
     const target = HAS_MULTIPLE_VIEWS ? GAP / 2 : 0;
@@ -95,10 +99,19 @@ const HomeBannersContent = () => {
   }, [HAS_MULTIPLE_VIEWS, GAP, gapPadding]);
 
   const onPressPagination = (index: number) => {
+    const targetIndex = Math.min(index, MAX_INDEX);
     ref.current?.scrollTo({
-      count: index - progress.value,
+      count: targetIndex - progress.value,
       animated: true,
     });
+  };
+
+  const handleProgressChange = (_offsetProgress: number, absoluteProgress: number) => {
+    progress.value = absoluteProgress;
+    // Snap back if scrolled past max
+    if (absoluteProgress > MAX_INDEX + 0.1) {
+      ref.current?.scrollTo({ index: MAX_INDEX, animated: true });
+    }
   };
 
   const renderItem = ({ item, index }: CarouselRenderItemInfo<BannerData[number]>) => {
@@ -111,6 +124,7 @@ const HomeBannersContent = () => {
         hasMultipleViews={HAS_MULTIPLE_VIEWS}
         progress={progress}
         gapPadding={gapPadding}
+        bannerHeight={BANNER_HEIGHT}
       />
     );
   };
@@ -137,7 +151,7 @@ const HomeBannersContent = () => {
             data={data}
             loop={false}
             autoPlay={false}
-            onProgressChange={progress}
+            onProgressChange={handleProgressChange}
             scrollAnimationDuration={200}
             onScrollStart={() => {
               //  if (HAS_MULTIPLE_VIEWS) return;
@@ -182,7 +196,7 @@ const HomeBannersContent = () => {
           {IS_PAGINATION && (
             <Pagination.Custom
               progress={progress}
-              data={data}
+              data={paginationData}
               dotStyle={styles.dotStyle}
               activeDotStyle={styles.activeDot}
               containerStyle={styles.paginationContainer}
