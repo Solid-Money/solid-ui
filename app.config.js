@@ -1,4 +1,4 @@
-const IS_PROD = process.env.NODE_ENV === 'production';
+const IS_PROD = process.env.EXPO_PUBLIC_ENVIRONMENT === 'production';
 
 export default {
   expo: {
