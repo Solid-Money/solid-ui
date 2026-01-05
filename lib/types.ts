@@ -1072,3 +1072,17 @@ export interface AddressBookResponse {
   walletAddress: string;
   skipped2faAt?: Date;
 }
+
+export interface WhatsNewStep {
+  imageUrl: string;
+  title: string;
+  text: string;
+}
+
+export interface WhatsNew {
+  _id: string;
+  steps: WhatsNewStep[];
+  isActive: boolean;
+  showOnLoad: boolean;
+  createdAt: string;
+}
