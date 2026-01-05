@@ -72,6 +72,7 @@ import {
   UpdateActivityEvent,
   User,
   VaultBreakdown,
+  WhatsNew,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 
@@ -1627,6 +1628,23 @@ export const fetchAPYs = async () => {
     `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/apys`,
   );
   return response.data;
+};
+
+export const fetchLatestWhatsNew = async (): Promise<WhatsNew | null> => {
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/whats-new/latest`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+    },
+  });
+
+  if (response.status === 404 || response.status === 204) return null;
+  if (!response.ok) throw response;
+
+  const text = await response.text();
+  if (!text) return null;
+
+  return JSON.parse(text);
 };
 
 export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEvent> => {

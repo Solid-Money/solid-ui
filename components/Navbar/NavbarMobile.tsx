@@ -6,6 +6,7 @@ import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropd
 import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
 import useUser from '@/hooks/useUser';
 import RegisterButtons from './RegisterButtons';
+import WhatsNewButton from './WhatsNewButton';
 
 const NavbarMobile = () => {
   const { user } = useUser();
@@ -21,6 +22,7 @@ const NavbarMobile = () => {
         />
         {user ? (
           <View className="flex-row items-center gap-2">
+            <WhatsNewButton />
             <InfoCenterDropdown />
             <AccountCenterDropdown />
           </View>
