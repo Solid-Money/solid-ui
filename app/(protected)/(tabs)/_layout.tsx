@@ -46,7 +46,7 @@ export default function TabLayout() {
         },
         tabBarStyle: {
           display: isDesktop ? 'none' : 'flex',
-          height: 75,
+          height: 80,
           paddingTop: 4,
           paddingBottom: 10,
           borderTopWidth: 0,
