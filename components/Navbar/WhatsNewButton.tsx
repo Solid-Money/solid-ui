@@ -13,9 +13,9 @@ const WhatsNewButton = () => {
   return (
     <Pressable
       onPress={showLatest}
-      className="h-9 flex-row items-center gap-1.5 rounded-full bg-[#2C2C2C] pl-4 pr-3 transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className="h-9 flex-row items-center gap-1 rounded-full bg-[#2C2C2C] pl-4 pr-3 transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
     >
-      <Text className="text-sm font-medium text-white">What&apos;s new?</Text>
+      <Text className="text-base font-medium text-white/70">What&apos;s new?</Text>
       <Pressable
         onPress={e => {
           e.stopPropagation();
@@ -23,7 +23,7 @@ const WhatsNewButton = () => {
         }}
         className="rounded-full p-1 web:hover:bg-white/10"
       >
-        <X size={14} color="#666" />
+        <X size={18} color="#FFFFFF80" />
       </Pressable>
     </Pressable>
   );
