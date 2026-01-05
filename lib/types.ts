@@ -642,7 +642,7 @@ export interface SourceDepositInstructions {
   amount: string;
   deposit_message: string;
   bank_name: string;
-  bank_address: string;
+  bank_address?: string;
 
   // ACH/Wire fields
   bank_account_number?: string;
@@ -654,6 +654,9 @@ export interface SourceDepositInstructions {
   iban?: string;
   bic?: string;
   account_holder_name?: string;
+
+  // SPEI fields
+  clabe?: string;
 }
 
 export interface BridgeTransferResponse {
