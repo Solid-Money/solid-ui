@@ -1,6 +1,6 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
 
+import SlotTrigger from '@/components/SlotTrigger';
 import { DEPOSIT_FROM_SAFE_ACCOUNT_MODAL } from '@/constants/modals';
 import { useDepositFromSafeAccountStore } from '@/store/useDepositFromSafeAccount';
 import { DepositTrigger } from '.';
@@ -18,14 +18,10 @@ const DepositModal = () => {
     setModal(DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.OPEN_FORM);
   };
 
-  const triggerElement = <DepositTrigger />;
-
-  // Always wrap with Pressable to ensure click handling works
-  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
-    <Pressable onPress={handlePress}>
-      <View pointerEvents="none">{triggerElement}</View>
-    </Pressable>
+    <SlotTrigger onPress={handlePress}>
+      <DepositTrigger />
+    </SlotTrigger>
   );
 };
 

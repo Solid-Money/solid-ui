@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
 
+import SlotTrigger from '@/components/SlotTrigger';
 import { SWAP_MODAL } from '@/constants/modals';
 import { useSwapState } from '@/store/swapStore';
 
@@ -30,13 +30,7 @@ const SwapTrigger = ({ trigger, children }: SwapTriggerProps) => {
     return null;
   }
 
-  // Always wrap with Pressable to ensure click handling works
-  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
-  return (
-    <Pressable onPress={handlePress}>
-      <View pointerEvents="none">{content}</View>
-    </Pressable>
-  );
+  return <SlotTrigger onPress={handlePress}>{content}</SlotTrigger>;
 };
 
 export default SwapTrigger;

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
 
+import SlotTrigger from '@/components/SlotTrigger';
 import { WITHDRAW_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
@@ -30,21 +30,11 @@ const WithdrawModal = ({ trigger }: WithdrawModalProps) => {
     setModal(WITHDRAW_MODAL.OPEN_FORM);
   };
 
-  // Headless usage - the global WithdrawModalProvider handles the modal
   if (trigger === null) {
     return null;
   }
 
-  // Use default trigger if not provided
-  const triggerElement = trigger || <WithdrawTrigger />;
-
-  // Always wrap with Pressable to ensure click handling works
-  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
-  return (
-    <Pressable onPress={handlePress}>
-      <View pointerEvents="none">{triggerElement}</View>
-    </Pressable>
-  );
+  return <SlotTrigger onPress={handlePress}>{trigger || <WithdrawTrigger />}</SlotTrigger>;
 };
 
 export default WithdrawModal;

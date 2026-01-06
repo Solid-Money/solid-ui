@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 
+import SlotTrigger from '@/components/SlotTrigger';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -61,13 +62,7 @@ const DepositTrigger = ({
     return defaultTrigger;
   }
 
-  // Always wrap with Pressable to ensure click handling works
-  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
-  return (
-    <Pressable onPress={handlePress}>
-      <View pointerEvents="none">{trigger}</View>
-    </Pressable>
-  );
+  return <SlotTrigger onPress={handlePress}>{trigger}</SlotTrigger>;
 };
 
 export default DepositTrigger;

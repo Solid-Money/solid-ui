@@ -1,6 +1,6 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
 
+import SlotTrigger from '@/components/SlotTrigger';
 import { SEND_MODAL } from '@/constants/modals';
 import { SendOptionProps } from '@/hooks/useSendOption';
 import { SendModal as SendModalType, TokenBalance } from '@/lib/types';
@@ -39,13 +39,7 @@ const SendModal = ({ token, trigger, modal }: SendModalProps) => {
     setModal(modal || SEND_MODAL.OPEN_SEND_SEARCH);
   };
 
-  // Always wrap with Pressable to ensure click handling works
-  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
-  return (
-    <Pressable onPress={handlePress}>
-      <View pointerEvents="none">{trigger}</View>
-    </Pressable>
-  );
+  return <SlotTrigger onPress={handlePress}>{trigger}</SlotTrigger>;
 };
 
 export default SendModal;
