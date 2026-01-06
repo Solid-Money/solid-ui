@@ -40,7 +40,7 @@ const AccountCenterDropdown = () => {
       <DropdownMenuContent
         insets={contentInsets}
         align="end"
-        className="mt-1 w-52 rounded-3xl border-none bg-card"
+        className="mt-1 w-52 rounded-3xl border-0 border-none bg-card"
       >
         <DropdownMenuItem
           className={cn(dropdownMenuItemClassName, cursorDefaultClassName, 'rounded-t-3xl')}

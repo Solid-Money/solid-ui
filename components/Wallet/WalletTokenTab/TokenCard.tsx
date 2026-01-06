@@ -38,7 +38,7 @@ const TokenCard = memo(
 
         <View className="flex-row items-center gap-3">
           <View className="items-end">
-            <Text className="text-base font-bold">{compactNumberFormat(balance)}</Text>
+            <Text className="text-lg md:text-base font-bold">{compactNumberFormat(balance)}</Text>
             <Text className="text-sm font-medium text-muted-foreground">
               ${compactNumberFormat(balanceUSD)}
             </Text>

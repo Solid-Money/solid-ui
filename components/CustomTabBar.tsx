@@ -136,7 +136,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    height: 75,
+    height: 80,
     paddingTop: 4,
     paddingBottom: 10,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
