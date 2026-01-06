@@ -1,6 +1,6 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
 
+import SlotTrigger from '@/components/SlotTrigger';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
@@ -28,19 +28,9 @@ export default function DepositToCardModal({ trigger }: { trigger?: React.ReactN
     setModal(CARD_DEPOSIT_MODAL.OPEN_OPTIONS);
   };
 
-  // Headless usage - the global CardDepositModalProvider handles the modal
   if (trigger === null) {
     return null;
   }
 
-  // Use default trigger if not provided
-  const triggerElement = trigger ?? <DefaultTrigger />;
-
-  // Always wrap with Pressable to ensure click handling works
-  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
-  return (
-    <Pressable onPress={handlePress}>
-      <View pointerEvents="none">{triggerElement}</View>
-    </Pressable>
-  );
+  return <SlotTrigger onPress={handlePress}>{trigger ?? <DefaultTrigger />}</SlotTrigger>;
 }
