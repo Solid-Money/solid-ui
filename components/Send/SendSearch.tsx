@@ -97,7 +97,7 @@ const SendSearch: React.FC = () => {
 
       <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
         {filteredRecentActivities.length > 0 && (
-          <View className="gap-4">
+          <View className="gap-2 md:gap-4">
             <Text className="text-base font-medium opacity-70">Recent</Text>
             <View className="rounded-2xl bg-card">
               {filteredRecentActivities.map((activity, index) => {

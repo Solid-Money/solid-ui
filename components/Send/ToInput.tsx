@@ -124,7 +124,7 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
   const to = name || address;
 
   return (
-    <View className="gap-4">
+    <View className="gap-2 md:gap-4">
       <Text className="text-base font-medium opacity-70">To</Text>
       <Pressable
         className="relative h-16 flex-row items-center gap-2 rounded-2xl bg-card px-5"
