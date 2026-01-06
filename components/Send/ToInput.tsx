@@ -8,7 +8,7 @@ import Avatar from '@/components/Avatar';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { fetchAddressBook } from '@/lib/api';
-import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
+import { eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
 
 interface ToInputProps {
@@ -146,7 +146,7 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
           ) : (
             <TextInput
               ref={inputRef}
-              className='flex-1 text-base text-foreground web:focus:outline-none'
+              className="flex-1 text-base text-foreground web:focus:outline-none"
               placeholder={placeholder}
               placeholderTextColor="#ffffff80"
               value={searchQuery}

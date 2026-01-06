@@ -38,16 +38,29 @@ export default function SavingsEmptyState() {
       <View className="gap-[1.875rem] px-4">
         {!isScreenMedium && <SavingsHeaderButtonsMobile />}
 
-        <LinearGradient
-          colors={['rgba(122, 84, 234, 0.3)', 'rgba(122, 84, 234, 0.2)']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.6, y: 1 }}
+        <View
+          className="relative overflow-hidden"
           style={{
             borderRadius: 20,
             padding: isScreenMedium ? 40 : 20,
             gap: isScreenMedium ? 96 : 40,
           }}
         >
+          <LinearGradient
+            colors={['rgba(122, 84, 234, 1)', 'rgba(122, 84, 234, 0.5)']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.6, y: 1 }}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: -1,
+              opacity: 0.3,
+            }}
+          />
           {isScreenMedium ? (
             <View className="flex-col justify-between gap-10 md:flex-row md:gap-0">
               <View className="w-full max-w-2xl justify-between gap-10 md:gap-0">
@@ -71,7 +84,7 @@ export default function SavingsEmptyState() {
               <SavingDepositButton />
             </View>
           )}
-        </LinearGradient>
+        </View>
       </View>
       <View className="mt-10 gap-6 px-4 md:px-0">
         <Text className="text-lg font-semibold text-muted-foreground">Promotions</Text>

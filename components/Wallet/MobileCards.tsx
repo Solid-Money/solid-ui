@@ -84,8 +84,7 @@ export default function MobileCards({
 
   const totalCards = cards.length;
   const paddingHorizontal = 16;
-  const contentWidth =
-    2 * paddingHorizontal + totalCards * cardWidth + (totalCards - 1) * gap;
+  const contentWidth = 2 * paddingHorizontal + totalCards * cardWidth + (totalCards - 1) * gap;
   const maxScrollX = Math.max(0, contentWidth - screenWidth);
   const showLeftBlur = scrollX > 10;
   const showRightBlur = totalCards > 1 && scrollX < maxScrollX - 10;
