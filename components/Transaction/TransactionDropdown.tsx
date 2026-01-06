@@ -43,7 +43,7 @@ const TransactionDropdown = ({
       <DropdownMenuTrigger>
         <TransactionCredenzaTrigger />
       </DropdownMenuTrigger>
-      <DropdownMenuContent insets={contentInsets} className="w-38 rounded-xl border-none bg-card">
+      <DropdownMenuContent insets={contentInsets} className="w-38 rounded-xl border-0 border-none bg-card">
         <DropdownMenuItem
           className="h-10 rounded-lg web:cursor-pointer"
           onPress={() => {

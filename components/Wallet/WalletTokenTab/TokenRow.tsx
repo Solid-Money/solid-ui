@@ -91,7 +91,7 @@ const TokenRow = memo(
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="min-w-[12rem] rounded-xl border-none bg-card p-1"
+                className="min-w-[12rem] rounded-xl border-0 border-none bg-card p-1"
               >
                 <View className="gap-2">
                   {!isSoUSDEthereum(token.contractAddress) && <SendModal token={token} />}
