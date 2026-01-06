@@ -16,6 +16,7 @@ import { WITHDRAW_MODAL } from '@/constants/modals';
 import useUser from '@/hooks/useUser';
 import { useEthereumVaultBalance } from '@/hooks/useVault';
 import useWithdraw from '@/hooks/useWithdraw';
+import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -150,7 +151,7 @@ const Withdraw = () => {
           />
           <View className="flex-row items-center gap-2">
             <Image
-              source={require('@/assets/images/sousd-4x.png')}
+              source={getAsset('images/sousd-4x.png')}
               alt="SoUSD"
               style={{ width: 34, height: 34 }}
             />

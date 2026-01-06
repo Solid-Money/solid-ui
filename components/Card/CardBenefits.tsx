@@ -2,13 +2,14 @@ import { Image } from 'expo-image';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+import { getAsset } from '@/lib/assets';
 
 const CardBenefits = () => {
   return (
     <View className="flex-row items-center justify-between gap-x-4 gap-y-5">
       <View className="items-center gap-3 md:items-start">
         <Image
-          source={require('@/assets/images/card_benefits_one.png')}
+          source={getAsset('images/card_benefits_one.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
@@ -18,7 +19,7 @@ const CardBenefits = () => {
       </View>
       <View className="items-center gap-3 md:items-start">
         <Image
-          source={require('@/assets/images/card_benefits_two.png')}
+          source={getAsset('images/card_benefits_two.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
@@ -28,7 +29,7 @@ const CardBenefits = () => {
       </View>
       <View className="items-center gap-3 md:items-start">
         <Image
-          source={require('@/assets/images/card_benefits_three.png')}
+          source={getAsset('images/card_benefits_three.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />

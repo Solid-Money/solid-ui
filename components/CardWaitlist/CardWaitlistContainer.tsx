@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ImageBackground, Platform } from 'react-native';
 
 import { useDimension } from '@/hooks/useDimension';
+import { getAsset } from '@/lib/assets';
 
 type CardWaitlistContainerProps = {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ const CardWaitlistContainer = ({ children }: CardWaitlistContainerProps) => {
     >
       {isScreenMedium ? (
         <ImageBackground
-          source={require('@/assets/images/cards-desktop.png')}
+          source={getAsset('images/cards-desktop.png')}
           resizeMode="contain"
           className={'flex-1'}
           imageStyle={{

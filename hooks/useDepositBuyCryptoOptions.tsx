@@ -5,6 +5,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDepositBonusConfig } from '@/hooks/useDepositBonusConfig';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const useDepositBuyCryptoOptions = () => {
@@ -37,7 +38,7 @@ const useDepositBuyCryptoOptions = () => {
         bannerText: bonusBannerText,
         icon: (
           <Image
-            source={require('@/assets/images/buy_crypto.png')}
+            source={getAsset('images/buy_crypto.png')}
             style={{ width: 26, height: 22 }}
             contentFit="contain"
           />
@@ -50,7 +51,7 @@ const useDepositBuyCryptoOptions = () => {
         bannerText: bonusBannerText,
         icon: (
           <Image
-            source={require('@/assets/images/bank_deposit.png')}
+            source={getAsset('images/bank_deposit.png')}
             style={{ width: 26, height: 22 }}
             contentFit="contain"
           />

@@ -1,5 +1,7 @@
 import { Image } from 'expo-image';
 
+import { getAsset } from '@/lib/assets';
+
 interface SolidImageProps {
   width?: number;
   height?: number;
@@ -8,7 +10,7 @@ interface SolidImageProps {
 const SolidImage = ({ width = 201, height = 201 }: SolidImageProps) => {
   return (
     <Image
-      source={require('@/assets/images/solid-dark-purple.png')}
+      source={getAsset('images/solid-dark-purple.png')}
       style={{ width, height }}
       contentFit="contain"
     />

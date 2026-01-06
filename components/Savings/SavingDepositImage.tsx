@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 
 import { useDimension } from '@/hooks/useDimension';
+import { getAsset } from '@/lib/assets';
 
 const SavingDepositImage = () => {
   const { isScreenMedium } = useDimension();
 
   return (
     <Image
-      source={require('@/assets/images/solid-indigo.png')}
+      source={getAsset('images/solid-indigo.png')}
       contentFit="contain"
       style={{
         width: isScreenMedium ? 349 : 233,

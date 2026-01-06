@@ -8,12 +8,13 @@ import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { getAsset } from '@/lib/assets';
 import { cn } from '@/lib/utils';
 
-const AccountDetailsIcon = require('@/assets/images/settings_account_details.png');
-const SecurityIcon = require('@/assets/images/settings_security.png');
-const HelpSupportIcon = require('@/assets/images/settings_help_and_support.png');
-const LogoutIcon = require('@/assets/images/settings_logout.png');
+const AccountDetailsIcon = getAsset('images/settings_account_details.png');
+const SecurityIcon = getAsset('images/settings_security.png');
+const HelpSupportIcon = getAsset('images/settings_help_and_support.png');
+const LogoutIcon = getAsset('images/settings_logout.png');
 
 export default function Settings() {
   const { handleLogout } = useUser();

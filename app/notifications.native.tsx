@@ -6,8 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 import { path } from '@/constants/path';
+import { getAsset } from '@/lib/assets';
+import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 
 export default function Notifications() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function Notifications() {
         <View className="flex-1 items-center justify-center gap-8">
           {/* Main image with notification previews */}
           <Image
-            source={require('@/assets/images/grant_notifications.png')}
+            source={getAsset('images/grant_notifications.png')}
             alt="Grant notifications"
             style={{ width: 320, height: 360 }}
             contentFit="contain"

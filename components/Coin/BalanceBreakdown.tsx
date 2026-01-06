@@ -6,6 +6,7 @@ import { base, fuse, mainnet } from 'viem/chains';
 
 import { Text } from '@/components/ui/text';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { getAsset } from '@/lib/assets';
 import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber, isSoUSDToken } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
@@ -33,9 +34,9 @@ interface BreakdownItem {
 }
 
 const CHAIN_ICONS: Record<number, any> = {
-  [mainnet.id]: require('@/assets/images/eth.png'),
-  [fuse.id]: require('@/assets/images/fuse-4x.png'),
-  [base.id]: require('@/assets/images/base.png'),
+  [mainnet.id]: getAsset('images/eth.png'),
+  [fuse.id]: getAsset('images/fuse-4x.png'),
+  [base.id]: getAsset('images/base.png'),
 };
 
 const CHAIN_NAMES: Record<number, string> = {

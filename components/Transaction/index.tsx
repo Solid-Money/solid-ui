@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/text';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useDimension } from '@/hooks/useDimension';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
+import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import {
   TransactionCategory,
@@ -243,7 +244,7 @@ const Transaction = ({
           <View className="flex-row items-center gap-1">
             {isReward && (
               <Image
-                source={require('@/assets/images/green-diamond.png')}
+                source={getAsset('images/green-diamond.png')}
                 style={{ width: 12, height: 12 }}
                 contentFit="contain"
               />

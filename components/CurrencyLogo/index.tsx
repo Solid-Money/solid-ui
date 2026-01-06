@@ -4,6 +4,7 @@ import { Image, ImageStyle, View, ViewStyle } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { useAllTokens } from '@/hooks/tokens/useAllTokens';
+import { getAsset } from '@/lib/assets';
 
 interface CurrencyLogoProps {
   currency: Currency | undefined | null;
@@ -48,7 +49,7 @@ const CurrencyLogo = ({ currency, size, style = {} }: CurrencyLogoProps) => {
   if (currency.isNative) {
     return (
       <Image
-        source={require('@/assets/images/fuse.png')}
+        source={getAsset('images/fuse.png')}
         style={baseImageStyle}
         resizeMode="contain"
       />

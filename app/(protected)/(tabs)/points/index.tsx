@@ -7,6 +7,7 @@ import { useCountdownTimer } from '@/hooks/useCountdownTimer';
 import { useDimension } from '@/hooks/useDimension';
 import { useHoldingFundsPointsMultiplier } from '@/hooks/useHoldingFundsPointsMultiplier';
 import { usePoints } from '@/hooks/usePoints';
+import { getAsset } from '@/lib/assets';
 import { RewardsType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 import { Image } from 'expo-image';
@@ -47,7 +48,7 @@ export default function Points() {
           style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
         >
           <ImageBackground
-            source={require('@/assets/images/points_large.png')}
+            source={getAsset('images/points_large.png')}
             resizeMode="contain"
             className="flex-1"
             imageStyle={{
@@ -172,7 +173,7 @@ export default function Points() {
           <View className="h-full w-full flex-1 flex-col justify-between rounded-twice bg-card p-6">
             <View className="flex-row items-center gap-2">
               <Image
-                source={require('@/assets/images/refer_friend.png')}
+                source={getAsset('images/refer_friend.png')}
                 style={{ width: isScreenMedium ? 90 : 70, height: isScreenMedium ? 90 : 70 }}
                 contentFit="contain"
               />

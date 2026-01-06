@@ -10,6 +10,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { NavMenu } from './NavMenu';
 import RegisterButtons from './RegisterButtons';
 import WhatsNewButton from './WhatsNewButton';
@@ -31,13 +32,13 @@ const Navbar = () => {
           }}
         >
           <Image
-            source={require('@/assets/images/solid-logo.png')}
+            source={getAsset('images/solid-logo.png')}
             alt="Solid logo"
             contentFit="contain"
             style={{ width: 26, height: 30 }}
           />
           <Image
-            source={require('@/assets/images/solid-4x.png')}
+            source={getAsset('images/solid-4x.png')}
             alt="Solid"
             contentFit="contain"
             style={{ width: 72, height: 33, marginTop: -3 }}

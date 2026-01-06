@@ -13,6 +13,7 @@ import { path } from '@/constants/path';
 import { protocols, protocolsImages } from '@/constants/protocols';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { VaultBreakdown } from '@/lib/types';
 import { cn, eclipseAddress } from '@/lib/utils';
@@ -35,7 +36,7 @@ const Asset = () => {
       </View>
       <View className="flex-row items-center gap-1">
         <Image
-          source={require('@/assets/images/usdc.png')}
+          source={getAsset('images/usdc.png')}
           style={{ width: 24, height: 24 }}
           contentFit="contain"
         />
