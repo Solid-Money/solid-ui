@@ -194,10 +194,14 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
         }
       } catch (err: any) {
         console.error('Failed to verify TOTP:', err);
-        const errorMessage =
-          err.status === 401
-            ? 'Invalid code. Please try again.'
-            : 'Failed to verify TOTP. Please try again.';
+        let errorMessage: string;
+        if (err.status === 429) {
+          errorMessage = 'Too many attempts. Please wait a moment before trying again.';
+        } else if (err.status === 401) {
+          errorMessage = 'Invalid code. Please try again.';
+        } else {
+          errorMessage = 'Failed to verify TOTP. Please try again.';
+        }
         setApiError(errorMessage);
       } finally {
         setIsLoading(false);

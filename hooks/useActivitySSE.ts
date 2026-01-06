@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
 
-import { getActivityStreamUrl } from '@/lib/api';
+import { getActivityStreamUrl, refreshToken } from '@/lib/api';
 import { ActivityEvent, SSEActivityData, SSEConnectionState } from '@/lib/types';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -11,6 +11,10 @@ const INITIAL_RECONNECT_DELAY_MS = 1000; // 1 second
 const MAX_RECONNECT_DELAY_MS = 30000; // 30 seconds
 const RECONNECT_MULTIPLIER = 2;
 const MAX_CONSECUTIVE_ERRORS = 5; // Stop retrying after 5 consecutive errors
+
+// Heartbeat detection constants
+const HEARTBEAT_TIMEOUT_MS = 60000; // 60 seconds - if no heartbeat, assume stale
+const HEARTBEAT_CHECK_INTERVAL_MS = 30000; // Check every 30 seconds
 
 // =============================================================================
 // SINGLETON SSE CONNECTION MANAGER
@@ -22,6 +26,7 @@ interface SSEState {
   connectionState: SSEConnectionState;
   error: string | null;
   lastEventTime: number | null;
+  lastHeartbeat: number | null;
 }
 
 type SSEStateListener = (state: SSEState) => void;
@@ -32,6 +37,7 @@ class SSEConnectionManager {
     connectionState: 'disconnected',
     error: null,
     lastEventTime: null,
+    lastHeartbeat: null,
   };
 
   // Connection management
@@ -40,15 +46,40 @@ class SSEConnectionManager {
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private consecutiveErrors = 0;
   private isConnecting = false;
+  private isRefreshingToken = false;
+
+  // Heartbeat monitoring
+  private heartbeatCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   // User tracking
   private currentUserId: string | null = null;
+
+  // User store subscription (singleton - one subscription for all hook instances)
+  private userStoreUnsubscribe: (() => void) | null = null;
 
   // Subscriber management (reference counting)
   private subscribers = new Set<SSEStateListener>();
 
   // App state tracking
   private appStateSubscription: { remove: () => void } | null = null;
+
+  constructor() {
+    // Subscribe to user changes in the singleton
+    // This fixes the race condition where userId isn't available when enable() is called
+    this.userStoreUnsubscribe = useUserStore.subscribe(storeState => {
+      const user = storeState.users.find(u => u.selected);
+      const newUserId = user?.userId || null;
+
+      // User changed - update connection
+      if (newUserId !== this.currentUserId && this.subscribers.size > 0) {
+        if (newUserId) {
+          this.enable(newUserId);
+        } else {
+          this.disable();
+        }
+      }
+    });
+  }
 
   /**
    * Subscribe to state changes. Returns unsubscribe function.
@@ -126,12 +157,23 @@ class SSEConnectionManager {
   }
 
   /**
-   * Parse SSE line
+   * Parse SSE line - handles data, events, and heartbeat comments
    */
-  private parseSSELine(line: string): { event?: string; data?: string } | null {
-    if (!line || line.startsWith(':')) {
+  private parseSSELine(
+    line: string,
+  ): { event?: string; data?: string; heartbeat?: boolean } | null {
+    if (!line) {
       return null;
     }
+
+    // SSE comments starting with ':' - check for heartbeat
+    if (line.startsWith(':')) {
+      if (line.includes('heartbeat') || line.includes('ping')) {
+        return { heartbeat: true };
+      }
+      return null;
+    }
+
     if (line.startsWith('event:')) {
       return { event: line.slice(6).trim() };
     }
@@ -139,6 +181,90 @@ class SSEConnectionManager {
       return { data: line.slice(5).trim() };
     }
     return null;
+  }
+
+  /**
+   * Try to refresh the JWT token and reconnect.
+   * Returns true if refresh succeeded and reconnection was initiated.
+   */
+  private async tryRefreshTokenAndReconnect(): Promise<boolean> {
+    if (this.isRefreshingToken) {
+      return false;
+    }
+
+    this.isRefreshingToken = true;
+
+    try {
+      const { users, updateUser } = useUserStore.getState();
+      const currentUser = users.find(user => user.selected);
+
+      if (!currentUser?.tokens?.refreshToken) {
+        return false;
+      }
+
+      // refreshToken() gets the refresh token internally and returns a Response
+      const response = await refreshToken();
+      const data = (await response.json()) as {
+        tokens: { accessToken: string; refreshToken: string };
+      };
+
+      if (data?.tokens?.accessToken && data?.tokens?.refreshToken) {
+        // Update tokens in store
+        updateUser({
+          ...currentUser,
+          tokens: {
+            accessToken: data.tokens.accessToken,
+            refreshToken: data.tokens.refreshToken,
+          },
+        });
+
+        // Retry connection with new token
+        this.isConnecting = false; // Reset so connect() will proceed
+        void this.connect();
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Failed to refresh token for SSE:', error);
+      return false;
+    } finally {
+      this.isRefreshingToken = false;
+    }
+  }
+
+  /**
+   * Start heartbeat monitoring interval.
+   * Detects stale connections where the server stops sending heartbeats.
+   */
+  private startHeartbeatMonitor(): void {
+    this.stopHeartbeatMonitor();
+
+    // Initialize lastHeartbeat to now
+    this.setState({ lastHeartbeat: Date.now() });
+
+    this.heartbeatCheckInterval = setInterval(() => {
+      const { lastHeartbeat, connectionState } = this.state;
+
+      if (connectionState !== 'connected') {
+        return;
+      }
+
+      if (lastHeartbeat && Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT_MS) {
+        console.warn('SSE heartbeat timeout - connection appears stale, reconnecting...');
+        this.reconnect();
+      }
+    }, HEARTBEAT_CHECK_INTERVAL_MS);
+  }
+
+  /**
+   * Stop heartbeat monitoring interval.
+   */
+  private stopHeartbeatMonitor(): void {
+    if (this.heartbeatCheckInterval) {
+      clearInterval(this.heartbeatCheckInterval);
+      this.heartbeatCheckInterval = null;
+    }
   }
 
   /**
@@ -216,13 +342,17 @@ class SSEConnectionManager {
         credentials: 'include',
       });
 
-      // Check for 401 first - don't retry auth errors
+      // Check for 401 - try token refresh before failing
       if (response.status === 401) {
+        this.isConnecting = false;
+        const refreshed = await this.tryRefreshTokenAndReconnect();
+        if (refreshed) {
+          return; // Reconnection initiated with new token
+        }
         this.setState({
           connectionState: 'error',
           error: 'Authentication failed',
         });
-        this.isConnecting = false;
         return;
       }
 
@@ -235,11 +365,12 @@ class SSEConnectionManager {
         throw new Error('Response body is not readable');
       }
 
-      // Connection successful - reset backoff
+      // Connection successful - reset backoff and start heartbeat monitoring
       this.setState({ connectionState: 'connected' });
       this.reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
       this.consecutiveErrors = 0;
       this.isConnecting = false;
+      this.startHeartbeatMonitor();
 
       const decoder = new TextDecoder();
       let buffer = '';
@@ -263,7 +394,16 @@ class SSEConnectionManager {
 
         for (const line of lines) {
           const parsed = this.parseSSELine(line);
+
+          // Track heartbeats to detect stale connections
+          if (parsed?.heartbeat) {
+            this.setState({ lastHeartbeat: Date.now() });
+            continue;
+          }
+
           if (parsed?.data) {
+            // Data events also count as proof of live connection
+            this.setState({ lastHeartbeat: Date.now() });
             try {
               const eventData = JSON.parse(parsed.data) as SSEActivityData;
               this.handleActivityEvent(eventData);
@@ -336,7 +476,8 @@ class SSEConnectionManager {
       this.appStateSubscription = null;
     }
 
-    this.setState({ connectionState: 'disconnected' });
+    this.stopHeartbeatMonitor();
+    this.setState({ connectionState: 'disconnected', lastHeartbeat: null });
     this.isConnecting = false;
   }
 
@@ -410,6 +551,8 @@ interface UseActivitySSEReturn {
   reconnect: () => void;
   /** Timestamp of last received event */
   lastEventTime: number | null;
+  /** Timestamp of last heartbeat (for connection health monitoring) */
+  lastHeartbeat: number | null;
 }
 
 /**
@@ -423,52 +566,32 @@ interface UseActivitySSEReturn {
  * - App state handling (reconnect when app becomes active)
  * - Store integration (updates activity store on events)
  * - Proper cleanup via AbortController
+ * - JWT token refresh on 401 errors
+ * - Heartbeat detection for stale connection monitoring
  */
 export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivitySSEReturn {
   const { enabled = true } = options;
 
-  // Get userId from store directly to avoid unnecessary re-renders
-  const userIdRef = useRef<string | null>(null);
-
   // Local state that syncs with singleton
   const [state, setState] = useState<SSEState>(() => sseManager.getState());
 
-  // Track if this hook instance requested enablement
-  const enabledByThisHookRef = useRef(false);
-
-  // Subscribe to singleton state changes
+  // Subscribe to singleton state changes and handle connection lifecycle
+  // Note: User tracking is handled by the singleton's constructor subscription,
+  // which fixes the race condition where userId wasn't available on mount.
   useEffect(() => {
     const unsubscribe = sseManager.subscribe(setState);
-    return unsubscribe;
-  }, []);
 
-  // Get current userId
-  useEffect(() => {
-    const { users } = useUserStore.getState();
-    const currentUser = users.find(user => user.selected);
-    userIdRef.current = currentUser?.userId || null;
-
-    // Also subscribe to user changes
-    const unsubscribe = useUserStore.subscribe(storeState => {
-      const user = storeState.users.find(u => u.selected);
-      userIdRef.current = user?.userId || null;
-    });
-
-    return unsubscribe;
-  }, []);
-
-  // Enable/disable based on props
-  useEffect(() => {
-    const userId = userIdRef.current;
-
-    if (enabled && userId) {
-      enabledByThisHookRef.current = true;
-      sseManager.enable(userId);
-    } else if (enabledByThisHookRef.current) {
-      enabledByThisHookRef.current = false;
-      // Don't disable - other hook instances might still need it
-      // The singleton handles this via subscriber count
+    // If enabled, trigger connection check
+    // The singleton will use its own user tracking to get the userId
+    if (enabled) {
+      const { users } = useUserStore.getState();
+      const currentUser = users.find(user => user.selected);
+      if (currentUser?.userId) {
+        sseManager.enable(currentUser.userId);
+      }
     }
+
+    return unsubscribe;
   }, [enabled]);
 
   // Memoized callbacks that delegate to singleton
@@ -486,5 +609,6 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
     disconnect,
     reconnect,
     lastEventTime: state.lastEventTime,
+    lastHeartbeat: state.lastHeartbeat,
   };
 }

@@ -4,7 +4,7 @@ import { Hash } from 'viem';
 
 import useUser from '@/hooks/useUser';
 import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
-import { ActivityEvent, SSEConnectionState, TransactionStatus, TransactionType } from '@/lib/types';
+import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
