@@ -107,7 +107,7 @@ export default function CardDetails() {
   if (isScreenMedium) {
     return (
       <PageLayout desktopOnly isLoading={isLoading}>
-        <View className="mx-auto w-full max-w-7xl px-4 pb-12 pt-8">
+        <View className="mx-auto w-full max-w-7xl px-4 py-12">
           {/* Desktop Header */}
           <DesktopHeader
             isCardFrozen={isCardFrozen}
