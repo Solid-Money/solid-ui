@@ -27,6 +27,7 @@ export default function Security() {
   const { isDesktop } = useDimension();
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showTotpModal, setShowTotpModal] = useState(false);
   const [isTotpVerified, setIsTotpVerified] = useState<boolean | null>(null);
@@ -34,24 +35,49 @@ export default function Security() {
 
   const handleUnlock = useCallback(async () => {
     setIsUnlocking(true);
+    setUnlockError(null);
+
+    // Create a timeout promise to prevent hanging indefinitely
+    const PASSKEY_TIMEOUT_MS = 30000;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Passkey authentication timed out'));
+      }, PASSKEY_TIMEOUT_MS);
+    });
+
     try {
       const passkeyClient = createHttpClient({
         defaultStamperType: StamperType.Passkey,
       });
-      // Trigger passkey prompt to verify user identity
-      await passkeyClient.stampGetWhoami(
-        { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
-        StamperType.Passkey,
-      );
+
+      // Race between passkey prompt and timeout
+      await Promise.race([
+        passkeyClient.stampGetWhoami(
+          { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
+          StamperType.Passkey,
+        ),
+        timeoutPromise,
+      ]);
 
       setIsUnlocked(true);
     } catch (error) {
-      Sentry.captureException(error, {
-        tags: {
-          type: 'security_unlock_error',
-          source: 'security_settings',
-        },
-      });
+      const isTimeout = error instanceof Error && error.message.includes('timed out');
+      const isCancelled = error instanceof Error && error.name === 'NotAllowedError';
+
+      if (isTimeout) {
+        setUnlockError('Authentication timed out. Please try again.');
+      } else if (isCancelled) {
+        // User cancelled - no error message needed
+        setUnlockError(null);
+      } else {
+        setUnlockError('Failed to unlock. Please try again.');
+        Sentry.captureException(error, {
+          tags: {
+            type: 'security_unlock_error',
+            source: 'security_settings',
+          },
+        });
+      }
     } finally {
       setIsUnlocking(false);
     }
@@ -180,6 +206,9 @@ export default function Security() {
                   </>
                 )}
               </Pressable>
+              {unlockError && (
+                <Text className="mt-3 text-center text-sm text-red-400">{unlockError}</Text>
+              )}
             </View>
           )}
 

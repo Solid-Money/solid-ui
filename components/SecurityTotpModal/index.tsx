@@ -152,9 +152,14 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSetup, setIsLoadingSetup] = useState(true);
   const [qrCode, setQrCode] = useState<string>('');
-  const [, setApiError] = useState<string>('');
+  const [apiError, setApiError] = useState<string>('');
 
-  const { control, handleSubmit, watch } = useForm<TotpFormData>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors: formErrors },
+    watch,
+  } = useForm<TotpFormData>({
     resolver: zodResolver(totpSchema),
     mode: 'onChange',
     defaultValues: {
@@ -163,6 +168,13 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
   });
 
   const otpCode = watch('otpCode');
+
+  // Clear error when user starts typing a new code
+  useEffect(() => {
+    if (otpCode && apiError) {
+      setApiError('');
+    }
+  }, [otpCode, apiError]);
 
   // Fetch TOTP setup data when modal opens
   useEffect(() => {
@@ -215,13 +227,13 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
         </Text>
       </View>
 
-      {/* {(apiError || formErrors.otpCode) && (
+      {(apiError || formErrors.otpCode) && (
         <View className="rounded-2xl border border-red-300 p-2.5">
           <Text className="text-center text-sm text-red-400">
             {apiError || formErrors.otpCode?.message}
           </Text>
         </View>
-      )} */}
+      )}
 
       {/* QR Code Section */}
       <View className="items-center gap-3">
