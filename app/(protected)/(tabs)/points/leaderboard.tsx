@@ -55,32 +55,33 @@ const Row = ({ leaderboardUser, position, isStar, skipAnimation }: RowProps) => 
       entering={
         skipAnimation ? undefined : FadeInDown.duration(150).delay((position % PAGE_SIZE) * 100)
       }
-      className="flex-row items-center gap-2.5 rounded-twice bg-card px-4 py-5 text-lg font-medium md:pr-10"
     >
-      <View className="relative flex items-center justify-center md:w-20">
-        {isStar && (
-          <Image
-            source={positionStars[position].icon}
-            style={{ width: isScreenMedium ? 36 : 28, height: isScreenMedium ? 36 : 28 }}
-            contentFit="contain"
-          />
-        )}
-        <View
-          className={cn(
-            isStar
-              ? 'absolute top-[53%] -translate-y-1/2'
-              : 'mx-auto h-full rounded-twice bg-white/10 px-2',
+      <View className="flex-row items-center gap-2.5 rounded-twice bg-card px-4 py-5 text-lg font-medium md:pr-10">
+        <View className="relative flex items-center justify-center md:w-20">
+          {isStar && (
+            <Image
+              source={positionStars[position].icon}
+              style={{ width: isScreenMedium ? 36 : 28, height: isScreenMedium ? 36 : 28 }}
+              contentFit="contain"
+            />
           )}
-        >
-          <Text className="text-lg font-semibold">{formatNumber(position, 0, 0)}</Text>
+          <View
+            className={cn(
+              isStar
+                ? 'absolute top-[53%] -translate-y-1/2'
+                : 'mx-auto h-full rounded-twice bg-white/10 px-2',
+            )}
+          >
+            <Text className="text-lg font-semibold">{formatNumber(position, 0, 0)}</Text>
+          </View>
         </View>
+        <View className="grow md:w-8/12">
+          <Text className="text-base">{eclipseAddress(leaderboardUser.walletAddress, 6, 4)}</Text>
+        </View>
+        <Text className="text-lg font-bold text-rewards">
+          {formatNumber(leaderboardUser.points || 0, 0, 0)}
+        </Text>
       </View>
-      <View className="grow md:w-8/12">
-        <Text className="text-base">{eclipseAddress(leaderboardUser.walletAddress, 6, 4)}</Text>
-      </View>
-      <Text className="text-lg font-bold text-rewards">
-        {formatNumber(leaderboardUser.points || 0, 0, 0)}
-      </Text>
     </Animated.View>
   );
 };
