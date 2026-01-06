@@ -14,6 +14,7 @@ import { withRefreshToken } from '@/lib/utils';
 const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes - skip sync if app opened within this time
 const SYNC_STALE_MS = 24 * 60 * 60 * 1000; // 24 hours - show prominent loading after this
 const SYNC_MIN_INTERVAL_MS = 30 * 1000; // 30 seconds - minimum time between syncs
+const LOCK_TIMEOUT_MS = 30 * 1000; // 30 seconds - force release lock if held this long
 
 // Store to track last sync time per user
 interface SyncState {
@@ -72,10 +73,10 @@ export const useSyncStore = create<SyncState>()(
 
       acquireSyncLock: () => {
         const state = get();
-        // If lock is held but older than 30 seconds, force release (safety mechanism)
+        // If lock is held but older than LOCK_TIMEOUT_MS, force release (safety mechanism)
         if (state.isSyncingLock && state.syncLockTimestamp) {
           const lockAge = Date.now() - state.syncLockTimestamp;
-          if (lockAge > 30000) {
+          if (lockAge > LOCK_TIMEOUT_MS) {
             console.warn('Sync lock was held for >30s, force releasing');
             set({ isSyncingLock: false, syncLockTimestamp: null });
           } else {
@@ -171,13 +172,9 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
       }
       // Invalidate activity queries to refetch fresh data
       queryClient.invalidateQueries({ queryKey: ['activity-events'] });
-      // Release the sync lock after successful sync
-      releaseSyncLock();
     },
     onError: error => {
       console.error('Failed to sync activities:', error);
-      // Release the sync lock on error too
-      releaseSyncLock();
     },
   });
 
@@ -200,10 +197,10 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
 
       try {
         return await syncMutation.mutateAsync(syncOptions);
-      } catch (error) {
-        // Lock is released in onError callback, but release here too for safety
+      } finally {
+        // Always release the lock, regardless of success or failure
+        // This ensures no memory leaks even if mutation is cancelled/aborted
         releaseSyncLock();
-        throw error;
       }
     },
     [userId, canSync, acquireSyncLock, releaseSyncLock, syncMutation],

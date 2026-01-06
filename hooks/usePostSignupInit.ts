@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/react-native';
 import { useEffect, useRef } from 'react';
 
-import { ensureWebhookSubscription, getWebhookStatus, updateSafeAddress } from '@/lib/api';
+import { updateSafeAddress } from '@/lib/api';
 import { User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { usePointsStore } from '@/store/usePointsStore';
@@ -34,11 +34,6 @@ export const usePostSignupInit = (user: User | undefined) => {
 
         // 1. Update safe address if needed (non-blocking failure)
         if (user.safeAddress && !safeAddressSynced[user.userId]) {
-          console.warn('[usePostSignupInit] updating safe address (lazy init)', {
-            userId: user.userId,
-            safeAddress: user.safeAddress,
-          });
-
           try {
             await withRefreshToken(() => updateSafeAddress(user.safeAddress));
             markSafeAddressSynced(user.userId);
@@ -71,7 +66,6 @@ export const usePostSignupInit = (user: User | undefined) => {
             });
           }
         } catch (error) {
-          console.warn('Failed to check balance:', error);
           Sentry.captureException(error, {
             tags: {
               type: 'balance_check_error_lazy',
@@ -89,7 +83,6 @@ export const usePostSignupInit = (user: User | undefined) => {
           const { fetchPoints } = usePointsStore.getState();
           await fetchPoints();
         } catch (error) {
-          console.warn('Failed to fetch points:', error);
           Sentry.captureException(error, {
             tags: {
               type: 'points_fetch_error_lazy',
@@ -102,29 +95,7 @@ export const usePostSignupInit = (user: User | undefined) => {
           });
         }
 
-        // 4. Ensure webhook subscription for real-time activity updates (non-blocking)
-        if (user.safeAddress) {
-          try {
-            const status = await withRefreshToken(() => getWebhookStatus());
-            if (status && !status.registered) {
-              await withRefreshToken(() => ensureWebhookSubscription());
-            }
-          } catch (error) {
-            console.warn('Failed to ensure webhook subscription:', error);
-            Sentry.captureException(error, {
-              tags: {
-                type: 'webhook_subscription_error_lazy',
-              },
-              user: {
-                id: user.userId,
-                address: user.safeAddress,
-              },
-              level: 'warning',
-            });
-          }
-        }
       } catch (error) {
-        console.error('Error in post-signup initialization:', error);
         Sentry.captureException(error, {
           tags: {
             type: 'post_signup_init_error',

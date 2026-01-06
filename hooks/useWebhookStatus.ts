@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 
@@ -67,7 +68,10 @@ export function useWebhookStatus(options: UseWebhookStatusOptions = {}): UseWebh
       queryClient.invalidateQueries({ queryKey: ['webhook-status', userId] });
     },
     onError: (error: any) => {
-      console.error('Failed to subscribe to webhooks:', error);
+      Sentry.captureException(error, {
+        tags: { type: 'webhook_subscription_error' },
+        level: 'error',
+      });
     },
   });
 
@@ -129,12 +133,14 @@ export function useWebhookStatus(options: UseWebhookStatusOptions = {}): UseWebh
   const isRegistered = status?.registered ?? false;
   const registeredChainCount = status?.registeredChains?.length ?? 0;
 
-  // Error handling
+  // Error handling - prioritize subscription error as it's more actionable
   let error: string | null = null;
-  if (statusQuery.error) {
-    error = (statusQuery.error as any)?.message || 'Failed to fetch webhook status';
-  } else if (subscribeMutation.error) {
+  if (subscribeMutation.error) {
+    // Subscription error is most critical - user action failed
     error = (subscribeMutation.error as any)?.message || 'Failed to subscribe to webhooks';
+  } else if (statusQuery.error) {
+    // Status error only shown if no subscription error
+    error = (statusQuery.error as any)?.message || 'Failed to fetch webhook status';
   }
 
   return {

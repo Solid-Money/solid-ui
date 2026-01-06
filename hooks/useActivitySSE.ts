@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
 
@@ -11,6 +12,7 @@ const INITIAL_RECONNECT_DELAY_MS = 1000; // 1 second
 const MAX_RECONNECT_DELAY_MS = 30000; // 30 seconds
 const RECONNECT_MULTIPLIER = 2;
 const MAX_CONSECUTIVE_ERRORS = 5; // Stop retrying after 5 consecutive errors
+const MAX_CONSECUTIVE_PARSE_ERRORS = 3; // Reconnect after 3 consecutive parse errors
 
 // Heartbeat detection constants
 const HEARTBEAT_TIMEOUT_MS = 60000; // 60 seconds - if no heartbeat, assume stale
@@ -42,9 +44,11 @@ class SSEConnectionManager {
 
   // Connection management
   private abortController: AbortController | null = null;
+  private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   private reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private consecutiveErrors = 0;
+  private consecutiveParseErrors = 0;
   private isConnecting = false;
   private isRefreshingToken = false;
 
@@ -71,11 +75,17 @@ class SSEConnectionManager {
       const newUserId = user?.userId || null;
 
       // User changed - update connection
-      if (newUserId !== this.currentUserId && this.subscribers.size > 0) {
-        if (newUserId) {
-          this.enable(newUserId);
-        } else {
-          this.disable();
+      // Note: We track user changes regardless of subscriber count.
+      // The cleanup in subscribe() will disconnect if there are no subscribers.
+      if (newUserId !== this.currentUserId) {
+        this.currentUserId = newUserId;
+        // Only connect/disconnect if we have active subscribers
+        if (this.subscribers.size > 0) {
+          if (newUserId) {
+            this.connect();
+          } else {
+            this.disconnect();
+          }
         }
       }
     });
@@ -218,15 +228,18 @@ class SSEConnectionManager {
           },
         });
 
-        // Retry connection with new token
-        this.isConnecting = false; // Reset so connect() will proceed
-        void this.connect();
+        // Properly disconnect and reconnect with new token
+        // This ensures clean state and prevents race conditions
+        this.reconnect();
         return true;
       }
 
       return false;
     } catch (error) {
-      console.error('Failed to refresh token for SSE:', error);
+      Sentry.captureException(error, {
+        tags: { type: 'sse_token_refresh_error' },
+        level: 'error',
+      });
       return false;
     } finally {
       this.isRefreshingToken = false;
@@ -246,12 +259,14 @@ class SSEConnectionManager {
     this.heartbeatCheckInterval = setInterval(() => {
       const { lastHeartbeat, connectionState } = this.state;
 
+      // Stop monitoring if no longer connected
       if (connectionState !== 'connected') {
+        this.stopHeartbeatMonitor();
         return;
       }
 
       if (lastHeartbeat && Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT_MS) {
-        console.warn('SSE heartbeat timeout - connection appears stale, reconnecting...');
+        // Heartbeat timeout detected - reconnect to restore connection
         this.reconnect();
       }
     }, HEARTBEAT_CHECK_INTERVAL_MS);
@@ -299,9 +314,7 @@ class SSEConnectionManager {
       return;
     }
 
-    if (!this.currentUserId) {
-      return;
-    }
+    if (!this.currentUserId) return;
 
     // Abort any existing connection
     if (this.abortController) {
@@ -344,7 +357,6 @@ class SSEConnectionManager {
 
       // Check for 401 - try token refresh before failing
       if (response.status === 401) {
-        this.isConnecting = false;
         const refreshed = await this.tryRefreshTokenAndReconnect();
         if (refreshed) {
           return; // Reconnection initiated with new token
@@ -360,8 +372,8 @@ class SSEConnectionManager {
         throw new Error(`SSE connection failed: ${response.status} ${response.statusText}`);
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
+      this.reader = response.body?.getReader() ?? null;
+      if (!this.reader) {
         throw new Error('Response body is not readable');
       }
 
@@ -369,6 +381,7 @@ class SSEConnectionManager {
       this.setState({ connectionState: 'connected' });
       this.reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
       this.consecutiveErrors = 0;
+      this.consecutiveParseErrors = 0;
       this.isConnecting = false;
       this.startHeartbeatMonitor();
 
@@ -377,7 +390,7 @@ class SSEConnectionManager {
 
       // Read stream
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await this.reader.read();
 
         if (done) {
           // Stream ended - schedule reconnect
@@ -407,8 +420,30 @@ class SSEConnectionManager {
             try {
               const eventData = JSON.parse(parsed.data) as SSEActivityData;
               this.handleActivityEvent(eventData);
+              // Reset parse error counter on successful parse
+              this.consecutiveParseErrors = 0;
             } catch (parseError) {
-              console.error('Failed to parse SSE data:', parseError);
+              // Log parse errors to Sentry for monitoring
+              Sentry.captureException(parseError, {
+                tags: {
+                  type: 'sse_parse_error',
+                  consecutiveErrors: this.consecutiveParseErrors + 1,
+                },
+                level: 'warning',
+                extra: { rawData: parsed.data },
+              });
+              this.consecutiveParseErrors++;
+
+              // If we've had too many consecutive parse errors, reconnect
+              if (this.consecutiveParseErrors >= MAX_CONSECUTIVE_PARSE_ERRORS) {
+                Sentry.captureMessage('SSE: Too many consecutive parse errors, reconnecting', {
+                  level: 'error',
+                  tags: { type: 'sse_parse_error_threshold' },
+                  extra: { consecutiveErrors: this.consecutiveParseErrors },
+                });
+                this.reconnect();
+                return; // Exit the read loop
+              }
             }
           }
         }
@@ -419,7 +454,14 @@ class SSEConnectionManager {
         return;
       }
 
-      console.error('SSE connection error:', err);
+      // Log connection errors to Sentry
+      Sentry.captureException(err, {
+        tags: {
+          type: 'sse_connection_error',
+          consecutiveErrors: this.consecutiveErrors + 1,
+        },
+        level: this.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS - 1 ? 'error' : 'warning',
+      });
       this.consecutiveErrors++;
 
       if (this.consecutiveErrors < MAX_CONSECUTIVE_ERRORS) {
@@ -435,6 +477,15 @@ class SSEConnectionManager {
         });
       }
     } finally {
+      // Release the reader lock to allow proper cleanup
+      if (this.reader) {
+        try {
+          this.reader.releaseLock();
+        } catch (e) {
+          // Reader may already be released or closed, ignore
+        }
+        this.reader = null;
+      }
       this.isConnecting = false;
     }
   }
@@ -471,6 +522,16 @@ class SSEConnectionManager {
       this.abortController = null;
     }
 
+    // Release the reader lock if it exists
+    if (this.reader) {
+      try {
+        this.reader.releaseLock();
+      } catch (e) {
+        // Reader may already be released or closed, ignore
+      }
+      this.reader = null;
+    }
+
     if (this.appStateSubscription) {
       this.appStateSubscription.remove();
       this.appStateSubscription = null;
@@ -488,6 +549,7 @@ class SSEConnectionManager {
     this.disconnect();
     this.reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
     this.consecutiveErrors = 0;
+    this.consecutiveParseErrors = 0;
     if (this.currentUserId) {
       this.setupAppStateListener();
       this.connect();
@@ -575,11 +637,16 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
   // Local state that syncs with singleton
   const [state, setState] = useState<SSEState>(() => sseManager.getState());
 
+  // Stable callback for state updates to avoid subscription churn
+  const handleStateUpdate = useCallback((newState: SSEState) => {
+    setState(newState);
+  }, []);
+
   // Subscribe to singleton state changes and handle connection lifecycle
   // Note: User tracking is handled by the singleton's constructor subscription,
   // which fixes the race condition where userId wasn't available on mount.
   useEffect(() => {
-    const unsubscribe = sseManager.subscribe(setState);
+    const unsubscribe = sseManager.subscribe(handleStateUpdate);
 
     // If enabled, trigger connection check
     // The singleton will use its own user tracking to get the userId
@@ -592,7 +659,7 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
     }
 
     return unsubscribe;
-  }, [enabled]);
+  }, [enabled, handleStateUpdate]);
 
   // Memoized callbacks that delegate to singleton
   const disconnect = useCallback(() => {
