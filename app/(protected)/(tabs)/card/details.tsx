@@ -314,12 +314,22 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
   const cashbackPercentage = cashback?.percentage || 0;
 
   return (
-    <LinearGradient
-      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.1)']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      className="h-full rounded-[20px] px-[36px] py-[30px]"
-    >
+    <View className="relative h-full overflow-hidden rounded-[20px] px-[36px] py-[30px]">
+      <LinearGradient
+        colors={['rgba(104, 216, 82, 1)', 'rgba(104, 216, 82, 0.4)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.6, y: 1 }}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: -1,
+          opacity: 0.25,
+        }}
+      />
       <View className="flex-1 justify-between">
         {/* Spending Balance Section */}
         <View>
@@ -351,7 +361,7 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
           </View>
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -728,64 +738,86 @@ function DepositBonusBanner() {
 
   if (isScreenMedium) {
     return (
+      <View className="relative h-full overflow-hidden rounded-2xl border border-[#FFD15126]">
+        <LinearGradient
+          colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: -1,
+          }}
+        />
+        <View className="flex-row items-center gap-4 p-4 md:p-5">
+          <Link
+            href={
+              'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
+            }
+            target="_blank"
+            className="rounded-full bg-[#FFD151]/20 px-3 py-1"
+          >
+            <Text className="text-sm font-bold text-[#FFD151]">
+              Receive your $50 sign up bonus!
+            </Text>
+          </Link>
+          <View className="flex-1 flex-row items-center justify-between">
+            <Text className="text-sm font-medium text-[#FFD151]">On a minimum deposit of $100</Text>
+            <View className="flex-row items-center gap-1">
+              <Link
+                target="_blank"
+                href={
+                  'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
+                }
+                className="font-bold text-[#FFD151]"
+              >
+                Learn more
+              </Link>
+              <View className="pt-0.5">
+                <ChevronRight size={16} color="#FFD151" />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View className="relative mb-4 overflow-hidden rounded-3xl border border-[#FFD15126]">
       <LinearGradient
         colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-        start={{ x: 0.15, y: 0 }}
-        end={{ x: 0.85, y: 1 }}
-        locations={[0.0964, 0.6892]}
-        className="h-full flex-row items-center gap-4 rounded-2xl border border-[#FFD15126] p-4 md:p-5"
-      >
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: -1,
+        }}
+      />
+      <View className="flex-col items-center gap-3 p-4">
         <Link
           href={
             'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
           }
           target="_blank"
-          className="rounded-full bg-[#FFD151]/20 px-3 py-1"
+          className="rounded-full bg-[#FFD151]/20 px-4 py-1.5"
         >
-          <Text className="text-sm font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
+          <Text className="text-lg font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
         </Link>
-        <View className="flex-1 flex-row items-center justify-between">
-          <Text className="text-sm font-medium text-[#FFD151]">On a minimum deposit of $100</Text>
-          <View className="flex-row items-center gap-1">
-            <Link
-              target="_blank"
-              href={
-                'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-              }
-              className="font-bold text-[#FFD151]"
-            >
-              Learn more
-            </Link>
-            <View className="pt-0.5">
-              <ChevronRight size={16} color="#FFD151" />
-            </View>
-          </View>
-        </View>
-      </LinearGradient>
-    );
-  }
-
-  return (
-    <LinearGradient
-      colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      locations={[0.0964, 0.6892]}
-      className="mb-4 flex-col items-center gap-3 rounded-3xl border border-[#FFD15126] p-4"
-    >
-      <Link
-        href={
-          'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-        }
-        target="_blank"
-        className="rounded-full bg-[#FFD151]/20 px-4 py-1.5"
-      >
-        <Text className="text-lg font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
-      </Link>
-      <Text className="text-center text-lg font-medium text-[#FFD151]">
-        On a minimum deposit of $100
-      </Text>
-    </LinearGradient>
+        <Text className="text-center text-lg font-medium text-[#FFD151]">
+          On a minimum deposit of $100
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -805,12 +837,22 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
   const cashbackPercentage = cashback?.percentage || 0;
 
   return (
-    <LinearGradient
-      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.1)']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      className="mb-4 rounded-[20px] py-[10px]"
-    >
+    <View className="relative mb-4 overflow-hidden rounded-[20px] py-[10px]">
+      <LinearGradient
+        colors={['rgba(104, 216, 82, 1)', 'rgba(104, 216, 82, 0.4)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.6, y: 1 }}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: -1,
+          opacity: 0.25,
+        }}
+      />
       {/* Top Section */}
       <View className="mb-2 flex-row items-start justify-between px-4">
         <View>
@@ -837,7 +879,7 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
           all purchases
         </Text>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 

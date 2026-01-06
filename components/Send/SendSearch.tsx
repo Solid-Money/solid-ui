@@ -97,7 +97,7 @@ const SendSearch: React.FC = () => {
 
       <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
         {filteredRecentActivities.length > 0 && (
-          <View className="gap-4">
+          <View className="gap-2 md:gap-4">
             <Text className="text-base font-medium opacity-70">Recent</Text>
             <View className="rounded-2xl bg-card">
               {filteredRecentActivities.map((activity, index) => {
@@ -141,7 +141,7 @@ const SendSearch: React.FC = () => {
                         <DropdownMenuContent
                           insets={contentInsets}
                           align="end"
-                          className="w-44 rounded-xl border-none bg-card"
+                          className="w-44 rounded-xl border-0 border-none bg-card"
                         >
                           <DropdownMenuItem
                             className="h-10 flex-row items-center gap-2 rounded-xl px-4 web:cursor-pointer"

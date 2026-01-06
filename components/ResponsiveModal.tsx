@@ -157,7 +157,9 @@ const ResponsiveModal = ({
                 )}
                 {title && (
                   <Animated.View key={contentKey} entering={titleEntering} exiting={titleExiting}>
-                    <DialogTitle className="text-xl font-semibold">{title}</DialogTitle>
+                    <DialogTitle className="native:text-2xl text-xl font-semibold">
+                      {title}
+                    </DialogTitle>
                   </Animated.View>
                 )}
                 {hasActionButton && actionButton}
