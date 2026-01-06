@@ -163,7 +163,7 @@ export default function Home() {
                         marginRight: -1,
                       },
                       decimalText: {
-                        fontSize: isScreenMedium ? fontSize(3) : fontSize(1.875),
+                        fontSize: fontSize(1.875),
                         fontWeight: '500',
                         //fontFamily: 'MonaSans_600SemiBold',
                         color: '#ffffff',
