@@ -125,7 +125,7 @@ export default function Onboarding() {
                     className={`rounded-xl ${isSmallScreen ? 'h-12' : 'h-14'}`}
                     onPress={handleCreateAccount}
                   >
-                    <Text className={`font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
+                    <Text className="font-bold text-lg native:text-lg">
                       Create account
                     </Text>
                   </Button>
@@ -149,13 +149,13 @@ export default function Onboarding() {
                       <View className="flex-row items-center">
                         <ActivityIndicator size="small" color="white" />
                         <Text
-                          className={`ml-2 font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}
+                          className="ml-2 font-bold text-lg native:text-lg"
                         >
                           Authenticating...
                         </Text>
                       </View>
                     ) : (
-                      <Text className={`font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
+                      <Text className="font-bold text-lg native:text-lg">
                         Login
                       </Text>
                     )}
