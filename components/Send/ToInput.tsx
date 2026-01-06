@@ -146,7 +146,7 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
           ) : (
             <TextInput
               ref={inputRef}
-              className={cn('flex-1 text-base web:focus:outline-none')}
+              className='flex-1 text-base text-foreground web:focus:outline-none'
               placeholder={placeholder}
               placeholderTextColor="#ffffff80"
               value={searchQuery}
