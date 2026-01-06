@@ -489,6 +489,16 @@ function CardDetailsOverlay({
   const { cardDetails, isLoading, error, revealDetails } = useCardDetailsReveal();
   const hasRevealedRef = useRef(false);
   const hasNotifiedLoadedRef = useRef(false);
+  const clipboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup clipboard timeout on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (clipboardTimeoutRef.current) {
+        clearTimeout(clipboardTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Only reveal details once when component mounts
@@ -533,8 +543,12 @@ function CardDetailsOverlay({
         props: { badgeText: '' },
         visibilityTime: 4000,
       });
+      // Clear any existing timeout before setting a new one
+      if (clipboardTimeoutRef.current) {
+        clearTimeout(clipboardTimeoutRef.current);
+      }
       // Clear clipboard after 30 seconds for security
-      setTimeout(async () => {
+      clipboardTimeoutRef.current = setTimeout(async () => {
         try {
           // Only clear if clipboard still contains the card number
           const currentClipboard = await Clipboard.getStringAsync();
