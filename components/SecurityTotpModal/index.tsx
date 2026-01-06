@@ -13,9 +13,7 @@ import { setupTotp, verifyTotp } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const totpSchema = z.object({
-  otpCode: z
-    .string()
-    .regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
+  otpCode: z.string().regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
 });
 
 type TotpFormData = z.infer<typeof totpSchema>;
@@ -154,14 +152,9 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSetup, setIsLoadingSetup] = useState(true);
   const [qrCode, setQrCode] = useState<string>('');
-  const [apiError, setApiError] = useState<string>('');
+  const [, setApiError] = useState<string>('');
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors: formErrors },
-    watch,
-  } = useForm<TotpFormData>({
+  const { control, handleSubmit, watch } = useForm<TotpFormData>({
     resolver: zodResolver(totpSchema),
     mode: 'onChange',
     defaultValues: {

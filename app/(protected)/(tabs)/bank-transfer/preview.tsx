@@ -27,6 +27,26 @@ export default function BankTransferPreviewScreen() {
   const { instructions } = useLocalSearchParams<{ instructions?: string }>();
   const data: SourceDepositInstructions | null = instructions ? JSON.parse(instructions) : null;
 
+  const isSepa = data?.payment_rail === 'sepa';
+  const isSpei = data?.payment_rail === 'spei';
+
+  const getAccountNumber = () => {
+    if (isSepa) return data?.iban;
+    if (isSpei) return data?.clabe;
+    return data?.bank_account_number;
+  };
+
+  const getAccountLabel = () => {
+    if (isSepa) return 'IBAN';
+    if (isSpei) return 'CLABE';
+    return 'Account number';
+  };
+
+  const accountNumber = getAccountNumber();
+  const routingCode = isSepa ? data?.bic : data?.bank_routing_number;
+  const beneficiaryName =
+    isSepa || isSpei ? data?.account_holder_name : data?.bank_beneficiary_name;
+
   return (
     <View className="flex-1 bg-background px-6 pb-6">
       <View className="w-full flex-1 gap-4 web:mx-auto web:max-w-3xl">
@@ -39,9 +59,12 @@ export default function BankTransferPreviewScreen() {
             withDivider
           />
           <Row label="Bank Name" value={data?.bank_name ?? ''} withDivider />
-          <Row label="Account number" value={data?.bank_account_number ?? ''} withDivider />
-          <Row label="Routing / SWIFT / BIC" value={data?.bank_routing_number ?? ''} withDivider />
-          <Row label="Beneficiary name" value={data?.bank_beneficiary_name ?? ''} />
+          <Row label={getAccountLabel()} value={accountNumber ?? ''} withDivider />
+          {routingCode && (
+            <Row label={isSepa ? 'BIC' : 'Routing / SWIFT / BIC'} value={routingCode} withDivider />
+          )}
+          <Row label="Beneficiary name" value={beneficiaryName ?? ''} withDivider />
+          <Row label="Deposit message" value={data?.deposit_message ?? ''} />
         </View>
 
         <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">

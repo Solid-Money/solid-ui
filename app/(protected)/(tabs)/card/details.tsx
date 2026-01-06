@@ -53,7 +53,7 @@ export default function CardDetails() {
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
-  const handleFreezeToggle = async () => {
+  const handleFreezeToggle = useCallback(async () => {
     try {
       setIsFreezing(true);
       if (isCardFrozen) {
@@ -70,9 +70,9 @@ export default function CardDetails() {
     } finally {
       setIsFreezing(false);
     }
-  };
+  }, [isCardFrozen, refetch]);
 
-  const handleCardFlip = () => {
+  const handleCardFlip = useCallback(() => {
     if (isCardFlipped) {
       // Flip back to front
       Animated.spring(flipAnimation, {
@@ -88,7 +88,7 @@ export default function CardDetails() {
       setIsLoadingCardDetails(true);
       setShouldRevealDetails(true);
     }
-  };
+  }, [isCardFlipped, flipAnimation]);
 
   const handleCardDetailsLoaded = useCallback(() => {
     // Once data is loaded, flip the card immediately
@@ -525,13 +525,26 @@ function CardDetailsOverlay({
   const handleCopyCardNumber = useCallback(async () => {
     if (!cardDetails) return;
     try {
-      await Clipboard.setString(formatCardNumber(cardDetails.card_number));
+      await Clipboard.setStringAsync(formatCardNumber(cardDetails.card_number));
       Toast.show({
         type: 'success',
         text1: 'Card number copied',
+        text2: 'Clipboard will clear in 30 seconds',
         props: { badgeText: '' },
         visibilityTime: 4000,
       });
+      // Clear clipboard after 30 seconds for security
+      setTimeout(async () => {
+        try {
+          // Only clear if clipboard still contains the card number
+          const currentClipboard = await Clipboard.getStringAsync();
+          if (currentClipboard === formatCardNumber(cardDetails.card_number)) {
+            await Clipboard.setStringAsync('');
+          }
+        } catch {
+          // Silently fail if clipboard clearing fails
+        }
+      }, 30000);
     } catch (_error) {
       Alert.alert('Error', 'Failed to copy card number');
     }
@@ -561,7 +574,12 @@ function CardDetailsOverlay({
             <Text className="text-3xl font-medium" style={{ color: '#2E6A25' }}>
               {formatCardNumber(safeCardDetails.card_number)}
             </Text>
-            <Pressable onPress={handleCopyCardNumber} className="p-2 web:hover:opacity-70">
+            <Pressable
+              onPress={handleCopyCardNumber}
+              className="p-2 web:hover:opacity-70"
+              accessibilityLabel="Copy card number to clipboard"
+              accessibilityRole="button"
+            >
               <Copy size={20} color="#2E6A25" />
             </Pressable>
           </View>
@@ -605,7 +623,12 @@ function CardDetailsOverlay({
           <Text className="text-lg font-medium md:text-3xl" style={{ color: '#2E6A25' }}>
             {formatCardNumber(cardDetails.card_number)}
           </Text>
-          <Pressable onPress={handleCopyCardNumber} className="p-2 web:hover:opacity-70">
+          <Pressable
+            onPress={handleCopyCardNumber}
+            className="p-2 web:hover:opacity-70"
+            accessibilityLabel="Copy card number to clipboard"
+            accessibilityRole="button"
+          >
             <Copy size={20} color="#2E6A25" />
           </Pressable>
         </View>

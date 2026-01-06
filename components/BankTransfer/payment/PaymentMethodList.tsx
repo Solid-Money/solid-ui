@@ -182,10 +182,11 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
       try {
         if (err instanceof Response) {
           const errorData = await err.json();
-          // NestJS BadRequestException returns message at root level
+          errorCode = errorData.code || errorData.error || 'api_error';
+
+          // Backend returns user-friendly message in errorData.message
           if (errorData?.message) {
             errorMessage = errorData.message;
-            errorCode = errorData.error || 'api_error';
           }
         }
       } catch {

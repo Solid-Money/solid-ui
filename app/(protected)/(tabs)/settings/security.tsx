@@ -1,4 +1,5 @@
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
+import * as Sentry from '@sentry/react-native';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
@@ -45,7 +46,12 @@ export default function Security() {
 
       setIsUnlocked(true);
     } catch (error) {
-      console.error('Failed to unlock:', error);
+      Sentry.captureException(error, {
+        tags: {
+          type: 'security_unlock_error',
+          source: 'security_settings',
+        },
+      });
     } finally {
       setIsUnlocking(false);
     }
@@ -68,10 +74,23 @@ export default function Security() {
     try {
       const status = await getTotpStatus();
       setIsTotpVerified(status.verified);
-    } catch (error) {
-      console.error('Failed to fetch TOTP status:', error);
-      // If TOTP is not set up, API might return 404, which is fine
-      setIsTotpVerified(false);
+    } catch (error: unknown) {
+      // Check if it's a Response object with status (API throws response on error)
+      const isNotFoundError = error instanceof Response && error.status === 404;
+
+      if (isNotFoundError) {
+        // 404 means TOTP is not set up yet - this is expected, not an error
+        setIsTotpVerified(false);
+      } else {
+        // Network errors or other unexpected errors should be tracked
+        Sentry.captureException(error, {
+          tags: {
+            type: 'totp_status_fetch_error',
+            source: 'security_settings',
+          },
+        });
+        setIsTotpVerified(false);
+      }
     } finally {
       setIsLoadingTotpStatus(false);
     }
@@ -89,7 +108,12 @@ export default function Security() {
 
   const mobileHeader = (
     <View className="flex-row items-center justify-between px-4 py-3">
-      <Pressable onPress={() => router.back()} className="p-2">
+      <Pressable
+        onPress={() => router.back()}
+        className="p-2"
+        accessibilityLabel="Go back"
+        accessibilityRole="button"
+      >
         <ChevronLeft size={24} color="#ffffff" />
       </Pressable>
       <Text className="mr-10 flex-1 text-center text-xl font-bold text-white">Security</Text>
@@ -101,7 +125,12 @@ export default function Security() {
       <Navbar />
       <View className="mx-auto w-full max-w-[512px] px-4 pb-8 pt-8">
         <View className="mb-8 flex-row items-center justify-between">
-          <Pressable onPress={() => router.back()} className="web:hover:opacity-70">
+          <Pressable
+            onPress={() => router.back()}
+            className="web:hover:opacity-70"
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
             <ArrowLeft color="white" />
           </Pressable>
           <Text className="text-3xl font-semibold text-white">Security</Text>
@@ -138,6 +167,9 @@ export default function Security() {
                 onPress={handleUnlock}
                 disabled={isUnlocking}
                 className="mt-2 flex-row items-center justify-center gap-2 rounded-xl bg-[#94F27F] py-3 active:opacity-80"
+                accessibilityLabel="Unlock security settings with passkey"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: isUnlocking }}
               >
                 {isUnlocking ? (
                   <ActivityIndicator color="#000000" size="small" />
@@ -169,8 +201,13 @@ export default function Security() {
               titleStyle="font-medium"
               customAction={
                 isUnlocked ? (
-                  <Pressable onPress={handleChangeEmail} className="active:opacity-70">
-                    <Text className="text-base text-[#ACACAC] font-medium">Change</Text>
+                  <Pressable
+                    onPress={handleChangeEmail}
+                    className="active:opacity-70"
+                    accessibilityLabel="Change email address"
+                    accessibilityRole="button"
+                  >
+                    <Text className="text-base font-medium text-[#ACACAC]">Change</Text>
                   </Pressable>
                 ) : null
               }
@@ -206,8 +243,13 @@ export default function Security() {
                     <ActivityIndicator color="#ACACAC" size="small" />
                   ) : (
                     !isTotpVerified && (
-                      <Pressable onPress={handleAddTotp} className="active:opacity-70">
-                        <Text className="text-base text-[#ACACAC] font-medium">Add</Text>
+                      <Pressable
+                        onPress={handleAddTotp}
+                        className="active:opacity-70"
+                        accessibilityLabel="Add two-factor authentication"
+                        accessibilityRole="button"
+                      >
+                        <Text className="text-base font-medium text-[#ACACAC]">Add</Text>
                       </Pressable>
                     )
                   )
