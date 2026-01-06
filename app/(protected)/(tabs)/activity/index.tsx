@@ -18,7 +18,7 @@ export default function Activity() {
 
   return (
     <PageLayout isLoading={isCardLoading} scrollable={isWeb}>
-      <View className={`mx-auto w-full max-w-7xl px-4 pt-6 pb-8 md:py-12 ${isWeb ? '' : 'flex-1'}`}>
+      <View className={`mx-auto w-full max-w-7xl px-4 pb-8 pt-6 md:py-12 ${isWeb ? '' : 'flex-1'}`}>
         <View className="flex-row items-center justify-between">
           <Text className="text-3xl font-semibold">Activity</Text>
 
