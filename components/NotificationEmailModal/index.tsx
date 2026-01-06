@@ -9,6 +9,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { cn } from '@/lib/utils';
 
 interface NotificationEmailModalProps {
@@ -54,7 +55,7 @@ const NotificationEmailModal: React.FC<NotificationEmailModalProps> = ({ onSucce
     <View className="flex-1 gap-4">
       <View className="items-center">
         <Image
-          source={require('@/assets/images/email.png')}
+          source={getAsset('images/email.png')}
           style={{ width: 144, height: 144 }}
           resizeMode="contain"
         />

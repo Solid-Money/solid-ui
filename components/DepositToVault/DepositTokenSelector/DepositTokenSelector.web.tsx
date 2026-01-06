@@ -2,6 +2,7 @@ import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 import { View } from 'react-native';
 
@@ -26,7 +27,10 @@ const DepositTokenSelector = () => {
               key={key}
               name={token?.name || key}
               description={token?.fullName || 'USD Coin'}
-              icon={token?.icon || require('@/assets/images/usdc.png')}
+              icon={
+                token?.icon ||
+                getAsset('images/usdc.png')
+              }
               isComingSoon={false}
               onPress={() => handlePress(key)}
             />

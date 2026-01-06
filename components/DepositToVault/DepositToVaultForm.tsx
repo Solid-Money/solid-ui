@@ -25,6 +25,7 @@ import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { Status } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -41,7 +42,7 @@ function DepositToVaultForm() {
     return {
       address: tokenData?.address,
       name: tokenData?.name || outputToken,
-      image: tokenData?.icon || require('@/assets/images/usdc.png'),
+      image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
       version: tokenData?.version,
     };
@@ -134,7 +135,7 @@ function DepositToVaultForm() {
       props: {
         link: `${explorerUrl}/tx/${hash}`,
         linkText: eclipseAddress(hash),
-        image: require('@/assets/images/usdc.png'),
+        image: getAsset('images/usdc.png'),
       },
     });
   };
@@ -234,7 +235,7 @@ function DepositToVaultForm() {
             </View>
             <View className="ml-auto flex-shrink-0 flex-row items-center gap-2">
               <Image
-                source={require('@/assets/images/sousd-4x.png')}
+                source={getAsset('images/sousd-4x.png')}
                 style={{ width: 24, height: 24 }}
                 contentFit="contain"
               />

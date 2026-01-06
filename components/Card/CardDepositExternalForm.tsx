@@ -16,6 +16,7 @@ import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useUser from '@/hooks/useUser';
+import { getAsset } from '@/lib/assets';
 import { getChain } from '@/lib/thirdweb';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
@@ -235,7 +236,7 @@ export default function CardDepositExternalForm() {
           />
           <View className="flex-row items-center gap-2">
             <Image
-              source={require('@/assets/images/usdc-4x.png')}
+              source={getAsset('images/usdc-4x.png')}
               alt="USDC"
               style={{ width: 34, height: 34 }}
             />

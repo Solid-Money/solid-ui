@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
+import { getAsset } from '@/lib/assets';
 import { CardStatus } from '@/lib/types';
 import SwipeableBanner from './SwipeableBanner';
 
@@ -136,8 +137,8 @@ const CardBanner = () => {
             <Image
               source={
                 isScreenMedium
-                  ? require('@/assets/images/cards-banner.png')
-                  : require('@/assets/images/cards-mobile.png')
+                  ? getAsset('images/cards-banner.png')
+                  : getAsset('images/cards-mobile.png')
               }
               contentFit="contain"
               style={{ width: isScreenMedium ? 250 : 250, height: isScreenMedium ? 250 : 280 }}

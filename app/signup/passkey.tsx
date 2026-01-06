@@ -16,6 +16,7 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 
@@ -240,7 +241,7 @@ export default function SignupPasskey() {
         {/* Logo at top center */}
         <View className="absolute left-0 right-0 top-6 items-center">
           <Image
-            source={require('@/assets/images/solid-logo-4x.png')}
+            source={getAsset('images/solid-logo-4x.png')}
             alt="Solid logo"
             style={{ width: 40, height: 44 }}
             contentFit="contain"

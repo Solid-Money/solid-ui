@@ -1,7 +1,8 @@
-import { View } from 'react-native';
-import { Image } from 'expo-image';
 import { Text } from '@/components/ui/text';
+import { getAsset } from '@/lib/assets';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { View } from 'react-native';
 
 interface ContractAddressWarningProps {
   chainName: string;
@@ -17,7 +18,7 @@ const ContractAddressWarning = ({ chainName }: ContractAddressWarningProps) => {
     >
       <View className="flex-row gap-2 gap-3 px-5 py-4">
         <Image
-          source={require('@/assets/images/exclamation-warning.png')}
+          source={getAsset('images/exclamation-warning.png')}
           style={{ width: 22, height: 22 }}
           contentFit="contain"
         />

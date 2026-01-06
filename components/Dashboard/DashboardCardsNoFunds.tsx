@@ -1,6 +1,8 @@
 import React from 'react';
 import { Image, Text, View } from 'react-native';
 
+import { getAsset } from '@/lib/assets';
+
 export function DashboardCardsNoFunds() {
   return <DepositStableCoinsCard />;
 }
@@ -19,7 +21,7 @@ function DepositStableCoinsCard() {
           </View>
           <View className="ml-4">
             <Image
-              source={require('@/assets/images/solid_logo_with_glare.png')}
+              source={getAsset('images/solid_logo_with_glare.png')}
               style={{ width: 320, height: 320 }}
             />
           </View>
@@ -33,15 +35,15 @@ function IconsWithText() {
   return (
     <View className="w-[65%] flex-row justify-between">
       <IconWithText
-        iconSource={require('@/assets/images/no_funds_deposit_icon.png')}
+        iconSource={getAsset('images/no_funds_deposit_icon.png')}
         text={`Deposit as${'\n'}little as $1`}
       />
       <IconWithText
-        iconSource={require('@/assets/images/no_funds_withdraw_icon.png')}
+        iconSource={getAsset('images/no_funds_withdraw_icon.png')}
         text={`Withdraw${'\n'}anytime`}
       />
       <IconWithText
-        iconSource={require('@/assets/images/no_funds_earn_icon.png')}
+        iconSource={getAsset('images/no_funds_earn_icon.png')}
         text={`Earn every${'\n'}second`}
       />
     </View>

@@ -16,6 +16,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import useSend from '@/hooks/useSend';
 import useUser from '@/hooks/useUser';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { getAsset } from '@/lib/assets';
 import { Status, TokenBalance, TokenType, TransactionStatus, TransactionType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
@@ -138,7 +139,7 @@ const DepositToCard = () => {
         props: {
           link: `https://etherscan.io/tx/${transaction.transactionHash}`,
           linkText: 'View on Etherscan',
-          image: require('@/assets/images/usdc-4x.png'),
+          image: getAsset('images/usdc-4x.png'),
         },
       });
 
@@ -198,10 +199,7 @@ const DepositToCard = () => {
           <View className="flex-row items-center justify-between">
             {selectedToken ? (
               <>
-                <Image
-                  source={require('@/assets/images/usdc-4x.png')}
-                  style={{ width: 42, height: 42 }}
-                />
+                <Image source={getAsset('images/usdc-4x.png')} style={{ width: 42, height: 42 }} />
                 <View className="ml-3 flex-1">
                   <Text className="text-lg font-bold text-white">
                     {selectedToken.contractTickerSymbol}
@@ -252,7 +250,7 @@ const DepositToCard = () => {
                 >
                   {key === 'backspace' ? (
                     <Image
-                      source={require('@/assets/images/backspace.png')}
+                      source={getAsset('images/backspace.png')}
                       style={{ width: 34, height: 25 }}
                     />
                   ) : (

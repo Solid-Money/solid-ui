@@ -18,6 +18,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { initSignupOtp, verifySignupOtp } from '@/lib/api';
+import { getAsset } from '@/lib/assets';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 // OTP resend cooldown (60 seconds)
@@ -383,7 +384,7 @@ export default function SignupOtp() {
         {/* Logo at top center */}
         <View className="absolute left-0 right-0 top-6 items-center">
           <Image
-            source={require('@/assets/images/solid-logo-4x.png')}
+            source={getAsset('images/solid-logo-4x.png')}
             alt="Solid logo"
             style={{ width: 40, height: 44 }}
             contentFit="contain"

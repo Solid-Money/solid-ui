@@ -14,6 +14,7 @@ import { useVoltageSwapCallback } from '@/hooks/swap/useVoltageSwapCallback';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { SwapField } from '@/lib/types/swap-field';
 import { TradeState } from '@/lib/types/trade-state';
 import { computeRealizedLPFeePercent, warningSeverity } from '@/lib/utils/swap/prices';
@@ -473,10 +474,7 @@ const SwapButton: React.FC = () => {
           </Text>
         ) : wrapType === WrapType.WRAP ? (
           <View className="flex-row items-center gap-2">
-            <Image
-              source={require('@/assets/images/security_key.png')}
-              style={{ width: 21, height: 10 }}
-            />
+            <Image source={getAsset('images/security_key.png')} style={{ width: 21, height: 10 }} />
             <Text className="text-base font-semibold">Wrap</Text>
           </View>
         ) : (
@@ -534,10 +532,7 @@ const SwapButton: React.FC = () => {
           <Text className="text-base font-semibold">Enter an amount</Text>
         ) : (
           <View className="flex-row items-center gap-2">
-            <Image
-              source={require('@/assets/images/security_key.png')}
-              style={{ width: 21, height: 10 }}
-            />
+            <Image source={getAsset('images/security_key.png')} style={{ width: 21, height: 10 }} />
             <Text className="text-base font-semibold">Swap</Text>
           </View>
         )}

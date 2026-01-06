@@ -22,6 +22,7 @@ import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
+import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardHolderName, CardStatus, CardTransaction } from '@/lib/types';
 import {
@@ -248,7 +249,7 @@ function DesktopHeader({
               <ActivityIndicator size="small" color="white" />
             ) : (
               <Image
-                source={require('@/assets/images/reveal_card_details_icon.png')}
+                source={getAsset('images/reveal_card_details_icon.png')}
                 style={{ width: 15, height: 15 }}
                 contentFit="contain"
               />
@@ -269,7 +270,7 @@ function DesktopHeader({
               <ActivityIndicator size="small" color="white" />
             ) : (
               <Image
-                source={require('@/assets/images/freeze_button_icon.png')}
+                source={getAsset('images/freeze_button_icon.png')}
                 style={{ width: 18, height: 18 }}
                 contentFit="contain"
               />
@@ -347,7 +348,7 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
           {/* Cashback Badge */}
           <View className="flex-row  items-center gap-1 px-4">
             <Image
-              source={require('@/assets/images/diamond.png')}
+              source={getAsset('images/diamond.png')}
               style={{ width: 82, aspectRatio: 72 / 66 }}
               contentFit="contain"
             />
@@ -399,8 +400,8 @@ function CardImageSection({
   onCardDetailsLoaded,
 }: CardImageSectionProps) {
   const desktopImagePath = isCardFrozen
-    ? require('@/assets/images/card_frozen.png')
-    : require('@/assets/images/activate_card_steps.png');
+    ? getAsset('images/card_frozen.png')
+    : getAsset('images/activate_card_steps.png');
 
   const desktopImageAspectRatio = isCardFrozen ? 531 / 328 : 513 / 306;
 
@@ -711,20 +712,20 @@ function CardActions({
       <DepositToCardModal
         trigger={
           <CircularActionButton
-            icon={require('@/assets/images/card_actions_fund.png')}
+            icon={getAsset('images/card_actions_fund.png')}
             label="Add funds"
             onPress={() => {}}
           />
         }
       />
       <CircularActionButton
-        icon={require('@/assets/images/card_actions_details.png')}
+        icon={getAsset('images/card_actions_details.png')}
         label={isCardFlipped ? 'Hide details' : 'Card details'}
         onPress={onCardDetails}
         isLoading={isLoadingCardDetails}
       />
       <CircularActionButton
-        icon={require('@/assets/images/card_actions_freeze.png')}
+        icon={getAsset('images/card_actions_freeze.png')}
         label={isCardFrozen ? 'Unfreeze' : 'Freeze'}
         onPress={onFreezeToggle}
         isLoading={isFreezing}
@@ -860,7 +861,7 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
           <Text className="text-2xl font-semibold text-[#94F27F]">${totalUsdValue}</Text>
         </View>
         <Image
-          source={require('@/assets/images/diamond.png')}
+          source={getAsset('images/diamond.png')}
           style={{ width: 80, aspectRatio: 56 / 51 }}
           contentFit="contain"
         />
@@ -901,13 +902,13 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
         </Text>
         <View className="flex-row items-center">
           <Image
-            source={require('@/assets/images/apple_pay.png')}
+            source={getAsset('images/apple_pay.png')}
             style={{ width: 49, height: 22 }}
             contentFit="contain"
           />
           <View className="mx-2 h-6 w-px bg-white/30" />
           <Image
-            source={require('@/assets/images/google_pay.png')}
+            source={getAsset('images/google_pay.png')}
             style={{ width: 47, height: 19 }}
             contentFit="contain"
           />

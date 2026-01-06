@@ -10,6 +10,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { useHoldingFundsPointsMultiplier } from '@/hooks/useHoldingFundsPointsMultiplier';
+import { getAsset } from '@/lib/assets';
 
 const PointsBanner = () => {
   const { isScreenMedium } = useDimension();
@@ -66,7 +67,7 @@ const PointsBanner = () => {
           </View>
           <View className="pointer-events-none absolute left-[85%] top-[30%] -translate-x-1/2 -translate-y-1/2 md:left-[80%] md:top-[50%]">
             <Image
-              source={require('@/assets/images/points_large.png')}
+              source={getAsset('images/points_large.png')}
               contentFit="contain"
               style={{ width: isScreenMedium ? 500 : 250, height: isScreenMedium ? 500 : 280 }}
             />
