@@ -86,17 +86,26 @@ export function useWebhookStatus(options: UseWebhookStatusOptions = {}): UseWebh
 
     const status = statusQuery.data;
 
+    // Set flag BEFORE async call to prevent race conditions
+    // If status query returns error then resolves with registered: false,
+    // both conditions could trigger without this guard
+    if (hasAutoSubscribedRef.current) return;
+    hasAutoSubscribedRef.current = true;
+
     // If we have status and user is not registered, subscribe
     if (status && !status.registered) {
-      hasAutoSubscribedRef.current = true;
       doSubscribe();
+      return;
     }
 
     // Also subscribe if we got an error fetching status (might be first time)
     if (statusQuery.isError && !isSubscribePending) {
-      hasAutoSubscribedRef.current = true;
       doSubscribe();
+      return;
     }
+
+    // If neither condition is met, reset the flag so we can try again
+    hasAutoSubscribedRef.current = false;
   }, [
     autoSubscribe,
     userId,

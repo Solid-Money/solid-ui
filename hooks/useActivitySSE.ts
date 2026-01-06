@@ -50,7 +50,7 @@ class SSEConnectionManager {
   private consecutiveErrors = 0;
   private consecutiveParseErrors = 0;
   private isConnecting = false;
-  private isRefreshingToken = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
   // Heartbeat monitoring
   private heartbeatCheckInterval: ReturnType<typeof setInterval> | null = null;
@@ -67,16 +67,21 @@ class SSEConnectionManager {
   // App state tracking
   private appStateSubscription: { remove: () => void } | null = null;
 
-  constructor() {
-    // Subscribe to user changes in the singleton
-    // This fixes the race condition where userId isn't available when enable() is called
+  // User store subscription is set up lazily when first subscriber is added
+  // and cleaned up when last subscriber is removed (no constructor needed)
+
+  /**
+   * Set up user store subscription to track user changes
+   * Called when first subscriber is added
+   */
+  private setupUserStoreSubscription(): void {
+    if (this.userStoreUnsubscribe) return; // Already set up
+
     this.userStoreUnsubscribe = useUserStore.subscribe(storeState => {
       const user = storeState.users.find(u => u.selected);
       const newUserId = user?.userId || null;
 
       // User changed - update connection
-      // Note: We track user changes regardless of subscriber count.
-      // The cleanup in subscribe() will disconnect if there are no subscribers.
       if (newUserId !== this.currentUserId) {
         this.currentUserId = newUserId;
         // Only connect/disconnect if we have active subscribers
@@ -92,18 +97,35 @@ class SSEConnectionManager {
   }
 
   /**
+   * Clean up user store subscription
+   * Called when last subscriber is removed
+   */
+  private cleanupUserStoreSubscription(): void {
+    if (this.userStoreUnsubscribe) {
+      this.userStoreUnsubscribe();
+      this.userStoreUnsubscribe = null;
+    }
+  }
+
+  /**
    * Subscribe to state changes. Returns unsubscribe function.
    */
   subscribe(listener: SSEStateListener): () => void {
+    // Set up user store subscription when first subscriber is added
+    if (this.subscribers.size === 0) {
+      this.setupUserStoreSubscription();
+    }
+
     this.subscribers.add(listener);
     // Immediately notify with current state
     listener(this.state);
 
     return () => {
       this.subscribers.delete(listener);
-      // If no more subscribers, disconnect
+      // If no more subscribers, disconnect and clean up user store subscription
       if (this.subscribers.size === 0) {
         this.disconnect();
+        this.cleanupUserStoreSubscription();
       }
     };
   }
@@ -198,52 +220,56 @@ class SSEConnectionManager {
    * Returns true if refresh succeeded and reconnection was initiated.
    */
   private async tryRefreshTokenAndReconnect(): Promise<boolean> {
-    if (this.isRefreshingToken) {
-      return false;
+    // If already refreshing, wait for the existing refresh to complete
+    if (this.refreshPromise) {
+      return this.refreshPromise;
     }
 
-    this.isRefreshingToken = true;
+    // Create a new refresh promise to prevent race conditions
+    this.refreshPromise = (async () => {
+      try {
+        const { users, updateUser } = useUserStore.getState();
+        const currentUser = users.find(user => user.selected);
 
-    try {
-      const { users, updateUser } = useUserStore.getState();
-      const currentUser = users.find(user => user.selected);
+        if (!currentUser?.tokens?.refreshToken) {
+          return false;
+        }
 
-      if (!currentUser?.tokens?.refreshToken) {
+        // refreshToken() gets the refresh token internally and returns a Response
+        const response = await refreshToken();
+        const data = (await response.json()) as {
+          tokens: { accessToken: string; refreshToken: string };
+        };
+
+        if (data?.tokens?.accessToken && data?.tokens?.refreshToken) {
+          // Update tokens in store
+          updateUser({
+            ...currentUser,
+            tokens: {
+              accessToken: data.tokens.accessToken,
+              refreshToken: data.tokens.refreshToken,
+            },
+          });
+
+          // Properly disconnect and reconnect with new token
+          // This ensures clean state and prevents race conditions
+          this.reconnect();
+          return true;
+        }
+
         return false;
-      }
-
-      // refreshToken() gets the refresh token internally and returns a Response
-      const response = await refreshToken();
-      const data = (await response.json()) as {
-        tokens: { accessToken: string; refreshToken: string };
-      };
-
-      if (data?.tokens?.accessToken && data?.tokens?.refreshToken) {
-        // Update tokens in store
-        updateUser({
-          ...currentUser,
-          tokens: {
-            accessToken: data.tokens.accessToken,
-            refreshToken: data.tokens.refreshToken,
-          },
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: { type: 'sse_token_refresh_error' },
+          level: 'error',
         });
-
-        // Properly disconnect and reconnect with new token
-        // This ensures clean state and prevents race conditions
-        this.reconnect();
-        return true;
+        return false;
+      } finally {
+        this.refreshPromise = null;
       }
+    })();
 
-      return false;
-    } catch (error) {
-      Sentry.captureException(error, {
-        tags: { type: 'sse_token_refresh_error' },
-        level: 'error',
-      });
-      return false;
-    } finally {
-      this.isRefreshingToken = false;
-    }
+    return this.refreshPromise;
   }
 
   /**
@@ -442,7 +468,9 @@ class SSEConnectionManager {
                   extra: { consecutiveErrors: this.consecutiveParseErrors },
                 });
                 this.reconnect();
-                return; // Exit the read loop
+                // Exit the read loop - the finally block (line 479-490) will handle cleanup
+                // including releasing the reader lock before reconnecting
+                return;
               }
             }
           }
@@ -481,7 +509,7 @@ class SSEConnectionManager {
       if (this.reader) {
         try {
           this.reader.releaseLock();
-        } catch (e) {
+        } catch (_e) {
           // Reader may already be released or closed, ignore
         }
         this.reader = null;
@@ -526,7 +554,7 @@ class SSEConnectionManager {
     if (this.reader) {
       try {
         this.reader.releaseLock();
-      } catch (e) {
+      } catch (_e) {
         // Reader may already be released or closed, ignore
       }
       this.reader = null;

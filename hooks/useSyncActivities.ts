@@ -77,7 +77,6 @@ export const useSyncStore = create<SyncState>()(
         if (state.isSyncingLock && state.syncLockTimestamp) {
           const lockAge = Date.now() - state.syncLockTimestamp;
           if (lockAge > LOCK_TIMEOUT_MS) {
-            console.warn('Sync lock was held for >30s, force releasing');
             set({ isSyncingLock: false, syncLockTimestamp: null });
           } else {
             return false;
