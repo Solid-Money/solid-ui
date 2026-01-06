@@ -65,6 +65,7 @@ type Addresses = {
     cardDepositManager: Address;
     fastWithdrawManager: Address;
     stargateOftUSDC: Address;
+    aaveV3Pool: Address;
   };
   base: {
     vault: Address;
@@ -107,6 +108,7 @@ export const ADDRESSES: Addresses = {
     cardDepositManager: '0x22BBc13D022735f2586d4eb04a93f0F4E0173E50',
     fastWithdrawManager: '0x0bA17eab7B6B2353eA4731c37A2cBA2a5AA4Ea1b',
     stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',
+    aaveV3Pool: '0xe3eda4b12ae4ACC031E4CF9Eae08ACe6250CED3E',
   },
   base: {
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
