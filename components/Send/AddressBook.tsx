@@ -17,17 +17,17 @@ const AddressBook: React.FC = () => {
     });
 
   return (
-    <View className="gap-8 flex-1 justify-between">
-      <View className="gap-8 flex-1 min-h-[17rem]">
+    <View className="flex-1 justify-between gap-8">
+      <View className="min-h-[17rem] flex-1 gap-8">
         <View className="gap-4">
-          <Text className="text-base opacity-70 font-medium">To</Text>
-          <View className="flex-row items-center gap-2 bg-card rounded-2xl p-5">
+          <Text className="text-base font-medium opacity-70">Address</Text>
+          <View className="flex-row items-center gap-2 rounded-2xl bg-card p-5">
             <Controller
               control={control}
               name="walletAddress"
               render={({ field: { onChange, value } }) => (
                 <TextInput
-                  className="text-white text-base web:focus:outline-none flex-1"
+                  className="flex-1 text-base text-white web:focus:outline-none"
                   placeholder="Address"
                   placeholderTextColor="#ffffff80"
                   value={value}
@@ -44,15 +44,14 @@ const AddressBook: React.FC = () => {
         </View>
 
         <View className="gap-4">
-          <Text className="text-base opacity-70 font-medium">Name</Text>
-          <View className="flex-row items-center gap-2 bg-card rounded-2xl p-5">
+          <Text className="text-base font-medium opacity-70">Contact name</Text>
+          <View className="flex-row items-center gap-2 rounded-2xl bg-card p-5">
             <Controller
               control={control}
               name="name"
               render={({ field: { onChange, value } }) => (
                 <TextInput
-                  className="text-white text-base web:focus:outline-none flex-1"
-                  placeholder="Full name"
+                  className="flex-1 text-base text-white web:focus:outline-none"
                   placeholderTextColor="#ffffff80"
                   value={value}
                   onChangeText={onChange}

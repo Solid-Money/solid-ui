@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils/index';
 import * as SwitchPrimitives from '@rn-primitives/switch';
-import { Platform } from 'react-native';
+import { Check, X } from 'lucide-react-native';
+import { Platform, View } from 'react-native';
 
 function Switch({
   className,
@@ -9,25 +10,41 @@ function Switch({
   return (
     <SwitchPrimitives.Root
       className={cn(
-        'flex h-[1.15rem] w-8 shrink-0 flex-row items-center rounded-full border border-transparent shadow-sm shadow-black/5',
+        'relative flex h-6 w-11 shrink-0 flex-row items-center rounded-full border border-transparent px-0.5 shadow-sm shadow-black/5',
         Platform.select({
-          web: 'focus-visible:border-ring focus-visible:ring-ring/50 peer inline-flex outline-none transition-all focus-visible:ring-[3px] disabled:cursor-not-allowed',
+          web: 'peer inline-flex outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed',
         }),
-        props.checked ? 'bg-primary' : 'bg-input dark:bg-input/80',
+        props.checked ? 'bg-brand' : 'bg-foreground/50',
         props.disabled && 'opacity-50',
         className,
       )}
       {...props}
     >
+      <View className="absolute inset-0 flex-row items-center justify-between px-1.5">
+        <Check
+          size={12}
+          className={cn(
+            'text-card transition-opacity',
+            props.checked ? 'opacity-100' : 'opacity-0',
+          )}
+        />
+        <X
+          size={12}
+          className={cn(
+            'text-card transition-opacity',
+            props.checked ? 'opacity-0' : 'opacity-100',
+          )}
+        />
+      </View>
       <SwitchPrimitives.Thumb
         className={cn(
-          'bg-background size-4 rounded-full transition-transform',
+          'z-10 size-5 rounded-full bg-background transition-transform',
           Platform.select({
             web: 'pointer-events-none block ring-0',
           }),
           props.checked
-            ? 'dark:bg-primary-foreground translate-x-3.5'
-            : 'dark:bg-foreground translate-x-0',
+            ? 'translate-x-5 dark:bg-primary-foreground'
+            : 'translate-x-0 dark:bg-foreground',
         )}
       />
     </SwitchPrimitives.Root>

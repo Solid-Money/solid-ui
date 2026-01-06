@@ -26,11 +26,11 @@ const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
   const { link, linkText, image, badgeText = 'Onchain' } = props || {};
   return (
     <View
-      className="flex-row justify-between ml-auto bg-card rounded-2xl w-full h-full max-w-md"
+      className="ml-auto h-full w-full max-w-md flex-row justify-between rounded-2xl bg-card"
       style={{ marginRight: 40 }}
       role="alert"
     >
-      <View className="flex-row justify-between items-center p-4 flex-1">
+      <View className="flex-1 flex-row items-center justify-between p-4">
         <View className="gap-2">
           <Text className="font-medium">{text1}</Text>
           {(text2 || image) && (
@@ -42,7 +42,7 @@ const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
         </View>
         <View className="items-end gap-2">
           {badgeText ? (
-            <View className={cn('border rounded-md px-1 py-0.5', classNames?.badge)}>
+            <View className={cn('rounded-md border px-1 py-0.5', classNames?.badge)}>
               <Text className={cn('text-sm', classNames?.badgeText)}>{badgeText}</Text>
             </View>
           ) : null}
@@ -59,7 +59,7 @@ const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
       <Button
         onPress={() => Toast.hide()}
         variant="ghost"
-        className="px-4 h-auto border-l border-primary/10 web:hover:border-accent rounded-l-none rounded-r-2xl text-accent-foreground"
+        className="h-auto rounded-l-none rounded-r-2xl border-l border-primary/10 px-4 text-accent-foreground web:hover:border-accent"
       >
         <X />
       </Button>

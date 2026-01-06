@@ -30,11 +30,11 @@ const TokenRow = memo(
     });
 
     return (
-      <View className="flex-row items-center justify-between p-4 py-5 pr-6 bg-[#1C1C1C] rounded-[20px] mb-2">
+      <View className="mb-2 flex-row items-center justify-between rounded-[20px] bg-[#1C1C1C] p-4 py-5 pr-6">
         <View className="flex-row items-center gap-3">
           <RenderTokenIcon tokenIcon={tokenIcon} size={40} />
           <View>
-            <Text className="font-bold text-lg">{token.contractTickerSymbol || 'Unknown'}</Text>
+            <Text className="text-lg font-bold">{token.contractTickerSymbol || 'Unknown'}</Text>
             <Text className="text-sm font-medium text-muted-foreground">
               {compactNumberFormat(balance)} {token.contractTickerSymbol || 'Unknown'}
             </Text>
@@ -42,7 +42,7 @@ const TokenRow = memo(
         </View>
 
         <View className="flex-row items-center gap-4">
-          <Text className="font-bold text-lg">${compactNumberFormat(balanceUSD)}</Text>
+          <Text className="text-lg font-bold">${compactNumberFormat(balanceUSD)}</Text>
         </View>
       </View>
     );
@@ -88,7 +88,6 @@ const CoinsMobile = () => {
       <Title />
       <FlashList
         data={allTokens}
-        estimatedItemSize={72}
         contentContainerStyle={{
           paddingBottom: insets.bottom,
         }}

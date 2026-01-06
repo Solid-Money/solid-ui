@@ -97,17 +97,17 @@ const CardBanner = () => {
         end={{ x: 0.6, y: 1 }}
         style={{
           borderRadius: 20,
-          height: '100%',
+          flex: 1,
           width: '100%',
           overflow: 'hidden',
         }}
       >
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
-          <View className="max-w-40 md:max-w-64 justify-between items-start gap-1 md:gap-4 py-4 md:py-7">
-            <Text className="text-xl md:text-3xl font-semibold native:text-base">
+          <View className="max-w-40 flex-1 items-start justify-between gap-1 py-4 md:max-w-64 md:gap-4 md:py-7">
+            <Text className="native:text-lg text-lg font-semibold md:text-3xl">
               {bannerContent.title}
             </Text>
-            <Text className="text-muted-foreground font-semibold native:text-sm">
+            <Text className="native:text-base font-semibold text-muted-foreground">
               {bannerContent.description}
               {bannerContent.showPromo && (
                 <>
@@ -126,13 +126,13 @@ const CardBanner = () => {
               )}
             </Text>
             <Button
-              className="rounded-xl h-11 md:h-12 px-6 border-0 bg-button-earning web:hover:bg-button-earning web:hover:brightness-110"
+              className="h-11 rounded-xl border-0 bg-button-earning px-6 web:hover:bg-button-earning web:hover:brightness-110 md:h-12"
               onPress={bannerContent.action}
             >
-              <Text className="text-base text-primary font-bold">{bannerContent.ctaText}</Text>
+              <Text className="text-base font-bold text-primary">{bannerContent.ctaText}</Text>
             </Button>
           </View>
-          <View className="-mt-14 -ml-4 md:-mt-4 pointer-events-none">
+          <View className="pointer-events-none -ml-4 -mt-14 md:-mt-4">
             <Image
               source={
                 isScreenMedium

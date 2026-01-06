@@ -69,12 +69,11 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
     return z.object({
       amount: z
         .string()
-        .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
-        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
-        .refine(
-          val => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} ${selectedToken?.contractTickerSymbol || ''}`,
-        )
+        .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
+        .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
+        .refine(val => Number(val) <= balanceAmount, {
+          error: `Available balance is ${formatNumber(balanceAmount)} ${selectedToken?.contractTickerSymbol || ''}`,
+        })
         .transform(val => Number(val)),
     });
   }, [selectedToken, balanceAmount]);
@@ -128,13 +127,13 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
   };
 
   return (
-    <View className="gap-8 flex-1 justify-between">
-      <View className="gap-8 flex-1 min-h-[17rem]">
+    <View className="flex-1 justify-between gap-8">
+      <View className="min-h-[17rem] flex-1 gap-8">
         <ToInput />
 
         <View className="gap-4">
           <View className="flex-row items-center justify-between">
-            <Text className="text-base opacity-70 font-medium">Amount</Text>
+            <Text className="text-base font-medium opacity-70">Amount</Text>
             {selectedToken && (
               <View className="flex-row items-center gap-2">
                 <Wallet size={16} color="#ffffff80" />
@@ -147,7 +146,7 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
               </View>
             )}
           </View>
-          <View className="flex-row items-center justify-between gap-2 bg-card rounded-2xl p-4">
+          <View className="flex-row items-center justify-between gap-2 rounded-2xl bg-card p-4">
             <View className="flex-1">
               <Controller
                 control={control}
@@ -155,7 +154,7 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
                     className={cn(
-                      'flex-1 web:focus:outline-none text-white text-3xl font-semibold',
+                      'flex-1 text-3xl font-semibold text-white web:focus:outline-none',
                     )}
                     placeholder="0.0"
                     placeholderTextColor="#ffffff80"
@@ -176,7 +175,7 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
             </View>
 
             <Pressable
-              className="flex-row items-center gap-1.5 bg-foreground/10 web:hover:bg-foreground/20 rounded-full px-3 h-12"
+              className="h-12 flex-row items-center gap-1.5 rounded-full bg-foreground/10 px-3 web:hover:bg-foreground/20"
               onPress={handleTokenSelectorPress}
             >
               {selectedToken ? (
@@ -196,22 +195,22 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
                 </>
               ) : (
                 <>
-                  <View className="w-6 h-6 bg-primary/20 rounded-full" />
-                  <Text className="text-muted-foreground text-lg font-semibold">Select token</Text>
+                  <View className="h-6 w-6 rounded-full bg-primary/20" />
+                  <Text className="text-lg font-semibold text-muted-foreground">Select token</Text>
                   <ChevronDown size={20} color="white" />
                 </>
               )}
             </Pressable>
           </View>
           {errors.amount && (
-            <Text className="text-red-400 text-sm">{errors.amount.message as string}</Text>
+            <Text className="text-sm text-red-400">{errors.amount.message as string}</Text>
           )}
         </View>
       </View>
 
       <Button
         variant="brand"
-        className="rounded-xl h-12"
+        className="h-12 rounded-xl"
         size="lg"
         onPress={handleSubmit(onSubmit)}
         disabled={!selectedToken || !isValid}

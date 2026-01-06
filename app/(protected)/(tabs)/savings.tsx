@@ -1,23 +1,25 @@
 import { DashboardTitle } from '@/components/Dashboard';
-import { HomeBanners } from '@/components/Dashboard/HomeBanners';
+import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
-import SavingsHeaderButtons from '@/components/Savings/SavingsHeaderButtons';
 import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useAPYs, useLatestTokenTransfer, useMaxAPY } from '@/hooks/useAnalytics';
+import {
+  useAPYs,
+  useLatestTokenTransfer,
+  useMaxAPY,
+  useUserTransactions,
+} from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
-import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
@@ -25,8 +27,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
 import { FlatList, ImageBackground, Platform, View } from 'react-native';
 import { Address } from 'viem';
-import { mainnet } from 'viem/chains';
-import { useBlockNumber } from 'wagmi';
 
 export default function Savings() {
   const { user } = useUser();
@@ -39,12 +39,6 @@ export default function Savings() {
   const { maxAPY, maxAPYDays, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
   const { data: apys, isLoading: isAPYsLoading } = useAPYs();
 
-  const { data: blockNumber } = useBlockNumber({
-    watch: true,
-    chainId: mainnet.id,
-  });
-
-  const { hasTokens } = useWalletTokens();
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     ADDRESSES.fuse.vault,
@@ -52,13 +46,9 @@ export default function Savings() {
 
   const {
     data: userDepositTransactions,
-    loading: isTransactionsLoading,
+    isLoading: isTransactionsLoading,
     refetch: refetchTransactions,
-  } = useGetUserTransactionsQuery({
-    variables: {
-      address: user?.safeAddress?.toLowerCase() ?? '',
-    },
-  });
+  } = useUserTransactions(user?.safeAddress);
 
   const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
@@ -66,10 +56,14 @@ export default function Savings() {
     lastTimestamp,
   );
 
+  // Controlled polling for balance/transaction updates - every 60 seconds instead of every block (~12s)
   useEffect(() => {
-    refetchBalance();
-    refetchTransactions();
-  }, [blockNumber, refetchBalance, refetchTransactions]);
+    const interval = setInterval(() => {
+      refetchBalance();
+      refetchTransactions();
+    }, 60000); // 60 seconds
+    return () => clearInterval(interval);
+  }, [refetchBalance, refetchTransactions]);
 
   const isLoading = isBalanceLoading || isTransactionsLoading;
 
@@ -79,44 +73,57 @@ export default function Savings() {
 
   const renderContent = () => (
     <>
-      <View className="gap-8 md:gap-9 px-4 py-8 md:py-12 pt-8 md:py-10 w-full max-w-7xl mx-auto">
+      <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-6 md:gap-9 md:py-10">
         {isScreenMedium ? (
-          <View className="flex-row justify-between items-center">
+          <View className="flex-row items-center justify-between">
             <DashboardTitle />
-            <SavingsHeaderButtons hasTokens={hasTokens} />
+            <DashboardHeaderButtons />
           </View>
         ) : (
-          <Text className="text-xl font-semibold">Savings</Text>
+          <Text className="text-3xl font-semibold">Savings</Text>
         )}
-        <LinearGradient
-          colors={['rgba(156, 48, 235, 0.3)', 'rgba(156, 48, 235, 0.2)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="web:md:flex web:md:flex-row rounded-twice overflow-hidden"
+        <View
+          className="relative overflow-hidden rounded-twice web:md:flex web:md:flex-row"
           style={Platform.OS === 'web' ? {} : { borderRadius: 20 }}
         >
+          <LinearGradient
+            colors={['rgba(122, 84, 234, 1)', 'rgba(122, 84, 234, 0.5)']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.6, y: 1 }}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              zIndex: -1,
+              opacity: 0.3,
+            }}
+          />
           <ImageBackground
-            source={require('@/assets/images/solid-purple-large.png')}
+            source={require('@/assets/images/solid-black-large.png')}
             resizeMode="contain"
-            className="flex-1"
+            className="relative flex-1"
+            style={{ mixBlendMode: 'luminosity' }}
             imageStyle={{
               width: 461,
               height: 625,
               marginTop: isScreenMedium ? -100 : -50,
               marginRight: isScreenMedium ? 50 : -250,
               marginLeft: 'auto',
-              opacity: 0.5,
             }}
           >
-            <View className="flex-1 bg-transparent p-6 pb-10 md:px-10 md:py-8 justify-between gap-12 md:gap-4 border-b border-[#ffffff]/20 md:border-b-0 md:border-r">
+            <View className="flex-1 justify-between gap-12 border-b border-[#ffffff]/20 bg-transparent p-6 pb-10 md:gap-4 md:border-b-0 md:border-r md:px-10 md:py-8">
               <View>
-                <Text className="text-[1rem] md:text-lg text-primary/70">Total value</Text>
+                <Text className="text-[1rem] text-primary/70 md:text-lg">Total value</Text>
                 <View className="flex-row items-center">
                   <SavingCountUp
                     prefix="$"
                     balance={balance ?? 0}
                     apy={apys?.allTime ?? 0}
                     lastTimestamp={firstDepositTimestamp ?? 0}
+                    userDepositTransactions={userDepositTransactions}
                     classNames={{
                       wrapper: 'text-foreground',
                       decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
@@ -140,7 +147,7 @@ export default function Savings() {
                 </View>
               </View>
               <View className="gap-1">
-                <Text className="text-[1rem] md:text-lg text-primary/70">Interest earned</Text>
+                <Text className="text-[1rem] text-primary/70 md:text-lg">Interest earned</Text>
                 <View className="flex-row items-center">
                   <SavingCountUp
                     prefix="$"
@@ -148,6 +155,7 @@ export default function Savings() {
                     apy={apys?.allTime ?? 0}
                     lastTimestamp={firstDepositTimestamp ?? 0}
                     mode={SavingMode.CURRENT}
+                    userDepositTransactions={userDepositTransactions}
                     classNames={{
                       decimalSeparator: 'md:text-xl font-medium',
                     }}
@@ -171,16 +179,16 @@ export default function Savings() {
             </View>
           </ImageBackground>
 
-          <View className="flex-row md:flex-col web:md:w-80 bg-transparent justify-left md:justify-center">
-            <View className="p-6 md:p-7 yield-box">
+          <View className="justify-left relative flex-row bg-transparent md:flex-col md:justify-center web:md:w-80">
+            <View className="yield-box p-6 md:p-7">
               <View className="flex-row items-center gap-2 pb-1">
-                <Text className="text-[1rem] md:text-lg text-primary/70">Current Yield</Text>
+                <Text className="text-[1rem] text-primary/70 md:text-lg">Current Yield</Text>
                 <TooltipPopover text={`Last ${maxAPYDays} days yield of the vault`} />
               </View>
               <View className="flex-row items-center gap-2">
-                <Text className="text-2xl text-brand font-semibold">
+                <Text className="text-2xl font-semibold text-brand">
                   {isMaxAPYsLoading ? (
-                    <Skeleton className="w-20 h-8 rounded-md bg-purple/50" />
+                    <Skeleton className="h-8 w-20 rounded-md bg-purple/50" />
                   ) : maxAPY ? (
                     `${formatNumber(maxAPY, 2)}%`
                   ) : (
@@ -191,50 +199,47 @@ export default function Savings() {
               </View>
             </View>
 
-            <View className="border-r md:border-t border-[#ffffff]/20" />
+            <View className="border-r border-[#ffffff]/20 md:border-t" />
 
             <View className="p-6 md:p-7">
               <View className="flex-row items-center gap-2 pb-1">
-                <Text className="text-[1rem] md:text-lg text-primary/70">All time yield</Text>
+                <Text className="text-[1rem] text-primary/70 md:text-lg">All time yield</Text>
                 <TooltipPopover text="All time yield of the vault" />
               </View>
               <Text className="text-2xl font-semibold">
                 {isAPYsLoading ? (
-                  <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
+                  <Skeleton className="h-8 w-24 rounded-twice bg-purple/50" />
                 ) : (
                   `${apys ? formatNumber(apys.allTime, 2) : 0}%`
                 )}
               </Text>
             </View>
 
-            <View className="border-t border-[#ffffff]/20 hidden md:block" />
+            <View className="hidden border-t border-[#ffffff]/20 md:block" />
 
-            <View className="p-6 md:p-7 hidden md:flex">
-              <Text className="md:text-lg text-primary/70 pb-1">Projected 1Y Earnings</Text>
+            <View className="hidden p-6 md:flex md:p-7">
+              <Text className="pb-1 text-primary/70 md:text-lg">Projected 1Y Earnings</Text>
               <Text className="text-2xl font-semibold">
                 {isBalanceLoading ? (
-                  <Skeleton className="w-24 h-8 bg-purple/50 rounded-twice" />
+                  <Skeleton className="h-8 w-24 rounded-twice bg-purple/50" />
                 ) : (
                   `$${balance && apys?.allTime ? formatNumber(balance * (apys.allTime / 100), 2) : 0}`
                 )}
               </Text>
             </View>
           </View>
-        </LinearGradient>
+        </View>
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile />}
       </View>
-      <View className="md:px-0 w-full max-w-7xl mx-auto">
-        <HomeBanners />
-      </View>
-      <View className="px-4 w-full max-w-7xl mx-auto">
+      <View className="mx-auto w-full max-w-7xl px-4">
         <FAQs faqs={faqs} className="md:mt-20" />
       </View>
     </>
   );
 
   return (
-    <PageLayout desktopOnly isLoading={isLoading} scrollable={false}>
+    <PageLayout isLoading={isLoading} scrollable={false}>
       <FlatList
         data={[{ key: 'content' }]}
         renderItem={() => renderContent()}

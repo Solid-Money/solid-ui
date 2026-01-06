@@ -34,12 +34,11 @@ const Unstake = () => {
     return z.object({
       amount: z
         .string()
-        .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
-        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
-        .refine(
-          val => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} soUSD`,
-        )
+        .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
+        .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
+        .refine(val => Number(val) <= balanceAmount, {
+          error: `Available balance is ${formatNumber(balanceAmount)} soUSD`,
+        })
         .transform(val => Number(val)),
     });
   }, [fuseBalance]);
@@ -109,11 +108,11 @@ const Unstake = () => {
   return (
     <View className="gap-8">
       <View className="gap-3">
-        <Text className="opacity-60 text-base text-muted-foreground">Withdraw amount</Text>
+        <Text className="text-base text-muted-foreground opacity-60">Withdraw amount</Text>
 
         <View
           className={cn(
-            'w-full bg-primary/5 rounded-2xl px-5 py-3',
+            'w-full rounded-2xl bg-primary/5 px-5 py-3',
             bridgeErrors.amount && 'border border-destructive',
           )}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
@@ -124,7 +123,7 @@ const Unstake = () => {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="w-full text-2xl text-foreground font-semibold web:focus:outline-none"
+                className="w-full text-2xl font-semibold text-foreground web:focus:outline-none"
                 value={value.toString()}
                 placeholder="0.0"
                 placeholderTextColor="#A3A3A3"
@@ -139,7 +138,7 @@ const Unstake = () => {
               alt="SoUSD"
               style={{ width: 34, height: 34 }}
             />
-            <Text className="font-semibold text-foreground text-lg native:text-sm web:text-base">
+            <Text className="native:text-sm text-lg font-semibold text-foreground web:text-base">
               SoUSD
             </Text>
           </View>
@@ -147,9 +146,9 @@ const Unstake = () => {
 
         <View className="flex-row items-center gap-1.5">
           <Wallet size={16} color="#A3A3A3" />
-          <Text className="text-muted-foreground text-sm">
+          <Text className="text-sm text-muted-foreground">
             {isFuseBalanceLoading ? (
-              <Skeleton className="w-16 h-4 rounded-md" />
+              <Skeleton className="h-4 w-16 rounded-md" />
             ) : fuseBalance ? (
               `${formatNumber(fuseBalance)} SoUSD`
             ) : (
@@ -165,9 +164,9 @@ const Unstake = () => {
         </View>
       </View>
 
-      <View className="flex-row gap-2 items-start">
+      <View className="flex-row items-start gap-2">
         <Info size={20} color="#A3A3A3" />
-        <Text className="text-sm text-muted-foreground flex-1">
+        <Text className="flex-1 text-sm text-muted-foreground">
           Withdrawals are processed in two steps. This step will unstake your funds to be able to
           withdraw and should take up to 10 mins.
         </Text>
@@ -175,11 +174,11 @@ const Unstake = () => {
 
       <Button
         variant="brand"
-        className="rounded-2xl h-12 mt-32"
+        className="mt-32 h-12 rounded-2xl"
         onPress={handleBridgeSubmit(onBridgeSubmit)}
         disabled={isBridgeFormDisabled()}
       >
-        <Text className="font-semibold text-primary-foreground text-lg">{getBridgeText()}</Text>
+        <Text className="text-lg font-semibold text-primary-foreground">{getBridgeText()}</Text>
         {isBridgeLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>
@@ -192,13 +191,13 @@ const UnstakeTrigger = (props: any) => {
       variant="outline"
       className={buttonVariants({
         variant: 'secondary',
-        className: 'border-0 md:h-12 md:pr-6 rounded-xl',
+        className: 'rounded-xl border-0 md:h-12 md:pr-6',
       })}
       {...props}
     >
       <View className="flex-row items-center gap-4">
         <ArrowDownLeft color="white" />
-        <Text className="font-bold text-base">Withdraw</Text>
+        <Text className="text-base font-bold">Withdraw</Text>
       </View>
     </Button>
   );

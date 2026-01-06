@@ -1,29 +1,29 @@
-import { AlertTriangle } from 'lucide-react-native';
 import React from 'react';
-import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Image, Pressable, TextInput, View } from 'react-native';
+import { Control } from 'react-hook-form';
+import { ActivityIndicator, Image, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Address } from 'viem';
 
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
-import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
 import { SEND_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
-import { useAddressBook } from '@/hooks/useAddressBook';
+import { AddressBookFormData, useAddressBook } from '@/hooks/useAddressBook';
 import { useIsContract } from '@/hooks/useIsContract';
 import useSend from '@/hooks/useSend';
+import { useTotp } from '@/hooks/useTotp';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
+import ContractAddressWarning from './ContractAddressWarning';
+import SaveContact from './SaveContact';
 
 import Key from '@/assets/images/key';
 import Wallet from '@/assets/images/wallet';
@@ -33,7 +33,7 @@ const SendReview: React.FC = () => {
     useSendStore();
   const { refetchAll } = useActivity();
 
-  const { send, sendStatus } = useSend({
+  const { send, sendStatus, totpModal } = useSend({
     tokenAddress: selectedToken?.contractAddress as any,
     tokenDecimals: selectedToken?.contractDecimals || 18,
     tokenSymbol: selectedToken?.contractTickerSymbol || 'TOKEN',
@@ -62,8 +62,11 @@ const SendReview: React.FC = () => {
     },
   });
 
+  const { isVerified: isTotpVerified } = useTotp();
+
   const isSendLoading = sendStatus === Status.PENDING;
-  const isContact = !name || !hasSkipped2fa;
+  const showSkip2fa = isTotpVerified && !hasSkipped2fa;
+  const isContact = !name || showSkip2fa;
 
   const getButtonText = () => {
     if (isSendLoading) return 'Sending';
@@ -143,7 +146,7 @@ const SendReview: React.FC = () => {
   if (!selectedToken || !amount || !address) {
     return (
       <View className="items-center">
-        <Text className="text-base font-medium max-w-64 text-center">
+        <Text className="max-w-64 text-center text-base font-medium">
           Missing or invalid information. Please go back and fill all fields.
         </Text>
       </View>
@@ -199,39 +202,13 @@ const SendReview: React.FC = () => {
     },
     {
       label: 'To',
-      value: (
-        <View className="flex-row items-start gap-2">
-          {isContract && (
-            <TooltipPopover
-              trigger={
-                <View className="mt-1">
-                  <AlertTriangle size={18} color="#F59E0B" />
-                </View>
-              }
-              content={
-                <View className="gap-1">
-                  <Text className="text-sm font-semibold leading-5">
-                    This appears to be a smart contract address
-                  </Text>
-                  <Text className="text-sm leading-5 opacity-90">
-                    Please check the recipient is able to receive assets on{' '}
-                    {getBridgeChain(selectedToken?.chainId || 1).name}
-                  </Text>
-                </View>
-              }
-              side="top"
-              analyticsContext="send_review_contract_warning"
-            />
-          )}
-          <Text className="text-right text-base font-semibold max-w-52">{address}</Text>
-        </View>
-      ),
+      value: <Text className="text-right text-xs font-semibold">{address}</Text>,
     },
   ];
 
   return (
-    <View className="gap-8 flex-1 justify-between">
-      <View className="gap-8 flex-1">
+    <View className="flex-1 justify-between gap-8">
+      <View className="flex-1 gap-5">
         <View className="items-center">
           <Text className="text-2xl font-semibold">
             <Text className="opacity-50">Send</Text> {formatNumber(Number(amount))}{' '}
@@ -242,73 +219,38 @@ const SendReview: React.FC = () => {
           </Text>
         </View>
 
-        <View className="bg-card rounded-2xl">
+        {isContract && (
+          <ContractAddressWarning chainName={getBridgeChain(selectedToken?.chainId || 1).name} />
+        )}
+
+        {isContact && (
+          <SaveContact
+            control={nameControl as Control<AddressBookFormData>}
+            errors={nameErrors}
+            showSkip2fa={showSkip2fa}
+            name={name}
+          />
+        )}
+
+        <View className="rounded-2xl bg-card">
           {rows.map((row, index) => (
             <View
               key={index}
               className={cn(
-                'flex-row items-center justify-between border-b border-foreground/10 p-5',
+                'flex-row items-center justify-between gap-1 border-b border-foreground/10 p-5',
                 rows.length - 1 === index && 'border-b-0',
               )}
             >
-              <Text className="text-base opacity-70 font-medium">{row.label}</Text>
+              <Text className="text-base font-medium opacity-70">{row.label}</Text>
               {row.value}
             </View>
           ))}
         </View>
-
-        {isContact && (
-          <View className="bg-card rounded-2xl p-5 gap-4">
-            <Text className="text-base font-medium">Save to contacts</Text>
-            <View className="gap-4">
-              {!name && (
-                <View className="gap-2">
-                  <Text className="text-base opacity-70 font-medium">Name</Text>
-                  <Controller
-                    control={nameControl}
-                    name="name"
-                    render={({ field: { onChange, value } }) => (
-                      <TextInput
-                        className="text-white text-base web:focus:outline-none flex-1 bg-popup rounded-2xl p-5"
-                        placeholder="Enter a name for this address"
-                        placeholderTextColor="#ffffff80"
-                        value={value}
-                        onChangeText={onChange}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                      />
-                    )}
-                  />
-                </View>
-              )}
-              {nameErrors.name && (
-                <Text className="text-sm text-red-500">{nameErrors.name.message}</Text>
-              )}
-              {!hasSkipped2fa && (
-                <Controller
-                  control={nameControl}
-                  name="skip2fa"
-                  render={({ field: { onChange, value } }) => (
-                    <Pressable
-                      onPress={() => onChange(!value)}
-                      className="flex-row items-center gap-3"
-                    >
-                      <Checkbox checked={value || false} onCheckedChange={onChange} />
-                      <Text className="text-base opacity-70 flex-1">
-                        Skip 2FA when sending to this address
-                      </Text>
-                    </Pressable>
-                  )}
-                />
-              )}
-            </View>
-          </View>
-        )}
       </View>
 
       <Button
         variant="brand"
-        className="rounded-xl h-12"
+        className="h-12 rounded-xl"
         onPress={handleSend}
         disabled={isSendLoading}
       >
@@ -318,6 +260,7 @@ const SendReview: React.FC = () => {
       </Button>
 
       <NeedHelp />
+      {totpModal}
     </View>
   );
 };

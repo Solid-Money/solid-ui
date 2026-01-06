@@ -14,14 +14,14 @@ import { initGenericOtp, verifyGenericOtp } from '@/lib/api';
 import { useUserStore } from '@/store/useUserStore';
 
 const emailSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.email({ error: 'Please enter a valid email address' }),
 });
 
 const otpSchema = z.object({
   otpCode: z
     .string()
-    .length(6, 'Verification code must be 6 digits')
-    .regex(/^\d+$/, 'Verification code must contain only numbers'),
+    // .length(6, { error: 'Verification code must be 6 digits' })
+    .regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
 });
 
 export type EmailFormData = z.infer<typeof emailSchema>;
@@ -120,17 +120,20 @@ export const useEmailManagement = (
     }
   }, [step, hasInitializedOtp, otpForm]);
 
-  const handleUpdateUserEmail = useCallback(async (email: string, verificationToken: string) => {
-    const passkeyClient = createHttpClient({
-      defaultStamperType: StamperType.Passkey,
-    });
-    await passkeyClient.updateUserEmail({
-      userId: user?.turnkeyUserId as string,
-      userEmail: email,
-      organizationId: user?.suborgId,
-      verificationToken,
-    });
-  }, [createHttpClient, user?.turnkeyUserId, user?.suborgId]);
+  const handleUpdateUserEmail = useCallback(
+    async (email: string, verificationToken: string) => {
+      const passkeyClient = createHttpClient({
+        defaultStamperType: StamperType.Passkey,
+      });
+      await passkeyClient.updateUserEmail({
+        userId: user?.turnkeyUserId as string,
+        userEmail: email,
+        organizationId: user?.suborgId,
+        verificationToken,
+      });
+    },
+    [createHttpClient, user?.turnkeyUserId, user?.suborgId],
+  );
 
   const handleSendOtp = async (data: EmailFormData) => {
     setIsLoading(true);

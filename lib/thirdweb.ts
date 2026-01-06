@@ -26,18 +26,28 @@ export const thirdwebTheme = darkTheme({
 
 const fuse = defineChain({
   id: 122,
-  rpc: "https://rpc.fuse.io",
+  name: 'Fuse',
   nativeCurrency: {
-    name: "Fuse",
-    symbol: "FUSE",
+    name: 'Fuse',
+    symbol: 'FUSE',
     decimals: 18,
   },
-  blockExplorers: [
-    {
-      name: 'Blockscout',
+  rpcUrls: {
+    default: { http: ['https://rpc.fuse.io'] },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Fuse Explorer',
       url: 'https://explorer.fuse.io',
+      apiUrl: 'https://explorer.fuse.io/api',
     },
-  ]
+  },
+  contracts: {
+    multicall3: {
+      address: '0xca11bde05977b3631167028862be2a173976ca11',
+      blockCreated: 16146628,
+    },
+  },
 });
 
 const chains = [mainnet, fuse, polygon, base, arbitrum];

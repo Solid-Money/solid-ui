@@ -48,15 +48,15 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
       context: 'security_settings',
       has_existing_email: !!user?.email,
     });
-  }, [user?.userId, user?.safeAddress, user?.email]);
+  });
 
   return (
     <View className="flex-1 gap-4">
       <View className="items-center gap-2">
-        <Text className="text-2xl font-bold text-center">
+        <Text className="text-center text-2xl font-bold">
           {currentStep === 'email' ? 'Change email' : 'Verify your email'}
         </Text>
-        <Text className="text-muted-foreground text-center font-medium text-base max-w-xs">
+        <Text className="max-w-xs text-center text-base font-medium text-muted-foreground">
           {currentStep === 'email'
             ? 'Enter your new email address.'
             : `Enter the 6-digit verification code sent to:\n${emailValue}`}
@@ -64,12 +64,12 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
       </View>
 
       {rateLimitError && (
-        <View className="p-2.5 border border-red-300 rounded-2xl">
-          <Text className="text-red-400 text-sm text-center">{rateLimitError}</Text>
+        <View className="rounded-2xl border border-red-300 p-2.5">
+          <Text className="text-center text-sm text-red-400">{rateLimitError}</Text>
         </View>
       )}
 
-      <View className="gap-4 mt-4">
+      <View className="mt-4 gap-4">
         {currentStep === 'email' ? (
           <View className="gap-2">
             <Text className="font-medium text-muted-foreground">New Email Address</Text>
@@ -86,7 +86,7 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoComplete="email"
-                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
+                    className="h-14 rounded-xl bg-accent px-6 text-lg font-semibold text-foreground web:focus:outline-none"
                     placeholderTextColor="#666"
                   />
                 );
@@ -119,7 +119,7 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
                     onBlur={onBlur}
                     keyboardType="numeric"
                     maxLength={6}
-                    className="h-14 px-6 bg-accent rounded-xl text-lg text-foreground font-semibold web:focus:outline-none"
+                    className="h-14 rounded-xl bg-accent px-6 text-lg font-semibold text-foreground web:focus:outline-none"
                     placeholderTextColor="#666"
                   />
                 );
@@ -137,7 +137,7 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
             }
             disabled={isFormDisabled()}
             variant="brand"
-            className="rounded-2xl h-14"
+            className="h-14 rounded-2xl"
           >
             <Text className="text-lg font-semibold">{getButtonText()}</Text>
             {isLoading && <ActivityIndicator color="gray" />}
@@ -148,7 +148,7 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
               onPress={handleEmailBack}
               variant="outline"
               disabled={isLoading}
-              className="rounded-2xl h-14 border-0"
+              className="h-14 rounded-2xl border-0"
             >
               <Text className="text-lg font-semibold">Back to Email</Text>
             </Button>

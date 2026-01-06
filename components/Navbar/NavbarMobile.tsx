@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
-import { SafeAreaView, View } from 'react-native';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown';
+import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
 import useUser from '@/hooks/useUser';
 import RegisterButtons from './RegisterButtons';
-import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
-import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown';
 import WhatsNewButton from './WhatsNewButton';
 
 const NavbarMobile = () => {
@@ -12,7 +13,7 @@ const NavbarMobile = () => {
 
   return (
     <SafeAreaView className="bg-background">
-      <View className="flex-row justify-between items-center p-4">
+      <View className="flex-row items-center justify-between p-4">
         <Image
           source={require('@/assets/images/solid-logo-4x.png')}
           alt="Solid logo"

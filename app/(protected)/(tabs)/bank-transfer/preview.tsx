@@ -16,9 +16,9 @@ const Row = ({
   withDivider?: boolean;
 }) => (
   <View className={`px-6 py-6 ${withDivider ? 'border-b border-[#4E4E4E]' : ''}`}>
-    <View className="flex-row justify-between items-center">
-      <Text className="text-muted-foreground text-base font-bold">{label}</Text>
-      <Text className="text-white text-base font-bold">{value}</Text>
+    <View className="flex-row items-center justify-between">
+      <Text className="text-base font-bold text-muted-foreground">{label}</Text>
+      <Text className="text-base font-bold text-white">{value}</Text>
     </View>
   </View>
 );
@@ -49,10 +49,10 @@ export default function BankTransferPreviewScreen() {
 
   return (
     <View className="flex-1 bg-background px-6 pb-6">
-      <View className="gap-4 flex-1 w-full web:max-w-3xl web:mx-auto">
+      <View className="w-full flex-1 gap-4 web:mx-auto web:max-w-3xl">
         <PreviewTitle amount={data?.amount} currency={data?.currency} />
 
-        <View className="bg-[#1C1C1C] rounded-2xl overflow-hidden mt-6">
+        <View className="mt-6 overflow-hidden rounded-2xl bg-[#1C1C1C]">
           <Row
             label="Amount"
             value={`${data?.amount ?? ''} ${data?.currency?.toUpperCase() ?? ''}`}
@@ -67,15 +67,15 @@ export default function BankTransferPreviewScreen() {
           <Row label="Deposit message" value={data?.deposit_message ?? ''} />
         </View>
 
-        <View className="bg-[#1C1C1C] rounded-2xl overflow-hidden">
+        <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">
           <Row label="Status" value={'Waiting for transfer'} />
         </View>
         <Button
-          className="rounded-2xl h-14 mt-auto sm:mt-8"
+          className="mt-auto h-14 rounded-2xl sm:mt-8"
           style={{ backgroundColor: '#94F27F' }}
           onPress={() => router.replace(path.ACTIVITY)}
         >
-          <Text className="font-bold text-black text-lg">Done</Text>
+          <Text className="text-lg font-bold text-black">Done</Text>
         </Button>
       </View>
     </View>

@@ -43,7 +43,9 @@ export function useSwapCallback(
   const queryClient = useQueryClient();
   const account = user?.safeAddress;
 
-  const [bestCall, setBestCall] = useState<SuccessfulCall | SwapCallEstimate | undefined>(undefined);
+  const [bestCall, setBestCall] = useState<SuccessfulCall | SwapCallEstimate | undefined>(
+    undefined,
+  );
   const [swapData, setSwapData] = useState<any>(null);
   const [isSendingSwap, setIsSendingSwap] = useState(false);
 
@@ -66,7 +68,6 @@ export function useSwapCallback(
         }
 
         const value = BigInt(_value);
-
 
         // Set the best call without simulation
         // The AA infrastructure will handle the actual gas estimation
@@ -99,11 +100,10 @@ export function useSwapCallback(
   const isTokenInput = trade?.inputAmount.currency.isToken;
 
   // Get the actual router address from swap config to ensure approval spender matches
-  const actualRouterAddress = (algebraRouterConfig.address) as Address;
+  const actualRouterAddress = algebraRouterConfig.address as Address;
 
   const swapConfig = useMemo(() => {
     if (!bestCall) return undefined;
-
 
     return {
       request: {
@@ -115,7 +115,6 @@ export function useSwapCallback(
       },
     };
   }, [bestCall, actualRouterAddress]);
-
 
   const swapCallback = useCallback(async () => {
     if (!trade || !swapConfig || !account || !user?.suborgId || !user?.signWith) {
@@ -130,7 +129,6 @@ export function useSwapCallback(
       // Add approval transaction if needed
       if (needAllowance || (isTokenInput && !approvalConfig)) {
         if (approvalConfig) {
-
           Sentry.addBreadcrumb({
             message: 'Adding approval transaction',
             category: 'swap',
@@ -227,18 +225,14 @@ export function useSwapCallback(
             outputAmount: trade.outputAmount.toSignificant(6),
           },
         },
-        (onUserOpHash) => executeTransactions(
-          smartAccountClient,
-          transactions,
-          'Swap failed',
-          fuse,
-          onUserOpHash
-        )
+        onUserOpHash =>
+          executeTransactions(smartAccountClient, transactions, 'Swap failed', fuse, onUserOpHash),
       );
 
-      const transaction = result && typeof result === 'object' && 'transaction' in result
-        ? result.transaction
-        : result;
+      const transaction =
+        result && typeof result === 'object' && 'transaction' in result
+          ? result.transaction
+          : result;
 
       if (transaction === USER_CANCELLED_TRANSACTION) {
         return;
@@ -278,9 +272,11 @@ export function useSwapCallback(
 
       // Also check for user cancellation in error messages
       const errorMessage = error?.message?.toLowerCase() || '';
-      if (errorMessage.includes('user cancelled') ||
+      if (
+        errorMessage.includes('user cancelled') ||
         errorMessage.includes('user denied') ||
-        errorMessage.includes('user rejected')) {
+        errorMessage.includes('user rejected')
+      ) {
         return;
       }
 
@@ -306,7 +302,20 @@ export function useSwapCallback(
     } finally {
       setIsSendingSwap(false);
     }
-  }, [trade, swapConfig, approvalConfig, needAllowance, isTokenInput, account, user, safeAA, allowedSlippage, successInfo, trackTransaction, queryClient]);
+  }, [
+    trade,
+    swapConfig,
+    approvalConfig,
+    needAllowance,
+    isTokenInput,
+    account,
+    user,
+    safeAA,
+    allowedSlippage,
+    successInfo,
+    trackTransaction,
+    queryClient,
+  ]);
 
   // useTransactionAwait handles balance invalidation and toast notifications
   // We don't use its isLoading state since the transaction is already confirmed

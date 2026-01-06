@@ -1,3 +1,5 @@
+const IS_PROD = process.env.EXPO_PUBLIC_ENVIRONMENT === 'production';
+
 export default {
   expo: {
     name: 'Solid',
@@ -53,7 +55,7 @@ export default {
     },
     web: {
       bundler: 'metro',
-      output: 'static',
+      output: IS_PROD ? 'static' : 'single',
       favicon: './assets/images/favicon.png',
     },
     plugins: [
@@ -93,9 +95,11 @@ export default {
           ios: {
             deploymentTarget: '15.1',
             useFrameworks: 'static',
+            forceStaticLinking: ['RNFBApp', 'RNFBMessaging', 'RNFBAnalytics']
           },
           android: {
-            compileSdkVersion: 35,
+            minSdkVersion: 26,
+            compileSdkVersion: 36,
             enableProguardInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
           },

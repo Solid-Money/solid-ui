@@ -17,16 +17,16 @@ const DepositTokenSelector = () => {
 
   return (
     <View className="gap-y-2">
-      <Text className="text-muted-foreground font-medium">Select a token</Text>
+      <Text className="font-medium text-muted-foreground">Select a token</Text>
 
       <View className="gap-y-1.5">
         {Object.entries(tokens ?? {}).map(([key, token]) => {
           return (
             <DepositNetwork
               key={key}
-              name={token?.name || key}
-              description={token?.fullName || 'USD Coin'}
-              icon={token?.icon || require('@/assets/images/usdc.png')}
+              name={token.name || key}
+              description={token.fullName || 'USD Coin'}
+              icon={require('@/assets/images/usdc.png')}
               isComingSoon={false}
               onPress={() => handlePress(key)}
             />

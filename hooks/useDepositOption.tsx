@@ -129,12 +129,12 @@ const useDepositOption = ({
           <View
             className={buttonVariants({
               variant: 'brand',
-              className: 'h-12 pr-6 rounded-xl',
+              className: 'h-12 rounded-xl pr-6',
             })}
           >
             <View className="flex-row items-center gap-1">
               <Plus color="black" />
-              <Text className="text-primary-foreground font-bold text-base">{buttonText}</Text>
+              <Text className="text-base font-bold text-primary-foreground">{buttonText}</Text>
             </View>
           </View>
         </Trigger>
@@ -283,8 +283,7 @@ const useDepositOption = ({
   };
 
   const handleOpenChange = (value: boolean) => {
-    // Prevent closing when Reown modal is open
-    if (!address && isForm) {
+    if (!value && isFormAndAddress && status === 'connecting') {
       return;
     }
 
@@ -354,7 +353,7 @@ const useDepositOption = ({
 
   const handleDeleteDeposit = useCallback(async () => {
     const { directDepositSession } = useDepositStore.getState();
-    let {clientTxId, sessionId} = directDepositSession;
+    let { clientTxId, sessionId } = directDepositSession;
     if (!clientTxId) {
       if (!sessionId) return;
       clientTxId = `direct_deposit_${sessionId}`;
@@ -383,7 +382,9 @@ const useDepositOption = ({
           onPress={handleDeleteDeposit}
           disabled={isDeleting}
         >
-          {isDeleting ? <ActivityIndicator size="small" color="white" /> : (
+          {isDeleting ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
             <Trash2 size={20} color="white" />
           )}
         </Button>

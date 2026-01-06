@@ -36,7 +36,6 @@ const TokenListMobile = ({ tokens }: TokenListProps) => {
     <View className="flex-1" style={{ minHeight: 200 }}>
       <FlashList
         data={tokens}
-        estimatedItemSize={72}
         contentContainerStyle={{
           paddingBottom: insets.bottom,
         }}

@@ -62,7 +62,6 @@ const TokenListDesktop = ({ tokens }: TokenListProps) => {
       {/* Table Body - Virtualized with FlashList */}
       <FlashList
         data={tokens}
-        estimatedItemSize={70}
         contentContainerStyle={{
           paddingBottom: insets.bottom,
         }}

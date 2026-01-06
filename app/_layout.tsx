@@ -1,8 +1,15 @@
+import CardDepositModalProvider from '@/components/Card/CardDepositModalProvider';
+import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
+import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
 import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom';
+import SendModalProvider from '@/components/Send/SendModalProvider';
+import StakeModalProvider from '@/components/Stake/StakeModalProvider';
+import SwapModalProvider from '@/components/Swap/SwapModalProvider';
 import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
+import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
 import WhatsNewModal from '@/components/WhatsNewModal';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
 import '@/global.css';
@@ -10,7 +17,7 @@ import { infoClient } from '@/graphql/clients';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
-import { ApolloProvider } from '@apollo/client';
+import { ApolloProvider } from '@apollo/client/react';
 import {
   MonaSans_200ExtraLight,
   MonaSans_300Light,
@@ -37,8 +44,10 @@ import { Appearance, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { ThirdwebProvider } from 'thirdweb/react';
 import { WagmiProvider } from 'wagmi';
+
+// Lazy-loaded to defer thirdweb bundle until actually needed
+import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 
 Sentry.init({
   dsn: 'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952',
@@ -161,6 +170,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes - data considered fresh
+      gcTime: 10 * 60 * 1000, // 10 minutes - garbage collect unused queries
+      retry: 2,
     },
   },
 });
@@ -242,7 +254,7 @@ export default Sentry.wrap(function RootLayout() {
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <TurnkeyProvider>
-        <ThirdwebProvider>
+        <LazyThirdwebProvider>
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
               <ApolloProvider client={infoClient}>
@@ -345,6 +357,14 @@ export default Sentry.wrap(function RootLayout() {
                         />
                       </Stack>
                       <PortalHost />
+                      <DepositModalProvider />
+                      <SendModalProvider />
+                      <SwapModalProvider />
+                      <WithdrawModalProvider />
+                      <StakeModalProvider />
+                      <UnstakeModalProvider />
+                      <DepositFromSafeAccountModalProvider />
+                      <CardDepositModalProvider />
                       {whatsNew && (
                         <WhatsNewModal
                           whatsNew={whatsNew}
@@ -358,7 +378,7 @@ export default Sentry.wrap(function RootLayout() {
               </ApolloProvider>
             </QueryClientProvider>
           </WagmiProvider>
-        </ThirdwebProvider>
+        </LazyThirdwebProvider>
         <Toast {...toastProps} />
       </TurnkeyProvider>
     </SafeAreaProvider>

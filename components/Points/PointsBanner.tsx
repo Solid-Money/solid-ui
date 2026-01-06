@@ -17,43 +17,54 @@ const PointsBanner = () => {
 
   return (
     <SwipeableBanner onPress={() => router.push(path.POINTS)}>
-      <LinearGradient
-        colors={['rgba(255, 209, 81, 0.25)', 'rgba(255, 209, 81, 0.17)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
+      <View
         style={{
           borderRadius: 20,
-          height: '100%',
+          flex: 1,
           width: '100%',
           overflow: 'hidden',
           position: 'relative',
         }}
       >
+        <LinearGradient
+          colors={['rgba(255, 209, 81, 1)', 'rgba(255, 209, 81, 0.68)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.6, y: 1 }}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            opacity: 0.15,
+          }}
+        />
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
-          <View className="justify-between items-start md:gap-2 py-5 md:py-8">
+          <View className="flex-1 items-start justify-between py-5 md:gap-2 md:py-8">
             <View className="inline max-w-40 md:max-w-64">
-              <Text className="text-xl md:text-3xl font-semibold">
+              <Text className="text-xl font-semibold md:text-3xl">
                 Earn <Text className="text-rewards">{multiplier}X</Text> points on your deposits
               </Text>
             </View>
             <View className="flex-row items-center gap-4">
               <Button
                 variant="rewards"
-                className="rounded-xl h-11 md:h-12 pr-6"
+                className="h-11 rounded-xl pr-6 md:h-12"
                 onPress={() => router.push(path.POINTS)}
               >
                 <Plus color="white" />
-                <Text className="text-base text-primary font-bold">Earn points</Text>
+                <Text className="text-base font-bold text-primary">Earn points</Text>
               </Button>
               <Link href={path.POINTS} className="web:hover:opacity-70">
                 <View className="flex-row items-center gap-0.5">
-                  <Text className="font-bold text-base">Points page</Text>
+                  <Text className="text-base font-bold">Points page</Text>
                   <ChevronRight color="white" size={18} className="mt-0.5" />
                 </View>
               </Link>
             </View>
           </View>
-          <View className="absolute top-[30%] left-[85%] md:top-[50%] md:left-[80%] -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+          <View className="pointer-events-none absolute left-[85%] top-[30%] -translate-x-1/2 -translate-y-1/2 md:left-[80%] md:top-[50%]">
             <Image
               source={require('@/assets/images/points_large.png')}
               contentFit="contain"
@@ -61,7 +72,7 @@ const PointsBanner = () => {
             />
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </SwipeableBanner>
   );
 };

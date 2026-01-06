@@ -6,10 +6,13 @@ import PageLayout from '@/components/PageLayout';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { SavingCard, WalletCard, WalletInfo } from '@/components/Wallet';
+import { WalletInfo } from '@/components/Wallet';
+import DesktopCards from '@/components/Wallet/DesktopCards';
+import MobileCards from '@/components/Wallet/MobileCards';
 import WalletTabs from '@/components/Wallet/WalletTabs';
-import { useGetUserTransactionsQuery } from '@/graphql/generated/user-info';
-import { useAPYs, useLatestTokenTransfer } from '@/hooks/useAnalytics';
+import { useAPYs, useLatestTokenTransfer, useUserTransactions } from '@/hooks/useAnalytics';
+import { useCardDetails } from '@/hooks/useCardDetails';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { useCalculateSavings } from '@/hooks/useFinancial';
@@ -19,15 +22,13 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { ADDRESSES } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
-import { fontSize } from '@/lib/utils';
+import { fontSize, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { Address } from 'viem';
-import { mainnet } from 'viem/chains';
-import { useBlockNumber } from 'wagmi';
 
-export default function Savings() {
+export default function Home() {
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
   const {
@@ -37,11 +38,20 @@ export default function Savings() {
   } = useVaultBalance(user?.safeAddress as Address);
   const { updateUser } = useUserStore();
   const intercom = useIntercom();
+  const { data: cardStatus } = useCardStatus();
+  const { data: cardDetails } = useCardDetails();
 
-  const { data: blockNumber } = useBlockNumber({
-    watch: true,
-    chainId: mainnet.id,
-  });
+  const userHasCard = hasCard(cardStatus);
+
+  // Controlled timestamp state - updates every 30 seconds instead of every render
+  const [currentTime, setCurrentTime] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Math.floor(Date.now() / 1000));
+    }, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const { data: apys, isLoading: isAPYsLoading } = useAPYs();
   const {
@@ -66,13 +76,9 @@ export default function Savings() {
 
   const {
     data: userDepositTransactions,
-    loading: isTransactionsLoading,
+    isLoading: isTransactionsLoading,
     refetch: refetchTransactions,
-  } = useGetUserTransactionsQuery({
-    variables: {
-      address: user?.safeAddress?.toLowerCase() ?? '',
-    },
-  });
+  } = useUserTransactions(user?.safeAddress);
 
   const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
@@ -84,7 +90,7 @@ export default function Savings() {
     balance ?? 0,
     apys?.allTime ?? 0,
     firstDepositTimestamp ?? 0,
-    Math.floor(Date.now() / 1000),
+    currentTime,
     SavingMode.TOTAL_USD,
     userDepositTransactions,
     user?.safeAddress,
@@ -93,10 +99,15 @@ export default function Savings() {
   const topThreeTokens = uniqueTokens.slice(0, 3);
   const isDeposited = !!userDepositTransactions?.deposits?.length;
 
+  const cardBalance = Number(cardDetails?.balances.available?.amount || '0');
+
   useEffect(() => {
-    refetchBalance();
-    refetchTransactions();
-  }, [blockNumber, refetchBalance, refetchTransactions]);
+    const interval = setInterval(() => {
+      refetchBalance();
+      refetchTransactions();
+    }, 60000); // 60 seconds
+    return () => clearInterval(interval);
+  }, [refetchBalance, refetchTransactions]);
 
   useEffect(() => {
     if (!user) return;
@@ -121,10 +132,10 @@ export default function Savings() {
   }
 
   return (
-    <PageLayout isLoading={isBalanceLoading || isTransactionsLoading}>
-      <View className="gap-8 md:gap-12 px-0 md:px-4 py-0 md:py-12 w-full max-w-7xl mx-auto pb-20 mb-5">
+    <PageLayout isLoading={isBalanceLoading}>
+      <View className="mx-auto mb-5 w-full max-w-7xl gap-8 px-0 py-0 pb-20 md:gap-12 md:px-4 md:py-12">
         {isScreenMedium ? (
-          <View className="flex-row justify-between items-center">
+          <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <View className="flex-row items-center">
                 {isLoadingTokens ||
@@ -132,11 +143,11 @@ export default function Savings() {
                 isAPYsLoading ||
                 firstDepositTimestamp === undefined ||
                 savings === undefined ? (
-                  <Skeleton className="w-56 h-[4.5rem] rounded-xl" />
+                  <Skeleton className="h-[4.5rem] w-56 rounded-xl" />
                 ) : (
                   <CountUp
                     prefix="$"
-                    count={totalUSDExcludingSoUSD + savings}
+                    count={totalUSDExcludingSoUSD + savings + cardBalance}
                     isTrailingZero={false}
                     decimalPlaces={2}
                     classNames={{
@@ -152,7 +163,7 @@ export default function Savings() {
                         marginRight: -1,
                       },
                       decimalText: {
-                        fontSize: fontSize(3),
+                        fontSize: isScreenMedium ? fontSize(3) : fontSize(1.875),
                         fontWeight: '500',
                         //fontFamily: 'MonaSans_600SemiBold',
                         color: '#ffffff',
@@ -162,38 +173,49 @@ export default function Savings() {
                 )}
               </View>
             </View>
-            <DashboardHeaderButtons hasTokens={hasTokens} />
+            <DashboardHeaderButtons />
           </View>
         ) : (
           <DashboardHeaderMobile
-            balance={totalUSDExcludingSoUSD + (savings ?? 0)}
+            balance={totalUSDExcludingSoUSD + (savings ?? 0) + cardBalance}
             mode={SavingMode.BALANCE_ONLY}
           />
         )}
         {isScreenMedium ? (
-          <View className="md:flex-row gap-8 min-h-44">
-            <WalletCard
-              balance={totalUSDExcludingSoUSD}
-              className="flex-1"
-              tokens={topThreeTokens}
-              isLoading={isLoadingTokens}
-              decimalPlaces={2}
-            />
-            <SavingCard className="flex-1" decimalPlaces={2} />
-          </View>
+          <DesktopCards
+            totalUSDExcludingSoUSD={totalUSDExcludingSoUSD}
+            topThreeTokens={topThreeTokens}
+            isLoadingTokens={isLoadingTokens}
+            userHasCard={userHasCard}
+            cardBalance={cardBalance}
+            balance={balance}
+            isBalanceLoading={isBalanceLoading}
+            firstDepositTimestamp={firstDepositTimestamp}
+            userDepositTransactions={userDepositTransactions}
+          />
         ) : (
-          <HomeBanners />
+          <MobileCards
+            totalUSDExcludingSoUSD={totalUSDExcludingSoUSD}
+            topThreeTokens={topThreeTokens}
+            isLoadingTokens={isLoadingTokens}
+            userHasCard={userHasCard}
+            cardBalance={cardBalance}
+            balance={balance}
+            isBalanceLoading={isBalanceLoading}
+            firstDepositTimestamp={firstDepositTimestamp}
+            userDepositTransactions={userDepositTransactions}
+          />
         )}
 
-        <View className="px-4 md:px-0 mt-4 gap-3">
-          <Text className="text-lg text-muted-foreground font-semibold">Your assets</Text>
+        <View className="mt-4 gap-3 px-4 md:px-0">
+          <Text className="text-lg font-semibold text-muted-foreground">Assets</Text>
           {tokenError ? (
-            <View className="flex-1 justify-center items-center p-4">
+            <View className="flex-1 items-center justify-center p-4">
               <WalletInfo text="Failed to load tokens" />
-              <Text className="text-sm text-muted-foreground mt-2">{tokenError}</Text>
+              <Text className="mt-2 text-sm text-muted-foreground">{tokenError}</Text>
               <TouchableOpacity
                 onPress={retryTokens}
-                className="mt-4 px-4 py-2 bg-primary rounded-lg"
+                className="mt-4 rounded-lg bg-primary px-4 py-2"
               >
                 <Text className="text-primary-foreground">Retry</Text>
               </TouchableOpacity>
@@ -207,8 +229,8 @@ export default function Savings() {
           )}
         </View>
 
-        <View className="hidden md:flex px-4 md:px-0 mt-10 gap-6">
-          <Text className="text-lg text-muted-foreground font-semibold">Promotions</Text>
+        <View className="gap-6 px-4 md:mt-10 md:px-0">
+          <Text className="text-lg font-semibold text-muted-foreground">Promotions</Text>
           <HomeBanners />
         </View>
       </View>

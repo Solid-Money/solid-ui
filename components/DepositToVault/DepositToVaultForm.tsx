@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { formatUnits } from 'viem';
+import { Address, formatUnits } from 'viem';
 import { z } from 'zod';
 
 import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
@@ -48,7 +48,7 @@ function DepositToVaultForm() {
   }, [srcChainId, outputToken]);
 
   const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA(
-    selectedTokenInfo?.address || '',
+    (selectedTokenInfo?.address as Address) || '',
     selectedTokenInfo?.name || '',
     selectedTokenInfo?.version,
   );
@@ -65,16 +65,14 @@ function DepositToVaultForm() {
     return z.object({
       amount: z
         .string()
-        .refine(val => val !== '' && !isNaN(Number(val)), 'Please enter a valid amount')
-        .refine(val => Number(val) > 0, 'Amount must be greater than 0')
-        .refine(
-          val => Number(val) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT),
-          `Minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} USDC`,
-        )
-        .refine(
-          val => Number(val) <= balanceAmount,
-          `Available balance is ${formatNumber(balanceAmount)} USDC`,
-        )
+        .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
+        .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
+        .refine(val => Number(val) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT), {
+          error: `Minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} USDC`,
+        })
+        .refine(val => Number(val) <= balanceAmount, {
+          error: `Available balance is ${formatNumber(balanceAmount)} USDC`,
+        })
         .transform(val => Number(val)),
     });
   }, [balance]);
@@ -182,14 +180,14 @@ function DepositToVaultForm() {
         </View>
         <View className="gap-2">
           <Text className="text-muted-foreground">Deposit amount</Text>
-          <View className="px-5 py-4 bg-accent rounded-2xl flex-row items-center justify-between gap-2 w-full">
+          <View className="w-full flex-row items-center justify-between gap-2 rounded-2xl bg-accent px-5 py-4">
             <Controller
               control={control}
               name="amount"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
                   keyboardType="decimal-pad"
-                  className="w-full text-2xl text-white font-semibold web:focus:outline-none"
+                  className="w-full text-2xl font-semibold text-white web:focus:outline-none"
                   value={value.toString()}
                   placeholder="0.0"
                   placeholderTextColor="#666"
@@ -200,7 +198,7 @@ function DepositToVaultForm() {
                 />
               )}
             />
-            <View className="flex-row items-center gap-2 flex-shrink-0">
+            <View className="flex-shrink-0 flex-row items-center gap-2">
               <Pressable
                 onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
                 className="flex-row items-center gap-2"
@@ -210,7 +208,7 @@ function DepositToVaultForm() {
                   alt={selectedTokenInfo.name}
                   style={{ width: 32, height: 32 }}
                 />
-                <Text className="font-semibold text-white text-lg">{selectedTokenInfo.name}</Text>
+                <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
                 {selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />}
                 <ChevronDown size={16} color="#A1A1A1" />
               </Pressable>
@@ -230,11 +228,11 @@ function DepositToVaultForm() {
           </View>
         </View>
         <TokenDetails>
-          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <View className="flex-row items-center gap-2">
               <Text className="text-lg text-muted-foreground">You will receive</Text>
             </View>
-            <View className="flex-row items-center gap-2 ml-auto flex-shrink-0">
+            <View className="ml-auto flex-shrink-0 flex-row items-center gap-2">
               <Image
                 source={require('@/assets/images/sousd-4x.png')}
                 style={{ width: 24, height: 24 }}
@@ -243,7 +241,7 @@ function DepositToVaultForm() {
               <View className="flex-row items-baseline gap-1">
                 <Text className="text-lg font-semibold">
                   {isPreviewDepositLoading ? (
-                    <Skeleton className="w-20 h-7 bg-white/20" />
+                    <Skeleton className="h-7 w-20 bg-white/20" />
                   ) : isScreenMedium ? (
                     compactNumberFormat(amountOut || 0)
                   ) : (
@@ -257,30 +255,30 @@ function DepositToVaultForm() {
                     </Text> */}
             </View>
           </View>
-          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Price</Text>
-            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               <Text className="text-lg font-semibold">
                 {'1 soUSD = '}
                 {`$${formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 0)}`}
               </Text>
             </View>
           </View>
-          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Routing Fee</Text>
-            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               {isPreviewDepositLoading ? (
-                <Skeleton className="w-20 h-7 bg-white/20" />
+                <Skeleton className="h-7 w-20 bg-white/20" />
               ) : (
                 <Text className="text-lg font-semibold">{`$${formatNumber(routingFee)}`}</Text>
               )}
             </View>
           </View>
-          <View className="px-5 py-6 md:p-5 flex-row items-center justify-between gap-2 md:gap-10">
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">APY</Text>
-            <View className="flex-row items-baseline gap-2 ml-auto flex-shrink-0">
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               <Text className="text-lg font-semibold text-[#94F27F]">
-                {maxAPY ? `${maxAPY.toFixed(2)}%` : <Skeleton className="w-20 h-7 bg-white/20" />}
+                {maxAPY ? `${maxAPY.toFixed(2)}%` : <Skeleton className="h-7 w-20 bg-white/20" />}
               </Text>
               {/* <Text className="text-base opacity-40">
                   {totalAPY ? (
@@ -295,9 +293,9 @@ function DepositToVaultForm() {
           </View>
         </TokenDetails>
         <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-2 align-items: start">
+          <View className="align-items: start flex-row items-center gap-2">
             <Fuel color="#A1A1A1" size={16} className="mt-1" />
-            <Text className="text-base text-muted-foreground max-w-xs">
+            <Text className="max-w-xs text-base text-muted-foreground">
               Gasless deposit
               {isSponsor
                 ? ''
@@ -308,7 +306,7 @@ function DepositToVaultForm() {
         <CheckConnectionWrapper props={{ size: 'xl' }}>
           <Button
             variant="brand"
-            className="rounded-2xl h-12"
+            className="h-12 rounded-2xl"
             onPress={handleSubmit(onSubmit)}
             disabled={isFormDisabled()}
           >

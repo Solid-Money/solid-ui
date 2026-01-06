@@ -1,17 +1,10 @@
+import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Copy, Plus } from 'lucide-react-native';
+import { ChevronRight, Copy, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Clipboard,
-  Platform,
-  Pressable,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Animated, Platform, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
@@ -24,7 +17,6 @@ import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
 import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
@@ -39,10 +31,6 @@ import {
 } from '@/lib/utils/cardHelpers';
 import { cn } from '@/lib/utils/utils';
 
-interface CardHeaderProps {
-  onBackPress: () => void;
-}
-
 export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
   const { isScreenMedium } = useDimension();
@@ -52,7 +40,6 @@ export default function CardDetails() {
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
-  const router = useRouter();
 
   const {
     data: transactionsData,
@@ -66,11 +53,7 @@ export default function CardDetails() {
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
-  const handleBackPress = () => {
-    router.push(path.HOME);
-  };
-
-  const handleFreezeToggle = async () => {
+  const handleFreezeToggle = useCallback(async () => {
     try {
       setIsFreezing(true);
       if (isCardFrozen) {
@@ -87,9 +70,9 @@ export default function CardDetails() {
     } finally {
       setIsFreezing(false);
     }
-  };
+  }, [isCardFrozen, refetch]);
 
-  const handleCardFlip = () => {
+  const handleCardFlip = useCallback(() => {
     if (isCardFlipped) {
       // Flip back to front
       Animated.spring(flipAnimation, {
@@ -105,7 +88,7 @@ export default function CardDetails() {
       setIsLoadingCardDetails(true);
       setShouldRevealDetails(true);
     }
-  };
+  }, [isCardFlipped, flipAnimation]);
 
   const handleCardDetailsLoaded = useCallback(() => {
     // Once data is loaded, flip the card immediately
@@ -124,7 +107,7 @@ export default function CardDetails() {
   if (isScreenMedium) {
     return (
       <PageLayout desktopOnly isLoading={isLoading}>
-        <View className="w-full max-w-7xl mx-auto px-4 pt-8 pb-12">
+        <View className="mx-auto w-full max-w-7xl px-4 pb-12 pt-8">
           {/* Desktop Header */}
           <DesktopHeader
             isCardFrozen={isCardFrozen}
@@ -136,7 +119,7 @@ export default function CardDetails() {
           />
 
           {/* Row 1: Spending Balance Card + Card Image */}
-          <View className="flex-row gap-6 mt-12">
+          <View className="mt-12 flex-row gap-6">
             <View className="flex-[3]">
               <SpendingBalanceCard amount={availableAmount} cashback={cardDetails?.cashback} />
             </View>
@@ -154,7 +137,7 @@ export default function CardDetails() {
           </View>
 
           {/* Row 2: Bonus Banner + Add to Wallet (same height) */}
-          <View className="flex-row gap-6 mt-4">
+          <View className="mt-4 flex-row gap-6">
             <View className="flex-[3]">
               <DepositBonusBanner />
             </View>
@@ -184,9 +167,9 @@ export default function CardDetails() {
 
   // Mobile layout (unchanged)
   return (
-    <PageLayout desktopOnly isLoading={isLoading}>
-      <View className="w-full max-w-lg mx-auto px-4 pt-8">
-        <MobileHeader onBackPress={handleBackPress} />
+    <PageLayout isLoading={isLoading}>
+      <View className="mx-auto w-full max-w-lg px-4 pt-6">
+        <MobileHeader />
 
         <View className="flex-1">
           <BalanceDisplay amount={availableAmount} />
@@ -229,16 +212,8 @@ export default function CardDetails() {
   );
 }
 
-function MobileHeader({ onBackPress }: CardHeaderProps) {
-  return (
-    <View className="flex-row items-center justify-between">
-      <Pressable onPress={onBackPress} className="web:hover:opacity-70">
-        <ArrowLeft color="white" />
-      </Pressable>
-      <Text className="text-white text-xl md:text-2xl font-semibold text-center">Solid card</Text>
-      <View className="w-4" />
-    </View>
-  );
+function MobileHeader() {
+  return <Text className="text-3xl font-semibold">Card</Text>;
 }
 
 interface DesktopHeaderProps {
@@ -264,7 +239,7 @@ function DesktopHeader({
       <View className="flex-row items-center gap-2">
         <Button
           variant="secondary"
-          className="h-12 px-6 rounded-xl bg-[#303030] border-0"
+          className="h-12 rounded-xl border-0 bg-[#303030] px-6"
           onPress={onCardDetails}
           disabled={isLoadingCardDetails}
         >
@@ -278,14 +253,14 @@ function DesktopHeader({
                 contentFit="contain"
               />
             )}
-            <Text className="text-base text-white font-bold">
+            <Text className="text-base font-bold text-white">
               {isCardFlipped ? 'Hide details' : 'Card details'}
             </Text>
           </View>
         </Button>
         <Button
           variant="secondary"
-          className="h-12 px-6 rounded-xl bg-[#303030] border-0"
+          className="h-12 rounded-xl border-0 bg-[#303030] px-6"
           onPress={onFreezeToggle}
           disabled={isFreezing}
         >
@@ -299,7 +274,7 @@ function DesktopHeader({
                 contentFit="contain"
               />
             )}
-            <Text className="text-base text-white font-bold">
+            <Text className="text-base font-bold text-white">
               {isCardFrozen ? 'Unfreeze' : 'Freeze'}
             </Text>
           </View>
@@ -307,12 +282,12 @@ function DesktopHeader({
         <DepositToCardModal
           trigger={
             <Button
-              className="h-12 px-6 rounded-xl border-0"
+              className="h-12 rounded-xl border-0 px-6"
               style={{ backgroundColor: '#94F27F' }}
             >
               <View className="flex-row items-center gap-2">
                 <Plus size={22} color="black" />
-                <Text className="text-base text-black font-bold">Deposit</Text>
+                <Text className="text-base font-bold text-black">Deposit</Text>
               </View>
             </Button>
           }
@@ -343,32 +318,32 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
       colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.1)']}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
-      className="rounded-[20px] py-[30px] px-[36px] h-full"
+      className="h-full rounded-[20px] px-[36px] py-[30px]"
     >
       <View className="flex-1 justify-between">
         {/* Spending Balance Section */}
         <View>
-          <Text className="text-white/60 text-base mb-2">Spending balance</Text>
-          <Text className="text-white text-[50px] font-semibold">${formattedAmount}</Text>
+          <Text className="mb-2 text-base text-white/60">Spending balance</Text>
+          <Text className="text-[50px] font-semibold text-white">${formattedAmount}</Text>
         </View>
 
         {/* Cashback Section */}
         <View className="flex-row items-center justify-between">
           <View>
-            <Text className="text-white/50 text-lg mb-1 font-medium">Cashback earned</Text>
-            <Text className="text-[#94F27F] text-2xl font-semibold">${totalUsdValue}</Text>
+            <Text className="mb-1 text-lg font-medium text-white/50">Cashback earned</Text>
+            <Text className="text-2xl font-semibold text-[#94F27F]">${totalUsdValue}</Text>
           </View>
 
           {/* Cashback Badge */}
-          <View className="px-4  flex-row items-center gap-1">
+          <View className="flex-row  items-center gap-1 px-4">
             <Image
               source={require('@/assets/images/diamond.png')}
               style={{ width: 82, aspectRatio: 72 / 66 }}
               contentFit="contain"
             />
-            <Text className="text-white text-lg font-light" style={{ lineHeight: 20 }}>
+            <Text className="text-lg font-light text-white" style={{ lineHeight: 20 }}>
               you are receiving{'\n'}
-              <Text className="text-[#94F27F] font-bold">
+              <Text className="font-bold text-[#94F27F]">
                 {Math.round(cashbackPercentage * 100)}%
               </Text>{' '}
               cashback on all{'\n'}purchases
@@ -387,7 +362,7 @@ interface BalanceDisplayProps {
 function BalanceDisplay({ amount }: BalanceDisplayProps) {
   const formattedAmount = Number.parseFloat(amount).toFixed(2);
   return (
-    <View className="items-center mt-10">
+    <View className="mt-10 items-center">
       <Text className="text-[50px] font-semibold">${formattedAmount}</Text>
       <Text className="text-base opacity-70">Spendable balance</Text>
     </View>
@@ -441,7 +416,7 @@ function CardImageSection({
 
   return (
     <View
-      className={cn('items-center', !isScreenMedium && 'mt-12 mb-6')}
+      className={cn('items-center', !isScreenMedium && 'mb-6 mt-12')}
       style={{
         paddingHorizontal: isCardFrozen || !isScreenMedium ? 0 : 2,
       }}
@@ -514,6 +489,16 @@ function CardDetailsOverlay({
   const { cardDetails, isLoading, error, revealDetails } = useCardDetailsReveal();
   const hasRevealedRef = useRef(false);
   const hasNotifiedLoadedRef = useRef(false);
+  const clipboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup clipboard timeout on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (clipboardTimeoutRef.current) {
+        clearTimeout(clipboardTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Only reveal details once when component mounts
@@ -550,13 +535,30 @@ function CardDetailsOverlay({
   const handleCopyCardNumber = useCallback(async () => {
     if (!cardDetails) return;
     try {
-      await Clipboard.setString(formatCardNumber(cardDetails.card_number));
+      await Clipboard.setStringAsync(formatCardNumber(cardDetails.card_number));
       Toast.show({
         type: 'success',
         text1: 'Card number copied',
+        text2: 'Clipboard will clear in 30 seconds',
         props: { badgeText: '' },
         visibilityTime: 4000,
       });
+      // Clear any existing timeout before setting a new one
+      if (clipboardTimeoutRef.current) {
+        clearTimeout(clipboardTimeoutRef.current);
+      }
+      // Clear clipboard after 30 seconds for security
+      clipboardTimeoutRef.current = setTimeout(async () => {
+        try {
+          // Only clear if clipboard still contains the card number
+          const currentClipboard = await Clipboard.getStringAsync();
+          if (currentClipboard === formatCardNumber(cardDetails.card_number)) {
+            await Clipboard.setStringAsync('');
+          }
+        } catch {
+          // Silently fail if clipboard clearing fails
+        }
+      }, 30000);
     } catch (_error) {
       Alert.alert('Error', 'Failed to copy card number');
     }
@@ -579,38 +581,43 @@ function CardDetailsOverlay({
     return (
       <View
         style={{ opacity: 0, pointerEvents: 'none' }}
-        className="absolute inset-0 rounded-2xl p-6 mt-24 justify-center"
+        className="absolute inset-0 mt-24 justify-center rounded-2xl p-6"
       >
         <View className="mb-5">
           <View className="flex-row items-center gap-2">
             <Text className="text-3xl font-medium" style={{ color: '#2E6A25' }}>
               {formatCardNumber(safeCardDetails.card_number)}
             </Text>
-            <Pressable onPress={handleCopyCardNumber} className="p-2 web:hover:opacity-70">
+            <Pressable
+              onPress={handleCopyCardNumber}
+              className="p-2 web:hover:opacity-70"
+              accessibilityLabel="Copy card number to clipboard"
+              accessibilityRole="button"
+            >
               <Copy size={20} color="#2E6A25" />
             </Pressable>
           </View>
         </View>
 
         <View className="flex-row">
-          <View className="flex-1 mr-6">
-            <View className="flex-row items-end mt-4">
-              <Text className="text-[9px] font-extrabold mb-1" style={{ color: '#2E6A25' }}>
+          <View className="mr-6 flex-1">
+            <View className="mt-4 flex-row items-end">
+              <Text className="mb-1 text-[9px] font-extrabold" style={{ color: '#2E6A25' }}>
                 {'GOOD\nTHRU'}
               </Text>
-              <Text className="text-lg ml-2 font-semibold" style={{ color: '#2E6A25' }}>
+              <Text className="ml-2 text-lg font-semibold" style={{ color: '#2E6A25' }}>
                 {formatExpiryDate(cardDetails.expiry_date)}
               </Text>
             </View>
             <Text
-              className="text-sm md:text-lg font-semibold mt-6"
+              className="mt-6 text-sm font-semibold md:text-lg"
               style={{ color: '#2E6A25' }}
               numberOfLines={1}
             >
               {displayName}
             </Text>
           </View>
-          <View className="flex-1 mt-4">
+          <View className="mt-4 flex-1">
             <Text className="text-xs font-semibold" style={{ color: '#2E6A25' }}>
               CVV
             </Text>
@@ -624,30 +631,35 @@ function CardDetailsOverlay({
   }
 
   return (
-    <View className="absolute inset-0 rounded-2xl p-6 mt-12 md:mt-24 justify-center">
+    <View className="absolute inset-0 mt-12 justify-center rounded-2xl p-6 md:mt-24">
       <View className="mb-5">
         <View className="flex-row items-center gap-2">
-          <Text className="text-lg md:text-3xl font-medium" style={{ color: '#2E6A25' }}>
+          <Text className="text-lg font-medium md:text-3xl" style={{ color: '#2E6A25' }}>
             {formatCardNumber(cardDetails.card_number)}
           </Text>
-          <Pressable onPress={handleCopyCardNumber} className="p-2 web:hover:opacity-70">
+          <Pressable
+            onPress={handleCopyCardNumber}
+            className="p-2 web:hover:opacity-70"
+            accessibilityLabel="Copy card number to clipboard"
+            accessibilityRole="button"
+          >
             <Copy size={20} color="#2E6A25" />
           </Pressable>
         </View>
       </View>
 
       <View className="flex-row">
-        <View className="flex-1 mr-6">
+        <View className="mr-6 flex-1">
           <View className="flex-row items-end md:mt-4">
-            <Text className="text-[9px] font-extrabold mb-1" style={{ color: '#2E6A25' }}>
+            <Text className="mb-1 text-[9px] font-extrabold" style={{ color: '#2E6A25' }}>
               {'GOOD\nTHRU'}
             </Text>
-            <Text className="text-lg ml-2 font-semibold" style={{ color: '#2E6A25' }}>
+            <Text className="ml-2 text-lg font-semibold" style={{ color: '#2E6A25' }}>
               {formatExpiryDate(cardDetails.expiry_date)}
             </Text>
           </View>
           <Text
-            className="text-sm md:text-lg font-semibold mt-6"
+            className="mt-6 text-sm font-semibold md:text-lg"
             style={{ color: '#2E6A25' }}
             numberOfLines={1}
           >
@@ -658,7 +670,7 @@ function CardDetailsOverlay({
           <Text className="text-xs font-semibold" style={{ color: '#2E6A25' }}>
             CVV
           </Text>
-          <Text className="md:text-lg font-semibold" style={{ color: '#2E6A25' }}>
+          <Text className="font-semibold md:text-lg" style={{ color: '#2E6A25' }}>
             {cardDetails.card_security_code}
           </Text>
         </View>
@@ -685,7 +697,7 @@ function CardActions({
   onFreezeToggle,
 }: CardActionsProps) {
   return (
-    <View className="flex-row justify-center web:space-x-8 native:gap-8 items-center mb-8">
+    <View className="native:gap-8 mb-8 flex-row items-center justify-center web:space-x-8">
       <DepositToCardModal
         trigger={
           <CircularActionButton
@@ -721,19 +733,19 @@ function DepositBonusBanner() {
         start={{ x: 0.15, y: 0 }}
         end={{ x: 0.85, y: 1 }}
         locations={[0.0964, 0.6892]}
-        className="rounded-2xl p-4 md:p-5 flex-row items-center gap-4 h-full border border-[#FFD15126]"
+        className="h-full flex-row items-center gap-4 rounded-2xl border border-[#FFD15126] p-4 md:p-5"
       >
         <Link
           href={
             'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
           }
           target="_blank"
-          className="bg-[#FFD151]/20 rounded-full px-3 py-1"
+          className="rounded-full bg-[#FFD151]/20 px-3 py-1"
         >
-          <Text className="text-[#FFD151] font-bold text-sm">Receive your $50 sign up bonus!</Text>
+          <Text className="text-sm font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
         </Link>
         <View className="flex-1 flex-row items-center justify-between">
-          <Text className="text-[#FFD151] text-sm font-medium">On a minimum deposit of $100</Text>
+          <Text className="text-sm font-medium text-[#FFD151]">On a minimum deposit of $100</Text>
           <View className="flex-row items-center gap-1">
             <Link
               target="_blank"
@@ -759,18 +771,18 @@ function DepositBonusBanner() {
       start={{ x: 0.15, y: 0 }}
       end={{ x: 0.85, y: 1 }}
       locations={[0.0964, 0.6892]}
-      className="rounded-3xl p-4 flex-col items-center gap-3 mb-4 border border-[#FFD15126]"
+      className="mb-4 flex-col items-center gap-3 rounded-3xl border border-[#FFD15126] p-4"
     >
       <Link
         href={
           'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
         }
         target="_blank"
-        className="bg-[#FFD151]/20 rounded-full px-4 py-1.5"
+        className="rounded-full bg-[#FFD151]/20 px-4 py-1.5"
       >
-        <Text className="text-[#FFD151] font-bold text-lg">Receive your $50 sign up bonus!</Text>
+        <Text className="text-lg font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
       </Link>
-      <Text className="text-[#FFD151] text-lg font-medium text-center">
+      <Text className="text-center text-lg font-medium text-[#FFD151]">
         On a minimum deposit of $100
       </Text>
     </LinearGradient>
@@ -797,13 +809,13 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
       colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.1)']}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
-      className="rounded-[20px] mb-4 py-[10px]"
+      className="mb-4 rounded-[20px] py-[10px]"
     >
       {/* Top Section */}
-      <View className="flex-row justify-between items-start mb-2 px-4">
+      <View className="mb-2 flex-row items-start justify-between px-4">
         <View>
-          <Text className="text-white/70 text-lg mb-1">Cashback earned</Text>
-          <Text className="text-[#94F27F] text-2xl font-semibold">${totalUsdValue}</Text>
+          <Text className="mb-1 text-lg text-white/70">Cashback earned</Text>
+          <Text className="text-2xl font-semibold text-[#94F27F]">${totalUsdValue}</Text>
         </View>
         <Image
           source={require('@/assets/images/diamond.png')}
@@ -817,9 +829,9 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
 
       {/* Bottom Text */}
       <View>
-        <Text className="text-white text-lg pl-4 pb-2 font-light" style={{ lineHeight: 20 }}>
+        <Text className="pb-2 pl-4 text-lg font-light text-white" style={{ lineHeight: 20 }}>
           you are receiving{' '}
-          <Text className="text-[#94F27F] font-bold">{Math.round(cashbackPercentage * 100)}%</Text>{' '}
+          <Text className="font-bold text-[#94F27F]">{Math.round(cashbackPercentage * 100)}%</Text>{' '}
           cashback on
           {'\n'}
           all purchases
@@ -839,10 +851,10 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="bg-[#1E1E1E] rounded-2xl flex-row items-center justify-between p-4 md:h-full web:hover:bg-[#2a2a2a]"
+      className="flex-row items-center justify-between rounded-2xl bg-[#1E1E1E] p-4 web:hover:bg-[#2a2a2a] md:h-full"
     >
-      <View className="flex-row items-center flex-1">
-        <Text className="text-base font-bold text-white mr-2">
+      <View className="flex-1 flex-row items-center">
+        <Text className="mr-2 text-base font-bold text-white">
           {isScreenMedium ? 'Add to' : 'Add to wallet'}
         </Text>
         <View className="flex-row items-center">
@@ -851,7 +863,7 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
             style={{ width: 49, height: 22 }}
             contentFit="contain"
           />
-          <View className="w-px h-6 bg-white/30 mx-2" />
+          <View className="mx-2 h-6 w-px bg-white/30" />
           <Image
             source={require('@/assets/images/google_pay.png')}
             style={{ width: 47, height: 19 }}
@@ -948,10 +960,10 @@ function RecentTransactions({
           },
         )}
       >
-        <View className="flex-row items-center gap-2 md:gap-4 flex-1 mr-2">
+        <View className="mr-2 flex-1 flex-row items-center gap-2 md:gap-4">
           {isPurchase ? (
             <View
-              className="rounded-full overflow-hidden items-center justify-center"
+              className="items-center justify-center overflow-hidden rounded-full"
               style={{ width: 43, height: 43, backgroundColor: color.bg }}
             >
               <Text className="text-lg font-semibold" style={{ color: color.text }}>
@@ -978,8 +990,8 @@ function RecentTransactions({
             </Text>
           </View>
         </View>
-        <View className="flex-row items-center gap-2 md:gap-10 flex-shrink-0">
-          <Text className={`font-bold text-right text-white`}>
+        <View className="flex-shrink-0 flex-row items-center gap-2 md:gap-10">
+          <Text className={`text-right font-bold text-white`}>
             {formatCardAmountWithCurrency(item.amount, item.currency)}
           </Text>
           {Platform.OS === 'web' ? (
@@ -995,7 +1007,7 @@ function RecentTransactions({
   if (isLoading) {
     return (
       <View className="mb-28">
-        <Text className="text-lg font-semibold text-[#A1A1A1] mb-4 mt-4">Recent transactions</Text>
+        <Text className="mb-4 mt-4 text-lg font-semibold text-[#A1A1A1]">Recent transactions</Text>
         <View className="py-8">
           <Loading />
         </View>
@@ -1006,8 +1018,8 @@ function RecentTransactions({
   if (transactions.length === 0) {
     return (
       <View className="mb-28">
-        <Text className="text-lg font-semibold text-[#A1A1A1] mb-4 mt-4">Recent transactions</Text>
-        <View className="bg-[#1C1C1C] rounded-2xl p-8">
+        <Text className="mb-4 mt-4 text-lg font-semibold text-[#A1A1A1]">Recent transactions</Text>
+        <View className="rounded-2xl bg-[#1C1C1C] p-8">
           <Text className="text-center text-[#ACACAC]">No transactions yet</Text>
         </View>
       </View>
@@ -1016,11 +1028,11 @@ function RecentTransactions({
 
   return (
     <View className="mb-28 mt-24">
-      <Text className="text-lg font-semibold text-[#A1A1A1] mb-4">Recent transactions</Text>
+      <Text className="mb-4 text-lg font-semibold text-[#A1A1A1]">Recent transactions</Text>
       {Object.entries(groupedTransactions).map(([date, txs], groupIndex) => (
         <View key={groupIndex} className="mb-4 mt-5">
-          <Text className="text-base font-semibold text-white/60 mb-2">{date}</Text>
-          <View className="bg-[#1C1C1C] rounded-2xl overflow-hidden">
+          <Text className="mb-2 text-base font-semibold text-white/60">{date}</Text>
+          <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">
             {txs.map((tx, index) => renderTransaction(tx, index === txs.length - 1))}
           </View>
         </View>
@@ -1031,8 +1043,8 @@ function RecentTransactions({
         </View>
       )}
       {hasNextPage && !isFetchingNextPage && (
-        <Pressable onPress={onLoadMore} className="bg-[#1E1E1E] rounded-2xl p-4 items-center">
-          <Text className="text-white font-bold">Load more</Text>
+        <Pressable onPress={onLoadMore} className="items-center rounded-2xl bg-[#1E1E1E] p-4">
+          <Text className="font-bold text-white">Load more</Text>
         </Pressable>
       )}
     </View>

@@ -18,21 +18,21 @@ const Chart = ({ data, formatToolTip }: BarChartProps) => {
   const avgValue = data.reduce((acc, item) => acc + (item.value || 0), 0) / data.length;
 
   return (
-    <View className="flex-1 justify-center items-center gap-4">
-      <View className="gap-2 items-center">
+    <View className="flex-1 items-center justify-center gap-4">
+      <View className="items-center gap-2">
         <Text className="text-xs text-muted-foreground">Current APY</Text>
         <Text className="text-3xl font-semibold">
           {formatToolTip ? formatToolTip(latestValue || null) : `${latestValue?.toFixed(2)}%`}
         </Text>
       </View>
       <View className="flex-row gap-6">
-        <View className="gap-1 items-center">
+        <View className="items-center gap-1">
           <Text className="text-xs text-muted-foreground">30d Avg</Text>
           <Text className="text-sm font-medium">
             {formatToolTip ? formatToolTip(avgValue) : `${avgValue.toFixed(2)}%`}
           </Text>
         </View>
-        <View className="gap-1 items-center">
+        <View className="items-center gap-1">
           <Text className="text-xs text-muted-foreground">30d Max</Text>
           <Text className="text-sm font-medium">
             {formatToolTip ? formatToolTip(maxValue) : `${maxValue.toFixed(2)}%`}

@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { path } from '@/constants/path';
-import { ChevronLeft } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -31,20 +31,19 @@ const CoinBackButton = ({ title, tokenSymbol, size = 32, className }: CoinBackBu
   };
 
   return (
-    <View className="flex-row items-center justify-between">
+    <View className="flex-row items-center justify-between gap-2">
       <Pressable
         onPress={handleBackPress}
-        className="flex-row items-center gap-2 web:hover:opacity-70"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
       >
-        <ChevronLeft color="white" />
-        {tokenSymbol && <RenderTokenIcon tokenIcon={tokenIcon} size={size} />}
+        <ArrowLeft color="white" />
       </Pressable>
+      {tokenSymbol && <RenderTokenIcon tokenIcon={tokenIcon} size={size} />}
       {title && (
-        <Text className={cn('text-white text-lg font-semibold text-center', className)}>
+        <Text className={cn('text-center text-lg font-semibold text-white', className)}>
           {title}
         </Text>
       )}
-      <View className="w-10" />
     </View>
   );
 };

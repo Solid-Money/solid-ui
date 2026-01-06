@@ -1,5 +1,4 @@
-import { gql } from '@apollo/client';
-import * as Apollo from '@apollo/client';
+import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -7,7 +6,6 @@ export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: 
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
 export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
-const defaultOptions = {} as const;
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
   ID: { input: string; output: string; }
@@ -1138,7 +1136,6 @@ export type _Meta_ = {
    * will be null if the _meta field has a block constraint that asks for
    * a block number. It will be filled if the _meta field has no block constraint
    * and therefore asks for the latest  block
-   *
    */
   block: _Block_;
   /** The deployment ID */
@@ -1170,112 +1167,5 @@ export type GetUserTransactionsQueryVariables = Exact<{
 export type GetUserTransactionsQuery = { __typename?: 'Query', deposits: Array<{ __typename?: 'Deposit', depositor: any, receiver: any, depositAmount: any, depositTimestamp: any, isBridged: boolean, shareAmount: any, transactionHash: any }>, withdraws: Array<{ __typename?: 'Withdraw', amountOfAssets: any, amountOfShares: any, creationTime: any, requestTimestamp: any, requestStatus: string, requestTxHash: any, solveTxHash: any, requestId: any }>, bridges: Array<{ __typename?: 'Bridge', user: any, transactionHash: any, shareAmount: any, blockTimestamp: any }> };
 
 
-export const GetExchangeRateUpdatesDocument = gql`
-    query GetExchangeRateUpdates($minTimestamp: BigInt!, $maxTimestamp: BigInt!) {
-  exchangeRateUpdates(
-    where: {timestamp_gte: $minTimestamp, timestamp_lte: $maxTimestamp}
-    orderBy: timestamp
-    orderDirection: asc
-  ) {
-    id
-    timestamp
-    exchangeRate
-  }
-}
-    `;
-
-/**
- * __useGetExchangeRateUpdatesQuery__
- *
- * To run a query within a React component, call `useGetExchangeRateUpdatesQuery` and pass it any options that fit your needs.
- * When your component renders, `useGetExchangeRateUpdatesQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useGetExchangeRateUpdatesQuery({
- *   variables: {
- *      minTimestamp: // value for 'minTimestamp'
- *      maxTimestamp: // value for 'maxTimestamp'
- *   },
- * });
- */
-export function useGetExchangeRateUpdatesQuery(baseOptions: Apollo.QueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables> & ({ variables: GetExchangeRateUpdatesQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
-      }
-export function useGetExchangeRateUpdatesLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>) {
-          const options = {...defaultOptions, ...baseOptions}
-          return Apollo.useLazyQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
-        }
-export function useGetExchangeRateUpdatesSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>) {
-          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
-          return Apollo.useSuspenseQuery<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>(GetExchangeRateUpdatesDocument, options);
-        }
-export type GetExchangeRateUpdatesQueryHookResult = ReturnType<typeof useGetExchangeRateUpdatesQuery>;
-export type GetExchangeRateUpdatesLazyQueryHookResult = ReturnType<typeof useGetExchangeRateUpdatesLazyQuery>;
-export type GetExchangeRateUpdatesSuspenseQueryHookResult = ReturnType<typeof useGetExchangeRateUpdatesSuspenseQuery>;
-export type GetExchangeRateUpdatesQueryResult = Apollo.QueryResult<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>;
-export const GetUserTransactionsDocument = gql`
-    query GetUserTransactions($address: Bytes!) {
-  deposits(where: {receiver: $address}) {
-    depositor
-    receiver
-    depositAmount
-    depositTimestamp
-    isBridged
-    shareAmount
-    transactionHash
-  }
-  withdraws(where: {user_: {id: $address}}) {
-    amountOfAssets
-    amountOfShares
-    creationTime
-    requestTimestamp
-    requestStatus
-    requestTxHash
-    solveTxHash
-    requestId
-  }
-  bridges(where: {user: $address}) {
-    user
-    transactionHash
-    shareAmount
-    blockTimestamp
-  }
-}
-    `;
-
-/**
- * __useGetUserTransactionsQuery__
- *
- * To run a query within a React component, call `useGetUserTransactionsQuery` and pass it any options that fit your needs.
- * When your component renders, `useGetUserTransactionsQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useGetUserTransactionsQuery({
- *   variables: {
- *      address: // value for 'address'
- *   },
- * });
- */
-export function useGetUserTransactionsQuery(baseOptions: Apollo.QueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables> & ({ variables: GetUserTransactionsQueryVariables; skip?: boolean; } | { skip: boolean; }) ) {
-        const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
-      }
-export function useGetUserTransactionsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>) {
-          const options = {...defaultOptions, ...baseOptions}
-          return Apollo.useLazyQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
-        }
-export function useGetUserTransactionsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>) {
-          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
-          return Apollo.useSuspenseQuery<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>(GetUserTransactionsDocument, options);
-        }
-export type GetUserTransactionsQueryHookResult = ReturnType<typeof useGetUserTransactionsQuery>;
-export type GetUserTransactionsLazyQueryHookResult = ReturnType<typeof useGetUserTransactionsLazyQuery>;
-export type GetUserTransactionsSuspenseQueryHookResult = ReturnType<typeof useGetUserTransactionsSuspenseQuery>;
-export type GetUserTransactionsQueryResult = Apollo.QueryResult<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>;
+export const GetExchangeRateUpdatesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetExchangeRateUpdates"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"minTimestamp"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"BigInt"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"maxTimestamp"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"BigInt"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"exchangeRateUpdates"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"timestamp_gte"},"value":{"kind":"Variable","name":{"kind":"Name","value":"minTimestamp"}}},{"kind":"ObjectField","name":{"kind":"Name","value":"timestamp_lte"},"value":{"kind":"Variable","name":{"kind":"Name","value":"maxTimestamp"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"orderBy"},"value":{"kind":"EnumValue","value":"timestamp"}},{"kind":"Argument","name":{"kind":"Name","value":"orderDirection"},"value":{"kind":"EnumValue","value":"asc"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeRate"}}]}}]}}]} as unknown as DocumentNode<GetExchangeRateUpdatesQuery, GetExchangeRateUpdatesQueryVariables>;
+export const GetUserTransactionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetUserTransactions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"address"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Bytes"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deposits"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"receiver"},"value":{"kind":"Variable","name":{"kind":"Name","value":"address"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"depositor"}},{"kind":"Field","name":{"kind":"Name","value":"receiver"}},{"kind":"Field","name":{"kind":"Name","value":"depositAmount"}},{"kind":"Field","name":{"kind":"Name","value":"depositTimestamp"}},{"kind":"Field","name":{"kind":"Name","value":"isBridged"}},{"kind":"Field","name":{"kind":"Name","value":"shareAmount"}},{"kind":"Field","name":{"kind":"Name","value":"transactionHash"}}]}},{"kind":"Field","name":{"kind":"Name","value":"withdraws"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"user_"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"address"}}}]}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"amountOfAssets"}},{"kind":"Field","name":{"kind":"Name","value":"amountOfShares"}},{"kind":"Field","name":{"kind":"Name","value":"creationTime"}},{"kind":"Field","name":{"kind":"Name","value":"requestTimestamp"}},{"kind":"Field","name":{"kind":"Name","value":"requestStatus"}},{"kind":"Field","name":{"kind":"Name","value":"requestTxHash"}},{"kind":"Field","name":{"kind":"Name","value":"solveTxHash"}},{"kind":"Field","name":{"kind":"Name","value":"requestId"}}]}},{"kind":"Field","name":{"kind":"Name","value":"bridges"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"where"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"user"},"value":{"kind":"Variable","name":{"kind":"Name","value":"address"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"user"}},{"kind":"Field","name":{"kind":"Name","value":"transactionHash"}},{"kind":"Field","name":{"kind":"Name","value":"shareAmount"}},{"kind":"Field","name":{"kind":"Name","value":"blockTimestamp"}}]}}]}}]} as unknown as DocumentNode<GetUserTransactionsQuery, GetUserTransactionsQueryVariables>;

@@ -12,7 +12,7 @@ const Input = React.forwardRef<TextInput, InputProps>(({ className, error, ...pr
     <TextInput
       ref={ref}
       className={cn(
-        'h-14 px-6 rounded-xl border border-transparent bg-[#1F1F1F] text-lg font-semibold native:text-white placeholder:text-muted-foreground focus:border-border',
+        'native:text-white h-14 rounded-xl border border-transparent bg-[#1F1F1F] px-6 text-lg font-semibold placeholder:text-muted-foreground focus:border-border',
         {
           'border-red-500': error,
         },

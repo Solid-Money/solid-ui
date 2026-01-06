@@ -1,8 +1,10 @@
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
-import { Platform, SafeAreaView, View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown';
+import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
@@ -10,7 +12,6 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { NavMenu } from './NavMenu';
 import RegisterButtons from './RegisterButtons';
-import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
 import WhatsNewButton from './WhatsNewButton';
 
 const Navbar = () => {
@@ -18,8 +19,8 @@ const Navbar = () => {
   const { user } = useUser();
 
   return (
-    <SafeAreaView className="sticky top-0 z-50 bg-background/40 backdrop-blur-lg border-b border-border/40">
-      <View className="flex-row justify-between items-center p-4 md:py-6 w-full max-w-7xl mx-auto">
+    <SafeAreaView className="sticky top-0 z-50 border-b border-border/40 bg-background/40 backdrop-blur-lg">
+      <View className="mx-auto w-full max-w-7xl flex-row items-center justify-between p-4 md:py-6">
         <Link
           href={path.HOME}
           className="flex flex-row items-center gap-2"
@@ -40,7 +41,7 @@ const Navbar = () => {
             alt="Solid"
             contentFit="contain"
             style={{ width: 72, height: 33, marginTop: -3 }}
-            className="hidden md:block mt-[-3px]"
+            className="mt-[-3px] hidden md:block"
           />
         </Link>
         {user && isScreenMedium && <NavMenu />}

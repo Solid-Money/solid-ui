@@ -9,7 +9,7 @@ const CoinChartTime = () => {
   const { selectedTime, setSelectedTime } = useCoinStore();
 
   return (
-    <View className="flex-row justify-between items-center gap-2 bg-card rounded-twice px-6 py-2 w-full max-w-xs mx-auto">
+    <View className="mx-auto w-full max-w-xs flex-row items-center justify-between gap-2 rounded-twice bg-card px-6 py-2">
       {times.map(time => (
         <Pressable
           key={time.value}

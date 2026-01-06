@@ -17,12 +17,10 @@ export default function Activity() {
   const userHasCard = hasCard(cardStatus);
 
   return (
-    <PageLayout desktopOnly isLoading={isCardLoading} scrollable={isWeb}>
-      <View
-        className={`gap-8 px-4 py-8 md:py-12 w-full max-w-7xl mx-auto ${isWeb ? '' : 'flex-1'}`}
-      >
+    <PageLayout isLoading={isCardLoading} scrollable={isWeb}>
+      <View className={`mx-auto w-full max-w-7xl px-4 pb-8 pt-6 md:py-12 ${isWeb ? '' : 'flex-1'}`}>
         <View className="flex-row items-center justify-between">
-          <Text className="text-xl md:text-3xl font-semibold">Activity</Text>
+          <Text className="text-3xl font-semibold">Activity</Text>
 
           {/* Web-only refresh button (pull-to-refresh doesn't work on web) */}
           {isWeb && !userHasCard && (
