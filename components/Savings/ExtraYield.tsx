@@ -15,6 +15,7 @@ import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { getAsset } from '@/lib/assets';
 import { calculateUnclaimedMerklRewards, claimMerklRewards, getMerklRewards } from '@/lib/merkl';
 import { TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, compactNumberFormat, formatTimeRemaining } from '@/lib/utils';
@@ -203,7 +204,7 @@ const ExtraYield = () => {
   const getImage = () => {
     return (
       <Image
-        source={require('@/assets/images/three-percent.png')}
+        source={getAsset('images/three-percent.png')}
         style={{
           width: 193,
           height: 193,

@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Text } from '@/components/ui/text';
+import { getAsset } from '@/lib/assets';
 
 type PointsBadgeProps = {
   points: number;
@@ -21,7 +22,7 @@ const PointsBadge = ({ points }: PointsBadgeProps) => {
       }}
     >
       <Image
-        source={require('@/assets/images/star.png')}
+        source={getAsset('images/star.png')}
         style={{ width: 40, height: 40, position: 'absolute', top: 0, left: 8 }}
       />
       <Text className="text-base font-semibold text-points">{points} Points</Text>

@@ -15,6 +15,7 @@ import { STAKE_MODAL } from '@/constants/modals';
 import useBridgeToFuse from '@/hooks/useBridgeToFuse';
 import useUser from '@/hooks/useUser';
 import { useEthereumVaultBalance } from '@/hooks/useVault';
+import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -133,7 +134,7 @@ const Stake = () => {
           />
           <View className="flex-row items-center gap-2">
             <Image
-              source={require('@/assets/images/sousd-4x.png')}
+              source={getAsset('images/sousd-4x.png')}
               alt="SoUSD"
               style={{ width: 34, height: 34 }}
             />

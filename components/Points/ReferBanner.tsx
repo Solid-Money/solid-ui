@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View } from 'react-native';
 import { router } from 'expo-router';
+import { View } from 'react-native';
 
 import SwipeableBanner from '@/components/Dashboard/SwipeableBanner';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
+import { getAsset } from '@/lib/assets';
 
 const ReferBanner = () => {
   const { isScreenMedium } = useDimension();
@@ -39,7 +40,7 @@ const ReferBanner = () => {
           </View>
           <View className="pointer-events-none -ml-6 md:ml-0">
             <Image
-              source={require('@/assets/images/one-percent-cashback.png')}
+              source={getAsset('images/one-percent-cashback.png')}
               contentFit="contain"
               style={{ width: isScreenMedium ? 205 : 110, height: isScreenMedium ? 170 : 110 }}
             />

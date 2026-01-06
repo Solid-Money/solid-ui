@@ -21,6 +21,7 @@ import {
 } from './addresses';
 import { ChainsId } from './chains';
 
+import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { TokenBalance, TokenMap, TokenType } from '@/lib/types';
 
@@ -43,10 +44,10 @@ export const NATIVE_TOKENS: Record<number, string> = {
 };
 
 export const TOKEN_IMAGES: Record<string, ImageSourcePropType> = {
-  usdc: require('@/assets/images/usdc.png'),
-  weth: require('@/assets/images/eth.png'),
-  usdt: require('@/assets/images/usdt.png'),
-  usds: require('@/assets/images/usds.png'),
+  usdc: getAsset('images/usdc.png'),
+  weth: getAsset('images/eth.png'),
+  usdt: getAsset('images/usdt.png'),
+  usds: getAsset('images/usds.png'),
 };
 
 // FUSE CHAIN

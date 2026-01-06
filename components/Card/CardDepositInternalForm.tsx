@@ -33,6 +33,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
+import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
@@ -212,8 +213,8 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
           <Image
             source={
               from === 'wallet'
-                ? require('@/assets/images/usdc-4x.png')
-                : require('@/assets/images/sousd-4x.png')
+                ? getAsset('images/usdc-4x.png')
+                : getAsset('images/sousd-4x.png')
             }
             alt={from === 'wallet' ? 'USDC.e' : 'soUSD'}
             style={{ width: 34, height: 34 }}

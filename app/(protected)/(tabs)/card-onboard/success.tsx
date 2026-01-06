@@ -1,12 +1,13 @@
-import { View } from 'react-native';
 import { Image } from 'expo-image';
+import { View } from 'react-native';
 
-import { Text } from '@/components/ui/text';
-import CardWaitlistHeaderTitle from '@/components/CardWaitlist/CardWaitlistHeaderTitle';
+import CardWaitlistBackButton from '@/components/CardWaitlist/CardWaitlistBackButton';
 import CardWaitlistContainer from '@/components/CardWaitlist/CardWaitlistContainer';
 import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';
-import CardWaitlistBackButton from '@/components/CardWaitlist/CardWaitlistBackButton';
+import CardWaitlistHeaderTitle from '@/components/CardWaitlist/CardWaitlistHeaderTitle';
+import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import { getAsset } from '@/lib/assets';
 
 import Checkmark from '@/assets/images/checkmark';
 
@@ -28,7 +29,7 @@ const CardWaitlist = () => {
 
           {!isScreenMedium && (
             <Image
-              source={require('@/assets/images/cards.png')}
+              source={getAsset('images/cards.png')}
               style={{ width: 289, height: 305 }}
               contentFit="contain"
             />
