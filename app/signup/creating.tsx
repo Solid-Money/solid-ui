@@ -149,7 +149,7 @@ export default function SignupCreating() {
 
     createAccount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [_hasHydrated, userStoreHydrated, _attributionHydrated, users.length]);
+  }, [_hasHydrated, userStoreHydrated, _attributionHydrated]);
 
   const createAccount = async () => {
     // Capture attribution context for signup tracking
