@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { EXPO_PUBLIC_ASSETS_CDN_URL } from './config';
+import { EXPO_PUBLIC_BASE_URL } from './config';
 
 /**
  * Registry of all local assets.
@@ -151,10 +151,10 @@ export const getAsset = (path: AssetPath) => {
 
   // Only use CDN on Web. Mobile should always use local bundled assets.
   const isWeb = Platform.OS === 'web';
-  const shouldUseCDN = isWeb && EXPO_PUBLIC_ASSETS_CDN_URL && !__DEV__;
+  const shouldUseCDN = isWeb && EXPO_PUBLIC_BASE_URL && !__DEV__;
 
   if (shouldUseCDN) {
-    return { uri: `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}` };
+    return { uri: `${EXPO_PUBLIC_BASE_URL}/assets/${path}` };
   }
 
   return localAsset;
@@ -172,10 +172,10 @@ export const getImageUrl = (path: AssetPath) => {
 
   // Only use CDN on Web.
   const isWeb = Platform.OS === 'web';
-  const shouldUseCDN = isWeb && EXPO_PUBLIC_ASSETS_CDN_URL && !__DEV__;
+  const shouldUseCDN = isWeb && EXPO_PUBLIC_BASE_URL && !__DEV__;
 
   if (shouldUseCDN) {
-    return `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}`;
+    return `${EXPO_PUBLIC_BASE_URL}/assets/${path}`;
   }
 
   // If we're on web dev, return the local path from the public folder

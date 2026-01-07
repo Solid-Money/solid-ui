@@ -1,6 +1,7 @@
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 
+export const EXPO_PUBLIC_BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? '';
 export const EXPO_PUBLIC_ALCHEMY_API_KEY = process.env.EXPO_PUBLIC_ALCHEMY_API_KEY ?? '';
 export const EXPO_PUBLIC_PIMLICO_API_KEY = process.env.EXPO_PUBLIC_PIMLICO_API_KEY ?? '';
 export const EXPO_PUBLIC_FLASH_API_BASE_URL = process.env.EXPO_PUBLIC_FLASH_API_BASE_URL ?? '';
@@ -39,7 +40,6 @@ export const EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL =
 export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL =
   process.env.EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
-export const EXPO_PUBLIC_ASSETS_CDN_URL = process.env.EXPO_PUBLIC_ASSETS_CDN_URL ?? '';
 
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 
