@@ -1,14 +1,41 @@
 // Amplitude imports
-import { Identify, add, identify, init as initAmplitudeSDK, setUserId as setAmplitudeUserId, track as trackAmplitude } from '@amplitude/analytics-react-native';
+import {
+  add,
+  getDeviceId,
+  getSessionId,
+  identify,
+  Identify,
+  init as initAmplitudeSDK,
+  setUserId as setAmplitudeUserId,
+  track as trackAmplitude,
+} from '@amplitude/analytics-react-native';
 // Firebase imports
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAnalytics, logEvent, setUserId as setFirebaseUserId, setUserProperties } from '@react-native-firebase/analytics';
+import {
+  getAnalytics,
+  logEvent,
+  setUserId as setFirebaseUserId,
+  setUserProperties,
+} from '@react-native-firebase/analytics';
 import { getApps, initializeApp, setReactNativeAsyncStorage } from '@react-native-firebase/app';
 import { Platform } from 'react-native';
 // Local imports
-import { EXPO_PUBLIC_AMPLITUDE_API_KEY, EXPO_PUBLIC_AMPLITUDE_PROXY_URL, EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_APP_ID, EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN, EXPO_PUBLIC_FIREBASE_DATABASE_URL, EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID, EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID, EXPO_PUBLIC_FIREBASE_PROJECT_ID, EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET } from '@/lib/config';
+import { getAttributionChannel } from '@/lib/attribution';
+import {
+  EXPO_PUBLIC_AMPLITUDE_API_KEY,
+  EXPO_PUBLIC_AMPLITUDE_PROXY_URL,
+  EXPO_PUBLIC_FIREBASE_API_KEY,
+  EXPO_PUBLIC_FIREBASE_APP_ID,
+  EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  EXPO_PUBLIC_FIREBASE_DATABASE_URL,
+  EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+} from '@/lib/config';
 import { trackGTMEvent } from '@/lib/gtm';
 import { sanitize, toTitleCase } from '@/lib/utils/utils';
+import { useAttributionStore } from '@/store/useAttributionStore';
 
 // Firebase app instance
 const isFirebaseApp = getApps().length > 0;
@@ -25,7 +52,10 @@ export enum FirebaseEvent {
 }
 
 export const formatAmplitudeEvent = (str: string) => {
-  return str.split('_').map(word => toTitleCase(word)).join(' ');
+  return str
+    .split('_')
+    .map(word => toTitleCase(word))
+    .join(' ');
 };
 
 // Initialize Amplitude
@@ -36,9 +66,11 @@ const initAmplitude = async () => {
     if (Platform.OS === 'web') {
       // Web: add plugin BEFORE init
       const { sessionReplayPlugin } = await import('@amplitude/plugin-session-replay-browser');
-      await add(sessionReplayPlugin({
-        sampleRate,
-      })).promise;
+      await add(
+        sessionReplayPlugin({
+          sampleRate,
+        }),
+      ).promise;
     }
 
     // Use proxy URL if configured (bypasses ad blockers in production)
@@ -51,11 +83,13 @@ const initAmplitude = async () => {
     if (Platform.OS !== 'web') {
       // Native: add plugin AFTER init
       const { SessionReplayPlugin } = await import('@amplitude/plugin-session-replay-react-native');
-      await add(new SessionReplayPlugin({
-        sampleRate,
-        enableRemoteConfig: true,
-        autoStart: true,
-      })).promise;
+      await add(
+        new SessionReplayPlugin({
+          sampleRate,
+          enableRemoteConfig: true,
+          autoStart: true,
+        }),
+      ).promise;
     }
   } catch (error) {
     console.error('Error initializing Amplitude:', error);
@@ -101,6 +135,31 @@ export const initAnalytics = async () => {
   }
 };
 
+/**
+ * Get Amplitude device ID for anonymous user tracking
+ * This ID persists across sessions and is used to bridge anonymous -> identified users
+ */
+export const getAmplitudeDeviceId = (): string | undefined => {
+  try {
+    return getDeviceId();
+  } catch (error) {
+    console.error('Error getting Amplitude device ID:', error);
+    return undefined;
+  }
+};
+
+/**
+ * Get Amplitude session ID for session-based analytics
+ */
+export const getAmplitudeSessionId = (): number | undefined => {
+  try {
+    return getSessionId();
+  } catch (error) {
+    console.error('Error getting Amplitude session ID:', error);
+    return undefined;
+  }
+};
+
 // Track Amplitude events
 const trackAmplitudeEvent = (event: string, params: Record<string, any>) => {
   // Don't track events locally
@@ -132,7 +191,7 @@ const trackFirebaseEvent = async (event: string, params: Record<string, any>) =>
   }
 };
 
-// Main track function
+// Main track function with automatic attribution enrichment
 export const track = (event: string, params: Record<string, any> = {}) => {
   // Don't track events locally
   if (__DEV__) {
@@ -146,8 +205,30 @@ export const track = (event: string, params: Record<string, any> = {}) => {
       return;
     }
 
-    // Sanitize params - remove undefined/null values and ensure serializable
-    const sanitizedParams = sanitize(params);
+    // Get attribution data from store
+    const attributionStore = useAttributionStore.getState();
+    const attributionData = attributionStore.getAttributionForEvent();
+    const deviceId = getAmplitudeDeviceId();
+    const sessionId = getAmplitudeSessionId();
+
+    // Enrich params with attribution and device context
+    const enrichedParams = {
+      ...params,
+      // Attribution data (UTM params, referral codes, etc.)
+      ...attributionData,
+      // Attribution channel for easier filtering
+      attribution_channel: getAttributionChannel(attributionData),
+      // Device/session tracking for anonymous-to-identified user bridging
+      amplitude_device_id: deviceId,
+      amplitude_session_id: sessionId,
+      // Platform context
+      platform: Platform.OS,
+      // Timestamp
+      timestamp: Date.now(),
+    };
+
+    // Sanitize all params once - remove undefined/null values and ensure serializable
+    const sanitizedParams = sanitize(enrichedParams);
 
     // Track to all providers in parallel
     Promise.allSettled([
@@ -235,7 +316,10 @@ const trackAmplitudeIdentity = (id: string, params: Record<string, any>) => {
   try {
     setAmplitudeUserId(id);
     const identifyObj = new Identify();
-    identifyObj.set('user_properties', params);
+    // Set each field as individual user property for searchability in Amplitude
+    Object.entries(params).forEach(([key, value]) => {
+      identifyObj.set(key, value);
+    });
     identify(identifyObj);
   } catch (error) {
     console.error('Error tracking Amplitude identity:', error);
@@ -260,7 +344,7 @@ const trackFirebaseIdentity = async (id: string, params: Record<string, any>) =>
   }
 };
 
-// Main identity tracking function
+// Main identity tracking function with attribution enrichment
 export const trackIdentity = (id: string, params: Record<string, any> = {}) => {
   // Don't track identity locally
   if (__DEV__) {
@@ -274,8 +358,28 @@ export const trackIdentity = (id: string, params: Record<string, any> = {}) => {
       return;
     }
 
+    // Get attribution data and device IDs
+    const attributionStore = useAttributionStore.getState();
+    const attributionData = attributionStore.getAttributionForEvent();
+    const deviceId = getAmplitudeDeviceId();
+
+    // Enrich with FULL attribution context for user identification
+    const enrichedParams = {
+      ...params,
+      // Attribution data (critical for identifying which campaign brought this user)
+      ...sanitize(attributionData),
+      // Attribution channel
+      attribution_channel: getAttributionChannel(attributionData),
+      // Anonymous device ID for bridging pre-signup and post-signup sessions
+      anonymous_device_id: deviceId,
+      // Identification timestamp
+      identified_timestamp: Date.now(),
+      // Platform
+      platform: Platform.OS,
+    };
+
     // Sanitize params
-    const sanitizedParams = sanitize(params);
+    const sanitizedParams = sanitize(enrichedParams);
 
     // Track to all providers in parallel
     Promise.allSettled([
@@ -283,7 +387,7 @@ export const trackIdentity = (id: string, params: Record<string, any> = {}) => {
       trackFirebaseIdentity(id, sanitizedParams),
     ]);
 
-    // Push user identification to GTM dataLayer
+    // Push user identification to GTM dataLayer with full attribution
     if (typeof window !== 'undefined' && window.dataLayer) {
       try {
         window.dataLayer.push({

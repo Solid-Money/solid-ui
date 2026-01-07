@@ -17,9 +17,11 @@ import { useActivity } from '@/hooks/useActivity';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
+import { getAttributionChannel } from '@/lib/attribution';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TransactionType } from '@/lib/types';
+import { useAttributionStore } from '@/store/useAttributionStore';
 import useUser from './useUser';
 
 type DepositResult = {
@@ -48,6 +50,10 @@ const useDeposit = (): DepositResult => {
   });
 
   const deposit = async (amount: string) => {
+    // Capture attribution context for conversion tracking
+    const attributionData = useAttributionStore.getState().getAttributionForEvent();
+    const attributionChannel = getAttributionChannel(attributionData);
+
     try {
       if (!user) {
         const error = new Error('User is not selected');
@@ -56,6 +62,8 @@ const useDeposit = (): DepositResult => {
           error: 'User not found',
           step: 'validation',
           source: 'useDeposit_hook',
+          ...attributionData,
+          attribution_channel: attributionChannel,
         });
         Sentry.captureException(error, {
           tags: {
@@ -79,6 +87,8 @@ const useDeposit = (): DepositResult => {
         deposit_type: 'safe_account',
         deposit_method: 'ethereum_safe_to_bridge',
         source: 'useDeposit_hook',
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       setDepositStatus(Status.PENDING);
@@ -173,6 +183,8 @@ const useDeposit = (): DepositResult => {
           fee: fee?.toString() || '0',
           deposit_type: 'safe_account',
           source: 'useDeposit_hook',
+          ...attributionData,
+          attribution_channel: attributionChannel,
         });
         Sentry.captureException(error, {
           tags: {
@@ -205,6 +217,8 @@ const useDeposit = (): DepositResult => {
         deposit_method: 'ethereum_safe_to_bridge',
         is_first_deposit: !user.isDeposited,
         source: 'useDeposit_hook',
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       trackIdentity(user.userId, {
@@ -212,6 +226,8 @@ const useDeposit = (): DepositResult => {
         last_deposit_date: new Date().toISOString(),
         last_deposit_method: 'ethereum_safe_to_bridge',
         last_deposit_chain: 'ethereum',
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       Sentry.addBreadcrumb({
@@ -240,6 +256,8 @@ const useDeposit = (): DepositResult => {
         user_cancelled: String(error).includes('cancelled'),
         deposit_type: 'safe_account',
         source: 'useDeposit_hook',
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       Sentry.captureException(error, {

@@ -2,13 +2,15 @@ import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Pressable, View } from 'react-native';
 import { z } from 'zod';
 
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
 import { KycMode, type UserInfoFormData, userInfoSchema } from '@/components/UserKyc/types';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { createKycLink } from '@/lib/api';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useKycStore } from '@/store/useKycStore';
@@ -29,6 +31,14 @@ export default function UserKycInfo() {
   }>();
 
   const { redirectUri, kycMode } = params;
+
+  // Track page view on mount
+  useEffect(() => {
+    track(TRACKING_EVENTS.USER_KYC_INFO_PAGE_VIEWED, {
+      kyc_mode: kycMode || 'unknown',
+      has_redirect_uri: !!redirectUri,
+    });
+  }, [kycMode, redirectUri]);
 
   const schema = userInfoSchema.superRefine((data, ctx) => {
     if ((kycMode as KycMode) === KycMode.CARD && data.agreedToEsign !== true) {
@@ -62,6 +72,15 @@ export default function UserKycInfo() {
 
   const onSubmit = async (data: UserInfoFormData) => {
     setIsLoading(true);
+
+    // Track form submission
+    track(TRACKING_EVENTS.USER_KYC_INFO_FORM_STARTED, {
+      kyc_mode: kycMode || 'unknown',
+      has_email: !!data.email,
+      has_full_name: !!data.fullName,
+      agreed_to_terms: data.agreedToTerms,
+      agreed_to_esign: data.agreedToEsign,
+    });
 
     const redirectUrl = getRedirectUrl();
     console.warn('redirectUrl', redirectUrl);

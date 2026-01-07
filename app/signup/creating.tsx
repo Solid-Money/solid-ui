@@ -20,7 +20,9 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track, trackIdentity } from '@/lib/analytics';
 import { emailSignUp } from '@/lib/api';
+import { getAttributionChannel } from '@/lib/attribution';
 import { User } from '@/lib/types';
+import { useAttributionStore } from '@/store/useAttributionStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -115,12 +117,14 @@ export default function SignupCreating() {
     setStep,
     setError,
   } = useSignupFlowStore();
+  const _attributionHydrated = useAttributionStore(state => state._hasHydrated);
   // Guard against duplicate execution (React Strict Mode double-invokes effects in dev)
   const isCreatingRef = useRef(false);
 
   useEffect(() => {
-    // Wait for both stores to hydrate before making decisions
-    if (!_hasHydrated || !userStoreHydrated) return;
+    // Wait for all stores to hydrate before making decisions
+    // This ensures attribution data is loaded from MMKV before signup
+    if (!_hasHydrated || !userStoreHydrated || !_attributionHydrated) return;
 
     // If user already exists (signup previously succeeded), redirect to home
     // This prevents duplicate createAccount() calls if user navigates back
@@ -145,11 +149,17 @@ export default function SignupCreating() {
 
     createAccount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [_hasHydrated, userStoreHydrated, users.length]);
+  }, [_hasHydrated, userStoreHydrated, _attributionHydrated]);
 
   const createAccount = async () => {
+    // Capture attribution context for signup tracking
+    const attributionData = useAttributionStore.getState().getAttributionForEvent();
+    const attributionChannel = getAttributionChannel(attributionData);
+
     track(TRACKING_EVENTS.SIGNUP_STARTED, {
       email,
+      ...attributionData,
+      attribution_channel: attributionChannel,
     });
 
     try {
@@ -188,7 +198,7 @@ export default function SignupCreating() {
       };
       storeUser(selectedUser);
 
-      // Track identity
+      // Track identity with attribution for user profile enrichment
       trackIdentity(user._id, {
         username: user.username,
         email: user.email,
@@ -196,6 +206,8 @@ export default function SignupCreating() {
         has_referral_code: !!user.referralCode,
         signup_method: 'email_passkey',
         platform: Platform.OS,
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       track(TRACKING_EVENTS.SIGNUP_COMPLETED, {
@@ -205,6 +217,8 @@ export default function SignupCreating() {
         referral_code: referralCode,
         safe_address: safeAddress,
         has_passkey: true,
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       // Navigate to home/notifications
@@ -225,6 +239,8 @@ export default function SignupCreating() {
       track(TRACKING_EVENTS.SIGNUP_FAILED, {
         email,
         error: errorMessage,
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       if (Platform.OS === 'web') {

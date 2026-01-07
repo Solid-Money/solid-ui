@@ -9,7 +9,9 @@ import SwapParams from '@/components/Swap/SwapParams';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Text } from '@/components/ui/text';
 import { SWAP_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { path } from '@/constants/path';
+import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useIntercom } from '@/lib/intercom';
 import { useSwapState } from '@/store/swapStore';
@@ -40,12 +42,19 @@ const SwapModalProvider = () => {
   const handleOpenChange = useCallback(
     (value: boolean) => {
       if (value) {
+        track(TRACKING_EVENTS.SWAP_MODAL_VIEWED, {
+          previous_modal: previousModal?.name,
+        });
         setModal(SWAP_MODAL.OPEN_FORM);
       } else {
+        track(TRACKING_EVENTS.SWAP_MODAL_ABANDONED, {
+          last_modal: currentModal?.name,
+          previous_modal: previousModal?.name,
+        });
         setModal(SWAP_MODAL.CLOSE);
       }
     },
-    [setModal],
+    [setModal, currentModal, previousModal],
   );
 
   const handleTransactionStatusPress = useCallback(() => {

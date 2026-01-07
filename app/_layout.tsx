@@ -14,6 +14,7 @@ import WhatsNewModal from '@/components/WhatsNewModal';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
 import '@/global.css';
 import { infoClient } from '@/graphql/clients';
+import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
@@ -183,6 +184,9 @@ export default Sentry.wrap(function RootLayout() {
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
   const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
 
+  // Initialize attribution tracking automatically (handles web and mobile)
+  useAttributionInitialization();
+
   const [loaded, error] = useFonts({
     MonaSans_200ExtraLight,
     MonaSans_300Light,
@@ -243,10 +247,12 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [appIsReady, splashScreenHidden]);
 
+  // Track screen views on all platforms (web, iOS, Android)
+  // trackScreen() handles platform-specific routing internally:
+  // - Amplitude: tracks on all platforms
+  // - Firebase: tracks on web only
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      trackScreen(pathname, params);
-    }
+    trackScreen(pathname, params);
   }, [pathname, params]);
 
   useEffect(() => {
@@ -290,13 +296,6 @@ export default Sentry.wrap(function RootLayout() {
                         />
                         <Stack.Screen
                           name="overview"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                        <Stack.Screen
-                          name="register"
                           options={{
                             headerShown: false,
                             animation: 'none',
