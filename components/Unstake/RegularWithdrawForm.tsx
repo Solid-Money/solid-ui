@@ -24,6 +24,7 @@ import { DEPOSIT_MODAL, UNSTAKE_MODAL } from '@/constants/modals';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
+import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
@@ -132,7 +133,7 @@ const RegularWithdrawForm = () => {
                 className="flex-row items-center gap-2"
               >
                 <Image
-                  source={require('@/assets/images/sousd-4x.png')}
+                  source={getAsset('images/sousd-4x.png')}
                   alt="soUSD"
                   style={{ width: 32, height: 32 }}
                 />

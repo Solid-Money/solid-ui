@@ -1,4 +1,5 @@
 import DefaultTokenIcon from '@/components/DefaultTokenIcon';
+import { getAsset } from './assets';
 import { TokenIcon } from './types';
 
 type GetTokenIconProps = {
@@ -15,16 +16,31 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
   // Fallback to default token icons based on symbol
   switch (tokenSymbol?.toUpperCase()) {
     case 'USDC':
-      return { type: 'image', source: require('@/assets/images/usdc-4x.png') };
+      return {
+        type: 'image',
+        source: getAsset('images/usdc-4x.png'),
+      };
     case 'USDT':
-      return { type: 'image', source: require('@/assets/images/usdt.png') };
+      return {
+        type: 'image',
+        source: getAsset('images/usdt.png'),
+      };
     case 'WETH':
     case 'ETH':
-      return { type: 'image', source: require('@/assets/images/eth.png') };
+      return {
+        type: 'image',
+        source: getAsset('images/eth.png'),
+      };
     case 'FUSE':
-      return { type: 'image', source: require('@/assets/images/fuse-4x.png') };
+      return {
+        type: 'image',
+        source: getAsset('images/fuse-4x.png'),
+      };
     case 'SOUSD':
-      return { type: 'image', source: require('@/assets/images/sousd-4x.png') };
+      return {
+        type: 'image',
+        source: getAsset('images/sousd-4x.png'),
+      };
     default:
       return {
         type: 'component',

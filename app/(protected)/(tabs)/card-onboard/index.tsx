@@ -7,12 +7,13 @@ import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';
 import CardWaitlistHeaderButtons from '@/components/CardWaitlist/CardWaitlistHeaderButtons';
 import CardWaitlistHeaderTitle from '@/components/CardWaitlist/CardWaitlistHeaderTitle';
 import { CashbackIcon } from '@/components/CardWaitlist/CashbackIcon';
+import GetCardButton from '@/components/CardWaitlist/GetCardButton';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getCashbackPercentage } from '@/lib/api';
+import { getAsset } from '@/lib/assets';
 import { cn } from '@/lib/utils';
-import GetCardButton from '@/components/CardWaitlist/GetCardButton';
 
 type ClassNames = {
   container?: string;
@@ -53,7 +54,7 @@ const Feature = ({ icon, title, description, classNames }: FeatureProps) => {
 
 const getFeatures = (cashbackPercentage: number) => [
   {
-    icon: require('@/assets/images/card-global.png'),
+    icon: getAsset('images/card-global.png'),
     title: 'Global acceptance',
     description: '200M+ Visa merchants',
     classNames: {
@@ -70,19 +71,19 @@ const getFeatures = (cashbackPercentage: number) => [
     },
   },
   {
-    icon: require('@/assets/images/card-safe.png'),
+    icon: getAsset('images/card-safe.png'),
     title: 'Secure by design',
     description: 'Non-custodial, secured by passkeys',
   },
   {
-    icon: require('@/assets/images/card-effortless.png'),
+    icon: getAsset('images/card-effortless.png'),
     title: 'Effortless setup',
     description: (
       <View>
         <Text className="text-muted-foreground">Start using instantly</Text>
         <View className="flex-row items-center gap-1.5">
           <Image
-            source={require('@/assets/images/apple-google-pay.png')}
+            source={getAsset('images/apple-google-pay.png')}
             alt="Apple/Google Pay"
             style={{ width: 82, height: 19 }}
             contentFit="contain"
@@ -160,7 +161,7 @@ const CardWaitlist = () => {
 
           {!isScreenMedium && (
             <Image
-              source={require('@/assets/images/cards.png')}
+              source={getAsset('images/cards.png')}
               style={{ width: 289, height: 305 }}
               contentFit="contain"
             />

@@ -5,6 +5,7 @@ import QRCode from 'react-native-qrcode-svg';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
+import { getAsset } from '@/lib/assets';
 import { eclipseAddress } from '@/lib/utils';
 
 const DepositPublicAddress = () => {
@@ -21,7 +22,7 @@ const DepositPublicAddress = () => {
         <View className="flex-col items-center justify-center gap-2">
           <View className="mt-4 flex-row items-center gap-1.5 rounded-full bg-primary/20 px-3 py-1.5">
             <Image
-              source={require('@/assets/images/fuse-4x.png')}
+              source={getAsset('images/fuse-4x.png')}
               style={{ width: 20, height: 20 }}
               contentFit="contain"
             />

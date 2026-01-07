@@ -6,14 +6,15 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 import * as Sentry from '@sentry/react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
-const USDC_ICON = require('@/assets/images/usdc.png');
-const USDT_ICON = require('@/assets/images/usdt.png');
+const USDC_ICON = getAsset('images/usdc.png');
+const USDT_ICON = getAsset('images/usdt.png');
 
 type TokenOption = {
   symbol: 'USDC' | 'USDT';
