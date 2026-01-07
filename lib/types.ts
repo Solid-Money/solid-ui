@@ -659,10 +659,6 @@ export interface SourceDepositInstructions {
   clabe?: string;
 }
 
-export interface BridgeTransferResponse {
-  source_deposit_instructions: SourceDepositInstructions;
-}
-
 export enum TokenType {
   ERC20 = 'ERC-20',
   NATIVE = 'native',
