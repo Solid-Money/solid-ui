@@ -86,7 +86,7 @@ const CardDepositModalProvider = () => {
       onOpenChange={handleOpenChange}
       trigger={null}
       title={getTitle()}
-      containerClassName="min-h-[36rem] overflow-y-auto flex-1"
+      containerClassName="min-h-[42rem] overflow-y-auto flex-1"
       contentKey={getContentKey()}
       showBackButton={!isOptions && !isTransactionStatus}
       onBackPress={handleBackPress}
