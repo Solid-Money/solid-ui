@@ -1,9 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
@@ -30,6 +32,19 @@ const BankTransferAmountModal = () => {
   const [crypto, setCrypto] = useState<BridgeTransferCryptoCurrency>(
     bankTransfer.crypto || BridgeTransferCryptoCurrency.USDC,
   );
+
+  // Track when amount modal is viewed (once per mount)
+  const hasTrackedView = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedView.current) {
+      track(TRACKING_EVENTS.DEPOSIT_BANK_AMOUNT_VIEWED, {
+        deposit_method: 'bank_transfer',
+        fiat_currency: fiat,
+        crypto_currency: crypto,
+      });
+      hasTrackedView.current = true;
+    }
+  }, [fiat, crypto]);
 
   const allowedCrypto = useMemo(() => {
     return [BridgeTransferCryptoCurrency.USDC];
@@ -68,6 +83,14 @@ const BankTransferAmountModal = () => {
   }, [fiat, fiatAmount]);
 
   const handleContinue = () => {
+    track(TRACKING_EVENTS.DEPOSIT_BANK_AMOUNT_ENTERED, {
+      deposit_method: 'bank_transfer',
+      fiat_amount: fiatAmount,
+      fiat_currency: fiat,
+      crypto_amount: cryptoAmount,
+      crypto_currency: crypto,
+    });
+
     setBankTransferData({
       fiatAmount,
       cryptoAmount,
@@ -131,6 +154,20 @@ const BankTransferAmountModal = () => {
 const BankTransferPaymentMethodModal = () => {
   const { bankTransfer } = useDepositStore();
 
+  // Track when payment method modal is viewed (once per mount)
+  const hasTrackedPaymentView = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedPaymentView.current) {
+      track(TRACKING_EVENTS.DEPOSIT_BANK_PAYMENT_METHOD_VIEWED, {
+        deposit_method: 'bank_transfer',
+        fiat_currency: bankTransfer.fiat,
+        crypto_currency: bankTransfer.crypto,
+        fiat_amount: bankTransfer.fiatAmount,
+      });
+      hasTrackedPaymentView.current = true;
+    }
+  }, [bankTransfer.fiat, bankTransfer.crypto, bankTransfer.fiatAmount]);
+
   return (
     <View className="gap-4">
       <PaymentMethodList
@@ -147,6 +184,21 @@ const BankTransferPaymentMethodModal = () => {
 const BankTransferPreviewModal = () => {
   const { bankTransfer, setModal } = useDepositStore();
   const data = bankTransfer.instructions;
+
+  // Track when instructions modal is viewed (once per mount)
+  const hasTrackedInstructionsView = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedInstructionsView.current && data) {
+      track(TRACKING_EVENTS.DEPOSIT_BANK_INSTRUCTIONS_VIEWED, {
+        deposit_method: 'bank_transfer',
+        fiat_currency: data.currency,
+        fiat_amount: data.amount,
+        payment_rail: data.payment_rail,
+        bank_name: data.bank_name,
+      });
+      hasTrackedInstructionsView.current = true;
+    }
+  }, [data]);
 
   const Row = ({
     label,

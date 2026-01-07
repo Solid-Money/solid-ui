@@ -132,7 +132,22 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           templateVersionId: (options as any).templateVersionId ?? null,
           host: (options as any).host ?? null,
           onLoad: null,
-          onEvent: null,
+          onEvent: (name: string, meta: any) => {
+            // Track Persona KYC step progression
+            if (name === 'start') {
+              track(TRACKING_EVENTS.KYC_STEP_STARTED, {
+                step_name: meta?.name || 'unknown',
+                template_id: options.templateId,
+                inquiry_id: options.inquiryId,
+              });
+            } else if (name === 'complete') {
+              track(TRACKING_EVENTS.KYC_STEP_COMPLETED, {
+                step_name: meta?.name || 'unknown',
+                template_id: options.templateId,
+                inquiry_id: options.inquiryId,
+              });
+            }
+          },
           onReady: () => {
             track(TRACKING_EVENTS.KYC_LINK_SDK_READY, {
               templateId: options.templateId,

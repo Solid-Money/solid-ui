@@ -1,24 +1,50 @@
 import { Text } from '@/components/ui/text';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { createMercuryoTransaction, getClientIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import * as Crypto from 'expo-crypto';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 const BuyCrypto = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finalUrl, setFinalUrl] = useState<string>('');
+  const loadStartTime = useRef<number | null>(null);
+  const transactionId = useRef<string | null>(null);
 
   const { user } = useUser();
 
+  // Track widget loading on mount
+  useEffect(() => {
+    loadStartTime.current = Date.now();
+    track(TRACKING_EVENTS.DEPOSIT_CARD_WIDGET_LOADING, {
+      deposit_method: 'credit_card',
+    });
+  }, []);
+
   // Handle iframe load events
   const handleIframeLoad = () => {
+    const loadTime = loadStartTime.current ? Date.now() - loadStartTime.current : null;
+
+    track(TRACKING_EVENTS.DEPOSIT_CARD_WIDGET_LOADED, {
+      deposit_method: 'credit_card',
+      transaction_id: transactionId.current,
+      widget_load_time: loadTime ? Math.floor(loadTime / 1000) : undefined,
+    });
+
     setLoading(false);
   };
 
   const handleIframeError = () => {
+    track(TRACKING_EVENTS.DEPOSIT_CARD_WIDGET_LOAD_FAILED, {
+      deposit_method: 'credit_card',
+      transaction_id: transactionId.current,
+      error: 'Failed to load Mercuryo widget',
+    });
+
     setError('Failed to load Mercuryo widget. Please try again later.');
     setLoading(false);
   };
@@ -39,19 +65,30 @@ const BuyCrypto = () => {
 
         if (!userIp) throw new Error('Could not get user IP address');
 
-        const transactionId = Crypto.randomUUID();
+        const txId = Crypto.randomUUID();
+        transactionId.current = txId;
 
-        const widgetUrl = await withRefreshToken(() =>
-          createMercuryoTransaction(userIp, transactionId),
-        );
+        const widgetUrl = await withRefreshToken(() => createMercuryoTransaction(userIp, txId));
 
         if (!widgetUrl) {
           throw new Error('Failed to create Mercuryo transaction');
         }
 
+        track(TRACKING_EVENTS.DEPOSIT_CARD_TRANSACTION_CREATED, {
+          deposit_method: 'credit_card',
+          transaction_id: txId,
+        });
+
         setFinalUrl(widgetUrl);
       } catch (err) {
         console.error('Error creating Mercuryo transaction:', err);
+
+        track(TRACKING_EVENTS.DEPOSIT_CARD_TRANSACTION_CREATION_FAILED, {
+          deposit_method: 'credit_card',
+          error: err instanceof Error ? err.message : String(err),
+          error_type: err instanceof Error ? err.name : 'Unknown',
+        });
+
         setError('Failed to initialize widget');
         setLoading(false);
       }

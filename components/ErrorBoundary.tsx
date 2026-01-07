@@ -63,7 +63,11 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
             >
               <Text className="text-lg font-semibold">Visit Home</Text>
             </Button>
-            <Button variant="secondary" className="h-12 rounded-xl border-0 px-6" onPress={handleRetry}>
+            <Button
+              variant="secondary"
+              className="h-12 rounded-xl border-0 px-6"
+              onPress={handleRetry}
+            >
               <Text className="text-lg font-semibold">Try again</Text>
             </Button>
           </View>

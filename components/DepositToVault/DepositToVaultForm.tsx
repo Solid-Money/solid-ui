@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
 import { ChevronDown, Fuel, Wallet } from 'lucide-react-native';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -101,6 +101,48 @@ function DepositToVaultForm() {
   const watchedAmount = watch('amount');
   const isSponsor = Number(watchedAmount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
 
+  // Track form viewed (once per mount)
+  const hasTrackedFormView = useRef(false);
+
+  useEffect(() => {
+    if (!hasTrackedFormView.current) {
+      track(TRACKING_EVENTS.DEPOSIT_WALLET_FORM_VIEWED, {
+        deposit_method: 'wallet',
+        chain_id: srcChainId,
+        token: selectedTokenInfo.name,
+        balance: formattedBalance,
+      });
+      hasTrackedFormView.current = true;
+    }
+  }, [srcChainId, selectedTokenInfo.name, formattedBalance]);
+
+  // Track amount entry start (once per form session)
+  const hasTrackedAmountEntry = useRef(false);
+
+  useEffect(() => {
+    if (watchedAmount && !hasTrackedAmountEntry.current) {
+      hasTrackedAmountEntry.current = true;
+      track(TRACKING_EVENTS.DEPOSIT_AMOUNT_ENTRY_STARTED, {
+        chain_id: srcChainId,
+        token: selectedTokenInfo.name,
+        balance: formattedBalance,
+      });
+    }
+  }, [watchedAmount, srcChainId, selectedTokenInfo.name, formattedBalance]);
+
+  // Track validation errors
+  useEffect(() => {
+    if (errors.amount) {
+      track(TRACKING_EVENTS.DEPOSIT_VALIDATION_ERROR, {
+        error_message: errors.amount.message,
+        attempted_amount: watchedAmount,
+        chain_id: srcChainId,
+        token: selectedTokenInfo.name,
+        balance: formattedBalance,
+      });
+    }
+  }, [errors.amount, watchedAmount, srcChainId, selectedTokenInfo.name, formattedBalance]);
+
   const {
     amountOut,
     isLoading: isPreviewDepositLoading,
@@ -145,6 +187,16 @@ function DepositToVaultForm() {
     const attributionChannel = getAttributionChannel(attributionData);
 
     try {
+      // Track wallet form submission specifically
+      track(TRACKING_EVENTS.DEPOSIT_WALLET_FORM_SUBMITTED, {
+        deposit_method: 'wallet',
+        chain_id: srcChainId,
+        token: selectedTokenInfo.name,
+        amount: data.amount,
+        balance: formattedBalance,
+        is_sponsor: isSponsor,
+      });
+
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
         amount: data.amount,
         chain_id: srcChainId,
@@ -229,6 +281,11 @@ function DepositToVaultForm() {
             </Text>
             <Max
               onPress={() => {
+                track(TRACKING_EVENTS.DEPOSIT_MAX_BUTTON_CLICKED, {
+                  chain_id: srcChainId,
+                  token: selectedTokenInfo.name,
+                  max_amount: formattedBalance,
+                });
                 setValue('amount', formattedBalance);
                 trigger('amount');
               }}
