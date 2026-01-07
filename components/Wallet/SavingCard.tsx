@@ -13,6 +13,7 @@ import { path } from '@/constants/path';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
+import { getAsset } from '@/lib/assets';
 import { cn, fontSize, formatNumber } from '@/lib/utils';
 
 import SavingsIcon from '@/assets/images/savings';
@@ -146,10 +147,7 @@ const SavingCard = memo(
               </View>
               <TooltipPopover text="Balance + Yield of soUSD" />
             </View>
-            <Image
-              source={require('@/assets/images/sousd-4x.png')}
-              style={{ width: 28, height: 28 }}
-            />
+            <Image source={getAsset('images/sousd-4x.png')} style={{ width: 28, height: 28 }} />
           </View>
         </View>
       </Pressable>

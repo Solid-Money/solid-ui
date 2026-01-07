@@ -149,7 +149,7 @@ npm run wagmi-generate # Generate Wagmi hooks from contracts
 
 ### Environment Variables
 Key environment variables (see `.env.example`):
-- `EXPO_PUBLIC_BASE_URL`: Backend API endpoint
+- `EXPO_PUBLIC_BASE_URL`: Frontend domain URL (used for redirects and assets on Web)
 - `EXPO_PUBLIC_ALCHEMY_API_KEY`: Alchemy API key for blockchain data
 - `EXPO_PUBLIC_ETHEREUM_API_KEY`: Ethereum API key
 - `EXPO_PUBLIC_PIMLICO_API_KEY`: Pimlico paymaster API key

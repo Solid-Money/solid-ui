@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 
 type TooltipClassNames = {
   content?: string;
@@ -51,7 +52,7 @@ const TooltipPopover = ({
         }}
       >
         <Image
-          source={require('@/assets/images/question-mark-gray.png')}
+          source={getAsset('images/question-mark-gray.png')}
           alt="Tooltip"
           style={{ width: 17, height: 17, marginTop: -4 }}
           contentFit="contain"

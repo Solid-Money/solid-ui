@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
+import { getAsset } from '@/lib/assets';
 import { Status } from '@/lib/types';
 import { detectAndSaveReferralCode } from '@/lib/utils/referral';
 import { useUserStore } from '@/store/useUserStore';
@@ -145,7 +146,7 @@ export default function Register() {
       <View className="mx-auto w-full max-w-[500px] flex-1 justify-center gap-7 px-4 py-8">
         <View className="flex-row items-center justify-center gap-5">
           <Image
-            source={require('@/assets/images/solid-logo-4x.png')}
+            source={getAsset('images/solid-logo-4x.png')}
             alt="Solid logo"
             style={{ width: 74, height: 80 }}
             contentFit="contain"

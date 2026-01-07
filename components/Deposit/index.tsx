@@ -15,6 +15,7 @@ import { DEPOSIT_FROM_SAFE_ACCOUNT_MODAL } from '@/constants/modals';
 import useDeposit from '@/hooks/useDeposit';
 import useUser from '@/hooks/useUser';
 import { useUsdcVaultBalance } from '@/hooks/useVault';
+import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -133,7 +134,7 @@ const Deposit = () => {
           />
           <View className="flex-row items-center gap-2">
             <Image
-              source={require('@/assets/images/usdc-4x.png')}
+              source={getAsset('images/usdc-4x.png')}
               alt="USDC"
               style={{ width: 34, height: 34 }}
             />

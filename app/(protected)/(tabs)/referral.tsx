@@ -9,6 +9,8 @@ import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
 
+import { getAsset } from '@/lib/assets';
+
 export default function Referral() {
   const { user } = useUser();
 
@@ -27,7 +29,7 @@ export default function Referral() {
           </View>
           <View className="w-full flex-col items-center justify-center">
             <Image
-              source={require('@/assets/images/referral_large.png')}
+              source={getAsset('images/referral_large.png')}
               style={{ width: 250, height: 250 }}
             />
             <Text className="mt-8 text-center text-white/70">

@@ -13,7 +13,9 @@ import useUser from '@/hooks/useUser';
 import { cn, eclipseAddress, getUserDisplayName } from '@/lib/utils';
 import { Address } from 'viem';
 
-const AccountDetailsIcon = require('@/assets/images/settings_account_details.png');
+import { getAsset } from '@/lib/assets';
+
+const AccountDetailsIcon = getAsset('images/settings_account_details.png');
 
 export default function Account() {
   const { user, handleDeleteAccount } = useUser();

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDimension } from '@/hooks/useDimension';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 import SwipeableBanner from './SwipeableBanner';
 
@@ -53,7 +54,7 @@ const DepositBanner = () => {
             </View>
             <View className="pointer-events-none">
               <Image
-                source={require('@/assets/images/fund-wallet-tokens.png')}
+                source={getAsset('images/fund-wallet-tokens.png')}
                 contentFit="contain"
                 style={{ width: isScreenMedium ? 156 : 130, height: isScreenMedium ? 156 : 130 }}
               />
