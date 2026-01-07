@@ -2,7 +2,6 @@ import { EXPO_PUBLIC_ASSETS_CDN_URL } from './config';
 
 /**
  * Registry of all local assets.
- * This is automatically managed by scripts/sync-assets.ts
  */
 export const ASSETS = {
   // @assets-registry-start
@@ -144,8 +143,17 @@ export type AssetPath = keyof typeof ASSETS;
 export const getAsset = (path: AssetPath) => {
   const localAsset = ASSETS[path];
 
-  if (EXPO_PUBLIC_ASSETS_CDN_URL && true) {
-    return { uri: `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}` };
+  if (!localAsset) {
+    console.error(`Asset not found in registry: ${path}`);
+    return null;
+  }
+
+  const shouldUseCDN = EXPO_PUBLIC_ASSETS_CDN_URL && !__DEV__;
+
+  if (shouldUseCDN) {
+    // Return an array of sources for expo-image to handle fallback automatically.
+    // The first one is the CDN URL, the second is the local require() fallback.
+    return [{ uri: `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}` }, localAsset];
   }
 
   return localAsset;
@@ -155,10 +163,19 @@ export const getAsset = (path: AssetPath) => {
  * Helper to get a direct CDN URL string.
  * Useful for components that require a string URL instead of an asset object.
  */
-export const getImageUrl = (path: string) => {
-  if (EXPO_PUBLIC_ASSETS_CDN_URL && true) {
+export const getImageUrl = (path: AssetPath) => {
+  if (!ASSETS[path]) {
+    console.error(`Asset not found in registry: ${path}`);
+    return '';
+  }
+
+  const shouldUseCDN = EXPO_PUBLIC_ASSETS_CDN_URL && !__DEV__;
+
+  if (shouldUseCDN) {
     return `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}`;
   }
 
+  // If asset is in registry, we could potentially resolve it,
+  // but this helper is specifically for external URL strings.
   return '';
 };
