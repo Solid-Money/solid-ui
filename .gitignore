@@ -3,11 +3,14 @@
 # dependencies
 node_modules/
 
+# Web
+public/assets/
+dist/
+web-build/
+
 # Expo
 .expo/
 .metro-cache/
-dist/
-web-build/
 expo-env.d.ts
 .claude
 

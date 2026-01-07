@@ -23,7 +23,7 @@
     "analyze:ios": "npx expo export --source-maps --platform ios --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/ios/*.js'",
     "analyze:android": "npx expo export --source-maps --platform android --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/android/*.js'",
     "analyze:web": "npx source-map-explorer 'dist/_expo/static/js/web/*.js'",
-    "export:web": "npx expo export -p web",
+    "export:web": "mkdir -p public/assets && cp -r assets/* public/assets/ && npx expo export -p web",
     "serve:web": "npx serve dist -l 8081",
     "lighthouse": "npx lighthouse http://localhost:8081 --view",
     "postinstall": "patch-package"
