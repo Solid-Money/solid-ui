@@ -48,11 +48,7 @@ const CurrencyLogo = ({ currency, size, style = {} }: CurrencyLogoProps) => {
 
   if (currency.isNative) {
     return (
-      <Image
-        source={getAsset('images/fuse.png')}
-        style={baseImageStyle}
-        resizeMode="contain"
-      />
+      <Image source={getAsset('images/fuse.png')} style={baseImageStyle} resizeMode="contain" />
     );
   }
 

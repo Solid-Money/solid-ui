@@ -34,11 +34,6 @@ export const usePostSignupInit = (user: User | undefined) => {
 
         // 1. Update safe address if needed (non-blocking failure)
         if (user.safeAddress && !safeAddressSynced[user.userId]) {
-          console.warn('[usePostSignupInit] updating safe address (lazy init)', {
-            userId: user.userId,
-            safeAddress: user.safeAddress,
-          });
-
           try {
             await withRefreshToken(() => updateSafeAddress(user.safeAddress));
             markSafeAddressSynced(user.userId);
@@ -71,7 +66,6 @@ export const usePostSignupInit = (user: User | undefined) => {
             });
           }
         } catch (error) {
-          console.warn('Failed to check balance:', error);
           Sentry.captureException(error, {
             tags: {
               type: 'balance_check_error_lazy',
@@ -89,7 +83,6 @@ export const usePostSignupInit = (user: User | undefined) => {
           const { fetchPoints } = usePointsStore.getState();
           await fetchPoints();
         } catch (error) {
-          console.warn('Failed to fetch points:', error);
           Sentry.captureException(error, {
             tags: {
               type: 'points_fetch_error_lazy',
@@ -102,7 +95,6 @@ export const usePostSignupInit = (user: User | undefined) => {
           });
         }
       } catch (error) {
-        console.error('Error in post-signup initialization:', error);
         Sentry.captureException(error, {
           tags: {
             type: 'post_signup_init_error',
