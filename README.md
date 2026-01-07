@@ -145,6 +145,45 @@ npm run codegen      # Generate GraphQL types from schema
 npm run wagmi-generate # Generate Wagmi hooks from contracts
 ```
 
+## 🖼️ Asset Management 
+
+The project uses a hybrid asset management system optimized for both Mobile (local/offline) and Web (CDN/caching). 
+
+### How to Add an Asset 
+
+1. **Place the file**: Add your image, animation, or font to the appropriate subdirectory in the `assets/` folder. 
+2. **Update the Registry**: Run the following command to update the type-safe asset registry: 
+   ```bash 
+   npm run assets:update 
+   ``` 
+   *Note: This runs automatically on `npm install` and during builds.* 
+
+### How to Use Assets 
+
+Always use the `getAsset` or `getImageUrl` helpers from `lib/assets.ts`. **Do not** use `require()` directly in your components. 
+
+**Standard Usage (Components)**: 
+```tsx 
+import { getAsset } from "@/lib/assets"; 
+import { Image } from "expo-image"; 
+
+<Image source={getAsset("images/logo.png")} style={{ width: 100, height: 100 }} /> 
+``` 
+
+**String URL Usage (External links/CSS)**: 
+```tsx 
+import { getImageUrl } from "@/lib/assets"; 
+
+const url = getImageUrl("images/banner.png"); 
+``` 
+
+### How it Works 
+
+- **Mobile**: `getAsset` returns the local `require()` module. Assets are bundled into the app for offline support. 
+- **Web (Production)**: `getAsset` returns a CDN URL pointing to your domain. 
+- **Caching**: Assets on Web are served with a 30-day cache. To prevent stale content, the system automatically appends a content-based hash to the URL (e.g., `logo.png?v=a1b2c3d4`). The hash only changes if the file content changes. 
+
+
 ## 🔧 Configuration
 
 ### Environment Variables
