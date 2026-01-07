@@ -178,5 +178,10 @@ export const getImageUrl = (path: AssetPath) => {
     return `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}`;
   }
 
+  // If we're on web dev, return the local path from the public folder
+  if (isWeb && __DEV__) {
+    return `/assets/${path}`;
+  }
+
   return '';
 };
