@@ -74,6 +74,7 @@
     "@turnkey/react-native-wallet-kit": "^1.3.1",
     "@turnkey/sdk-browser": "^5.14.0",
     "@turnkey/viem": "^0.14.20",
+    "@vercel/speed-insights": "^1.3.1",
     "@voltage-finance/sdk-core": "^1.0.5",
     "abitype": "^1.2.3",
     "axios": "^1.13.2",
