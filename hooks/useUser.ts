@@ -1,23 +1,17 @@
 import { ERRORS } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { track, trackIdentity } from '@/lib/analytics';
-import {
-  deleteAccount,
-  getSubOrgIdByUsername,
-  login,
-  signUp,
-  updateSafeAddress,
-  usernameExists,
-} from '@/lib/api';
+import { getAmplitudeDeviceId, track, trackIdentity } from '@/lib/analytics';
+import { deleteAccount, login, updateSafeAddress, usernameExists } from '@/lib/api';
+import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
 import { getNonce, isHTTPError, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
-import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
+import { useAttributionStore } from '@/store/useAttributionStore';
 import { useBalanceStore } from '@/store/useBalanceStore';
 import { useKycStore } from '@/store/useKycStore';
 import { usePointsStore } from '@/store/usePointsStore';
@@ -39,7 +33,6 @@ import { fetchIsDeposited } from './useAnalytics';
 interface UseUserReturn {
   user: User | undefined;
   handleSignupStarted: (username: string, inviteCode: string) => Promise<void>;
-  handleSignup: (username: string, inviteCode: string) => Promise<void>;
   handleLogin: () => Promise<void>;
   handleDummyLogin: () => Promise<void>;
   handleSelectUser: (username: string) => void;
@@ -239,183 +232,12 @@ const useUser = (): UseUserReturn => {
     [setSignupInfo, setSignupUser, router],
   );
 
-  const handleSignup = useCallback(
-    async (username: string, inviteCode: string) => {
-      track(TRACKING_EVENTS.SIGNUP_STARTED, {
-        username,
-      });
-      try {
-        setSignupInfo({ status: Status.PENDING });
-        const subOrgId = await getSubOrgIdByUsername(username);
-
-        if (subOrgId.organizationId) {
-          throw new Error(ERRORS.USERNAME_ALREADY_EXISTS);
-        }
-
-        // Use the unified createPasskey from the new SDK
-        // This works on both web and native platforms automatically
-        const passkey = await createPasskey({
-          name: username,
-        });
-
-        const { encodedChallenge: challenge, attestation } = passkey;
-        const credentialId = attestation.credentialId;
-        if (!challenge || !attestation) {
-          const error = new Error('Error creating passkey');
-          Sentry.captureException(error, {
-            tags: {
-              type: 'passkey_creation_error',
-            },
-            extra: {
-              username,
-              inviteCode,
-            },
-          });
-          throw error;
-        }
-
-        // Get referral code from storage (if any)
-        const referralCode = getReferralCodeForSignup() || '';
-
-        const user = await signUp(
-          username,
-          challenge,
-          attestation,
-          inviteCode,
-          referralCode,
-          credentialId,
-        );
-
-        const smartAccountClient = await safeAA(
-          mainnet,
-          user.subOrganizationId,
-          user.walletAddress,
-        );
-
-        if (smartAccountClient && user) {
-          const selectedUser: User = {
-            safeAddress: smartAccountClient.account.address,
-            walletAddress: user.walletAddress,
-            username,
-            userId: user._id,
-            signWith: user.walletAddress,
-            suborgId: user.subOrganizationId,
-            selected: true,
-            tokens: user.tokens || null,
-            referralCode: user.referralCode,
-            turnkeyUserId: user.turnkeyUserId,
-            credentialId,
-          };
-          storeUser(selectedUser);
-
-          // Identify user in analytics
-          trackIdentity(user.userId, {
-            username,
-            safe_address: smartAccountClient.account.address,
-            has_referral_code: !!user.referralCode,
-            signup_method: 'passkey',
-            platform: Platform.OS,
-          });
-
-          // Track successful signup completion
-          track(TRACKING_EVENTS.SIGNUP_COMPLETED, {
-            user_id: user._id,
-            username,
-            invite_code: inviteCode,
-            referral_code: referralCode,
-            safe_address: smartAccountClient.account.address,
-          });
-
-          setSignupInfo({ status: Status.SUCCESS });
-
-          // Navigate immediately - let usePostSignupInit handle the rest
-          // On mobile, navigate to notifications for new signups
-          if (Platform.OS === 'web') {
-            router.replace(path.HOME);
-          } else {
-            router.replace(path.NOTIFICATIONS);
-          }
-        } else {
-          Sentry.captureException(new Error('Error while verifying passkey registration'));
-          const error = new Error('Error while verifying passkey registration');
-          Sentry.captureException(error, {
-            tags: {
-              type: 'passkey_verification_error',
-            },
-            extra: {
-              username,
-            },
-          });
-          throw error;
-        }
-      } catch (error: any) {
-        let message = '';
-
-        // Check for WebAuthn-specific errors first
-        if (error?.name === 'NotAllowedError' || error?.message?.includes('not allowed')) {
-          message = 'Passkey creation was cancelled or blocked by your browser. Please try again.';
-        } else if (
-          error?.name === 'TimeoutError' ||
-          error?.message?.includes('timeout') ||
-          error?.message?.includes('timed out')
-        ) {
-          message =
-            'Passkey creation timed out. Please try again and complete the authentication prompt.';
-        } else if (error?.name === 'InvalidStateError') {
-          message = 'This passkey already exists. Please try logging in instead.';
-        } else if (
-          error?.name === 'NotSupportedError' ||
-          error?.message?.includes('not supported')
-        ) {
-          message = 'Passkeys are not supported in your current browser or context.';
-        } else if (error?.message?.includes('embedded context')) {
-          message = 'Passkey creation is not supported in embedded or iframe context.';
-        } else if (
-          error?.status === 409 ||
-          error.message?.includes(ERRORS.USERNAME_ALREADY_EXISTS)
-        ) {
-          message = ERRORS.USERNAME_ALREADY_EXISTS;
-        } else if ((await error?.text?.())?.toLowerCase()?.includes('invite')) {
-          message = ERRORS.INVALID_INVITE_CODE;
-        }
-
-        if (message) {
-          Sentry.captureMessage(message, {
-            level: 'warning',
-            extra: {
-              username,
-              inviteCode,
-              error,
-              errorName: error?.name,
-              errorMessage: error?.message,
-            },
-          });
-        } else {
-          Sentry.captureException(new Error('Error signing up'), {
-            extra: {
-              username,
-              inviteCode,
-              error,
-              errorName: error?.name,
-              errorMessage: error?.message,
-            },
-          });
-        }
-
-        track(TRACKING_EVENTS.SIGNUP_FAILED, {
-          username,
-          invite_code: inviteCode,
-          error: error.message || error.name || 'Unknown error',
-        });
-
-        setSignupInfo({ status: Status.ERROR, message });
-        console.error(error);
-      }
-    },
-    [createPasskey, checkBalance, safeAA, setSignupInfo, storeUser, router],
-  );
-
   const handleLogin = useCallback(async () => {
+    // Get attribution context for login tracking
+    const attributionStore = useAttributionStore.getState();
+    const attributionData = attributionStore.getAttributionForEvent();
+    const deviceId = getAmplitudeDeviceId();
+
     try {
       setLoginInfo({ status: Status.PENDING });
 
@@ -482,7 +304,7 @@ const useUser = (): UseUserReturn => {
       storeUser(selectedUser);
       await checkBalance(selectedUser);
 
-      // Identify user in analytics
+      // Identify user in analytics with full attribution context
       trackIdentity(user.userId, {
         username: user.username,
         safe_address: smartAccountClient.account.address,
@@ -490,6 +312,9 @@ const useUser = (): UseUserReturn => {
         has_referral_code: !!user.referralCode,
         login_method: 'passkey',
         platform: Platform.OS,
+        device_id: deviceId,
+        ...attributionData,
+        attribution_channel: getAttributionChannel(attributionData),
       });
 
       // Fetch points after successful login
@@ -513,9 +338,12 @@ const useUser = (): UseUserReturn => {
         safe_address: smartAccountClient.account.address,
         has_email: !!user.email,
         is_deposited: !!user.isDeposited,
+        device_id: deviceId,
+        ...attributionData,
+        attribution_channel: getAttributionChannel(attributionData),
       });
 
-      // Update user properties on login
+      // Update user properties on login with attribution
       trackIdentity(user.userId, {
         username: user.username,
         safe_address: smartAccountClient.account.address,
@@ -523,6 +351,9 @@ const useUser = (): UseUserReturn => {
         is_deposited: !!user.isDeposited,
         last_login_date: new Date().toISOString(),
         platform: Platform.OS,
+        device_id: deviceId,
+        ...attributionData,
+        attribution_channel: getAttributionChannel(attributionData),
       });
 
       router.replace(path.HOME);
@@ -552,6 +383,9 @@ const useUser = (): UseUserReturn => {
       track(TRACKING_EVENTS.LOGIN_FAILED, {
         username: user?.username,
         error: error.message,
+        device_id: deviceId,
+        ...attributionData,
+        attribution_channel: getAttributionChannel(attributionData),
       });
 
       console.error(error);
@@ -782,7 +616,6 @@ const useUser = (): UseUserReturn => {
   return {
     user,
     handleSignupStarted,
-    handleSignup,
     handleLogin,
     handleDummyLogin,
     handleSelectUser,

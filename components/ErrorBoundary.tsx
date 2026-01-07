@@ -1,15 +1,15 @@
 import type { ErrorBoundaryProps } from 'expo-router';
 import { router, usePathname } from 'expo-router';
 import { AlertTriangle } from 'lucide-react-native';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { path } from '@/constants/path';
 
 const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
   const pathname = usePathname();
@@ -30,6 +30,17 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
       }
     } catch {}
   }, [error, pathname]);
+
+  const handleRetry = useCallback(() => {
+    track(TRACKING_EVENTS.RETRY_ATTEMPTED, {
+      error_name: error?.name,
+      error_message: String(error?.message ?? ''),
+      pathname,
+      retry_source: 'error_boundary',
+      platform: Platform.OS,
+    });
+    retry();
+  }, [error, pathname, retry]);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -52,7 +63,11 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
             >
               <Text className="text-lg font-semibold">Visit Home</Text>
             </Button>
-            <Button variant="secondary" className="h-12 rounded-xl border-0 px-6" onPress={retry}>
+            <Button
+              variant="secondary"
+              className="h-12 rounded-xl border-0 px-6"
+              onPress={handleRetry}
+            >
               <Text className="text-lg font-semibold">Try again</Text>
             </Button>
           </View>

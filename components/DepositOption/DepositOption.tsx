@@ -1,7 +1,10 @@
 import { ChevronRight } from 'lucide-react-native';
+import { useEffect } from 'react';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import DepositComingSoon from './DepositComingSoon';
 
 type DepositOptionProps = {
@@ -24,6 +27,23 @@ const DepositOption = ({
   bannerText,
 }: DepositOptionProps) => {
   const isDisabled = isComingSoon || isLoading;
+
+  // Helper: Extract percentage from banner text (e.g., "10% bonus" -> 10)
+  const extractPercentageFromBanner = (banner: string): number | undefined => {
+    const match = banner.match(/(\d+(?:\.\d+)?)\s*%/);
+    return match ? parseFloat(match[1]) : undefined;
+  };
+
+  // Track bonus banner impressions
+  useEffect(() => {
+    if (bannerText) {
+      track(TRACKING_EVENTS.DEPOSIT_BONUS_BANNER_VIEWED, {
+        deposit_option: text,
+        bonus_text: bannerText,
+        bonus_percentage: extractPercentageFromBanner(bannerText),
+      });
+    }
+  }, [bannerText, text]);
 
   return (
     <Pressable

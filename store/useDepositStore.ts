@@ -58,6 +58,7 @@ interface DepositState {
   bankTransfer: BankTransferData;
   kyc: KycData;
   directDepositSession: DirectDepositSession;
+  sessionStartTime?: number;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
@@ -68,6 +69,8 @@ interface DepositState {
   setOutputToken: (token: string) => void;
   setDirectDepositSession: (data: Partial<DirectDepositSession>) => void;
   clearDirectDepositSession: () => void;
+  setSessionStartTime: (time: number) => void;
+  clearSessionStartTime: () => void;
 }
 
 export const useDepositStore = create<DepositState>()(
@@ -81,6 +84,7 @@ export const useDepositStore = create<DepositState>()(
       bankTransfer: {},
       kyc: {},
       directDepositSession: {},
+      sessionStartTime: undefined,
 
       setModal: modal => {
         set({
@@ -98,6 +102,8 @@ export const useDepositStore = create<DepositState>()(
       setDirectDepositSession: data =>
         set({ directDepositSession: { ...get().directDepositSession, ...data } }),
       clearDirectDepositSession: () => set({ directDepositSession: {} }),
+      setSessionStartTime: time => set({ sessionStartTime: time }),
+      clearSessionStartTime: () => set({ sessionStartTime: undefined }),
     }),
     {
       name: USER.depositStorageKey,

@@ -9,6 +9,8 @@ import { CardActivationStep } from '@/components/Card/CardActivationStep';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
@@ -58,6 +60,19 @@ export default function ActivateMobile() {
     cardsEndorsement?.status === EndorsementStatus.INCOMPLETE &&
     Array.isArray(cardsEndorsement?.requirements?.pending) &&
     cardsEndorsement.requirements.pending.length > 0;
+
+  // Track card activate page view (on mount only)
+  React.useEffect(() => {
+    track(TRACKING_EVENTS.CARD_ACTIVATE_PAGE_VIEWED, {
+      card_status: cardStatus,
+      kyc_status: _kycStatus,
+      is_card_pending: isCardPending,
+      is_card_blocked: isCardBlocked,
+      is_under_review: isUnderReview,
+      country_confirmed: countryConfirmed === 'true',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // If the card is already active, skip the activation flow
   React.useEffect(() => {
