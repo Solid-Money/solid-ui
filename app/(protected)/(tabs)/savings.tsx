@@ -74,7 +74,7 @@ export default function Savings() {
 
   const renderContent = () => (
     <>
-      <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-6 md:gap-9 md:py-10">
+      <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-6 md:gap-9 md:py-12">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
             <DashboardTitle />

@@ -33,6 +33,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import * as Notifications from 'expo-notifications';
 import type { ErrorBoundaryProps } from 'expo-router';
 import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
@@ -194,6 +195,13 @@ export default Sentry.wrap(function RootLayout() {
   });
   const pathname = usePathname();
   const params = useGlobalSearchParams();
+
+  useEffect(() => {
+    // Only run on Web and only in production
+    if (Platform.OS === 'web' && process.env.EXPO_PUBLIC_ENVIRONMENT === 'production') {
+      injectSpeedInsights();
+    }
+  }, []);
 
   useEffect(() => {
     async function prepare() {

@@ -4,7 +4,7 @@ import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { TokenBalance } from '@/lib/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useRef, useState } from 'react';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { Platform, ScrollView, useWindowDimensions, View } from 'react-native';
 
 type MobileCardsProps = {
   totalUSDExcludingSoUSD: number;
@@ -89,25 +89,48 @@ export default function MobileCards({
   const showLeftBlur = scrollX > 10;
   const showRightBlur = totalCards > 1 && scrollX < maxScrollX - 10;
 
+  const snapOffsets = useMemo(
+    () => cards.map((_, index) => index * cardWithGap),
+    [cards, cardWithGap],
+  );
+
   return (
     <View className="relative min-h-36">
       <ScrollView
         ref={scrollViewRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        snapToInterval={cardWithGap}
+        snapToOffsets={snapOffsets}
+        snapToAlignment="start"
         decelerationRate="fast"
         contentContainerStyle={{
           paddingHorizontal: paddingHorizontal,
           gap: gap,
         }}
+        style={
+          Platform.OS === 'web'
+            ? ({
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
+                scrollPaddingLeft: paddingHorizontal,
+              } as any)
+            : undefined
+        }
         onScroll={e => {
           setScrollX(e.nativeEvent.contentOffset.x);
         }}
         scrollEventThrottle={16}
       >
         {cards.map((card, index) => (
-          <View key={index} style={{ width: cardWidth, height: 160 }}>
+          <View
+            key={index}
+            style={[
+              { width: cardWidth, height: 160 },
+              Platform.OS === 'web'
+                ? ({ scrollSnapAlign: 'start', scrollSnapStop: 'always' } as any)
+                : undefined,
+            ]}
+          >
             {card}
           </View>
         ))}
