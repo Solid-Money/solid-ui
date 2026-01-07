@@ -178,5 +178,7 @@ export const getImageUrl = (path: AssetPath) => {
     return `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}`;
   }
 
+  // If asset is in registry, we could potentially resolve it,
+  // but this helper is specifically for external URL strings.
   return '';
 };
