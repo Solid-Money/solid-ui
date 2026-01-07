@@ -4,6 +4,7 @@
 node_modules/
 
 # Web
+assets/version.ts
 public/assets/
 dist/
 web-build/

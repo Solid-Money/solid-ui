@@ -24,10 +24,10 @@
     "analyze:ios": "npx expo export --source-maps --platform ios --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/ios/*.js'",
     "analyze:android": "npx expo export --source-maps --platform android --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/android/*.js'",
     "analyze:web": "npx source-map-explorer 'dist/_expo/static/js/web/*.js'",
-    "export:web": "npm run assets:generate-version && npm run assets:sync-public && npx expo export -p web",
+    "export:web": "npm run assets:sync-public && npx expo export -p web",
     "serve:web": "npx serve dist -l 8081",
     "lighthouse": "npx lighthouse http://localhost:8081 --view",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package && npm run assets:generate-version"
   },
   "dependencies": {
     "@amplitude/analytics-react-native": "^1.5.32",
