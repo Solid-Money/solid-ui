@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 
 import { formatAttributionForLogging, getCurrentURL, getReferrer } from '@/lib/attribution';
 import { useAttributionStore } from '@/store/useAttributionStore';
+import { useReferralStore } from '@/store/useReferralStore';
 
 /**
  * Hook to initialize attribution tracking on app launch
@@ -27,14 +28,16 @@ import { useAttributionStore } from '@/store/useAttributionStore';
 export const useAttributionInitialization = () => {
   const attributionStore = useAttributionStore();
   const _hasHydrated = useAttributionStore(state => state._hasHydrated);
+  const _referralHasHydrated = useReferralStore(state => state._hasHydrated);
   const hasInitialized = useRef(false);
   const subscriptionRef = useRef<ReturnType<typeof Linking.addEventListener> | null>(null);
 
   useEffect(() => {
-    // Wait for store hydration before initialization
+    // Wait for BOTH stores' hydration before initialization
     // This ensures we don't overwrite existing first-touch attribution
-    if (!_hasHydrated) {
-      console.warn('Waiting for attribution store hydration...');
+    // and prevents referral code sync failures
+    if (!_hasHydrated || !_referralHasHydrated) {
+      console.warn('Waiting for attribution and referral store hydration...');
       return;
     }
 
@@ -59,6 +62,26 @@ export const useAttributionInitialization = () => {
 
           if (currentUrl) {
             const captured = attributionStore.captureFromURL(currentUrl);
+
+            // Verify referral code sync if present
+            if (captured && captured.referral_code) {
+              const verifyReferral = useReferralStore.getState().referralCode;
+              console.warn('✅ Referral code captured:', {
+                code: captured.referral_code,
+                synced: captured.referral_code === verifyReferral,
+              });
+
+              if (captured.referral_code !== verifyReferral) {
+                console.error('❌ REFERRAL SYNC FAILED - stores out of sync!');
+                Sentry.captureMessage('Referral code sync mismatch', {
+                  level: 'error',
+                  extra: {
+                    captured: captured.referral_code,
+                    inReferralStore: verifyReferral,
+                  },
+                });
+              }
+            }
 
             // Enrich with HTTP referrer if available
             if (captured && referrer) {
@@ -134,5 +157,5 @@ export const useAttributionInitialization = () => {
         subscriptionRef.current = null;
       }
     };
-  }, [_hasHydrated, attributionStore]);
+  }, [_hasHydrated, _referralHasHydrated, attributionStore]);
 };
