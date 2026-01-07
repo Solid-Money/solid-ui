@@ -17,17 +17,17 @@
     "wagmi-generate": "wagmi generate",
     "test:e2e": "playwright test",
     "generate:auth": "npx ts-node scripts/generate-auth.ts",
-    "assets:generate-version": "echo \"export const ASSET_VERSION = '$(date +%s)';\" > assets/version.ts",
+    "assets:update": "npx ts-node scripts/update-assets.ts",
     "assets:sync-public": "mkdir -p public/assets && cp -r assets/* public/assets/",
     "export": "expo export",
     "analyze:atlas": "EXPO_ATLAS=true npx expo export && npx expo-atlas .expo/atlas.jsonl",
     "analyze:ios": "npx expo export --source-maps --platform ios --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/ios/*.js'",
     "analyze:android": "npx expo export --source-maps --platform android --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/android/*.js'",
     "analyze:web": "npx source-map-explorer 'dist/_expo/static/js/web/*.js'",
-    "export:web": "npm run assets:sync-public && npx expo export -p web",
+    "export:web": "npm run assets:update && npm run assets:sync-public && npx expo export -p web",
     "serve:web": "npx serve dist -l 8081",
     "lighthouse": "npx lighthouse http://localhost:8081 --view",
-    "postinstall": "patch-package && npm run assets:generate-version"
+    "postinstall": "patch-package && npm run assets:update"
   },
   "dependencies": {
     "@amplitude/analytics-react-native": "^1.5.32",
