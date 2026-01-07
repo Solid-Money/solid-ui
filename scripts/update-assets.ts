@@ -28,7 +28,7 @@ function getFiles(dir: string): string[] {
 
 function getHash(filePath: string): string {
   const content = fs.readFileSync(filePath);
-  return crypto.createHash('md5').update(content).digest('hex').substring(0, 8);
+  return crypto.createHash('sha256').update(content).digest('hex').substring(0, 8);
 }
 
 function updateRegistry() {
