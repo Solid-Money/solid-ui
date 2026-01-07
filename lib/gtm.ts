@@ -24,12 +24,61 @@ export enum GTMEventType {
   STAKED = 'staked',
 }
 
+/**
+ * Attribution data structure for GTM events
+ * Contains full marketing attribution context for Addressable and Google Ads tracking
+ */
+interface GTMAttributionData {
+  // UTM Parameters
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+
+  // Advertising Click IDs
+  gclid?: string;
+  fbclid?: string;
+  msclkid?: string;
+  ttclid?: string;
+
+  // Referral Attribution
+  referral_code?: string;
+  referral_source?: string;
+
+  // Attribution Channel Classification
+  attribution_channel?: string;
+
+  // Multi-touch Attribution
+  first_touch_utm_source?: string;
+  first_touch_utm_campaign?: string;
+  first_touch_utm_medium?: string;
+  first_touch_timestamp?: number;
+  last_touch_utm_source?: string;
+  last_touch_utm_campaign?: string;
+  last_touch_utm_medium?: string;
+  last_touch_timestamp?: number;
+
+  // Device Tracking (for anonymous-to-identified bridging)
+  device_id?: string;
+  amplitude_device_id?: string;
+  amplitude_session_id?: number;
+
+  // Landing Page Context
+  landing_page?: string;
+  landing_page_referrer?: string;
+  landing_page_path?: string;
+}
+
 interface BaseGTMEvent {
   event: string;
   user_id?: string;
   safe_address?: string;
   timestamp?: number;
   platform?: string;
+
+  // Attribution data (auto-enriched from analytics.ts)
+  attribution?: GTMAttributionData;
 }
 
 interface SignupGTMEvent extends BaseGTMEvent {
@@ -70,9 +119,20 @@ interface StakeGTMEvent extends BaseGTMEvent {
   token_symbol: string;
 }
 
-export type GTMEvent = SignupGTMEvent | AccountCreationGTMEvent | EmailVerificationGTMEvent | DepositGTMEvent | StakeGTMEvent;
+export type GTMEvent =
+  | SignupGTMEvent
+  | AccountCreationGTMEvent
+  | EmailVerificationGTMEvent
+  | DepositGTMEvent
+  | StakeGTMEvent;
 
-// Track GTM events
+/**
+ * Track GTM events with attribution enrichment
+ * Pushes events to Google Tag Manager dataLayer for Addressable and Google Ads
+ *
+ * Attribution data is automatically enriched by analytics.ts and structured
+ * into a nested attribution object for easier GTM trigger configuration
+ */
 export const trackGTMEvent = (event: string, params: Record<string, any>) => {
   try {
     // Only push to dataLayer on web platform where GTM is available
@@ -88,24 +148,69 @@ export const trackGTMEvent = (event: string, params: Record<string, any>) => {
 
     // Ensure dataLayer exists
     if (typeof window !== 'undefined' && window.dataLayer) {
-      // Sanitize event data - remove undefined/null values
-      const sanitizedData = Object.entries(params)
-        .filter(([_, value]) => value !== undefined && value !== null)
-        .reduce((acc, [key, value]) => {
-          // Ensure values are serializable
-          acc[key] = typeof value === 'object' && value !== null ?
-            JSON.stringify(value) : value;
-          return acc;
-        }, {} as Record<string, any>);
+      // Extract attribution fields from params for structured organization
+      const attributionFields = [
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_content',
+        'utm_term',
+        'gclid',
+        'fbclid',
+        'msclkid',
+        'ttclid',
+        'referral_code',
+        'referral_source',
+        'attribution_channel',
+        'first_touch_utm_source',
+        'first_touch_utm_campaign',
+        'first_touch_utm_medium',
+        'first_touch_timestamp',
+        'last_touch_utm_source',
+        'last_touch_utm_campaign',
+        'last_touch_utm_medium',
+        'last_touch_timestamp',
+        'device_id',
+        'amplitude_device_id',
+        'amplitude_session_id',
+        'landing_page',
+        'landing_page_referrer',
+        'landing_page_path',
+      ];
+
+      // Build attribution object from params
+      const attribution: GTMAttributionData = {};
+      attributionFields.forEach(field => {
+        if (params[field] !== undefined && params[field] !== null) {
+          attribution[field as keyof GTMAttributionData] = params[field] as any;
+        }
+      });
+
+      // Build event data without attribution fields (they're now in attribution object)
+      const eventData = Object.entries(params)
+        .filter(
+          ([key, value]) =>
+            value !== undefined && value !== null && !attributionFields.includes(key),
+        )
+        .reduce(
+          (acc, [key, value]) => {
+            // Ensure values are serializable
+            acc[key] = typeof value === 'object' && value !== null ? JSON.stringify(value) : value;
+            return acc;
+          },
+          {} as Record<string, any>,
+        );
 
       const enrichedEvent = {
         event,
-        ...sanitizedData,
+        ...eventData,
         timestamp: params.timestamp || Date.now(),
         platform: params.platform || Platform.OS,
+        // Structured attribution object for easier GTM trigger configuration
+        attribution: Object.keys(attribution).length > 0 ? attribution : undefined,
         // Add standard GTM fields
         gtm_event_category: 'addressable',
-        gtm_event_version: '1.0',
+        gtm_event_version: '1.1', // Bumped version to indicate attribution structure change
       };
 
       window.dataLayer.push(enrichedEvent);

@@ -31,6 +31,17 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
     } catch {}
   }, [error, pathname]);
 
+  const handleRetry = () => {
+    track(TRACKING_EVENTS.RETRY_ATTEMPTED, {
+      error_name: error?.name,
+      error_message: String(error?.message ?? ''),
+      pathname,
+      retry_source: 'error_boundary',
+      platform: Platform.OS,
+    });
+    retry();
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 items-center justify-center p-6">
@@ -52,7 +63,7 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
             >
               <Text className="text-lg font-semibold">Visit Home</Text>
             </Button>
-            <Button variant="secondary" className="h-12 rounded-xl border-0 px-6" onPress={retry}>
+            <Button variant="secondary" className="h-12 rounded-xl border-0 px-6" onPress={handleRetry}>
               <Text className="text-lg font-semibold">Try again</Text>
             </Button>
           </View>
