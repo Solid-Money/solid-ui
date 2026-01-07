@@ -1,3 +1,4 @@
+import { ASSET_VERSION } from '@/assets/version';
 import { Platform } from 'react-native';
 import { EXPO_PUBLIC_BASE_URL } from './config';
 
@@ -154,7 +155,7 @@ export const getAsset = (path: AssetPath) => {
   const shouldUseCDN = isWeb && EXPO_PUBLIC_BASE_URL && !__DEV__;
 
   if (shouldUseCDN) {
-    return { uri: `${EXPO_PUBLIC_BASE_URL}/assets/${path}` };
+    return { uri: `${EXPO_PUBLIC_BASE_URL}/assets/${path}?v=${ASSET_VERSION}` };
   }
 
   return localAsset;
@@ -175,7 +176,7 @@ export const getImageUrl = (path: AssetPath) => {
   const shouldUseCDN = isWeb && EXPO_PUBLIC_BASE_URL && !__DEV__;
 
   if (shouldUseCDN) {
-    return `${EXPO_PUBLIC_BASE_URL}/assets/${path}`;
+    return `${EXPO_PUBLIC_BASE_URL}/assets/${path}?v=${ASSET_VERSION}`;
   }
 
   // If we're on web dev, return the local path from the public folder
