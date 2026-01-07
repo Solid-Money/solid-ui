@@ -399,19 +399,3 @@ export const formatAttributionForLogging = (data: Partial<AttributionData>): str
 
   return parts.join(' | ');
 };
-
-/**
- * Create a fingerprint for attribution data (for deduplication)
- */
-export const getAttributionFingerprint = (data: Partial<AttributionData>): string => {
-  const components = [
-    data.utm_source || '',
-    data.utm_medium || '',
-    data.utm_campaign || '',
-    data.referral_code || '',
-    data.gclid || '',
-    data.fbclid || '',
-  ];
-
-  return components.filter(c => !!c).join('|');
-};
