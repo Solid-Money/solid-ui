@@ -14,6 +14,7 @@ import WhatsNewModal from '@/components/WhatsNewModal';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
 import '@/global.css';
 import { infoClient } from '@/graphql/clients';
+import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
@@ -181,6 +182,9 @@ export default Sentry.wrap(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
   const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
+
+  // Initialize attribution tracking automatically (handles web and mobile)
+  useAttributionInitialization();
 
   const [loaded, error] = useFonts({
     MonaSans_200ExtraLight,

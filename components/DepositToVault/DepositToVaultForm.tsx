@@ -25,9 +25,11 @@ import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { track } from '@/lib/analytics';
+import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { Status } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
+import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
 function DepositToVaultForm() {
@@ -115,11 +117,8 @@ function DepositToVaultForm() {
   };
 
   const handleSuccess = () => {
-    track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-      chain_id: srcChainId,
-      is_ethereum: isEthereum,
-      hash: hash,
-    });
+    // Note: DEPOSIT_COMPLETED tracking is handled by useDepositFromEOA hook
+    // which has complete deposit details (amount, transaction hash, user info, etc.)
 
     reset(); // Reset form after successful transaction
     setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
@@ -140,6 +139,10 @@ function DepositToVaultForm() {
   };
 
   const onSubmit = async (data: DepositFormData) => {
+    // Capture attribution for conversion funnel tracking
+    const attributionData = useAttributionStore.getState().getAttributionForEvent();
+    const attributionChannel = getAttributionChannel(attributionData);
+
     try {
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
         amount: data.amount,
@@ -148,6 +151,8 @@ function DepositToVaultForm() {
         is_sponsor: isSponsor,
         // expected_output: amountOut.toString(),
         exchange_rate: exchangeRate,
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       const trackingId = await deposit(data.amount.toString());
@@ -162,6 +167,8 @@ function DepositToVaultForm() {
         chain_id: srcChainId,
         is_ethereum: isEthereum,
         error: String(error),
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
       // handled by hook
     }

@@ -2,6 +2,8 @@ import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { getAttributionChannel } from '@/lib/attribution';
+import { useAttributionStore } from '@/store/useAttributionStore';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import type { ClientOptions } from 'persona';
@@ -139,10 +141,16 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
             setLoading(false);
           },
           onComplete: ({ inquiryId: completedInquiryId, status }) => {
+            // Capture attribution for KYC conversion tracking
+            const attributionData = useAttributionStore.getState().getAttributionForEvent();
+            const attributionChannel = getAttributionChannel(attributionData);
+
             track(TRACKING_EVENTS.KYC_LINK_COMPLETED, {
               inquiryId: completedInquiryId,
               status,
               hasRedirectUri: !!redirectUri,
+              ...attributionData,
+              attribution_channel: attributionChannel,
             });
             onSuccess?.();
 

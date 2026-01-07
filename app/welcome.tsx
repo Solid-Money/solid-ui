@@ -77,7 +77,7 @@ export default function Welcome() {
               key={user.userId}
               variant="brand"
               className="h-14 justify-between rounded-xl border-0 px-6"
-              onPress={() => handleSelectUser(user.userId)}
+              onPress={() => handleSelectUserById(user.userId)}
               disabled={loadingUserId !== null}
             >
               <View className="flex-row items-center gap-2">
