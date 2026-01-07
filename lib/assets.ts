@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { EXPO_PUBLIC_ASSETS_CDN_URL } from './config';
 
 /**
@@ -148,12 +149,12 @@ export const getAsset = (path: AssetPath) => {
     return null;
   }
 
-  const shouldUseCDN = EXPO_PUBLIC_ASSETS_CDN_URL && !__DEV__;
+  // Only use CDN on Web. Mobile should always use local bundled assets.
+  const isWeb = Platform.OS === 'web';
+  const shouldUseCDN = isWeb && EXPO_PUBLIC_ASSETS_CDN_URL && !__DEV__;
 
   if (shouldUseCDN) {
-    // Return an array of sources for expo-image to handle fallback automatically.
-    // The first one is the CDN URL, the second is the local require() fallback.
-    return [{ uri: `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}` }, localAsset];
+    return { uri: `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}` };
   }
 
   return localAsset;
@@ -169,13 +170,13 @@ export const getImageUrl = (path: AssetPath) => {
     return '';
   }
 
-  const shouldUseCDN = EXPO_PUBLIC_ASSETS_CDN_URL && !__DEV__;
+  // Only use CDN on Web.
+  const isWeb = Platform.OS === 'web';
+  const shouldUseCDN = isWeb && EXPO_PUBLIC_ASSETS_CDN_URL && !__DEV__;
 
   if (shouldUseCDN) {
     return `${EXPO_PUBLIC_ASSETS_CDN_URL}/${path}`;
   }
 
-  // If asset is in registry, we could potentially resolve it,
-  // but this helper is specifically for external URL strings.
   return '';
 };
