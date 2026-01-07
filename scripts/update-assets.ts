@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -67,6 +68,14 @@ function updateRegistry() {
 
   fs.writeFileSync(ASSETS_FILE, newContent);
   console.log(`Updated ${registryEntries.length} assets in the registry.`);
+
+  // Format the file after updating
+  try {
+    execSync(`npx prettier --write "${ASSETS_FILE}"`);
+    console.log('Formatted lib/assets.ts');
+  } catch (error) {
+    console.error('Failed to format lib/assets.ts:', error);
+  }
 }
 
 updateRegistry();
