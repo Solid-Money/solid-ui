@@ -31,7 +31,7 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
     } catch {}
   }, [error, pathname]);
 
-  const handleRetry = () => {
+  const handleRetry = useCallback(() => {
     track(TRACKING_EVENTS.RETRY_ATTEMPTED, {
       error_name: error?.name,
       error_message: String(error?.message ?? ''),
@@ -40,7 +40,7 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
       platform: Platform.OS,
     });
     retry();
-  };
+  }, [error, pathname, retry]);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
