@@ -26,6 +26,7 @@ import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, createDeposit, getLifiQuote } from '@/lib/api';
+import { getAttributionChannel } from '@/lib/attribution';
 import {
   ADDRESSES,
   EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
@@ -41,6 +42,7 @@ import {
   sendTransaction,
 } from '@/lib/utils/contract';
 import { config, publicClient } from '@/lib/wagmi';
+import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 import useUser from './useUser';
@@ -345,9 +347,13 @@ const useDepositFromEOA = (
   };
 
   const deposit = async (amount: string) => {
+    // Capture attribution context for conversion tracking
+    const attributionData = useAttributionStore.getState().getAttributionForEvent();
+    const attributionChannel = getAttributionChannel(attributionData);
+
     let trackingId: string | undefined;
     try {
-      // Track deposit initiation
+      // Track deposit initiation with attribution for conversion funnel analysis
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
         user_id: user?.userId,
         safe_address: user?.safeAddress,
@@ -358,6 +364,8 @@ const useDepositFromEOA = (
         chain_id: srcChainId,
         chain_name: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
         is_sponsor: Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT),
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       if (!eoaAddress) {
@@ -716,7 +724,7 @@ const useDepositFromEOA = (
         },
       });
 
-      // Track deposit success
+      // Track deposit success with attribution for ROI measurement
       track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
         user_id: user?.userId,
         safe_address: user?.safeAddress,
@@ -729,6 +737,8 @@ const useDepositFromEOA = (
         chain_name: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
         is_sponsor: isSponsor,
         is_first_deposit: !user?.isDeposited,
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       trackIdentity(user?.userId, {
@@ -736,6 +746,8 @@ const useDepositFromEOA = (
         last_deposit_date: new Date().toISOString(),
         last_deposit_method: isEthereum ? 'ethereum_direct' : 'cross_chain_bridge',
         last_deposit_chain: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       setDepositStatus({ status: Status.SUCCESS });
@@ -775,6 +787,8 @@ const useDepositFromEOA = (
         deposit_status: depositStatus,
         source: 'deposit_from_eoa',
         error: errorMessage,
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       const msg = errorMessage?.toLowerCase();
