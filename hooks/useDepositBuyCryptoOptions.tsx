@@ -15,16 +15,18 @@ const useDepositBuyCryptoOptions = () => {
   const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'bank_transfer',
+      bonus_banner_visible: isDepositBonusEnabled,
     });
     setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
-  }, [setModal]);
+  }, [setModal, isDepositBonusEnabled]);
 
   const handleCreditCardPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'credit_card',
+      bonus_banner_visible: isDepositBonusEnabled,
     });
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
-  }, [setModal]);
+  }, [setModal, isDepositBonusEnabled]);
 
   const bonusBannerText = isDepositBonusEnabled
     ? `${Math.round(percentage * 100)}% bonus on deposits`

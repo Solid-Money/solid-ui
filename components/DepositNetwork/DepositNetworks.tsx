@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
@@ -12,6 +13,19 @@ import DepositNetwork from './DepositNetwork';
 const DepositNetworks = () => {
   const { setModal, setSrcChainId, setOutputToken } = useDepositStore();
   const { user } = useUser();
+  const hasTrackedNetworkView = useRef(false);
+
+  // Track when wallet network selection screen is viewed
+  useEffect(() => {
+    if (!hasTrackedNetworkView.current) {
+      const networksCount = Object.keys(BRIDGE_TOKENS).length;
+      track(TRACKING_EVENTS.DEPOSIT_WALLET_NETWORK_VIEWED, {
+        deposit_method: 'wallet',
+        available_networks: networksCount,
+      });
+      hasTrackedNetworkView.current = true;
+    }
+  }, []);
 
   const handlePress = (id: number) => {
     const network = BRIDGE_TOKENS[id];
@@ -24,6 +38,14 @@ const DepositNetworks = () => {
       network_name: network?.name,
       deposit_type: 'connected_wallet',
       deposit_method: 'cross_chain_bridge',
+    });
+
+    // Track wallet network selection specifically
+    track(TRACKING_EVENTS.DEPOSIT_WALLET_NETWORK_SELECTED, {
+      deposit_method: 'wallet',
+      chain_id: id,
+      network_name: network?.name,
+      estimated_time: id === 1 ? '5 min' : '20 min',
     });
 
     setSrcChainId(id);

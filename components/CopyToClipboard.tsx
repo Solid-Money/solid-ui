@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { Check, Copy } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -10,18 +10,21 @@ const CopyToClipboard = ({
   className,
   iconClassName,
   size = 14,
+  onCopy,
 }: {
   text: string;
   className?: string;
   iconClassName?: string;
   size?: number;
+  onCopy?: () => void;
 }) => {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async () => {
+  const handleCopy = useCallback(async () => {
     setCopied(true);
     await Clipboard.setStringAsync(text);
-  };
+    onCopy?.();
+  }, [text, onCopy]);
 
   useEffect(() => {
     if (copied) {

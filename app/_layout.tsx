@@ -247,10 +247,12 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [appIsReady, splashScreenHidden]);
 
+  // Track screen views on all platforms (web, iOS, Android)
+  // trackScreen() handles platform-specific routing internally:
+  // - Amplitude: tracks on all platforms
+  // - Firebase: tracks on web only
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      trackScreen(pathname, params);
-    }
+    trackScreen(pathname, params);
   }, [pathname, params]);
 
   useEffect(() => {
