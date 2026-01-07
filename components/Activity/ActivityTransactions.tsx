@@ -182,7 +182,7 @@ export default function ActivityTransactions({
             setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS);
           } else if (transaction.type === TransactionType.BANK_TRANSFER) {
             setBankTransferData({
-              instructions: transaction.sourceDepositInstructions,
+              instructions: transaction.metadata?.sourceDepositInstructions,
               fromActivity: true,
             });
             setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
