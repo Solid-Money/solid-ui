@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   createDirectDepositSession as createDirectDepositSessionApi,
   deleteDirectDepositSession as deleteDirectDepositSessionApi,
   getDirectDepositSession as getDirectDepositSessionApi,
 } from '@/lib/api';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { DirectDepositSessionResponse } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { withRefreshToken } from '@/lib/utils';
@@ -27,6 +29,15 @@ export const useDirectDepositSession = () => {
 
       if (!data) throw new Error('Failed to create direct deposit session');
 
+      // Track successful session creation
+      track(TRACKING_EVENTS.DEPOSIT_DIRECT_SESSION_CREATED, {
+        deposit_method: 'deposit_directly',
+        session_id: data.sessionId,
+        chain_id: chainId,
+        selected_token: tokenSymbol,
+        wallet_address: data.walletAddress,
+      });
+
       // Store in zustand (explicitly clear fromActivity flag)
       setDirectDepositSession({
         ...data,
@@ -38,6 +49,15 @@ export const useDirectDepositSession = () => {
       return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+
+      // Track session creation failure
+      track(TRACKING_EVENTS.DEPOSIT_DIRECT_SESSION_CREATION_FAILED, {
+        deposit_method: 'deposit_directly',
+        chain_id: chainId,
+        selected_token: tokenSymbol,
+        error: errorMessage,
+      });
+
       setError(errorMessage);
       throw err;
     } finally {
@@ -61,6 +81,12 @@ export const useDirectDepositSession = () => {
       setError(null);
 
       const data = await withRefreshToken(() => deleteDirectDepositSessionApi(clientTxId));
+
+      // Track successful session deletion
+      track(TRACKING_EVENTS.DEPOSIT_DIRECT_SESSION_DELETED, {
+        deposit_method: 'deposit_directly',
+        client_tx_id: clientTxId,
+      });
 
       // Clear from zustand store
       clearDirectDepositSession();
@@ -91,7 +117,9 @@ export const useDirectDepositSessionPolling = (
   sessionId: string | undefined,
   enabled: boolean = true,
 ) => {
-  const { setDirectDepositSession } = useDepositStore();
+  const { setDirectDepositSession, directDepositSession } = useDepositStore();
+  const previousStatusRef = useRef<string | null>(null);
+  const sessionStartTimeRef = useRef<number | null>(null);
 
   const {
     data: session,
@@ -106,6 +134,51 @@ export const useDirectDepositSessionPolling = (
       const data = await withRefreshToken(() => getDirectDepositSessionApi(sessionId));
 
       if (!data) return null;
+
+      // Initialize session start time when first created
+      if (!sessionStartTimeRef.current && data.status === 'pending') {
+        sessionStartTimeRef.current = Date.now();
+      }
+
+      // Track status changes
+      const previousStatus = previousStatusRef.current;
+      const currentStatus = data.status;
+
+      if (previousStatus !== currentStatus) {
+        // Track when deposit is detected
+        if (currentStatus === 'detected') {
+          const timeToDetection = sessionStartTimeRef.current
+            ? Math.floor((Date.now() - sessionStartTimeRef.current) / 1000)
+            : undefined;
+
+          track(TRACKING_EVENTS.DEPOSIT_DIRECT_SESSION_DETECTED, {
+            deposit_method: 'deposit_directly',
+            session_id: data.sessionId,
+            chain_id: data.chainId,
+            selected_token: directDepositSession.selectedToken,
+            detected_amount: data.detectedAmount,
+            time_to_detection: timeToDetection,
+          });
+        }
+
+        // Track when deposit is completed
+        if (currentStatus === 'completed') {
+          const timeToCompletion = sessionStartTimeRef.current
+            ? Math.floor((Date.now() - sessionStartTimeRef.current) / 1000)
+            : undefined;
+
+          track(TRACKING_EVENTS.DEPOSIT_DIRECT_SESSION_COMPLETED, {
+            deposit_method: 'deposit_directly',
+            session_id: data.sessionId,
+            chain_id: data.chainId,
+            selected_token: directDepositSession.selectedToken,
+            transaction_hash: data.transactionHash,
+            time_to_completion: timeToCompletion,
+          });
+        }
+
+        previousStatusRef.current = currentStatus;
+      }
 
       // Update zustand store
       setDirectDepositSession(data);

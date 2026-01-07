@@ -25,6 +25,10 @@ export const TRACKING_EVENTS = {
   WITHDRAW_TRANSACTION_ERROR: 'withdraw_transaction_error',
 
   // Transaction Flow Events - Swap
+  SWAP_MODAL_VIEWED: 'swap_modal_viewed',
+  SWAP_AMOUNT_ENTRY_STARTED: 'swap_amount_entry_started',
+  SWAP_TOKEN_SELECTOR_OPENED: 'swap_token_selector_opened',
+  SWAP_MODAL_ABANDONED: 'swap_modal_abandoned',
   SWAP_INITIATED: 'swap_initiated',
   SWAP_COMPLETED: 'swap_completed',
   SWAP_FAILED: 'swap_failed',
@@ -95,8 +99,58 @@ export const TRACKING_EVENTS = {
   DEPOSIT_METHOD_SELECTED: 'deposit_method_selected',
   DEPOSIT_OPTIONS_VIEWED: 'deposit_options_viewed',
   DEPOSIT_OPTIONS_ABANDONED: 'deposit_options_abandoned',
+  DEPOSIT_TRIGGER_CLICKED: 'deposit_trigger_clicked',
+  DEPOSIT_AMOUNT_ENTRY_STARTED: 'deposit_amount_entry_started',
+  DEPOSIT_VALIDATION_ERROR: 'deposit_validation_error',
+  DEPOSIT_MAX_BUTTON_CLICKED: 'deposit_max_button_clicked',
+  WALLET_CONNECT_MODAL_VIEWED: 'wallet_connect_modal_viewed',
   NETWORK_SELECTED: 'network_selected',
   BANK_TRANSFER_CREATED: 'bank_transfer_created',
+
+  // Deposit Method: Crypto Wallet (Method 1)
+  DEPOSIT_WALLET_NETWORK_VIEWED: 'deposit_wallet_network_viewed',
+  DEPOSIT_WALLET_NETWORK_SELECTED: 'deposit_wallet_network_selected',
+  DEPOSIT_WALLET_FORM_VIEWED: 'deposit_wallet_form_viewed',
+  DEPOSIT_WALLET_FORM_SUBMITTED: 'deposit_wallet_form_submitted',
+  DEPOSIT_WALLET_NETWORK_ABANDONED: 'deposit_wallet_network_abandoned',
+  DEPOSIT_WALLET_FORM_ABANDONED: 'deposit_wallet_form_abandoned',
+
+  // Deposit Method: Direct Deposit (Method 2)
+  DEPOSIT_DIRECT_NETWORK_VIEWED: 'deposit_direct_network_viewed',
+  DEPOSIT_DIRECT_NETWORK_SELECTED: 'deposit_direct_network_selected',
+  DEPOSIT_DIRECT_TOKEN_VIEWED: 'deposit_direct_token_viewed',
+  DEPOSIT_DIRECT_TOKEN_SELECTED: 'deposit_direct_token_selected',
+  DEPOSIT_DIRECT_ADDRESS_VIEWED: 'deposit_direct_address_viewed',
+  DEPOSIT_DIRECT_ADDRESS_COPIED: 'deposit_direct_address_copied',
+  DEPOSIT_DIRECT_QR_VIEWED: 'deposit_direct_qr_viewed',
+  DEPOSIT_DIRECT_ADDRESS_SHARED: 'deposit_direct_address_shared',
+  DEPOSIT_DIRECT_SESSION_CREATED: 'deposit_direct_session_created',
+  DEPOSIT_DIRECT_SESSION_CREATION_FAILED: 'deposit_direct_session_creation_failed',
+  DEPOSIT_DIRECT_SESSION_DETECTED: 'deposit_direct_session_detected',
+  DEPOSIT_DIRECT_SESSION_COMPLETED: 'deposit_direct_session_completed',
+  DEPOSIT_DIRECT_SESSION_DELETED: 'deposit_direct_session_deleted',
+
+  // Deposit Method: Credit Card (Method 3)
+  DEPOSIT_CARD_WIDGET_LOADING: 'deposit_card_widget_loading',
+  DEPOSIT_CARD_WIDGET_LOADED: 'deposit_card_widget_loaded',
+  DEPOSIT_CARD_WIDGET_LOAD_FAILED: 'deposit_card_widget_load_failed',
+  DEPOSIT_CARD_TRANSACTION_CREATED: 'deposit_card_transaction_created',
+  DEPOSIT_CARD_TRANSACTION_CREATION_FAILED: 'deposit_card_transaction_creation_failed',
+
+  // Deposit Method: Bank Deposit (Method 4)
+  DEPOSIT_BANK_AMOUNT_VIEWED: 'deposit_bank_amount_viewed',
+  DEPOSIT_BANK_AMOUNT_ENTERED: 'deposit_bank_amount_entered',
+  DEPOSIT_BANK_PAYMENT_METHOD_VIEWED: 'deposit_bank_payment_method_viewed',
+  DEPOSIT_BANK_KYC_VIEWED: 'deposit_bank_kyc_viewed',
+  DEPOSIT_BANK_KYC_STARTED: 'deposit_bank_kyc_started',
+  DEPOSIT_BANK_INSTRUCTIONS_VIEWED: 'deposit_bank_instructions_viewed',
+  DEPOSIT_BANK_INSTRUCTIONS_COPIED: 'deposit_bank_instructions_copied',
+  DEPOSIT_BANK_AMOUNT_ABANDONED: 'deposit_bank_amount_abandoned',
+  DEPOSIT_BANK_INSTRUCTIONS_ABANDONED: 'deposit_bank_instructions_abandoned',
+
+  // Deposit Bonus Banner Events
+  DEPOSIT_BONUS_BANNER_VIEWED: 'deposit_bonus_banner_viewed',
+  DEPOSIT_BONUS_BANNER_INFLUENCED: 'deposit_bonus_banner_influenced',
 
   // User Registration Events
   SIGNUP_STARTED: 'signup_started',
@@ -151,6 +205,11 @@ export const TRACKING_EVENTS = {
   CARD_COUNTRY_CHECK_DETECTED: 'card_country_check_detected',
   CARD_KYC_COUNTRY_SUPPORTED: 'card_kyc_country_supported',
   CARD_COUNTRY_CHECK_FAILED: 'card_country_check_failed',
+  CARD_ACTIVATE_PAGE_VIEWED: 'card_activate_page_viewed',
+  USER_KYC_INFO_PAGE_VIEWED: 'user_kyc_info_page_viewed',
+  USER_KYC_INFO_FORM_STARTED: 'user_kyc_info_form_started',
+  KYC_STEP_STARTED: 'kyc_step_started',
+  KYC_STEP_COMPLETED: 'kyc_step_completed',
 
   // KYC Link Events (for debugging KYC flow issues)
   KYC_LINK_PAGE_LOADED: 'kyc_link_page_loaded',
@@ -179,6 +238,7 @@ export const TRACKING_EVENTS = {
 
   // Global / Error Events
   ERROR_BOUNDARY: 'error_boundary',
+  RETRY_ATTEMPTED: 'retry_attempted',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];
