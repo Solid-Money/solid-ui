@@ -17,7 +17,6 @@
     "wagmi-generate": "wagmi generate",
     "test:e2e": "playwright test",
     "generate:auth": "npx ts-node scripts/generate-auth.ts",
-    "upload-assets": "npx ts-node scripts/upload-assets.ts",
     "export": "expo export",
     "analyze:atlas": "EXPO_ATLAS=true npx expo export && npx expo-atlas .expo/atlas.jsonl",
     "analyze:ios": "npx expo export --source-maps --platform ios --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/ios/*.js'",
