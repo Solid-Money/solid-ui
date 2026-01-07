@@ -6,7 +6,9 @@ import SlotTrigger from '@/components/SlotTrigger';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { DepositModal } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -14,6 +16,7 @@ export interface DepositTriggerProps {
   buttonText?: string;
   trigger?: React.ReactNode;
   modal?: DepositModal;
+  source?: string; // Track where the deposit trigger was clicked from (e.g., 'home_banner', 'nav_button', 'activity_page')
 }
 
 /**
@@ -26,11 +29,26 @@ const DepositTrigger = ({
   buttonText = 'Add funds',
   trigger,
   modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  source = 'unknown',
 }: DepositTriggerProps) => {
   const { user } = useUser();
   const { setModal, srcChainId } = useDepositStore();
 
   const handlePress = () => {
+    // Track deposit trigger click with source context
+    track(TRACKING_EVENTS.DEPOSIT_TRIGGER_CLICKED, {
+      source,
+      button_text: buttonText,
+      has_email: !!user?.email,
+      has_src_chain: !!srcChainId,
+      modal_to_open:
+        user && !user.email
+          ? DEPOSIT_MODAL.OPEN_EMAIL_GATE
+          : srcChainId
+            ? DEPOSIT_MODAL.OPEN_FORM
+            : modal,
+    });
+
     // Check if user has email when opening deposit modal
     if (user && !user.email) {
       setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);

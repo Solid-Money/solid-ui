@@ -2,12 +2,7 @@ import { ERRORS } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { getAmplitudeDeviceId, track, trackIdentity } from '@/lib/analytics';
-import {
-  deleteAccount,
-  login,
-  updateSafeAddress,
-  usernameExists
-} from '@/lib/api';
+import { deleteAccount, login, updateSafeAddress, usernameExists } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
