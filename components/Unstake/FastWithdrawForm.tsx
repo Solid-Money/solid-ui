@@ -30,6 +30,7 @@ import useFastWithdrawAndBridge from '@/hooks/useFastWithdrawAndBridge';
 import { usePreviewFastWithdraw } from '@/hooks/usePreviewFastWithdraw';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
+import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
@@ -250,7 +251,7 @@ const FastWithdrawForm = () => {
                 className="flex-row items-center gap-2"
               >
                 <Image
-                  source={require('@/assets/images/sousd-4x.png')}
+                  source={getAsset('images/sousd-4x.png')}
                   alt="soUSD"
                   style={{ width: 32, height: 32 }}
                 />

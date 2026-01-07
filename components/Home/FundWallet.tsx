@@ -6,6 +6,7 @@ import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
+import { getAsset } from '@/lib/assets';
 
 interface FundWalletProps {
   className?: string;
@@ -50,7 +51,7 @@ const FundWallet = ({ className }: FundWalletProps) => {
         </View>
         <View>
           <Image
-            source={require('@/assets/images/fund-wallet-tokens.png')}
+            source={getAsset('images/fund-wallet-tokens.png')}
             contentFit="contain"
             style={{ width: 216, height: 216 }}
           />

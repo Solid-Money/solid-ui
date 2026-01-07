@@ -6,6 +6,8 @@ import { useDerivedSwapInfo, useSwapActionHandlers, useSwapState } from '@/store
 import { Currency, CurrencyAmount, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
 import React, { useCallback, useMemo } from 'react';
 import { Image, Pressable, View } from 'react-native';
+
+import { getAsset } from '@/lib/assets';
 import TokenCard from './TokenCard';
 
 const SwapPair: React.FC = () => {
@@ -195,10 +197,7 @@ const SwapPair: React.FC = () => {
       <View className="z-10 mt-2 flex-row items-center justify-center">
         <View className="absolute left-0 right-0 h-[1px] bg-white/20" />
         <Pressable onPress={onSwitchTokens} className="z-10">
-          <Image
-            source={require('@/assets/images/swap_circle.png')}
-            style={{ width: 34, height: 34 }}
-          />
+          <Image source={getAsset('images/swap_circle.png')} style={{ width: 34, height: 34 }} />
         </Pressable>
       </View>
 

@@ -12,6 +12,7 @@ import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
+import { getAsset } from '@/lib/assets';
 import { CardStatus, KycStatus } from '@/lib/types';
 
 export default function ActivateMobile() {
@@ -94,7 +95,7 @@ export default function ActivateMobile() {
         </View>
         <View className="mt-8 items-center justify-center">
           <Image
-            source={require('@/assets/images/activate_card_steps.png')}
+            source={getAsset('images/activate_card_steps.png')}
             alt="Solid Card"
             style={{ width: '100%', aspectRatio: 513 / 306 }}
             contentFit="contain"
@@ -107,7 +108,7 @@ export default function ActivateMobile() {
             <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] p-12">
               <View className="mb-4">
                 <Image
-                  source={require('@/assets/images/kyc_under_review.png')}
+                  source={getAsset('images/kyc_under_review.png')}
                   alt="KYC under review"
                   style={{ width: 144, height: 144 }}
                   contentFit="contain"

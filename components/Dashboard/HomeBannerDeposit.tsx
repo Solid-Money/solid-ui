@@ -5,6 +5,7 @@ import { Platform, View } from 'react-native';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useMaxAPY } from '@/hooks/useAnalytics';
+import { getAsset } from '@/lib/assets';
 import { cn } from '@/lib/utils';
 
 const HomeBannerDeposit = () => {
@@ -21,7 +22,7 @@ const HomeBannerDeposit = () => {
     >
       <View className="relative h-full flex-row items-center justify-end">
         <Image
-          source={require('@/assets/images/solid-purple-large.png')}
+          source={getAsset('images/solid-purple-large.png')}
           contentFit="contain"
           style={{
             width: 160,

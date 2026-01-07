@@ -1,6 +1,7 @@
 import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDepositBonusConfig } from '@/hooks/useDepositBonusConfig';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { useCallback, useMemo } from 'react';
@@ -30,7 +31,7 @@ const DepositBuyCryptoOptions = () => {
         bannerText: bonusBannerText,
         icon: (
           <Image
-            source={require('@/assets/images/buy_crypto.png')}
+            source={getAsset('images/buy_crypto.png')}
             style={{ width: 26, height: 22 }}
             contentFit="contain"
           />
@@ -43,7 +44,7 @@ const DepositBuyCryptoOptions = () => {
         bannerText: bonusBannerText,
         icon: (
           <Image
-            source={require('@/assets/images/bank_deposit.png')}
+            source={getAsset('images/bank_deposit.png')}
             style={{ width: 26, height: 22 }}
             contentFit="contain"
           />
