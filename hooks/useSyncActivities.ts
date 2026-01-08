@@ -14,6 +14,7 @@ import { withRefreshToken } from '@/lib/utils';
 const SYNC_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes - skip sync if app opened within this time
 const SYNC_STALE_MS = 24 * 60 * 60 * 1000; // 24 hours - show prominent loading after this
 const SYNC_MIN_INTERVAL_MS = 30 * 1000; // 30 seconds - minimum time between syncs
+const LOCK_TIMEOUT_MS = 30 * 1000; // 30 seconds - force release lock if held this long
 
 // Store to track last sync time per user
 interface SyncState {
@@ -23,6 +24,11 @@ interface SyncState {
   isWithinCooldown: (userId: string) => boolean;
   isStale: (userId: string) => boolean;
   canSync: (userId: string) => boolean;
+  // Synchronous lock to prevent race conditions across 20+ components
+  isSyncingLock: boolean;
+  syncLockTimestamp: number | null;
+  acquireSyncLock: () => boolean;
+  releaseSyncLock: () => void;
 }
 
 export const useSyncStore = create<SyncState>()(
@@ -60,10 +66,37 @@ export const useSyncStore = create<SyncState>()(
         if (!lastSync) return true; // Never synced = can sync
         return Date.now() - lastSync >= SYNC_MIN_INTERVAL_MS;
       },
+
+      // Synchronous lock to prevent multiple components from starting syncs simultaneously
+      isSyncingLock: false,
+      syncLockTimestamp: null as number | null,
+
+      acquireSyncLock: () => {
+        const state = get();
+        // If lock is held but older than LOCK_TIMEOUT_MS, force release (safety mechanism)
+        if (state.isSyncingLock && state.syncLockTimestamp) {
+          const lockAge = Date.now() - state.syncLockTimestamp;
+          if (lockAge > LOCK_TIMEOUT_MS) {
+            set({ isSyncingLock: false, syncLockTimestamp: null });
+          } else {
+            return false;
+          }
+        } else if (state.isSyncingLock) {
+          return false;
+        }
+        set({ isSyncingLock: true, syncLockTimestamp: Date.now() });
+        return true;
+      },
+
+      releaseSyncLock: () => {
+        set({ isSyncingLock: false, syncLockTimestamp: null });
+      },
     }),
     {
       name: 'activity-sync-state',
       storage: createJSONStorage(() => mmkvStorage('activity-sync-state')),
+      // Only persist lastSyncByUser, not the runtime lock state
+      partialize: state => ({ lastSyncByUser: state.lastSyncByUser }),
     },
   ),
 );
@@ -112,7 +145,16 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
   const appState = useRef(AppState.currentState);
   const hasInitialSynced = useRef(false);
 
-  const { setLastSync, getLastSync, isWithinCooldown, isStale, canSync } = useSyncStore();
+  const {
+    setLastSync,
+    getLastSync,
+    isWithinCooldown,
+    isStale,
+    canSync,
+    acquireSyncLock,
+    releaseSyncLock,
+    isSyncingLock,
+  } = useSyncStore();
 
   const userId = user?.userId;
 
@@ -136,6 +178,7 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
   });
 
   // Smart sync function that respects cooldowns
+  // Uses synchronous lock to prevent race conditions across 20+ components
   const smartSync = useCallback(
     async (syncOptions?: SyncActivitiesOptions, force = false) => {
       if (!userId) return undefined;
@@ -145,14 +188,21 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
         return undefined;
       }
 
-      // Check if already syncing
-      if (syncMutation.isPending) {
+      // Acquire synchronous lock to prevent multiple components from syncing
+      // This is checked BEFORE the async mutation starts, unlike isPending
+      if (!acquireSyncLock()) {
         return undefined;
       }
 
-      return syncMutation.mutateAsync(syncOptions);
+      try {
+        return await syncMutation.mutateAsync(syncOptions);
+      } finally {
+        // Always release the lock, regardless of success or failure
+        // This ensures no memory leaks even if mutation is cancelled/aborted
+        releaseSyncLock();
+      }
     },
-    [userId, canSync, syncMutation],
+    [userId, canSync, acquireSyncLock, releaseSyncLock, syncMutation],
   );
 
   // Manual sync for pull-to-refresh (respects min interval throttle by default)
@@ -216,7 +266,8 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
 
   return {
     sync,
-    isSyncing: syncMutation.isPending,
+    // Include both mutation pending and synchronous lock for accurate state
+    isSyncing: syncMutation.isPending || isSyncingLock,
     lastResult: syncMutation.data ?? null,
     isStale: userId ? isStale(userId) : true,
     isWithinCooldown: userId ? isWithinCooldown(userId) : false,
