@@ -35,7 +35,12 @@ import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
-import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
+import {
+  cn,
+  formatNumber,
+  getArbitrumFundingAddress,
+  isUserAllowedToUseTestFeature,
+} from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
 import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
@@ -424,11 +429,7 @@ export default function CardDepositInternalForm() {
     error: swapAndBridgeError,
   } = useSwapAndBridgeToCard();
 
-  const {
-    borrowAndDeposit,
-    bridgeStatus: borrowAndDepositStatus,
-    error: borrowAndDepositError,
-  } = useBorrowAndDepositToCard();
+  const { borrowAndDeposit, bridgeStatus: borrowAndDepositStatus } = useBorrowAndDepositToCard();
 
   const onBorrowAndDepositSubmit = async (data: any) => {
     if (!user) return;
@@ -639,7 +640,7 @@ export default function CardDepositInternalForm() {
         swapAndBridgeStatus={swapAndBridgeStatus}
         onPress={handleSubmit(onSubmit)}
       />
-      {watchedFrom === 'savings' && (
+      {watchedFrom === 'savings' && isUserAllowedToUseTestFeature(user?.username ?? '') && (
         <BorrowAndDepositButton
           disabled={disabled}
           bridgeStatus={borrowAndDepositStatus}
