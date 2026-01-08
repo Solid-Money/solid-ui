@@ -27,10 +27,7 @@ const DepositTokenSelector = () => {
               key={key}
               name={token?.name || key}
               description={token?.fullName || 'USD Coin'}
-              icon={
-                token?.icon ||
-                getAsset('images/usdc.png')
-              }
+              icon={token?.icon || getAsset('images/usdc.png')}
               isComingSoon={false}
               onPress={() => handlePress(key)}
             />
