@@ -212,9 +212,7 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
         <View className="native:shrink-0 flex-row items-center gap-2">
           <Image
             source={
-              from === 'wallet'
-                ? getAsset('images/usdc-4x.png')
-                : getAsset('images/sousd-4x.png')
+              from === 'wallet' ? getAsset('images/usdc-4x.png') : getAsset('images/sousd-4x.png')
             }
             alt={from === 'wallet' ? 'USDC.e' : 'soUSD'}
             style={{ width: 34, height: 34 }}

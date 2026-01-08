@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
 
 import { getActivityStreamUrl, refreshToken } from '@/lib/api';
@@ -108,6 +108,17 @@ class SSEConnectionManager {
   }
 
   /**
+   * Clean up app state listener
+   * Called when last subscriber is removed
+   */
+  private cleanupAppStateListener(): void {
+    if (this.appStateSubscription) {
+      this.appStateSubscription.remove();
+      this.appStateSubscription = null;
+    }
+  }
+
+  /**
    * Subscribe to state changes. Returns unsubscribe function.
    */
   subscribe(listener: SSEStateListener): () => void {
@@ -122,10 +133,11 @@ class SSEConnectionManager {
 
     return () => {
       this.subscribers.delete(listener);
-      // If no more subscribers, disconnect and clean up user store subscription
+      // If no more subscribers, disconnect and clean up
       if (this.subscribers.size === 0) {
         this.disconnect();
         this.cleanupUserStoreSubscription();
+        this.cleanupAppStateListener();
       }
     };
   }
@@ -156,8 +168,11 @@ class SSEConnectionManager {
    * Enable SSE for a user. Only connects if not already connected for this user.
    */
   enable(userId: string): void {
-    // Already connected for this user
-    if (this.currentUserId === userId && this.state.connectionState === 'connected') {
+    // Already connected or connecting for this user - prevent duplicate connection attempts
+    if (
+      this.currentUserId === userId &&
+      (this.state.connectionState === 'connected' || this.state.connectionState === 'connecting')
+    ) {
       return;
     }
 
@@ -440,6 +455,12 @@ class SSEConnectionManager {
             continue;
           }
 
+          // Also detect ping events from backend (event: ping)
+          if (parsed?.event === 'ping') {
+            this.setState({ lastHeartbeat: Date.now() });
+            continue;
+          }
+
           if (parsed?.data) {
             // Data events also count as proof of live connection
             this.setState({ lastHeartbeat: Date.now() });
@@ -560,10 +581,8 @@ class SSEConnectionManager {
       this.reader = null;
     }
 
-    if (this.appStateSubscription) {
-      this.appStateSubscription.remove();
-      this.appStateSubscription = null;
-    }
+    // NOTE: Don't remove appStateSubscription here - it needs to persist
+    // to detect when app comes back to foreground
 
     this.stopHeartbeatMonitor();
     this.setState({ connectionState: 'disconnected', lastHeartbeat: null });
@@ -665,16 +684,28 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
   // Local state that syncs with singleton
   const [state, setState] = useState<SSEState>(() => sseManager.getState());
 
-  // Stable callback for state updates to avoid subscription churn
-  const handleStateUpdate = useCallback((newState: SSEState) => {
-    setState(newState);
-  }, []);
+  // Track if we've already subscribed to prevent duplicate subscriptions
+  const subscriptionRef = useRef<(() => void) | null>(null);
+  const isSubscribedRef = useRef(false);
 
   // Subscribe to singleton state changes and handle connection lifecycle
   // Note: User tracking is handled by the singleton's constructor subscription,
   // which fixes the race condition where userId wasn't available on mount.
   useEffect(() => {
-    const unsubscribe = sseManager.subscribe(handleStateUpdate);
+    // Prevent duplicate subscriptions if effect runs multiple times
+    if (isSubscribedRef.current) {
+      return;
+    }
+
+    isSubscribedRef.current = true;
+
+    // Create stable callback inline to avoid dependency issues
+    const stateListener = (newState: SSEState) => {
+      setState(newState);
+    };
+
+    const unsubscribe = sseManager.subscribe(stateListener);
+    subscriptionRef.current = unsubscribe;
 
     // If enabled, trigger connection check
     // The singleton will use its own user tracking to get the userId
@@ -686,8 +717,15 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
       }
     }
 
-    return unsubscribe;
-  }, [enabled, handleStateUpdate]);
+    return () => {
+      isSubscribedRef.current = false;
+      if (subscriptionRef.current) {
+        subscriptionRef.current();
+        subscriptionRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
   // Memoized callbacks that delegate to singleton
   const disconnect = useCallback(() => {

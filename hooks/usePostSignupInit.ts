@@ -94,7 +94,6 @@ export const usePostSignupInit = (user: User | undefined) => {
             level: 'warning',
           });
         }
-
       } catch (error) {
         Sentry.captureException(error, {
           tags: {
