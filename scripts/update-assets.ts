@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -28,7 +29,7 @@ function getFiles(dir: string): string[] {
 
 function getHash(filePath: string): string {
   const content = fs.readFileSync(filePath);
-  return crypto.createHash('md5').update(content).digest('hex').substring(0, 8);
+  return crypto.createHash('sha256').update(content).digest('hex').substring(0, 8);
 }
 
 function updateRegistry() {
@@ -67,6 +68,14 @@ function updateRegistry() {
 
   fs.writeFileSync(ASSETS_FILE, newContent);
   console.log(`Updated ${registryEntries.length} assets in the registry.`);
+
+  // Format the file after updating
+  try {
+    execSync(`npx prettier --write "${ASSETS_FILE}"`);
+    console.log('Formatted lib/assets.ts');
+  } catch (error) {
+    console.error('Failed to format lib/assets.ts:', error);
+  }
 }
 
 updateRegistry();
