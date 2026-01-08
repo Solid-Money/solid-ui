@@ -7,7 +7,7 @@ import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { mainnet } from 'viem/chains';
@@ -22,11 +22,24 @@ const DepositDirectlyNetworks = () => {
   const { user } = useUser();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const [selectedChainId, setSelectedChainId] = useState<number | null>(null);
+  const hasTrackedNetworkView = useRef(false);
 
   const sortedNetworks = useMemo(
     () => Object.entries(BRIDGE_TOKENS).sort((a, b) => a[1].sort - b[1].sort),
     [],
   );
+
+  // Track when network selection screen is viewed
+  useEffect(() => {
+    if (!hasTrackedNetworkView.current) {
+      track(TRACKING_EVENTS.DEPOSIT_DIRECT_NETWORK_VIEWED, {
+        deposit_method: 'deposit_directly',
+        available_networks: sortedNetworks.length,
+        network_names: sortedNetworks.map(([, n]) => n.name).join(', '),
+      });
+      hasTrackedNetworkView.current = true;
+    }
+  }, [sortedNetworks]);
 
   const handlePress = async (chainId: number) => {
     const network = BRIDGE_TOKENS[chainId];
@@ -38,6 +51,15 @@ const DepositDirectlyNetworks = () => {
       network_name: network?.name,
       deposit_type: 'direct_deposit',
       deposit_method: 'external_wallet_direct',
+    });
+
+    // Track network selection specifically
+    track(TRACKING_EVENTS.DEPOSIT_DIRECT_NETWORK_SELECTED, {
+      deposit_method: 'deposit_directly',
+      chain_id: chainId,
+      network_name: network?.name,
+      estimated_time: ESTIMATED_TIMES[chainId] ?? DEFAULT_ESTIMATED_TIME,
+      has_multiple_tokens: !!(network?.tokens?.USDC && network?.tokens?.USDT),
     });
 
     try {

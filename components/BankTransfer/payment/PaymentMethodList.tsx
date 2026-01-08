@@ -21,7 +21,7 @@ import {
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useDepositStore } from '@/store/useDepositStore';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { PaymentMethodTile } from './PaymentMethodTile';
@@ -49,6 +49,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
   const [loadingMethod, setLoadingMethod] = useState<BridgeTransferMethod | null>(null);
   const { setBankTransferData, setModal } = useDepositStore();
   const { user } = useUser();
+  const methodSelectionStartTime = useRef<number | null>(null);
 
   let filtered: BridgeTransferMethod[] = ALL_METHODS;
 
@@ -94,6 +95,9 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
 
   async function onPressed(method: BridgeTransferMethod) {
     try {
+      // Capture start time for time_to_create calculation
+      methodSelectionStartTime.current = Date.now();
+
       track(TRACKING_EVENTS.PAYMENT_METHOD_SELECTED, {
         user_id: user?.userId,
         safe_address: user?.safeAddress,
@@ -102,6 +106,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
         fiat_amount: fiatAmount,
         crypto_currency: crypto,
         has_customer: Boolean(customer),
+        requires_kyc: !customer,
         deposit_type: 'bank_transfer',
       });
 
@@ -122,6 +127,16 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
           });
 
           const endorsement = getEndorsementByMethod(method);
+
+          // Track KYC modal viewed for new customer
+          track(TRACKING_EVENTS.DEPOSIT_BANK_KYC_VIEWED, {
+            deposit_method: 'bank_transfer',
+            payment_method: method,
+            fiat_currency: normalizedFiat,
+            fiat_amount: fiatAmount,
+            kyc_type: 'new_customer',
+            kyc_endorsement: endorsement,
+          });
 
           // Start KYC flow in modal instead of navigating
           const { setKycData, setModal } = useDepositStore.getState();
@@ -182,10 +197,11 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
       try {
         if (err instanceof Response) {
           const errorData = await err.json();
-          // NestJS BadRequestException returns message at root level
+          errorCode = errorData.code || errorData.error || 'api_error';
+
+          // Backend returns user-friendly message in errorData.message
           if (errorData?.message) {
             errorMessage = errorData.message;
-            errorCode = errorData.error || 'api_error';
           }
         }
       } catch {
@@ -238,6 +254,11 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
       cryptoCurrency: String(crypto ?? ''),
     });
 
+    // Calculate time from method selection to transfer creation
+    const timeToCreate = methodSelectionStartTime.current
+      ? Math.floor((Date.now() - methodSelectionStartTime.current) / 1000)
+      : undefined;
+
     // Track bank transfer created successfully
     track(TRACKING_EVENTS.BANK_TRANSFER_CREATED, {
       user_id: user?.userId,
@@ -248,10 +269,11 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
       deposit_type: 'bank_transfer',
       deposit_method: method,
       has_instructions: Boolean(sourceDepositInstructions),
+      time_to_create: timeToCreate,
     });
 
     if (isModal) {
-      setBankTransferData({ instructions: sourceDepositInstructions.source_deposit_instructions });
+      setBankTransferData({ instructions: sourceDepositInstructions });
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW);
     } else {
       router.push({
@@ -287,6 +309,27 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
       });
 
       if (!kycLink) throw new Error('Failed to get KYC link');
+
+      // Track KYC modal viewed for existing customer
+      track(TRACKING_EVENTS.DEPOSIT_BANK_KYC_VIEWED, {
+        deposit_method: 'bank_transfer',
+        payment_method: method,
+        fiat_currency: normalizedFiat,
+        fiat_amount: fiatAmount,
+        kyc_type: 'existing_customer',
+        kyc_endorsement: requiredEndorsement,
+      });
+
+      // Track KYC started when link is opened
+      track(TRACKING_EVENTS.DEPOSIT_BANK_KYC_STARTED, {
+        deposit_method: 'bank_transfer',
+        payment_method: method,
+        fiat_currency: normalizedFiat,
+        fiat_amount: fiatAmount,
+        kyc_type: 'existing_customer',
+        kyc_endorsement: requiredEndorsement,
+        kyc_link: kycLink.url,
+      });
 
       // Start KYC flow in modal instead of navigating
       const { setKycData, setModal } = useDepositStore.getState();

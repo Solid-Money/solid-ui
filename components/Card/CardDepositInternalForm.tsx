@@ -33,11 +33,13 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
+import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
+import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
 
 type FormData = { amount: string; from: 'wallet' | 'savings' };
 
@@ -211,8 +213,8 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
           <Image
             source={
               from === 'wallet'
-                ? require('@/assets/images/usdc-4x.png')
-                : require('@/assets/images/sousd-4x.png')
+                ? getAsset('images/usdc-4x.png')
+                : getAsset('images/sousd-4x.png')
             }
             alt={from === 'wallet' ? 'USDC.e' : 'soUSD'}
             style={{ width: 34, height: 34 }}
@@ -335,6 +337,23 @@ function SubmitButton({ disabled, bridgeStatus, swapAndBridgeStatus, onPress }: 
   );
 }
 
+function BorrowAndDepositButton({
+  disabled,
+  bridgeStatus,
+  swapAndBridgeStatus,
+  onPress,
+}: SubmitButtonProps) {
+  return (
+    <Button variant="brand" className="h-12 rounded-2xl" disabled={disabled} onPress={onPress}>
+      {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
+        <ActivityIndicator color="black" />
+      ) : (
+        <Text className="text-lg font-semibold text-black">Borrow and Deposit to Card</Text>
+      )}
+    </Button>
+  );
+}
+
 export default function CardDepositInternalForm() {
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivity();
@@ -405,6 +424,83 @@ export default function CardDepositInternalForm() {
     bridgeStatus: swapAndBridgeStatus,
     error: swapAndBridgeError,
   } = useSwapAndBridgeToCard();
+
+  const {
+    borrowAndDeposit,
+    bridgeStatus: borrowAndDepositStatus,
+    error: borrowAndDepositError,
+  } = useBorrowAndDepositToCard();
+
+  const onBorrowAndDepositSubmit = async (data: any) => {
+    if (!user) return;
+
+    try {
+      // Check for Arbitrum funding address
+      if (!cardDetails) {
+        Toast.show({
+          type: 'error',
+          text1: 'Card details not found',
+          text2: 'Please try again later',
+        });
+        return;
+      }
+      const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
+
+      if (!arbitrumFundingAddress) {
+        Toast.show({
+          type: 'error',
+          text1: 'Arbitrum deposits not available',
+          text2: 'This card does not support Arbitrum deposits',
+        });
+        return;
+      }
+
+      const sourceSymbol = watchedFrom === 'savings' ? 'soUSD' : 'USDC.e';
+
+      // Create activity event (stays PENDING until Bridge processes it)
+      const clientTxId = await createActivity({
+        type: TransactionType.CARD_TRANSACTION,
+        title: `Card Deposit`,
+        shortTitle: `Card Deposit`,
+        amount: data.amount,
+        symbol: sourceSymbol,
+        chainId: fuse.id,
+        fromAddress: user.safeAddress,
+        toAddress: arbitrumFundingAddress,
+        status: TransactionStatus.PENDING,
+        metadata: {
+          description: `Deposit ${data.amount} ${sourceSymbol} to card`,
+          processingStatus: 'bridging',
+        },
+      });
+
+      let tx: TransactionReceipt | undefined;
+
+      tx = await borrowAndDeposit(data.amount);
+
+      // Update activity with transaction hash, keeping it PENDING
+      await updateActivity(clientTxId, {
+        status: TransactionStatus.PENDING,
+        hash: tx.transactionHash,
+        url: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+        metadata: {
+          txHash: tx.transactionHash,
+          processingStatus: 'awaiting_bridge',
+        },
+      });
+
+      setTransaction({ amount: Number(data.amount) });
+      setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+      reset();
+    } catch (error) {
+      console.error('Bridge error:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Bridge failed',
+        text2: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  };
 
   const onSubmit = async (data: any) => {
     if (!user) return;
@@ -544,6 +640,14 @@ export default function CardDepositInternalForm() {
         swapAndBridgeStatus={swapAndBridgeStatus}
         onPress={handleSubmit(onSubmit)}
       />
+      {watchedFrom === 'savings' && (
+        <BorrowAndDepositButton
+          disabled={disabled}
+          bridgeStatus={borrowAndDepositStatus}
+          swapAndBridgeStatus={borrowAndDepositStatus}
+          onPress={handleSubmit(onBorrowAndDepositSubmit)}
+        />
+      )}
     </View>
   );
 }

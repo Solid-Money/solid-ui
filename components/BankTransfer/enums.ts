@@ -51,3 +51,12 @@ export enum EndorsementStatus {
   APPROVED = 'approved',
   REVOKED = 'revoked',
 }
+
+// Minimum transfer amounts by fiat currency
+export const MINIMUM_TRANSFER_AMOUNT: Partial<Record<BridgeTransferFiatCurrency, number>> = {
+  [BridgeTransferFiatCurrency.MXN]: 50,
+};
+
+export function getMinimumAmount(fiat: BridgeTransferFiatCurrency): number | undefined {
+  return MINIMUM_TRANSFER_AMOUNT[fiat];
+}

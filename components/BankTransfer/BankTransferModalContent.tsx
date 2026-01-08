@@ -1,14 +1,21 @@
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
+import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
 import CryptoDropdown from './CryptoDropdown';
-import { BridgeTransferCryptoCurrency, BridgeTransferFiatCurrency } from './enums';
+import {
+  BridgeTransferCryptoCurrency,
+  BridgeTransferFiatCurrency,
+  FIAT_LABEL,
+  getMinimumAmount,
+} from './enums';
 import { ExchangeRateDisplay } from './ExchangeRateDisplay';
 import FiatDropdown from './FiatDropdown';
 import { PaymentMethodList } from './payment/PaymentMethodList';
@@ -25,6 +32,19 @@ const BankTransferAmountModal = () => {
   const [crypto, setCrypto] = useState<BridgeTransferCryptoCurrency>(
     bankTransfer.crypto || BridgeTransferCryptoCurrency.USDC,
   );
+
+  // Track when amount modal is viewed (once per mount)
+  const hasTrackedView = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedView.current) {
+      track(TRACKING_EVENTS.DEPOSIT_BANK_AMOUNT_VIEWED, {
+        deposit_method: 'bank_transfer',
+        fiat_currency: fiat,
+        crypto_currency: crypto,
+      });
+      hasTrackedView.current = true;
+    }
+  }, [fiat, crypto]);
 
   const allowedCrypto = useMemo(() => {
     return [BridgeTransferCryptoCurrency.USDC];
@@ -50,7 +70,27 @@ const BankTransferAmountModal = () => {
     }
   }, [fiatAmount, rate, loading]);
 
+  const minimumAmountError = useMemo(() => {
+    const minAmount = getMinimumAmount(fiat);
+    if (!minAmount) return null;
+
+    const amount = parseFloat(fiatAmount) || 0;
+    if (amount < minAmount) {
+      return `Minimum amount is ${minAmount} ${FIAT_LABEL[fiat]}`;
+    }
+
+    return null;
+  }, [fiat, fiatAmount]);
+
   const handleContinue = () => {
+    track(TRACKING_EVENTS.DEPOSIT_BANK_AMOUNT_ENTERED, {
+      deposit_method: 'bank_transfer',
+      fiat_amount: fiatAmount,
+      fiat_currency: fiat,
+      crypto_amount: cryptoAmount,
+      crypto_currency: crypto,
+    });
+
     setBankTransferData({
       fiatAmount,
       cryptoAmount,
@@ -90,12 +130,21 @@ const BankTransferAmountModal = () => {
         initialLoading={loading && !rate}
       />
 
+      {minimumAmountError && (
+        <Text className="text-center text-sm text-red-400">{minimumAmountError}</Text>
+      )}
+
       <Button
         className="mt-4 h-14 rounded-2xl"
-        style={{ backgroundColor: '#94F27F' }}
+        style={{ backgroundColor: minimumAmountError ? '#4A4A4A' : '#94F27F' }}
+        disabled={!!minimumAmountError}
         onPress={handleContinue}
       >
-        <Text className="text-lg font-bold text-black">Continue</Text>
+        <Text
+          className={`text-lg font-bold ${minimumAmountError ? 'text-gray-400' : 'text-black'}`}
+        >
+          Continue
+        </Text>
       </Button>
     </View>
   );
@@ -104,6 +153,20 @@ const BankTransferAmountModal = () => {
 // Modal version of PaymentMethodList
 const BankTransferPaymentMethodModal = () => {
   const { bankTransfer } = useDepositStore();
+
+  // Track when payment method modal is viewed (once per mount)
+  const hasTrackedPaymentView = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedPaymentView.current) {
+      track(TRACKING_EVENTS.DEPOSIT_BANK_PAYMENT_METHOD_VIEWED, {
+        deposit_method: 'bank_transfer',
+        fiat_currency: bankTransfer.fiat,
+        crypto_currency: bankTransfer.crypto,
+        fiat_amount: bankTransfer.fiatAmount,
+      });
+      hasTrackedPaymentView.current = true;
+    }
+  }, [bankTransfer.fiat, bankTransfer.crypto, bankTransfer.fiatAmount]);
 
   return (
     <View className="gap-4">
@@ -121,6 +184,21 @@ const BankTransferPaymentMethodModal = () => {
 const BankTransferPreviewModal = () => {
   const { bankTransfer, setModal } = useDepositStore();
   const data = bankTransfer.instructions;
+
+  // Track when instructions modal is viewed (once per mount)
+  const hasTrackedInstructionsView = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedInstructionsView.current && data) {
+      track(TRACKING_EVENTS.DEPOSIT_BANK_INSTRUCTIONS_VIEWED, {
+        deposit_method: 'bank_transfer',
+        fiat_currency: data.currency,
+        fiat_amount: data.amount,
+        payment_rail: data.payment_rail,
+        bank_name: data.bank_name,
+      });
+      hasTrackedInstructionsView.current = true;
+    }
+  }, [data]);
 
   const Row = ({
     label,
@@ -149,6 +227,26 @@ const BankTransferPreviewModal = () => {
     </View>
   );
 
+  const isSepa = data?.payment_rail === 'sepa';
+  const isSpei = data?.payment_rail === 'spei';
+
+  const getAccountNumber = () => {
+    if (isSepa) return data?.iban;
+    if (isSpei) return data?.clabe;
+    return data?.bank_account_number;
+  };
+
+  const getAccountLabel = () => {
+    if (isSepa) return 'IBAN';
+    if (isSpei) return 'CLABE';
+    return 'Account number';
+  };
+
+  const accountNumber = getAccountNumber();
+  const routingCode = isSepa ? data?.bic : data?.bank_routing_number;
+  const beneficiaryName =
+    isSepa || isSpei ? data?.account_holder_name : data?.bank_beneficiary_name;
+
   return (
     <View className="flex-1 gap-4">
       <PreviewTitle amount={data?.amount} currency={data?.currency} />
@@ -160,9 +258,11 @@ const BankTransferPreviewModal = () => {
           withDivider
         />
         <Row label="Bank Name" value={data?.bank_name ?? ''} withDivider />
-        <Row label="Account number" value={data?.bank_account_number ?? ''} withDivider />
-        <Row label="Routing / SWIFT / BIC" value={data?.bank_routing_number ?? ''} withDivider />
-        <Row label="Beneficiary name" value={data?.bank_beneficiary_name ?? ''} withDivider />
+        <Row label={getAccountLabel()} value={accountNumber ?? ''} withDivider />
+        {routingCode && (
+          <Row label={isSepa ? 'BIC' : 'Routing / SWIFT / BIC'} value={routingCode} withDivider />
+        )}
+        <Row label="Beneficiary name" value={beneficiaryName ?? ''} withDivider />
         <Row label="Deposit message" value={data?.deposit_message ?? ''} />
       </View>
 

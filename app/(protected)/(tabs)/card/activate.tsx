@@ -9,9 +9,12 @@ import { CardActivationStep } from '@/components/Card/CardActivationStep';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
+import { getAsset } from '@/lib/assets';
 import { CardStatus, KycStatus } from '@/lib/types';
 
 export default function ActivateMobile() {
@@ -58,6 +61,19 @@ export default function ActivateMobile() {
     Array.isArray(cardsEndorsement?.requirements?.pending) &&
     cardsEndorsement.requirements.pending.length > 0;
 
+  // Track card activate page view (on mount only)
+  React.useEffect(() => {
+    track(TRACKING_EVENTS.CARD_ACTIVATE_PAGE_VIEWED, {
+      card_status: cardStatus,
+      kyc_status: _kycStatus,
+      is_card_pending: isCardPending,
+      is_card_blocked: isCardBlocked,
+      is_under_review: isUnderReview,
+      country_confirmed: countryConfirmed === 'true',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // If the card is already active, skip the activation flow
   React.useEffect(() => {
     if (cardStatus === CardStatus.ACTIVE || cardStatus === CardStatus.FROZEN) {
@@ -94,7 +110,7 @@ export default function ActivateMobile() {
         </View>
         <View className="mt-8 items-center justify-center">
           <Image
-            source={require('@/assets/images/activate_card_steps.png')}
+            source={getAsset('images/activate_card_steps.png')}
             alt="Solid Card"
             style={{ width: '100%', aspectRatio: 513 / 306 }}
             contentFit="contain"
@@ -107,7 +123,7 @@ export default function ActivateMobile() {
             <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] p-12">
               <View className="mb-4">
                 <Image
-                  source={require('@/assets/images/kyc_under_review.png')}
+                  source={getAsset('images/kyc_under_review.png')}
                   alt="KYC under review"
                   style={{ width: 144, height: 144 }}
                   contentFit="contain"

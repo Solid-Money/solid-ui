@@ -5,6 +5,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
 import { z } from 'zod';
 
+import InfoError from '@/assets/images/info-error';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -12,10 +13,7 @@ import { setupTotp, verifyTotp } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const totpSchema = z.object({
-  otpCode: z
-    .string()
-    .length(6, { error: 'Verification code must be exactly 6 digits' })
-    .regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
+  otpCode: z.string().regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
 });
 
 type TotpFormData = z.infer<typeof totpSchema>;
@@ -138,7 +136,14 @@ const TotpInput: React.FC<{
           </Pressable>
         ))}
       </View>
-      {error && <Text className="mt-1 text-center text-xs text-red-400">{error}</Text>}
+      <View className="flex-col items-center gap-2">
+        {error && (
+          <View className="flex-row items-center gap-2">
+            <InfoError />
+            <Text className="text-sm text-red-400">{error}</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 };
@@ -163,6 +168,13 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
   });
 
   const otpCode = watch('otpCode');
+
+  // Clear error when user starts typing a new code
+  useEffect(() => {
+    if (otpCode && apiError) {
+      setApiError('');
+    }
+  }, [otpCode, apiError]);
 
   // Fetch TOTP setup data when modal opens
   useEffect(() => {
@@ -213,7 +225,6 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
   return (
     <View className="flex-1 gap-4">
       <View className="items-center gap-2">
-        <Text className="text-center text-2xl font-bold text-white">Two-Factor Authentication</Text>
         <Text className="max-w-xs text-center text-base font-medium text-[#ACACAC] opacity-70">
           Scan the below QR code or manually enter the code in an authenticator app like Authy or
           1Password.
@@ -242,7 +253,7 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
                   uri: qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`,
                 }}
                 alt="QR code"
-                style={{ width: 256, height: 256 }}
+                style={{ width: 256, height: 256, minWidth: 256, minHeight: 256 }}
                 contentFit="contain"
                 onError={error => {
                   console.error('QR code image error:', error);

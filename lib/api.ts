@@ -28,7 +28,6 @@ import {
   BridgeDeposit,
   BridgeTransaction,
   BridgeTransactionRequest,
-  BridgeTransferResponse,
   CardAccessResponse,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
@@ -62,6 +61,7 @@ import {
   LifiStatusResponse,
   Points,
   SearchCoin,
+  SourceDepositInstructions,
   StargateQuoteParams,
   StargateQuoteResponse,
   SwapTokenRequest,
@@ -896,7 +896,7 @@ export const createBridgeTransfer = async (params: {
   sourcePaymentRail: string;
   fiatCurrency: string;
   cryptoCurrency: string;
-}): Promise<BridgeTransferResponse> => {
+}): Promise<SourceDepositInstructions> => {
   const jwt = getJWTToken();
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/bridge-transfers`, {

@@ -19,7 +19,9 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { emailExists, initSignupOtp } from '@/lib/api';
-import { detectAndSaveReferralCode, getReferralCodeForSignup } from '@/lib/utils/referral';
+import { getAsset } from '@/lib/assets';
+import { getReferralCodeForSignup } from '@/lib/utils/referral';
+import { useAttributionStore } from '@/store/useAttributionStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 const emailSchema = z.object({
@@ -66,20 +68,6 @@ export default function SignupEmail() {
 
   const watchedEmail = watch('email');
 
-  // Detect and save referral code from URL on mount
-  useEffect(() => {
-    // Wait for store hydration before any actions
-    if (!_hasHydrated) return;
-    try {
-      const detectedReferralCode = detectAndSaveReferralCode();
-      if (detectedReferralCode) {
-        console.warn('Referral code detected from URL:', detectedReferralCode);
-      }
-    } catch (err) {
-      console.warn('Error detecting referral code:', err);
-    }
-  }, [_hasHydrated]);
-
   // Clear rate limit error when email changes
   useEffect(() => {
     // Wait for store hydration before any actions
@@ -89,14 +77,24 @@ export default function SignupEmail() {
     }
   }, [_hasHydrated, watchedEmail, email, rateLimitError, setRateLimitError]);
 
-  // Reset flow state on mount (only after hydration completes)
-  // Note: Using getState() to avoid dependency on reset function reference
-  // which can change during Zustand hydration and cause infinite loops
+  // Reset flow state on mount while preserving referral code
+  // Attribution hook captures referral code at root - we preserve it here
   useEffect(() => {
-    // Wait for store hydration before resetting to prevent race conditions
+    // Wait for store hydration before any actions
     if (!_hasHydrated) return;
+
+    // Capture referral code BEFORE reset (from attribution or referral store)
+    const existingReferral = getReferralCodeForSignup();
+
+    // Reset the signup flow store
     useSignupFlowStore.getState().reset();
-  }, [_hasHydrated]);
+
+    // Restore referral code AFTER reset to prevent data loss
+    if (existingReferral) {
+      setReferralCode(existingReferral);
+      console.warn('✅ Referral code preserved after reset:', existingReferral);
+    }
+  }, [_hasHydrated, setReferralCode]);
 
   // Wait for store hydration before rendering
   if (!_hasHydrated) {
@@ -129,10 +127,15 @@ export default function SignupEmail() {
       setMarketingConsent(data.marketingConsent);
       setLastOtpSentAt(Date.now());
 
-      // Store referral code if present
-      const storedReferralCode = getReferralCodeForSignup() || '';
+      // Store referral code with multi-source fallback for reliability
+      // Priority: URL params > referral store > attribution store
+      const storedReferralCode =
+        getReferralCodeForSignup() ||
+        useAttributionStore.getState().attributionData.referral_code ||
+        '';
       if (storedReferralCode) {
         setReferralCode(storedReferralCode);
+        console.warn('✅ Referral code saved to signup flow:', storedReferralCode);
       }
 
       track(TRACKING_EVENTS.EMAIL_SUBMITTED, {
@@ -414,7 +417,7 @@ export default function SignupEmail() {
         {/* Logo at top center */}
         <View className="absolute left-0 right-0 top-6 items-center">
           <Image
-            source={require('@/assets/images/solid-logo-4x.png')}
+            source={getAsset('images/solid-logo-4x.png')}
             alt="Solid logo"
             style={{ width: 40, height: 44 }}
             contentFit="contain"

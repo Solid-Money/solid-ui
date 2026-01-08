@@ -13,12 +13,9 @@ import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
-import useUser from '@/hooks/useUser';
 import { CardStatus } from '@/lib/types';
 
 export default function TabLayout() {
-  const { user } = useUser();
-  const hasDeposited = user?.isDeposited;
   const { data: cardStatus } = useCardStatus();
   const pathname = usePathname();
 
@@ -46,12 +43,12 @@ export default function TabLayout() {
         },
         tabBarStyle: {
           display: isDesktop ? 'none' : 'flex',
-          height: 75,
+          height: 80,
           paddingTop: 4,
           paddingBottom: 10,
           borderTopWidth: 0,
           // Native uses TabBarBackground (BlurView + overlay), web uses CSS backdropFilter
-          backgroundColor: Platform.OS === 'web' ? 'rgba(0, 0, 0, 0.7)' : 'transparent',
+          backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 1)' : 'transparent',
           borderTopColor: 'rgba(61, 61, 61, 0.0)',
           borderColor: 'rgba(61, 61, 61, 0.0)',
           elevation: 0,
@@ -80,7 +77,7 @@ export default function TabLayout() {
           title: 'Savings',
           headerShown: false,
           tabBarIcon: ({ color }) => <SavingsNavBarIcon color={color} />,
-          href: hasDeposited ? path.SAVINGS : null,
+          href: path.SAVINGS,
         }}
       />
 

@@ -8,7 +8,9 @@ import mmkvStorage from '@/lib/mmvkStorage';
 
 interface ReferralState {
   referralCode: string | null;
+  _hasHydrated: boolean;
   setReferralCode: (code: string | null) => void;
+  setHasHydrated: (state: boolean) => void;
   clearReferralCode: () => void;
   detectAndSaveReferralCode: () => string | null;
   getReferralCodeForSignup: () => string | null;
@@ -21,6 +23,7 @@ export const useReferralStore = create<ReferralState>()(
   persist(
     (set, get) => ({
       referralCode: null,
+      _hasHydrated: false,
 
       setReferralCode: (code: string | null) => {
         const trimmedCode = code && code.trim() ? code.trim() : null;
@@ -28,6 +31,10 @@ export const useReferralStore = create<ReferralState>()(
         if (trimmedCode) {
           console.warn('Referral code saved:', trimmedCode);
         }
+      },
+
+      setHasHydrated: (state: boolean) => {
+        set({ _hasHydrated: state });
       },
 
       clearReferralCode: () => {
@@ -95,6 +102,9 @@ export const useReferralStore = create<ReferralState>()(
     {
       name: USER.referralStorageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.referralStorageKey)),
+      onRehydrateStorage: () => state => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );

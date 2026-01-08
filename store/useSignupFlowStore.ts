@@ -111,7 +111,14 @@ export const useSignupFlowStore = create<SignupFlowState & SignupFlowActions>()(
       setRateLimitError: rateLimitError => set({ rateLimitError }),
       setLastOtpSentAt: lastOtpSentAt => set({ lastOtpSentAt }),
 
-      reset: () => set({ ...initialState, _hasHydrated: true }),
+      reset: () =>
+        set(state => ({
+          ...initialState,
+          _hasHydrated: true,
+          // Preserve referralCode captured at root level (attribution hook)
+          // This prevents accidental loss during flow resets
+          referralCode: state.referralCode || initialState.referralCode,
+        })),
     }),
     {
       name: `${USER.storageKey}_signup_flow`,

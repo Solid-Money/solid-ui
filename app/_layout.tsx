@@ -14,6 +14,7 @@ import WhatsNewModal from '@/components/WhatsNewModal';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
 import '@/global.css';
 import { infoClient } from '@/graphql/clients';
+import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
@@ -33,6 +34,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import * as Notifications from 'expo-notifications';
 import type { ErrorBoundaryProps } from 'expo-router';
 import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
@@ -182,6 +184,9 @@ export default Sentry.wrap(function RootLayout() {
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
   const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
 
+  // Initialize attribution tracking automatically (handles web and mobile)
+  useAttributionInitialization();
+
   const [loaded, error] = useFonts({
     MonaSans_200ExtraLight,
     MonaSans_300Light,
@@ -194,6 +199,13 @@ export default Sentry.wrap(function RootLayout() {
   });
   const pathname = usePathname();
   const params = useGlobalSearchParams();
+
+  useEffect(() => {
+    // Only run on Web and only in production
+    if (Platform.OS === 'web' && process.env.EXPO_PUBLIC_ENVIRONMENT === 'production') {
+      injectSpeedInsights();
+    }
+  }, []);
 
   useEffect(() => {
     async function prepare() {
@@ -235,10 +247,12 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [appIsReady, splashScreenHidden]);
 
+  // Track screen views on all platforms (web, iOS, Android)
+  // trackScreen() handles platform-specific routing internally:
+  // - Amplitude: tracks on all platforms
+  // - Firebase: tracks on web only
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      trackScreen(pathname, params);
-    }
+    trackScreen(pathname, params);
   }, [pathname, params]);
 
   useEffect(() => {
@@ -282,13 +296,6 @@ export default Sentry.wrap(function RootLayout() {
                         />
                         <Stack.Screen
                           name="overview"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                        <Stack.Screen
-                          name="register"
                           options={{
                             headerShown: false,
                             animation: 'none',

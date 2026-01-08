@@ -1,6 +1,6 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
 
+import SlotTrigger from '@/components/SlotTrigger';
 import { STAKE_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
@@ -30,21 +30,11 @@ const StakeModal = ({ trigger }: StakeModalProps) => {
     setModal(STAKE_MODAL.OPEN_FORM);
   };
 
-  // Headless usage - the global StakeModalProvider handles the modal
   if (trigger === null) {
     return null;
   }
 
-  // Use default trigger if not provided
-  const triggerElement = trigger || <StakeTrigger />;
-
-  // Always wrap with Pressable to ensure click handling works
-  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
-  return (
-    <Pressable onPress={handlePress}>
-      <View pointerEvents="none">{triggerElement}</View>
-    </Pressable>
-  );
+  return <SlotTrigger onPress={handlePress}>{trigger || <StakeTrigger />}</SlotTrigger>;
 };
 
 export default StakeModal;

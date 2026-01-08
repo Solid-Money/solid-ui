@@ -20,7 +20,7 @@ const emailSchema = z.object({
 const otpSchema = z.object({
   otpCode: z
     .string()
-    .length(6, { error: 'Verification code must be 6 digits' })
+    // .length(6, { error: 'Verification code must be 6 digits' })
     .regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
 });
 

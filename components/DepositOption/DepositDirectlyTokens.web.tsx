@@ -6,14 +6,15 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 import * as Sentry from '@sentry/react-native';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
-const USDC_ICON = require('@/assets/images/usdc.png');
-const USDT_ICON = require('@/assets/images/usdt.png');
+const USDC_ICON = getAsset('images/usdc.png');
+const USDT_ICON = getAsset('images/usdt.png');
 
 type TokenOption = {
   symbol: 'USDC' | 'USDT';
@@ -26,28 +27,47 @@ const DepositDirectlyTokens = () => {
   const { user } = useUser();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
+  const hasTrackedTokenView = useRef(false);
 
   const chainId = directDepositSession.chainId || 1;
   const network = BRIDGE_TOKENS[chainId];
 
   // Get available tokens for this chain
-  const availableTokens: TokenOption[] = [];
+  const availableTokens = useMemo(() => {
+    const tokens: TokenOption[] = [];
 
-  if (network?.tokens?.USDC) {
-    availableTokens.push({
-      symbol: 'USDC',
-      name: 'USD Coin',
-      icon: USDC_ICON,
-    });
-  }
+    if (network?.tokens?.USDC) {
+      tokens.push({
+        symbol: 'USDC',
+        name: 'USD Coin',
+        icon: USDC_ICON,
+      });
+    }
 
-  if (network?.tokens?.USDT) {
-    availableTokens.push({
-      symbol: 'USDT',
-      name: 'Tether USD',
-      icon: USDT_ICON,
-    });
-  }
+    if (network?.tokens?.USDT) {
+      tokens.push({
+        symbol: 'USDT',
+        name: 'Tether USD',
+        icon: USDT_ICON,
+      });
+    }
+
+    return tokens;
+  }, [network?.tokens?.USDC, network?.tokens?.USDT]);
+
+  // Track when token selection screen is viewed
+  useEffect(() => {
+    if (!hasTrackedTokenView.current && availableTokens.length > 0) {
+      track(TRACKING_EVENTS.DEPOSIT_DIRECT_TOKEN_VIEWED, {
+        deposit_method: 'deposit_directly',
+        chain_id: chainId,
+        network_name: network?.name,
+        available_tokens: availableTokens.length,
+        token_symbols: availableTokens.map(t => t.symbol).join(', '),
+      });
+      hasTrackedTokenView.current = true;
+    }
+  }, [availableTokens, chainId, network?.name]);
 
   const handleTokenSelect = async (token: TokenOption) => {
     try {
@@ -61,6 +81,15 @@ const DepositDirectlyTokens = () => {
         token_symbol: token.symbol,
         deposit_type: 'direct_deposit',
         deposit_method: 'external_wallet_direct',
+      });
+
+      // Track token selection specifically
+      track(TRACKING_EVENTS.DEPOSIT_DIRECT_TOKEN_SELECTED, {
+        deposit_method: 'deposit_directly',
+        chain_id: chainId,
+        network_name: network?.name,
+        selected_token: token.symbol,
+        token_name: token.name,
       });
 
       // Store selected token

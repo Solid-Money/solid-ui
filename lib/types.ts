@@ -641,16 +641,22 @@ export interface SourceDepositInstructions {
   currency: string;
   amount: string;
   deposit_message: string;
-  bank_account_number: string;
-  bank_routing_number: string;
-  bank_beneficiary_name: string;
-  bank_beneficiary_address: string;
   bank_name: string;
-  bank_address: string;
-}
+  bank_address?: string;
 
-export interface BridgeTransferResponse {
-  source_deposit_instructions: SourceDepositInstructions;
+  // ACH/Wire fields
+  bank_account_number?: string;
+  bank_routing_number?: string;
+  bank_beneficiary_name?: string;
+  bank_beneficiary_address?: string;
+
+  // SEPA fields
+  iban?: string;
+  bic?: string;
+  account_holder_name?: string;
+
+  // SPEI fields
+  clabe?: string;
 }
 
 export enum TokenType {

@@ -2,6 +2,7 @@ import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { useCallback, useMemo } from 'react';
@@ -24,7 +25,7 @@ const DepositExternalWalletOptions = () => {
         subtitle: 'Send USDC directly from any network',
         icon: (
           <Image
-            source={require('@/assets/images/deposit_from_external_wallet.png')}
+            source={getAsset('images/deposit_from_external_wallet.png')}
             style={{ width: 28, height: 12 }}
             contentFit="contain"
           />

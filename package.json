@@ -16,16 +16,18 @@
     "codegen": "graphql-codegen --config codegen.ts",
     "wagmi-generate": "wagmi generate",
     "test:e2e": "playwright test",
-    "generate:auth": "npx ts-node scripts/generate-auth.ts",
+    "generate:auth": "npx tsx scripts/generate-auth.ts",
+    "assets:update": "npx tsx scripts/update-assets.ts",
+    "assets:sync-public": "mkdir -p public/assets && cp -r assets/* public/assets/",
     "export": "expo export",
     "analyze:atlas": "EXPO_ATLAS=true npx expo export && npx expo-atlas .expo/atlas.jsonl",
     "analyze:ios": "npx expo export --source-maps --platform ios --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/ios/*.js'",
     "analyze:android": "npx expo export --source-maps --platform android --no-bytecode && npx source-map-explorer 'dist/_expo/static/js/android/*.js'",
     "analyze:web": "npx source-map-explorer 'dist/_expo/static/js/web/*.js'",
-    "export:web": "npx expo export -p web",
+    "export:web": "npm run assets:update && npm run assets:sync-public && npx expo export -p web",
     "serve:web": "npx serve dist -l 8081",
     "lighthouse": "npx lighthouse http://localhost:8081 --view",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package && npm run assets:update"
   },
   "dependencies": {
     "@amplitude/analytics-react-native": "^1.5.32",
@@ -74,6 +76,7 @@
     "@turnkey/react-native-wallet-kit": "^1.3.1",
     "@turnkey/sdk-browser": "^5.14.0",
     "@turnkey/viem": "^0.14.20",
+    "@vercel/speed-insights": "^1.3.1",
     "@voltage-finance/sdk-core": "^1.0.5",
     "abitype": "^1.2.3",
     "axios": "^1.13.2",
@@ -180,6 +183,7 @@
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
     "typescript": "~5.9.3"
   },
   "overrides": {
@@ -209,5 +213,6 @@
       }
     }
   },
-  "private": true
+  "private": true,
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

@@ -48,7 +48,7 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
       context: 'security_settings',
       has_existing_email: !!user?.email,
     });
-  }, [user?.userId, user?.safeAddress, user?.email]);
+  });
 
   return (
     <View className="flex-1 gap-4">

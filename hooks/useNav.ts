@@ -2,7 +2,6 @@ import { Href } from 'expo-router';
 import { useMemo } from 'react';
 
 import { path } from '@/constants/path';
-import useUser from './useUser';
 import { useCardStatus } from './useCardStatus';
 
 type MenuItem = {
@@ -31,8 +30,6 @@ const points: MenuItem = {
 };
 
 const useNav = () => {
-  const { user } = useUser();
-  const hasDeposited = user?.isDeposited;
   const { data: cardStatus } = useCardStatus();
 
   const card: MenuItem = useMemo(
@@ -44,11 +41,8 @@ const useNav = () => {
   );
 
   const menuItems = useMemo<MenuItem[]>(() => {
-    if (hasDeposited) {
-      return [home, savings, card, points, activity];
-    }
-    return [home, card, points, activity];
-  }, [hasDeposited, card]);
+    return [home, savings, card, points, activity];
+  }, [card]);
 
   return {
     menuItems,

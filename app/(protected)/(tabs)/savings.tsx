@@ -20,6 +20,7 @@ import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
+import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
@@ -73,7 +74,7 @@ export default function Savings() {
 
   const renderContent = () => (
     <>
-      <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-6 md:gap-9 md:py-10">
+      <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-6 md:gap-9 md:py-12">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
             <DashboardTitle />
@@ -102,7 +103,7 @@ export default function Savings() {
             }}
           />
           <ImageBackground
-            source={require('@/assets/images/solid-black-large.png')}
+            source={getAsset('images/solid-black-large.png')}
             resizeMode="contain"
             className="relative flex-1"
             style={{ mixBlendMode: 'luminosity' }}

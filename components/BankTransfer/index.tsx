@@ -7,7 +7,12 @@ import { View } from 'react-native';
 import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
 import CryptoDropdown from './CryptoDropdown';
-import { BridgeTransferCryptoCurrency, BridgeTransferFiatCurrency } from './enums';
+import {
+  BridgeTransferCryptoCurrency,
+  BridgeTransferFiatCurrency,
+  FIAT_LABEL,
+  getMinimumAmount,
+} from './enums';
 import { ExchangeRateDisplay } from './ExchangeRateDisplay';
 import FiatDropdown from './FiatDropdown';
 
@@ -43,6 +48,18 @@ export default function BankTransferAmount() {
     }
   }, [fiatAmount, rate, loading]);
 
+  const minimumAmountError = useMemo(() => {
+    const minAmount = getMinimumAmount(fiat);
+    if (!minAmount) return null;
+
+    const amount = parseFloat(fiatAmount) || 0;
+    if (amount < minAmount) {
+      return `Minimum amount is ${minAmount} ${FIAT_LABEL[fiat]}`;
+    }
+
+    return null;
+  }, [fiat, fiatAmount]);
+
   return (
     <View className="gap-4">
       <AmountCard
@@ -71,9 +88,14 @@ export default function BankTransferAmount() {
         initialLoading={loading && !rate}
       />
 
+      {minimumAmountError && (
+        <Text className="text-center text-sm text-red-400">{minimumAmountError}</Text>
+      )}
+
       <Button
         className="mt-4 h-14 rounded-2xl"
-        style={{ backgroundColor: '#94F27F' }}
+        style={{ backgroundColor: minimumAmountError ? '#4A4A4A' : '#94F27F' }}
+        disabled={!!minimumAmountError}
         onPress={() => {
           router.push({
             pathname: '/bank-transfer/payment-method',
@@ -86,7 +108,11 @@ export default function BankTransferAmount() {
           });
         }}
       >
-        <Text className="text-lg font-bold text-black">Continue</Text>
+        <Text
+          className={`text-lg font-bold ${minimumAmountError ? 'text-gray-400' : 'text-black'}`}
+        >
+          Continue
+        </Text>
       </Button>
     </View>
   );

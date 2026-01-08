@@ -1,7 +1,8 @@
-import React from 'react';
-import { Pressable, View } from 'react-native';
 import { Minus } from 'lucide-react-native';
+import React from 'react';
+import { View } from 'react-native';
 
+import SlotTrigger from '@/components/SlotTrigger';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { UNSTAKE_MODAL } from '@/constants/modals';
@@ -51,20 +52,14 @@ const UnstakeModal = ({
     setModal(modal);
   };
 
-  // Headless usage - the global UnstakeModalProvider handles the modal
   if (trigger === null) {
     return null;
   }
 
-  // Use default trigger if not provided
-  const triggerElement = trigger || <DefaultUnstakeTrigger buttonText={buttonText} />;
-
-  // Always wrap with Pressable to ensure click handling works
-  // pointerEvents="none" on the inner View ensures the Pressable captures the touch/click
   return (
-    <Pressable onPress={handlePress}>
-      <View pointerEvents="none">{triggerElement}</View>
-    </Pressable>
+    <SlotTrigger onPress={handlePress}>
+      {trigger || <DefaultUnstakeTrigger buttonText={buttonText} />}
+    </SlotTrigger>
   );
 };
 

@@ -22,6 +22,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
+import { getAsset } from '@/lib/assets';
 import { Status } from '@/lib/types';
 import { ONBOARDING_DATA } from '@/lib/types/onboarding';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
@@ -125,9 +126,7 @@ export default function Onboarding() {
                     className={`rounded-xl ${isSmallScreen ? 'h-12' : 'h-14'}`}
                     onPress={handleCreateAccount}
                   >
-                    <Text className={`font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
-                      Create account
-                    </Text>
+                    <Text className="native:text-lg text-lg font-bold">Create account</Text>
                   </Button>
 
                   {/* OR Divider */}
@@ -148,16 +147,12 @@ export default function Onboarding() {
                     {isLoginPending ? (
                       <View className="flex-row items-center">
                         <ActivityIndicator size="small" color="white" />
-                        <Text
-                          className={`ml-2 font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}
-                        >
+                        <Text className="native:text-lg ml-2 text-lg font-bold">
                           Authenticating...
                         </Text>
                       </View>
                     ) : (
-                      <Text className={`font-bold ${isSmallScreen ? 'text-base' : 'text-lg'}`}>
-                        Login
-                      </Text>
+                      <Text className="native:text-lg text-lg font-bold">Login</Text>
                     )}
                   </Button>
 
@@ -195,7 +190,7 @@ export default function Onboarding() {
         {/* Logo at top center */}
         <View className="absolute left-0 right-0 top-6 items-center">
           <Image
-            source={require('@/assets/images/solid-logo-4x.png')}
+            source={getAsset('images/solid-logo-4x.png')}
             alt="Solid logo"
             style={{ width: 40, height: 44 }}
             contentFit="contain"

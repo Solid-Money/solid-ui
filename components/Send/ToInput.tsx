@@ -8,7 +8,7 @@ import Avatar from '@/components/Avatar';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { fetchAddressBook } from '@/lib/api';
-import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
+import { eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
 
 interface ToInputProps {
@@ -124,7 +124,7 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
   const to = name || address;
 
   return (
-    <View className="gap-4">
+    <View className="gap-2 md:gap-4">
       <Text className="text-base font-medium opacity-70">To</Text>
       <Pressable
         className="relative h-16 flex-row items-center gap-2 rounded-2xl bg-card px-5"
@@ -146,7 +146,7 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
           ) : (
             <TextInput
               ref={inputRef}
-              className={cn('flex-1 text-base web:focus:outline-none')}
+              className="flex-1 text-base text-foreground web:focus:outline-none"
               placeholder={placeholder}
               placeholderTextColor="#ffffff80"
               value={searchQuery}

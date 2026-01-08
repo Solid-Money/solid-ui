@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import SavingCountUp from '@/components/SavingCountUp';
 import { SavingMode } from '@/lib/types';
+import { useDimension } from '@/hooks/useDimension';
 
 interface DashboardHeaderMobileProps {
   balance: number;
@@ -19,9 +20,11 @@ const DashboardHeaderMobile = ({
   mode,
   decimalPlaces = 2,
 }: DashboardHeaderMobileProps) => {
+  const { isScreenMedium } = useDimension();
+
   return (
     <View className="gap-8">
-      <View className="flex-row items-center justify-center pb-6 pt-20">
+      <View className="flex-row items-center justify-center pt-6">
         <SavingCountUp
           prefix="$"
           balance={balance ?? 0}
@@ -40,15 +43,15 @@ const DashboardHeaderMobile = ({
               color: '#ffffff',
             },
             decimalText: {
-              fontSize: 60,
-              fontWeight: '600',
-              fontFamily: 'MonaSans_600SemiBold',
+              fontSize: isScreenMedium ? 60 : 30,
+              fontWeight: isScreenMedium ? '600' : '400',
+              fontFamily: isScreenMedium ? 'MonaSans_600SemiBold' : 'MonaSans_400Regular',
               color: '#ffffff',
             },
             decimalSeparator: {
-              fontSize: 60,
-              fontWeight: '600',
-              fontFamily: 'MonaSans_600SemiBold',
+              fontSize: isScreenMedium ? 60 : 30,
+              fontWeight: isScreenMedium ? '600' : '400',
+              fontFamily: isScreenMedium ? 'MonaSans_600SemiBold' : 'MonaSans_400Regular',
               color: '#ffffff',
             },
           }}

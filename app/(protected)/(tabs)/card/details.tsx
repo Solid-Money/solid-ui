@@ -22,6 +22,7 @@ import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
+import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardHolderName, CardStatus, CardTransaction } from '@/lib/types';
 import {
@@ -53,7 +54,7 @@ export default function CardDetails() {
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
 
-  const handleFreezeToggle = async () => {
+  const handleFreezeToggle = useCallback(async () => {
     try {
       setIsFreezing(true);
       if (isCardFrozen) {
@@ -70,9 +71,9 @@ export default function CardDetails() {
     } finally {
       setIsFreezing(false);
     }
-  };
+  }, [isCardFrozen, refetch]);
 
-  const handleCardFlip = () => {
+  const handleCardFlip = useCallback(() => {
     if (isCardFlipped) {
       // Flip back to front
       Animated.spring(flipAnimation, {
@@ -88,7 +89,7 @@ export default function CardDetails() {
       setIsLoadingCardDetails(true);
       setShouldRevealDetails(true);
     }
-  };
+  }, [isCardFlipped, flipAnimation]);
 
   const handleCardDetailsLoaded = useCallback(() => {
     // Once data is loaded, flip the card immediately
@@ -107,7 +108,7 @@ export default function CardDetails() {
   if (isScreenMedium) {
     return (
       <PageLayout desktopOnly isLoading={isLoading}>
-        <View className="mx-auto w-full max-w-7xl px-4 pb-12 pt-8">
+        <View className="mx-auto w-full max-w-7xl px-4 py-12">
           {/* Desktop Header */}
           <DesktopHeader
             isCardFrozen={isCardFrozen}
@@ -248,7 +249,7 @@ function DesktopHeader({
               <ActivityIndicator size="small" color="white" />
             ) : (
               <Image
-                source={require('@/assets/images/reveal_card_details_icon.png')}
+                source={getAsset('images/reveal_card_details_icon.png')}
                 style={{ width: 15, height: 15 }}
                 contentFit="contain"
               />
@@ -269,7 +270,7 @@ function DesktopHeader({
               <ActivityIndicator size="small" color="white" />
             ) : (
               <Image
-                source={require('@/assets/images/freeze_button_icon.png')}
+                source={getAsset('images/freeze_button_icon.png')}
                 style={{ width: 18, height: 18 }}
                 contentFit="contain"
               />
@@ -314,12 +315,22 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
   const cashbackPercentage = cashback?.percentage || 0;
 
   return (
-    <LinearGradient
-      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.1)']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      className="h-full rounded-[20px] px-[36px] py-[30px]"
-    >
+    <View className="relative h-full overflow-hidden rounded-[20px] px-[36px] py-[30px]">
+      <LinearGradient
+        colors={['rgba(104, 216, 82, 1)', 'rgba(104, 216, 82, 0.4)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.6, y: 1 }}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: -1,
+          opacity: 0.25,
+        }}
+      />
       <View className="flex-1 justify-between">
         {/* Spending Balance Section */}
         <View>
@@ -337,7 +348,7 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
           {/* Cashback Badge */}
           <View className="flex-row  items-center gap-1 px-4">
             <Image
-              source={require('@/assets/images/diamond.png')}
+              source={getAsset('images/diamond.png')}
               style={{ width: 82, aspectRatio: 72 / 66 }}
               contentFit="contain"
             />
@@ -351,7 +362,7 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
           </View>
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -389,8 +400,8 @@ function CardImageSection({
   onCardDetailsLoaded,
 }: CardImageSectionProps) {
   const desktopImagePath = isCardFrozen
-    ? require('@/assets/images/card_frozen.png')
-    : require('@/assets/images/activate_card_steps.png');
+    ? getAsset('images/card_frozen.png')
+    : getAsset('images/activate_card_steps.png');
 
   const desktopImageAspectRatio = isCardFrozen ? 531 / 328 : 513 / 306;
 
@@ -489,6 +500,16 @@ function CardDetailsOverlay({
   const { cardDetails, isLoading, error, revealDetails } = useCardDetailsReveal();
   const hasRevealedRef = useRef(false);
   const hasNotifiedLoadedRef = useRef(false);
+  const clipboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup clipboard timeout on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (clipboardTimeoutRef.current) {
+        clearTimeout(clipboardTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // Only reveal details once when component mounts
@@ -525,13 +546,30 @@ function CardDetailsOverlay({
   const handleCopyCardNumber = useCallback(async () => {
     if (!cardDetails) return;
     try {
-      await Clipboard.setString(formatCardNumber(cardDetails.card_number));
+      await Clipboard.setStringAsync(formatCardNumber(cardDetails.card_number));
       Toast.show({
         type: 'success',
         text1: 'Card number copied',
+        text2: 'Clipboard will clear in 30 seconds',
         props: { badgeText: '' },
         visibilityTime: 4000,
       });
+      // Clear any existing timeout before setting a new one
+      if (clipboardTimeoutRef.current) {
+        clearTimeout(clipboardTimeoutRef.current);
+      }
+      // Clear clipboard after 30 seconds for security
+      clipboardTimeoutRef.current = setTimeout(async () => {
+        try {
+          // Only clear if clipboard still contains the card number
+          const currentClipboard = await Clipboard.getStringAsync();
+          if (currentClipboard === formatCardNumber(cardDetails.card_number)) {
+            await Clipboard.setStringAsync('');
+          }
+        } catch {
+          // Silently fail if clipboard clearing fails
+        }
+      }, 30000);
     } catch (_error) {
       Alert.alert('Error', 'Failed to copy card number');
     }
@@ -561,7 +599,12 @@ function CardDetailsOverlay({
             <Text className="text-3xl font-medium" style={{ color: '#2E6A25' }}>
               {formatCardNumber(safeCardDetails.card_number)}
             </Text>
-            <Pressable onPress={handleCopyCardNumber} className="p-2 web:hover:opacity-70">
+            <Pressable
+              onPress={handleCopyCardNumber}
+              className="p-2 web:hover:opacity-70"
+              accessibilityLabel="Copy card number to clipboard"
+              accessibilityRole="button"
+            >
               <Copy size={20} color="#2E6A25" />
             </Pressable>
           </View>
@@ -605,7 +648,12 @@ function CardDetailsOverlay({
           <Text className="text-lg font-medium md:text-3xl" style={{ color: '#2E6A25' }}>
             {formatCardNumber(cardDetails.card_number)}
           </Text>
-          <Pressable onPress={handleCopyCardNumber} className="p-2 web:hover:opacity-70">
+          <Pressable
+            onPress={handleCopyCardNumber}
+            className="p-2 web:hover:opacity-70"
+            accessibilityLabel="Copy card number to clipboard"
+            accessibilityRole="button"
+          >
             <Copy size={20} color="#2E6A25" />
           </Pressable>
         </View>
@@ -664,20 +712,20 @@ function CardActions({
       <DepositToCardModal
         trigger={
           <CircularActionButton
-            icon={require('@/assets/images/card_actions_fund.png')}
+            icon={getAsset('images/card_actions_fund.png')}
             label="Add funds"
             onPress={() => {}}
           />
         }
       />
       <CircularActionButton
-        icon={require('@/assets/images/card_actions_details.png')}
+        icon={getAsset('images/card_actions_details.png')}
         label={isCardFlipped ? 'Hide details' : 'Card details'}
         onPress={onCardDetails}
         isLoading={isLoadingCardDetails}
       />
       <CircularActionButton
-        icon={require('@/assets/images/card_actions_freeze.png')}
+        icon={getAsset('images/card_actions_freeze.png')}
         label={isCardFrozen ? 'Unfreeze' : 'Freeze'}
         onPress={onFreezeToggle}
         isLoading={isFreezing}
@@ -691,64 +739,86 @@ function DepositBonusBanner() {
 
   if (isScreenMedium) {
     return (
+      <View className="relative h-full overflow-hidden rounded-2xl border border-[#FFD15126]">
+        <LinearGradient
+          colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: -1,
+          }}
+        />
+        <View className="flex-row items-center gap-4 p-4 md:p-5">
+          <Link
+            href={
+              'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
+            }
+            target="_blank"
+            className="rounded-full bg-[#FFD151]/20 px-3 py-1"
+          >
+            <Text className="text-sm font-bold text-[#FFD151]">
+              Receive your $50 sign up bonus!
+            </Text>
+          </Link>
+          <View className="flex-1 flex-row items-center justify-between">
+            <Text className="text-sm font-medium text-[#FFD151]">On a minimum deposit of $100</Text>
+            <View className="flex-row items-center gap-1">
+              <Link
+                target="_blank"
+                href={
+                  'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
+                }
+                className="font-bold text-[#FFD151]"
+              >
+                Learn more
+              </Link>
+              <View className="pt-0.5">
+                <ChevronRight size={16} color="#FFD151" />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View className="relative mb-4 overflow-hidden rounded-3xl border border-[#FFD15126]">
       <LinearGradient
         colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-        start={{ x: 0.15, y: 0 }}
-        end={{ x: 0.85, y: 1 }}
-        locations={[0.0964, 0.6892]}
-        className="h-full flex-row items-center gap-4 rounded-2xl border border-[#FFD15126] p-4 md:p-5"
-      >
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: -1,
+        }}
+      />
+      <View className="flex-col items-center gap-3 p-4">
         <Link
           href={
             'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
           }
           target="_blank"
-          className="rounded-full bg-[#FFD151]/20 px-3 py-1"
+          className="rounded-full bg-[#FFD151]/20 px-4 py-1.5"
         >
-          <Text className="text-sm font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
+          <Text className="text-lg font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
         </Link>
-        <View className="flex-1 flex-row items-center justify-between">
-          <Text className="text-sm font-medium text-[#FFD151]">On a minimum deposit of $100</Text>
-          <View className="flex-row items-center gap-1">
-            <Link
-              target="_blank"
-              href={
-                'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-              }
-              className="font-bold text-[#FFD151]"
-            >
-              Learn more
-            </Link>
-            <View className="pt-0.5">
-              <ChevronRight size={16} color="#FFD151" />
-            </View>
-          </View>
-        </View>
-      </LinearGradient>
-    );
-  }
-
-  return (
-    <LinearGradient
-      colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      locations={[0.0964, 0.6892]}
-      className="mb-4 flex-col items-center gap-3 rounded-3xl border border-[#FFD15126] p-4"
-    >
-      <Link
-        href={
-          'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-        }
-        target="_blank"
-        className="rounded-full bg-[#FFD151]/20 px-4 py-1.5"
-      >
-        <Text className="text-lg font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
-      </Link>
-      <Text className="text-center text-lg font-medium text-[#FFD151]">
-        On a minimum deposit of $100
-      </Text>
-    </LinearGradient>
+        <Text className="text-center text-lg font-medium text-[#FFD151]">
+          On a minimum deposit of $100
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -768,12 +838,22 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
   const cashbackPercentage = cashback?.percentage || 0;
 
   return (
-    <LinearGradient
-      colors={['rgba(104, 216, 82, 0.25)', 'rgba(104, 216, 82, 0.1)']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      className="mb-4 rounded-[20px] py-[10px]"
-    >
+    <View className="relative mb-4 overflow-hidden rounded-[20px] py-[10px]">
+      <LinearGradient
+        colors={['rgba(104, 216, 82, 1)', 'rgba(104, 216, 82, 0.4)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.6, y: 1 }}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: -1,
+          opacity: 0.25,
+        }}
+      />
       {/* Top Section */}
       <View className="mb-2 flex-row items-start justify-between px-4">
         <View>
@@ -781,7 +861,7 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
           <Text className="text-2xl font-semibold text-[#94F27F]">${totalUsdValue}</Text>
         </View>
         <Image
-          source={require('@/assets/images/diamond.png')}
+          source={getAsset('images/diamond.png')}
           style={{ width: 80, aspectRatio: 56 / 51 }}
           contentFit="contain"
         />
@@ -800,7 +880,7 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
           all purchases
         </Text>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -822,13 +902,13 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
         </Text>
         <View className="flex-row items-center">
           <Image
-            source={require('@/assets/images/apple_pay.png')}
+            source={getAsset('images/apple_pay.png')}
             style={{ width: 49, height: 22 }}
             contentFit="contain"
           />
           <View className="mx-2 h-6 w-px bg-white/30" />
           <Image
-            source={require('@/assets/images/google_pay.png')}
+            source={getAsset('images/google_pay.png')}
             style={{ width: 47, height: 19 }}
             contentFit="contain"
           />

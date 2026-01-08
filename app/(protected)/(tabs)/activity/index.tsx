@@ -24,13 +24,11 @@ export default function Activity() {
 
           {/* Web-only refresh button (pull-to-refresh doesn't work on web) */}
           {isWeb && !userHasCard && (
-            <View className="flex-row justify-end px-4 py-2">
-              <ActivityRefreshButton
-                onRefresh={refetchAll}
-                isSyncing={isSyncing}
-                isLoading={isLoading}
-              />
-            </View>
+            <ActivityRefreshButton
+              onRefresh={refetchAll}
+              isSyncing={isSyncing}
+              isLoading={isLoading}
+            />
           )}
         </View>
         {userHasCard ? <ActivityTabs /> : <ActivityTransactions tab={ActivityTab.WALLET} />}

@@ -1,12 +1,14 @@
 import { Wallet } from 'lucide-react-native';
-import React, { memo, useCallback, useMemo, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, TextInput, View } from 'react-native';
 import { useBalance } from 'wagmi';
 
 import Max from '@/components/Max';
 import SwapTokenSelectorModal from '@/components/TokenSelector/SwapTokenSelectorModal';
 import { Text } from '@/components/ui/text';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { formatNumber } from '@/lib/utils';
 import { Currency, Percent } from '@cryptoalgebra/fuse-sdk';
 import { formatUnits } from 'viem';
@@ -47,6 +49,29 @@ const TokenCard: React.FC<TokenCardProps> = ({
   const [open, setOpen] = useState(false);
   const { user } = useUser();
   const account = user?.safeAddress;
+
+  // Track amount entry start (once per swap session)
+  const hasTrackedAmountEntry = useRef(false);
+
+  useEffect(() => {
+    if (value && !hasTrackedAmountEntry.current && !disabled) {
+      hasTrackedAmountEntry.current = true;
+      track(TRACKING_EVENTS.SWAP_AMOUNT_ENTRY_STARTED, {
+        field: title || 'unknown',
+        currency_symbol: currency?.symbol,
+      });
+    }
+  }, [value, disabled, title, currency?.symbol]);
+
+  // Track token selector opened
+  useEffect(() => {
+    if (open) {
+      track(TRACKING_EVENTS.SWAP_TOKEN_SELECTOR_OPENED, {
+        field: title || 'unknown',
+        current_currency: currency?.symbol,
+      });
+    }
+  }, [open, title, currency?.symbol]);
 
   const { data: balance, isLoading: isBalanceLoading } = useBalance({
     address: account,

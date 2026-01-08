@@ -3,12 +3,12 @@ import { View } from 'react-native';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import SendModal from '@/components/Send/SendModal';
 import SwapModal from '@/components/Swap/SwapModal';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { track } from '@/lib/analytics';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -72,17 +72,21 @@ const DashboardHeaderButtons = ({ deposit, withdraw }: DashboardHeaderButtonsPro
 
       <SendModal
         trigger={
-          <View
-            className={buttonVariants({
-              variant: 'secondary',
-              className: 'h-12 rounded-xl border-0 bg-[#303030] px-6',
-            })}
+          <Button
+            variant="secondary"
+            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+            onPress={() => {
+              track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
+                button_name: 'send',
+                source: 'dashboard_header',
+              });
+            }}
           >
             <View className="flex-row items-center gap-2">
               <HomeSend />
               <Text className="text-base font-bold text-white">Send</Text>
             </View>
-          </View>
+          </Button>
         }
       />
 

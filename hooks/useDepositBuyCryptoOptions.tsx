@@ -5,6 +5,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDepositBonusConfig } from '@/hooks/useDepositBonusConfig';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const useDepositBuyCryptoOptions = () => {
@@ -14,16 +15,18 @@ const useDepositBuyCryptoOptions = () => {
   const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'bank_transfer',
+      bonus_banner_visible: isDepositBonusEnabled,
     });
     setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
-  }, [setModal]);
+  }, [setModal, isDepositBonusEnabled]);
 
   const handleCreditCardPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'credit_card',
+      bonus_banner_visible: isDepositBonusEnabled,
     });
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
-  }, [setModal]);
+  }, [setModal, isDepositBonusEnabled]);
 
   const bonusBannerText = isDepositBonusEnabled
     ? `${Math.round(percentage * 100)}% bonus on deposits`
@@ -37,7 +40,7 @@ const useDepositBuyCryptoOptions = () => {
         bannerText: bonusBannerText,
         icon: (
           <Image
-            source={require('@/assets/images/buy_crypto.png')}
+            source={getAsset('images/buy_crypto.png')}
             style={{ width: 26, height: 22 }}
             contentFit="contain"
           />
@@ -50,7 +53,7 @@ const useDepositBuyCryptoOptions = () => {
         bannerText: bonusBannerText,
         icon: (
           <Image
-            source={require('@/assets/images/bank_deposit.png')}
+            source={getAsset('images/bank_deposit.png')}
             style={{ width: 26, height: 22 }}
             contentFit="contain"
           />

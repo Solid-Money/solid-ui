@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Image } from 'expo-image';
 import { ChevronDown, Fuel, Wallet } from 'lucide-react-native';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -25,9 +25,12 @@ import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { track } from '@/lib/analytics';
+import { getAsset } from '@/lib/assets';
+import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { Status } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
+import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
 function DepositToVaultForm() {
@@ -41,7 +44,7 @@ function DepositToVaultForm() {
     return {
       address: tokenData?.address,
       name: tokenData?.name || outputToken,
-      image: tokenData?.icon || require('@/assets/images/usdc.png'),
+      image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
       version: tokenData?.version,
     };
@@ -98,6 +101,48 @@ function DepositToVaultForm() {
   const watchedAmount = watch('amount');
   const isSponsor = Number(watchedAmount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
 
+  // Track form viewed (once per mount)
+  const hasTrackedFormView = useRef(false);
+
+  useEffect(() => {
+    if (!hasTrackedFormView.current) {
+      track(TRACKING_EVENTS.DEPOSIT_WALLET_FORM_VIEWED, {
+        deposit_method: 'wallet',
+        chain_id: srcChainId,
+        token: selectedTokenInfo.name,
+        balance: formattedBalance,
+      });
+      hasTrackedFormView.current = true;
+    }
+  }, [srcChainId, selectedTokenInfo.name, formattedBalance]);
+
+  // Track amount entry start (once per form session)
+  const hasTrackedAmountEntry = useRef(false);
+
+  useEffect(() => {
+    if (watchedAmount && !hasTrackedAmountEntry.current) {
+      hasTrackedAmountEntry.current = true;
+      track(TRACKING_EVENTS.DEPOSIT_AMOUNT_ENTRY_STARTED, {
+        chain_id: srcChainId,
+        token: selectedTokenInfo.name,
+        balance: formattedBalance,
+      });
+    }
+  }, [watchedAmount, srcChainId, selectedTokenInfo.name, formattedBalance]);
+
+  // Track validation errors
+  useEffect(() => {
+    if (errors.amount) {
+      track(TRACKING_EVENTS.DEPOSIT_VALIDATION_ERROR, {
+        error_message: errors.amount.message,
+        attempted_amount: watchedAmount,
+        chain_id: srcChainId,
+        token: selectedTokenInfo.name,
+        balance: formattedBalance,
+      });
+    }
+  }, [errors.amount, watchedAmount, srcChainId, selectedTokenInfo.name, formattedBalance]);
+
   const {
     amountOut,
     isLoading: isPreviewDepositLoading,
@@ -115,11 +160,8 @@ function DepositToVaultForm() {
   };
 
   const handleSuccess = () => {
-    track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-      chain_id: srcChainId,
-      is_ethereum: isEthereum,
-      hash: hash,
-    });
+    // Note: DEPOSIT_COMPLETED tracking is handled by useDepositFromEOA hook
+    // which has complete deposit details (amount, transaction hash, user info, etc.)
 
     reset(); // Reset form after successful transaction
     setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
@@ -134,13 +176,27 @@ function DepositToVaultForm() {
       props: {
         link: `${explorerUrl}/tx/${hash}`,
         linkText: eclipseAddress(hash),
-        image: require('@/assets/images/usdc.png'),
+        image: getAsset('images/usdc.png'),
       },
     });
   };
 
   const onSubmit = async (data: DepositFormData) => {
+    // Capture attribution for conversion funnel tracking
+    const attributionData = useAttributionStore.getState().getAttributionForEvent();
+    const attributionChannel = getAttributionChannel(attributionData);
+
     try {
+      // Track wallet form submission specifically
+      track(TRACKING_EVENTS.DEPOSIT_WALLET_FORM_SUBMITTED, {
+        deposit_method: 'wallet',
+        chain_id: srcChainId,
+        token: selectedTokenInfo.name,
+        amount: data.amount,
+        balance: formattedBalance,
+        is_sponsor: isSponsor,
+      });
+
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
         amount: data.amount,
         chain_id: srcChainId,
@@ -148,6 +204,8 @@ function DepositToVaultForm() {
         is_sponsor: isSponsor,
         // expected_output: amountOut.toString(),
         exchange_rate: exchangeRate,
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
 
       const trackingId = await deposit(data.amount.toString());
@@ -162,6 +220,8 @@ function DepositToVaultForm() {
         chain_id: srcChainId,
         is_ethereum: isEthereum,
         error: String(error),
+        ...attributionData,
+        attribution_channel: attributionChannel,
       });
       // handled by hook
     }
@@ -221,6 +281,11 @@ function DepositToVaultForm() {
             </Text>
             <Max
               onPress={() => {
+                track(TRACKING_EVENTS.DEPOSIT_MAX_BUTTON_CLICKED, {
+                  chain_id: srcChainId,
+                  token: selectedTokenInfo.name,
+                  max_amount: formattedBalance,
+                });
                 setValue('amount', formattedBalance);
                 trigger('amount');
               }}
@@ -234,7 +299,7 @@ function DepositToVaultForm() {
             </View>
             <View className="ml-auto flex-shrink-0 flex-row items-center gap-2">
               <Image
-                source={require('@/assets/images/sousd-4x.png')}
+                source={getAsset('images/sousd-4x.png')}
                 style={{ width: 24, height: 24 }}
                 contentFit="contain"
               />

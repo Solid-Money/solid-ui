@@ -23,8 +23,10 @@ import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -51,6 +53,9 @@ const useDepositOption = ({
     outputToken,
     bankTransfer,
     directDepositSession,
+    sessionStartTime,
+    setSessionStartTime,
+    clearSessionStartTime,
   } = useDepositStore();
   const activeAccount = useActiveAccount();
   const status = useActiveWalletConnectionStatus();
@@ -282,12 +287,88 @@ const useDepositOption = ({
     return '';
   };
 
+  // Helper: Map modal to deposit method for analytics
+  const getDepositMethodFromModal = (modal: DepositModal): string | null => {
+    const modalName = modal?.name;
+    if (!modalName) return null;
+
+    // Wallet deposit method
+    if (
+      modalName === DEPOSIT_MODAL.OPEN_NETWORKS.name ||
+      modalName === DEPOSIT_MODAL.OPEN_FORM.name ||
+      modalName === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name
+    ) {
+      return 'wallet';
+    }
+
+    // Direct deposit method
+    if (
+      modalName === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name ||
+      modalName === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS.name ||
+      modalName === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name
+    ) {
+      return 'deposit_directly';
+    }
+
+    // Credit card method
+    if (modalName === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name) {
+      return 'credit_card';
+    }
+
+    // Bank transfer method
+    if (
+      modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT.name ||
+      modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT.name ||
+      modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW.name ||
+      modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_INFO.name ||
+      modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_FRAME.name
+    ) {
+      return 'bank_transfer';
+    }
+
+    return null;
+  };
+
+  // Helper: Map modal to specific abandonment event
+  const getAbandonmentEventFromModal = (modal: DepositModal): string => {
+    const modalName = modal?.name;
+    if (!modalName) return TRACKING_EVENTS.DEPOSIT_OPTIONS_ABANDONED;
+
+    // Wallet method abandonment
+    if (modalName === DEPOSIT_MODAL.OPEN_NETWORKS.name) {
+      return TRACKING_EVENTS.DEPOSIT_WALLET_NETWORK_ABANDONED;
+    }
+    if (modalName === DEPOSIT_MODAL.OPEN_FORM.name) {
+      return TRACKING_EVENTS.DEPOSIT_WALLET_FORM_ABANDONED;
+    }
+
+    // Bank transfer abandonment
+    if (modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT.name) {
+      return TRACKING_EVENTS.DEPOSIT_BANK_AMOUNT_ABANDONED;
+    }
+    if (
+      modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW.name ||
+      modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_INFO.name ||
+      modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_FRAME.name
+    ) {
+      return TRACKING_EVENTS.DEPOSIT_BANK_INSTRUCTIONS_ABANDONED;
+    }
+
+    // Default to general abandonment
+    return TRACKING_EVENTS.DEPOSIT_OPTIONS_ABANDONED;
+  };
+
   const handleOpenChange = (value: boolean) => {
     if (!value && isFormAndAddress && status === 'connecting') {
       return;
     }
 
     if (value) {
+      // Set session start time when modal opens (if not already set)
+      if (!sessionStartTime) {
+        setSessionStartTime(Date.now());
+      }
+
       // Check if user has email when opening deposit modal
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
@@ -301,7 +382,26 @@ const useDepositOption = ({
         setModal(modal);
       }
     } else {
+      // Calculate time spent in deposit flow
+      const timeSpent = sessionStartTime ? Math.floor((Date.now() - sessionStartTime) / 1000) : 0;
+
+      // Get deposit method and appropriate abandonment event
+      const depositMethod = getDepositMethodFromModal(currentModal);
+      const abandonmentEvent = getAbandonmentEventFromModal(currentModal);
+
+      // Track method-specific abandonment with enhanced properties
+      track(abandonmentEvent, {
+        last_step: currentModal.name,
+        previous_step: previousModal.name,
+        deposit_method: depositMethod,
+        time_on_step: timeSpent,
+        has_wallet_connected: !!address,
+        has_selected_chain: !!srcChainId,
+        is_first_deposit: !user?.isDeposited,
+      });
+
       setModal(DEPOSIT_MODAL.CLOSE);
+      clearSessionStartTime();
     }
   };
 

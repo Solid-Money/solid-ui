@@ -2,7 +2,6 @@ import { Href, Route } from 'expo-router';
 
 type Path = {
   ONBOARDING: Href;
-  REGISTER: Route;
   WELCOME: Href;
   HOME: Href;
   // Email-first signup flow
@@ -42,7 +41,6 @@ type Path = {
 
 export const path: Path = {
   ONBOARDING: '/onboarding',
-  REGISTER: '/register',
   WELCOME: '/welcome',
   HOME: '/',
   // Email-first signup flow

@@ -6,10 +6,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { path } from '@/constants/path';
+import { track } from '@/lib/analytics';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
+import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
@@ -17,15 +20,15 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 
-const USDC_ICON = require('@/assets/images/usdc.png');
-const USDT_ICON = require('@/assets/images/usdt.png');
-const SOUSD_ICON = require('@/assets/images/sousd-4x.png');
+const USDC_ICON = getAsset('images/usdc.png');
+const USDT_ICON = getAsset('images/usdt.png');
+const SOUSD_ICON = getAsset('images/sousd-4x.png');
 
 const TOKEN_ICONS: Record<string, any> = {
   USDC: USDC_ICON,
@@ -70,6 +73,7 @@ const DepositDirectlyAddress = () => {
   const [shareError, setShareError] = useState(false);
   const { maxAPY, isAPYsLoading } = useMaxAPY();
   const intercom = useIntercom();
+  const hasTrackedAddressView = useRef(false);
 
   // Get token address for exchange rate calculation
   const tokenAddress =
@@ -83,6 +87,20 @@ const DepositDirectlyAddress = () => {
   // Hardcoded status - always show "Waiting for transfer"
   const status: DepositStatus = 'pending';
   const isExpired = false;
+
+  // Track address view on mount
+  useEffect(() => {
+    if (!hasTrackedAddressView.current && walletAddress) {
+      track(TRACKING_EVENTS.DEPOSIT_DIRECT_ADDRESS_VIEWED, {
+        deposit_method: 'deposit_directly',
+        session_id: directDepositSession.sessionId,
+        chain_id: chainId,
+        selected_token: selectedToken,
+        wallet_address: walletAddress,
+      });
+      hasTrackedAddressView.current = true;
+    }
+  }, [walletAddress, chainId, selectedToken, directDepositSession.sessionId]);
 
   // Clear share error after timeout
   useEffect(() => {
@@ -99,16 +117,44 @@ const DepositDirectlyAddress = () => {
     }
   }, [setModal, clearDirectDepositSession, directDepositSession.fromActivity]);
 
+  const handleCopy = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_DIRECT_ADDRESS_COPIED, {
+      deposit_method: 'deposit_directly',
+      session_id: directDepositSession.sessionId,
+      chain_id: chainId,
+      selected_token: selectedToken,
+    });
+  }, [chainId, selectedToken, directDepositSession.sessionId]);
+
+  const handleQrOpen = useCallback(() => {
+    setIsQrDialogOpen(true);
+
+    track(TRACKING_EVENTS.DEPOSIT_DIRECT_QR_VIEWED, {
+      deposit_method: 'deposit_directly',
+      session_id: directDepositSession.sessionId,
+      chain_id: chainId,
+      selected_token: selectedToken,
+    });
+  }, [chainId, selectedToken, directDepositSession.sessionId]);
+
   const handleShare = useCallback(async () => {
     if (!walletAddress) return;
 
     try {
       await Share.share({ message: walletAddress, title: 'Solid deposit address' });
+
+      // Track successful share
+      track(TRACKING_EVENTS.DEPOSIT_DIRECT_ADDRESS_SHARED, {
+        deposit_method: 'deposit_directly',
+        session_id: directDepositSession.sessionId,
+        chain_id: chainId,
+        selected_token: selectedToken,
+      });
     } catch (error) {
       console.error('Failed to share deposit address:', error);
       setShareError(true);
     }
-  }, [walletAddress]);
+  }, [walletAddress, chainId, selectedToken, directDepositSession.sessionId]);
 
   const estimatedTime = chainId === 1 ? '5 minutes' : '30 minutes';
   const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
@@ -210,13 +256,14 @@ const DepositDirectlyAddress = () => {
               text={walletAddress || ''}
               className="h-10 w-10 bg-transparent"
               iconClassName="text-white"
+              onCopy={handleCopy}
             />
           </View>
 
           <View className="flex-row gap-4 pb-1">
             <Button
               variant="secondary"
-              onPress={() => setIsQrDialogOpen(true)}
+              onPress={handleQrOpen}
               className="h-9 flex-1 rounded-2xl border-0 bg-secondary-hover"
             >
               <Copy size={14} color="white" />
