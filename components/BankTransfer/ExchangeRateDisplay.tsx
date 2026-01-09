@@ -18,13 +18,8 @@ export const ExchangeRateDisplay = ({
   loading,
   initialLoading,
 }: ExchangeRateDisplayProps) => {
-  // Show centered loading indicator when getting initial rate
   if (initialLoading) {
-    return (
-      <View className="mt-2 items-center">
-        <RateLoadingIndicator />
-      </View>
-    );
+    return <RateLoadingIndicator size="small" />;
   }
 
   if (!rate) return null;
@@ -42,13 +37,13 @@ export const ExchangeRateDisplay = ({
   const symbol = isFromUSDBased && isToUSDBased ? '=' : '~';
 
   return (
-    <View className="mt-2 flex-row items-center justify-center">
-      <Text className="font-medium text-[#A1A1A1]">
+    <View className="flex-row items-center">
+      <Text className="text-base font-bold text-white">
         1 {fromCurrency.toUpperCase()} {symbol} {Number(rate).toString()} {toCurrency.toUpperCase()}
       </Text>
       {loading && (
         <View className="ml-2">
-          <RateLoadingIndicator />
+          <RateLoadingIndicator size="small" />
         </View>
       )}
     </View>

@@ -1,24 +1,31 @@
 import { PreviewTitle } from '@/components/BankTransfer/payment/PreviewTitle';
+import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { SourceDepositInstructions } from '@/lib/types';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Info } from 'lucide-react-native';
 import { View } from 'react-native';
 
 const Row = ({
   label,
   value,
   withDivider = false,
+  copyable = false,
 }: {
   label: string;
   value: string;
   withDivider?: boolean;
+  copyable?: boolean;
 }) => (
   <View className={`px-6 py-6 ${withDivider ? 'border-b border-[#4E4E4E]' : ''}`}>
     <View className="flex-row items-center justify-between">
       <Text className="text-base font-bold text-muted-foreground">{label}</Text>
-      <Text className="text-base font-bold text-white">{value}</Text>
+      <View className="flex-row items-center gap-2">
+        <Text className="text-base font-bold text-white">{value}</Text>
+        {copyable && <CopyToClipboard text={value} />}
+      </View>
     </View>
   </View>
 );
@@ -64,7 +71,15 @@ export default function BankTransferPreviewScreen() {
             <Row label={isSepa ? 'BIC' : 'Routing / SWIFT / BIC'} value={routingCode} withDivider />
           )}
           <Row label="Beneficiary name" value={beneficiaryName ?? ''} withDivider />
-          <Row label="Deposit message" value={data?.deposit_message ?? ''} />
+          <Row label="Deposit message" value={data?.deposit_message ?? ''} copyable />
+
+          <View className="flex-row items-start gap-3 px-6 pb-6 pt-2">
+            <Info size={22} color="#FACC15" />
+            <Text className="flex-1 font-light leading-5 text-[#FFD151]">
+              Please enter this text in the memo/reference field for the bank transfer. Otherwise we
+              won&apos;t be able to match it.
+            </Text>
+          </View>
         </View>
 
         <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">
