@@ -178,6 +178,10 @@ export const UNSTAKE_MODAL = {
     name: 'open_transaction_status',
     number: 5,
   },
+  OPEN_TOKEN_SELECTOR: {
+    name: 'open_token_selector',
+    number: 6,
+  },
 };
 
 export const SWAP_MODAL = {

@@ -1,14 +1,14 @@
-import { ActivityIndicator, View } from 'react-native';
 import { useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { Address } from 'viem';
 
 import Checkmark from '@/assets/images/checkmark';
+import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TokenIcon } from '@/lib/types';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
-import NeedHelp from '@/components/NeedHelp';
 
 type TransactionStatusProps = {
   amount: number;
@@ -26,8 +26,8 @@ const TransactionStatus = ({
   amount,
   address,
   onPress,
-  title = 'Transaction initiated',
-  description = "This may take some time. We'll keep processing this in the background. You can safely leave this page.",
+  title = 'Withdraw started',
+  description = "This may take up to 24H. We'll keep processing this in the background. You can safely leave this page.",
   status = 'Initiated',
   icon,
   token = 'USDC',

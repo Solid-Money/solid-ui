@@ -6,6 +6,7 @@ import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TransactionType } from '@/lib/types';
+import { waitForLayerzeroTransaction } from '@/lib/utils/layerzero';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { useCallback, useState } from 'react';
@@ -206,9 +207,13 @@ const useBridgeToMainnet = (): BridgeResult => {
             chainId: fuse.id,
           },
         });
-
-        setBridgeStatus(Status.SUCCESS);
-        return transaction;
+        const layerzeroTransaction = await waitForLayerzeroTransaction(transaction.transactionHash);
+        if (layerzeroTransaction.data[0].status.name === 'DELIVERED') {
+          setBridgeStatus(Status.SUCCESS);
+          return transaction;
+        } else {
+          throw new Error('Layerzero transaction failed');
+        }
       } catch (error) {
         console.error(error);
 
