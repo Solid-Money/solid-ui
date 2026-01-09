@@ -2,6 +2,7 @@ import NeedHelp from '@/components/NeedHelp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
+import { formatNumber } from '@/lib/utils/utils';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -95,12 +96,12 @@ export default function BankTransferAmount() {
         <View className="mx-5 h-[1px] bg-[#2C2C2C]" />
         <View className="flex-row items-center justify-between px-5 py-4">
           <Text className="text-base text-[#ACACAC]">Max limit self deposit</Text>
-          <Text className="text-base font-bold text-white">100000$</Text>
+          <Text className="text-base font-bold text-white">${formatNumber(100000, 0, 0)}</Text>
         </View>
         <View className="mx-5 h-[1px] bg-[#2C2C2C]" />
         <View className="flex-row items-center justify-between px-5 py-4">
           <Text className="text-base text-[#ACACAC]">Max limit third party</Text>
-          <Text className="text-base font-bold text-white">4000$</Text>
+          <Text className="text-base font-bold text-white">${formatNumber(4000, 0, 0)}</Text>
         </View>
       </View>
 
