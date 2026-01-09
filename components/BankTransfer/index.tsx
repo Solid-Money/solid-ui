@@ -1,6 +1,8 @@
+import NeedHelp from '@/components/NeedHelp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
+import { formatNumber } from '@/lib/utils/utils';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -80,13 +82,28 @@ export default function BankTransferAmount() {
         }
       />
 
-      <ExchangeRateDisplay
-        rate={rate?.buy_rate}
-        fromCurrency={fiat}
-        toCurrency={crypto}
-        loading={loading}
-        initialLoading={loading && !rate}
-      />
+      <View className="mt-4 gap-0.5 overflow-hidden rounded-2xl bg-[#1C1C1C]">
+        <View className="flex-row items-center justify-between px-5 py-4">
+          <Text className="text-base text-[#ACACAC]">Ex rate</Text>
+          <ExchangeRateDisplay
+            rate={rate?.buy_rate}
+            fromCurrency={fiat}
+            toCurrency={crypto}
+            loading={loading}
+            initialLoading={loading && !rate}
+          />
+        </View>
+        <View className="mx-5 h-[1px] bg-[#2C2C2C]" />
+        <View className="flex-row items-center justify-between px-5 py-4">
+          <Text className="text-base text-[#ACACAC]">Max limit self deposit</Text>
+          <Text className="text-base font-bold text-white">${formatNumber(100000, 0, 0)}</Text>
+        </View>
+        <View className="mx-5 h-[1px] bg-[#2C2C2C]" />
+        <View className="flex-row items-center justify-between px-5 py-4">
+          <Text className="text-base text-[#ACACAC]">Max limit third party</Text>
+          <Text className="text-base font-bold text-white">${formatNumber(4000, 0, 0)}</Text>
+        </View>
+      </View>
 
       {minimumAmountError && (
         <Text className="text-center text-sm text-red-400">{minimumAmountError}</Text>
@@ -114,6 +131,10 @@ export default function BankTransferAmount() {
           Continue
         </Text>
       </Button>
+
+      <View className="items-center">
+        <NeedHelp />
+      </View>
     </View>
   );
 }

@@ -1,7 +1,7 @@
-import { Button } from './ui/button';
-import { useIntercom } from '@/lib/intercom';
-import { Text } from './ui/text';
 import MessageCircle from '@/assets/images/messages';
+import { useIntercom } from '@/lib/intercom';
+import { Button } from './ui/button';
+import { Text } from './ui/text';
 
 const NeedHelp = () => {
   const intercom = useIntercom();
@@ -9,7 +9,7 @@ const NeedHelp = () => {
   return (
     <Button
       variant="ghost"
-      className="flex-row items-center gap-2 rounded-xl"
+      className="flex-row items-center gap-2 overflow-visible rounded-xl"
       onPress={() => intercom?.show()}
     >
       <MessageCircle color="#ffffffb3" />
