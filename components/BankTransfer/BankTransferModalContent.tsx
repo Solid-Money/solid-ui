@@ -6,6 +6,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
 import { track } from '@/lib/analytics';
+import { formatNumber } from '@/lib/utils/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { Info } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -139,12 +140,12 @@ const BankTransferAmountModal = () => {
         <View className="h-[1px] bg-white/10" />
         <View className="flex-row items-center justify-between px-5 py-5">
           <Text className="text-base font-medium text-white/70">Max limit self deposit</Text>
-          <Text className="text-base font-semibold text-white">$100000</Text>
+          <Text className="text-base font-semibold text-white">${formatNumber(100000, 0, 0)}</Text>
         </View>
         <View className="h-[1px] bg-white/10" />
         <View className="flex-row items-center justify-between px-5 py-5">
           <Text className="text-base font-medium text-white/70">Max limit third party</Text>
-          <Text className="text-base font-semibold text-white">$4000</Text>
+          <Text className="text-base font-semibold text-white">${formatNumber(4000, 0, 0)}</Text>
         </View>
       </View>
 
