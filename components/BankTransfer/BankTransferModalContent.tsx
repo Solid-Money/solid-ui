@@ -1,3 +1,5 @@
+import CopyToClipboard from '@/components/CopyToClipboard';
+import NeedHelp from '@/components/NeedHelp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -5,6 +7,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
 import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
+import { Info } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import AmountCard from './AmountCard';
@@ -122,13 +125,28 @@ const BankTransferAmountModal = () => {
         isModal={true}
       />
 
-      <ExchangeRateDisplay
-        rate={rate?.buy_rate}
-        fromCurrency={fiat}
-        toCurrency={crypto}
-        loading={loading}
-        initialLoading={loading && !rate}
-      />
+      <View className="mt-4 gap-0.5 overflow-hidden rounded-2xl bg-[#1C1C1C] py-2">
+        <View className="flex-row items-center justify-between px-5 py-5">
+          <Text className="text-base font-medium text-white/70">Ex rate</Text>
+          <ExchangeRateDisplay
+            rate={rate?.buy_rate}
+            fromCurrency={fiat}
+            toCurrency={crypto}
+            loading={loading}
+            initialLoading={loading && !rate}
+          />
+        </View>
+        <View className="h-[1px] bg-white/10" />
+        <View className="flex-row items-center justify-between px-5 py-5">
+          <Text className="text-base font-medium text-white/70">Max limit self deposit</Text>
+          <Text className="text-base font-semibold text-white">$100000</Text>
+        </View>
+        <View className="h-[1px] bg-white/10" />
+        <View className="flex-row items-center justify-between px-5 py-5">
+          <Text className="text-base font-medium text-white/70">Max limit third party</Text>
+          <Text className="text-base font-semibold text-white">$4000</Text>
+        </View>
+      </View>
 
       {minimumAmountError && (
         <Text className="text-center text-sm text-red-400">{minimumAmountError}</Text>
@@ -146,6 +164,10 @@ const BankTransferAmountModal = () => {
           Continue
         </Text>
       </Button>
+
+      <View className="items-center">
+        <NeedHelp />
+      </View>
     </View>
   );
 };
@@ -204,15 +226,20 @@ const BankTransferPreviewModal = () => {
     label,
     value,
     withDivider = false,
+    copyable = false,
   }: {
     label: string;
     value: string;
     withDivider?: boolean;
+    copyable?: boolean;
   }) => (
     <View>
       <View className="flex-row items-center justify-between px-4 py-4">
         <Text className="text-base text-gray-400">{label}</Text>
-        <Text className="text-base font-medium text-white">{value}</Text>
+        <View className="flex-row items-center gap-2">
+          <Text className="text-base font-medium text-white">{value}</Text>
+          {copyable && <CopyToClipboard text={value} />}
+        </View>
       </View>
       {withDivider && <View className="mx-4 h-[1px] bg-[#2C2C2C]" />}
     </View>
@@ -263,7 +290,15 @@ const BankTransferPreviewModal = () => {
           <Row label={isSepa ? 'BIC' : 'Routing / SWIFT / BIC'} value={routingCode} withDivider />
         )}
         <Row label="Beneficiary name" value={beneficiaryName ?? ''} withDivider />
-        <Row label="Deposit message" value={data?.deposit_message ?? ''} />
+        <Row label="Deposit message" value={data?.deposit_message ?? ''} copyable />
+
+        <View className="flex-row items-start gap-3 px-4 pb-6 pt-2">
+          <Info size={22} color="#FACC15" />
+          <Text className="flex-1 font-light leading-5 text-[#FFD151]">
+            Please enter this text in the memo/reference field for the bank transfer. Otherwise we
+            won&apos;t be able to match it.
+          </Text>
+        </View>
       </View>
 
       <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">
