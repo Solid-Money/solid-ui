@@ -409,7 +409,16 @@ const useDepositOption = ({
     if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else if (isBankTransferKycFrame) {
-      setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_INFO);
+      const { kyc } = useDepositStore.getState();
+
+      // New customers go: Payment Method → Info Form → KYC Frame
+      // Existing customers skip info form: Payment Method → KYC Frame
+      // Back navigation should respect which path the user took
+      if (kyc.enteredViaInfoForm) {
+        setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_INFO);
+      } else {
+        setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
+      }
     } else if (isBankTransferKycInfo) {
       setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT);
     } else if (isBankTransferAmount) {

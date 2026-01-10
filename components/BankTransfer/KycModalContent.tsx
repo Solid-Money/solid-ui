@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useCallback, useEffect, useState } from 'react';
+import type { ClientOptions } from 'persona';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -60,10 +61,12 @@ const BankTransferKycInfoModal = () => {
         throw new Error('An error occurred while creating the KYC link');
       }
 
-      // Save KYC link data to store
+      // Save KYC link data to store and mark that user came through info form
+      // (used by back navigation to return here instead of payment method)
       setKycData({
         kycLink: kycLink.link,
         kycLinkId: kycLink.kycLinkId,
+        enteredViaInfoForm: true,
       });
 
       // Navigate to KYC frame modal
@@ -121,56 +124,74 @@ const BankTransferKycInfoModal = () => {
   );
 };
 
-// Modal version of KYC Frame (iframe)
+// Parse KYC link URL into Persona Client options
+function parseKycUrlToOptions(rawUrl: string): {
+  options: ClientOptions;
+  redirectUri?: string;
+} {
+  const parsedUrl = new URL(rawUrl);
+
+  // Use /widget path instead of /verify when embedding (Bridge support recommendation)
+  if (parsedUrl.pathname.includes('/verify')) {
+    parsedUrl.pathname = parsedUrl.pathname.replace('/verify', '/widget');
+  }
+
+  // Add iframe-origin for proper embedding (Bridge support recommendation)
+  if (typeof window !== 'undefined' && !parsedUrl.searchParams.has('iframe-origin')) {
+    parsedUrl.searchParams.set('iframe-origin', window.location.origin);
+  }
+
+  const searchParams = parsedUrl.searchParams;
+
+  const templateId = searchParams.get('inquiry-template-id') ?? undefined;
+  const inquiryId = searchParams.get('inquiry-id') ?? undefined;
+  const environmentId = searchParams.get('environment-id') ?? undefined;
+  const referenceId = searchParams.get('reference-id') ?? undefined;
+  const redirectUri = searchParams.get('redirect-uri') ?? undefined;
+
+  // Collect fields[xxx]=value into a flat map
+  const fields: Record<string, string> = {};
+
+  searchParams.forEach((value, key) => {
+    if (key.startsWith('fields[') && key.endsWith(']')) {
+      const innerKey = key.slice('fields['.length, -1);
+      if (innerKey) fields[innerKey] = value;
+    }
+  });
+
+  const options: ClientOptions = {
+    templateId,
+    inquiryId,
+    environmentId,
+    referenceId,
+    fields,
+  };
+
+  return { options, redirectUri };
+}
+
+// Modal version of KYC Frame using Persona SDK
 const BankTransferKycFrameModal = () => {
   const { kyc, setModal, clearKycData } = useDepositStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [finalUrl, setFinalUrl] = useState<string>('');
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   const handleKycSuccess = useCallback(() => {
-    // Clear all data and close the modal after KYC completion - no auto-resume
+    // Clear all data and close the modal after KYC completion
     const { clearBankTransferData } = useDepositStore.getState();
     clearKycData();
     clearBankTransferData();
     setModal(DEPOSIT_MODAL.CLOSE);
   }, [clearKycData, setModal]);
 
-  const handleIframeLoad = () => {
-    setLoading(false);
-  };
+  const handleCancel = useCallback(() => {
+    setModal(DEPOSIT_MODAL.CLOSE);
+  }, [setModal]);
 
-  const handleIframeError = () => {
-    setError('Failed to load content. Please try again later.');
-    setLoading(false);
-  };
-
-  // Setup message listener for KYC completion
   useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      try {
-        // Check for completion events
-        if (
-          event?.data &&
-          typeof event.data === 'object' &&
-          (event.data.status === 'completed' || event.data.event === 'verification.complete')
-        ) {
-          console.warn('Verification completed');
-          handleKycSuccess();
-        }
-      } catch (err) {
-        console.error('Error handling message:', err);
-      }
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('message', handleMessage);
-      return () => window.removeEventListener('message', handleMessage);
-    }
-  }, [handleKycSuccess]);
-
-  // Process the URL to add required parameters
-  useEffect(() => {
+    let destroyed = false;
     const url = kyc.kycLink;
 
     if (!url) {
@@ -179,50 +200,96 @@ const BankTransferKycFrameModal = () => {
       return;
     }
 
-    try {
-      const urlObj = new URL(url);
-
-      // If URL is from Persona and contains /verify, replace with /widget
-      if (urlObj.hostname.includes('withpersona.com') && urlObj.pathname.includes('/verify')) {
-        urlObj.pathname = urlObj.pathname.replace('/verify', '/widget');
-      }
-
-      // Add iframe-origin parameter for postMessage security
-      if (typeof window !== 'undefined') {
-        urlObj.searchParams.set('iframe-origin', window.location.origin);
-      }
-
-      setFinalUrl(urlObj.toString());
-    } catch (_e) {
-      setError('Invalid URL format');
+    if (typeof window === 'undefined') {
+      setError('KYC verification requires a browser');
       setLoading(false);
+      return;
     }
-  }, [kyc.kycLink]);
+
+    const run = async () => {
+      try {
+        const { options } = parseKycUrlToOptions(url);
+
+        // Basic validation
+        if (!options.templateId && !options.inquiryId) {
+          throw new Error('Invalid KYC link - missing required parameters');
+        }
+
+        const { setupIframe, setupEvents } = await import('persona');
+
+        const containerId = 'persona-modal-' + Math.random().toString(36).slice(2);
+
+        // Wire events with Persona SDK
+        unsubscribeRef.current = setupEvents(containerId, {
+          templateId: options.templateId ?? null,
+          templateVersionId: (options as any).templateVersionId ?? null,
+          host: (options as any).host ?? null,
+          onLoad: null,
+          onEvent: null,
+          onReady: () => {
+            if (!destroyed) setLoading(false);
+          },
+          onComplete: () => {
+            if (!destroyed) handleKycSuccess();
+          },
+          onCancel: () => {
+            if (!destroyed) handleCancel();
+          },
+          onError: e => {
+            if (!destroyed) {
+              setError(e?.message || 'Verification error occurred');
+              setLoading(false);
+            }
+          },
+        });
+
+        // Mount inline iframe
+        if (iframeRef.current && !destroyed) {
+          setupIframe(iframeRef.current, containerId, 'inline', {
+            ...options,
+            frameWidth: '100%',
+            frameHeight: '100%',
+          });
+        }
+      } catch (e: any) {
+        if (!destroyed) {
+          setError(e?.message || 'Failed to load verification');
+          setLoading(false);
+        }
+      }
+    };
+
+    run();
+
+    return () => {
+      destroyed = true;
+      try {
+        unsubscribeRef.current?.();
+      } catch (_e) {}
+      unsubscribeRef.current = null;
+    };
+  }, [kyc.kycLink, handleKycSuccess, handleCancel]);
 
   return (
-    <View className="flex-1 overflow-y-auto md:max-h-[65vh] lg:max-h-[70vh] 2xl:max-h-[75vh]">
+    <div style={{ height: '70vh', width: '100%', overflow: 'hidden' }}>
       {loading && (
-        <View className="flex-1 items-center justify-center">
+        <View className="h-full items-center justify-center">
           <Text className="text-white">Loading verification...</Text>
         </View>
       )}
 
       {error ? (
-        <View className="flex-1 items-center justify-center">
+        <View className="h-full items-center justify-center">
           <Text className="text-center text-red-500">{error}</Text>
         </View>
-      ) : finalUrl ? (
+      ) : (
         <iframe
-          src={finalUrl}
-          className="min-h-[100vh] w-full"
-          onLoad={handleIframeLoad}
-          onError={handleIframeError}
-          allow="camera; microphone; geolocation"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation"
+          ref={iframeRef}
+          style={{ width: '100%', height: '100%', border: 'none' }}
           title="KYC Verification"
         />
-      ) : null}
-    </View>
+      )}
+    </div>
   );
 };
 
