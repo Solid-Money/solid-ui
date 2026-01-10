@@ -30,6 +30,14 @@ interface KycData {
   redirectUri?: string;
   kycLink?: string;
   kycLinkId?: string;
+
+  /**
+   * Tracks whether the user entered KYC frame via the info form (new customer flow).
+   * Used by back navigation to determine correct destination:
+   * - true: go back to info form
+   * - false/undefined: go back to payment method (existing customer skipped info form)
+   */
+  enteredViaInfoForm?: boolean;
 }
 
 interface DirectDepositSession {
