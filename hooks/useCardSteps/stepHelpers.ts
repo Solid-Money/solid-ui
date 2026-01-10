@@ -112,7 +112,13 @@ export function useCardActivation(router: Router) {
   }, [router]);
 
   const syncCardActivationState = useCallback((cardStatus: CardStatus | undefined) => {
-    if (cardStatus === CardStatus.ACTIVE || cardStatus === CardStatus.FROZEN) {
+    // Mark card as activated if user has a card in any state
+    if (
+      cardStatus === CardStatus.ACTIVE ||
+      cardStatus === CardStatus.FROZEN ||
+      cardStatus === CardStatus.INACTIVE ||
+      cardStatus === CardStatus.PENDING
+    ) {
       setCardActivated(true);
     }
   }, []);

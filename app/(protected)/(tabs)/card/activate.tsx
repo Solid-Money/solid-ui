@@ -28,9 +28,6 @@ export default function ActivateMobile() {
     countryConfirmed?: string;
   }>();
 
-  // Skip country check if user just confirmed country on country_selection page
-  const skipCountryCheck = countryConfirmed === 'true';
-
   const { data: cardStatusResponse } = useCardStatus();
   const cardStatus = cardStatusResponse?.status;
   const isCardPending = cardStatus === CardStatus.PENDING;
@@ -38,6 +35,10 @@ export default function ActivateMobile() {
   const activationBlockedReason =
     cardStatusResponse?.activationBlockedReason ||
     'There was an issue activating your card. Please contact support.';
+
+  // Skip country check if user already has a card or just confirmed country
+  const userHasCard = cardStatus !== undefined;
+  const skipCountryCheck = countryConfirmed === 'true' || userHasCard;
 
   const {
     steps,
@@ -51,8 +52,8 @@ export default function ActivateMobile() {
 
   const router = useRouter();
 
-  // Only run country check if user didn't just confirm their country
-  const { checkingCountry } = useCountryCheck();
+  // Only run country check if user didn't just confirm their country and doesn't have a card
+  const { checkingCountry } = useCountryCheck({ skip: skipCountryCheck });
   const isCheckingCountry = !skipCountryCheck && checkingCountry;
 
   // Check if endorsement is under review (has pending items)
@@ -74,9 +75,14 @@ export default function ActivateMobile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // If the card is already active, skip the activation flow
+  // If the user already has a card, redirect to card details
+  // (except PENDING which shows special "card on its way" UI)
   React.useEffect(() => {
-    if (cardStatus === CardStatus.ACTIVE || cardStatus === CardStatus.FROZEN) {
+    if (
+      cardStatus === CardStatus.ACTIVE ||
+      cardStatus === CardStatus.FROZEN ||
+      cardStatus === CardStatus.INACTIVE
+    ) {
       router.replace(path.CARD_DETAILS);
     }
   }, [cardStatus, router]);
