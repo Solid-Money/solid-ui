@@ -4,7 +4,7 @@ import { getTotpStatus } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 
 export const useTotp = () => {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, error, isError } = useQuery({
     queryKey: ['totp-status'],
     queryFn: () => withRefreshToken(() => getTotpStatus()),
   });
@@ -13,5 +13,7 @@ export const useTotp = () => {
     isVerified: data?.verified ?? false,
     isLoading,
     refetch,
+    error,
+    isError,
   };
 };
