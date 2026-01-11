@@ -235,7 +235,7 @@ function DesktopHeader({
   onFreezeToggle,
 }: DesktopHeaderProps) {
   return (
-    <View className="flex-row items-center justify-between">
+    <View className="flex-row justify-between">
       <Text className="text-3xl font-semibold">Card</Text>
       <View className="flex-row items-center gap-2">
         <Button
