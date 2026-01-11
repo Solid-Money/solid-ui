@@ -5,7 +5,7 @@ import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
+import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useDimension } from './useDimension';
 
@@ -68,6 +68,7 @@ const useDepositExternalWalletOptions = () => {
       });
     } finally {
       setIsWalletOpen(false);
+      cleanupThirdwebStyles();
     }
   }, [isWalletOpen, connect, address, setModal]);
 
