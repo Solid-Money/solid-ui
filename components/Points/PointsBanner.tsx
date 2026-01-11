@@ -28,7 +28,7 @@ const PointsBanner = () => {
         }}
       >
         <LinearGradient
-          colors={['rgba(255, 209, 81, 1)', 'rgba(255, 209, 81, 0.68)']}
+          colors={['rgba(255, 209, 81, 1)', 'rgba(255, 209, 81, 0.4)']}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.6, y: 1 }}
           pointerEvents="none"

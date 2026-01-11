@@ -13,7 +13,7 @@ import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
-import { CardStatus } from '@/lib/types';
+import { hasCard } from '@/lib/utils/utils';
 
 export default function TabLayout() {
   const { data: cardStatus } = useCardStatus();
@@ -23,11 +23,6 @@ export default function TabLayout() {
 
   // Check if current route is any card-related route (card/ or card-onboard/)
   const isCardRouteActive = pathname.startsWith('/card') || pathname.startsWith('/card-onboard');
-
-  const cardHref =
-    cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN
-      ? path.CARD_DETAILS
-      : path.CARD_WAITLIST;
 
   return (
     <Tabs
@@ -87,8 +82,14 @@ export default function TabLayout() {
           title: 'Card',
           headerShown: false,
           tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
-          href: cardHref,
+          href: path.CARD_WAITLIST,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            e.preventDefault();
+            navigation.navigate(hasCard(cardStatus) ? path.CARD_DETAILS : path.CARD_WAITLIST);
+          },
+        })}
       />
 
       <Tabs.Screen
