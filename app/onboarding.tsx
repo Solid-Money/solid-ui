@@ -85,6 +85,8 @@ export default function Onboarding() {
     // Linking.openURL(HELP_CENTER_URL);
   }, []);
 
+  const filteredOnboardingData = ONBOARDING_DATA.filter(slide => slide?.platform !== false);
+
   // Mobile Layout
   if (!isDesktop) {
     return (
@@ -93,7 +95,7 @@ export default function Onboarding() {
           <SafeAreaView className="flex-1">
             <View className="flex-1">
               {/* Top section - Animation and Title (fills remaining space) */}
-              <View className="flex-1 justify-end">
+              <View className="flex-1">
                 <Animated.ScrollView
                   horizontal
                   pagingEnabled
@@ -103,7 +105,7 @@ export default function Onboarding() {
                   bounces={false}
                   contentContainerStyle={{ flexGrow: 1 }}
                 >
-                  {ONBOARDING_DATA.map((item, index) => (
+                  {filteredOnboardingData.map((item, index) => (
                     <OnboardingPage key={item.id} data={item} index={index} scrollX={scrollX} />
                   ))}
                 </Animated.ScrollView>
@@ -116,7 +118,7 @@ export default function Onboarding() {
               >
                 {/* Pagination dots */}
                 <View className="pt-2">
-                  <OnboardingPagination data={ONBOARDING_DATA} currentIndex={currentIndex} />
+                  <OnboardingPagination data={filteredOnboardingData} currentIndex={currentIndex} />
                 </View>
 
                 {/* Bottom buttons */}

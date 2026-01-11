@@ -186,12 +186,25 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
     return { opacity, transform: [{ translateX }, { scale }] };
   });
 
-  const contentStyles = [contentStyle0, contentStyle1, contentStyle2];
+  const contentStyle3 = useAnimatedStyle(() => {
+    'worklet';
+    const opacity = interpolate(progress.value, [2, 2.5, 3], [0, 0, 1], 'clamp');
+    const translateX = interpolate(progress.value, [2, 3], [30, 0], 'clamp');
+    const scale = interpolate(progress.value, [2, 3], [0.95, 1], 'clamp');
+    return { opacity, transform: [{ translateX }, { scale }] };
+  });
+
+  const contentStyles = [contentStyle0, contentStyle1, contentStyle2, contentStyle3];
+
+  const filteredOnboardingData = ONBOARDING_DATA.filter(slide => slide?.platform !== false);
+  const filteredGradientColors = GRADIENT_COLORS.filter(
+    (_, index) => index < filteredOnboardingData.length,
+  );
 
   return (
     <View className="m-4 w-[30%] min-w-[280px] max-w-[400px] overflow-hidden rounded-2xl bg-[#111]">
       {/* Stacked gradient backgrounds for crossfade effect */}
-      {GRADIENT_COLORS.map((colors, index) => (
+      {filteredGradientColors.map((colors, index) => (
         <Animated.View
           key={`gradient-${index}`}
           style={[StyleSheet.absoluteFill, gradientStyles[index]]}
@@ -210,7 +223,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
         <View className="flex-1 items-center justify-center px-6">
           {/* All slides stacked, animated based on progress */}
           <View style={{ position: 'relative', width: '100%', height: 452 }}>
-            {ONBOARDING_DATA.map((slide, index) => {
+            {filteredOnboardingData.map((slide, index) => {
               const backgroundImage = getBackgroundImage(index);
               return (
                 <Animated.View
@@ -252,17 +265,22 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
                           ...(index === 2 && { marginRight: 20 }),
                         }}
                       >
-                        <LottieView
-                          key={`lottie-${index}`}
-                          source={slide.animation}
-                          autoPlay
-                          loop
-                          style={{
-                            width: 280,
-                            height: 280,
-                          }}
-                          resizeMode="cover"
-                        />
+                        {slide.image ? (
+                          <Image
+                            source={slide.image.source}
+                            style={{ width: slide.image.width, height: slide.image.height }}
+                            contentFit="contain"
+                          />
+                        ) : (
+                          <LottieView
+                            key={`lottie-${index}`}
+                            source={slide.animation}
+                            autoPlay
+                            loop
+                            style={{ width: 280, height: 280 }}
+                            resizeMode="cover"
+                          />
+                        )}
                       </View>
                     </View>
                   </View>
@@ -294,7 +312,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
           <View className="items-center" style={{ height: 24, marginTop: 40 }}>
             <InteractivePagination
               currentIndex={currentIndex}
-              totalSlides={ONBOARDING_DATA.length}
+              totalSlides={filteredOnboardingData.length}
               onIndexChange={handleIndexChange}
             />
           </View>
