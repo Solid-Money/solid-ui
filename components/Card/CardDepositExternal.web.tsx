@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 
-import { client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
+import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import CardDepositExternalForm from './CardDepositExternalForm';
 
 export default function CardDepositExternal() {
@@ -21,6 +21,7 @@ export default function CardDepositExternal() {
       });
     } finally {
       setIsConnecting(false);
+      cleanupThirdwebStyles();
     }
   }, [connect]);
 

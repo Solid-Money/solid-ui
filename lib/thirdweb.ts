@@ -55,3 +55,9 @@ const chains = [mainnet, fuse, polygon, base, arbitrum];
 export const getChain = (chainId: number) => {
   return chains.find(chain => chain.id === chainId);
 };
+
+export const cleanupThirdwebStyles = () => {
+  if (typeof document !== 'undefined') {
+    document.body.style.pointerEvents = '';
+  }
+};
