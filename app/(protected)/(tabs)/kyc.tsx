@@ -99,7 +99,9 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           hasEnvironmentId: !!options.environmentId,
           hasReferenceId: !!options.referenceId,
           hasRedirectUri: !!redirectUri,
+          redirectUri: redirectUri,
           fieldsCount: Object.keys(options.fields || {}).length,
+          kycUrl: url,
         });
 
         if (typeof window === 'undefined') {
@@ -164,6 +166,8 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
               inquiryId: completedInquiryId,
               status,
               hasRedirectUri: !!redirectUri,
+              redirectUri: redirectUri,
+              kycUrl: url,
               ...attributionData,
               attribution_channel: attributionChannel,
             });

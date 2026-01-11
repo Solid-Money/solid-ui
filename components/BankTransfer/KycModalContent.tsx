@@ -11,6 +11,8 @@ import { Text } from '@/components/ui/text';
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
 import { KycMode, type UserInfoFormData, userInfoSchema } from '@/components/UserKyc/types';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import { createKycLink } from '@/lib/api';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -208,7 +210,16 @@ const BankTransferKycFrameModal = () => {
 
     const run = async () => {
       try {
-        const { options } = parseKycUrlToOptions(url);
+        const { options, redirectUri } = parseKycUrlToOptions(url);
+
+        // Track parsed URL details for debugging
+        track(TRACKING_EVENTS.DEPOSIT_BANK_KYC_PARSED, {
+          hasTemplateId: !!options.templateId,
+          hasInquiryId: !!options.inquiryId,
+          hasRedirectUri: !!redirectUri,
+          redirectUri,
+          kycUrl: url,
+        });
 
         // Basic validation
         if (!options.templateId && !options.inquiryId) {
@@ -229,14 +240,32 @@ const BankTransferKycFrameModal = () => {
           onReady: () => {
             if (!destroyed) setLoading(false);
           },
-          onComplete: () => {
-            if (!destroyed) handleKycSuccess();
+          onComplete: ({ inquiryId: completedInquiryId, status }) => {
+            if (!destroyed) {
+              track(TRACKING_EVENTS.DEPOSIT_BANK_KYC_COMPLETED, {
+                inquiryId: completedInquiryId,
+                status,
+                hasRedirectUri: !!redirectUri,
+                redirectUri,
+                kycUrl: url,
+              });
+              handleKycSuccess();
+            }
           },
           onCancel: () => {
-            if (!destroyed) handleCancel();
+            if (!destroyed) {
+              track(TRACKING_EVENTS.DEPOSIT_BANK_KYC_CANCELLED, {
+                kycUrl: url,
+              });
+              handleCancel();
+            }
           },
           onError: e => {
             if (!destroyed) {
+              track(TRACKING_EVENTS.DEPOSIT_BANK_KYC_ERROR, {
+                error: e?.message || 'Verification error occurred',
+                kycUrl: url,
+              });
               setError(e?.message || 'Verification error occurred');
               setLoading(false);
             }

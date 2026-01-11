@@ -136,6 +136,7 @@ export async function redirectToExistingCustomerKycLink(
       action: 'redirect',
       method: 'existing_customer_endorsement',
       kycLinkId,
+      kycUrl: existingCustomerKycLink.url,
     });
 
     startKycFlow({ router, kycLink: existingCustomerKycLink.url });
@@ -163,14 +164,18 @@ export function redirectToExistingKycLink(
 
   try {
     const urlObj = new URL(kycLink);
+
     if (!urlObj.searchParams.has('redirect-uri') && !urlObj.searchParams.has('redirect_uri')) {
       urlObj.searchParams.set('redirect-uri', redirectUri);
     }
+
     track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
       action: 'redirect',
       method: 'existing_link',
       kycLinkId,
+      kycUrl: urlObj.toString(),
     });
+
     startKycFlow({ router, kycLink: urlObj.toString() });
     return true;
   } catch {
