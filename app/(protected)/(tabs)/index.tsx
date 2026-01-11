@@ -152,20 +152,20 @@ export default function Home() {
                     decimalPlaces={2}
                     classNames={{
                       wrapper: 'text-foreground',
-                      decimalSeparator: 'text-5xl font-semibold',
+                      decimalSeparator: 'text-2xl',
                     }}
                     styles={{
                       wholeText: {
                         fontSize: fontSize(3),
-                        fontWeight: '500',
-                        //fontFamily: 'MonaSans_600SemiBold',
+                        fontWeight: '600',
+                        fontFamily: 'MonaSans_600SemiBold',
                         color: '#ffffff',
                         marginRight: -1,
                       },
                       decimalText: {
-                        fontSize: fontSize(1.875),
-                        fontWeight: '500',
-                        //fontFamily: 'MonaSans_600SemiBold',
+                        fontSize: fontSize(1.5),
+                        fontWeight: '400',
+                        fontFamily: 'MonaSans_400Regular',
                         color: '#ffffff',
                       },
                     }}
