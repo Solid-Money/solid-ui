@@ -131,6 +131,9 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
     [setCurrentIndex],
   );
 
+  const filteredOnboardingData = ONBOARDING_DATA.filter(slide => slide?.platform !== false);
+  const maxIndex = filteredOnboardingData.length - 1;
+
   // Pan gesture with real-time tracking
   const panGesture = Gesture.Pan()
     .onStart(() => {
@@ -140,7 +143,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
       'worklet';
       // Convert drag to progress: negative translationX = moving forward (increasing index)
       const dragOffset = -e.translationX / DRAG_DISTANCE_PER_SLIDE;
-      const newProgress = clamp(currentIndex + dragOffset, 0, ONBOARDING_DATA.length - 1);
+      const newProgress = clamp(currentIndex + dragOffset, 0, maxIndex);
       progress.value = newProgress;
     })
     .onEnd(e => {
@@ -152,7 +155,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
       const projectedProgress = progress.value + velocity * 0.1;
 
       // Snap to nearest index
-      const targetIndex = clamp(Math.round(projectedProgress), 0, ONBOARDING_DATA.length - 1);
+      const targetIndex = clamp(Math.round(projectedProgress), 0, maxIndex);
 
       progress.value = withSpring(targetIndex, SNAP_SPRING_CONFIG);
       runOnJS(syncIndexToStore)(targetIndex);
@@ -196,7 +199,6 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
 
   const contentStyles = [contentStyle0, contentStyle1, contentStyle2, contentStyle3];
 
-  const filteredOnboardingData = ONBOARDING_DATA.filter(slide => slide?.platform !== false);
   const filteredGradientColors = GRADIENT_COLORS.filter(
     (_, index) => index < filteredOnboardingData.length,
   );
