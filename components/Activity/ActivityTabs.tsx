@@ -120,7 +120,7 @@ const ActivityTabs = () => {
     <Tabs
       value={tab}
       onValueChange={value => handleTabChange(value as ActivityTab)}
-      className="flex-1 gap-8"
+      className="flex-1 pt-6"
     >
       <View className="flex-row items-center justify-between">
         <TabsList className="h-auto flex-row self-start rounded-full bg-[#1C1C1E] p-1">

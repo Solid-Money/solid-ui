@@ -53,47 +53,58 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
   });
 
   return (
-    <View className="flex-1 items-center justify-center px-8" style={{ width: screenWidth }}>
-      {/* Illustration with background - Responsive height */}
+    <View
+      className="relative flex-1 items-center justify-between px-8"
+      style={{ width: screenWidth }}
+    >
+      {/* Background Image - show for all slides */}
+      {backgroundImage && (
+        <Image
+          source={backgroundImage}
+          alt="Background"
+          style={{
+            position: 'absolute',
+            width: illustrationSize,
+            height: illustrationSize,
+            top: '45%',
+            left: '50%',
+            right: 0,
+            bottom: 0,
+            transform: [{ translateY: '-50%' }, { translateX: '-50%' }],
+            zIndex: 0,
+          }}
+          contentFit="contain"
+        />
+      )}
+
+      <View className="h-10" />
+
       <Animated.View
         className="relative items-center justify-center"
-        style={[{ height: illustrationSize }, illustrationAnimatedStyle]}
+        style={[illustrationAnimatedStyle]}
       >
-        {/* Background Image - show for all slides */}
-        {backgroundImage && (
-          <Image
-            source={backgroundImage}
-            alt="Background"
-            style={{
-              position: 'absolute',
-              width: illustrationSize,
-              height: illustrationSize,
-              zIndex: 0,
-            }}
-            contentFit="contain"
-          />
-        )}
-
-        {/* Animation/Image */}
-        <View style={{ zIndex: 1 }}>
-          <View
-            style={{
-              // Only apply scale transform on web - native gets pre-computed size
-              ...(Platform.OS === 'web' && { transform: [{ scale: lottieScale }] }),
-              ...(index === 2 && { marginRight: isSmallScreen ? 15 : 20 }),
-            }}
-          >
+        <View
+          style={{
+            // Only apply scale transform on web - native gets pre-computed size
+            ...(Platform.OS === 'web' && { transform: [{ scale: lottieScale }] }),
+            ...(index === 2 && { marginRight: isSmallScreen ? 15 : 20 }),
+          }}
+        >
+          {data.image ? (
+            <Image
+              source={data.image.source}
+              style={{ width: data.image.width, height: data.image.height }}
+              contentFit="contain"
+            />
+          ) : (
             <LottieView
               source={data.animation}
               autoPlay
               loop
-              style={{
-                width: lottieSize,
-                height: lottieSize,
-              }}
+              style={{ width: lottieSize, height: lottieSize }}
               resizeMode="contain"
             />
-          </View>
+          )}
         </View>
       </Animated.View>
 

@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { SharedValue, useSharedValue } from 'react-native-reanimated';
 
 import { GRADIENT_COLORS } from '@/lib/types/onboarding';
@@ -27,7 +27,7 @@ export function AnimatedGradientBackground({ scrollX, children }: AnimatedGradie
   const gradientStyles = useGradientStyles(scrollX, widthSV);
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       {/* Stack all gradients, animating opacity on wrapper View */}
       {GRADIENT_COLORS.map((colors, index) => (
         <Animated.View key={index} style={[StyleSheet.absoluteFill, gradientStyles[index]]}>
@@ -41,6 +41,6 @@ export function AnimatedGradientBackground({ scrollX, children }: AnimatedGradie
       ))}
       {/* Render children on top of gradients */}
       {children}
-    </>
+    </View>
   );
 }
