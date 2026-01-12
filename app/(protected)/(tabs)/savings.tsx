@@ -26,7 +26,7 @@ import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
-import { FlatList, ImageBackground, Platform, View } from 'react-native';
+import { ImageBackground, Platform, View } from 'react-native';
 import { Address } from 'viem';
 
 export default function Savings() {
@@ -72,8 +72,8 @@ export default function Savings() {
     return <SavingsEmptyState />;
   }
 
-  const renderContent = () => (
-    <>
+  return (
+    <PageLayout isLoading={isLoading}>
       <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 pt-6 md:gap-9 md:py-12">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
@@ -233,21 +233,9 @@ export default function Savings() {
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile />}
       </View>
-      <View className="mx-auto w-full max-w-7xl px-4">
+      <View className="mx-auto w-full max-w-7xl px-4 pb-24">
         <FAQs faqs={faqs} className="md:mt-20" />
       </View>
-    </>
-  );
-
-  return (
-    <PageLayout isLoading={isLoading} scrollable={false}>
-      <FlatList
-        data={[{ key: 'content' }]}
-        renderItem={() => renderContent()}
-        keyExtractor={item => item.key}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
-      />
     </PageLayout>
   );
 }

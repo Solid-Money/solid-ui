@@ -145,6 +145,10 @@ export const ASSETS = {
     module: require('@/assets/images/deposit-green.png'),
     hash: '9d913b52',
   },
+  'images/deposit-indigo.png': {
+    module: require('@/assets/images/deposit-indigo.png'),
+    hash: '724d5f13',
+  },
   'images/deposit-purple.png': {
     module: require('@/assets/images/deposit-purple.png'),
     hash: '5d2c441b',
@@ -171,6 +175,10 @@ export const ASSETS = {
     hash: '59cf014d',
   },
   'images/earn-green.png': { module: require('@/assets/images/earn-green.png'), hash: 'a1f2db4d' },
+  'images/earn-indigo.png': {
+    module: require('@/assets/images/earn-indigo.png'),
+    hash: 'd62196f9',
+  },
   'images/earn-purple.png': {
     module: require('@/assets/images/earn-purple.png'),
     hash: 'b07c0123',
@@ -240,6 +248,10 @@ export const ASSETS = {
     module: require('@/assets/images/grant_notifications.png'),
     hash: 'f6a1d711',
   },
+  'images/gray_onboarding_bg.png': {
+    module: require('@/assets/images/gray_onboarding_bg.png'),
+    hash: 'b4c20e0b',
+  },
   'images/green-diamond.png': {
     module: require('@/assets/images/green-diamond.png'),
     hash: '1132ebfd',
@@ -258,6 +270,8 @@ export const ASSETS = {
     module: require('@/assets/images/ipor-fusion.png'),
     hash: '5605920f',
   },
+  'images/key-muted.png': { module: require('@/assets/images/key-muted.png'), hash: '041c4fd4' },
+  'images/key.png': { module: require('@/assets/images/key.png'), hash: '2a016399' },
   'images/key.tsx': { module: require('@/assets/images/key.tsx'), hash: 'de44f15d' },
   'images/kyc_under_review.png': {
     module: require('@/assets/images/kyc_under_review.png'),
@@ -271,7 +285,7 @@ export const ASSETS = {
   },
   'images/logout.tsx': { module: require('@/assets/images/logout.tsx'), hash: 'd540e375' },
   'images/merkl.png': { module: require('@/assets/images/merkl.png'), hash: 'c4c14095' },
-  'images/messages.tsx': { module: require('@/assets/images/messages.tsx'), hash: '4e224ae2' },
+  'images/messages.tsx': { module: require('@/assets/images/messages.tsx'), hash: '37cbc1f8' },
   'images/metamask.tsx': { module: require('@/assets/images/metamask.tsx'), hash: '32683a7e' },
   'images/morpho.png': { module: require('@/assets/images/morpho.png'), hash: 'c159616d' },
   'images/mxn-fiat-currency.tsx': {
@@ -425,6 +439,10 @@ export const ASSETS = {
     module: require('@/assets/images/solid-purple-large.png'),
     hash: 'ff520374',
   },
+  'images/solid-wordmark.png': {
+    module: require('@/assets/images/solid-wordmark.png'),
+    hash: '805abddf',
+  },
   'images/solid.png': { module: require('@/assets/images/solid.png'), hash: '333f11d4' },
   'images/solid_logo_with_glare.png': {
     module: require('@/assets/images/solid_logo_with_glare.png'),
@@ -485,6 +503,10 @@ export const ASSETS = {
   'images/withdraw-icon.tsx': {
     module: require('@/assets/images/withdraw-icon.tsx'),
     hash: 'ff956f75',
+  },
+  'images/withdraw-indigo.png': {
+    module: require('@/assets/images/withdraw-indigo.png'),
+    hash: '6553a3ca',
   },
   'images/withdraw-purple.png': {
     module: require('@/assets/images/withdraw-purple.png'),
