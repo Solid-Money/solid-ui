@@ -147,7 +147,7 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
               ) : null}
             </View>
             {maxAPY ? (
-              <Text className="text-base font-semibold opacity-70">{maxAPY.toFixed(1)}%</Text>
+              <Text className="text-base font-semibold opacity-70">{maxAPY.toFixed(2)}%</Text>
             ) : null}
           </View>
         </View>
