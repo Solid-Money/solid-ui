@@ -486,9 +486,6 @@ const useUser = (): UseUserReturn => {
 
         const authedUser = await login(result);
 
-        console.log('authedUser', authedUser);
-        console.log('userId', userId);
-        console.log(authedUser._id === userId);
         // If returned user is different, select by userId
         if (authedUser?._id && authedUser._id === userId) {
           selectUserById(authedUser._id);
