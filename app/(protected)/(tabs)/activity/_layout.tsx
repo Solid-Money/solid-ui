@@ -22,15 +22,17 @@ export default function ActivityLayout() {
               <Ionicons name="chevron-back" size={24} color={tintColor} />
             </TouchableOpacity>
           ) : null,
+        contentStyle: { flex: 1, backgroundColor: '#000' },
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false, freezeOnBlur: true }} />
       <Stack.Screen
         name="[clientTxId]"
         options={{
           title: 'Activity Details',
           headerBackButtonDisplayMode: 'minimal',
           headerShown: false,
+          animation: 'slide_from_right',
         }}
       />
     </Stack>
