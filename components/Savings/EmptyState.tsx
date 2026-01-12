@@ -17,8 +17,8 @@ export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
 
   const renderContent = () => (
-    <View className="mx-auto w-full max-w-7xl gap-[40px] pb-8 pt-6 md:pt-12">
-      <View className="px-4">
+    <View className="mx-auto w-full max-w-7xl gap-[40px] px-4 pb-8 pt-6 md:pt-12">
+      <View>
         {isScreenMedium ? (
           <View className="justify-between gap-y-4 md:flex-row md:items-center">
             <View className="flex-row items-baseline">
@@ -35,7 +35,7 @@ export default function SavingsEmptyState() {
         )}
       </View>
 
-      <View className="gap-[1.875rem] px-4">
+      <View className="gap-[1.875rem]">
         {!isScreenMedium && <SavingsHeaderButtonsMobile />}
 
         <View
@@ -86,7 +86,7 @@ export default function SavingsEmptyState() {
           )}
         </View>
       </View>
-      <View className="mt-10 gap-6 px-4 md:px-0">
+      <View className="mt-10 gap-6">
         <Text className="text-lg font-semibold text-muted-foreground">Promotions</Text>
         <HomeBanners />
       </View>
