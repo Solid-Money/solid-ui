@@ -17,7 +17,7 @@ export const getRuntimeRpId = () => (Platform.OS === 'web' && __DEV__ ? 'localho
 export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Get the selected user's credentialId from the store
   const users = useUserStore(state => state.users);
-  const selectedUser = users.find(u => u.selected);
+  const selectedUser = users.find(u => u.selected) ?? (users.length === 1 ? users[0] : undefined);
 
   const config = useMemo<TurnkeyProviderConfig>(() => {
     const baseConfig: TurnkeyProviderConfig = {

@@ -35,8 +35,7 @@ interface UseUserReturn {
   handleSignupStarted: (username: string, inviteCode: string) => Promise<void>;
   handleLogin: () => Promise<void>;
   handleDummyLogin: () => Promise<void>;
-  handleSelectUser: (username: string) => void;
-  handleSelectUserById: (userId: string) => void;
+  handleSelectUserById: (userId: string) => Promise<void>;
   handleLogout: () => void;
   handleRemoveUsers: () => void;
   handleDeleteAccount: () => Promise<void>;
@@ -53,13 +52,12 @@ const useUser = (): UseUserReturn => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const intercom = useIntercom();
-  const { httpClient, createHttpClient, createPasskey, logout } = useTurnkey();
+  const { httpClient, createHttpClient, createPasskey } = useTurnkey();
 
   const {
     users,
     storeUser,
     updateUser,
-    selectUser,
     selectUserById,
     unselectUser,
     removeUsers,
@@ -443,13 +441,6 @@ const useUser = (): UseUserReturn => {
     intercom?.shutdown();
     intercom?.boot();
 
-    // Wrap SDK logout in try-catch to ensure navigation always happens
-    // even if the SDK cleanup fails
-    try {
-      logout();
-    } catch (error) {
-      console.warn('[useUser] SDK logout error (non-blocking):', error);
-    }
     // Go to onboarding on native, welcome on web
     if (Platform.OS === 'web') {
       router.replace(path.WELCOME);
@@ -458,67 +449,10 @@ const useUser = (): UseUserReturn => {
     }
   }, [unselectUser, clearKycLinkId, router, user]);
 
-  const handleSelectUser = useCallback(
-    (username: string) => {
-      const previousUsername = user?.username;
-      selectUser(username);
-      clearKycLinkId();
-
-      // Find the selected user to get their userId
-      const selectedUser = users.find(u => u.username === username);
-      if (selectedUser) {
-        // Re-identify with the selected user
-        trackIdentity(selectedUser.userId, {
-          username: selectedUser.username,
-          safe_address: selectedUser.safeAddress,
-          email: selectedUser.email,
-          platform: Platform.OS,
-        });
-      }
-
-      track(TRACKING_EVENTS.WELCOME_USER, {
-        user_id: selectedUser?.userId,
-        username: username,
-      });
-
-      // We reauth if web to get a new session cookie
-      // and bind it to the selected user
-      const reauthIfWeb = async () => {
-        if (Platform.OS === 'web' && httpClient) {
-          try {
-            // Use passkey stamping for re-authentication
-            const result = await httpClient.stampGetWhoami(
-              { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
-              StamperType.Passkey,
-            );
-
-            const authedUser = await login(result);
-
-            if (authedUser?.username && authedUser.username !== username) {
-              selectUser(authedUser.username);
-            }
-          } catch (error) {
-            if (previousUsername) {
-              selectUser(previousUsername);
-            } else {
-              unselectUser();
-            }
-          }
-        }
-      };
-
-      void reauthIfWeb().finally(() => {
-        router.replace(path.HOME);
-      });
-    },
-    [selectUser, clearKycLinkId, router, user, unselectUser, users],
-  );
-
   // New: select user by userId (preferred for email-first users)
   const handleSelectUserById = useCallback(
-    (userId: string) => {
+    async (userId: string) => {
       const previousUserId = user?.userId;
-      selectUserById(userId);
       clearKycLinkId();
 
       // Find the selected user
@@ -539,38 +473,39 @@ const useUser = (): UseUserReturn => {
         email: selectedUser?.email,
       });
 
-      // We reauth if web to get a new session cookie
-      // and bind it to the selected user
-      const reauthIfWeb = async () => {
-        if (Platform.OS === 'web' && httpClient) {
-          try {
-            // Use passkey stamping for re-authentication
-            const result = await httpClient.stampGetWhoami(
-              { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
-              StamperType.Passkey,
-            );
-
-            const authedUser = await login(result);
-
-            // If returned user is different, select by userId
-            if (authedUser?.userId && authedUser.userId !== userId) {
-              selectUserById(authedUser.userId);
-            }
-          } catch (error) {
-            if (previousUserId) {
-              selectUserById(previousUserId);
-            } else {
-              unselectUser();
-            }
-          }
+      // Always require passkey authentication on all platforms
+      try {
+        if (!httpClient) {
+          throw new Error('Turnkey client is not initialized. Please wait and try again.');
         }
-      };
 
-      void reauthIfWeb().finally(() => {
+        const result = await httpClient.stampGetWhoami(
+          { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
+          StamperType.Passkey,
+        );
+
+        const authedUser = await login(result);
+
+        console.log('authedUser', authedUser);
+        console.log('userId', userId);
+        console.log(authedUser._id === userId);
+        // If returned user is different, select by userId
+        if (authedUser?._id && authedUser._id === userId) {
+          selectUserById(authedUser._id);
+        }
+
         router.replace(path.HOME);
-      });
+      } catch (error) {
+        // Revert to previous user or clear selection on auth failure
+        if (previousUserId) {
+          selectUserById(previousUserId);
+        } else {
+          unselectUser();
+        }
+        // Don't navigate on error - stay on welcome screen
+      }
     },
-    [selectUserById, clearKycLinkId, router, user, unselectUser, users, updateUser],
+    [selectUserById, clearKycLinkId, router, user, unselectUser, users, httpClient, login],
   );
 
   const handleRemoveUsers = useCallback(() => {
@@ -618,7 +553,6 @@ const useUser = (): UseUserReturn => {
     handleSignupStarted,
     handleLogin,
     handleDummyLogin,
-    handleSelectUser,
     handleSelectUserById,
     handleLogout,
     handleRemoveUsers,

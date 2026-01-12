@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
-import { Status, StatusInfo, User, SignupUser } from '@/lib/types';
+import { SignupUser, Status, StatusInfo, User } from '@/lib/types';
 
 interface UserState {
   users: User[];
@@ -15,7 +15,6 @@ interface UserState {
   _hasHydrated: boolean;
   storeUser: (user: User) => void;
   updateUser: (user: User) => void;
-  selectUser: (username: string) => void;
   selectUserById: (userId: string) => void;
   unselectUser: () => void;
   removeUsers: () => void;
@@ -69,18 +68,6 @@ export const useUserStore = create<UserState>()(
                 ? user
                 : prevUser,
             );
-          }),
-        );
-      },
-
-      // Legacy: select by username (for backward compatibility)
-      selectUser: (username: string) => {
-        set(
-          produce(state => {
-            state.users = state.users.map((user: User) => ({
-              ...user,
-              selected: user.username === username,
-            }));
           }),
         );
       },
