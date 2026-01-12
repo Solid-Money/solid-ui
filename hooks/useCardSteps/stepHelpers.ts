@@ -1,10 +1,12 @@
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
 import { createCard } from '@/lib/api';
 import { BridgeCustomerEndorsement, BridgeRejectionReason, CardStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 import { Router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import Toast from 'react-native-toast-message';
@@ -81,6 +83,7 @@ export function findFirstIncompleteStep(steps: Step[]): Step | undefined {
  * Hook to manage card activation state and actions
  */
 export function useCardActivation(router: Router) {
+  const queryClient = useQueryClient();
   const [cardActivated, setCardActivated] = useState(false);
   const [activatingCard, setActivatingCard] = useState(false);
 
@@ -92,9 +95,15 @@ export function useCardActivation(router: Router) {
 
       if (!card) throw new Error('Failed to create card');
 
-      setCardActivated(true);
-      track(TRACKING_EVENTS.CARD_ACTIVATION_SUCCEEDED, { cardId: card.id });
-      router.replace(path.CARD_DETAILS);
+      if (card.status !== CardStatus.PENDING) {
+        setCardActivated(true);
+        track(TRACKING_EVENTS.CARD_ACTIVATION_SUCCEEDED, { cardId: card.id });
+        router.replace(path.CARD_DETAILS);
+      } else {
+        // If card is pending, we don't mark as activated and don't redirect.
+        // We just invalidate the card status to show the "pending" UI on the same page.
+        queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+      }
     } catch (error) {
       console.error('Error activating card:', error);
       const errorMessage = await extractCardActivationErrorMessage(error);
@@ -109,10 +118,15 @@ export function useCardActivation(router: Router) {
     } finally {
       setActivatingCard(false);
     }
-  }, [router]);
+  }, [router, queryClient]);
 
   const syncCardActivationState = useCallback((cardStatus: CardStatus | undefined) => {
-    if (cardStatus === CardStatus.ACTIVE || cardStatus === CardStatus.FROZEN) {
+    // Mark card as activated if user has a card in any state
+    if (
+      cardStatus === CardStatus.ACTIVE ||
+      cardStatus === CardStatus.FROZEN ||
+      cardStatus === CardStatus.INACTIVE
+    ) {
       setCardActivated(true);
     }
   }, []);

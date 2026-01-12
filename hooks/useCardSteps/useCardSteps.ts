@@ -7,7 +7,7 @@ import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo } from 'react';
-import { useCustomer, useKycLinkFromBridge } from '../useCustomer';
+import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 
 // Import helpers
 import { processCardsEndorsement } from './endorsementHelpers';
