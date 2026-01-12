@@ -8,9 +8,9 @@ import { useExchangeRate } from '@/hooks/useExchangeRate';
 import { track } from '@/lib/analytics';
 import { formatNumber } from '@/lib/utils/utils';
 import { useDepositStore } from '@/store/useDepositStore';
-import { Info } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Fuel, Info } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
 import CryptoDropdown from './CryptoDropdown';
@@ -36,6 +36,7 @@ const BankTransferAmountModal = () => {
   const [crypto, setCrypto] = useState<BridgeTransferCryptoCurrency>(
     bankTransfer.crypto || BridgeTransferCryptoCurrency.USDC,
   );
+  const [isLimitsExpanded, setIsLimitsExpanded] = useState(false);
 
   // Track when amount modal is viewed (once per mount)
   const hasTrackedView = useRef(false);
@@ -106,47 +107,79 @@ const BankTransferAmountModal = () => {
 
   return (
     <View className="gap-4">
-      <AmountCard
-        title="You pay"
-        amount={fiatAmount}
-        onChangeAmount={setFiatAmount}
-        rightComponent={<FiatDropdown value={fiat} onChange={setFiat} />}
-        isModal={true}
-      />
-
-      <ArrowDivider />
-
-      <AmountCard
-        title="You get"
-        amount={cryptoAmount}
-        onChangeAmount={setCryptoAmount}
-        rightComponent={
-          <CryptoDropdown value={crypto} onChange={setCrypto} allowed={allowedCrypto} />
-        }
-        isModal={true}
-      />
-
-      <View className="mt-4 gap-0.5 overflow-hidden rounded-2xl bg-[#1C1C1C] py-2">
-        <View className="flex-row items-center justify-between px-5 py-5">
-          <Text className="text-base font-medium text-white/70">Ex rate</Text>
-          <ExchangeRateDisplay
-            rate={rate?.buy_rate}
-            fromCurrency={fiat}
-            toCurrency={crypto}
-            loading={loading}
-            initialLoading={loading && !rate}
+      <View>
+        <View className="gap-3">
+          <Text className="text-base font-medium text-white/70">You pay</Text>
+          <AmountCard
+            amount={fiatAmount}
+            onChangeAmount={setFiatAmount}
+            rightComponent={<FiatDropdown value={fiat} onChange={setFiat} />}
+            isModal={true}
           />
         </View>
-        <View className="h-[1px] bg-white/10" />
-        <View className="flex-row items-center justify-between px-5 py-5">
-          <Text className="text-base font-medium text-white/70">Max limit self deposit</Text>
-          <Text className="text-base font-semibold text-white">${formatNumber(100000, 0, 0)}</Text>
+
+        <View className="mt-2">
+          <ArrowDivider />
         </View>
-        <View className="h-[1px] bg-white/10" />
-        <View className="flex-row items-center justify-between px-5 py-5">
-          <Text className="text-base font-medium text-white/70">Max limit third party</Text>
-          <Text className="text-base font-semibold text-white">${formatNumber(4000, 0, 0)}</Text>
+
+        <View className="gap-3">
+          <Text className="text-base font-medium text-white/70">You get</Text>
+          <AmountCard
+            amount={cryptoAmount}
+            onChangeAmount={setCryptoAmount}
+            rightComponent={
+              <CryptoDropdown value={crypto} onChange={setCrypto} allowed={allowedCrypto} />
+            }
+            isModal={true}
+          />
         </View>
+      </View>
+
+      <View className="mt-4">
+        <Pressable
+          className="flex-row items-center justify-between px-1"
+          onPress={() => setIsLimitsExpanded(!isLimitsExpanded)}
+        >
+          <View className="flex-row items-center gap-2">
+            <Fuel size={16} color="#A1A1A1" />
+            <Text className="text-base font-medium text-white/70">Fee</Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-base font-bold text-white">0 {crypto.toUpperCase()}</Text>
+            {isLimitsExpanded ? (
+              <ChevronUp size={22} color="white" />
+            ) : (
+              <ChevronDown size={22} color="white" />
+            )}
+          </View>
+        </Pressable>
+
+        {isLimitsExpanded && (
+          <View className="mt-4 overflow-hidden rounded-2xl bg-[#1C1C1C] py-2">
+            <View className="flex-row items-center justify-between px-5 py-5">
+              <Text className="text-base font-medium text-white/70">Ex rate</Text>
+              <ExchangeRateDisplay
+                rate={rate?.buy_rate}
+                fromCurrency={fiat}
+                toCurrency={crypto}
+                loading={loading}
+                initialLoading={loading && !rate}
+              />
+            </View>
+            <View className="h-[1px] bg-white/10" />
+            <View className="flex-row items-center justify-between px-5 py-5">
+              <Text className="text-base font-medium text-white/70">Max limit self deposit</Text>
+              <Text className="text-base font-semibold text-white">No limit</Text>
+            </View>
+            <View className="h-[1px] bg-white/10" />
+            <View className="flex-row items-center justify-between px-5 py-5">
+              <Text className="text-base font-medium text-white/70">Max limit third party</Text>
+              <Text className="text-base font-semibold text-white">
+                ${formatNumber(4000, 0, 0)}
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
 
       {minimumAmountError && (
@@ -166,7 +199,7 @@ const BankTransferAmountModal = () => {
         </Text>
       </Button>
 
-      <View className="items-center">
+      <View className="mt-4 items-center">
         <NeedHelp />
       </View>
     </View>

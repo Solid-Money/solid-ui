@@ -39,7 +39,7 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
       contentClassName="md:max-w-sm"
       trigger={
         <Button
-          className="h-12 rounded-full bg-[#4D4D4D] px-4 text-white"
+          className="h-12 rounded-full bg-white/10 px-4 text-white active:bg-white/20 web:hover:bg-white/20"
           onPress={() => setOpen(true)}
         >
           <View className="flex-row items-center gap-2">

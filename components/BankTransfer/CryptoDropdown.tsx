@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { ChevronDown } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -26,7 +26,7 @@ export default function CryptoDropdown({ value, allowed, onChange }: CryptoDropd
       contentClassName="md:max-w-sm"
       trigger={
         <Button
-          className="h-12 rounded-full bg-[#404040] px-4 text-white"
+          className="h-12 rounded-full bg-white/10 px-4 text-white active:bg-white/20 web:hover:bg-white/20"
           onPress={() => setOpen(true)}
         >
           <View className="flex-row items-center gap-2">
