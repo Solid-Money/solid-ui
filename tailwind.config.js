@@ -110,6 +110,9 @@ module.exports = {
           DEFAULT: 'hsl(var(--purple))',
           hover: 'color-mix(in srgb, hsl(var(--purple)) 90%, white 10%)',
         },
+        'pale-purple': {
+          DEFAULT: 'hsl(var(--pale-purple))',
+        },
         rewards: {
           DEFAULT: 'hsl(var(--rewards))',
           hover: 'color-mix(in srgb, hsl(var(--rewards)) 90%, white 10%)',

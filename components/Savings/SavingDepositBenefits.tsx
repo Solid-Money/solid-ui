@@ -9,7 +9,7 @@ const SavingDepositBenefits = () => {
     <View className="flex-row items-center justify-between gap-x-4 gap-y-5">
       <View className="items-center gap-4 md:items-start">
         <Image
-          source={getAsset('images/deposit-purple.png')}
+          source={getAsset('images/deposit-indigo.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
@@ -19,22 +19,22 @@ const SavingDepositBenefits = () => {
       </View>
       <View className="items-center gap-4 md:items-start">
         <Image
-          source={getAsset('images/withdraw-purple.png')}
-          contentFit="contain"
-          style={{ width: 64, height: 64 }}
-        />
-        <Text className="max-w-24 text-center text-base leading-4 md:max-w-32 md:text-start md:text-2xl md:leading-[29px]">
-          Withdraw anytime
-        </Text>
-      </View>
-      <View className="items-center gap-4 md:items-start">
-        <Image
-          source={getAsset('images/earn-purple.png')}
+          source={getAsset('images/earn-indigo.png')}
           contentFit="contain"
           style={{ width: 64, height: 64 }}
         />
         <Text className="max-w-24 text-center text-base leading-4 md:max-w-32 md:text-start md:text-2xl md:leading-[29px]">
           Earn every second
+        </Text>
+      </View>
+      <View className="items-center gap-4 md:items-start">
+        <Image
+          source={getAsset('images/withdraw-indigo.png')}
+          contentFit="contain"
+          style={{ width: 64, height: 64 }}
+        />
+        <Text className="max-w-24 text-center text-base leading-4 md:max-w-32 md:text-start md:text-2xl md:leading-[29px]">
+          Withdraw anytime
         </Text>
       </View>
     </View>
