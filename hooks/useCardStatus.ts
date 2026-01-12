@@ -6,12 +6,12 @@ import { useQuery } from '@tanstack/react-query';
 const CARD_STATUS = 'cardStatus';
 
 export const useCardStatus = () => {
-  const hasSelectedUser = useUserStore(state => state.users.some(user => user.selected));
+  const selectedUser = useUserStore(state => state.users.find(user => user.selected));
 
   return useQuery({
-    queryKey: [CARD_STATUS],
+    queryKey: [CARD_STATUS, selectedUser?.userId],
     queryFn: () => withRefreshToken(() => getCardStatus()),
     retry: false,
-    enabled: hasSelectedUser,
+    enabled: !!selectedUser,
   });
 };
