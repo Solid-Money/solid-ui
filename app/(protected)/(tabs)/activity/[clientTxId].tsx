@@ -285,7 +285,12 @@ export default function ActivityDetail() {
   });
 
   const finalActivity = activity || backendActivity;
-  const isAnyLoading = isActivitiesLoading || isBackendLoading || isCardTransactionLoading;
+
+  // Check if backend query should be loading but hasn't started yet
+  const isBackendQueryPending =
+    !activity && !isActivitiesLoading && !!clientTxId && !isCardTransaction && !backendActivity;
+  const isAnyLoading =
+    isActivitiesLoading || isBackendLoading || isCardTransactionLoading || isBackendQueryPending;
 
   const isDeposit = finalActivity?.type === TransactionType.DEPOSIT;
   const isEthereum = finalActivity?.chainId === mainnet.id;
@@ -443,27 +448,36 @@ export default function ActivityDetail() {
     return `Question about transaction:\n\nTitle: ${finalActivity.title}\nAmount: ${statusSign}${formatNumber(Number(finalActivity.amount))} ${formatSymbol(finalActivity.symbol)}\nStatus: ${toTitleCase(finalActivity.status)}\nDate: ${format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}\nTransaction ID: ${clientTxId}\n\nMy question: `;
   }, [finalActivity, statusSign, clientTxId]);
 
+  // Show loading if clientTxId is not ready
+  if (!clientTxId) {
+    return (
+      <PageLayout desktopOnly isLoading>
+        <View />
+      </PageLayout>
+    );
+  }
+
   // Card transaction
   if (isCardTransaction && cardTransaction && !isAnyLoading) {
     return <CardTransactionDetail transaction={cardTransaction} />;
   }
 
+  // Loading
+  if (!finalActivity && isAnyLoading) {
+    return (
+      <PageLayout desktopOnly isLoading>
+        <View />
+      </PageLayout>
+    );
+  }
+
   // Not found
-  if (!finalActivity && !isCardTransaction && !isAnyLoading) {
+  if (!finalActivity) {
     return (
       <PageLayout desktopOnly>
         <View className="mx-auto w-full max-w-lg gap-8 px-4 py-8 md:gap-16 md:py-12">
           <Back title={`Transaction ${eclipseAddress(clientTxId)} not found`} />
         </View>
-      </PageLayout>
-    );
-  }
-
-  // Loading
-  if (!finalActivity) {
-    return (
-      <PageLayout desktopOnly isLoading>
-        <View />
       </PageLayout>
     );
   }
