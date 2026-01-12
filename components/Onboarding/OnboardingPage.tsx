@@ -54,7 +54,7 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
 
   return (
     <View
-      className="relative flex-1 items-center justify-between px-8"
+      className="relative flex-1 items-center justify-around px-8"
       style={{ width: screenWidth }}
     >
       {/* Background Image - show for all slides */}
@@ -115,7 +115,10 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
       >
         {data.title && (
           <>
-            <Text style={{ fontSize: titleSize }} className="text-center font-semibold">
+            <Text
+              style={{ fontSize: titleSize }}
+              className="text-center font-semibold leading-[1.1]"
+            >
               {data.title}
             </Text>
             {data.subtitle && (
