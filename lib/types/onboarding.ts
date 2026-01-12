@@ -65,7 +65,7 @@ export const ONBOARDING_DATA: OnboardingPageData[] = [
   },
   {
     id: '4',
-    title: 'Your Stablecoin Super-app',
+    title: 'Your Stablecoin\nSuper-app',
     subtitle: 'Earn more then your bank &\nspend stables everywhere\nwith a Visa Card',
     image: {
       source: require('@/assets/images/solid-wordmark.png'),
