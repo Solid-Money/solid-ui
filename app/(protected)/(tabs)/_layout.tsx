@@ -1,4 +1,4 @@
-import { Tabs, usePathname, useRouter } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { Leaf, Star } from 'lucide-react-native';
 import React from 'react';
 import { Platform } from 'react-native';
@@ -11,14 +11,10 @@ import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
-import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
-import { hasCard } from '@/lib/utils/utils';
 
 export default function TabLayout() {
-  const { data: cardStatus } = useCardStatus();
   const pathname = usePathname();
-  const router = useRouter();
 
   const { isDesktop } = useDimension();
 
@@ -82,14 +78,7 @@ export default function TabLayout() {
         options={{
           title: 'Card',
           headerShown: false,
-          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
-          href: path.CARD_WAITLIST,
-        }}
-        listeners={{
-          tabPress: e => {
-            e.preventDefault();
-            router.push(hasCard(cardStatus) ? path.CARD_DETAILS : path.CARD_WAITLIST);
-          },
+          href: null,
         }}
       />
 
@@ -129,8 +118,9 @@ export default function TabLayout() {
         name="card"
         options={{
           title: 'Card',
+          headerShown: false,
           tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
-          href: null,
+          href: path.CARD,
         }}
       />
       <Tabs.Screen

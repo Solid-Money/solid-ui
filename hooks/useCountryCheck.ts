@@ -8,9 +8,9 @@ import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
-export function useCountryCheck() {
+export function useCountryCheck(options?: { skip?: boolean }) {
   const router = useRouter();
-  const [checkingCountry, setCheckingCountry] = useState(true);
+  const [checkingCountry, setCheckingCountry] = useState(!options?.skip);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const hasChecked = useRef(false);
 
@@ -30,6 +30,13 @@ export function useCountryCheck() {
 
   useEffect(() => {
     const checkCountry = async () => {
+      // If skip is true, don't run country check (e.g., user already has a card)
+      if (options?.skip) {
+        hasChecked.current = true;
+        setCheckingCountry(false);
+        return;
+      }
+
       // If we are already redirecting, do nothing
       if (isRedirecting) return;
 
@@ -226,6 +233,7 @@ export function useCountryCheck() {
     setCountryDetectionFailed,
     checkingCountry,
     isRedirecting,
+    options?.skip,
   ]);
 
   return { checkingCountry };
