@@ -1,6 +1,7 @@
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
 import { createCard } from '@/lib/api';
 import { BridgeCustomerEndorsement, BridgeRejectionReason, CardStatus } from '@/lib/types';
@@ -101,7 +102,7 @@ export function useCardActivation(router: Router) {
       } else {
         // If card is pending, we don't mark as activated and don't redirect.
         // We just invalidate the card status to show the "pending" UI on the same page.
-        queryClient.invalidateQueries({ queryKey: ['cardStatus'] });
+        queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
       }
     } catch (error) {
       console.error('Error activating card:', error);
