@@ -1,8 +1,6 @@
 import { Href } from 'expo-router';
-import { useMemo } from 'react';
 
 import { path } from '@/constants/path';
-import { useCardStatus } from './useCardStatus';
 
 type MenuItem = {
   label: string;
@@ -29,21 +27,14 @@ const points: MenuItem = {
   href: path.POINTS,
 };
 
+const card: MenuItem = {
+  label: 'Card',
+  href: path.CARD,
+};
+
+const menuItems: MenuItem[] = [home, savings, card, points, activity];
+
 const useNav = () => {
-  const { data: cardStatus } = useCardStatus();
-
-  const card: MenuItem = useMemo(
-    () => ({
-      label: 'Card',
-      href: cardStatus?.status ? path.CARD_DETAILS : path.CARD_WAITLIST,
-    }),
-    [cardStatus?.status],
-  );
-
-  const menuItems = useMemo<MenuItem[]>(() => {
-    return [home, savings, card, points, activity];
-  }, [card]);
-
   return {
     menuItems,
   };

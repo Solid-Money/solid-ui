@@ -77,7 +77,7 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
 }
 
 // Visible tabs - these are the main navigation tabs
-const VISIBLE_TAB_NAMES = ['index', 'savings', 'card-onboard', 'activity'];
+const VISIBLE_TAB_NAMES = ['index', 'savings', 'card', 'activity'];
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   // Filter to only show the main visible tabs

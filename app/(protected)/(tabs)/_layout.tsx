@@ -11,23 +11,15 @@ import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
-import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
-import { CardStatus } from '@/lib/types';
 
 export default function TabLayout() {
-  const { data: cardStatus } = useCardStatus();
   const pathname = usePathname();
 
   const { isDesktop } = useDimension();
 
   // Check if current route is any card-related route (card/ or card-onboard/)
   const isCardRouteActive = pathname.startsWith('/card') || pathname.startsWith('/card-onboard');
-
-  const cardHref =
-    cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN
-      ? path.CARD_DETAILS
-      : path.CARD_WAITLIST;
 
   return (
     <Tabs
@@ -86,8 +78,7 @@ export default function TabLayout() {
         options={{
           title: 'Card',
           headerShown: false,
-          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
-          href: cardHref,
+          href: null,
         }}
       />
 
@@ -127,8 +118,9 @@ export default function TabLayout() {
         name="card"
         options={{
           title: 'Card',
+          headerShown: false,
           tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
-          href: null,
+          href: path.CARD,
         }}
       />
       <Tabs.Screen
