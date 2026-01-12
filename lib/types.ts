@@ -1094,3 +1094,34 @@ export interface WhatsNew {
   showOnLoad: boolean;
   createdAt: string;
 }
+
+// SSE Activity Stream Types
+export interface SSEActivityData {
+  event: 'created' | 'updated' | 'deleted';
+  activity: ActivityEvent;
+  timestamp: number;
+}
+
+// SSE Connection States
+export type SSEConnectionState =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'reconnecting'
+  | 'error';
+
+// Webhook Status Types
+export interface WebhookStatus {
+  registered: boolean;
+  registeredChains: number[];
+  registeredAt: Date | null;
+  availableChains: number[];
+}
+
+export interface EnsureWebhookResponse {
+  success: boolean;
+  alreadySubscribed: boolean;
+  registeredChains: number[];
+  failedChains: number[];
+  message: string;
+}

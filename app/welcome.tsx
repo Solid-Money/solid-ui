@@ -42,6 +42,16 @@ export default function Welcome() {
       setLoadingUserId(userId);
       try {
         await handleSelectUserById(userId);
+      } catch (error: any) {
+        // Show error toast if passkey authentication fails
+        Toast.show({
+          type: 'error',
+          text1: 'Authentication failed',
+          text2: error?.message || 'Please try again',
+          props: {
+            badgeText: '',
+          },
+        });
       } finally {
         setLoadingUserId(null);
       }
