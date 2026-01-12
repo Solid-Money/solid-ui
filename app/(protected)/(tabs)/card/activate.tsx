@@ -37,7 +37,7 @@ export default function ActivateMobile() {
     'There was an issue activating your card. Please contact support.';
 
   // Skip country check if user already has a card or just confirmed country
-  const userHasCard = cardStatus !== undefined;
+  const userHasCard = !!cardStatus;
   const skipCountryCheck = countryConfirmed === 'true' || userHasCard;
 
   const {
