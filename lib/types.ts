@@ -10,6 +10,7 @@ import {
 } from '@/constants/modals';
 import { Reward } from '@merkl/api';
 import { Address, Hex } from 'viem';
+import { AssetPath } from './assets';
 
 export interface CountryFromIp {
   countryCode: string;
@@ -1124,4 +1125,9 @@ export interface EnsureWebhookResponse {
   registeredChains: number[];
   failedChains: number[];
   message: string;
+}
+
+export interface Vault {
+  name: string;
+  icon: AssetPath;
 }

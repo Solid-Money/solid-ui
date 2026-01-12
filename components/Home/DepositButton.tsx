@@ -5,13 +5,13 @@ import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 
-const SavingDepositButton = () => {
+const DepositButton = () => {
   const getTrigger = () => {
     return (
       <Button variant="indigo" className="h-[3.375rem] rounded-xl pr-6 md:w-72">
         <View className="flex-row items-center gap-2">
           <Plus color="white" />
-          <Text className="text-lg font-bold text-foreground">Deposit</Text>
+          <Text className="text-lg font-bold text-foreground">Make your first deposit</Text>
         </View>
       </Button>
     );
@@ -20,4 +20,4 @@ const SavingDepositButton = () => {
   return <DepositOptionModal trigger={getTrigger()} />;
 };
 
-export default SavingDepositButton;
+export default DepositButton;

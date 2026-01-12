@@ -236,7 +236,7 @@ function DesktopHeader({
 }: DesktopHeaderProps) {
   return (
     <View className="flex-row justify-between">
-      <Text className="text-3xl font-semibold">Card</Text>
+      <Text className="text-5xl font-semibold">Card</Text>
       <View className="flex-row items-center gap-2">
         <Button
           variant="secondary"

@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     height: 80,
     paddingTop: 4,
     paddingBottom: 10,
-    backgroundColor: 'rgba(18, 18, 18, 1)',
+    backgroundColor: 'rgba(18, 18, 18, 0.7)',
     borderTopWidth: 0,
     position: 'absolute',
     bottom: 0,

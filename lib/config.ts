@@ -137,4 +137,5 @@ export const USER = {
   tokensStorageKey: 'tokens-storage',
   pointsStorageKey: 'points-storage',
   coinStorageKey: 'coin-storage',
+  savingStorageKey: 'saving-storage',
 };

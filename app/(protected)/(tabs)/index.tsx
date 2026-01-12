@@ -2,8 +2,8 @@ import CountUp from '@/components/CountUp';
 import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
+import HomeEmptyState from '@/components/Home/EmptyState';
 import PageLayout from '@/components/PageLayout';
-import SavingsEmptyState from '@/components/Savings/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WalletInfo } from '@/components/Wallet';
@@ -128,7 +128,7 @@ export default function Home() {
   }, [user, intercom]);
 
   if (!balance && !isDeposited && !isBalanceLoading && !isTransactionsLoading && !hasTokens) {
-    return <SavingsEmptyState />;
+    return <HomeEmptyState />;
   }
 
   return (
