@@ -12,6 +12,8 @@ interface ActivityState {
   upsertEvent: (userId: string, event: ActivityEvent) => void;
   bulkUpsertEvent: (userId: string, events: ActivityEvent[]) => void;
   removeEvents: () => void;
+  markDeleted: (userId: string, clientTxId: string, deletedAt: Date) => void;
+  removeActivity: (userId: string, clientTxId: string) => void;
 }
 
 // Helper to check if two events are the same
@@ -84,6 +86,42 @@ export const useActivityStore = create<ActivityState>()(
         set(
           produce(state => {
             state.events = {};
+          }),
+        );
+      },
+
+      markDeleted: (userId: string, clientTxId: string, deletedAt: Date) => {
+        if (!userId || !clientTxId || !deletedAt) return;
+
+        set(
+          produce(state => {
+            if (!state.events[userId]) return;
+
+            const existingIndex = state.events[userId].findIndex(
+              (e: ActivityEvent) => e.clientTxId === clientTxId,
+            );
+
+            if (existingIndex !== -1) {
+              state.events[userId][existingIndex] = {
+                ...state.events[userId][existingIndex],
+                deleted: true,
+                deletedAt: deletedAt.toISOString(),
+              };
+            }
+          }),
+        );
+      },
+
+      removeActivity: (userId: string, clientTxId: string) => {
+        if (!userId || !clientTxId) return;
+
+        set(
+          produce(state => {
+            if (!state.events[userId]) return;
+
+            state.events[userId] = state.events[userId].filter(
+              (e: ActivityEvent) => e.clientTxId !== clientTxId,
+            );
           }),
         );
       },

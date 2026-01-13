@@ -159,6 +159,8 @@ export function useActivity() {
     if (!user?.userId || !events[user.userId]) return [];
     return [...events[user.userId]]
       .filter(activity => {
+        // Guard against corrupted data (undefined/null elements in array)
+        if (!activity) return false;
         // Filter out deleted activities
         if (activity.deleted) return false;
         // Filter out expired direct deposits
@@ -192,8 +194,14 @@ export function useActivity() {
     if (!user?.userId || !activityData) return;
 
     const events = activityData.pages
-      .flatMap(page => page?.docs.map(tx => constructActivity(tx, user.safeAddress)))
-      .filter((event): event is ActivityEvent => event !== undefined);
+      .flatMap(page => {
+        // Guard against undefined/null pages or docs
+        if (!page?.docs || !Array.isArray(page.docs)) return [];
+        return page.docs
+          .filter((tx): tx is ActivityEvent => tx != null)
+          .map(tx => constructActivity(tx, user.safeAddress));
+      })
+      .filter((event): event is ActivityEvent => event != null);
     if (!events.length) return;
 
     bulkUpsertEvent(user.userId, events);
