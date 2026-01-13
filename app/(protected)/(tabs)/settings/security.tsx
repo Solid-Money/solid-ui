@@ -173,10 +173,9 @@ export default function Security() {
         customMobileHeader={mobileHeader}
         customDesktopHeader={desktopHeader}
         useDesktopBreakpoint
-        scrollable={false}
       >
         <View
-          className={cn('mx-auto w-full flex-1 px-4 py-4', {
+          className={cn('mx-auto w-full px-4 py-4 pb-32', {
             'max-w-[512px]': isDesktop,
             'max-w-7xl': !isDesktop,
           })}
