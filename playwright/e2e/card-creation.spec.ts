@@ -158,8 +158,8 @@ test.describe('Card Creation Flow - With Mocking', () => {
       });
     });
 
-    // Navigate to the card activate page
-    await page.goto('/card/activate?countryConfirmed=true');
+    // Navigate to the card activate page (without countryConfirmed to trigger country check)
+    await page.goto('/card/activate');
 
     // Wait for redirect to country selection
     await page.waitForURL('**/card-onboard/country_selection**', { timeout: 15000 });
@@ -895,6 +895,27 @@ test.describe('Card Creation Flow - With Mocking', () => {
       });
     });
 
+    // Mock IP detection API (ipify)
+    await page.route('**/api.ipify.org/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ip: '8.8.8.8' }), // US IP
+      });
+    });
+
+    // Mock country from IP API (ipapi.co)
+    await page.route('**/ipapi.co/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          country_code: 'US',
+          country_name: 'United States',
+        }),
+      });
+    });
+
     // Mock KYC link for existing customer - this is the endpoint that creates
     // a new KYC link with the cards endorsement for existing customers
     await page.route('**/accounts/v1/bridge-customer/kyc-link**', async route => {
@@ -927,10 +948,11 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // Click the Complete KYC button to trigger the re-enrollment flow
     await kycButton.click();
 
-    // Give time for the API call to be made
-    await page.waitForTimeout(2000);
-
     // Verify either the KYC link endpoint was called OR user is redirected to user-kyc-info
+    if (!kycLinkRequestMade) {
+      await page.waitForURL('**/user-kyc-info**', { timeout: 10000 });
+    }
+    
     // (The flow may go to collect user info first if existing customer link fails)
     const currentUrl = page.url();
     const redirectedToKycInfo = currentUrl.includes('user-kyc-info');
@@ -1093,7 +1115,9 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForTimeout(3000);
   });
 
-  test('should block user when endorsement has region restriction issue', async ({ page }) => {
+  test('should allow user to retry KYC when endorsement has region restriction issue', async ({
+    page,
+  }) => {
     await page.route('**/accounts/v1/cards/status', async route => {
       await route.fulfill({
         status: 404,
@@ -1119,7 +1143,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           id: 'kyc_link_123',
-          kyc_link: 'https://bridge.xyz/kyc/blocked',
+          kyc_link: 'https://bridge.xyz/kyc/retry',
           kyc_status: 'approved',
         }),
       });
@@ -1152,10 +1176,443 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // User should see Complete KYC but clicking shouldn't proceed (blocked by region)
-    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
+    // User should see Retry KYC button and can proceed (user may have another nationality)
+    await expect(page.getByText('Retry KYC').first()).toBeVisible({ timeout: 15000 });
 
     await page.waitForTimeout(3000);
+  });
+
+  test('should allow Retry KYC button click for region-restricted user', async ({ page }) => {
+    await page.route('**/accounts/v1/cards/status', async route => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify(null),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/check-access**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          hasAccess: true,
+          countryCode: 'US',
+        }),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/kyc/kyc-link-from-bridge/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'kyc_link_123',
+          kyc_link: 'https://bridge.xyz/kyc/retry',
+          kyc_status: 'approved',
+        }),
+      });
+    });
+
+    // Mock with revoked endorsement due to region restriction
+    await page.route('**/accounts/v1/bridge-customer/get-customer-from-bridge', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'cust_123',
+          endorsements: [
+            {
+              name: 'cards',
+              status: 'revoked',
+              requirements: {
+                complete: [],
+                pending: [],
+                missing: {},
+                issues: ['endorsement_not_available_in_customers_region'],
+              },
+            },
+          ],
+        }),
+      });
+    });
+
+    // Track if KYC link endpoint is called when button is clicked
+    let kycLinkRequested = false;
+
+    // Mock IP detection API (ipify)
+    await page.route('**/api.ipify.org/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ip: '8.8.8.8' }), // US IP
+      });
+    });
+
+    // Mock country from IP API (ipapi.co)
+    await page.route('**/ipapi.co/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          country_code: 'US',
+          country_name: 'United States',
+        }),
+      });
+    });
+
+    await page.route('**/accounts/v1/bridge-customer/kyc-link**', async route => {
+      kycLinkRequested = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          url: 'https://bridge.xyz/kyc/new-attempt',
+        }),
+      });
+    });
+
+    await page.goto('/card/activate?countryConfirmed=true');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Verify "Retry KYC" button is visible and enabled
+    const retryButton = page.getByRole('button', { name: /Retry KYC/i });
+    await expect(retryButton).toBeVisible({ timeout: 15000 });
+    await expect(retryButton).toBeEnabled();
+
+    // Click the button - should proceed to KYC flow (not blocked by region restriction)
+    await retryButton.click();
+
+    // Verify flow proceeded: either KYC link was requested or user was redirected to collect info
+    if (!kycLinkRequested) {
+      await page.waitForURL('**/user-kyc-info**', { timeout: 10000 });
+    }
+    
+    const redirectedToKycInfo = page.url().includes('user-kyc-info');
+    expect(kycLinkRequested || redirectedToKycInfo).toBe(true);
+  });
+
+  test('should allow Complete KYC button click for incomplete endorsement with region restriction', async ({
+    page,
+  }) => {
+    await page.route('**/accounts/v1/cards/status', async route => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify(null),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/check-access**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          hasAccess: true,
+          countryCode: 'US',
+        }),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/kyc/kyc-link-from-bridge/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'kyc_link_123',
+          kyc_link: 'https://bridge.xyz/kyc/incomplete',
+          kyc_status: 'not_started',
+        }),
+      });
+    });
+
+    // Mock with incomplete endorsement with region restriction AND missing requirements
+    await page.route('**/accounts/v1/bridge-customer/get-customer-from-bridge', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'cust_123',
+          endorsements: [
+            {
+              name: 'cards',
+              status: 'incomplete',
+              requirements: {
+                complete: ['full_name'],
+                pending: [],
+                missing: { address: 'Address is required' },
+                issues: ['endorsement_not_available_in_customers_region'],
+              },
+            },
+          ],
+        }),
+      });
+    });
+
+    // Track if KYC link endpoint is called when button is clicked
+    let kycLinkRequested = false;
+
+    // Mock IP detection API (ipify)
+    await page.route('**/api.ipify.org/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ip: '8.8.8.8' }), // US IP
+      });
+    });
+
+    // Mock country from IP API (ipapi.co)
+    await page.route('**/ipapi.co/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          country_code: 'US',
+          country_name: 'United States',
+        }),
+      });
+    });
+
+    await page.route('**/accounts/v1/bridge-customer/kyc-link**', async route => {
+      kycLinkRequested = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          url: 'https://bridge.xyz/kyc/complete-info',
+        }),
+      });
+    });
+
+    await page.goto('/card/activate?countryConfirmed=true');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Verify "Complete KYC" button is visible and enabled (not blocked by region restriction)
+    const completeButton = page.getByRole('button', { name: /Complete KYC/i });
+    await expect(completeButton).toBeVisible({ timeout: 15000 });
+    await expect(completeButton).toBeEnabled();
+
+    // Click the button - should proceed to KYC flow
+    await completeButton.click();
+
+    // Verify flow proceeded
+    if (!kycLinkRequested) {
+      await page.waitForURL('**/user-kyc-info**', { timeout: 10000 });
+    }
+    
+    const redirectedToKycInfo = page.url().includes('user-kyc-info');
+    expect(kycLinkRequested || redirectedToKycInfo).toBe(true);
+  });
+
+  test('should show under review state and no actionable button when endorsement has pending items', async ({
+    page,
+  }) => {
+    await page.route('**/accounts/v1/cards/status', async route => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify(null),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/check-access**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          hasAccess: true,
+          countryCode: 'US',
+        }),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/kyc/kyc-link-from-bridge/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'kyc_link_123',
+          kyc_link: 'https://bridge.xyz/kyc/pending',
+          kyc_status: 'under_review',
+        }),
+      });
+    });
+
+    // Mock with incomplete endorsement with pending review items
+    await page.route('**/accounts/v1/bridge-customer/get-customer-from-bridge', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'cust_123',
+          endorsements: [
+            {
+              name: 'cards',
+              status: 'incomplete',
+              requirements: {
+                complete: ['full_name', 'address'],
+                pending: ['document_verification', 'selfie_verification'],
+                missing: {},
+                issues: [],
+              },
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto('/card/activate?countryConfirmed=true');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Verify under review UI is shown (user should wait, no action required)
+    await expect(page.getByText('Your card is on its way!')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/being verified/i)).toBeVisible({ timeout: 5000 });
+
+    // Verify there's no "Complete KYC" or "Retry KYC" button (user cannot take action)
+    await expect(page.getByRole('button', { name: /Complete KYC/i })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /Retry KYC/i })).not.toBeVisible();
+  });
+
+  test('should enable Retry KYC button for revoked endorsement without region restriction', async ({
+    page,
+  }) => {
+    await page.route('**/accounts/v1/cards/status', async route => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify(null),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/check-access**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          hasAccess: true,
+          countryCode: 'US',
+        }),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/kyc/kyc-link-from-bridge/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'kyc_link_123',
+          kyc_link: 'https://bridge.xyz/kyc/revoked',
+          kyc_status: 'rejected',
+        }),
+      });
+    });
+
+    // Mock with revoked endorsement (expired, not region restricted)
+    await page.route('**/accounts/v1/bridge-customer/get-customer-from-bridge', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'cust_123',
+          endorsements: [
+            {
+              name: 'cards',
+              status: 'revoked',
+              requirements: {
+                complete: ['full_name', 'address'],
+                pending: [],
+                missing: {},
+                issues: ['id_expired'],
+              },
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto('/card/activate?countryConfirmed=true');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Verify "Retry KYC" button is visible and enabled
+    const retryButton = page.getByRole('button', { name: /Retry KYC/i });
+    await expect(retryButton).toBeVisible({ timeout: 15000 });
+    await expect(retryButton).toBeEnabled();
+  });
+
+  test('should enable Complete KYC button despite missing requirements', async ({ page }) => {
+    await page.route('**/accounts/v1/cards/status', async route => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify(null),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/check-access**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          hasAccess: true,
+          countryCode: 'US',
+        }),
+      });
+    });
+
+    await page.route('**/accounts/v1/cards/kyc/kyc-link-from-bridge/**', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'kyc_link_123',
+          kyc_link: 'https://bridge.xyz/kyc/incomplete',
+          kyc_status: 'not_started',
+        }),
+      });
+    });
+
+    // Mock with incomplete endorsement with multiple missing requirements
+    await page.route('**/accounts/v1/bridge-customer/get-customer-from-bridge', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'cust_123',
+          endorsements: [
+            {
+              name: 'cards',
+              status: 'incomplete',
+              requirements: {
+                complete: ['full_name'],
+                pending: [],
+                missing: {
+                  address: 'Address is required',
+                  ssn_last_4: 'Last 4 digits of SSN required',
+                  date_of_birth: 'Date of birth required',
+                },
+                issues: [],
+              },
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto('/card/activate?countryConfirmed=true');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Verify missing requirements are displayed
+    await expect(page.getByText(/Missing/i)).toBeVisible({ timeout: 15000 });
+
+    // Verify "Complete KYC" button is visible and enabled (not disabled due to missing fields)
+    const completeButton = page.getByRole('button', { name: /Complete KYC/i });
+    await expect(completeButton).toBeVisible();
+    await expect(completeButton).toBeEnabled();
   });
 
   test('should show verification expired message for revoked endorsement with rejection reasons', async ({

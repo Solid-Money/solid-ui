@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 
 // Import helpers
-import { processCardsEndorsement } from './endorsementHelpers';
+import { shouldStopKycFlow } from './endorsementHelpers';
 import {
   checkAndBlockForCountryAccess,
   redirectToCollectUserInfo,
@@ -113,22 +113,28 @@ export function useCardSteps(
           return;
         }
 
+        // KYC link approved, but we need to check cards endorsement status
+        // (KYC approval ≠ cards endorsement approval - they can differ)
         if (latestStatus === KycStatus.APPROVED) {
           const latestCustomer = await withRefreshToken(() => getCustomerFromBridge());
           const latestCardsEndorsement = latestCustomer?.endorsements?.find(
             e => e.name === 'cards',
           );
 
-          if (
-            processCardsEndorsement(
-              latestCardsEndorsement,
-              kycLinkId,
-              latestCustomer?.rejection_reasons,
-            )
-          ) {
-            return;
-          }
+          // Check cards endorsement status:
+          // - APPROVED: stop - user can order card
+          // - PENDING REVIEW: stop - user should wait
+          // - REVOKED/INCOMPLETE/None: continue - user needs to retry KYC for cards
+          const stopFlow = shouldStopKycFlow(
+            latestCardsEndorsement,
+            kycLinkId,
+            latestCustomer?.rejection_reasons,
+          );
 
+          if (stopFlow) return;
+
+          // Edge case: KYC approved but cards endorsement not approved
+          // Redirect user to complete KYC specifically for cards endorsement
           track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
             action: 'approved_missing_endorsement',
             kycLinkId,

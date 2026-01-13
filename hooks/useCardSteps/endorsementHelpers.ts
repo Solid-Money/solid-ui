@@ -6,7 +6,6 @@ import {
   BridgeEndorsementIssue,
   BridgeRejectionReason,
 } from '@/lib/types';
-import Toast from 'react-native-toast-message';
 
 // ============================================================================
 // Issue Formatting Functions
@@ -63,18 +62,6 @@ function buildIssueMessage(
 }
 
 /**
- * Check if issues contain a region restriction
- */
-function hasRegionRestriction(issues: BridgeEndorsementIssue[]): boolean {
-  return issues.some(
-    issue =>
-      (typeof issue === 'string' && issue.toLowerCase().includes('region')) ||
-      (typeof issue === 'object' &&
-        Object.values(issue).some(v => v.toLowerCase().includes('region'))),
-  );
-}
-
-/**
  * Build a user-friendly message for incomplete endorsement requirements
  */
 export function buildIncompleteEndorsementMessage(
@@ -118,31 +105,27 @@ export function canOrderCard(cardsEndorsement: BridgeCustomerEndorsement | undef
 }
 
 // ============================================================================
-// Endorsement Status Handlers
+// Analytics Tracking Functions
 // ============================================================================
 
 /**
- * Handle approved cards endorsement
- * @returns true if flow should stop (user can order card)
+ * Track analytics for approved cards endorsement
  */
-export function handleApprovedEndorsement(kycLinkId: string | null): boolean {
+function trackApprovedEndorsement(kycLinkId: string | null): void {
   track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
     action: 'blocked',
     reason: 'approved_with_endorsement',
     kycLinkId,
   });
-  // Step description shows "Identity verification complete" message
-  return true;
 }
 
 /**
- * Handle endorsement with pending review - stop flow (user should wait)
- * @returns true to stop the flow (user should wait)
+ * Track analytics for endorsement with pending review
  */
-export function handlePendingReviewEndorsement(
+function trackPendingReviewEndorsement(
   cardsEndorsement: BridgeCustomerEndorsement,
   kycLinkId: string | null,
-): boolean {
+): void {
   const pendingItems = cardsEndorsement.requirements?.pending || [];
 
   track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
@@ -150,20 +133,16 @@ export function handlePendingReviewEndorsement(
     kycLinkId,
     pendingItems,
   });
-
-  // Step description shows "Your information is being reviewed" message
-  return true; // Stop flow - user should wait
 }
 
 /**
- * Handle revoked cards endorsement
- * @returns true if blocked (region restriction), false to continue to KYC link
+ * Track analytics for revoked cards endorsement
  */
-export function handleRevokedEndorsement(
+function trackRevokedEndorsement(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
   kycLinkId: string | null,
   rejectionReasons?: BridgeRejectionReason[],
-): boolean {
+): void {
   const issues = cardsEndorsement?.requirements?.issues || [];
 
   track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
@@ -172,31 +151,16 @@ export function handleRevokedEndorsement(
     issues: issues.map(i => (typeof i === 'string' ? i : Object.keys(i).join(','))),
     hasRejectionReasons: Boolean(rejectionReasons?.length),
   });
-
-  // Check if revoked due to region restriction - can't proceed
-  if (hasRegionRestriction(issues)) {
-    Toast.show({
-      type: 'error',
-      text1: 'Region not supported',
-      text2: 'Card service is not available in your region.',
-      props: { badgeText: '' },
-    });
-    return true;
-  }
-
-  // Step description shows rejection reasons or expiry message
-  return false; // Continue to KYC link
 }
 
 /**
- * Handle incomplete cards endorsement with missing requirements
- * @returns true if blocked (region restriction), false to continue to KYC link
+ * Track analytics for incomplete cards endorsement with missing requirements
  */
-export function handleIncompleteEndorsement(
+function trackIncompleteEndorsement(
   cardsEndorsement: BridgeCustomerEndorsement,
   kycLinkId: string | null,
   rejectionReasons?: BridgeRejectionReason[],
-): boolean {
+): void {
   const requirements = cardsEndorsement.requirements;
   const missingKeys = requirements?.missing ? Object.keys(requirements.missing) : [];
   const issues = requirements?.issues || [];
@@ -208,15 +172,6 @@ export function handleIncompleteEndorsement(
     issues: issues.map(i => (typeof i === 'string' ? i : Object.keys(i).join(','))),
     hasRejectionReasons: Boolean(rejectionReasons?.length),
   });
-
-  // Check for region restriction - can't proceed
-  if (hasRegionRestriction(issues)) {
-    // Step description shows "Card service is not available in your region" message
-    return true;
-  }
-
-  // Step description shows missing requirements and issues
-  return false; // Continue to KYC link
 }
 
 // ============================================================================
@@ -224,34 +179,40 @@ export function handleIncompleteEndorsement(
 // ============================================================================
 
 /**
- * Process cards endorsement status and handle accordingly
- * @param cardsEndorsement - The cards endorsement object
- * @param kycLinkId - KYC link ID for tracking
- * @param rejectionReasons - Optional rejection reasons from customer (prioritized for messaging)
- * @returns true if the flow should stop (approved, pending review, or blocked), false to continue to KYC
+ * Determines if the KYC flow should stop based on endorsement status.
+ * Also tracks analytics for each endorsement state.
+ *
+ * @returns true if flow should STOP (approved or pending review), false to CONTINUE to KYC
  */
-export function processCardsEndorsement(
+export function shouldStopKycFlow(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
   kycLinkId: string | null,
   rejectionReasons?: BridgeRejectionReason[],
 ): boolean {
-  // Only approved endorsement allows card ordering
+  // APPROVED: Stop - user can order card, no need for KYC
   if (cardsEndorsement?.status === EndorsementStatus.APPROVED) {
-    return handleApprovedEndorsement(kycLinkId);
+    trackApprovedEndorsement(kycLinkId);
+    return true;
   }
 
+  // REVOKED: Continue - user can retry KYC with another nationality
   if (cardsEndorsement?.status === EndorsementStatus.REVOKED) {
-    return handleRevokedEndorsement(cardsEndorsement, kycLinkId, rejectionReasons);
+    trackRevokedEndorsement(cardsEndorsement, kycLinkId, rejectionReasons);
+    return false;
   }
 
+  // INCOMPLETE: Check if pending review or needs action
   if (cardsEndorsement?.status === EndorsementStatus.INCOMPLETE) {
-    // Check if there are pending items (under review)
     if (hasEndorsementPendingReview(cardsEndorsement)) {
-      return handlePendingReviewEndorsement(cardsEndorsement, kycLinkId);
+      // Pending review: Stop - user should wait
+      trackPendingReviewEndorsement(cardsEndorsement, kycLinkId);
+      return true;
     }
-    // Otherwise, there are missing requirements - direct user to KYC
-    return handleIncompleteEndorsement(cardsEndorsement, kycLinkId, rejectionReasons);
+    // Missing requirements: Continue - user can complete KYC
+    trackIncompleteEndorsement(cardsEndorsement, kycLinkId, rejectionReasons);
+    return false;
   }
 
-  return false; // No endorsement or unknown status, continue to KYC
+  // No endorsement or unknown status: Continue to KYC
+  return false;
 }
