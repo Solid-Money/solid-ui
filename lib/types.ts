@@ -373,6 +373,11 @@ export type LayerZeroTransaction = {
     status: {
       name: LayerZeroTransactionStatus;
     };
+    destination?: {
+      tx?: {
+        txHash: string;
+      };
+    };
   }[];
 };
 

@@ -6,8 +6,22 @@ export interface LayerzeroTransactionResponse {
       name: string;
       message: string;
     };
+    destination?: {
+      tx?: {
+        txHash: string;
+      };
+    };
   }[];
 }
+
+export const getLayerZeroTransaction = async (
+  txHash: string,
+): Promise<LayerzeroTransactionResponse> => {
+  const response = await axios.get<LayerzeroTransactionResponse>(
+    `https://scan.layerzero-api.com/v1/messages/tx/${txHash}`,
+  );
+  return response.data;
+};
 
 export const waitForLayerzeroTransaction = async (
   txHash: string,
@@ -18,11 +32,7 @@ export const waitForLayerzeroTransaction = async (
 
     const poll = async (retryCount = 0): Promise<void> => {
       try {
-        const response = await axios.get<LayerzeroTransactionResponse>(
-          `https://scan.layerzero-api.com/v1/messages/tx/${txHash}`,
-        );
-
-        const data = response.data;
+        const data = await getLayerZeroTransaction(txHash);
 
         // Check if any transaction has DELIVERED status
         const isDelivered = data.data?.some(
