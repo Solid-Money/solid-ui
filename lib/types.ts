@@ -1097,11 +1097,20 @@ export interface WhatsNew {
 }
 
 // SSE Activity Stream Types
+export interface SSEPingData {
+  timestamp: number;
+}
+
 export interface SSEActivityData {
   event: 'created' | 'updated' | 'deleted';
+  userId: string;
   activity: ActivityEvent;
   timestamp: number;
 }
+
+export type SSEEventData =
+  | { type: 'ping'; data: SSEPingData }
+  | { type: 'activity'; data: SSEActivityData };
 
 // SSE Connection States
 export type SSEConnectionState =

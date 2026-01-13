@@ -3,7 +3,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
 
 import { getActivityStreamUrl, refreshToken } from '@/lib/api';
-import { ActivityEvent, SSEActivityData, SSEConnectionState } from '@/lib/types';
+import {
+  ActivityEvent,
+  SSEActivityData,
+  SSEConnectionState,
+  SSEEventData,
+  SSEPingData,
+} from '@/lib/types';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -324,23 +330,87 @@ class SSEConnectionManager {
   }
 
   /**
-   * Handle incoming activity event
+   * Handle incoming ping event (heartbeat)
+   */
+  private handlePing(data: SSEPingData): void {
+    this.setState({ lastHeartbeat: Date.now() });
+
+    // Optional: track server time drift
+    if (data.timestamp && typeof data.timestamp === 'number') {
+      const drift = Date.now() - data.timestamp;
+      if (Math.abs(drift) > 5000) {
+        console.warn('Server time drift detected:', drift, 'ms');
+      }
+    }
+  }
+
+  /**
+   * Handle incoming activity event with validation
    */
   private handleActivityEvent(data: SSEActivityData): void {
     if (!this.currentUserId) return;
 
+    // Validate required fields before processing
+    if (!data || typeof data !== 'object') {
+      console.warn('Received malformed SSE activity data:', data);
+      Sentry.captureMessage('Received malformed SSE activity data', {
+        level: 'warning',
+        tags: { type: 'sse_malformed_activity' },
+        extra: { data },
+      });
+      return;
+    }
+
+    if (!data.event || !['created', 'updated', 'deleted'].includes(data.event)) {
+      console.warn('Received SSE event with invalid event type:', data.event);
+      Sentry.captureMessage('Invalid SSE event type', {
+        level: 'warning',
+        tags: { type: 'sse_invalid_event_type' },
+        extra: { event: data.event, data },
+      });
+      return;
+    }
+
+    if (!data.activity || typeof data.activity !== 'object') {
+      console.warn('Received SSE event with invalid activity:', data);
+      Sentry.captureMessage('Invalid SSE activity object', {
+        level: 'warning',
+        tags: { type: 'sse_invalid_activity' },
+        extra: { data, hasActivity: !!data.activity, activityType: typeof data.activity },
+      });
+      return;
+    }
+
+    if (!data.activity.clientTxId || typeof data.activity.clientTxId !== 'string') {
+      console.warn('Received SSE activity without clientTxId:', data);
+      Sentry.captureMessage('SSE activity missing clientTxId', {
+        level: 'warning',
+        tags: { type: 'sse_missing_client_tx_id' },
+        extra: { data },
+      });
+      return;
+    }
+
     const { event, activity, timestamp } = data;
     const { upsertEvent } = useActivityStore.getState();
 
-    if (event === 'deleted') {
-      const deletedActivity: ActivityEvent = {
-        ...activity,
-        deleted: true,
-        deletedAt: new Date(timestamp).toISOString(),
-      };
-      upsertEvent(this.currentUserId, deletedActivity);
-    } else {
-      upsertEvent(this.currentUserId, activity);
+    // Process based on event type
+    switch (event) {
+      case 'created':
+      case 'updated':
+        upsertEvent(this.currentUserId, activity);
+        break;
+
+      case 'deleted':
+        // Deleted events have minimal activity payload
+        // { clientTxId, deleted: true, deletedAt: Date }
+        const deletedActivity: ActivityEvent = {
+          ...activity,
+          deleted: true,
+          deletedAt: activity.deletedAt || new Date(timestamp).toISOString(),
+        };
+        upsertEvent(this.currentUserId, deletedActivity);
+        break;
     }
 
     this.setState({ lastEventTime: timestamp });
@@ -465,8 +535,44 @@ class SSEConnectionManager {
             // Data events also count as proof of live connection
             this.setState({ lastHeartbeat: Date.now() });
             try {
-              const eventData = JSON.parse(parsed.data) as SSEActivityData;
-              this.handleActivityEvent(eventData);
+              const rawData = JSON.parse(parsed.data);
+
+              // Check if this is the new format with 'type' field or old format
+              if (rawData && typeof rawData === 'object' && 'type' in rawData) {
+                // New format: { type: 'ping' | 'activity', data: {...} }
+                const eventData = rawData as SSEEventData;
+
+                switch (eventData.type) {
+                  case 'ping':
+                    this.handlePing(eventData.data);
+                    break;
+
+                  case 'activity':
+                    this.handleActivityEvent(eventData.data);
+                    break;
+
+                  default:
+                    console.warn('Unknown SSE event type:', eventData);
+                    Sentry.captureMessage('Unknown SSE event type', {
+                      level: 'warning',
+                      tags: { type: 'sse_unknown_event_type' },
+                      extra: { eventData },
+                    });
+                }
+              } else if (rawData && typeof rawData === 'object') {
+                // Old format - backward compatibility
+                // Check if it's a ping (has only timestamp) or activity (has event, activity fields)
+                if ('timestamp' in rawData && Object.keys(rawData).length === 1) {
+                  // Old ping format: { timestamp: number }
+                  this.handlePing(rawData as SSEPingData);
+                } else if ('event' in rawData && 'activity' in rawData) {
+                  // Old activity format: { event: ..., activity: ..., timestamp: ... }
+                  this.handleActivityEvent(rawData as SSEActivityData);
+                } else {
+                  console.warn('Unknown SSE event format:', rawData);
+                }
+              }
+
               // Reset parse error counter on successful parse
               this.consecutiveParseErrors = 0;
             } catch (parseError) {
@@ -489,7 +595,7 @@ class SSEConnectionManager {
                   extra: { consecutiveErrors: this.consecutiveParseErrors },
                 });
                 this.reconnect();
-                // Exit the read loop - the finally block (line 479-490) will handle cleanup
+                // Exit the read loop - the finally block will handle cleanup
                 // including releasing the reader lock before reconnecting
                 return;
               }
