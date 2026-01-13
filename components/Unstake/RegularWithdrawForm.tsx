@@ -323,9 +323,15 @@ const RegularWithdrawForm = () => {
                 </View>
                 <Button
                   variant="brand"
-                  className={cn('h-[48px] rounded-[12px]', activeStep !== 1 && 'bg-white/10')}
+                  className={cn(
+                    'h-[48px] rounded-[12px]',
+                    activeStep !== 1 && 'bg-white/10',
+                    activeStep !== 1
+                      ? 'web:disabled:hover:bg-white/10'
+                      : 'web:disabled:hover:bg-brand',
+                  )}
                   onPress={handleSubmit(onBridgeSubmit)}
-                  disabled={isWithdrawFormDisabled() || activeStep !== 1}
+                  disabled={isWithdrawFormDisabled() || activeStep !== 1 || isBridgeLoading}
                 >
                   {isBridgeLoading ? (
                     <ActivityIndicator color="gray" />
@@ -346,7 +352,7 @@ const RegularWithdrawForm = () => {
                           activeStep !== 1 ? 'text-white/50' : 'text-primary-foreground',
                         )}
                       >
-                        Withdraw
+                        Bridge
                       </Text>
                     </View>
                   )}
@@ -369,16 +375,22 @@ const RegularWithdrawForm = () => {
                         })}
                         size={22}
                       />
-                      <Text className="text-base font-bold text-white">Swap to USDC</Text>
+                      <Text className="text-base font-bold text-white">Withdraw to USDC</Text>
                     </View>
                     <Text className="text-base font-medium text-muted-foreground">Up to 24H</Text>
                   </View>
                 </View>
                 <Button
                   variant="brand"
-                  className={cn('h-[48px] rounded-[12px]', activeStep !== 2 && 'bg-white/10')}
+                  className={cn(
+                    'h-[48px] rounded-[12px]',
+                    activeStep !== 2 && 'bg-white/10',
+                    activeStep !== 2
+                      ? 'web:disabled:hover:bg-white/10'
+                      : 'web:disabled:hover:bg-brand',
+                  )}
                   onPress={handleSubmit(onSwapSubmit)}
-                  disabled={activeStep !== 2 || isWithdrawFormDisabled()}
+                  disabled={activeStep !== 2 || isWithdrawFormDisabled() || isWithdrawLoading}
                 >
                   {isWithdrawLoading ? (
                     <ActivityIndicator color="gray" />
@@ -399,7 +411,7 @@ const RegularWithdrawForm = () => {
                           activeStep !== 2 ? 'text-white/50' : 'text-primary-foreground',
                         )}
                       >
-                        Swap
+                        Withdraw
                       </Text>
                     </View>
                   )}
@@ -419,16 +431,16 @@ const RegularWithdrawForm = () => {
                       })}
                       size={22}
                     />
-                    <Text className="text-base font-bold text-white">Swap to USDC</Text>
+                    <Text className="text-base font-bold text-white">Withdraw to USDC</Text>
                   </View>
                   <Text className="text-base font-medium text-muted-foreground">Up to 24H</Text>
                 </View>
               </View>
               <Button
                 variant="brand"
-                className="h-[48px] rounded-[12px]"
+                className="h-[48px] rounded-[12px] web:disabled:hover:bg-brand"
                 onPress={handleSubmit(onSwapSubmit)}
-                disabled={isWithdrawFormDisabled()}
+                disabled={isWithdrawFormDisabled() || isWithdrawLoading}
               >
                 {isWithdrawLoading ? (
                   <ActivityIndicator color="gray" />
@@ -439,7 +451,7 @@ const RegularWithdrawForm = () => {
                       className="h-6 w-6"
                       contentFit="contain"
                     />
-                    <Text className="text-base font-bold text-primary-foreground">Swap</Text>
+                    <Text className="text-base font-bold text-primary-foreground">Withdraw</Text>
                   </View>
                 )}
               </Button>
