@@ -1,7 +1,7 @@
-import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect } from 'react';
-import { Platform } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
+import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
+import { lazy, Suspense, useCallback, useEffect } from 'react';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { readContractQueryOptions } from 'wagmi/query';
@@ -10,7 +10,6 @@ import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
 } from '@/components/BankTransfer/enums';
-import Loading from '@/components/Loading';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
@@ -22,12 +21,15 @@ import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
 import { useWebhookStatus } from '@/hooks/useWebhookStatus';
-import { trackIdentity } from '@/lib/analytics';
 import FuseVault from '@/lib/abis/FuseVault';
+import { trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { config } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
+
+// Lazy load Loading component - only used during hydration
+const Loading = lazy(() => import('@/components/Loading'));
 
 export default function ProtectedLayout() {
   const { user } = useUser();
@@ -146,7 +148,17 @@ export default function ProtectedLayout() {
   // This prevents incorrect redirects when users array is empty during hydration
   // Show loading state to improve FCP (vs returning null which blocks paint)
   if (!_hasHydrated) {
-    return <Loading />;
+    return (
+      <Suspense
+        fallback={
+          <View className="h-full flex-1 items-center justify-center bg-background">
+            <ActivityIndicator size="large" color="#cccccc" />
+          </View>
+        }
+      >
+        <Loading />
+      </Suspense>
+    );
   }
 
   if (!users.length) {

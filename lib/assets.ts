@@ -443,6 +443,10 @@ export const ASSETS = {
     module: require('@/assets/images/solid-wordmark.png'),
     hash: '805abddf',
   },
+  'images/solid-open-graph.png': {
+    module: require('@/assets/images/solid-open-graph.png'),
+    hash: 'og001',
+  },
   'images/solid.png': { module: require('@/assets/images/solid.png'), hash: '333f11d4' },
   'images/solid_logo_with_glare.png': {
     module: require('@/assets/images/solid_logo_with_glare.png'),

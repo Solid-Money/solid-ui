@@ -1,6 +1,22 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import { type PropsWithChildren } from 'react';
 
+/**
+ * SEO Constants for meta tags.
+ * Defined here because +html.tsx runs in Node.js during static rendering
+ * and cannot import from files with React Native dependencies.
+ */
+const SEO = {
+  OG_IMAGE_URL: 'https://app.solid.xyz/assets/images/solid-open-graph.png',
+  SITE_URL: 'https://app.solid.xyz',
+  SITE_NAME: 'Solid',
+  TITLE: 'Solid - The Savings Super-App',
+  DESCRIPTION:
+    'Solid is a yield-bearing account that works in the background—earning on your money while you live your life. No stress, no spreadsheets, no jargon.',
+  SHORT_DESCRIPTION:
+    'Solid is the savings super-app that combines DeFi yields with traditional banking. Earn competitive yields on your savings with institutional-grade security.',
+} as const;
+
 // This file is web-only and used to configure the root HTML for every
 // web page during static rendering.
 // The contents of this function only run in Node.js environments and
@@ -20,37 +36,22 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
         {/* SEO Meta Tags */}
-        <meta
-          name="description"
-          content="Solid is the savings super-app that combines DeFi yields with traditional banking. Earn competitive yields on your savings with institutional-grade security."
-        />
-        <link rel="canonical" href="https://app.solid.xyz" />
+        <meta name="description" content={SEO.SHORT_DESCRIPTION} />
+        <link rel="canonical" href={SEO.SITE_URL} />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="Solid - The Savings Super-App" />
-        <meta
-          property="og:description"
-          content="Solid is a yield-bearing account that works in the background—earning on your money while you live your life. No stress, no spreadsheets, no jargon."
-        />
-        <meta
-          property="og:image"
-          content="https://app.solid.xyz/assets/images/solid-open-graph.png"
-        />
-        <meta property="og:url" content="https://app.solid.xyz" />
-        <meta property="og:site_name" content="Solid" />
+        <meta property="og:title" content={SEO.TITLE} />
+        <meta property="og:description" content={SEO.DESCRIPTION} />
+        <meta property="og:image" content={SEO.OG_IMAGE_URL} />
+        <meta property="og:url" content={SEO.SITE_URL} />
+        <meta property="og:site_name" content={SEO.SITE_NAME} />
 
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Solid - The Savings Super-App" />
-        <meta
-          name="twitter:description"
-          content="Solid is a yield-bearing account that works in the background—earning on your money while you live your life. No stress, no spreadsheets, no jargon."
-        />
-        <meta
-          name="twitter:image"
-          content="https://app.solid.xyz/assets/images/solid-open-graph.png"
-        />
+        <meta name="twitter:title" content={SEO.TITLE} />
+        <meta name="twitter:description" content={SEO.DESCRIPTION} />
+        <meta name="twitter:image" content={SEO.OG_IMAGE_URL} />
 
         {/* Preconnect to critical origins for faster API calls */}
         {/* These start DNS resolution, TCP, and TLS handshake in parallel with JS loading */}

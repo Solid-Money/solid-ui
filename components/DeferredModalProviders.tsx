@@ -22,13 +22,16 @@ const DeferredModalProviders = () => {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Defer mounting modal providers until after first paint
-    // Using requestAnimationFrame ensures we wait for the current frame to complete
-    const frameId = requestAnimationFrame(() => {
-      setMounted(true);
-    });
-
-    return () => cancelAnimationFrame(frameId);
+    // Defer mounting modal providers until browser is idle
+    // This ensures modals don't block the critical rendering path
+    if (typeof requestIdleCallback !== 'undefined') {
+      const idleId = requestIdleCallback(() => setMounted(true), { timeout: 2000 });
+      return () => cancelIdleCallback(idleId);
+    } else {
+      // Fallback for environments without requestIdleCallback (React Native)
+      const timer = setTimeout(() => setMounted(true), 100);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   if (!mounted) return null;
