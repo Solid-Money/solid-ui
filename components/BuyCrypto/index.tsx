@@ -1,12 +1,13 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import * as Crypto from 'expo-crypto';
+
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { createMercuryoTransaction, getClientIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
-import * as Crypto from 'expo-crypto';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 
 const BuyCrypto = () => {
   const [loading, setLoading] = useState(true);

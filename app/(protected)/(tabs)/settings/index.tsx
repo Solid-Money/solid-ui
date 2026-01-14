@@ -1,7 +1,8 @@
+import { Linking, Platform, Pressable, Text, View } from 'react-native';
 import * as Application from 'expo-application';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
-import { Image, Linking, Platform, Pressable, Text, View } from 'react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';

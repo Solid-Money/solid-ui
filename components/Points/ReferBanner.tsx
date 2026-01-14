@@ -1,7 +1,7 @@
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { View } from 'react-native';
 
 import SwipeableBanner from '@/components/Dashboard/SwipeableBanner';
 import { Button } from '@/components/ui/button';

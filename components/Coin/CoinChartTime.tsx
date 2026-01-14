@@ -2,8 +2,8 @@ import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { times } from '@/constants/coins';
-import { useCoinStore } from '@/store/useCoinStore';
 import { cn } from '@/lib/utils';
+import { useCoinStore } from '@/store/useCoinStore';
 
 const CoinChartTime = () => {
   const { selectedTime, setSelectedTime } = useCoinStore();

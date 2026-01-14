@@ -1,9 +1,9 @@
-import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
 import { Controller } from 'react-hook-form';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 
 import Checkmark from '@/assets/images/checkmark';
 import Navbar from '@/components/Navbar';

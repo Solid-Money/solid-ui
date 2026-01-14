@@ -1,6 +1,6 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import FAQs from '@/components/FAQ/FAQs';
@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import { VAULTS } from '@/constants/vaults';
 import { useDimension } from '@/hooks/useDimension';
+
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositButton from './SavingDepositButton';
 import SavingDepositDescription from './SavingDepositDescription';

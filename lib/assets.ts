@@ -435,6 +435,10 @@ export const ASSETS = {
     hash: '593b3eae',
   },
   'images/solid-logo.png': { module: require('@/assets/images/solid-logo.png'), hash: '99ad52f2' },
+  'images/solid-open-graph.png': {
+    module: require('@/assets/images/solid-open-graph.png'),
+    hash: 'a6009c39',
+  },
   'images/solid-purple-large.png': {
     module: require('@/assets/images/solid-purple-large.png'),
     hash: 'ff520374',
@@ -442,10 +446,6 @@ export const ASSETS = {
   'images/solid-wordmark.png': {
     module: require('@/assets/images/solid-wordmark.png'),
     hash: '805abddf',
-  },
-  'images/solid-open-graph.png': {
-    module: require('@/assets/images/solid-open-graph.png'),
-    hash: 'og001',
   },
   'images/solid.png': { module: require('@/assets/images/solid.png'), hash: '333f11d4' },
   'images/solid_logo_with_glare.png': {

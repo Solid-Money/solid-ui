@@ -31,8 +31,8 @@ export const CRYPTO_LABEL: Record<BridgeTransferCryptoCurrency, string> = {
 };
 
 export const METHOD_LABEL: Record<BridgeTransferMethod, string> = {
-  [BridgeTransferMethod.ACH_PUSH]: 'ACH Push',
-  [BridgeTransferMethod.WIRE]: 'Wire',
+  [BridgeTransferMethod.ACH_PUSH]: 'ACH Push (Instant)',
+  [BridgeTransferMethod.WIRE]: 'Wire (1-2 business days)',
   [BridgeTransferMethod.SEPA]: 'SEPA',
   [BridgeTransferMethod.SPEI]: 'SPEI',
   [BridgeTransferMethod.PIX]: 'Pix (Beta)',

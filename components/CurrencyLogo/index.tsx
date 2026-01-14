@@ -1,7 +1,7 @@
-import { Currency, Token } from '@cryptoalgebra/fuse-sdk';
-import { Image, ImageStyle } from 'expo-image';
 import React from 'react';
 import { View, ViewStyle } from 'react-native';
+import { Image, ImageStyle } from 'expo-image';
+import { Currency, Token } from '@cryptoalgebra/fuse-sdk';
 
 import { Text } from '@/components/ui/text';
 import { useAllTokens } from '@/hooks/tokens/useAllTokens';

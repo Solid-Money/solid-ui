@@ -1,6 +1,6 @@
-import { ChevronRight, Wallet } from 'lucide-react-native';
 import React from 'react';
 import { Platform, View } from 'react-native';
+import { ChevronRight, Wallet } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';

@@ -1,4 +1,3 @@
-import { ChevronDown, Unlink, WalletMinimal } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, {
@@ -7,6 +6,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { ChevronDown, Unlink, WalletMinimal } from 'lucide-react-native';
 import { useActiveAccount, useActiveWallet, useDisconnect } from 'thirdweb/react';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -14,6 +14,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { eclipseAddress } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
+
 import { Text } from './ui/text';
 
 type ConnectedWalletDropdownProps = {

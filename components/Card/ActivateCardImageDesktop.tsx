@@ -1,5 +1,6 @@
-import { getAsset } from '@/lib/assets';
 import { Image } from 'expo-image';
+
+import { getAsset } from '@/lib/assets';
 
 const ActivateCardImageDesktop = () => {
   return (

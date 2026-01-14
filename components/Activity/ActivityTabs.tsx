@@ -1,3 +1,6 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutChangeEvent, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -5,9 +8,7 @@ import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';
 import { ActivityTab } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+
 import ActivityRefreshButton from './ActivityRefreshButton';
 import ActivityTransactions from './ActivityTransactions';
 import CardTransactions from './CardTransactions';

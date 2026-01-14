@@ -1,8 +1,8 @@
+import React from 'react';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import React from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { CardActivationStep } from '@/components/Card/CardActivationStep';
@@ -10,10 +10,10 @@ import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { track } from '@/lib/analytics';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
+import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { CardStatus, KycStatus } from '@/lib/types';
 

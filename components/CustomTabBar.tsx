@@ -1,8 +1,9 @@
-import { Text } from '@/components/ui/text';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+
+import { Text } from '@/components/ui/text';
 
 type TabButtonProps = {
   label: string;

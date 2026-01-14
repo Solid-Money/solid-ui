@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
 import React from 'react';
+import { useRouter } from 'expo-router';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -9,6 +9,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useStakeStore } from '@/store/useStakeStore';
+
 import { Stake } from '.';
 
 /**

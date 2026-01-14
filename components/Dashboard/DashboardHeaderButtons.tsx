@@ -1,5 +1,8 @@
 import { View } from 'react-native';
 
+import HomeSend from '@/assets/images/home-send';
+import HomeSwap from '@/assets/images/home-swap';
+import HomeWithdraw from '@/assets/images/withdraw';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import SendModal from '@/components/Send/SendModal';
 import SwapModal from '@/components/Swap/SwapModal';
@@ -9,10 +12,6 @@ import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-
-import HomeSend from '@/assets/images/home-send';
-import HomeSwap from '@/assets/images/home-swap';
-import HomeWithdraw from '@/assets/images/withdraw';
 
 type DashboardHeaderButtonsProps = {
   deposit?: {

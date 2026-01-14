@@ -2,9 +2,9 @@ import { Linking, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
+import { Text } from '@/components/ui/text';
 import { audits } from '@/constants/audits';
 import { cn } from '@/lib/utils';
-import { Text } from '@/components/ui/text';
 
 interface AuditsProps {
   className?: string;

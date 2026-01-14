@@ -1,15 +1,16 @@
+import { useMemo } from 'react';
+import { Platform } from 'react-native';
+import {
+  TurnkeyProvider as TurnkeyProviderKit,
+  type TurnkeyProviderConfig,
+} from '@turnkey/react-native-wallet-kit';
+
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
 import { base64urlToUint8Array } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
-import {
-  type TurnkeyProviderConfig,
-  TurnkeyProvider as TurnkeyProviderKit,
-} from '@turnkey/react-native-wallet-kit';
-import { useMemo } from 'react';
-import { Platform } from 'react-native';
 
 // Helper to get current hostname in runtime; falls back to configured value during SSR.
 export const getRuntimeRpId = () => (Platform.OS === 'web' && __DEV__ ? 'localhost' : 'solid.xyz');

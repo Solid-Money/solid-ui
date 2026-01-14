@@ -1,5 +1,5 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { ImageBackground, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';

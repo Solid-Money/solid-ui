@@ -1,9 +1,14 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Image, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Wallet as WalletIcon } from 'lucide-react-native';
+import { useActiveAccount, useSwitchActiveWalletChain } from 'thirdweb/react';
 import { Address, encodeFunctionData, erc20Abi, formatUnits, parseUnits } from 'viem';
+import { arbitrum } from 'viem/chains';
+import { useReadContract } from 'wagmi';
 import { z } from 'zod';
 
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
@@ -21,10 +26,6 @@ import { getChain } from '@/lib/thirdweb';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
-import { Wallet as WalletIcon } from 'lucide-react-native';
-import { useActiveAccount, useSwitchActiveWalletChain } from 'thirdweb/react';
-import { arbitrum } from 'viem/chains';
-import { useReadContract } from 'wagmi';
 
 type FormData = { amount: string };
 

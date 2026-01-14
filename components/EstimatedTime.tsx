@@ -1,6 +1,7 @@
-import { Text } from '@/components/ui/text';
-import { intervalToDuration } from 'date-fns';
 import { useEffect } from 'react';
+import { intervalToDuration } from 'date-fns';
+
+import { Text } from '@/components/ui/text';
 
 type EstimatedTimeProps = {
   currentTime: number;

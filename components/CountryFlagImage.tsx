@@ -1,6 +1,6 @@
-import { Image, ImageStyle } from 'expo-image';
 import React from 'react';
 import { StyleProp, View, ViewStyle } from 'react-native';
+import { Image, ImageStyle } from 'expo-image';
 
 interface CountryFlagImageProps {
   isoCode: string;

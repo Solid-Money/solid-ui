@@ -1,11 +1,12 @@
-import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
-import getTokenIcon from '@/lib/getTokenIcon';
-import { path } from '@/constants/path';
+import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+
 import RenderTokenIcon from '@/components/RenderTokenIcon';
+import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
+import getTokenIcon from '@/lib/getTokenIcon';
+import { cn } from '@/lib/utils';
 
 type CoinBackButtonProps = {
   title?: string;

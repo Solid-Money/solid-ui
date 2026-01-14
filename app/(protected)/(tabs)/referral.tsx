@@ -1,14 +1,14 @@
+import React from 'react';
+import { Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Link, router } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
+
 import CopyToClipboard from '@/components/CopyToClipboard';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import useUser from '@/hooks/useUser';
-import { Image } from 'expo-image';
-import { Link, router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
-import React from 'react';
-import { Pressable, View } from 'react-native';
-
 import { getAsset } from '@/lib/assets';
 
 export default function Referral() {

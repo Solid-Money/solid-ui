@@ -1,12 +1,13 @@
+import { View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Info } from 'lucide-react-native';
+
 import { PreviewTitle } from '@/components/BankTransfer/payment/PreviewTitle';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { SourceDepositInstructions } from '@/lib/types';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Info } from 'lucide-react-native';
-import { View } from 'react-native';
 
 const Row = ({
   label,

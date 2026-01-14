@@ -7,8 +7,10 @@ import {
   UseFormSetValue,
   UseFormTrigger,
 } from 'react-hook-form';
-import { ActivityIndicator, Image, Platform, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
+import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
 import { Address, erc20Abi, TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import { useReadContract } from 'wagmi';
@@ -28,6 +30,7 @@ import { USDC_STARGATE } from '@/constants/addresses';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useBalances } from '@/hooks/useBalances';
+import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
@@ -43,8 +46,6 @@ import {
   isUserAllowedToUseTestFeature,
 } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
-import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
-import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
 
 type FormData = { amount: string; from: 'wallet' | 'savings' };
 

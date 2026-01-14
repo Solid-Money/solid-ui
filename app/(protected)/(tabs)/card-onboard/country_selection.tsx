@@ -1,11 +1,10 @@
-import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
-
-import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 
 import CountryFlagImage from '@/components/CountryFlagImage';
+import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';

@@ -2,14 +2,18 @@
 const { defineConfig } = require('eslint/config')
 const expoConfig = require('eslint-config-expo/flat')
 const eslintPluginPrettierRecommended = require('eslint-plugin-prettier/recommended')
+const simpleImportSort = require('eslint-plugin-simple-import-sort')
 
 module.exports = defineConfig([
   expoConfig,
   eslintPluginPrettierRecommended,
   {
-    ignores: ['dist/*', 'node_modules/*', '.expo/*', 'web-build/*', 'index.js', 'app/_layout.tsx'],
+    ignores: ['dist/*', 'node_modules/*', '.expo/*', 'web-build/*', 'index.js'],
   },
   {
+    plugins: {
+      'simple-import-sort': simpleImportSort,
+    },
     rules: {
       'prettier/prettier': 'error',
 
@@ -25,14 +29,38 @@ module.exports = defineConfig([
       // Allow console.log/warn/error in development
       'no-console': ['warn', { allow: ['warn', 'error'] }],
 
-      // Consistent import ordering 
-      'sort-imports': ['error', {
-        ignoreCase: true,
-        ignoreDeclarationSort: true, // Let prettier handle this
+      // Import sorting with CSS files always first
+      'sort-imports': 'off', // Disable built-in sort-imports
+      'simple-import-sort/imports': ['error', {
+        groups: [
+          // Side effect imports (CSS/global styles) always first
+          ['^.+\\.css$'],
+          // Node.js builtins
+          ['^node:'],
+          // External packages (react, expo, etc.)
+          ['^react', '^expo', '^@?\\w'],
+          // Internal @/ imports
+          ['^@/'],
+          // Parent imports
+          ['^\\.\\.'],
+          // Sibling imports
+          ['^\\.'],
+          // Type imports
+          ['^.+\\u0000$'],
+        ],
       }],
+      'simple-import-sort/exports': 'error',
+
       'no-restricted-imports': [
         'error',
         {
+          paths: [
+            {
+              name: 'react-native',
+              importNames: ['Image'],
+              message: 'Use Image from "expo-image" or "@/components/ui/Image" instead for better performance and caching.',
+            },
+          ],
           patterns: [
             {
               group: ['../*'],
@@ -41,7 +69,6 @@ module.exports = defineConfig([
           ],
         },
       ],
-      // Add a rule to use only absolute paths when possible
     },
   },
 ])

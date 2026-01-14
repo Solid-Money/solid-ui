@@ -1,6 +1,6 @@
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
 
 import EmailIcon from '@/assets/images/email';
 import LegalIcon from '@/assets/images/legal';

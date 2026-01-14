@@ -1,12 +1,14 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { router } from 'expo-router';
+import { ChevronDown, ChevronUp, Fuel } from 'lucide-react-native';
+
 import NeedHelp from '@/components/NeedHelp';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
 import { formatNumber } from '@/lib/utils/utils';
-import { router } from 'expo-router';
-import { ChevronDown, ChevronUp, Fuel } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+
 import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
 import CryptoDropdown from './CryptoDropdown';

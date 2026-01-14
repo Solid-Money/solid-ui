@@ -2,8 +2,8 @@ import { View } from 'react-native';
 
 import DashboardHeaderButtonsMobile from '@/components/Dashboard/DashboardHeaderButtonsMobile';
 import SavingCountUp from '@/components/SavingCountUp';
-import { SavingMode } from '@/lib/types';
 import { useDimension } from '@/hooks/useDimension';
+import { SavingMode } from '@/lib/types';
 
 interface DashboardHeaderMobileProps {
   balance: number;

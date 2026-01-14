@@ -1,7 +1,7 @@
-import { FlashList } from '@shopify/flash-list';
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, RefreshControl, View } from 'react-native';
+import { router } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';

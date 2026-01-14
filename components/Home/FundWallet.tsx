@@ -1,6 +1,6 @@
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View } from 'react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { buttonVariants } from '@/components/ui/button';

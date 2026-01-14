@@ -1,3 +1,11 @@
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
+import { formatUnits } from 'viem';
+
 import CopyToClipboard from '@/components/CopyToClipboard';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import TooltipPopover from '@/components/Tooltip';
@@ -8,20 +16,12 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useMaxAPY } from '@/hooks/useAnalytics';
-
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
-import { formatUnits } from 'viem';
 
 const USDC_ICON = getAsset('images/usdc.png');
 const USDT_ICON = getAsset('images/usdt.png');

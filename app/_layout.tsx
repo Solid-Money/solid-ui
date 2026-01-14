@@ -1,16 +1,15 @@
-import DeferredModalProviders from '@/components/DeferredModalProviders';
-import AppErrorBoundary from '@/components/ErrorBoundary';
-import Intercom from '@/components/Intercom';
-import { toastProps } from '@/components/Toast';
-import { TurnkeyProvider } from '@/components/TurnkeyProvider';
-import { Button } from '@/components/ui/button';
-import WhatsNewModal from '@/components/WhatsNewModal';
 import '@/global.css';
-import { getInfoClient } from '@/graphql/clients';
-import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
-import { useWhatsNew } from '@/hooks/useWhatsNew';
-import { initAnalytics, trackScreen } from '@/lib/analytics';
-import { config } from '@/lib/wagmi';
+
+import { useCallback, useEffect, useState } from 'react';
+import { Appearance, Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+import * as Font from 'expo-font';
+import * as Notifications from 'expo-notifications';
+import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
+import Head from 'expo-router/head';
+import * as SplashScreen from 'expo-splash-screen';
 import { ApolloProvider } from '@apollo/client/react';
 import {
   MonaSans_200ExtraLight,
@@ -25,25 +24,29 @@ import {
 } from '@expo-google-fonts/mona-sans';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PortalHost } from '@rn-primitives/portal';
-import { initSentryDeferred, wrapWithSentry } from '@/lib/sentry-init';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injectSpeedInsights } from '@vercel/speed-insights';
-import * as Notifications from 'expo-notifications';
-import type { ErrorBoundaryProps } from 'expo-router';
-import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
-import Head from 'expo-router/head';
-import * as Font from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
 import { ChevronLeft } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
-import { Appearance, Platform } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 import { WagmiProvider } from 'wagmi';
 
+import DeferredModalProviders from '@/components/DeferredModalProviders';
+import AppErrorBoundary from '@/components/ErrorBoundary';
+import Intercom from '@/components/Intercom';
 // Lazy-loaded to defer thirdweb bundle until actually needed
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
+import { toastProps } from '@/components/Toast';
+import { TurnkeyProvider } from '@/components/TurnkeyProvider';
+import { Button } from '@/components/ui/button';
+import WhatsNewModal from '@/components/WhatsNewModal';
+import { getInfoClient } from '@/graphql/clients';
+import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
+import { useWhatsNew } from '@/hooks/useWhatsNew';
+import { initAnalytics, trackScreen } from '@/lib/analytics';
+import { initSentryDeferred, wrapWithSentry } from '@/lib/sentry-init';
+import { config } from '@/lib/wagmi';
+import { useUserStore } from '@/store/useUserStore';
+
+import type { ErrorBoundaryProps } from 'expo-router';
 
 // Sentry initialization is now deferred to after first paint
 // See lib/sentry-init.ts for configuration
@@ -87,6 +90,10 @@ const queryClient = new QueryClient({
 export default wrapWithSentry(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
+
+  const users = useUserStore(state => state.users);
+  const user = users.find(u => u.selected);
+
   const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
 
   // Initialize attribution tracking automatically (handles web and mobile)
@@ -293,7 +300,7 @@ export default wrapWithSentry(function RootLayout() {
                       </Stack>
                       <PortalHost />
                       <DeferredModalProviders />
-                      {whatsNew && (
+                      {user && whatsNew && (
                         <WhatsNewModal
                           whatsNew={whatsNew}
                           isOpen={isVisible}

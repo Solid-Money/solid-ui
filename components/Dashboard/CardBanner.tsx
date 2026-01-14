@@ -1,8 +1,8 @@
+import { useMemo } from 'react';
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
-import { useMemo } from 'react';
-import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -11,6 +11,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { CardStatus } from '@/lib/types';
+
 import SwipeableBanner from './SwipeableBanner';
 
 interface BannerContent {

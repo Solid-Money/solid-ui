@@ -6,6 +6,7 @@ import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
 import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+
 import DepositOption from './DepositOption';
 
 type DepositOptionProps = {
@@ -17,6 +18,7 @@ type DepositOptionProps = {
   isComingSoon?: boolean;
   isEnabled?: boolean;
   bannerText?: string;
+  chipText?: string;
 };
 
 const DepositOptions = () => {
@@ -46,6 +48,7 @@ const DepositOptions = () => {
           onPress={option.onPress}
           isLoading={option.isLoading}
           bannerText={option.bannerText}
+          chipText={option.chipText}
         />
       ))}
     </View>

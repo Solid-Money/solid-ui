@@ -1,6 +1,6 @@
-import { Image } from 'expo-image';
 import React from 'react';
 import { Text, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { getAsset } from '@/lib/assets';
 

@@ -1,8 +1,8 @@
-import { FlashList } from '@shopify/flash-list';
-import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 
 import { TokenBalance } from '@/lib/types';
 

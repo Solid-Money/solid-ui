@@ -1,5 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft } from 'lucide-react-native';
 import React, { ReactNode, useCallback } from 'react';
 import { ScrollView, View } from 'react-native';
 import Animated, {
@@ -12,6 +10,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowLeft } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import {

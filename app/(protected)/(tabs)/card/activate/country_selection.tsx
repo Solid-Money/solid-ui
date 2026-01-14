@@ -1,7 +1,7 @@
-import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 
 import CountryFlagImage from '@/components/CountryFlagImage';
 import PageLayout from '@/components/PageLayout';

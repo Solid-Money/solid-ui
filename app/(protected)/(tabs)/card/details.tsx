@@ -1,11 +1,11 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Platform, Pressable, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
 import { ChevronRight, Copy, Plus } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Platform, Pressable, View } from 'react-native';
-import Toast from 'react-native-toast-message';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';

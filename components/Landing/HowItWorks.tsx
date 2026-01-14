@@ -1,6 +1,6 @@
+import { ImageSourcePropType, Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ImageSourcePropType, Platform, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 

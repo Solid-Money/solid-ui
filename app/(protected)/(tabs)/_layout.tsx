@@ -1,7 +1,7 @@
-import { Tabs, usePathname } from 'expo-router';
-import { Leaf, Star } from 'lucide-react-native';
 import React from 'react';
 import { Platform } from 'react-native';
+import { Tabs, usePathname } from 'expo-router';
+import { Leaf, Star } from 'lucide-react-native';
 
 import ActivityNavBarIcon from '@/assets/images/activity-nav-bar-icon';
 import AssetsNavBarIcon from '@/assets/images/assets-nav-bar-icon';
@@ -74,6 +74,16 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="card"
+        options={{
+          title: 'Card',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
+          href: path.CARD,
+        }}
+      />
+
+      <Tabs.Screen
         name="card-onboard"
         options={{
           title: 'Card',
@@ -115,15 +125,6 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="card"
-        options={{
-          title: 'Card',
-          headerShown: false,
-          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
-          href: path.CARD,
-        }}
-      />
       <Tabs.Screen
         name="earn"
         options={{

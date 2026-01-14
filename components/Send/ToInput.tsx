@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, X } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowRight, X } from 'lucide-react-native';
 import { isAddress } from 'viem';
 
 import Avatar from '@/components/Avatar';

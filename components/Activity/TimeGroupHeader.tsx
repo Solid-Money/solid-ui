@@ -1,7 +1,8 @@
+import { View } from 'react-native';
+
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { TITLE_GROUPS } from '@/lib/utils/timeGrouping';
-import { View } from 'react-native';
 
 interface HeaderProps {
   title: string;

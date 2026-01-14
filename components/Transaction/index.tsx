@@ -1,8 +1,8 @@
-import * as Sentry from '@sentry/react-native';
-import { Image } from 'expo-image';
-import { Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
+import * as Sentry from '@sentry/react-native';
+import { Trash2 } from 'lucide-react-native';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import ResponsiveDialog from '@/components/ResponsiveDialog';

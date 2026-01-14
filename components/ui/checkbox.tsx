@@ -1,7 +1,8 @@
-import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react-native';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
+import { Check } from 'lucide-react-native';
+
+import { cn } from '@/lib/utils';
 
 export interface CheckboxProps {
   checked?: boolean;

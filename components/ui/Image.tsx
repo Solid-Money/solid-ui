@@ -1,4 +1,4 @@
-import { Image } from 'react-native';
+import { Image } from 'expo-image';
 import { cssInterop } from 'nativewind';
 
 cssInterop(Image, {

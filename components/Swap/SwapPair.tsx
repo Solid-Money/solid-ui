@@ -1,13 +1,15 @@
+import React, { useCallback, useMemo } from 'react';
+import { Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Currency, CurrencyAmount, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
 import { useUSDCValue } from '@/hooks/useUSDCValue';
+import { getAsset } from '@/lib/assets';
 import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
 import { useDerivedSwapInfo, useSwapActionHandlers, useSwapState } from '@/store/swapStore';
-import { Currency, CurrencyAmount, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
-import React, { useCallback, useMemo } from 'react';
-import { Image, Pressable, View } from 'react-native';
 
-import { getAsset } from '@/lib/assets';
 import TokenCard from './TokenCard';
 
 const SwapPair: React.FC = () => {

@@ -1,9 +1,9 @@
-import { FlashList } from '@shopify/flash-list';
-import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, RotateCw } from 'lucide-react-native';
 import React from 'react';
 import { ActivityIndicator, Platform, Pressable, RefreshControl, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
+import { useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, RotateCw } from 'lucide-react-native';
 
 import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';

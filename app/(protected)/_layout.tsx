@@ -1,7 +1,7 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import { lazy, Suspense, useCallback, useEffect } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
+import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { readContractQueryOptions } from 'wagmi/query';

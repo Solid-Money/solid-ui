@@ -1,11 +1,12 @@
-import * as Sentry from '@sentry/react-native';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import * as Sentry from '@sentry/react-native';
+import { useTurnkey } from '@turnkey/react-native-wallet-kit';
+import { ArrowLeft } from 'lucide-react-native';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import PasskeySvg from '@/assets/images/passkey-svg';
@@ -18,7 +19,6 @@ import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
-import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 
 const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
 
