@@ -17,6 +17,7 @@ type DepositOptionProps = {
   isComingSoon?: boolean;
   isEnabled?: boolean;
   bannerText?: string;
+  chipText?: string;
 };
 
 const DepositOptions = () => {
@@ -46,6 +47,7 @@ const DepositOptions = () => {
           onPress={option.onPress}
           isLoading={option.isLoading}
           bannerText={option.bannerText}
+          chipText={option.chipText}
         />
       ))}
     </View>

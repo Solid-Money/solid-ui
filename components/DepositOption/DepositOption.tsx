@@ -15,6 +15,7 @@ type DepositOptionProps = {
   isLoading?: boolean;
   isComingSoon?: boolean;
   bannerText?: string;
+  chipText?: string;
 };
 
 const DepositOption = ({
@@ -25,6 +26,7 @@ const DepositOption = ({
   isLoading,
   isComingSoon,
   bannerText,
+  chipText,
 }: DepositOptionProps) => {
   const isDisabled = isComingSoon || isLoading;
 
@@ -63,9 +65,18 @@ const DepositOption = ({
               {subtitle}
             </Text>
           )}
-          {bannerText && (
-            <View className="mt-1 self-start rounded-2xl bg-[#94F27F]/20 px-3 py-1">
-              <Text className="text-base font-bold text-[#94F27F]">{bannerText}</Text>
+          {(bannerText || chipText) && (
+            <View className="mt-2 flex-row gap-2">
+              {chipText && (
+                <View className="self-start rounded-2xl bg-[#94F27F]/20 px-3 py-1">
+                  <Text className="text-base font-bold text-[#94F27F]">{chipText}</Text>
+                </View>
+              )}
+              {bannerText && (
+                <View className="self-start rounded-2xl bg-[#94F27F]/20 px-3 py-1">
+                  <Text className="text-base font-bold text-[#94F27F]">{bannerText}</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
