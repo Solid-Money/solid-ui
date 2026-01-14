@@ -1,6 +1,7 @@
+import { Bar, BarChart, ResponsiveContainer, Tooltip } from 'recharts';
+
 import ChartTooltip from '@/components/ChartTooltip';
 import { ChartPayload } from '@/lib/types';
-import { Bar, BarChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface BarChartProps {
   data: ChartPayload[];

@@ -9,6 +9,7 @@ import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
+import { useUserTransactions } from './useAnalytics';
 import { useSyncActivities } from './useSyncActivities';
 
 // Get explorer URL for a transaction hash based on chain ID
@@ -102,6 +103,8 @@ export function useActivity() {
     syncOnMount: true,
   });
 
+  const { data: userTransactions } = useUserTransactions(user?.safeAddress);
+
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
     return event.hash || event.userOpHash || event.clientTxId;
@@ -157,8 +160,50 @@ export function useActivity() {
   // Get user's activities from local storage
   const activities = useMemo(() => {
     if (!user?.userId || !events[user.userId]) return [];
-    return [...events[user.userId]]
+
+    let userEvents = [...events[user.userId]];
+
+    if (userTransactions?.withdraws) {
+      userEvents = userEvents.map(activity => {
+        if (
+          activity.type === TransactionType.WITHDRAW &&
+          activity.status === TransactionStatus.SUCCESS
+        ) {
+          const matchingWithdraw = userTransactions.withdraws.find(w => {
+            if (
+              activity.hash &&
+              (w.requestTxHash?.toLowerCase() === activity.hash.toLowerCase() ||
+                w.solveTxHash?.toLowerCase() === activity.hash.toLowerCase())
+            ) {
+              return true;
+            }
+            return false;
+          });
+
+          if (!matchingWithdraw || matchingWithdraw.requestStatus !== 'SOLVED') {
+            return { ...activity, status: TransactionStatus.PENDING };
+          }
+        }
+        return activity;
+      });
+    } else {
+      // If subgraph data is not yet available, treat potentially successful withdraws as pending
+      // to avoid premature success state (duplication issue)
+      userEvents = userEvents.map(activity => {
+        if (
+          activity.type === TransactionType.WITHDRAW &&
+          activity.status === TransactionStatus.SUCCESS
+        ) {
+          return { ...activity, status: TransactionStatus.PENDING };
+        }
+        return activity;
+      });
+    }
+
+    return userEvents
       .filter(activity => {
+        // Guard against corrupted data (undefined/null elements in array)
+        if (!activity) return false;
         // Filter out deleted activities
         if (activity.deleted) return false;
         // Filter out expired direct deposits
@@ -171,7 +216,7 @@ export function useActivity() {
         return true;
       })
       .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-  }, [events, user?.userId]);
+  }, [events, user?.userId, userTransactions]);
 
   useEffect(() => {
     if (!activities?.length) return;
@@ -192,8 +237,14 @@ export function useActivity() {
     if (!user?.userId || !activityData) return;
 
     const events = activityData.pages
-      .flatMap(page => page?.docs.map(tx => constructActivity(tx, user.safeAddress)))
-      .filter((event): event is ActivityEvent => event !== undefined);
+      .flatMap(page => {
+        // Guard against undefined/null pages or docs
+        if (!page?.docs || !Array.isArray(page.docs)) return [];
+        return page.docs
+          .filter((tx): tx is ActivityEvent => tx != null)
+          .map(tx => constructActivity(tx, user.safeAddress));
+      })
+      .filter((event): event is ActivityEvent => event != null);
     if (!events.length) return;
 
     bulkUpsertEvent(user.userId, events);

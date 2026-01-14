@@ -1,13 +1,14 @@
 import { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
+import { Currency } from '@cryptoalgebra/fuse-sdk';
+import { ChevronDown } from 'lucide-react-native';
 
 import CurrencyLogo from '@/components/CurrencyLogo';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
-import { Currency } from '@cryptoalgebra/fuse-sdk';
-import { ChevronDown } from 'lucide-react-native';
+
 import SwapTokenSelector from './SwapTokenSelector';
 
 interface SwapTokenSelectorModalProps {

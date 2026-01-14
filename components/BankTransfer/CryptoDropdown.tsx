@@ -1,9 +1,11 @@
+import { useMemo, useState } from 'react';
+import { View } from 'react-native';
+import { ChevronDown } from 'lucide-react-native';
+
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { ChevronDown } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+
 import { BridgeTransferCryptoCurrency, CRYPTO_LABEL } from './enums';
 import { getCryptoIcon } from './icons';
 

@@ -1,7 +1,7 @@
-import { FlashList } from '@shopify/flash-list';
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, RefreshControl, View } from 'react-native';
+import { router } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
@@ -10,10 +10,13 @@ import { Text } from '@/components/ui/text';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
 import { useCardDepositPoller } from '@/hooks/useCardDepositPoller';
+import { useCardTransactions } from '@/hooks/useCardTransactions';
+import { useLayerZeroStatuses } from '@/hooks/useLayerZeroStatuses';
 import {
   ActivityEvent,
   ActivityGroup,
   ActivityTab,
+  LayerZeroTransactionStatus,
   TransactionStatus,
   TransactionType,
 } from '@/lib/types';
@@ -42,10 +45,87 @@ export default function ActivityTransactions({
   const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
+  const [completedBridgeTxHashes, setCompletedBridgeTxHashes] = useState<Set<string>>(new Set());
+
+  const { data: cardData } = useCardTransactions();
+  const cardTransactions = useMemo(() => cardData?.pages.flatMap(p => p.data) || [], [cardData]);
+
+  // Identify recent successful bridge deposits to check status for
+  // Only check transactions from the last 24 hours to avoid checking history forever
+  const bridgeDepositHashes = useMemo(() => {
+    const now = Date.now() / 1000;
+    return activities
+      .filter(
+        a =>
+          a.type === TransactionType.BRIDGE_DEPOSIT &&
+          a.status === TransactionStatus.SUCCESS &&
+          a.hash &&
+          !completedBridgeTxHashes.has(a.hash) &&
+          now - parseInt(a.timestamp) < 86400,
+      )
+      .map(a => a.hash)
+      .filter(Boolean) as string[];
+  }, [activities, completedBridgeTxHashes]);
+
+  const lzStatuses = useLayerZeroStatuses(bridgeDepositHashes);
+
+  const lzStatusMap = useMemo(() => {
+    const map = new Map();
+    bridgeDepositHashes.forEach((hash, i) => {
+      map.set(hash, lzStatuses[i]);
+    });
+    return map;
+  }, [bridgeDepositHashes, lzStatuses]);
+
   useCardDepositPoller();
 
   const filteredTransactions = useMemo(() => {
-    const filtered = activities.filter(transaction => {
+    // Override statuses for bridge deposits
+    const updatedActivities = activities.map(transaction => {
+      if (
+        transaction.type === TransactionType.BRIDGE_DEPOSIT &&
+        transaction.status === TransactionStatus.SUCCESS &&
+        transaction.hash &&
+        lzStatusMap.has(transaction.hash)
+      ) {
+        const query = lzStatusMap.get(transaction.hash);
+        // Default to pending if loading status
+        if (!query.data) return { ...transaction, status: TransactionStatus.PENDING };
+
+        const lzData = query.data.data?.[0];
+        const isDelivered = lzData?.status?.name === LayerZeroTransactionStatus.DELIVERED;
+
+        if (!isDelivered) {
+          return { ...transaction, status: TransactionStatus.PENDING };
+        }
+
+        // If delivered, check if it appears in card transactions
+        const dstTxHash = lzData?.destination?.tx?.txHash;
+        if (!dstTxHash) return { ...transaction, status: TransactionStatus.PENDING };
+
+        const foundInCard = cardTransactions.some(
+          ct => ct.crypto_transaction_details?.tx_hash?.toLowerCase() === dstTxHash.toLowerCase(),
+        );
+
+        if (!foundInCard) {
+          return { ...transaction, status: TransactionStatus.PENDING };
+        }
+        // If we reach here, the transaction is delivered and found in card transactions.
+        // Mark it as completed so we stop polling it.
+        // We use a timeout to avoid update loops during render.
+        setTimeout(() => {
+          setCompletedBridgeTxHashes(prev => {
+            if (prev.has(transaction.hash!)) return prev;
+            const next = new Set(prev);
+            next.add(transaction.hash!);
+            return next;
+          });
+        }, 0);
+      }
+      return transaction;
+    });
+
+    const filtered = updatedActivities.filter(transaction => {
       if (tab === ActivityTab.WALLET) {
         if (symbol) {
           return transaction.symbol?.toLowerCase() === symbol?.toLowerCase();
@@ -73,7 +153,7 @@ export default function ActivityTransactions({
       });
     }
     return grouped;
-  }, [activities, tab, symbol, showStuckTransactions]);
+  }, [activities, tab, symbol, showStuckTransactions, lzStatusMap, cardTransactions]);
 
   // Pre-compute group positions for O(1) lookup instead of O(n) per item
   const positionMap = useMemo(() => {

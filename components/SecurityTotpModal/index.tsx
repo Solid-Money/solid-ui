@@ -1,8 +1,8 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Image } from 'expo-image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import InfoError from '@/assets/images/info-error';

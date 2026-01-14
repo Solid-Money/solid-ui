@@ -1,3 +1,8 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import * as Sentry from '@sentry/react-native';
+
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -8,10 +13,6 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
-import * as Sentry from '@sentry/react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
-import Toast from 'react-native-toast-message';
 
 const USDC_ICON = getAsset('images/usdc.png');
 const USDT_ICON = getAsset('images/usdt.png');

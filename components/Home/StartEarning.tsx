@@ -1,6 +1,6 @@
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View } from 'react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { buttonVariants } from '@/components/ui/button';
@@ -62,6 +62,7 @@ const StartEarning = ({ className }: StartEarningProps) => {
             source={getAsset('images/solid-purple-large.png')}
             contentFit="contain"
             style={{ width: 233, height: 233, marginLeft: -50 }}
+            alt="Solid savings illustration"
           />
         </View>
       </View>

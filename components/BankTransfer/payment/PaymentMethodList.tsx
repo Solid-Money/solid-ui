@@ -1,3 +1,8 @@
+import { useRef, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { router } from 'expo-router';
+
 import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
@@ -5,6 +10,7 @@ import {
   Endorsements,
   EndorsementStatus,
   METHOD_LABEL,
+  METHOD_SUBTITLE,
 } from '@/components/BankTransfer/enums';
 import { Text } from '@/components/ui/text';
 import { KycMode } from '@/components/UserKyc';
@@ -20,10 +26,7 @@ import {
 } from '@/lib/api';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useDepositStore } from '@/store/useDepositStore';
-import { router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import Toast from 'react-native-toast-message';
+
 import { PaymentMethodTile } from './PaymentMethodTile';
 
 type Props = {
@@ -80,6 +83,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
         <PaymentMethodTile
           key={method}
           title={METHOD_LABEL[method]}
+          subtitle={METHOD_SUBTITLE[method]}
           onPress={() => onPressed(method)}
           loading={loadingMethod === method}
           disabled={Boolean(loadingMethod)}

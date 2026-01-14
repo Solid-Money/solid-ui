@@ -1,9 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
-import { EllipsisVertical, Plus } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
+import { EllipsisVertical, Plus } from 'lucide-react-native';
 import { isAddress } from 'viem';
 
 import Avatar from '@/components/Avatar';
@@ -21,6 +21,7 @@ import { fetchAddressBook } from '@/lib/api';
 import { TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, eclipseAddress, withRefreshToken } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
+
 import AddAddress from './AddAddress';
 import ToInput from './ToInput';
 

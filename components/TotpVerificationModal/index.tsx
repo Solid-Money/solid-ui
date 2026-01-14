@@ -1,7 +1,7 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import ResponsiveModal from '@/components/ResponsiveModal';

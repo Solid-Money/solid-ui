@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { Tabs, TabsContent } from '@/components/ui/tabs';
+
 import WalletTokenTab from './WalletTokenTab';
 
 enum Tab {

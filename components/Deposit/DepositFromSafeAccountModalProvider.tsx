@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
 import React from 'react';
+import { useRouter } from 'expo-router';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -7,6 +7,7 @@ import { DEPOSIT_FROM_SAFE_ACCOUNT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useDepositFromSafeAccountStore } from '@/store/useDepositFromSafeAccount';
+
 import { Deposit } from '.';
 
 /**

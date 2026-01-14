@@ -1,15 +1,16 @@
-import type { ErrorBoundaryProps } from 'expo-router';
-import { router, usePathname } from 'expo-router';
-import { AlertTriangle } from 'lucide-react-native';
 import { useCallback, useEffect, useRef } from 'react';
 import { Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, usePathname } from 'expo-router';
+import { AlertTriangle } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+
+import type { ErrorBoundaryProps } from 'expo-router';
 
 const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
   const pathname = usePathname();

@@ -1,5 +1,21 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
 import { type PropsWithChildren } from 'react';
+import { ScrollViewStyleReset } from 'expo-router/html';
+
+/**
+ * SEO Constants for meta tags.
+ * Defined here because +html.tsx runs in Node.js during static rendering
+ * and cannot import from files with React Native dependencies.
+ */
+const SEO = {
+  OG_IMAGE_URL: 'https://app.solid.xyz/assets/images/solid-open-graph.png',
+  SITE_URL: 'https://app.solid.xyz',
+  SITE_NAME: 'Solid',
+  TITLE: 'Solid - The Savings Super-App',
+  DESCRIPTION:
+    'Solid is a yield-bearing account that works in the background—earning on your money while you live your life. No stress, no spreadsheets, no jargon.',
+  SHORT_DESCRIPTION:
+    'Solid is the savings super-app that combines DeFi yields with traditional banking. Earn competitive yields on your savings with institutional-grade security.',
+} as const;
 
 // This file is web-only and used to configure the root HTML for every
 // web page during static rendering.
@@ -18,6 +34,33 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="theme-color" content="#000000" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+        {/* SEO Meta Tags */}
+        <meta name="description" content={SEO.SHORT_DESCRIPTION} />
+        <link rel="canonical" href={SEO.SITE_URL} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={SEO.TITLE} />
+        <meta property="og:description" content={SEO.DESCRIPTION} />
+        <meta property="og:image" content={SEO.OG_IMAGE_URL} />
+        <meta property="og:url" content={SEO.SITE_URL} />
+        <meta property="og:site_name" content={SEO.SITE_NAME} />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={SEO.TITLE} />
+        <meta name="twitter:description" content={SEO.DESCRIPTION} />
+        <meta name="twitter:image" content={SEO.OG_IMAGE_URL} />
+
+        {/* Preconnect to critical origins for faster API calls */}
+        {/* These start DNS resolution, TCP, and TLS handshake in parallel with JS loading */}
+        <link rel="preconnect" href="https://gateway.thegraph.com" />
+        <link rel="preconnect" href="https://api.turnkey.com" />
+
+        {/* DNS-prefetch for secondary origins (lower priority than preconnect) */}
+        <link rel="dns-prefetch" href="https://li.quest" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
         {/* Ensure dark background and prevent viewport overscroll bounce on Safari */}
         <style
@@ -52,6 +95,7 @@ export default function Root({ children }: PropsWithChildren) {
         />
       </head>
       <body>
+        {/* Loading spinner - immediately visible, hidden when React mounts */}
         {children}
 
         {/* Google Tag Manager */}

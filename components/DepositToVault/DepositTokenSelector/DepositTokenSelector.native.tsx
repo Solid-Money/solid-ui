@@ -1,10 +1,11 @@
+import { View } from 'react-native';
+
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
-import { View } from 'react-native';
 
 const DepositTokenSelector = () => {
   const { setModal, setOutputToken, srcChainId } = useDepositStore();

@@ -1,6 +1,7 @@
-import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { MessageCircle } from 'lucide-react-native';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import SwapButton from '@/components/Swap/SwapButton';
@@ -9,13 +10,12 @@ import SwapParams from '@/components/Swap/SwapParams';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Text } from '@/components/ui/text';
 import { SWAP_MODAL } from '@/constants/modals';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useIntercom } from '@/lib/intercom';
 import { useSwapState } from '@/store/swapStore';
-import { MessageCircle } from 'lucide-react-native';
 
 /**
  * Global swap modal provider that renders a single ResponsiveModal instance.

@@ -1,6 +1,9 @@
-import { Wallet } from 'lucide-react-native';
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, TextInput, View } from 'react-native';
+import { Currency, Percent } from '@cryptoalgebra/fuse-sdk';
+import { Wallet } from 'lucide-react-native';
+import { formatUnits } from 'viem';
+import { fuse } from 'viem/chains';
 import { useBalance } from 'wagmi';
 
 import Max from '@/components/Max';
@@ -10,9 +13,6 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { formatNumber } from '@/lib/utils';
-import { Currency, Percent } from '@cryptoalgebra/fuse-sdk';
-import { formatUnits } from 'viem';
-import { fuse } from 'viem/chains';
 
 interface TokenCardProps {
   handleTokenSelection: (token: Currency) => void;

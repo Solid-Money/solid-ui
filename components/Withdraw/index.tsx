@@ -1,11 +1,12 @@
+import { useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, TextInput, View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { Info, Minus, Wallet } from 'lucide-react-native';
-import { useMemo } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Image, TextInput, View } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
 import Max from '@/components/Max';

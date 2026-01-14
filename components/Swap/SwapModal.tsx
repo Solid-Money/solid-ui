@@ -2,6 +2,7 @@ import React, { ReactNode, useEffect } from 'react';
 
 import { SWAP_MODAL } from '@/constants/modals';
 import { useSwapState } from '@/store/swapStore';
+
 import SwapTrigger from './SwapTrigger';
 
 type SwapModalProps = {

@@ -45,18 +45,6 @@ function hasEndorsementPendingReview(cardsEndorsement: BridgeCustomerEndorsement
   return Array.isArray(pending) && pending.length > 0;
 }
 
-/**
- * Check if endorsement has region restriction issue
- */
-function hasRegionRestriction(issues: BridgeEndorsementIssue[]): boolean {
-  return issues.some(
-    issue =>
-      (typeof issue === 'string' && issue.toLowerCase().includes('region')) ||
-      (typeof issue === 'object' &&
-        Object.values(issue).some(v => v.toLowerCase().includes('region'))),
-  );
-}
-
 // ============================================================================
 // Step Description Functions
 // ============================================================================
@@ -84,11 +72,6 @@ export function getStepDescription(
 
   // REVOKED - show rejection reasons or expiry message
   if (cardsEndorsement.status === EndorsementStatus.REVOKED) {
-    // Check for region restriction
-    if (hasRegionRestriction(issues)) {
-      return 'Card service is not available in your region.';
-    }
-
     // Show customer rejection reasons if available
     const reasons = formatRejectionReasons(customerRejectionReasons);
     if (reasons.length > 0) {
@@ -104,11 +87,6 @@ export function getStepDescription(
     // Pending review - user should wait
     if (hasEndorsementPendingReview(cardsEndorsement)) {
       return 'Your information is being reviewed. This usually takes a few minutes.';
-    }
-
-    // Check for region restriction
-    if (hasRegionRestriction(issues)) {
-      return 'Card service is not available in your region.';
     }
 
     // Show what's missing or has issues
@@ -155,18 +133,13 @@ export function getStepButtonText(
     return 'Complete KYC';
   }
 
-  const issues = cardsEndorsement.requirements?.issues || [];
-
   switch (cardsEndorsement.status) {
     case EndorsementStatus.APPROVED:
       // Step is complete, no button needed
       return undefined;
 
     case EndorsementStatus.REVOKED:
-      // Check for region restriction - no action possible
-      if (hasRegionRestriction(issues)) {
-        return undefined;
-      }
+      // Allow retry even for region restrictions (user may have another nationality)
       return 'Retry KYC';
 
     case EndorsementStatus.INCOMPLETE:
@@ -174,10 +147,7 @@ export function getStepButtonText(
       if (hasEndorsementPendingReview(cardsEndorsement)) {
         return 'Under Review';
       }
-      // Check for region restriction
-      if (hasRegionRestriction(issues)) {
-        return undefined;
-      }
+      // Allow retry even for region restrictions (user may have another nationality)
       return 'Complete KYC';
 
     default:
@@ -186,20 +156,13 @@ export function getStepButtonText(
 }
 
 /**
- * Check if the button should be disabled (for pending review or region blocked)
+ * Check if the button should be disabled (for pending review)
  */
 export function isStepButtonDisabled(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
 ): boolean {
   if (!cardsEndorsement) {
     return false;
-  }
-
-  const issues = cardsEndorsement.requirements?.issues || [];
-
-  // Region restriction - disabled
-  if (hasRegionRestriction(issues)) {
-    return true;
   }
 
   // Pending review - disabled

@@ -1,11 +1,14 @@
+import { SvgProps } from 'react-native-svg';
+
 import BrlFlag from '@/assets/images/brl-fiat-currency';
 import EurFlag from '@/assets/images/eur-fiat-currency';
 import MxnFlag from '@/assets/images/mxn-fiat-currency';
 import UsdFlag from '@/assets/images/usd-fiat-currency';
 import UsdcIcon from '@/assets/images/usdc-cryptocurrency';
-import type { ComponentType } from 'react';
-import { SvgProps } from 'react-native-svg';
+
 import { BridgeTransferCryptoCurrency, BridgeTransferFiatCurrency } from './enums';
+
+import type { ComponentType } from 'react';
 
 export type SvgIcon = ComponentType<SvgProps>;
 

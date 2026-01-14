@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 
+import CardIcon from '@/assets/images/card';
 import CountUp from '@/components/CountUp';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -7,8 +8,6 @@ import WalletCardIcons from '@/components/Wallet/WalletCardIcons';
 import { useDimension } from '@/hooks/useDimension';
 import { TokenBalance } from '@/lib/types';
 import { cn, fontSize } from '@/lib/utils';
-
-import CardIcon from '@/assets/images/card';
 
 type CardProps = {
   balance: number;

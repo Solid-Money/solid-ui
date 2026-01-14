@@ -1,8 +1,8 @@
-import * as Sentry from '@sentry/react-native';
-import { Image } from 'expo-image';
-import { Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
+import * as Sentry from '@sentry/react-native';
+import { Trash2 } from 'lucide-react-native';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
@@ -247,6 +247,7 @@ const Transaction = ({
                 source={getAsset('images/green-diamond.png')}
                 style={{ width: 12, height: 12 }}
                 contentFit="contain"
+                alt="Reward indicator"
               />
             )}
             {isPending && <ActivityIndicator color="gray" size={14} />}

@@ -1,3 +1,7 @@
+import React, { useEffect, useState } from 'react';
+import { TouchableOpacity, View } from 'react-native';
+import { Address } from 'viem';
+
 import CountUp from '@/components/CountUp';
 import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
@@ -24,9 +28,6 @@ import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { fontSize, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
-import React, { useEffect, useState } from 'react';
-import { TouchableOpacity, View } from 'react-native';
-import { Address } from 'viem';
 
 export default function Home() {
   const { user } = useUser();

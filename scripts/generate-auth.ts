@@ -38,7 +38,7 @@ import path from 'path';
   const page = pages.length > 0 ? pages[0] : await context.newPage();
 
   // 2. Go to your login page (local dev server)
-  const loginUrl = 'http://localhost:8081/register';
+  const loginUrl = 'http://localhost:8081/onboarding';
   console.log(`Navigating to ${loginUrl}...`);
 
   await page.goto(loginUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });

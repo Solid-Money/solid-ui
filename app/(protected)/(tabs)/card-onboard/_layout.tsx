@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router, Stack } from 'expo-router';
 import { TouchableOpacity } from 'react-native';
+import { router, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CardWaitlistLayout() {
   return (

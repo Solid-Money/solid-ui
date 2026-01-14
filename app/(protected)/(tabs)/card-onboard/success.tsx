@@ -1,6 +1,7 @@
-import { Image } from 'expo-image';
 import { View } from 'react-native';
+import { Image } from 'expo-image';
 
+import Checkmark from '@/assets/images/checkmark';
 import CardWaitlistBackButton from '@/components/CardWaitlist/CardWaitlistBackButton';
 import CardWaitlistContainer from '@/components/CardWaitlist/CardWaitlistContainer';
 import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';
@@ -8,8 +9,6 @@ import CardWaitlistHeaderTitle from '@/components/CardWaitlist/CardWaitlistHeade
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
-
-import Checkmark from '@/assets/images/checkmark';
 
 const CardWaitlist = () => {
   const { isScreenMedium } = useDimension();

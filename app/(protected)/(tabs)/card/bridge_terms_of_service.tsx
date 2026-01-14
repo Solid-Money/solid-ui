@@ -1,8 +1,9 @@
-import { Text } from '@/components/ui/text';
-import { TermsOfServiceStatus } from '@/lib/types';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+
+import { Text } from '@/components/ui/text';
+import { TermsOfServiceStatus } from '@/lib/types';
 
 export default function BridgeTermsOfServiceIframe() {
   const { url } = useLocalSearchParams<{ url: string }>();

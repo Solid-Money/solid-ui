@@ -1,3 +1,15 @@
+import { useMemo, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Address } from 'abitype';
+import { ChevronDown, Wallet } from 'lucide-react-native';
+import { formatUnits, zeroAddress } from 'viem';
+import { useBalance } from 'wagmi';
+import { z } from 'zod';
+
 import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
@@ -13,17 +25,6 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Address } from 'abitype';
-import { Image } from 'expo-image';
-import { ChevronDown, Wallet } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
-import Toast from 'react-native-toast-message';
-import { formatUnits, zeroAddress } from 'viem';
-import { useBalance } from 'wagmi';
-import { z } from 'zod';
 
 const RegularWithdrawForm = () => {
   const { user } = useUser();
@@ -323,9 +324,15 @@ const RegularWithdrawForm = () => {
                 </View>
                 <Button
                   variant="brand"
-                  className={cn('h-[48px] rounded-[12px]', activeStep !== 1 && 'bg-white/10')}
+                  className={cn(
+                    'h-[48px] rounded-[12px]',
+                    activeStep !== 1 && 'bg-white/10',
+                    activeStep !== 1
+                      ? 'web:disabled:hover:bg-white/10'
+                      : 'web:disabled:hover:bg-brand',
+                  )}
                   onPress={handleSubmit(onBridgeSubmit)}
-                  disabled={isWithdrawFormDisabled() || activeStep !== 1}
+                  disabled={isWithdrawFormDisabled() || activeStep !== 1 || isBridgeLoading}
                 >
                   {isBridgeLoading ? (
                     <ActivityIndicator color="gray" />
@@ -346,7 +353,7 @@ const RegularWithdrawForm = () => {
                           activeStep !== 1 ? 'text-white/50' : 'text-primary-foreground',
                         )}
                       >
-                        Withdraw
+                        Bridge
                       </Text>
                     </View>
                   )}
@@ -369,16 +376,22 @@ const RegularWithdrawForm = () => {
                         })}
                         size={22}
                       />
-                      <Text className="text-base font-bold text-white">Swap to USDC</Text>
+                      <Text className="text-base font-bold text-white">Withdraw to USDC</Text>
                     </View>
                     <Text className="text-base font-medium text-muted-foreground">Up to 24H</Text>
                   </View>
                 </View>
                 <Button
                   variant="brand"
-                  className={cn('h-[48px] rounded-[12px]', activeStep !== 2 && 'bg-white/10')}
+                  className={cn(
+                    'h-[48px] rounded-[12px]',
+                    activeStep !== 2 && 'bg-white/10',
+                    activeStep !== 2
+                      ? 'web:disabled:hover:bg-white/10'
+                      : 'web:disabled:hover:bg-brand',
+                  )}
                   onPress={handleSubmit(onSwapSubmit)}
-                  disabled={activeStep !== 2 || isWithdrawFormDisabled()}
+                  disabled={activeStep !== 2 || isWithdrawFormDisabled() || isWithdrawLoading}
                 >
                   {isWithdrawLoading ? (
                     <ActivityIndicator color="gray" />
@@ -399,7 +412,7 @@ const RegularWithdrawForm = () => {
                           activeStep !== 2 ? 'text-white/50' : 'text-primary-foreground',
                         )}
                       >
-                        Swap
+                        Withdraw
                       </Text>
                     </View>
                   )}
@@ -419,16 +432,16 @@ const RegularWithdrawForm = () => {
                       })}
                       size={22}
                     />
-                    <Text className="text-base font-bold text-white">Swap to USDC</Text>
+                    <Text className="text-base font-bold text-white">Withdraw to USDC</Text>
                   </View>
                   <Text className="text-base font-medium text-muted-foreground">Up to 24H</Text>
                 </View>
               </View>
               <Button
                 variant="brand"
-                className="h-[48px] rounded-[12px]"
+                className="h-[48px] rounded-[12px] web:disabled:hover:bg-brand"
                 onPress={handleSubmit(onSwapSubmit)}
-                disabled={isWithdrawFormDisabled()}
+                disabled={isWithdrawFormDisabled() || isWithdrawLoading}
               >
                 {isWithdrawLoading ? (
                   <ActivityIndicator color="gray" />
@@ -439,7 +452,7 @@ const RegularWithdrawForm = () => {
                       className="h-6 w-6"
                       contentFit="contain"
                     />
-                    <Text className="text-base font-bold text-primary-foreground">Swap</Text>
+                    <Text className="text-base font-bold text-primary-foreground">Withdraw</Text>
                   </View>
                 )}
               </Button>

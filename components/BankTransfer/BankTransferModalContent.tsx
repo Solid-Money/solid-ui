@@ -1,3 +1,7 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { ChevronDown, ChevronUp, Fuel, Info } from 'lucide-react-native';
+
 import CopyToClipboard from '@/components/CopyToClipboard';
 import NeedHelp from '@/components/NeedHelp';
 import { Button } from '@/components/ui/button';
@@ -8,9 +12,7 @@ import { useExchangeRate } from '@/hooks/useExchangeRate';
 import { track } from '@/lib/analytics';
 import { formatNumber } from '@/lib/utils/utils';
 import { useDepositStore } from '@/store/useDepositStore';
-import { ChevronDown, ChevronUp, Fuel, Info } from 'lucide-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+
 import AmountCard from './AmountCard';
 import ArrowDivider from './ArrowDivider';
 import CryptoDropdown from './CryptoDropdown';

@@ -5,6 +5,7 @@ import { WITHDRAW_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { useWithdrawStore } from '@/store/useWithdrawStore';
+
 import { WithdrawTrigger } from '.';
 
 type WithdrawModalProps = {

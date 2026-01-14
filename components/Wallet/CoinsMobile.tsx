@@ -1,7 +1,7 @@
-import { FlashList } from '@shopify/flash-list';
 import React, { memo, useCallback, useMemo } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlashList } from '@shopify/flash-list';
 import { formatUnits } from 'viem';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';

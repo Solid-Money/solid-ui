@@ -1,18 +1,17 @@
-import { Image } from 'expo-image';
 import { useMemo } from 'react';
 import { View } from 'react-native';
+import { Image } from 'expo-image';
 import { formatUnits } from 'viem';
 import { base, fuse, mainnet } from 'viem/chains';
 
+import SavingsIcon from '@/assets/images/savings';
+import WalletIcon from '@/assets/images/wallet';
 import { Text } from '@/components/ui/text';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { getAsset } from '@/lib/assets';
 import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber, isSoUSDToken } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
-
-import SavingsIcon from '@/assets/images/savings';
-import WalletIcon from '@/assets/images/wallet';
 
 enum HeldIn {
   WALLET = 'wallet',

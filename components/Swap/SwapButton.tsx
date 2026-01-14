@@ -1,9 +1,11 @@
-import * as Sentry from '@sentry/react-native';
 import React, { useCallback, useMemo } from 'react';
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
+import { Image } from 'expo-image';
+import { tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+import * as Sentry from '@sentry/react-native';
+import { Address } from 'viem';
 
 import InfoError from '@/assets/images/info-error';
-
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { SWAP_MODAL } from '@/constants/modals';
@@ -20,8 +22,6 @@ import { TradeState } from '@/lib/types/trade-state';
 import { computeRealizedLPFeePercent, warningSeverity } from '@/lib/utils/swap/prices';
 import { useDerivedSwapInfo, useSwapState } from '@/store/swapStore';
 import { useUserState } from '@/store/userStore';
-import { tryParseAmount } from '@cryptoalgebra/fuse-sdk';
-import { Address } from 'viem';
 
 const SwapButton: React.FC = () => {
   const { isExpertMode } = useUserState();

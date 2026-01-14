@@ -1,9 +1,9 @@
-import { AlertTriangle } from 'lucide-react-native';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AlertTriangle } from 'lucide-react-native';
 
-import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { Text } from '@/components/ui/text';
+import { detectPasskeySupported } from '@/hooks/usePasskey';
 
 const PasskeyNotSupported = () => {
   return (

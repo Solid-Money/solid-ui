@@ -1,7 +1,7 @@
-import { FlashList } from '@shopify/flash-list';
-import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
+import { router } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 
 import Diamond from '@/assets/images/diamond';
 import RenderTokenIcon from '@/components/RenderTokenIcon';

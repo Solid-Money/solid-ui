@@ -1,7 +1,7 @@
-import { useLocalSearchParams } from 'expo-router';
-import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { Address } from 'viem';
 
 import ActivityTransactions from '@/components/Activity/ActivityTransactions';

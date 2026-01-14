@@ -1,5 +1,5 @@
-import { ArrowUpRight } from 'lucide-react-native';
 import React from 'react';
+import { ArrowUpRight } from 'lucide-react-native';
 import { Address } from 'viem';
 
 import { Button, buttonVariants } from '@/components/ui/button';

@@ -1,7 +1,8 @@
-import { cn } from '@/lib/utils/index';
+import { Platform, View } from 'react-native';
 import * as SwitchPrimitives from '@rn-primitives/switch';
 import { Check, X } from 'lucide-react-native';
-import { Platform, View } from 'react-native';
+
+import { cn } from '@/lib/utils/index';
 
 function Switch({
   className,

@@ -1,12 +1,13 @@
-import { ChartPayload } from '@/lib/types';
-import { useCoinStore } from '@/store/useCoinStore';
-import { formatNumber } from '@/lib/utils';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Dimensions, GestureResponderEvent, View } from 'react-native';
 import { Defs, LinearGradient, Stop } from 'react-native-svg';
 import { VictoryArea, VictoryAxis, VictoryChart } from 'victory-native';
-import { Text } from '@/components/ui/text';
+
 import { calculatePercentageChange } from '@/components/ChartTooltip';
+import { Text } from '@/components/ui/text';
+import { ChartPayload } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
+import { useCoinStore } from '@/store/useCoinStore';
 
 interface AreaChartProps {
   data: ChartPayload[];

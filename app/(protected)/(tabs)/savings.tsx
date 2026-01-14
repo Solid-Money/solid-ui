@@ -1,3 +1,8 @@
+import React, { useEffect } from 'react';
+import { ImageBackground, Platform, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Address } from 'viem';
+
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { FAQs } from '@/components/FAQ';
@@ -24,10 +29,6 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect } from 'react';
-import { ImageBackground, Platform, View } from 'react-native';
-import { Address } from 'viem';
 
 export default function Savings() {
   const { user } = useUser();

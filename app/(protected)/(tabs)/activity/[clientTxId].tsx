@@ -1,13 +1,13 @@
-import Diamond from '@/assets/images/diamond';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { Linking, Pressable, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { format, minutesToSeconds } from 'date-fns';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
 import { mainnet } from 'viem/chains';
 
+import Diamond from '@/assets/images/diamond';
 import SupportIcon from '@/assets/images/support-svg';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import EstimatedTime from '@/components/EstimatedTime';

@@ -1,24 +1,15 @@
-import CardDepositModalProvider from '@/components/Card/CardDepositModalProvider';
-import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
-import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
-import AppErrorBoundary from '@/components/ErrorBoundary';
-import Intercom from '@/components/Intercom';
-import TierModalProvider from '@/components/Rewards/TierModalProvider';
-import SendModalProvider from '@/components/Send/SendModalProvider';
-import StakeModalProvider from '@/components/Stake/StakeModalProvider';
-import SwapModalProvider from '@/components/Swap/SwapModalProvider';
-import { toastProps } from '@/components/Toast';
-import { TurnkeyProvider } from '@/components/TurnkeyProvider';
-import { Button } from '@/components/ui/button';
-import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
-import WhatsNewModal from '@/components/WhatsNewModal';
-import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
 import '@/global.css';
-import { infoClient } from '@/graphql/clients';
-import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
-import { useWhatsNew } from '@/hooks/useWhatsNew';
-import { initAnalytics, trackScreen } from '@/lib/analytics';
-import { config } from '@/lib/wagmi';
+
+import { useCallback, useEffect, useState } from 'react';
+import { Appearance, Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+import * as Font from 'expo-font';
+import * as Notifications from 'expo-notifications';
+import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
+import Head from 'expo-router/head';
+import * as SplashScreen from 'expo-splash-screen';
 import { ApolloProvider } from '@apollo/client/react';
 import {
   MonaSans_200ExtraLight,
@@ -33,116 +24,32 @@ import {
 } from '@expo-google-fonts/mona-sans';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PortalHost } from '@rn-primitives/portal';
-import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injectSpeedInsights } from '@vercel/speed-insights';
-import * as Notifications from 'expo-notifications';
-import type { ErrorBoundaryProps } from 'expo-router';
-import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
-import Head from 'expo-router/head';
-import * as SplashScreen from 'expo-splash-screen';
 import { ChevronLeft } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
-import { Appearance, Platform } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 import { WagmiProvider } from 'wagmi';
 
+import DeferredModalProviders from '@/components/DeferredModalProviders';
+import AppErrorBoundary from '@/components/ErrorBoundary';
+import Intercom from '@/components/Intercom';
 // Lazy-loaded to defer thirdweb bundle until actually needed
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
+import { toastProps } from '@/components/Toast';
+import { TurnkeyProvider } from '@/components/TurnkeyProvider';
+import { Button } from '@/components/ui/button';
+import WhatsNewModal from '@/components/WhatsNewModal';
+import { getInfoClient } from '@/graphql/clients';
+import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
+import { useWhatsNew } from '@/hooks/useWhatsNew';
+import { initAnalytics, trackScreen } from '@/lib/analytics';
+import { initSentryDeferred, wrapWithSentry } from '@/lib/sentry-init';
+import { config } from '@/lib/wagmi';
+import { useUserStore } from '@/store/useUserStore';
 
-Sentry.init({
-  dsn: 'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952',
+import type { ErrorBoundaryProps } from 'expo-router';
 
-  // Only enable Sentry in production
-  enabled: process.env.EXPO_PUBLIC_ENVIRONMENT === 'production' && !__DEV__,
-
-  // Set environment from env variable
-  environment: process.env.EXPO_PUBLIC_ENVIRONMENT || 'development',
-
-  // Debug logs only in non-production environments
-  debug: process.env.EXPO_PUBLIC_ENVIRONMENT !== 'production',
-
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
-
-  // Performance Monitoring
-  tracesSampleRate: 0.2, // Capture 20% of transactions for performance monitoring
-  profilesSampleRate: 0.2, // Profile 20% of sampled transactions
-
-  // Release Health
-  enableAutoSessionTracking: true, // Track user sessions
-  sessionTrackingIntervalMillis: 30000, // 30 seconds
-
-  // Error Filtering
-  ignoreErrors: [
-    // Network errors that are usually not actionable
-    'Network request failed',
-    'NetworkError',
-    'Failed to fetch',
-    // User canceled actions
-    'AbortError',
-    // Common React Native warnings in dev
-    'Non-serializable values were found in the navigation state',
-  ],
-
-  // Breadcrumbs
-  maxBreadcrumbs: 100, // Better debugging context
-  beforeBreadcrumb(breadcrumb) {
-    // Filter out noisy breadcrumbs
-    if (breadcrumb.category === 'console' && breadcrumb.level === 'debug') {
-      return null; // Don't record debug console logs
-    }
-    return breadcrumb;
-  },
-
-  // Sample events before sending
-  beforeSend(event) {
-    // Filter out events from development if they somehow get through
-    if (event.environment !== 'production') {
-      return null;
-    }
-
-    // Sanitize sensitive data
-    if (event.request?.cookies) {
-      delete event.request.cookies;
-    }
-
-    return event;
-  },
-
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-
-  // Integrations
-  integrations: [
-    Sentry.mobileReplayIntegration({
-      maskAllText: false, // Set to true if you want to mask sensitive text
-      maskAllImages: false, // Set to true to mask images
-    }),
-    Sentry.feedbackIntegration(),
-    Sentry.reactNativeTracingIntegration(),
-    Sentry.reactNavigationIntegration({
-      routeChangeTimeoutMs: 50,
-    }),
-  ],
-
-  // Attachments
-  attachScreenshot: true, // Attach screenshots to errors
-  attachViewHierarchy: true, // Attach view hierarchy for debugging
-
-  // Network tracking
-  tracePropagationTargets: [
-    // Only trace requests to your own backend
-    /^https:\/\/.*\.solid\.xyz/,
-  ],
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-});
+// Sentry initialization is now deferred to after first paint
+// See lib/sentry-init.ts for configuration
 
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   return <AppErrorBoundary {...props} />;
@@ -180,24 +87,39 @@ const queryClient = new QueryClient({
   },
 });
 
-export default Sentry.wrap(function RootLayout() {
+export default wrapWithSentry(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
+
+  const users = useUserStore(state => state.users);
+  const user = users.find(u => u.selected);
+
   const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
 
   // Initialize attribution tracking automatically (handles web and mobile)
   useAttributionInitialization();
 
-  const [loaded, error] = useFonts({
-    MonaSans_200ExtraLight,
-    MonaSans_300Light,
+  // Load only critical font weights to speed up FCP
+  // Regular (400) and SemiBold (600) cover most UI text
+  const [criticalFontsLoaded, fontError] = useFonts({
     MonaSans_400Regular,
-    MonaSans_500Medium,
     MonaSans_600SemiBold,
-    MonaSans_700Bold,
-    MonaSans_800ExtraBold,
-    MonaSans_900Black,
   });
+
+  // Load remaining font weights after first paint (deferred)
+  useEffect(() => {
+    if (criticalFontsLoaded) {
+      // Defer non-critical font loading to not block render
+      Font.loadAsync({
+        MonaSans_200ExtraLight,
+        MonaSans_300Light,
+        MonaSans_500Medium,
+        MonaSans_700Bold,
+        MonaSans_800ExtraBold,
+        MonaSans_900Black,
+      }).catch(e => console.warn('Error loading secondary fonts:', e));
+    }
+  }, [criticalFontsLoaded]);
   const pathname = usePathname();
   const params = useGlobalSearchParams();
 
@@ -209,12 +131,18 @@ export default Sentry.wrap(function RootLayout() {
   }, []);
 
   useEffect(() => {
+    // Initialize Sentry after first paint (deferred for performance)
+    initSentryDeferred();
+
     async function prepare() {
       try {
         // Pre-load fonts, make any API calls you need to do here
         // await Font.loadAsync(Entypo.font);
 
-        await initAnalytics();
+        // Fire analytics without awaiting - don't block first paint
+        // Events fired before SDK ready will be buffered
+        initAnalytics().catch(e => console.warn('Analytics init error:', e));
+
         if (Platform.OS !== 'web') {
           Appearance.setColorScheme('dark');
         }
@@ -257,12 +185,12 @@ export default Sentry.wrap(function RootLayout() {
   }, [pathname, params]);
 
   useEffect(() => {
-    if (error) {
-      console.error('Error loading fonts:', error);
+    if (fontError) {
+      console.error('Error loading fonts:', fontError);
     }
-  }, [error]);
+  }, [fontError]);
 
-  if (!appIsReady || !loaded) {
+  if (!appIsReady || !criticalFontsLoaded) {
     return null;
   }
 
@@ -272,7 +200,7 @@ export default Sentry.wrap(function RootLayout() {
         <LazyThirdwebProvider>
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
-              <ApolloProvider client={infoClient}>
+              <ApolloProvider client={getInfoClient()}>
                 <Intercom>
                   <GestureHandlerRootView>
                     <BottomSheetModalProvider>
@@ -365,16 +293,8 @@ export default Sentry.wrap(function RootLayout() {
                         />
                       </Stack>
                       <PortalHost />
-                      <DepositModalProvider />
-                      <SendModalProvider />
-                      <SwapModalProvider />
-                      <WithdrawModalProvider />
-                      <StakeModalProvider />
-                      <UnstakeModalProvider />
-                      <DepositFromSafeAccountModalProvider />
-                      <CardDepositModalProvider />
-                      <TierModalProvider />
-                      {whatsNew && (
+                      <DeferredModalProviders />
+                      {user && whatsNew && (
                         <WhatsNewModal
                           whatsNew={whatsNew}
                           isOpen={isVisible}

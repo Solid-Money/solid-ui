@@ -38,6 +38,11 @@ export const METHOD_LABEL: Record<BridgeTransferMethod, string> = {
   [BridgeTransferMethod.PIX]: 'Pix (Beta)',
 };
 
+export const METHOD_SUBTITLE: Partial<Record<BridgeTransferMethod, string>> = {
+  [BridgeTransferMethod.ACH_PUSH]: 'Instant',
+  [BridgeTransferMethod.WIRE]: '~1-2 business days',
+};
+
 export enum Endorsements {
   BASE = 'base',
   SEPA = 'sepa',

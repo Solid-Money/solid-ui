@@ -1,7 +1,7 @@
-import { Image } from 'expo-image';
-import LottieView from 'lottie-react-native';
 import { Platform, useWindowDimensions, View } from 'react-native';
 import Animated, { interpolate, SharedValue, useAnimatedStyle } from 'react-native-reanimated';
+import { Image } from 'expo-image';
+import LottieView from 'lottie-react-native';
 
 import { Text } from '@/components/ui/text';
 import { getBackgroundImage, OnboardingPageData } from '@/lib/types/onboarding';

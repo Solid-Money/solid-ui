@@ -1,8 +1,9 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, RotateCw } from 'lucide-react-native';
 import React from 'react';
-import { ActivityIndicator, FlatList, Platform, Pressable, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, RefreshControl, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
+import { useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, RotateCw } from 'lucide-react-native';
 
 import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
@@ -174,7 +175,7 @@ export default function CardTransactions() {
         {allTransactions.length ? (
           <View className="flex-1 px-4">
             <View className="flex-1 overflow-hidden rounded-xl bg-card md:rounded-twice">
-              <FlatList
+              <FlashList
                 data={allTransactions}
                 renderItem={renderTransaction}
                 keyExtractor={item => item.id}
@@ -184,11 +185,14 @@ export default function CardTransactions() {
                   }
                 }}
                 onEndReachedThreshold={0.5}
-                removeClippedSubviews={true}
-                maxToRenderPerBatch={10}
-                updateCellsBatchingPeriod={50}
-                windowSize={11}
-                initialNumToRender={10}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={isFetching && !isFetchingNextPage && !isLoading}
+                    onRefresh={() => refetch()}
+                    tintColor="#666"
+                    colors={['#666']}
+                  />
+                }
                 ListFooterComponent={
                   isFetchingNextPage ? (
                     <View className="py-4">

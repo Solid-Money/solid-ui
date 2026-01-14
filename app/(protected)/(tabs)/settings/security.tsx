@@ -1,9 +1,10 @@
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
-import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
@@ -173,10 +174,9 @@ export default function Security() {
         customMobileHeader={mobileHeader}
         customDesktopHeader={desktopHeader}
         useDesktopBreakpoint
-        scrollable={false}
       >
         <View
-          className={cn('mx-auto w-full flex-1 px-4 py-4', {
+          className={cn('mx-auto w-full px-4 py-4 pb-32', {
             'max-w-[512px]': isDesktop,
             'max-w-7xl': !isDesktop,
           })}

@@ -1,6 +1,6 @@
-import { useQueryClient } from '@tanstack/react-query';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { TextStyle } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 
 import CountUp from '@/components/CountUp';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';

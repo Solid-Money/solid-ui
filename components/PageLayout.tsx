@@ -1,7 +1,9 @@
-import { useDimension } from '@/hooks/useDimension';
 import { ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Edge, SafeAreaView } from 'react-native-safe-area-context';
+
+import { useDimension } from '@/hooks/useDimension';
+
 import Loading from './Loading';
 import Navbar from './Navbar';
 import NavbarMobile from './Navbar/NavbarMobile';

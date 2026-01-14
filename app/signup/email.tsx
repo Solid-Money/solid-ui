@@ -1,11 +1,11 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Image } from 'expo-image';
-import { Link, useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { Link, useRouter } from 'expo-router';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowLeft } from 'lucide-react-native';
 import { z } from 'zod';
 
 import InfoError from '@/assets/images/info-error';

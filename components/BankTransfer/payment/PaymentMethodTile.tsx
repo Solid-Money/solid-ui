@@ -1,15 +1,17 @@
-import { Text } from '@/components/ui/text';
-import { ChevronRight } from 'lucide-react-native';
 import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
+
+import { Text } from '@/components/ui/text';
 
 type Props = {
   title: string;
+  subtitle?: string;
   onPress?: () => void;
   loading?: boolean;
   disabled?: boolean;
 };
 
-export function PaymentMethodTile({ title, onPress, loading, disabled }: Props) {
+export function PaymentMethodTile({ title, subtitle, onPress, loading, disabled }: Props) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -20,6 +22,7 @@ export function PaymentMethodTile({ title, onPress, loading, disabled }: Props) 
       <View className="flex-row items-center py-3 pl-2">
         <View className="flex-1">
           <Text className="text-lg font-bold text-white">{title}</Text>
+          {subtitle && <Text className="mt-1 text-sm font-medium text-[#ACACAC]">{subtitle}</Text>}
         </View>
         {loading ? (
           <ActivityIndicator color="#ffffff" size="small" />

@@ -1,6 +1,10 @@
+import { lazy, Suspense, useCallback, useEffect } from 'react';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect } from 'react';
-import { Platform } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { Address } from 'viem';
+import { fuse, mainnet } from 'viem/chains';
+import { readContractQueryOptions } from 'wagmi/query';
 
 import {
   BridgeTransferCryptoCurrency,
@@ -9,18 +13,71 @@ import {
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
+import { apysQueryOptions, userTransactionsQueryOptions } from '@/hooks/useAnalytics';
+import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
+import { cardDetailsQueryOptions } from '@/hooks/useCardDetails';
+import { cardStatusQueryOptions } from '@/hooks/useCardStatus';
 import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
 import { useWebhookStatus } from '@/hooks/useWebhookStatus';
+import FuseVault from '@/lib/abis/FuseVault';
 import { trackIdentity } from '@/lib/analytics';
+import { ADDRESSES } from '@/lib/config';
+import { config } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
+
+// Lazy load Loading component - only used during hydration
+const Loading = lazy(() => import('@/components/Loading'));
 
 export default function ProtectedLayout() {
   const { user } = useUser();
   const { users, _hasHydrated } = useUserStore();
   const searchParams = useLocalSearchParams();
+  const queryClient = useQueryClient();
+
+  // Prefetch critical home screen data before Home component mounts
+  // This reduces LCP by starting data fetches earlier
+  useEffect(() => {
+    if (!user?.safeAddress || !user?.userId) return;
+
+    const safeAddress = user.safeAddress as Address;
+
+    // Prefetch vault balance from both chains (the main LCP-critical data)
+    queryClient.prefetchQuery(
+      readContractQueryOptions(config, {
+        abi: FuseVault,
+        address: ADDRESSES.fuse.vault,
+        functionName: 'balanceOf',
+        args: [safeAddress],
+        chainId: fuse.id,
+      }),
+    );
+    queryClient.prefetchQuery(
+      readContractQueryOptions(config, {
+        abi: FuseVault,
+        address: ADDRESSES.ethereum.vault,
+        functionName: 'balanceOf',
+        args: [safeAddress],
+        chainId: mainnet.id,
+      }),
+    );
+
+    // Prefetch token balances (wallet balances from all chains)
+    queryClient.prefetchQuery(tokenBalancesQueryOptions(safeAddress));
+
+    // Prefetch APYs (needed for savings calculations)
+    queryClient.prefetchQuery(apysQueryOptions());
+
+    // Prefetch user transactions (needed for deposit calculations)
+    queryClient.prefetchQuery(userTransactionsQueryOptions(safeAddress));
+
+    // Prefetch card status and details
+    queryClient.prefetchQuery(cardStatusQueryOptions(user.userId));
+    queryClient.prefetchQuery(cardDetailsQueryOptions());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.safeAddress, user?.userId]);
 
   // Run post-signup/login initialization (lazy loading of balance, points, etc.)
   usePostSignupInit(user);
@@ -31,7 +88,8 @@ export default function ProtectedLayout() {
 
   // Start real-time activity updates via SSE as soon as the user is authenticated
   // This enables instant transaction notifications across all screens, not just Activity
-  useActivitySSE({ enabled: !!user?.userId });
+  // subscribe: false prevents re-renders since we don't use the return values here
+  useActivitySSE({ enabled: !!user?.userId, subscribe: false });
 
   useEffect(() => {
     if (!user) return;
@@ -89,8 +147,19 @@ export default function ProtectedLayout() {
 
   // Wait for Zustand store to hydrate before making redirect decisions
   // This prevents incorrect redirects when users array is empty during hydration
+  // Show loading state to improve FCP (vs returning null which blocks paint)
   if (!_hasHydrated) {
-    return null;
+    return (
+      <Suspense
+        fallback={
+          <View className="h-full flex-1 items-center justify-center bg-background">
+            <ActivityIndicator size="large" color="#cccccc" />
+          </View>
+        }
+      >
+        <Loading />
+      </Suspense>
+    );
   }
 
   if (!users.length) {

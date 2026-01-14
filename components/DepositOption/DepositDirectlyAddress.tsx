@@ -1,3 +1,12 @@
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Share, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
+import { formatUnits } from 'viem';
+import { mainnet } from 'viem/chains';
+
 import CopyToClipboard from '@/components/CopyToClipboard';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import TooltipPopover from '@/components/Tooltip';
@@ -6,25 +15,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { path } from '@/constants/path';
-import { track } from '@/lib/analytics';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
-
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
+import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Share, View } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
-import { formatUnits } from 'viem';
-import { mainnet } from 'viem/chains';
 
 const USDC_ICON = getAsset('images/usdc.png');
 const USDT_ICON = getAsset('images/usdt.png');

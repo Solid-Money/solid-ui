@@ -1,7 +1,7 @@
-import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import React, { useCallback, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
 import { TransactionType } from '@/lib/types';
 
