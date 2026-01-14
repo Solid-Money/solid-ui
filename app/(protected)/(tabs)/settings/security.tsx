@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -8,8 +8,6 @@ import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
-import { SecurityEmailModal } from '@/components/SecurityEmailModal';
-import { SecurityTotpModal } from '@/components/SecurityTotpModal';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
@@ -17,6 +15,21 @@ import { getTotpStatus } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID } from '@/lib/config';
 import { cn } from '@/lib/utils';
+
+// Lazy load heavy modal components - only loaded when user opens them
+const SecurityEmailModal = lazy(() =>
+  import('@/components/SecurityEmailModal').then(m => ({ default: m.SecurityEmailModal })),
+);
+const SecurityTotpModal = lazy(() =>
+  import('@/components/SecurityTotpModal').then(m => ({ default: m.SecurityTotpModal })),
+);
+
+// Minimal loading fallback for modals
+const ModalLoadingFallback = () => (
+  <View className="flex-1 items-center justify-center">
+    <ActivityIndicator size="small" color="#94F27F" />
+  </View>
+);
 
 const SecurityEmailIcon = getAsset('images/security_email.png');
 const SecurityUnlockIcon = getAsset('images/security_unlock.png');
@@ -290,19 +303,27 @@ export default function Security() {
         </View>
       </PageLayout>
 
-      {/* Email Change Modal */}
-      <SecurityEmailModal
-        open={showEmailModal}
-        onOpenChange={setShowEmailModal}
-        onSuccess={handleEmailSuccess}
-      />
+      {/* Email Change Modal - Lazy loaded only when opened */}
+      {showEmailModal && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <SecurityEmailModal
+            open={showEmailModal}
+            onOpenChange={setShowEmailModal}
+            onSuccess={handleEmailSuccess}
+          />
+        </Suspense>
+      )}
 
-      {/* TOTP Modal */}
-      <SecurityTotpModal
-        open={showTotpModal}
-        onOpenChange={setShowTotpModal}
-        onSuccess={handleTotpSuccess}
-      />
+      {/* TOTP Modal - Lazy loaded only when opened */}
+      {showTotpModal && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <SecurityTotpModal
+            open={showTotpModal}
+            onOpenChange={setShowTotpModal}
+            onSuccess={handleTotpSuccess}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
