@@ -81,7 +81,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
             renderItem={renderItem}
           />
 
-          <View className="flex-row items-center justify-between px-6 pb-8 pt-6">
+          <View className="flex-row items-center justify-between px-8 pb-8 pt-6">
             <View className="w-20">
               {activeIndex > 0 && (
                 <Button
