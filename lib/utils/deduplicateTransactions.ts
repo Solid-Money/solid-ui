@@ -48,6 +48,9 @@ function isDuplicate(a: ActivityEvent, b: ActivityEvent): boolean {
  * Check if a transaction is a card deposit
  */
 function isCardDeposit(transaction: ActivityEvent): boolean {
+  // Guard against null/corrupted transactions
+  if (!transaction || !transaction.type) return false;
+
   return (
     transaction.type === TransactionType.BRIDGE_DEPOSIT ||
     transaction.type === TransactionType.CARD_TRANSACTION ||
@@ -61,6 +64,9 @@ function isCardDeposit(transaction: ActivityEvent): boolean {
  * Check if transaction is from analytics (has clientTxId like "TYPE-timestamp" or "TYPE-hash")
  */
 function isAnalyticsTransaction(transaction: ActivityEvent): boolean {
+  // Guard against null/corrupted transactions
+  if (!transaction || !transaction.clientTxId) return false;
+
   return (
     (typeof transaction.clientTxId === 'string' &&
       transaction.clientTxId.includes('-') &&
@@ -71,6 +77,7 @@ function isAnalyticsTransaction(transaction: ActivityEvent): boolean {
     (typeof transaction.clientTxId === 'string' &&
       !transaction.metadata?.source &&
       !transaction.clientTxId.startsWith('direct_deposit_') &&
+      transaction.type &&
       transaction.clientTxId.includes(`${transaction.type}-`))
   );
 }
@@ -81,8 +88,17 @@ function isAnalyticsTransaction(transaction: ActivityEvent): boolean {
  * For other transactions, keep the one with the most complete data
  */
 export function deduplicateTransactions(transactions: ActivityEvent[]): ActivityEvent[] {
+  // Filter out null/corrupted transactions first to prevent crashes
+  const validTransactions = transactions.filter(
+    (tx): tx is ActivityEvent =>
+      tx != null &&
+      typeof tx === 'object' &&
+      typeof tx.type === 'string' &&
+      typeof tx.clientTxId === 'string',
+  );
+
   const deduplicated = new Map<string, ActivityEvent>();
-  for (const transaction of transactions) {
+  for (const transaction of validTransactions) {
     const key = getDedupKey(transaction);
     const currentIsCardDeposit = isCardDeposit(transaction);
 

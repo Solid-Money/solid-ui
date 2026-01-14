@@ -6,6 +6,22 @@ import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { ActivityEvent } from '@/lib/types';
 
+/**
+ * Validates that an activity has all required fields with correct types.
+ * Used to filter out corrupted data from storage hydration.
+ */
+function isValidActivity(activity: unknown): activity is ActivityEvent {
+  if (!activity || typeof activity !== 'object') return false;
+
+  const a = activity as Record<string, unknown>;
+  return (
+    typeof a.clientTxId === 'string' &&
+    a.clientTxId.length > 0 &&
+    typeof a.type === 'string' &&
+    typeof a.status === 'string'
+  );
+}
+
 interface ActivityState {
   events: Record<string, ActivityEvent[]>;
   setEvents: (userId: string, events: ActivityEvent[]) => void;
@@ -178,6 +194,36 @@ export const useActivityStore = create<ActivityState>()(
     {
       name: USER.activityStorageKey,
       storage: createJSONStorage(() => mmkvStorage(USER.activityStorageKey)),
+      // Validate and clean corrupted data on hydration
+      onRehydrateStorage: () => state => {
+        if (!state?.events) return;
+
+        // Clean corrupted events on hydration
+        let totalCorrupted = 0;
+        const cleanedEvents: Record<string, ActivityEvent[]> = {};
+
+        for (const [userId, events] of Object.entries(state.events)) {
+          if (!Array.isArray(events)) {
+            totalCorrupted++;
+            cleanedEvents[userId] = [];
+            continue;
+          }
+
+          const validEvents = events.filter(isValidActivity);
+          const corruptedCount = events.length - validEvents.length;
+
+          if (corruptedCount > 0) {
+            totalCorrupted += corruptedCount;
+          }
+
+          cleanedEvents[userId] = validEvents;
+        }
+
+        // Only update if we found and removed corrupted data
+        if (totalCorrupted > 0) {
+          state.events = cleanedEvents;
+        }
+      },
     },
   ),
 );

@@ -161,7 +161,16 @@ export function useActivity() {
   const activities = useMemo(() => {
     if (!user?.userId || !events[user.userId]) return [];
 
-    let userEvents = [...events[user.userId]];
+    // CRITICAL: Filter out null/corrupted activities FIRST before any map operations
+    // This prevents "null is not an object (evaluating 't.type')" errors
+    let userEvents = events[user.userId].filter(
+      (activity): activity is ActivityEvent =>
+        activity != null &&
+        typeof activity === 'object' &&
+        typeof activity.type === 'string' &&
+        typeof activity.clientTxId === 'string' &&
+        typeof activity.status === 'string',
+    );
 
     if (userTransactions?.withdraws) {
       userEvents = userEvents.map(activity => {
@@ -202,8 +211,6 @@ export function useActivity() {
 
     return userEvents
       .filter(activity => {
-        // Guard against corrupted data (undefined/null elements in array)
-        if (!activity) return false;
         // Filter out deleted activities
         if (activity.deleted) return false;
         // Filter out expired direct deposits
