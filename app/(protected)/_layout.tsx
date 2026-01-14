@@ -88,7 +88,8 @@ export default function ProtectedLayout() {
 
   // Start real-time activity updates via SSE as soon as the user is authenticated
   // This enables instant transaction notifications across all screens, not just Activity
-  useActivitySSE({ enabled: !!user?.userId });
+  // subscribe: false prevents re-renders since we don't use the return values here
+  useActivitySSE({ enabled: !!user?.userId, subscribe: false });
 
   useEffect(() => {
     if (!user) return;

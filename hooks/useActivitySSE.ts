@@ -30,9 +30,14 @@ const HEARTBEAT_CHECK_INTERVAL_MS = 30000; // Check every 30 seconds
 // This lives outside React's lifecycle to ensure only ONE connection exists
 // per user, regardless of how many components use the hook.
 
+// UI-visible state that triggers re-renders when changed
 interface SSEState {
   connectionState: SSEConnectionState;
   error: string | null;
+}
+
+// Internal state that does NOT trigger re-renders (used for health monitoring)
+interface SSEInternalState {
   lastEventTime: number | null;
   lastHeartbeat: number | null;
 }
@@ -40,10 +45,14 @@ interface SSEState {
 type SSEStateListener = (state: SSEState) => void;
 
 class SSEConnectionManager {
-  // Connection state
+  // UI-visible state (changes trigger re-renders)
   private state: SSEState = {
     connectionState: 'disconnected',
     error: null,
+  };
+
+  // Internal state (changes do NOT trigger re-renders)
+  private internalState: SSEInternalState = {
     lastEventTime: null,
     lastHeartbeat: null,
   };
@@ -156,6 +165,13 @@ class SSEConnectionManager {
   }
 
   /**
+   * Get internal state (for health monitoring - not for React state)
+   */
+  getInternalState(): SSEInternalState {
+    return this.internalState;
+  }
+
+  /**
    * Notify all subscribers of state change
    */
   private notifySubscribers(): void {
@@ -163,11 +179,19 @@ class SSEConnectionManager {
   }
 
   /**
-   * Update state and notify subscribers
+   * Update UI-visible state and notify subscribers (triggers re-renders)
    */
   private setState(partial: Partial<SSEState>): void {
     this.state = { ...this.state, ...partial };
     this.notifySubscribers();
+  }
+
+  /**
+   * Update internal state without notifying subscribers (no re-renders)
+   * Used for heartbeat tracking and last event time
+   */
+  private setInternalState(partial: Partial<SSEInternalState>): void {
+    this.internalState = { ...this.internalState, ...partial };
   }
 
   /**
@@ -300,11 +324,12 @@ class SSEConnectionManager {
   private startHeartbeatMonitor(): void {
     this.stopHeartbeatMonitor();
 
-    // Initialize lastHeartbeat to now
-    this.setState({ lastHeartbeat: Date.now() });
+    // Initialize lastHeartbeat to now (internal state - no re-render)
+    this.setInternalState({ lastHeartbeat: Date.now() });
 
     this.heartbeatCheckInterval = setInterval(() => {
-      const { lastHeartbeat, connectionState } = this.state;
+      const { connectionState } = this.state;
+      const { lastHeartbeat } = this.internalState;
 
       // Stop monitoring if no longer connected
       if (connectionState !== 'connected') {
@@ -331,9 +356,10 @@ class SSEConnectionManager {
 
   /**
    * Handle incoming ping event (heartbeat)
+   * Updates internal state only - does NOT trigger re-renders
    */
   private handlePing(data: SSEPingData): void {
-    this.setState({ lastHeartbeat: Date.now() });
+    this.setInternalState({ lastHeartbeat: Date.now() });
 
     // Optional: track server time drift
     if (data.timestamp && typeof data.timestamp === 'number') {
@@ -413,7 +439,8 @@ class SSEConnectionManager {
         break;
     }
 
-    this.setState({ lastEventTime: timestamp });
+    // Update internal state only - activity updates go to the store, not SSE state
+    this.setInternalState({ lastEventTime: timestamp });
   }
 
   /**
@@ -519,21 +546,21 @@ class SSEConnectionManager {
         for (const line of lines) {
           const parsed = this.parseSSELine(line);
 
-          // Track heartbeats to detect stale connections
+          // Track heartbeats to detect stale connections (internal state - no re-render)
           if (parsed?.heartbeat) {
-            this.setState({ lastHeartbeat: Date.now() });
+            this.setInternalState({ lastHeartbeat: Date.now() });
             continue;
           }
 
           // Also detect ping events from backend (event: ping)
           if (parsed?.event === 'ping') {
-            this.setState({ lastHeartbeat: Date.now() });
+            this.setInternalState({ lastHeartbeat: Date.now() });
             continue;
           }
 
           if (parsed?.data) {
-            // Data events also count as proof of live connection
-            this.setState({ lastHeartbeat: Date.now() });
+            // Data events also count as proof of live connection (internal state - no re-render)
+            this.setInternalState({ lastHeartbeat: Date.now() });
             try {
               const rawData = JSON.parse(parsed.data);
 
@@ -691,7 +718,8 @@ class SSEConnectionManager {
     // to detect when app comes back to foreground
 
     this.stopHeartbeatMonitor();
-    this.setState({ connectionState: 'disconnected', lastHeartbeat: null });
+    this.setState({ connectionState: 'disconnected' });
+    this.setInternalState({ lastHeartbeat: null });
     this.isConnecting = false;
   }
 
@@ -753,6 +781,13 @@ const sseManager = new SSEConnectionManager();
 interface UseActivitySSEOptions {
   /** Whether SSE connection should be enabled */
   enabled?: boolean;
+  /** 
+   * Whether to subscribe to SSE state changes (connectionState, error)
+   * Set to false if you just want to enable SSE without subscribing to state updates
+   * This prevents unnecessary re-renders in components that don't use the return values
+   * @default true
+   */
+  subscribe?: boolean;
 }
 
 interface UseActivitySSEReturn {
@@ -764,10 +799,6 @@ interface UseActivitySSEReturn {
   disconnect: () => void;
   /** Manually reconnect to SSE */
   reconnect: () => void;
-  /** Timestamp of last received event */
-  lastEventTime: number | null;
-  /** Timestamp of last heartbeat (for connection health monitoring) */
-  lastHeartbeat: number | null;
 }
 
 /**
@@ -785,10 +816,13 @@ interface UseActivitySSEReturn {
  * - Heartbeat detection for stale connection monitoring
  */
 export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivitySSEReturn {
-  const { enabled = true } = options;
+  const { enabled = true, subscribe = true } = options;
 
-  // Local state that syncs with singleton
-  const [state, setState] = useState<SSEState>(() => sseManager.getState());
+  // Only create local state if we need to subscribe to updates
+  // This prevents re-renders when used just to enable SSE (like in _layout)
+  const [state, setState] = useState<SSEState | null>(() =>
+    subscribe ? sseManager.getState() : null
+  );
 
   // Track if we've already subscribed to prevent duplicate subscriptions
   const subscriptionRef = useRef<(() => void) | null>(null);
@@ -805,13 +839,15 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
 
     isSubscribedRef.current = true;
 
-    // Create stable callback inline to avoid dependency issues
-    const stateListener = (newState: SSEState) => {
-      setState(newState);
-    };
-
-    const unsubscribe = sseManager.subscribe(stateListener);
-    subscriptionRef.current = unsubscribe;
+    // Only subscribe to state changes if needed (for components that use the return values)
+    let unsubscribe: (() => void) | undefined;
+    if (subscribe) {
+      const stateListener = (newState: SSEState) => {
+        setState(newState);
+      };
+      unsubscribe = sseManager.subscribe(stateListener);
+      subscriptionRef.current = unsubscribe;
+    }
 
     // If enabled, trigger connection check
     // The singleton will use its own user tracking to get the userId
@@ -831,7 +867,7 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, subscribe]);
 
   // Memoized callbacks that delegate to singleton
   const disconnect = useCallback(() => {
@@ -843,11 +879,9 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
   }, []);
 
   return {
-    connectionState: state.connectionState,
-    error: state.error,
+    connectionState: state?.connectionState ?? 'disconnected',
+    error: state?.error ?? null,
     disconnect,
     reconnect,
-    lastEventTime: state.lastEventTime,
-    lastHeartbeat: state.lastHeartbeat,
   };
 }
