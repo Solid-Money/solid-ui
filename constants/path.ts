@@ -31,6 +31,8 @@ type Path = {
   POINTS: Href;
   REFERRAL: Href;
   POINTS_LEADERBOARD: Href;
+  REWARDS: Href;
+  REWARDS_BENEFITS: Href;
   OVERVIEW: Href;
   CARD_WAITLIST: Href;
   CARD_WAITLIST_SUCCESS: Href;
@@ -70,6 +72,8 @@ export const path: Path = {
   POINTS: '/points',
   REFERRAL: '/referral',
   POINTS_LEADERBOARD: '/points/leaderboard',
+  REWARDS: '/rewards',
+  REWARDS_BENEFITS: '/rewards/benefits',
   OVERVIEW: '/overview',
   CARD_WAITLIST: '/card-onboard',
   CARD_WAITLIST_SUCCESS: '/card-onboard/success',

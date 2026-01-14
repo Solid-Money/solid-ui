@@ -142,6 +142,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="rewards"
+        options={{
+          title: 'Rewards',
+          tabBarIcon: ({ color }) => <Star size={28} color={color} />,
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="referral"
         options={{
           title: 'Referral',
