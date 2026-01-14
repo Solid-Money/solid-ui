@@ -74,6 +74,16 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="card"
+        options={{
+          title: 'Card',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
+          href: path.CARD,
+        }}
+      />
+
+      <Tabs.Screen
         name="card-onboard"
         options={{
           title: 'Card',
@@ -115,15 +125,6 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="card"
-        options={{
-          title: 'Card',
-          headerShown: false,
-          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
-          href: path.CARD,
-        }}
-      />
       <Tabs.Screen
         name="earn"
         options={{
