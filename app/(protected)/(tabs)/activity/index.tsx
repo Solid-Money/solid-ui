@@ -6,6 +6,7 @@ import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';
+import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { ActivityTab } from '@/lib/types';
 import { hasCard } from '@/lib/utils';
@@ -14,6 +15,10 @@ export default function Activity() {
   const { data: cardStatus, isLoading: isCardLoading } = useCardStatus();
   const { refetchAll, isSyncing, isLoading } = useActivity();
   const isWeb = Platform.OS === 'web';
+
+  // Enable real-time activity updates via SSE only when viewing this tab
+  // Connection automatically closes when navigating away (singleton reference counting)
+  useActivitySSE();
   const userHasCard = hasCard(cardStatus);
 
   return (

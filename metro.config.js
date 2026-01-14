@@ -64,6 +64,22 @@ config.transformer.minifierConfig = {
   compress: {
     // The option below removes all console logs statements in production.
     drop_console: true,
+    // Enhanced dead code elimination for better tree shaking
+    dead_code: true,
+    // Multiple passes for more thorough optimization
+    passes: 3,
+    // Inline simple functions
+    inline: 1,
+    // Collapse consecutive variable declarations
+    collapse_vars: true,
+    // Remove unreachable code
+    conditionals: true,
+    // Evaluate constant expressions
+    evaluate: true,
+  },
+  output: {
+    // Remove comments in production
+    comments: false,
   },
 };
 

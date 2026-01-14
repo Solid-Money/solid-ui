@@ -12,11 +12,8 @@ import {
 } from '@/components/BankTransfer/enums';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import { useActivitySSE } from '@/hooks/useActivitySSE';
-import { apysQueryOptions, userTransactionsQueryOptions } from '@/hooks/useAnalytics';
+import { apysQueryOptions } from '@/hooks/useAnalytics';
 import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
-import { cardDetailsQueryOptions } from '@/hooks/useCardDetails';
-import { cardStatusQueryOptions } from '@/hooks/useCardStatus';
 import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
@@ -37,14 +34,11 @@ export default function ProtectedLayout() {
   const searchParams = useLocalSearchParams();
   const queryClient = useQueryClient();
 
-  // Prefetch critical home screen data before Home component mounts
-  // This reduces LCP by starting data fetches earlier
   useEffect(() => {
-    if (!user?.safeAddress || !user?.userId) return;
+    if (!user?.safeAddress) return;
 
     const safeAddress = user.safeAddress as Address;
 
-    // Prefetch vault balance from both chains (the main LCP-critical data)
     queryClient.prefetchQuery(
       readContractQueryOptions(config, {
         abi: FuseVault,
@@ -64,20 +58,10 @@ export default function ProtectedLayout() {
       }),
     );
 
-    // Prefetch token balances (wallet balances from all chains)
     queryClient.prefetchQuery(tokenBalancesQueryOptions(safeAddress));
-
-    // Prefetch APYs (needed for savings calculations)
     queryClient.prefetchQuery(apysQueryOptions());
-
-    // Prefetch user transactions (needed for deposit calculations)
-    queryClient.prefetchQuery(userTransactionsQueryOptions(safeAddress));
-
-    // Prefetch card status and details
-    queryClient.prefetchQuery(cardStatusQueryOptions(user.userId));
-    queryClient.prefetchQuery(cardDetailsQueryOptions());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.safeAddress, user?.userId]);
+  }, [user?.safeAddress]);
 
   // Run post-signup/login initialization (lazy loading of balance, points, etc.)
   usePostSignupInit(user);
@@ -85,11 +69,6 @@ export default function ProtectedLayout() {
   // Ensure webhook subscription for real-time activity updates
   // This auto-subscribes when user has a safe address but isn't registered yet
   useWebhookStatus({ autoSubscribe: true });
-
-  // Start real-time activity updates via SSE as soon as the user is authenticated
-  // This enables instant transaction notifications across all screens, not just Activity
-  // subscribe: false prevents re-renders since we don't use the return values here
-  useActivitySSE({ enabled: !!user?.userId, subscribe: false });
 
   useEffect(() => {
     if (!user) return;
