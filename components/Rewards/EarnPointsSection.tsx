@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+
 import RewardBenefit from './RewardBenefit';
 
 const EarnPointsSection = () => {

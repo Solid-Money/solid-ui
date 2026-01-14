@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { Image } from 'expo-image';
+
 import { Text } from '@/components/ui/text';
 import { getAsset } from '@/lib/assets';
 

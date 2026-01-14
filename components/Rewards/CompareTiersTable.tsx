@@ -1,4 +1,5 @@
 import { RewardsTier, TierBenefits } from '@/lib/types';
+
 import RewardTable, { RewardTableRow } from './RewardTable';
 
 interface CompareTiersTableProps {

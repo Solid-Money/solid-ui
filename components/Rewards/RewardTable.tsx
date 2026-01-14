@@ -1,6 +1,6 @@
-import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 import { getTierDisplayName, getTierIcon } from '@/constants/rewards';

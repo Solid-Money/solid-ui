@@ -1,6 +1,6 @@
-import { ChevronRight } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
+import { ChevronRight } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
