@@ -361,6 +361,11 @@ class SSEConnectionManager {
   private handlePing(data: SSEPingData): void {
     this.setInternalState({ lastHeartbeat: Date.now() });
 
+    // Guard against null/malformed ping data
+    if (!data || typeof data !== 'object') {
+      return;
+    }
+
     // Optional: track server time drift
     if (data.timestamp && typeof data.timestamp === 'number') {
       const drift = Date.now() - data.timestamp;
@@ -408,7 +413,6 @@ class SSEConnectionManager {
     }
 
     if (!data.activity.clientTxId || typeof data.activity.clientTxId !== 'string') {
-      console.warn('Received SSE activity without clientTxId:', data);
       Sentry.captureMessage('SSE activity missing clientTxId', {
         level: 'warning',
         tags: { type: 'sse_missing_client_tx_id' },
@@ -417,26 +421,53 @@ class SSEConnectionManager {
       return;
     }
 
+    // Validate type field exists (critical for rendering)
+    if (!data.activity.type || typeof data.activity.type !== 'string') {
+      Sentry.captureMessage('SSE activity missing type', {
+        level: 'warning',
+        tags: { type: 'sse_missing_activity_type' },
+        extra: { data },
+      });
+      return;
+    }
+
+    // Validate status field exists (critical for rendering)
+    if (!data.activity.status || typeof data.activity.status !== 'string') {
+      Sentry.captureMessage('SSE activity missing status', {
+        level: 'warning',
+        tags: { type: 'sse_missing_activity_status' },
+        extra: { data },
+      });
+      return;
+    }
+
     const { event, activity, timestamp } = data;
     const { upsertEvent } = useActivityStore.getState();
 
-    // Process based on event type
-    switch (event) {
-      case 'created':
-      case 'updated':
-        upsertEvent(this.currentUserId, activity);
-        break;
+    // Process based on event type - wrap in try-catch to prevent SSE crashes
+    try {
+      switch (event) {
+        case 'created':
+        case 'updated':
+          upsertEvent(this.currentUserId, activity);
+          break;
 
-      case 'deleted':
-        // Deleted events have minimal activity payload
-        // { clientTxId, deleted: true, deletedAt: Date }
-        const deletedActivity: ActivityEvent = {
-          ...activity,
-          deleted: true,
-          deletedAt: activity.deletedAt || new Date(timestamp).toISOString(),
-        };
-        upsertEvent(this.currentUserId, deletedActivity);
-        break;
+        case 'deleted':
+          // Deleted events have minimal activity payload
+          // { clientTxId, deleted: true, deletedAt: Date }
+          const deletedActivity: ActivityEvent = {
+            ...activity,
+            deleted: true,
+            deletedAt: activity.deletedAt || new Date(timestamp).toISOString(),
+          };
+          upsertEvent(this.currentUserId, deletedActivity);
+          break;
+      }
+    } catch (err) {
+      Sentry.captureException(err, {
+        tags: { type: 'sse_upsert_error' },
+        extra: { activity, event, userId: this.currentUserId },
+      });
     }
 
     // Update internal state only - activity updates go to the store, not SSE state
