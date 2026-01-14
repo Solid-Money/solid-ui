@@ -3,6 +3,7 @@ import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFro
 import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
 import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom';
+import TierModalProvider from '@/components/Rewards/TierModalProvider';
 import SendModalProvider from '@/components/Send/SendModalProvider';
 import StakeModalProvider from '@/components/Stake/StakeModalProvider';
 import SwapModalProvider from '@/components/Swap/SwapModalProvider';
@@ -372,6 +373,7 @@ export default Sentry.wrap(function RootLayout() {
                       <UnstakeModalProvider />
                       <DepositFromSafeAccountModalProvider />
                       <CardDepositModalProvider />
+                      <TierModalProvider />
                       {whatsNew && (
                         <WhatsNewModal
                           whatsNew={whatsNew}

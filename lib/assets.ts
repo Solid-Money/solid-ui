@@ -370,6 +370,10 @@ export const ASSETS = {
     module: require('@/assets/images/reveal_card_details_icon.png'),
     hash: 'd1c558ce',
   },
+  'images/rocket-yellow.png': {
+    module: require('@/assets/images/rocket-yellow.png'),
+    hash: 'eff1d47a',
+  },
   'images/savings-nav-bar-icon.tsx': {
     module: require('@/assets/images/savings-nav-bar-icon.tsx'),
     hash: 'd9241a35',
@@ -453,6 +457,10 @@ export const ASSETS = {
     module: require('@/assets/images/splash-icon.png'),
     hash: 'efd642e5',
   },
+  'images/spotify-openai-netflix.png': {
+    module: require('@/assets/images/spotify-openai-netflix.png'),
+    hash: '838a0f8c',
+  },
   'images/star-bronze.png': {
     module: require('@/assets/images/star-bronze.png'),
     hash: '14067288',
@@ -461,6 +469,18 @@ export const ASSETS = {
   'images/star-silver.png': {
     module: require('@/assets/images/star-silver.png'),
     hash: '3c3d13e1',
+  },
+  'images/star-yellow-core.png': {
+    module: require('@/assets/images/star-yellow-core.png'),
+    hash: '45e90e75',
+  },
+  'images/star-yellow-prime.png': {
+    module: require('@/assets/images/star-yellow-prime.png'),
+    hash: 'e193b004',
+  },
+  'images/star-yellow-ultra.png': {
+    module: require('@/assets/images/star-yellow-ultra.png'),
+    hash: '7663ac41',
   },
   'images/star.png': { module: require('@/assets/images/star.png'), hash: 'ed4389a9' },
   'images/support-svg.tsx': {
@@ -475,6 +495,10 @@ export const ASSETS = {
   'images/three-percent.png': {
     module: require('@/assets/images/three-percent.png'),
     hash: 'f1e94427',
+  },
+  'images/two-percent-yellow.png': {
+    module: require('@/assets/images/two-percent-yellow.png'),
+    hash: '71c88645',
   },
   'images/usd-fiat-currency.tsx': {
     module: require('@/assets/images/usd-fiat-currency.tsx'),

@@ -138,4 +138,5 @@ export const USER = {
   pointsStorageKey: 'points-storage',
   coinStorageKey: 'coin-storage',
   savingStorageKey: 'saving-storage',
+  rewardsStorageKey: 'rewards-storage',
 };
