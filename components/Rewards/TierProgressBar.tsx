@@ -1,14 +1,14 @@
-import { Image } from 'expo-image';
 import { Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { Image } from 'expo-image';
 import { ChevronRightIcon } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { getTierIcon } from '@/constants/rewards';
+import { useDimension } from '@/hooks/useDimension';
 import { RewardsTier } from '@/lib/types';
 import { formatNumber, toTitleCase } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
-import { useDimension } from '@/hooks/useDimension';
 
 interface TierProgressBarProps {
   currentTier: RewardsTier;

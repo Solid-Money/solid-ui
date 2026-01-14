@@ -1,3 +1,7 @@
+import { Pressable, View } from 'react-native';
+import { router } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
+
 import PageLayout from '@/components/PageLayout';
 import CompareTiersTable from '@/components/Rewards/CompareTiersTable';
 import EarnPointsSection from '@/components/Rewards/EarnPointsSection';
@@ -6,9 +10,6 @@ import TierFeesTable from '@/components/Rewards/TierFeesTable';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { useTierBenefits } from '@/hooks/useRewards';
-import { router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
-import { Pressable, View } from 'react-native';
 
 export default function RewardsBenefits() {
   const { isScreenMedium } = useDimension();

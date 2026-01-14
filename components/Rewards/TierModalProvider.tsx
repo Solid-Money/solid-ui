@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName, getTierIcon, TIER_BENEFITS } from '@/constants/rewards';
 import { useRewards } from '@/store/useRewardsStore';
+
 import RewardBenefit from './RewardBenefit';
 
 const MODAL_STATE: ModalState = { name: 'tier-benefits', number: 1 };
