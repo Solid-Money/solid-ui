@@ -170,12 +170,6 @@ export default wrapWithSentry(function RootLayout() {
       try {
         await SplashScreen.hideAsync();
         setSplashScreenHidden(true);
-
-        // Hide the HTML initial loader (web only)
-        if (Platform.OS === 'web') {
-          const loader = document.getElementById('initial-loader');
-          if (loader) loader.classList.add('hidden');
-        }
       } catch (error) {
         console.warn('Error hiding splash screen:', error);
       }
