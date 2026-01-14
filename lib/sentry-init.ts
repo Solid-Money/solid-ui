@@ -1,18 +1,23 @@
 /**
  * Hybrid Sentry initialization for both early error tracking and performance.
  *
- * Phase 1 (Immediate): Minimal Sentry init with just error capture
+ * Phase 1 (Immediate): Full Sentry init with all configuration but no heavy integrations
  * - Catches early JavaScript errors, module initialization errors, React render errors
- * - No heavy integrations (replay, tracing, navigation)
+ * - All sampling rates and options configured upfront
  *
- * Phase 2 (Deferred): Full initialization with all integrations
+ * Phase 2 (Deferred): Add heavy integrations via Sentry.addIntegration()
  * - Session replay, performance monitoring, navigation tracking
  * - Runs after first meaningful paint via requestIdleCallback
+ *
+ * This approach avoids calling Sentry.init() twice, which can cause:
+ * - Duplicate events being sent
+ * - Memory leaks from duplicate integrations
+ * - Unpredictable behavior in error tracking
  */
 import * as Sentry from '@sentry/react-native';
 
-let isMinimalInitialized = false;
-let isFullyInitialized = false;
+let isInitialized = false;
+let areIntegrationsAdded = false;
 
 const SENTRY_DSN =
   'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952';
@@ -20,56 +25,13 @@ const SENTRY_DSN =
 const isProduction = process.env.EXPO_PUBLIC_ENVIRONMENT === 'production' && !__DEV__;
 
 /**
- * Phase 1: Minimal Sentry initialization for immediate error capture.
+ * Phase 1: Initialize Sentry with full configuration but minimal integrations.
  * This runs synchronously at module load to catch early errors.
+ * Heavy integrations are added later via addIntegration().
  */
-const initSentryMinimal = () => {
-  if (isMinimalInitialized || __DEV__) return;
+const initSentry = () => {
+  if (isInitialized || __DEV__) return;
 
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    enabled: isProduction,
-    environment: process.env.EXPO_PUBLIC_ENVIRONMENT || 'development',
-
-    // Minimal config - just error capture, no heavy integrations
-    integrations: [],
-
-    // Error Filtering
-    ignoreErrors: [
-      'Network request failed',
-      'NetworkError',
-      'Failed to fetch',
-      'AbortError',
-      'Non-serializable values were found in the navigation state',
-    ],
-
-    // Sample events before sending
-    beforeSend(event) {
-      if (event.environment !== 'production') {
-        return null;
-      }
-      if (event.request?.cookies) {
-        delete event.request.cookies;
-      }
-      return event;
-    },
-  });
-
-  isMinimalInitialized = true;
-};
-
-// Initialize minimal Sentry immediately (synchronously)
-initSentryMinimal();
-
-/**
- * Phase 2: Full Sentry initialization with all integrations.
- * Called after the app has rendered its first meaningful paint.
- */
-const initSentryFull = () => {
-  if (isFullyInitialized || !isMinimalInitialized) return;
-
-  // Re-initialize with full configuration
-  // Sentry.init() can be called again to add integrations
   Sentry.init({
     dsn: SENTRY_DSN,
     enabled: isProduction,
@@ -77,7 +39,7 @@ const initSentryFull = () => {
     debug: process.env.EXPO_PUBLIC_ENVIRONMENT !== 'production',
     sendDefaultPii: true,
 
-    // Performance Monitoring
+    // Performance Monitoring - configured upfront, integrations added later
     tracesSampleRate: 0.2,
     profilesSampleRate: 0.2,
 
@@ -113,22 +75,12 @@ const initSentryFull = () => {
       return event;
     },
 
-    // Configure Session Replay
+    // Configure Session Replay - rates set upfront, integration added later
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1,
 
-    // Full integrations (heavy)
-    integrations: [
-      Sentry.mobileReplayIntegration({
-        maskAllText: false,
-        maskAllImages: false,
-      }),
-      Sentry.feedbackIntegration(),
-      Sentry.reactNativeTracingIntegration(),
-      Sentry.reactNavigationIntegration({
-        routeChangeTimeoutMs: 50,
-      }),
-    ],
+    // Start with no heavy integrations - they'll be added via addIntegration()
+    integrations: [],
 
     // Attachments
     attachScreenshot: true,
@@ -138,14 +90,45 @@ const initSentryFull = () => {
     tracePropagationTargets: [/^https:\/\/app\.solid\.xyz/],
   });
 
-  isFullyInitialized = true;
+  isInitialized = true;
+};
+
+// Initialize Sentry immediately (synchronously)
+initSentry();
+
+/**
+ * Phase 2: Add heavy integrations after the app has rendered.
+ * Uses Sentry.addIntegration() instead of re-calling init().
+ */
+const addDeferredIntegrations = () => {
+  if (areIntegrationsAdded || !isInitialized) return;
+
+  // Add each integration individually using the proper API
+  Sentry.addIntegration(
+    Sentry.mobileReplayIntegration({
+      maskAllText: false,
+      maskAllImages: false,
+    }),
+  );
+
+  Sentry.addIntegration(Sentry.feedbackIntegration());
+
+  Sentry.addIntegration(Sentry.reactNativeTracingIntegration());
+
+  Sentry.addIntegration(
+    Sentry.reactNavigationIntegration({
+      routeChangeTimeoutMs: 50,
+    }),
+  );
+
+  areIntegrationsAdded = true;
 };
 
 /**
- * Schedule Sentry initialization to run when the browser is idle.
+ * Schedule adding heavy Sentry integrations when the browser is idle.
  * Uses requestIdleCallback for optimal timing, falls back to setTimeout.
  *
- * This ensures Sentry loads AFTER the first contentful paint,
+ * This ensures heavy integrations load AFTER the first contentful paint,
  * improving perceived performance without losing error tracking.
  */
 export const initSentryDeferred = () => {
@@ -156,13 +139,13 @@ export const initSentryDeferred = () => {
     // Browser supports requestIdleCallback - run when idle
     requestIdleCallback(
       () => {
-        initSentryFull();
+        addDeferredIntegrations();
       },
       { timeout: 5000 }, // Fallback after 5s if browser stays busy
     );
   } else {
     // Fallback for environments without requestIdleCallback (React Native)
-    setTimeout(initSentryFull, 2000);
+    setTimeout(addDeferredIntegrations, 2000);
   }
 };
 
@@ -170,7 +153,7 @@ export const initSentryDeferred = () => {
  * Get whether Sentry has been initialized.
  * Useful for components that need to conditionally use Sentry features.
  */
-export const isSentryInitialized = () => isMinimalInitialized;
+export const isSentryInitialized = () => isInitialized;
 
 /**
  * Re-export Sentry's wrap function for the root component.
