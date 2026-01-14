@@ -14,6 +14,10 @@ import Loading from '@/components/Loading';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
+import { apysQueryOptions, userTransactionsQueryOptions } from '@/hooks/useAnalytics';
+import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
+import { cardDetailsQueryOptions } from '@/hooks/useCardDetails';
+import { cardStatusQueryOptions } from '@/hooks/useCardStatus';
 import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
@@ -34,7 +38,7 @@ export default function ProtectedLayout() {
   // Prefetch critical home screen data before Home component mounts
   // This reduces LCP by starting data fetches earlier
   useEffect(() => {
-    if (!user?.safeAddress) return;
+    if (!user?.safeAddress || !user?.userId) return;
 
     const safeAddress = user.safeAddress as Address;
 
@@ -57,7 +61,21 @@ export default function ProtectedLayout() {
         chainId: mainnet.id,
       }),
     );
-  }, [user?.safeAddress, queryClient]);
+
+    // Prefetch token balances (wallet balances from all chains)
+    queryClient.prefetchQuery(tokenBalancesQueryOptions(safeAddress));
+
+    // Prefetch APYs (needed for savings calculations)
+    queryClient.prefetchQuery(apysQueryOptions());
+
+    // Prefetch user transactions (needed for deposit calculations)
+    queryClient.prefetchQuery(userTransactionsQueryOptions(safeAddress));
+
+    // Prefetch card status and details
+    queryClient.prefetchQuery(cardStatusQueryOptions(user.userId));
+    queryClient.prefetchQuery(cardDetailsQueryOptions());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.safeAddress, user?.userId]);
 
   // Run post-signup/login initialization (lazy loading of balance, points, etc.)
   usePostSignupInit(user);

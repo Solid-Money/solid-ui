@@ -540,11 +540,14 @@ export const useVaultBreakdown = () => {
   });
 };
 
+// Query options for prefetching APYs
+export const apysQueryOptions = () => ({
+  queryKey: [ANALYTICS, 'apys'],
+  queryFn: fetchAPYs,
+});
+
 export const useAPYs = () => {
-  return useQuery({
-    queryKey: [ANALYTICS, 'apys'],
-    queryFn: fetchAPYs,
-  });
+  return useQuery(apysQueryOptions());
 };
 
 export const useMaxAPY = () => {

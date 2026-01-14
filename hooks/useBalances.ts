@@ -435,3 +435,12 @@ export const useBalances = (): BalanceData => {
     retry: refetch,
   };
 };
+
+// Query options for prefetching token balances
+export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
+  queryKey: ['tokenBalances', safeAddress],
+  queryFn: () => fetchTokenBalances(safeAddress!),
+  enabled: !!safeAddress,
+  staleTime: 30 * 1000,
+  gcTime: 5 * 60 * 1000,
+});
