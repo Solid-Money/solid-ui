@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import CardDepositModalProvider from '@/components/Card/CardDepositModalProvider';
 import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
 import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
+import TierModalProvider from '@/components/Rewards/TierModalProvider';
 import SendModalProvider from '@/components/Send/SendModalProvider';
 import StakeModalProvider from '@/components/Stake/StakeModalProvider';
 import SwapModalProvider from '@/components/Swap/SwapModalProvider';
 import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
-import TierModalProvider from '@/components/Rewards/TierModalProvider';
 
 /**
  * Deferred modal providers component.

@@ -1,3 +1,6 @@
+import { useMemo } from 'react';
+import { View } from 'react-native';
+
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
 import ReferBanner from '@/components/Points/ReferBanner';
@@ -8,8 +11,6 @@ import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { useRewards } from '@/store/useRewardsStore';
-import { useMemo } from 'react';
-import { View } from 'react-native';
 
 export default function Rewards() {
   const { isScreenMedium } = useDimension();

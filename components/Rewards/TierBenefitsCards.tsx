@@ -2,6 +2,7 @@ import { View } from 'react-native';
 
 import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
 import { RewardsTier } from '@/lib/types';
+
 import TierBenefitsCard from './TierBenefitsCard';
 
 interface TierBenefitsCardsProps {

@@ -1,18 +1,19 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { ImageBackground, Platform, View } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { getTierDisplayName, getTierIcon, TIER_BENEFITS } from '@/constants/rewards';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { RewardsTier } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
-import TierProgressBar from './TierProgressBar';
-import { getTierDisplayName, getTierIcon, TIER_BENEFITS } from '@/constants/rewards';
+
 import RewardBenefit from './RewardBenefit';
+import TierProgressBar from './TierProgressBar';
 
 interface RewardsDashboardProps {
   currentTier: RewardsTier;
