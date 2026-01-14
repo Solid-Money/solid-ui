@@ -62,6 +62,7 @@ const StartEarning = ({ className }: StartEarningProps) => {
             source={getAsset('images/solid-purple-large.png')}
             contentFit="contain"
             style={{ width: 233, height: 233, marginLeft: -50 }}
+            alt="Solid savings illustration"
           />
         </View>
       </View>

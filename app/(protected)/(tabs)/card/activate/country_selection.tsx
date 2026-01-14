@@ -379,7 +379,12 @@ function CountrySelector({
 
         {selectedCountry && (
           <View className="mb-6 items-center">
-            <CountryFlagImage isoCode={selectedCountry.code} size={110} className="mb-2" />
+            <CountryFlagImage
+              isoCode={selectedCountry.code}
+              size={110}
+              className="mb-2"
+              countryName={selectedCountry.name}
+            />
           </View>
         )}
         <>
@@ -423,7 +428,12 @@ function CountryUnavailableView({
 }: CountryUnavailableViewProps) {
   return (
     <>
-      <CountryFlagImage isoCode={countryCode} size={110} className="mb-6 mt-4" />
+      <CountryFlagImage
+        isoCode={countryCode}
+        size={110}
+        className="mb-6 mt-4"
+        countryName={countryName}
+      />
       <Text className="mb-4 text-center text-2xl font-bold text-white">
         {`We're not ready for ${countryName} just yet!`}
       </Text>

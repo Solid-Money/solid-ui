@@ -1,12 +1,19 @@
-import { Image } from 'react-native';
+import { Image } from 'expo-image';
 
 import { TokenIcon } from '@/lib/types';
 
-const RenderTokenIcon = ({ tokenIcon, size = 24 }: { tokenIcon: TokenIcon; size?: number }) => {
+interface RenderTokenIconProps {
+  tokenIcon: TokenIcon;
+  size?: number;
+  tokenName?: string;
+}
+
+const RenderTokenIcon = ({ tokenIcon, size = 24, tokenName }: RenderTokenIconProps) => {
   return tokenIcon.type === 'image' ? (
     <Image
       source={tokenIcon.source}
       style={{ width: size, height: size, borderRadius: size / 2 }}
+      alt={tokenName ? `${tokenName} token icon` : 'Token icon'}
     />
   ) : (
     tokenIcon.component

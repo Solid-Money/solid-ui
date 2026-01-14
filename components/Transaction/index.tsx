@@ -247,6 +247,7 @@ const Transaction = ({
                 source={getAsset('images/green-diamond.png')}
                 style={{ width: 12, height: 12 }}
                 contentFit="contain"
+                alt="Reward indicator"
               />
             )}
             {isPending && <ActivityIndicator color="gray" size={14} />}

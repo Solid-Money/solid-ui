@@ -7,6 +7,7 @@ const ActivateCardImageDesktop = () => {
       source={getAsset('images/activate_card_desktop.png')}
       contentFit="contain"
       style={{ width: 321, height: 389 }}
+      alt="Solid debit card preview"
     />
   );
 };

@@ -54,6 +54,7 @@ const FundWallet = ({ className }: FundWalletProps) => {
             source={getAsset('images/fund-wallet-tokens.png')}
             contentFit="contain"
             style={{ width: 216, height: 216 }}
+            alt="Cryptocurrency tokens including USDC, USDT, and ETH"
           />
         </View>
       </View>

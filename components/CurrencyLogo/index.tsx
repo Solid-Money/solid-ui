@@ -1,6 +1,7 @@
 import { Currency, Token } from '@cryptoalgebra/fuse-sdk';
+import { Image, ImageStyle } from 'expo-image';
 import React from 'react';
-import { Image, ImageStyle, View, ViewStyle } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { useAllTokens } from '@/hooks/tokens/useAllTokens';
@@ -48,7 +49,12 @@ const CurrencyLogo = ({ currency, size, style = {} }: CurrencyLogoProps) => {
 
   if (currency.isNative) {
     return (
-      <Image source={getAsset('images/fuse.png')} style={baseImageStyle} resizeMode="contain" />
+      <Image
+        source={getAsset('images/fuse.png')}
+        style={baseImageStyle}
+        contentFit="contain"
+        alt="FUSE token icon"
+      />
     );
   }
 
@@ -59,7 +65,14 @@ const CurrencyLogo = ({ currency, size, style = {} }: CurrencyLogoProps) => {
     : undefined;
 
   if (logoUrl) {
-    return <Image source={{ uri: logoUrl }} style={baseImageStyle} resizeMode="contain" />;
+    return (
+      <Image
+        source={{ uri: logoUrl }}
+        style={baseImageStyle}
+        contentFit="contain"
+        alt={`${currency.symbol || 'Token'} icon`}
+      />
+    );
   }
 
   return (

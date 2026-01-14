@@ -19,6 +19,48 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
+        {/* SEO Meta Tags */}
+        <meta
+          name="description"
+          content="Solid is the savings super-app that combines DeFi yields with traditional banking. Earn competitive yields on your savings with institutional-grade security."
+        />
+        <link rel="canonical" href="https://app.solid.xyz" />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Solid - The Savings Super-App" />
+        <meta
+          property="og:description"
+          content="Solid is a yield-bearing account that works in the background—earning on your money while you live your life. No stress, no spreadsheets, no jargon."
+        />
+        <meta
+          property="og:image"
+          content="https://app.solid.xyz/assets/images/solid-open-graph.png"
+        />
+        <meta property="og:url" content="https://app.solid.xyz" />
+        <meta property="og:site_name" content="Solid" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Solid - The Savings Super-App" />
+        <meta
+          name="twitter:description"
+          content="Solid is a yield-bearing account that works in the background—earning on your money while you live your life. No stress, no spreadsheets, no jargon."
+        />
+        <meta
+          name="twitter:image"
+          content="https://app.solid.xyz/assets/images/solid-open-graph.png"
+        />
+
+        {/* Preconnect to critical origins for faster API calls */}
+        {/* These start DNS resolution, TCP, and TLS handshake in parallel with JS loading */}
+        <link rel="preconnect" href="https://gateway.thegraph.com" />
+        <link rel="preconnect" href="https://api.turnkey.com" />
+
+        {/* DNS-prefetch for secondary origins (lower priority than preconnect) */}
+        <link rel="dns-prefetch" href="https://li.quest" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+
         {/* Ensure dark background and prevent viewport overscroll bounce on Safari */}
         <style
           dangerouslySetInnerHTML={{
@@ -26,6 +68,27 @@ export default function Root({ children }: PropsWithChildren) {
               html, body { height: 100%; background-color: #000; }
               #root { height: 100%; }
               body { overscroll-behavior-y: none; overscroll-behavior-x: none; }
+
+              /* Loading spinner - shows instantly while JS loads */
+              #initial-loader {
+                position: fixed;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #000;
+                z-index: 9999;
+              }
+              #initial-loader.hidden { display: none; }
+              .spinner {
+                width: 40px;
+                height: 40px;
+                border: 3px solid #333;
+                border-top-color: #fff;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+              }
+              @keyframes spin { to { transform: rotate(360deg); } }
             `,
           }}
         />
@@ -52,6 +115,10 @@ export default function Root({ children }: PropsWithChildren) {
         />
       </head>
       <body>
+        {/* Loading spinner - immediately visible, hidden when React mounts */}
+        <div id="initial-loader">
+          <div className="spinner" />
+        </div>
         {children}
 
         {/* Google Tag Manager */}

@@ -1,5 +1,6 @@
+import { Image, ImageStyle } from 'expo-image';
 import React from 'react';
-import { Image, ImageStyle, StyleProp, View, ViewStyle } from 'react-native';
+import { StyleProp, View, ViewStyle } from 'react-native';
 
 interface CountryFlagImageProps {
   isoCode: string;
@@ -7,6 +8,7 @@ interface CountryFlagImageProps {
   style?: StyleProp<ViewStyle>;
   imageStyle?: StyleProp<ImageStyle>;
   className?: string;
+  countryName?: string;
 }
 
 /**
@@ -18,6 +20,7 @@ const CountryFlagImage: React.FC<CountryFlagImageProps> = ({
   style,
   imageStyle,
   className = '',
+  countryName,
 }) => {
   // Convert ISO code to lowercase
   const countryCode = isoCode.toLowerCase();
@@ -46,6 +49,7 @@ const CountryFlagImage: React.FC<CountryFlagImageProps> = ({
           },
           imageStyle,
         ]}
+        alt={countryName ? `${countryName} flag` : `${isoCode.toUpperCase()} flag`}
       />
     </View>
   );

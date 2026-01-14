@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Block authenticated routes from indexing
+Disallow: /home
+Disallow: /savings
+Disallow: /activity
+Disallow: /settings
+Disallow: /deposit
+Disallow: /withdraw
+Disallow: /send
+
+# Sitemap
+Sitemap: https://app.solid.xyz/sitemap.xml

@@ -147,7 +147,11 @@ const SavingCard = memo(
               </View>
               <TooltipPopover text="Balance + Yield of soUSD" />
             </View>
-            <Image source={getAsset('images/sousd-4x.png')} style={{ width: 28, height: 28 }} />
+            <Image
+              source={getAsset('images/sousd-4x.png')}
+              style={{ width: 28, height: 28 }}
+              alt="soUSD token"
+            />
           </View>
         </View>
       </Pressable>

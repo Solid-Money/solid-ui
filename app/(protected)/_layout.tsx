@@ -1,11 +1,16 @@
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect } from 'react';
 import { Platform } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { Address } from 'viem';
+import { fuse, mainnet } from 'viem/chains';
+import { readContractQueryOptions } from 'wagmi/query';
 
 import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
 } from '@/components/BankTransfer/enums';
+import Loading from '@/components/Loading';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
@@ -14,6 +19,9 @@ import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
 import { useWebhookStatus } from '@/hooks/useWebhookStatus';
 import { trackIdentity } from '@/lib/analytics';
+import FuseVault from '@/lib/abis/FuseVault';
+import { ADDRESSES } from '@/lib/config';
+import { config } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -21,6 +29,35 @@ export default function ProtectedLayout() {
   const { user } = useUser();
   const { users, _hasHydrated } = useUserStore();
   const searchParams = useLocalSearchParams();
+  const queryClient = useQueryClient();
+
+  // Prefetch critical home screen data before Home component mounts
+  // This reduces LCP by starting data fetches earlier
+  useEffect(() => {
+    if (!user?.safeAddress) return;
+
+    const safeAddress = user.safeAddress as Address;
+
+    // Prefetch vault balance from both chains (the main LCP-critical data)
+    queryClient.prefetchQuery(
+      readContractQueryOptions(config, {
+        abi: FuseVault,
+        address: ADDRESSES.fuse.vault,
+        functionName: 'balanceOf',
+        args: [safeAddress],
+        chainId: fuse.id,
+      }),
+    );
+    queryClient.prefetchQuery(
+      readContractQueryOptions(config, {
+        abi: FuseVault,
+        address: ADDRESSES.ethereum.vault,
+        functionName: 'balanceOf',
+        args: [safeAddress],
+        chainId: mainnet.id,
+      }),
+    );
+  }, [user?.safeAddress, queryClient]);
 
   // Run post-signup/login initialization (lazy loading of balance, points, etc.)
   usePostSignupInit(user);
@@ -89,8 +126,9 @@ export default function ProtectedLayout() {
 
   // Wait for Zustand store to hydrate before making redirect decisions
   // This prevents incorrect redirects when users array is empty during hydration
+  // Show loading state to improve FCP (vs returning null which blocks paint)
   if (!_hasHydrated) {
-    return null;
+    return <Loading />;
   }
 
   if (!users.length) {

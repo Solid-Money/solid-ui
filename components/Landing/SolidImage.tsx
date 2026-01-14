@@ -13,6 +13,7 @@ const SolidImage = ({ width = 201, height = 201 }: SolidImageProps) => {
       source={getAsset('images/solid-dark-purple.png')}
       style={{ width, height }}
       contentFit="contain"
+      alt="Solid logo"
     />
   );
 };
