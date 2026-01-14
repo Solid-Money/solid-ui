@@ -1,9 +1,10 @@
-import { Text } from '@/components/ui/text';
-import { ChartPayload } from '@/lib/types';
-import { useCoinStore } from '@/store/useCoinStore';
-import { cn, formatNumber } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
+
+import { Text } from '@/components/ui/text';
+import { ChartPayload } from '@/lib/types';
+import { cn, formatNumber } from '@/lib/utils';
+import { useCoinStore } from '@/store/useCoinStore';
 
 interface TooltipPayload {
   payload: ChartPayload;

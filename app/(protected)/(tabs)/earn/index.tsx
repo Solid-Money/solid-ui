@@ -1,7 +1,7 @@
-import { Image } from 'expo-image';
-import { ChevronRight, Minus, Plus } from 'lucide-react-native';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { ChevronRight, Minus, Plus } from 'lucide-react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { Badge } from '@/components/ui/badge';

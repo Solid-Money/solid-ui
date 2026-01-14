@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Block authenticated routes from indexing
+# Trailing slashes ensure subdirectories are also blocked
+Disallow: /home/
+Disallow: /savings/
+Disallow: /activity/
+Disallow: /settings/
+Disallow: /deposit/
+Disallow: /withdraw/
+Disallow: /send/
+
+# Sitemap
+Sitemap: https://app.solid.xyz/sitemap.xml

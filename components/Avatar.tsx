@@ -1,7 +1,8 @@
 import { View } from 'react-native';
+
+import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { getColorForTransaction } from '@/lib/utils/cardHelpers';
-import { Text } from '@/components/ui/text';
 
 interface AvatarProps {
   name: string;

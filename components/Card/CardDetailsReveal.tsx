@@ -1,7 +1,8 @@
-import { Text } from '@/components/ui/text';
-import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, Alert, TouchableOpacity, View } from 'react-native';
+
+import { Text } from '@/components/ui/text';
+import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 
 interface CardDetailsRevealProps {
   onClose?: () => void;

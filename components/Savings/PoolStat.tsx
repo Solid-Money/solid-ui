@@ -1,6 +1,6 @@
+import { View } from 'react-native';
 import { Link } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
-import { View } from 'react-native';
 
 import TooltipPopover from '@/components/Tooltip';
 import { Skeleton } from '@/components/ui/skeleton';

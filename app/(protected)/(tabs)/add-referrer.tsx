@@ -1,13 +1,14 @@
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
+
 import InfoError from '@/assets/images/info-error';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { addReferrer, fetchPoints } from '@/lib/api';
-import { router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 
 export default function AddReferrer() {
   const [code, setCode] = useState('');

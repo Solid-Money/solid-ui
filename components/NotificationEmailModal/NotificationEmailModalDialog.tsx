@@ -1,7 +1,9 @@
-import ResponsiveModal from '@/components/ResponsiveModal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import React from 'react';
 import { Platform, View } from 'react-native';
+
+import ResponsiveModal from '@/components/ResponsiveModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
 import NotificationEmailModal from './index';
 
 interface NotificationEmailModalDialogProps {

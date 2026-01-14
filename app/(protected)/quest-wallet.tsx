@@ -1,3 +1,10 @@
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import * as Sentry from '@sentry/react-native';
+import { isAddress } from 'viem';
+
 import InfoError from '@/assets/images/info-error';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -7,12 +14,6 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { updateExternalWalletAddress } from '@/lib/api';
 import { useUserStore } from '@/store/useUserStore';
-import * as Sentry from '@sentry/react-native';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { isAddress } from 'viem';
 
 export default function QuestWallet() {
   const router = useRouter();

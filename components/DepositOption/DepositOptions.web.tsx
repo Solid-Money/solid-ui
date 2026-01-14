@@ -6,6 +6,7 @@ import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
 import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
+
 import DepositOption from './DepositOption';
 
 type DepositOptionProps = {

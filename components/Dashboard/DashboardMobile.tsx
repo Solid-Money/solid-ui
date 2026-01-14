@@ -1,11 +1,11 @@
-import { DashboardHeaderMobile } from '@/components/Dashboard';
-import NavbarMobile from '@/components/Navbar/NavbarMobile';
-import CoinsMobile from '@/components/Wallet/CoinsMobile';
-import { Image } from 'expo-image';
 import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 
+import { DashboardHeaderMobile } from '@/components/Dashboard';
+import NavbarMobile from '@/components/Navbar/NavbarMobile';
+import CoinsMobile from '@/components/Wallet/CoinsMobile';
 import { getAsset } from '@/lib/assets';
 
 interface DashboardMobileProps {

@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, {
@@ -7,15 +6,16 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
 import { useMaxAPY, useTVL } from '@/hooks/useAnalytics';
+import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { Vault } from '@/lib/types';
 import { compactNumberFormat } from '@/lib/utils';
 import { useSavingStore } from '@/store/useSavingStore';
-import { useDimension } from '@/hooks/useDimension';
 
 const ANIMATION_DURATION = 300;
 const TIMING_CONFIG = {

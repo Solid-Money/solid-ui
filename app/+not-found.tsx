@@ -1,6 +1,6 @@
-import { Link, Stack } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
+import { Link, Stack } from 'expo-router';
 
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';

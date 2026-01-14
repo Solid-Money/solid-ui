@@ -1,6 +1,7 @@
-import { Text } from '@/components/ui/text';
-import { ChevronRight } from 'lucide-react-native';
 import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
+
+import { Text } from '@/components/ui/text';
 
 type Props = {
   title: string;

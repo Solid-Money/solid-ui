@@ -1,10 +1,11 @@
+import React, { useMemo, useRef, useState } from 'react';
+import { Platform, ScrollView, useWindowDimensions, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
 import { Card, SavingCard, WalletCard } from '@/components/Wallet';
 import { USDC_TOKEN_BALANCE } from '@/constants/tokens';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { TokenBalance } from '@/lib/types';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useMemo, useRef, useState } from 'react';
-import { Platform, ScrollView, useWindowDimensions, View } from 'react-native';
 
 type MobileCardsProps = {
   totalUSDExcludingSoUSD: number;

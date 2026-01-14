@@ -1,10 +1,12 @@
+import { useEffect, useMemo } from 'react';
+import { View } from 'react-native';
+
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
 import useDepositExternalWalletOptionsNative from '@/hooks/useDepositExternalWalletOptionsNative';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
-import { useEffect, useMemo } from 'react';
-import { View } from 'react-native';
+
 import DepositOption from './DepositOption';
 
 const DepositOptions = () => {

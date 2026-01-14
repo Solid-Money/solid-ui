@@ -1,6 +1,6 @@
-import { Plus } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, View } from 'react-native';
+import { Plus } from 'lucide-react-native';
 
 import SlotTrigger from '@/components/SlotTrigger';
 import { buttonVariants } from '@/components/ui/button';

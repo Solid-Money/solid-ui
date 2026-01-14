@@ -1,3 +1,4 @@
+import Markdown, { MarkdownStyle } from '@/components/Markdown';
 import {
   Accordion,
   AccordionContent,
@@ -7,7 +8,6 @@ import {
 import { Text } from '@/components/ui/text';
 import { Faq } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import Markdown, { MarkdownStyle } from '@/components/Markdown';
 
 type FAQProps = {
   faqs: Faq[];

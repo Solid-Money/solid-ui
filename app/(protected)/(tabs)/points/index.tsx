@@ -1,3 +1,9 @@
+import React from 'react';
+import { ImageBackground, Platform, View } from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+
 import PageLayout from '@/components/PageLayout';
 import PointsTitle from '@/components/Points/PointsTitle';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -10,11 +16,6 @@ import { usePoints } from '@/hooks/usePoints';
 import { getAsset } from '@/lib/assets';
 import { RewardsType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import React from 'react';
-import { ImageBackground, Platform, View } from 'react-native';
 
 export default function Points() {
   const { points, isLoading: isPointsLoading } = usePoints();

@@ -1,8 +1,9 @@
-import { Text } from '@/components/ui/text';
-import { getAsset } from '@/lib/assets';
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View } from 'react-native';
+
+import { Text } from '@/components/ui/text';
+import { getAsset } from '@/lib/assets';
 
 interface ContractAddressWarningProps {
   chainName: string;

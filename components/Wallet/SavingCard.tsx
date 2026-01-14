@@ -1,9 +1,10 @@
+import { memo, useState } from 'react';
+import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { memo, useState } from 'react';
-import { Pressable, View } from 'react-native';
 
+import SavingsIcon from '@/assets/images/savings';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import TooltipPopover from '@/components/Tooltip';
@@ -15,8 +16,6 @@ import { useAPYs, useMaxAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { cn, fontSize, formatNumber } from '@/lib/utils';
-
-import SavingsIcon from '@/assets/images/savings';
 
 type SavingCardProps = {
   className?: string;
@@ -147,7 +146,11 @@ const SavingCard = memo(
               </View>
               <TooltipPopover text="Balance + Yield of soUSD" />
             </View>
-            <Image source={getAsset('images/sousd-4x.png')} style={{ width: 28, height: 28 }} />
+            <Image
+              source={getAsset('images/sousd-4x.png')}
+              style={{ width: 28, height: 28 }}
+              alt="soUSD token"
+            />
           </View>
         </View>
       </Pressable>

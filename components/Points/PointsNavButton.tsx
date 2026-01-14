@@ -1,7 +1,7 @@
-import { usePoints } from '@/hooks/usePoints';
-import { Image } from 'expo-image';
 import { Text, View } from 'react-native';
+import { Image } from 'expo-image';
 
+import { usePoints } from '@/hooks/usePoints';
 import { getAsset } from '@/lib/assets';
 
 const PointsNavButton = () => {

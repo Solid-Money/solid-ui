@@ -1,7 +1,7 @@
-import { Tabs, usePathname } from 'expo-router';
-import { Leaf, Star } from 'lucide-react-native';
 import React from 'react';
 import { Platform } from 'react-native';
+import { Tabs, usePathname } from 'expo-router';
+import { Leaf, Star } from 'lucide-react-native';
 
 import ActivityNavBarIcon from '@/assets/images/activity-nav-bar-icon';
 import AssetsNavBarIcon from '@/assets/images/assets-nav-bar-icon';

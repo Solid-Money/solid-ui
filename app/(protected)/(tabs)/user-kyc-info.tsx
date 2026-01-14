@@ -1,12 +1,14 @@
-import PageLayout from '@/components/PageLayout';
-import { Text } from '@/components/ui/text';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Pressable, View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowLeft } from 'lucide-react-native';
 import { z } from 'zod';
 
+import PageLayout from '@/components/PageLayout';
+import { Text } from '@/components/ui/text';
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
 import { KycMode, type UserInfoFormData, userInfoSchema } from '@/components/UserKyc/types';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -14,8 +16,6 @@ import { track } from '@/lib/analytics';
 import { createKycLink } from '@/lib/api';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useKycStore } from '@/store/useKycStore';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import Toast from 'react-native-toast-message';
 
 // Main Component
 export default function UserKycInfo() {

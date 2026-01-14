@@ -1,5 +1,4 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import useUser from '@/hooks/useUser';
 
 import {
   DropdownMenu,
@@ -8,7 +7,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import useUser from '@/hooks/useUser';
 import { cn } from '@/lib/utils';
+
 import {
   AccountCenterSettings,
   AccountCenterSignOut,

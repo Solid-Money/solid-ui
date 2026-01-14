@@ -1,11 +1,10 @@
-import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
-
-import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 
 import CountryFlagImage from '@/components/CountryFlagImage';
+import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -461,7 +460,12 @@ function CountrySelector({
 
         {selectedCountry && (
           <View className="mb-6 items-center">
-            <CountryFlagImage isoCode={selectedCountry.code} size={110} className="mb-2" />
+            <CountryFlagImage
+              isoCode={selectedCountry.code}
+              size={110}
+              className="mb-2"
+              countryName={selectedCountry.name}
+            />
           </View>
         )}
         {!confirmed ? (
@@ -515,7 +519,12 @@ function CountryUnavailableView({
 }: CountryUnavailableViewProps) {
   return (
     <>
-      <CountryFlagImage isoCode={countryCode} size={110} className="mb-6 mt-4" />
+      <CountryFlagImage
+        isoCode={countryCode}
+        size={110}
+        className="mb-6 mt-4"
+        countryName={countryName}
+      />
       <Text className="mb-4 text-center text-2xl font-bold text-white">
         {`We're not ready for ${countryName} just yet!`}
       </Text>
@@ -543,7 +552,12 @@ interface NotifyConfirmationViewProps {
 function NotifyConfirmationView({ countryName, countryCode }: NotifyConfirmationViewProps) {
   return (
     <>
-      <CountryFlagImage isoCode={countryCode} size={110} className="mb-6" />
+      <CountryFlagImage
+        isoCode={countryCode}
+        size={110}
+        className="mb-6"
+        countryName={countryName}
+      />
       <Text className="mb-4 text-center text-2xl font-semibold text-white">Thanks</Text>
       <Text className="mb-8 text-center leading-6 text-[#ACACAC]">
         {`We'll let you know as soon as Cash cards become available in ${countryName}. Hopefully very soon!`}

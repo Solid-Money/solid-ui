@@ -1,6 +1,3 @@
-import LoginKeyIcon from '@/assets/images/login_key_icon';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, useWindowDimensions, View } from 'react-native';
 import Animated, {
@@ -10,7 +7,10 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 
+import LoginKeyIcon from '@/assets/images/login_key_icon';
 import {
   AnimatedGradientBackground,
   DesktopCarousel,

@@ -1,6 +1,6 @@
-import { Image } from 'expo-image';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import CardWaitlistContainer from '@/components/CardWaitlist/CardWaitlistContainer';
 import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';

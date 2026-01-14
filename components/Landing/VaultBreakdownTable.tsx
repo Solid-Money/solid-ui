@@ -1,7 +1,7 @@
-import { Image } from 'expo-image';
-import { ChevronRight } from 'lucide-react-native';
 import { memo, useCallback, useMemo } from 'react';
 import { DimensionValue, Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
+import { ChevronRight } from 'lucide-react-native';
 
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';

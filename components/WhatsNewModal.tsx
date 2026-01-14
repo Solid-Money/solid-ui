@@ -1,8 +1,8 @@
-import { Image } from 'expo-image';
-import { X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Dimensions, View } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
+import { Image } from 'expo-image';
+import { X } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -81,7 +81,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
             renderItem={renderItem}
           />
 
-          <View className="flex-row items-center justify-between px-6 pb-8 pt-6">
+          <View className="flex-row items-center justify-between px-8 pb-8 pt-6">
             <View className="w-20">
               {activeIndex > 0 && (
                 <Button

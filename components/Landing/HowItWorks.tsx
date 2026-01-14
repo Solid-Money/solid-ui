@@ -1,6 +1,6 @@
+import { ImageSourcePropType, Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ImageSourcePropType, Platform, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 
@@ -25,7 +25,12 @@ const HowItWorks = ({ index, title, description, image }: HowItWorksProps) => {
           <Text className="text-xl font-bold text-primary-foreground">{index}</Text>
         </View>
         <View className="h-52 items-center justify-center">
-          <Image source={image} style={{ width: 153, height: 202 }} contentFit="contain" />
+          <Image
+            source={image}
+            style={{ width: 153, height: 202 }}
+            contentFit="contain"
+            alt={`Step ${index}: ${title}`}
+          />
         </View>
         <View className="mt-6 gap-2">
           <Text className="text-xl font-bold">{title}</Text>

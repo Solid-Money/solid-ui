@@ -1,5 +1,3 @@
-import * as Sentry from '@sentry/react-native';
-import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform, View } from 'react-native';
 import Animated, {
@@ -12,6 +10,8 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
+import { useRouter } from 'expo-router';
+import * as Sentry from '@sentry/react-native';
 import { mainnet } from 'viem/chains';
 
 import { Text } from '@/components/ui/text';

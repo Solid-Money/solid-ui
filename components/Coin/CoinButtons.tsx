@@ -1,7 +1,10 @@
-import { ArrowUp } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
+import { ArrowUp } from 'lucide-react-native';
 import { Address } from 'viem';
 
+import HomeSend from '@/assets/images/home-send';
+import HomeSwap from '@/assets/images/home-swap';
+import HomeWithdraw from '@/assets/images/withdraw';
 import CircleButton from '@/components/CircleButton';
 import SendModal from '@/components/Send/SendModal';
 import StakeModal from '@/components/Stake/StakeModal';
@@ -10,10 +13,6 @@ import { Text } from '@/components/ui/text';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { isSoUSDEthereum } from '@/lib/utils';
-
-import HomeSend from '@/assets/images/home-send';
-import HomeSwap from '@/assets/images/home-swap';
-import HomeWithdraw from '@/assets/images/withdraw';
 
 type CoinButtonsProps = {
   contractAddress: Address;

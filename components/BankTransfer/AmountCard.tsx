@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { View } from 'react-native';
+
 import AmountInput from './AmountInput';
 
 type AmountCardProps = {

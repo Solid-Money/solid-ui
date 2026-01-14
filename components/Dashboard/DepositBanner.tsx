@@ -1,7 +1,7 @@
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus } from 'lucide-react-native';
-import { View } from 'react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
+
 import SwipeableBanner from './SwipeableBanner';
 
 const DepositBanner = () => {

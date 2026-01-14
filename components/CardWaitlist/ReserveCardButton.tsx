@@ -1,17 +1,17 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { addToCardWaitlist, checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { track } from '@/lib/analytics';
 
 export type DetectedCountryInfo = {
   countryCode: string;

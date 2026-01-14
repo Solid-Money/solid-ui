@@ -1,7 +1,8 @@
+import { View } from 'react-native';
+import { ChevronDown } from 'lucide-react-native';
+
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { ChevronDown } from 'lucide-react-native';
-import { View } from 'react-native';
 
 type CurrencyPillProps = {
   label: string;

@@ -1,14 +1,16 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
+
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { getAttributionChannel } from '@/lib/attribution';
 import { useAttributionStore } from '@/store/useAttributionStore';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+
 import type { ClientOptions } from 'persona';
-import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
 
 export type KycParams = {
   onSuccess?: () => void;

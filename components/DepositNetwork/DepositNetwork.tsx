@@ -1,5 +1,6 @@
+import { ActivityIndicator, ImageSourcePropType, View } from 'react-native';
+import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
-import { ActivityIndicator, Image, ImageSourcePropType, View } from 'react-native';
 
 import DepositComingSoon from '@/components/DepositOption/DepositComingSoon';
 import { Button } from '@/components/ui/button';

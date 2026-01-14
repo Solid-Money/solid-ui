@@ -1,10 +1,11 @@
-import { ChevronRight } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+
 import DepositComingSoon from './DepositComingSoon';
 
 type DepositOptionProps = {

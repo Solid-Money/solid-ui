@@ -1,7 +1,8 @@
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
 import React, { useEffect } from 'react';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 
 interface Step {
   id: number;

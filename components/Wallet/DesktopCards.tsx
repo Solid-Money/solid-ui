@@ -1,9 +1,10 @@
+import React from 'react';
+import { View } from 'react-native';
+
 import { Card, SavingCard, WalletCard } from '@/components/Wallet';
 import { USDC_TOKEN_BALANCE } from '@/constants/tokens';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { TokenBalance } from '@/lib/types';
-import React from 'react';
-import { View } from 'react-native';
 
 type DesktopCardsProps = {
   totalUSDExcludingSoUSD: number;

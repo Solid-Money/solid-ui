@@ -1,12 +1,11 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 
+import Plus from '@/assets/images/Plus';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
 import { eclipseAddress } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
-
-import Plus from '@/assets/images/Plus';
 
 interface AddAddressProps {
   address: string;

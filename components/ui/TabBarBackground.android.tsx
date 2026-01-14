@@ -1,5 +1,5 @@
-import { BlurView } from 'expo-blur';
 import { StyleSheet, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 
 export default function TabBarBackground() {
   return (

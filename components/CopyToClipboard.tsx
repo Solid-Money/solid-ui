@@ -1,6 +1,6 @@
+import { useCallback, useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import { Check, Copy } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

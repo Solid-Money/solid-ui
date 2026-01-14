@@ -1,14 +1,14 @@
 import { Platform, View } from 'react-native';
 
 import { ActivityTabs, ActivityTransactions } from '@/components/Activity';
+import ActivityRefreshButton from '@/components/Activity/ActivityRefreshButton';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
+import { useActivity } from '@/hooks/useActivity';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { ActivityTab } from '@/lib/types';
 import { hasCard } from '@/lib/utils';
-import ActivityRefreshButton from '@/components/Activity/ActivityRefreshButton';
-import { useActivity } from '@/hooks/useActivity';
 
 export default function Activity() {
   const { data: cardStatus, isLoading: isCardLoading } = useCardStatus();

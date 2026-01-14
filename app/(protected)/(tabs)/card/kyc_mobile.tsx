@@ -1,10 +1,11 @@
-import { Text } from '@/components/ui/text';
-import { KycStatus } from '@/lib/types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+
+import { Text } from '@/components/ui/text';
+import { KycStatus } from '@/lib/types';
 
 export default function KycMobile() {
   const { url } = useLocalSearchParams<{ url: string }>();

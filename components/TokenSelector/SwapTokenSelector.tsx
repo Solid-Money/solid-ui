@@ -1,5 +1,3 @@
-import { Text } from '@/components/ui/text';
-import { ADDRESS_ZERO, Currency } from '@cryptoalgebra/fuse-sdk';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,21 +9,22 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { ADDRESS_ZERO, Currency } from '@cryptoalgebra/fuse-sdk';
 import { Address, erc20Abi } from 'viem';
+import { fuse } from 'viem/chains';
 import { useBalance } from 'wagmi';
 
+import CopyToClipboard from '@/components/CopyToClipboard';
+import CurrencyLogo from '@/components/CurrencyLogo';
+import { Text } from '@/components/ui/text';
 import { useAllTokens } from '@/hooks/tokens/useAllTokens';
 import { useCurrency } from '@/hooks/tokens/useCurrency';
 import { useFuse } from '@/hooks/useFuse';
 import { useUSDCPrice } from '@/hooks/useUSDCValue';
+import useUser from '@/hooks/useUser';
 import { TokenListItem } from '@/lib/types/tokens';
 import { formatNumber } from '@/lib/utils';
 import { multicall3 } from '@/lib/utils/multicall';
-
-import CopyToClipboard from '@/components/CopyToClipboard';
-import CurrencyLogo from '@/components/CurrencyLogo';
-import useUser from '@/hooks/useUser';
-import { fuse } from 'viem/chains';
 
 const TokenSelectorView = {
   DEFAULT_LIST: 'DEFAULT_LIST',

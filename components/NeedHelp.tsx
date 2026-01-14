@@ -1,5 +1,6 @@
 import MessageCircle from '@/assets/images/messages';
 import { useIntercom } from '@/lib/intercom';
+
 import { Button } from './ui/button';
 import { Text } from './ui/text';
 

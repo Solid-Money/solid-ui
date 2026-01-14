@@ -1,7 +1,8 @@
+import { View } from 'react-native';
+
 import TooltipPopover from '@/components/Tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
-import { View } from 'react-native';
 
 interface SwitchStuckTransactionProps {
   showStuck: boolean;

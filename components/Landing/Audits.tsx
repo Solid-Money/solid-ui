@@ -2,9 +2,9 @@ import { Linking, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
+import { Text } from '@/components/ui/text';
 import { audits } from '@/constants/audits';
 import { cn } from '@/lib/utils';
-import { Text } from '@/components/ui/text';
 
 interface AuditsProps {
   className?: string;
@@ -23,7 +23,12 @@ const Audits = ({ className }: AuditsProps) => {
           onPress={() => Linking.openURL(audit.url)}
         >
           <View className="flex-row items-center gap-2">
-            <Image source={audit.image} style={{ width: 24, height: 24 }} contentFit="contain" />
+            <Image
+              source={audit.image}
+              style={{ width: 24, height: 24 }}
+              contentFit="contain"
+              alt={`${audit.name} security audit badge`}
+            />
             <Text className="text-lg font-medium">{audit.name}</Text>
           </View>
           <View className="flex-row items-center gap-2">

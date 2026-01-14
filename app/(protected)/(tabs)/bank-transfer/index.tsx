@@ -1,5 +1,6 @@
-import BankTransferAmount from '@/components/BankTransfer';
 import { View } from 'react-native';
+
+import BankTransferAmount from '@/components/BankTransfer';
 
 export default function BankTransfer() {
   return (

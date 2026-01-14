@@ -1,3 +1,8 @@
+import { useRef, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { router } from 'expo-router';
+
 import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
@@ -20,10 +25,7 @@ import {
 } from '@/lib/api';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useDepositStore } from '@/store/useDepositStore';
-import { router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import Toast from 'react-native-toast-message';
+
 import { PaymentMethodTile } from './PaymentMethodTile';
 
 type Props = {

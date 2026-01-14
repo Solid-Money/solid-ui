@@ -1,7 +1,7 @@
-import { Image } from 'expo-image';
-import { Link } from 'expo-router';
 import { Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { Link } from 'expo-router';
 
 import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown';
 import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
@@ -11,6 +11,7 @@ import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+
 import { NavMenu } from './NavMenu';
 import RegisterButtons from './RegisterButtons';
 import WhatsNewButton from './WhatsNewButton';

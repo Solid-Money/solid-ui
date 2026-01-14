@@ -1,8 +1,8 @@
-import { FlashList } from '@shopify/flash-list';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Image } from 'expo-image';
+import { FlashList } from '@shopify/flash-list';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 import PageLayout from '@/components/PageLayout';
 import { Skeleton } from '@/components/ui/skeleton';

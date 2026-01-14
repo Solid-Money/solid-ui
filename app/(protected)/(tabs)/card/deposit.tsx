@@ -1,21 +1,21 @@
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, View } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { Address, formatUnits } from 'viem';
-
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { track } from '@/lib/analytics';
 
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useSend from '@/hooks/useSend';
 import useUser from '@/hooks/useUser';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
+import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { Status, TokenBalance, TokenType, TransactionStatus, TransactionType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';

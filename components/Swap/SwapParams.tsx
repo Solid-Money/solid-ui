@@ -1,3 +1,19 @@
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, View } from 'react-native';
+import {
+  ADDRESS_ZERO,
+  computePoolAddress,
+  Currency,
+  Percent,
+  Trade,
+  TradeType,
+  unwrappedToken,
+} from '@cryptoalgebra/fuse-sdk';
+import * as Sentry from '@sentry/react-native';
+import { Fuel } from 'lucide-react-native';
+import { Address, getContract } from 'viem';
+import { fuse } from 'viem/chains';
+
 import { Text } from '@/components/ui/text';
 import { ALGEBRA_ROUTER } from '@/constants/addresses';
 import { MAX_UINT128 } from '@/constants/max-uint128';
@@ -16,21 +32,6 @@ import {
 } from '@/lib/utils/swap/prices';
 import { publicClient } from '@/lib/wagmi';
 import { useDerivedSwapInfo, useSwapState } from '@/store/swapStore';
-import {
-  ADDRESS_ZERO,
-  computePoolAddress,
-  Currency,
-  Percent,
-  Trade,
-  TradeType,
-  unwrappedToken,
-} from '@cryptoalgebra/fuse-sdk';
-import * as Sentry from '@sentry/react-native';
-import { Fuel } from 'lucide-react-native';
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
-import { Address, getContract } from 'viem';
-import { fuse } from 'viem/chains';
 
 const SwapParams = () => {
   const {
