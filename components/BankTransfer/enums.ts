@@ -31,11 +31,16 @@ export const CRYPTO_LABEL: Record<BridgeTransferCryptoCurrency, string> = {
 };
 
 export const METHOD_LABEL: Record<BridgeTransferMethod, string> = {
-  [BridgeTransferMethod.ACH_PUSH]: 'ACH Push (Instant)',
-  [BridgeTransferMethod.WIRE]: 'Wire (1-2 business days)',
+  [BridgeTransferMethod.ACH_PUSH]: 'ACH Push',
+  [BridgeTransferMethod.WIRE]: 'Wire',
   [BridgeTransferMethod.SEPA]: 'SEPA',
   [BridgeTransferMethod.SPEI]: 'SPEI',
   [BridgeTransferMethod.PIX]: 'Pix (Beta)',
+};
+
+export const METHOD_SUBTITLE: Partial<Record<BridgeTransferMethod, string>> = {
+  [BridgeTransferMethod.ACH_PUSH]: 'Instant',
+  [BridgeTransferMethod.WIRE]: '~1-2 business days',
 };
 
 export enum Endorsements {
