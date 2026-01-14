@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { fuse } from 'viem/chains';
 
 import { explorerUrls } from '@/constants/explorers';
+import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { useUserStore } from '@/store/useUserStore';
 import {
@@ -60,6 +61,7 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
+  RewardsUserData,
   SearchCoin,
   SourceDepositInstructions,
   StargateQuoteParams,
@@ -68,6 +70,7 @@ import {
   SwapTokenResponse,
   SyncActivitiesOptions,
   SyncActivitiesResponse,
+  TierBenefits,
   ToCurrency,
   TokenPriceUsd,
   UpdateActivityEvent,
@@ -769,6 +772,50 @@ export const fetchLeaderboardUsers = async (params: {
     },
   );
 
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const mockFetchRewardsUserData = async (): Promise<RewardsUserData> => {
+  return Promise.resolve(MOCK_REWARDS_USER_DATA);
+};
+
+export const fetchRewardsUserData = async (): Promise<RewardsUserData> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/user-data`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
+  return Promise.resolve(MOCK_TIER_BENEFITS);
+};
+
+export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/tier-benefits`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
   if (!response.ok) throw response;
   return response.json();
 };

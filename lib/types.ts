@@ -726,6 +726,48 @@ export interface Points {
   leaderboardPosition?: number;
 }
 
+export enum RewardsTier {
+  CORE = 'core',
+  PRIME = 'prime',
+  ULTRA = 'ultra',
+}
+
+export interface RewardsUserData {
+  currentTier: RewardsTier;
+  totalPoints: number;
+  nextTierPoints: number;
+  nextTier: RewardsTier | null;
+  savingsAPY: number;
+  cashbackRate: number;
+  cashbackThisMonth: number;
+  maxCashbackMonthly: number;
+}
+
+export interface TierBenefit {
+  title: string;
+  subtitle?: string;
+  image?: string;
+}
+
+export interface TierBenefits {
+  tier: RewardsTier;
+  depositBoost: TierBenefit;
+  cardCashback: TierBenefit;
+  subscriptionDiscount: TierBenefit | null;
+  cardCashbackCap: TierBenefit;
+  subscriptionDiscountCap: TierBenefit | null;
+  cardFees: TierBenefit;
+  bankDeposit: TierBenefit;
+  swapFees: TierBenefit;
+  support: TierBenefit;
+}
+
+export interface TierBenefitItem {
+  icon: string;
+  title: string;
+  description: string;
+}
+
 export enum LifiOrder {
   FASTEST = 'FASTEST',
   CHEAPEST = 'CHEAPEST',

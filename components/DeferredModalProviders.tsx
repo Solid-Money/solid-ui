@@ -8,6 +8,7 @@ import StakeModalProvider from '@/components/Stake/StakeModalProvider';
 import SwapModalProvider from '@/components/Swap/SwapModalProvider';
 import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
 import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
+import TierModalProvider from '@/components/Rewards/TierModalProvider';
 
 /**
  * Deferred modal providers component.
@@ -46,6 +47,7 @@ const DeferredModalProviders = () => {
       <UnstakeModalProvider />
       <DepositFromSafeAccountModalProvider />
       <CardDepositModalProvider />
+      <TierModalProvider />
     </>
   );
 };

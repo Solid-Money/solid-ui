@@ -64,7 +64,11 @@ const BannerItem = ({
   return <Animated.View style={[animatedStyle, { height: bannerHeight }]}>{item}</Animated.View>;
 };
 
-const HomeBannersContent = () => {
+interface HomeBannersContentProps {
+  data?: React.ReactElement[];
+}
+
+const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const ref = useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);
   const { isScreenMedium } = useDimension();
@@ -72,7 +76,7 @@ const HomeBannersContent = () => {
   const gapPadding = useSharedValue(0);
   const isPanning = usePanGesture();
 
-  const data = useMemo(
+  const defaultData = useMemo(
     () => [
       <CardBanner key="card" />,
       <PointsBanner key="points" />,
@@ -80,6 +84,8 @@ const HomeBannersContent = () => {
     ],
     [],
   );
+
+  const data = propData || defaultData;
 
   const GAP = isScreenMedium ? 30 : 8;
   const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
@@ -211,10 +217,14 @@ const HomeBannersContent = () => {
   );
 };
 
-export const HomeBanners = () => {
+interface HomeBannersProps {
+  data?: React.ReactElement[];
+}
+
+export const HomeBanners = ({ data }: HomeBannersProps = {}) => {
   return (
     <PanGestureProvider>
-      <HomeBannersContent />
+      <HomeBannersContent data={data} />
     </PanGestureProvider>
   );
 };
