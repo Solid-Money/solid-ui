@@ -15,6 +15,7 @@ import WithdrawModalProvider from '@/components/Withdraw/WithdrawModalProvider';
 import '@/global.css';
 import { infoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
+import { useUserStore } from '@/store/useUserStore';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
 import { config } from '@/lib/wagmi';
@@ -182,6 +183,10 @@ const queryClient = new QueryClient({
 export default Sentry.wrap(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
+
+  const users = useUserStore(state => state.users);
+  const user = users.find(u => u.selected);
+
   const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
 
   // Initialize attribution tracking automatically (handles web and mobile)
@@ -372,7 +377,7 @@ export default Sentry.wrap(function RootLayout() {
                       <UnstakeModalProvider />
                       <DepositFromSafeAccountModalProvider />
                       <CardDepositModalProvider />
-                      {whatsNew && (
+                      {user && whatsNew && (
                         <WhatsNewModal
                           whatsNew={whatsNew}
                           isOpen={isVisible}

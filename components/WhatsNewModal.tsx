@@ -11,7 +11,7 @@ import { WhatsNew, WhatsNewStep } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const MODAL_WIDTH = Math.min(SCREEN_WIDTH * 0.9, 480);
+const MODAL_WIDTH = Math.min(SCREEN_WIDTH * 0.9, 560);
 
 interface WhatsNewModalProps {
   whatsNew: WhatsNew;
@@ -51,7 +51,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="w-[90vw] max-w-[480px] overflow-hidden border-0 border-none bg-[#1C1C1E] p-0">
+      <DialogContent className="w-[90vw] max-w-[560px] overflow-hidden border-0 border-none bg-[#1C1C1E] p-0">
         <View className="relative">
           <Button
             variant="ghost"
