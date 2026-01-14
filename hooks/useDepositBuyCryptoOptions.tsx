@@ -50,6 +50,7 @@ const useDepositBuyCryptoOptions = () => {
       {
         text: 'Bank Deposit',
         subtitle: 'Make a transfer from your bank',
+        chipText: 'Cheapest',
         bannerText: bonusBannerText,
         icon: (
           <Image
