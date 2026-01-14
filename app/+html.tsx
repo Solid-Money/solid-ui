@@ -69,27 +69,6 @@ export default function Root({ children }: PropsWithChildren) {
               html, body { height: 100%; background-color: #000; }
               #root { height: 100%; }
               body { overscroll-behavior-y: none; overscroll-behavior-x: none; }
-
-              /* Loading spinner - shows instantly while JS loads */
-              #initial-loader {
-                position: fixed;
-                inset: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: #000;
-                z-index: 9999;
-              }
-              #initial-loader.hidden { display: none; }
-              .spinner {
-                width: 40px;
-                height: 40px;
-                border: 3px solid #333;
-                border-top-color: #fff;
-                border-radius: 50%;
-                animation: spin 0.8s linear infinite;
-              }
-              @keyframes spin { to { transform: rotate(360deg); } }
             `,
           }}
         />
@@ -117,9 +96,6 @@ export default function Root({ children }: PropsWithChildren) {
       </head>
       <body>
         {/* Loading spinner - immediately visible, hidden when React mounts */}
-        <div id="initial-loader">
-          <div className="spinner" />
-        </div>
         {children}
 
         {/* Google Tag Manager */}
