@@ -4,9 +4,12 @@ import { withRefreshToken } from '@/lib/utils';
 
 const CARD_DETAILS = 'cardDetails';
 
+// Query options for prefetching card details
+export const cardDetailsQueryOptions = () => ({
+  queryKey: [CARD_DETAILS],
+  queryFn: () => withRefreshToken(() => getCardDetails()),
+});
+
 export const useCardDetails = () => {
-  return useQuery({
-    queryKey: [CARD_DETAILS],
-    queryFn: () => withRefreshToken(() => getCardDetails()),
-  });
+  return useQuery(cardDetailsQueryOptions());
 };

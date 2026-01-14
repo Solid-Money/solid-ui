@@ -1,13 +1,14 @@
-import { Href, Link } from 'expo-router';
 import { View } from 'react-native';
-import { ExternalLink, X } from 'lucide-react-native';
 import Toast, { BaseToastProps, ToastProps } from 'react-native-toast-message';
+import { Href, Link } from 'expo-router';
+import { ExternalLink, X } from 'lucide-react-native';
 
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import RenderTokenIcon from './RenderTokenIcon';
 import { TokenIcon } from '@/lib/types';
+import { cn } from '@/lib/utils';
+
+import RenderTokenIcon from './RenderTokenIcon';
 
 interface IBaseToast extends BaseToastProps {
   classNames?: {

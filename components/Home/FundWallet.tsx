@@ -1,6 +1,6 @@
+import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View } from 'react-native';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { buttonVariants } from '@/components/ui/button';
@@ -54,6 +54,7 @@ const FundWallet = ({ className }: FundWalletProps) => {
             source={getAsset('images/fund-wallet-tokens.png')}
             contentFit="contain"
             style={{ width: 216, height: 216 }}
+            alt="Cryptocurrency tokens including USDC, USDT, and ETH"
           />
         </View>
       </View>

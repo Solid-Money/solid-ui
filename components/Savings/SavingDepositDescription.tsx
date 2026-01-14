@@ -1,4 +1,5 @@
 import { Link } from 'expo-router';
+
 import { Text } from '@/components/ui/text';
 
 const SavingDepositDescription = () => {

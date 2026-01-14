@@ -2,12 +2,12 @@ import { useMemo } from 'react';
 import { View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import Ping from '@/components/Ping';
 import { Text } from '@/components/ui/text';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber, isSoUSDToken } from '@/lib/utils';
-import Ping from '@/components/Ping';
 
 interface EarningYieldProps {
   token: TokenBalance | undefined;

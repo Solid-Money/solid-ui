@@ -1,6 +1,7 @@
-import { cn } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
+
+import { cn } from '@/lib/utils';
 
 interface OtpInputProps {
   value: string;

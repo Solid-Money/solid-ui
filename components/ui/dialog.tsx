@@ -1,4 +1,3 @@
-import * as DialogPrimitive from '@rn-primitives/dialog';
 import * as React from 'react';
 import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 import Animated, {
@@ -11,12 +10,13 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
+import { BlurView } from 'expo-blur';
+import * as DialogPrimitive from '@rn-primitives/dialog';
 
 import { toastProps } from '@/components/Toast';
 import { useDimension } from '@/hooks/useDimension';
 import { X } from '@/lib/icons/X';
 import { cn } from '@/lib/utils';
-import { BlurView } from 'expo-blur';
 
 const Dialog = DialogPrimitive.Root;
 

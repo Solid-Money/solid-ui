@@ -1,13 +1,14 @@
-import { Image } from 'expo-image';
-import { ChevronDown } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
+import { Image } from 'expo-image';
+import { ChevronDown } from 'lucide-react-native';
 
-import { Button } from '@/components/ui/button';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
+import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TOKEN_IMAGES, TOKEN_MAP } from '@/constants/tokens';
 import { Token } from '@/lib/types';
+
 import TokenSelector from '.';
 import TokenSelectorDeposit from './TokenSelectorDeposit';
 import TokenSelectorFooter from './TokenSelectorFooter';

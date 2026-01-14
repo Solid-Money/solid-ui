@@ -1,5 +1,5 @@
-import { AlertCircle, Bell, BellOff, CheckCircle, Loader2 } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
+import { AlertCircle, Bell, BellOff, CheckCircle, Loader2 } from 'lucide-react-native';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

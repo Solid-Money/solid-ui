@@ -1,5 +1,5 @@
-import { ArrowDown } from 'lucide-react-native';
 import { View } from 'react-native';
+import { ArrowDown } from 'lucide-react-native';
 
 const TokenDivider = () => {
   return (

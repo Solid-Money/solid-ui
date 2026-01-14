@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { getAsset } from '@/lib/assets';
 
@@ -23,6 +24,7 @@ function DepositStableCoinsCard() {
             <Image
               source={getAsset('images/solid_logo_with_glare.png')}
               style={{ width: 320, height: 320 }}
+              alt="Solid logo"
             />
           </View>
         </View>
@@ -37,23 +39,26 @@ function IconsWithText() {
       <IconWithText
         iconSource={getAsset('images/no_funds_deposit_icon.png')}
         text={`Deposit as${'\n'}little as $1`}
+        alt="Deposit icon"
       />
       <IconWithText
         iconSource={getAsset('images/no_funds_withdraw_icon.png')}
         text={`Withdraw${'\n'}anytime`}
+        alt="Withdraw icon"
       />
       <IconWithText
         iconSource={getAsset('images/no_funds_earn_icon.png')}
         text={`Earn every${'\n'}second`}
+        alt="Earn rewards icon"
       />
     </View>
   );
 }
 
-function IconWithText({ iconSource, text }: { iconSource: any; text: string }) {
+function IconWithText({ iconSource, text, alt }: { iconSource: any; text: string; alt: string }) {
   return (
     <View>
-      <Image source={iconSource} style={{ width: 60, height: 60 }} />
+      <Image source={iconSource} style={{ width: 60, height: 60 }} alt={alt} />
       <Text className="mt-4 text-base text-white sm:text-lg md:text-xl lg:text-2xl">{text}</Text>
     </View>
   );

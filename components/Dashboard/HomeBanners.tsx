@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
-import type { PanGesture } from 'react-native-gesture-handler';
-import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -13,9 +11,13 @@ import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typ
 
 import PointsBanner from '@/components/Points/PointsBanner';
 import { useDimension } from '@/hooks/useDimension';
+
 import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';
 import { PanGestureProvider, usePanGesture } from './PanGestureContext';
+
+import type { PanGesture } from 'react-native-gesture-handler';
+import type { SharedValue } from 'react-native-reanimated';
 
 type BannerData = React.ReactElement[];
 

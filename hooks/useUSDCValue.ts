@@ -3,19 +3,19 @@ import { Currency, CurrencyAmount, Price, tryParseAmount } from '@cryptoalgebra/
 import { useMemo } from 'react';
 
 import { STABLECOINS_TOKENS } from '@/constants/tokens';
-import { algebraInfoClient } from '@/graphql/clients';
+import { getAlgebraInfoClient } from '@/graphql/clients';
 import { NativePriceDocument, SingleTokenDocument } from '@/graphql/generated/algebra-info';
 
 export function useUSDCPrice(currency: Currency | undefined) {
   const { data: bundles } = useQuery(NativePriceDocument, {
-    client: algebraInfoClient,
+    client: getAlgebraInfoClient(),
   });
 
   const { data: token } = useQuery(SingleTokenDocument, {
     variables: {
       tokenId: currency ? currency.wrapped.address.toLowerCase() : '',
     },
-    client: algebraInfoClient,
+    client: getAlgebraInfoClient(),
     skip: !currency,
   });
 

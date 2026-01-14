@@ -11,6 +11,7 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useSendStore } from '@/store/useSendStore';
+
 import ToInput from './ToInput';
 
 const TokenSelector: React.FC = () => {

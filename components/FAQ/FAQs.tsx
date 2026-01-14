@@ -1,9 +1,10 @@
 import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
-import FAQ from './FAQ';
 import { Faq } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+import FAQ from './FAQ';
 
 type FAQsProps = {
   faqs: Faq[];

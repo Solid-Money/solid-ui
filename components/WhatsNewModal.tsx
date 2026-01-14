@@ -1,8 +1,8 @@
-import { Image } from 'expo-image';
-import { X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Dimensions, View } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
+import { Image } from 'expo-image';
+import { X } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';

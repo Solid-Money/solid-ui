@@ -1,5 +1,5 @@
 import { useLazyQuery } from '@apollo/client/react';
-import { algebraInfoClient } from '@/graphql/clients';
+import { getAlgebraInfoClient } from '@/graphql/clients';
 import { MultiplePoolsDocument, TokenFieldsFragment } from '@/graphql/generated/algebra-info';
 import { computePoolAddress, Currency, Token } from '@cryptoalgebra/fuse-sdk';
 import { useEffect, useMemo, useState } from 'react';
@@ -35,7 +35,7 @@ export function useSwapPools(
   const allCurrencyCombinations = useAllCurrencyCombinations(currencyIn, currencyOut);
 
   const [getMultiplePools] = useLazyQuery(MultiplePoolsDocument, {
-    client: algebraInfoClient,
+    client: getAlgebraInfoClient(),
   });
 
   useEffect(() => {

@@ -1,9 +1,11 @@
+import { TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
+import { ChevronRight } from 'lucide-react-native';
+
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
-import { ChevronRight } from 'lucide-react-native';
-import { Image, TouchableOpacity, View } from 'react-native';
 
 const WithdrawOptions = () => {
   const { setModal } = useUnstakeStore();

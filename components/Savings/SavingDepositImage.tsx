@@ -21,6 +21,7 @@ const SavingDepositImage = () => {
         width: isScreenMedium ? 349 : 233,
         height: isScreenMedium ? 378 : 252,
       }}
+      alt="Savings deposit illustration"
     />
   );
 };

@@ -5,6 +5,7 @@ import { STAKE_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { useStakeStore } from '@/store/useStakeStore';
+
 import { StakeTrigger } from '.';
 
 type StakeModalProps = {

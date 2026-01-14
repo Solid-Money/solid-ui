@@ -1,8 +1,8 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { VAULTS } from '@/constants/vaults';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useSavingStore } from '@/store/useSavingStore';
-import { VAULTS } from '@/constants/vaults';
 
 const SavingDepositTitle = () => {
   const { selectedVault } = useSavingStore();

@@ -1,6 +1,6 @@
-import { X } from 'lucide-react-native';
 import React from 'react';
 import { Pressable } from 'react-native';
+import { X } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { useWhatsNew } from '@/hooks/useWhatsNew';

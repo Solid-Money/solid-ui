@@ -1,6 +1,7 @@
-import { cn } from '@/lib/utils';
 import { forwardRef } from 'react';
 import { TextInput, TextInputProps } from 'react-native';
+
+import { cn } from '@/lib/utils';
 
 type AmountInputProps = TextInputProps & {
   className?: string;

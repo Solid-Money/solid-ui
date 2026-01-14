@@ -1,7 +1,9 @@
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ArrowLeft, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, Pressable, Text, View } from 'react-native';
+import { Address } from 'viem';
 
 import WalletIcon from '@/assets/images/wallet';
 import CopyToClipboard from '@/components/CopyToClipboard';
@@ -10,10 +12,8 @@ import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
-import { cn, eclipseAddress, getUserDisplayName } from '@/lib/utils';
-import { Address } from 'viem';
-
 import { getAsset } from '@/lib/assets';
+import { cn, eclipseAddress, getUserDisplayName } from '@/lib/utils';
 
 const AccountDetailsIcon = getAsset('images/settings_account_details.png');
 

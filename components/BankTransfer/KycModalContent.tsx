@@ -1,13 +1,11 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import type { ClientOptions } from 'persona';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import { Text } from '@/components/ui/text';
-
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
 import { KycMode, type UserInfoFormData, userInfoSchema } from '@/components/UserKyc/types';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -15,6 +13,8 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { createKycLink } from '@/lib/api';
 import { useDepositStore } from '@/store/useDepositStore';
+
+import type { ClientOptions } from 'persona';
 
 // Modal version of KYC Info Form
 const BankTransferKycInfoModal = () => {

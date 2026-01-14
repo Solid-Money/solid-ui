@@ -1,3 +1,7 @@
+import { useCallback, useEffect } from 'react';
+import { View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+
 import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
@@ -5,9 +9,6 @@ import {
 import { PaymentMethodList } from '@/components/BankTransfer/payment/PaymentMethodList';
 import { useCustomer } from '@/hooks/useCustomer';
 import { createBridgeTransfer } from '@/lib/api';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect } from 'react';
-import { View } from 'react-native';
 
 export default function BankTransferPaymentMethodScreen() {
   const params = useLocalSearchParams<{

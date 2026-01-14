@@ -1,4 +1,3 @@
-import { ArrowLeft } from 'lucide-react-native';
 import React, { ReactNode } from 'react';
 import { View } from 'react-native';
 import Animated, {
@@ -11,6 +10,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { ArrowLeft } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import {

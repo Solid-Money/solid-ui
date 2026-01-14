@@ -1,9 +1,10 @@
+import { ActivityIndicator, View } from 'react-native';
+
 import BarChart from '@/components/BarChart';
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { useHistoricalAPY } from '@/hooks/useAnalytics';
 import { formatNumber } from '@/lib/utils/utils';
-import { ActivityIndicator, View } from 'react-native';
 
 const APYChart = () => {
   const { data, isLoading } = useHistoricalAPY();

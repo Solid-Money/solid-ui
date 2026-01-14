@@ -1,3 +1,10 @@
+import { useCallback, useEffect, useState } from 'react';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { DesktopCarousel } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
@@ -9,12 +16,6 @@ import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { eclipseUsername } from '@/lib/utils/utils';
 import { useUserStore } from '@/store/useUserStore';
-import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 
 export default function Welcome() {
   const { handleRemoveUsers, handleSelectUserById } = useUser();

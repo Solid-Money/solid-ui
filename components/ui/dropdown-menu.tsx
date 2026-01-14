@@ -1,10 +1,3 @@
-import { TextClassContext } from '@/components/ui/text';
-import { Check } from '@/lib/icons/Check';
-import { ChevronDown } from '@/lib/icons/ChevronDown';
-import { ChevronRight } from '@/lib/icons/ChevronRight';
-import { ChevronUp } from '@/lib/icons/ChevronUp';
-import { cn } from '@/lib/utils';
-import * as DropdownMenuPrimitive from '@rn-primitives/dropdown-menu';
 import * as React from 'react';
 import {
   Platform,
@@ -15,6 +8,14 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import * as DropdownMenuPrimitive from '@rn-primitives/dropdown-menu';
+
+import { TextClassContext } from '@/components/ui/text';
+import { Check } from '@/lib/icons/Check';
+import { ChevronDown } from '@/lib/icons/ChevronDown';
+import { ChevronRight } from '@/lib/icons/ChevronRight';
+import { ChevronUp } from '@/lib/icons/ChevronUp';
+import { cn } from '@/lib/utils';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 

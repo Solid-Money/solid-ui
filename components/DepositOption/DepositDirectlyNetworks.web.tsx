@@ -1,3 +1,8 @@
+import { useState } from 'react';
+import { View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import * as Sentry from '@sentry/react-native';
+
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -7,10 +12,6 @@ import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
-import * as Sentry from '@sentry/react-native';
-import { useState } from 'react';
-import { View } from 'react-native';
-import Toast from 'react-native-toast-message';
 
 const DepositDirectlyNetworks = () => {
   const { setModal, setDirectDepositSession } = useDepositStore();

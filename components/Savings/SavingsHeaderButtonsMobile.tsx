@@ -1,6 +1,8 @@
-import { Plus } from 'lucide-react-native';
 import { View } from 'react-native';
+import { Plus } from 'lucide-react-native';
 
+import HomeSend from '@/assets/images/home-send';
+import HomeSwap from '@/assets/images/home-swap';
 import HomeWithdraw from '@/assets/images/withdraw';
 import CircleButton from '@/components/CircleButton';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
@@ -9,9 +11,6 @@ import SwapModal from '@/components/Swap/SwapModal';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-
-import HomeSend from '@/assets/images/home-send';
-import HomeSwap from '@/assets/images/home-swap';
 
 const SavingsHeaderButtonsMobile = () => {
   const withdrawTrigger = (

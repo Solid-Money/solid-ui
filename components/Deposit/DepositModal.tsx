@@ -3,6 +3,7 @@ import React from 'react';
 import SlotTrigger from '@/components/SlotTrigger';
 import { DEPOSIT_FROM_SAFE_ACCOUNT_MODAL } from '@/constants/modals';
 import { useDepositFromSafeAccountStore } from '@/store/useDepositFromSafeAccount';
+
 import { DepositTrigger } from '.';
 
 /**

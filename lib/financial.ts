@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { formatUnits, zeroAddress } from 'viem';
 
-import { infoClient } from '@/graphql/clients/index';
+import { getInfoClient } from '@/graphql/clients';
 import { GetExchangeRateUpdatesDocument, GetExchangeRateUpdatesQuery } from '@/graphql/generated/user-info';
 import { fetchExchangeRate } from '@/hooks/usePreviewDeposit';
 import { useBalanceStore } from '@/store/useBalanceStore';
@@ -77,7 +77,7 @@ export const fetchHistoricalExchangeRates = async (
     }
 
     // Use Apollo Client with the generated query
-    const { data } = await infoClient.query<GetExchangeRateUpdatesQuery>({
+    const { data } = await getInfoClient().query<GetExchangeRateUpdatesQuery>({
       query: GetExchangeRateUpdatesDocument,
       variables: {
         minTimestamp: minTimestamp.toString(),

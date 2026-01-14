@@ -1,10 +1,11 @@
+import { useMemo } from 'react';
+import { View } from 'react-native';
+
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
-import { useMemo } from 'react';
-import { View } from 'react-native';
 
 const WithdrawNetworks = () => {
   const { setModal, setSelectedNetwork } = useUnstakeStore();

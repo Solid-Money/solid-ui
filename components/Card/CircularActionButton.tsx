@@ -1,6 +1,6 @@
-import { Image } from 'expo-image';
 import React from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
 

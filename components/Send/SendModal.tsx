@@ -5,6 +5,7 @@ import { SEND_MODAL } from '@/constants/modals';
 import { SendOptionProps } from '@/hooks/useSendOption';
 import { SendModal as SendModalType, TokenBalance } from '@/lib/types';
 import { useSendStore } from '@/store/useSendStore';
+
 import SendTrigger from './SendTrigger';
 
 interface SendModalProps extends Omit<SendOptionProps, 'trigger'> {

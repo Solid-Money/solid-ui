@@ -1,6 +1,6 @@
-import { Image } from 'expo-image';
 import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import { Image } from 'expo-image';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import { Text } from '@/components/ui/text';

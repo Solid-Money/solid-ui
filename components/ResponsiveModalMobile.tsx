@@ -1,7 +1,3 @@
-import { Button } from '@/components/ui/button';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
-import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { View } from 'react-native';
 import Animated, {
@@ -10,6 +6,11 @@ import Animated, {
   FadeOutLeft,
   FadeOutRight,
 } from 'react-native-reanimated';
+import { ArrowLeft } from 'lucide-react-native';
+
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 
 interface ResponsiveModalMobileProps {
   containerClassName?: string;

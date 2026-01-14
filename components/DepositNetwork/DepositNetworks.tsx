@@ -8,6 +8,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
+
 import DepositNetwork from './DepositNetwork';
 
 const DepositNetworks = () => {

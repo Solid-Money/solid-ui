@@ -1,6 +1,6 @@
-import { RefreshCw } from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, Platform, Pressable } from 'react-native';
+import { RefreshCw } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 

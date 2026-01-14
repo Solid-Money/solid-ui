@@ -1,9 +1,12 @@
 import React from 'react';
 import { Control } from 'react-hook-form';
-import { ActivityIndicator, Image, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
 import { Address } from 'viem';
 
+import Key from '@/assets/images/key';
+import Wallet from '@/assets/images/wallet';
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
@@ -22,11 +25,9 @@ import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { useSendStore } from '@/store/useSendStore';
+
 import ContractAddressWarning from './ContractAddressWarning';
 import SaveContact from './SaveContact';
-
-import Key from '@/assets/images/key';
-import Wallet from '@/assets/images/wallet';
 
 const SendReview: React.FC = () => {
   const { selectedToken, amount, address, name, setTransaction, setModal, setName } =

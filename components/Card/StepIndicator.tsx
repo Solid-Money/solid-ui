@@ -1,6 +1,7 @@
-import { Text } from '@/components/ui/text';
-import { Check } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
+import { Check } from 'lucide-react-native';
+
+import { Text } from '@/components/ui/text';
 
 interface StepIndicatorProps {
   stepId: number;

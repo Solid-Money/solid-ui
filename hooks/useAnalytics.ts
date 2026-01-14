@@ -1,4 +1,4 @@
-import { infoClient } from '@/graphql/clients';
+import { getInfoClient } from '@/graphql/clients';
 import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
@@ -127,7 +127,7 @@ export const userTransactionsQueryOptions = (safeAddress: string | undefined) =>
   queryKey: ['user-transactions', safeAddress?.toLowerCase()],
   queryFn: async () => {
     if (!safeAddress) return undefined;
-    const { data } = await infoClient.query<GetUserTransactionsQuery>({
+    const { data } = await getInfoClient().query<GetUserTransactionsQuery>({
       query: GetUserTransactionsDocument,
       variables: {
         address: safeAddress.toLowerCase(),
@@ -506,7 +506,7 @@ export const isDepositedQueryOptions = (safeAddress: string) => {
   return {
     queryKey: [ANALYTICS, 'isDeposited', safeAddress],
     queryFn: async () => {
-      const { data } = await infoClient.query<GetUserTransactionsQuery>({
+      const { data } = await getInfoClient().query<GetUserTransactionsQuery>({
         query: GetUserTransactionsDocument,
         variables: {
           address: safeAddress,
@@ -540,11 +540,14 @@ export const useVaultBreakdown = () => {
   });
 };
 
+// Query options for prefetching APYs
+export const apysQueryOptions = () => ({
+  queryKey: [ANALYTICS, 'apys'],
+  queryFn: fetchAPYs,
+});
+
 export const useAPYs = () => {
-  return useQuery({
-    queryKey: [ANALYTICS, 'apys'],
-    queryFn: fetchAPYs,
-  });
+  return useQuery(apysQueryOptions());
 };
 
 export const useMaxAPY = () => {

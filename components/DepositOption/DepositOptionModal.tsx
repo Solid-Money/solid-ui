@@ -1,5 +1,6 @@
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { DepositModal } from '@/lib/types';
+
 import DepositTrigger from './DepositTrigger';
 
 interface DepositOptionModalProps {

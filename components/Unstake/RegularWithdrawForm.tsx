@@ -1,3 +1,15 @@
+import { useMemo, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import { Image } from 'expo-image';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Address } from 'abitype';
+import { ChevronDown, Wallet } from 'lucide-react-native';
+import { formatUnits, zeroAddress } from 'viem';
+import { useBalance } from 'wagmi';
+import { z } from 'zod';
+
 import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
@@ -13,17 +25,6 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Address } from 'abitype';
-import { Image } from 'expo-image';
-import { ChevronDown, Wallet } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
-import Toast from 'react-native-toast-message';
-import { formatUnits, zeroAddress } from 'viem';
-import { useBalance } from 'wagmi';
-import { z } from 'zod';
 
 const RegularWithdrawForm = () => {
   const { user } = useUser();

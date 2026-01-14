@@ -1,7 +1,7 @@
-import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
-import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 
 export function HapticTab({
   style,

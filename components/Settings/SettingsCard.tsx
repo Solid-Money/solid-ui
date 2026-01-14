@@ -1,7 +1,7 @@
-import { Href, Link } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
 import React from 'react';
 import { Linking, Platform, Pressable, View } from 'react-native';
+import { Href, Link } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';

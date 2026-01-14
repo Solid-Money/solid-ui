@@ -1,5 +1,5 @@
-import { useNavigation, usePathname, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useNavigation, usePathname, useRouter } from 'expo-router';
 
 import {
   NavigationMenu,

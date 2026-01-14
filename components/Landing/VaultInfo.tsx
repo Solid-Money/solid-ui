@@ -1,8 +1,8 @@
+import { useMemo } from 'react';
+import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Plus } from 'lucide-react-native';
-import { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
