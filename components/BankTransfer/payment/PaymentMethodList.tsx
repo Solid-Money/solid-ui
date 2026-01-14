@@ -10,6 +10,7 @@ import {
   Endorsements,
   EndorsementStatus,
   METHOD_LABEL,
+  METHOD_SUBTITLE,
 } from '@/components/BankTransfer/enums';
 import { Text } from '@/components/ui/text';
 import { KycMode } from '@/components/UserKyc';
@@ -82,6 +83,7 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
         <PaymentMethodTile
           key={method}
           title={METHOD_LABEL[method]}
+          subtitle={METHOD_SUBTITLE[method]}
           onPress={() => onPressed(method)}
           loading={loadingMethod === method}
           disabled={Boolean(loadingMethod)}
