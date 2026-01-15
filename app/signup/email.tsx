@@ -269,14 +269,14 @@ export default function SignupEmail() {
       <View className="mt-auto pt-8">
         <Text className="text-center text-sm text-white/70">
           I acknowledge that I have read and agreed to{'\n'}
-          <Link href="https://solid.xyz/terms" target="_blank" className="text-white/70 underline">
+          <Link href="https://solid.xyz/terms" target="_blank" className="text-white/70 web:underline">
             Terms and Conditions
           </Link>{' '}
           and{' '}
           <Link
             href="https://solid.xyz/privacy"
             target="_blank"
-            className="text-white/70 underline"
+            className="text-white/70 web:underline"
           >
             Privacy Policy
           </Link>
@@ -373,7 +373,7 @@ export default function SignupEmail() {
                   <Link
                     href="https://solid.xyz/terms"
                     target="_blank"
-                    className="text-white/60 underline"
+                    className="text-white/60 web:underline"
                   >
                     Terms and Conditions
                   </Link>{' '}
@@ -381,7 +381,7 @@ export default function SignupEmail() {
                   <Link
                     href="https://solid.xyz/privacy"
                     target="_blank"
-                    className="text-white/60 underline"
+                    className="text-white/60 web:underline"
                   >
                     Privacy Policy
                   </Link>

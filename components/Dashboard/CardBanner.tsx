@@ -119,7 +119,7 @@ const CardBanner = () => {
                     href={
                       'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
                     }
-                    className="underline"
+                    className="web:underline"
                   >
                     Read more
                   </Link>

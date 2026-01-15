@@ -15,7 +15,7 @@ const DashboardTitle = () => {
         <Link
           href="https://support.solid.xyz/en/articles/12156695-what-is-solid"
           target="_blank"
-          className="text-[1rem] font-medium text-primary underline hover:opacity-70"
+          className="text-[1rem] font-medium text-primary web:underline hover:opacity-70"
         >
           How it works
         </Link>

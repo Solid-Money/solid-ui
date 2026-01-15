@@ -38,7 +38,7 @@ export default function Referral() {
             <Text className="mt-1 text-center text-white/70">
               Know who referred you?&nbsp;
               <Link href={path.ADD_REFERRER} className="hover:opacity-70">
-                <Text className="leading-4 underline">
+                <Text className="leading-4 web:underline">
                   Add them so <br />
                   you both get credit
                 </Text>

@@ -10,7 +10,7 @@ const ReferralTitle = () => {
       <Text className="text-3xl font-semibold">Share your referral code</Text>
       <Text className="max-w-lg">
         <Text className="opacity-70">Earn points by depositing and referring friends.</Text>{' '}
-        <Link href={path.REFERRAL} className="font-medium text-primary underline hover:opacity-70">
+        <Link href={path.REFERRAL} className="font-medium text-primary web:underline hover:opacity-70">
           Learn more
         </Link>
       </Text>
