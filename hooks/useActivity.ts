@@ -193,7 +193,7 @@ export function useActivity() {
           activity.type === TransactionType.WITHDRAW &&
           activity.status === TransactionStatus.SUCCESS
         ) {
-          const matchingWithdraw = transactionsRef.current.withdraws.find(w => {
+          const matchingWithdraw = transactionsRef.current?.withdraws.find(w => {
             if (
               activity.hash &&
               (w.requestTxHash?.toLowerCase() === activity.hash.toLowerCase() ||

@@ -19,7 +19,7 @@ import { useUserStore } from '@/store/useUserStore';
 
 export default function Welcome() {
   const { handleRemoveUsers, handleSelectUserById } = useUser();
-  const { users } = useUserStore();
+  const users = useUserStore(state => state.users);
   const router = useRouter();
   const { isDesktop } = useDimension();
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);

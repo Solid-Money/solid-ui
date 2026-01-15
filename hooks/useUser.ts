@@ -1,3 +1,17 @@
+import { useCallback, useEffect } from 'react';
+import { Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import * as Sentry from '@sentry/react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
+import { createAccount } from '@turnkey/viem';
+import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
+import { toSafeSmartAccount } from 'permissionless/accounts';
+import { Chain, hashTypedData, http } from 'viem';
+import { entryPoint07Address } from 'viem/account-abstraction';
+import { mainnet } from 'viem/chains';
+import { useShallow } from 'zustand/react/shallow';
+
 import { ERRORS } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -16,18 +30,7 @@ import { useBalanceStore } from '@/store/useBalanceStore';
 import { useKycStore } from '@/store/useKycStore';
 import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
-import * as Sentry from '@sentry/react-native';
-import { useQueryClient } from '@tanstack/react-query';
-import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
-import { createAccount } from '@turnkey/viem';
-import { useRouter } from 'expo-router';
-import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
-import { toSafeSmartAccount } from 'permissionless/accounts';
-import { useCallback, useEffect, useMemo } from 'react';
-import { Platform } from 'react-native';
-import { Chain, hashTypedData, http } from 'viem';
-import { entryPoint07Address } from 'viem/account-abstraction';
-import { mainnet } from 'viem/chains';
+
 import { fetchIsDeposited } from './useAnalytics';
 
 interface UseUserReturn {
@@ -71,7 +74,7 @@ const useUser = (): UseUserReturn => {
   const { removeEvents } = useActivityStore();
   const { clearBalance } = useBalanceStore();
 
-  const user = useMemo(() => users.find((user: User) => user.selected), [users]);
+  const user = useUserStore(useShallow(state => state.users.find((u: User) => u.selected)));
 
   const safeAA = useCallback(
     async (chain: Chain, subOrganization: string, signWith: string) => {
