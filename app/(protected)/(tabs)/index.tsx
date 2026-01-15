@@ -73,7 +73,8 @@ export default function Home() {
     if (balance && !isBalanceLoading) {
       refreshTokens();
     }
-  }, [balance, isBalanceLoading, refreshTokens]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshTokens is intentionally excluded to prevent infinite re-render loop
+  }, [balance, isBalanceLoading]);
 
   const {
     data: userDepositTransactions,

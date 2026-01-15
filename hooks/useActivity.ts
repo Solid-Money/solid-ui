@@ -229,7 +229,7 @@ export function useActivity() {
   useEffect(() => {
     if (!activities?.length) return;
     setCachedActivities(activities);
-  }, [activities, setCachedActivities]);
+  }, [activities]);
 
   // Get pending activities
   const pendingActivities = useMemo(() => {
