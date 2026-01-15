@@ -1,5 +1,5 @@
-import { useCallback, useRef } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useShallow } from 'zustand/react/shallow';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -16,6 +16,8 @@ import { useDepositStore } from '@/store/useDepositStore';
 import { useActivity } from './useActivity';
 
 export const useDirectDepositSession = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { setDirectDepositSession, clearDirectDepositSession } = useDepositStore(
     useShallow(state => ({
       setDirectDepositSession: state.setDirectDepositSession,
@@ -24,16 +26,17 @@ export const useDirectDepositSession = () => {
   );
   const { refetchAll } = useActivity();
 
-  // Create session mutation
-  const createMutation = useMutation({
-    mutationFn: async ({ chainId, tokenSymbol }: { chainId: number; tokenSymbol: string }) => {
+  const createDirectDepositSession = async (chainId: number, tokenSymbol: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
       const data = await withRefreshToken(() =>
         createDirectDepositSessionApi(chainId, tokenSymbol),
       );
+
       if (!data) throw new Error('Failed to create direct deposit session');
-      return { data, chainId, tokenSymbol };
-    },
-    onSuccess: ({ data, chainId, tokenSymbol }) => {
+
       // Track successful session creation
       track(TRACKING_EVENTS.DEPOSIT_DIRECT_SESSION_CREATED, {
         deposit_method: 'deposit_directly',
@@ -50,8 +53,9 @@ export const useDirectDepositSession = () => {
       });
 
       refetchAll(true);
-    },
-    onError: (err, { chainId, tokenSymbol }) => {
+
+      return data;
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
 
       // Track session creation failure
@@ -61,16 +65,31 @@ export const useDirectDepositSession = () => {
         selected_token: tokenSymbol,
         error: errorMessage,
       });
-    },
-  });
 
-  // Delete session mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (clientTxId: string) => {
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getDirectDepositSession = async (sessionId: string) => {
+    try {
+      const data = await withRefreshToken(() => getDirectDepositSessionApi(sessionId));
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      throw new Error(errorMessage);
+    }
+  };
+
+  const deleteDirectDepositSession = async (clientTxId: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
       const data = await withRefreshToken(() => deleteDirectDepositSessionApi(clientTxId));
-      return { data, clientTxId };
-    },
-    onSuccess: async ({ clientTxId }) => {
+
       // Track successful session deletion
       track(TRACKING_EVENTS.DEPOSIT_DIRECT_SESSION_DELETED, {
         deposit_method: 'deposit_directly',
@@ -81,45 +100,17 @@ export const useDirectDepositSession = () => {
       clearDirectDepositSession();
 
       refetchAll(true);
-      // Wait for activities to settle
       await new Promise(resolve => setTimeout(resolve, 3000));
-    },
-  });
 
-  const createDirectDepositSession = useCallback(async (chainId: number, tokenSymbol: string) => {
-    // Reset delete mutation's error state to prevent stale errors
-    deleteMutation.reset();
-    const result = await createMutation.mutateAsync({ chainId, tokenSymbol });
-    return result.data;
-  }, [createMutation, deleteMutation]);
-
-  const getDirectDepositSession = useCallback(async (sessionId: string) => {
-    try {
-      const data = await withRefreshToken(() => getDirectDepositSessionApi(sessionId));
       return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      throw new Error(errorMessage);
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
-
-  const deleteDirectDepositSession = useCallback(async (clientTxId: string) => {
-    // Reset create mutation's error state to prevent stale errors
-    createMutation.reset();
-    const result = await deleteMutation.mutateAsync(clientTxId);
-    return result.data;
-  }, [createMutation, deleteMutation]);
-
-  // Combine loading states from both mutations
-  const isLoading = createMutation.isPending || deleteMutation.isPending;
-
-  // Get error from whichever mutation failed (simplified logic)
-  const mutationError = createMutation.error ?? deleteMutation.error;
-  const error = mutationError
-    ? mutationError instanceof Error
-      ? mutationError.message
-      : 'Unknown error'
-    : null;
+  };
 
   return {
     isLoading,
