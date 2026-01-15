@@ -1,3 +1,5 @@
+import { useShallow } from 'zustand/react/shallow';
+
 import ResponsiveModal from '@/components/ResponsiveModal';
 import useDepositOption from '@/hooks/useDepositOption';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -25,7 +27,13 @@ const DepositModalProvider = () => {
     handleOpenChange,
     handleBackPress,
   } = useDepositOption();
-  const { currentModal, previousModal } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal, previousModal } = useDepositStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+    })),
+  );
 
   return (
     <ResponsiveModal

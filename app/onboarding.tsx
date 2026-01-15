@@ -9,6 +9,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import {
@@ -32,7 +33,12 @@ export default function Onboarding() {
   const router = useRouter();
   const { handleLogin, handleDummyLogin } = useUser();
   const { setHasSeenOnboarding } = useOnboardingStore();
-  const { loginInfo } = useUserStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { loginInfo } = useUserStore(
+    useShallow(state => ({
+      loginInfo: state.loginInfo,
+    })),
+  );
   const { isDesktop } = useDimension();
 
   const isLoginPending = loginInfo.status === Status.PENDING;

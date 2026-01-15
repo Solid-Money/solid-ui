@@ -1,15 +1,18 @@
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useShallow } from 'zustand/react/shallow';
+
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 import {
   createDirectDepositSession as createDirectDepositSessionApi,
   deleteDirectDepositSession as deleteDirectDepositSessionApi,
   getDirectDepositSession as getDirectDepositSessionApi,
 } from '@/lib/api';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { track } from '@/lib/analytics';
 import { DirectDepositSessionResponse } from '@/lib/types';
-import { useDepositStore } from '@/store/useDepositStore';
 import { withRefreshToken } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
+
 import { useActivity } from './useActivity';
 
 export const useDirectDepositSession = () => {
@@ -117,7 +120,13 @@ export const useDirectDepositSessionPolling = (
   sessionId: string | undefined,
   enabled: boolean = true,
 ) => {
-  const { setDirectDepositSession, directDepositSession } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { setDirectDepositSession, directDepositSession } = useDepositStore(
+    useShallow(state => ({
+      setDirectDepositSession: state.setDirectDepositSession,
+      directDepositSession: state.directDepositSession,
+    })),
+  );
   const previousStatusRef = useRef<string | null>(null);
   const sessionStartTimeRef = useRef<number | null>(null);
 

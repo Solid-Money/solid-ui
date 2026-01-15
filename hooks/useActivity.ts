@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Hash } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import useUser from '@/hooks/useUser';
 import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
@@ -89,7 +90,14 @@ export type TrackTransaction = <TransactionResult>(
 
 export function useActivity() {
   const { user } = useUser();
-  const { events, bulkUpsertEvent, upsertEvent } = useActivityStore();
+  // Select only functions (stable references) and current user's events
+  const bulkUpsertEvent = useActivityStore(state => state.bulkUpsertEvent);
+  const upsertEvent = useActivityStore(state => state.upsertEvent);
+  // Select only current user's events array to minimize re-renders
+  // Using useShallow for array comparison
+  const userEventsFromStore = useActivityStore(
+    useShallow(state => (user?.userId ? state.events[user.userId] : undefined)),
+  );
   const [cachedActivities, setCachedActivities] = useState<ActivityEvent[]>([]);
 
   // Sync all activities from backend (handles smart caching internally)
@@ -106,19 +114,26 @@ export function useActivity() {
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
 
-  // Stabilize userTransactions reference using JSON comparison
-  // This prevents infinite re-renders when React Query returns new object references
-  // with identical data
+  // Stabilize userTransactions reference using lightweight comparison
+  // Only track what we actually use: withdraws array length and latest transaction hashes
+  // This avoids expensive JSON.stringify on potentially large transaction objects
   const transactionsRef = useRef(userTransactions);
-  const transactionsKey = useMemo(
-    () => JSON.stringify(userTransactions ?? null),
-    [userTransactions],
-  );
+  const withdrawsKey = useMemo(() => {
+    const withdraws = userTransactions?.withdraws;
+    if (!withdraws?.length) return 'empty';
+    // Create a lightweight key from withdraws count + first 3 transaction hashes
+    // This captures meaningful changes without serializing the entire object
+    const hashSample = withdraws
+      .slice(0, 3)
+      .map(w => `${w.requestTxHash?.slice(0, 10) ?? ''}-${w.requestStatus ?? ''}`)
+      .join('|');
+    return `${withdraws.length}:${hashSample}`;
+  }, [userTransactions?.withdraws]);
 
   // Update ref only when actual data changes (not just reference)
   useEffect(() => {
     transactionsRef.current = userTransactions;
-  }, [transactionsKey, userTransactions]);
+  }, [withdrawsKey, userTransactions]);
 
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
@@ -174,11 +189,11 @@ export function useActivity() {
 
   // Get user's activities from local storage
   const activities = useMemo(() => {
-    if (!user?.userId || !events[user.userId]) return [];
+    if (!user?.userId || !userEventsFromStore) return [];
 
     // CRITICAL: Filter out null/corrupted activities FIRST before any map operations
     // This prevents "null is not an object (evaluating 't.type')" errors
-    let userEvents = events[user.userId].filter(
+    let userEvents = userEventsFromStore.filter(
       (activity): activity is ActivityEvent =>
         activity != null &&
         typeof activity === 'object' &&
@@ -238,8 +253,8 @@ export function useActivity() {
         return true;
       })
       .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- transactionsKey is intentional: stable JSON key replaces unstable object reference
-  }, [events, user?.userId, transactionsKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- withdrawsKey is intentional: stable lightweight key replaces unstable object reference
+  }, [userEventsFromStore, user?.userId, withdrawsKey]);
 
   useEffect(() => {
     if (!activities?.length) return;

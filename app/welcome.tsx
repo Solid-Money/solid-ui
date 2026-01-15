@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { DesktopCarousel } from '@/components/Onboarding';
@@ -19,7 +20,7 @@ import { useUserStore } from '@/store/useUserStore';
 
 export default function Welcome() {
   const { handleRemoveUsers, handleSelectUserById } = useUser();
-  const users = useUserStore(state => state.users);
+  const users = useUserStore(useShallow(state => state.users));
   const router = useRouter();
   const { isDesktop } = useDimension();
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);

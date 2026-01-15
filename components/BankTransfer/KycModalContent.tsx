@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
@@ -19,7 +20,14 @@ import type { ClientOptions } from 'persona';
 // Modal version of KYC Info Form
 const BankTransferKycInfoModal = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { kyc, setModal, setKycData } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { kyc, setModal, setKycData } = useDepositStore(
+    useShallow(state => ({
+      kyc: state.kyc,
+      setModal: state.setModal,
+      setKycData: state.setKycData,
+    })),
+  );
 
   const kycMode = (kyc.kycMode as KycMode) || KycMode.BANK_TRANSFER;
 
@@ -174,7 +182,14 @@ function parseKycUrlToOptions(rawUrl: string): {
 
 // Modal version of KYC Frame using Persona SDK
 const BankTransferKycFrameModal = () => {
-  const { kyc, setModal, clearKycData } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { kyc, setModal, clearKycData } = useDepositStore(
+    useShallow(state => ({
+      kyc: state.kyc,
+      setModal: state.setModal,
+      clearKycData: state.clearKycData,
+    })),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -324,7 +339,12 @@ const BankTransferKycFrameModal = () => {
 
 // Main component that renders the appropriate KYC step
 export const KycModalContent = () => {
-  const { currentModal } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal } = useDepositStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+    })),
+  );
 
   if (currentModal.name === 'open_bank_transfer_kyc_info') {
     return <BankTransferKycInfoModal />;
