@@ -1,5 +1,5 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
@@ -16,7 +16,21 @@ export const useCalculateSavings = (
   const [savings, setSavings] = useState<number | undefined>(undefined);
   const queryClient = useQueryClient();
 
-  // Memoize the calculation parameters to prevent unnecessary recalculations
+  // Stabilize userDepositTransactions reference using JSON comparison
+  // This prevents infinite re-renders when React Query returns new object references
+  // with identical data
+  const transactionsRef = useRef(userDepositTransactions);
+  const transactionsKey = useMemo(
+    () => JSON.stringify(userDepositTransactions ?? null),
+    [userDepositTransactions],
+  );
+
+  // Update ref only when actual data changes (not just reference)
+  useEffect(() => {
+    transactionsRef.current = userDepositTransactions;
+  }, [transactionsKey, userDepositTransactions]);
+
+  // Memoize the calculation parameters using stable primitive values
   const calculationParams = useMemo(
     () => ({
       balance,
@@ -24,13 +38,12 @@ export const useCalculateSavings = (
       lastTimestamp,
       currentTime,
       mode,
-      userDepositTransactions,
       safeAddress,
     }),
-    [balance, apy, lastTimestamp, currentTime, mode, userDepositTransactions, safeAddress],
+    [balance, apy, lastTimestamp, currentTime, mode, safeAddress],
   );
 
-  // Memoize the calculation function
+  // Memoize the calculation function - use transactionsKey for stability
   const calculateSavings = useCallback(async () => {
     const calculatedSavings = await calculateYield(
       calculationParams.balance,
@@ -39,11 +52,12 @@ export const useCalculateSavings = (
       calculationParams.currentTime,
       calculationParams.mode,
       queryClient,
-      calculationParams.userDepositTransactions,
+      transactionsRef.current,
       calculationParams.safeAddress,
     );
     setSavings(calculatedSavings);
-  }, [calculationParams, queryClient]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- transactionsKey is intentional: stable JSON key replaces unstable object reference
+  }, [calculationParams, queryClient, transactionsKey]);
 
   useEffect(() => {
     calculateSavings();
