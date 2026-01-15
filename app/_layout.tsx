@@ -77,7 +77,8 @@ SplashScreen.setOptions({
 });
 
 // WhatsNew wrapper component - must be inside QueryClientProvider
-// since useWhatsNew uses React Query hooks
+// since useWhatsNew uses React Query hooks.
+// Note: Only rendered when hasSelectedUser is true (see conditional render below)
 function WhatsNewWrapper() {
   const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
 

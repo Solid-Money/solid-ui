@@ -18,9 +18,11 @@ export const usePoints = () => {
 
   useEffect(() => {
     if (user) {
-      fetchPoints();
+      // Call directly from store state to avoid dependency on potentially
+      // unstable function reference during Zustand hydration
+      usePointsStore.getState().fetchPoints();
     }
-  }, [user?.userId, fetchPoints]);
+  }, [user?.userId]);
 
   return {
     points,
