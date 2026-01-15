@@ -1,11 +1,14 @@
+import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { getCardTransactions } from '@/lib/api';
 import { TransactionStatus, TransactionType } from '@/lib/types';
+
 import { useActivity } from './useActivity';
+
+const CARD_TRANSACTIONS_KEY = 'card-transactions-poller';
 
 /**
  * Polls Bridge's card transactions API to update PENDING card deposits to SUCCESS
@@ -16,17 +19,21 @@ import { useActivity } from './useActivity';
 export const useCardDepositPoller = () => {
   const { activities, updateActivity } = useActivity();
 
-  // Find pending card deposits
-  const pendingCardDeposits = activities.filter(
-    activity =>
-      activity.type === TransactionType.CARD_TRANSACTION &&
-      activity.status === TransactionStatus.PENDING &&
-      activity.hash, // Must have a transaction hash to match
+  // Find pending card deposits - memoized to prevent excessive effect runs
+  const pendingCardDeposits = useMemo(
+    () =>
+      activities.filter(
+        activity =>
+          activity.type === TransactionType.CARD_TRANSACTION &&
+          activity.status === TransactionStatus.PENDING &&
+          activity.hash, // Must have a transaction hash to match
+      ),
+    [activities],
   );
 
   // Fetch Bridge API only if we have pending card deposits (no polling)
   const { data: cardTransactions } = useQuery({
-    queryKey: ['card-transactions-poller'],
+    queryKey: [CARD_TRANSACTIONS_KEY],
     queryFn: async () => {
       const response = await getCardTransactions();
       return response.data.filter(tx => tx.category === 'crypto_funding');
@@ -36,15 +43,14 @@ export const useCardDepositPoller = () => {
   });
 
   // Check if any pending deposits have been processed by Bridge
+  // Note: isMounted pattern is unnecessary here because:
+  // 1. Zustand store updates are safe after unmount
+  // 2. The effect only runs when cardTransactions changes, which React Query manages
   useEffect(() => {
     if (!cardTransactions || pendingCardDeposits.length === 0) return;
 
-    let isMounted = true;
-
     const checkAndUpdate = async () => {
       for (const activity of pendingCardDeposits) {
-        if (!isMounted) return;
-
         // Match by transaction hash
         const matchingCardTx = cardTransactions.find(
           tx => tx.crypto_transaction_details?.tx_hash === activity.hash,
@@ -54,7 +60,7 @@ export const useCardDepositPoller = () => {
           // Check if Bridge has completed processing
           const isCompleted = matchingCardTx.status.toLowerCase() === 'posted';
 
-          if (isCompleted && isMounted) {
+          if (isCompleted) {
             // Update activity to SUCCESS
             await updateActivity(activity.clientTxId, {
               status: TransactionStatus.SUCCESS,
@@ -74,10 +80,6 @@ export const useCardDepositPoller = () => {
     };
 
     void checkAndUpdate();
-
-    return () => {
-      isMounted = false;
-    };
   }, [cardTransactions, pendingCardDeposits, updateActivity]);
 
   return {
