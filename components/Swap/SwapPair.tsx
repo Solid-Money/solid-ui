@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Currency, CurrencyAmount, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
+import { useShallow } from 'zustand/react/shallow';
 
 import usePegSwapCallback, { PegSwapType } from '@/hooks/swap/usePegswapCallback';
 import useWrapCallback, { WrapType } from '@/hooks/swap/useWrapCallback';
@@ -27,7 +28,12 @@ const SwapPair: React.FC = () => {
   const baseCurrency = currencies[SwapField.INPUT];
   const quoteCurrency = currencies[SwapField.OUTPUT];
 
-  const { independentField, typedValue } = useSwapState();
+  const { independentField, typedValue } = useSwapState(
+    useShallow(state => ({
+      independentField: state.independentField,
+      typedValue: state.typedValue,
+    })),
+  );
   const dependentField: SwapFieldType =
     independentField === SwapField.INPUT ? SwapField.OUTPUT : SwapField.INPUT;
 

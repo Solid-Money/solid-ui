@@ -21,9 +21,7 @@ type SwapModalProps = {
  * since the global SwapModalProvider handles the modal state.
  */
 const SwapModal = ({ trigger = null, defaultOpen = false }: SwapModalProps) => {
-  const {
-    actions: { setModal },
-  } = useSwapState();
+  const setModal = useSwapState(state => state.actions.setModal);
 
   // Handle defaultOpen prop for backward compatibility
   useEffect(() => {
