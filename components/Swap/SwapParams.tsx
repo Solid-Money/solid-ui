@@ -43,7 +43,7 @@ const SwapParams = () => {
     isVoltageTrade,
     isVoltageTradeLoading,
   } = useDerivedSwapInfo();
-  const { typedValue } = useSwapState();
+  const typedValue = useSwapState(state => state.typedValue);
 
   const { wrapType } = useWrapCallback(
     currencies[SwapField.INPUT],

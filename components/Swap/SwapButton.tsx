@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { tryParseAmount } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import InfoError from '@/assets/images/info-error';
 import { Button } from '@/components/ui/button';
@@ -27,11 +28,15 @@ const SwapButton: React.FC = () => {
   const { isExpertMode } = useUserState();
   const { user } = useUser();
 
-  const {
-    independentField,
-    typedValue,
-    actions: { resetForm, setModal, setTransaction },
-  } = useSwapState();
+  const { independentField, typedValue, resetForm, setModal, setTransaction } = useSwapState(
+    useShallow(state => ({
+      independentField: state.independentField,
+      typedValue: state.typedValue,
+      resetForm: state.actions.resetForm,
+      setModal: state.actions.setModal,
+      setTransaction: state.actions.setTransaction,
+    })),
+  );
   const {
     tradeState,
     toggledTrade: trade,
