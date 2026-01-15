@@ -1,5 +1,5 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Hash } from 'viem';
 
 import useUser from '@/hooks/useUser';
@@ -9,6 +9,7 @@ import { withRefreshToken } from '@/lib/utils';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
+
 import { useUserTransactions } from './useAnalytics';
 import { useSyncActivities } from './useSyncActivities';
 
@@ -105,6 +106,20 @@ export function useActivity() {
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
 
+  // Stabilize userTransactions reference using JSON comparison
+  // This prevents infinite re-renders when React Query returns new object references
+  // with identical data
+  const transactionsRef = useRef(userTransactions);
+  const transactionsKey = useMemo(
+    () => JSON.stringify(userTransactions ?? null),
+    [userTransactions],
+  );
+
+  // Update ref only when actual data changes (not just reference)
+  useEffect(() => {
+    transactionsRef.current = userTransactions;
+  }, [transactionsKey, userTransactions]);
+
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
     return event.hash || event.userOpHash || event.clientTxId;
@@ -172,13 +187,13 @@ export function useActivity() {
         typeof activity.status === 'string',
     );
 
-    if (userTransactions?.withdraws) {
+    if (transactionsRef.current?.withdraws) {
       userEvents = userEvents.map(activity => {
         if (
           activity.type === TransactionType.WITHDRAW &&
           activity.status === TransactionStatus.SUCCESS
         ) {
-          const matchingWithdraw = userTransactions.withdraws.find(w => {
+          const matchingWithdraw = transactionsRef.current.withdraws.find(w => {
             if (
               activity.hash &&
               (w.requestTxHash?.toLowerCase() === activity.hash.toLowerCase() ||
@@ -223,7 +238,8 @@ export function useActivity() {
         return true;
       })
       .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-  }, [events, user?.userId, userTransactions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- transactionsKey is intentional: stable JSON key replaces unstable object reference
+  }, [events, user?.userId, transactionsKey]);
 
   useEffect(() => {
     if (!activities?.length) return;
