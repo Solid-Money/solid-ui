@@ -6,6 +6,7 @@ import useUser from '@/hooks/useUser';
 import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
@@ -349,16 +350,20 @@ export function useActivity() {
       const isSuccess = params.status === TransactionStatus.SUCCESS;
 
       try {
-        // Execute the transaction with callback for immediate userOpHash
-        const result = await executeTransaction(async userOpHash => {
-          // Create activity IMMEDIATELY when we get userOpHash (before waiting for receipt)
-          clientTxId = await createActivity({
-            ...params,
-            userOpHash,
-          });
+      // Execute the transaction with callback for immediate userOpHash
+      const result = await executeTransaction(async userOpHash => {
+        // Create activity IMMEDIATELY when we get userOpHash (before waiting for receipt)
+        clientTxId = await createActivity({
+          ...params,
+          userOpHash,
         });
+      });
 
-        // Extract transaction data
+      if ((result as any) === USER_CANCELLED_TRANSACTION) {
+        return result;
+      }
+
+      // Extract transaction data
         const transaction =
           result && typeof result === 'object' && 'transaction' in result
             ? (result as any).transaction
