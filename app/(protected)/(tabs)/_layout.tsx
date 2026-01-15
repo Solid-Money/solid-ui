@@ -99,7 +99,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ color }) => <ActivityNavBarIcon color={color} />,
           href: path.ACTIVITY,
-          lazy: false,
+          // Removed lazy: false - let Activity load on-demand to avoid pre-fetching all pages
         }}
       />
 
