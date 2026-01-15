@@ -1,6 +1,8 @@
+import { useCallback, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+
 import { revealCardDetailsComplete } from '@/lib/api';
 import { CardDetailsRevealResponse } from '@/lib/types';
-import { useCallback, useState } from 'react';
 
 export interface UseCardDetailsRevealReturn {
   cardDetails: CardDetailsRevealResponse | null;
@@ -22,30 +24,41 @@ export interface UseCardDetailsRevealReturn {
  * and must be cleared from memory after use to comply with PCI DSS.
  */
 export const useCardDetailsReveal = (): UseCardDetailsRevealReturn => {
+  // Store card details in local state (not in React Query cache for PCI compliance)
   const [cardDetails, setCardDetails] = useState<CardDetailsRevealResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const {
+    mutateAsync,
+    isPending: isLoading,
+    error: mutationError,
+    reset,
+  } = useMutation({
+    mutationFn: revealCardDetailsComplete,
+    onSuccess: data => {
+      setCardDetails(data);
+    },
+    onError: err => {
+      console.error('Card details reveal error:', err);
+    },
+    // Don't retry on failure - user should explicitly retry
+    retry: false,
+  });
 
   const revealDetails = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const details = await revealCardDetailsComplete();
-      setCardDetails(details);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to reveal card details';
-      setError(errorMessage);
-      console.error('Card details reveal error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    await mutateAsync();
+  }, [mutateAsync]);
 
   const clearCardDetails = useCallback(() => {
     setCardDetails(null);
-    setError(null);
-  }, []);
+    reset(); // Clear mutation error state as well
+  }, [reset]);
+
+  // Convert error to string format for backwards compatibility
+  const error = mutationError
+    ? mutationError instanceof Error
+      ? mutationError.message
+      : 'Failed to reveal card details'
+    : null;
 
   return {
     cardDetails,
