@@ -43,40 +43,43 @@ export const useCardDepositPoller = () => {
   });
 
   // Check if any pending deposits have been processed by Bridge
-  // Note: isMounted pattern is unnecessary here because:
-  // 1. Zustand store updates are safe after unmount
-  // 2. The effect only runs when cardTransactions changes, which React Query manages
+  // Uses Promise.all for parallel updates instead of sequential awaits
   useEffect(() => {
     if (!cardTransactions || pendingCardDeposits.length === 0) return;
 
     const checkAndUpdate = async () => {
-      for (const activity of pendingCardDeposits) {
-        // Match by transaction hash
-        const matchingCardTx = cardTransactions.find(
-          tx => tx.crypto_transaction_details?.tx_hash === activity.hash,
-        );
+      // Map pending deposits to completed updates (parallel-friendly)
+      const updates = pendingCardDeposits
+        .map(activity => {
+          const matchingCardTx = cardTransactions.find(
+            tx => tx.crypto_transaction_details?.tx_hash === activity.hash,
+          );
 
-        if (matchingCardTx) {
-          // Check if Bridge has completed processing
-          const isCompleted = matchingCardTx.status.toLowerCase() === 'posted';
-
-          if (isCompleted) {
-            // Update activity to SUCCESS
-            await updateActivity(activity.clientTxId, {
-              status: TransactionStatus.SUCCESS,
-              metadata: activity.metadata,
-            });
-
-            // Track deposit completed
-            track(TRACKING_EVENTS.CARD_DEPOSIT_COMPLETED, {
-              amount: Number(activity.amount),
-              token_symbol: activity.symbol,
-              chain_id: activity.chainId,
-              tx_hash: activity.hash,
-            });
+          if (matchingCardTx && matchingCardTx.status.toLowerCase() === 'posted') {
+            return { activity, matchingCardTx };
           }
-        }
-      }
+          return null;
+        })
+        .filter((update): update is NonNullable<typeof update> => update !== null);
+
+      // Process all updates in parallel - use allSettled so one failure doesn't block others
+      await Promise.allSettled(
+        updates.map(async ({ activity }) => {
+          // Update activity to SUCCESS
+          await updateActivity(activity.clientTxId, {
+            status: TransactionStatus.SUCCESS,
+            metadata: activity.metadata,
+          });
+
+          // Track deposit completed
+          track(TRACKING_EVENTS.CARD_DEPOSIT_COMPLETED, {
+            amount: Number(activity.amount),
+            token_symbol: activity.symbol,
+            chain_id: activity.chainId,
+            tx_hash: activity.hash,
+          });
+        }),
+      );
     };
 
     void checkAndUpdate();

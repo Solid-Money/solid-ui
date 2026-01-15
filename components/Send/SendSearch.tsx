@@ -42,6 +42,8 @@ const SendSearch: React.FC = () => {
   const { data: addressBook = [], isLoading: isLoadingAddressBook } = useQuery({
     queryKey: ['address-book'],
     queryFn: () => withRefreshToken(() => fetchAddressBook()),
+    staleTime: 5 * 60 * 1000, // 5 minutes - address book changes infrequently
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const sendActivities = useMemo(() => {

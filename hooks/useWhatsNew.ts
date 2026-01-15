@@ -44,6 +44,7 @@ export const useWhatsNew = () => {
     queryFn: fetchLatestWhatsNew,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnMount: 'always', // Ensure WhatsNew is fetched on first load
   });
 
   // Handle data updates and auto-show logic

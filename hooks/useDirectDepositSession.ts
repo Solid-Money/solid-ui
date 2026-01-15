@@ -86,12 +86,10 @@ export const useDirectDepositSession = () => {
     },
   });
 
-  const createDirectDepositSession = useCallback(async (chainId: number, tokenSymbol: string) => {
-    // Reset delete mutation's error state to prevent stale errors
-    deleteMutation.reset();
+  const createDirectDepositSession = async (chainId: number, tokenSymbol: string) => {
     const result = await createMutation.mutateAsync({ chainId, tokenSymbol });
     return result.data;
-  }, [createMutation, deleteMutation]);
+  };
 
   const getDirectDepositSession = useCallback(async (sessionId: string) => {
     try {
@@ -103,27 +101,35 @@ export const useDirectDepositSession = () => {
     }
   }, []);
 
-  const deleteDirectDepositSession = useCallback(async (clientTxId: string) => {
-    // Reset create mutation's error state to prevent stale errors
-    createMutation.reset();
+  const deleteDirectDepositSession = async (clientTxId: string) => {
     const result = await deleteMutation.mutateAsync(clientTxId);
     return result.data;
-  }, [createMutation, deleteMutation]);
+  };
 
   // Combine loading states from both mutations
   const isLoading = createMutation.isPending || deleteMutation.isPending;
 
-  // Get error from whichever mutation failed (simplified logic)
-  const mutationError = createMutation.error ?? deleteMutation.error;
-  const error = mutationError
-    ? mutationError instanceof Error
-      ? mutationError.message
+  // Keep errors separate to avoid confusion when one operation clears another's error
+  const createError = createMutation.error
+    ? createMutation.error instanceof Error
+      ? createMutation.error.message
       : 'Unknown error'
     : null;
 
+  const deleteError = deleteMutation.error
+    ? deleteMutation.error instanceof Error
+      ? deleteMutation.error.message
+      : 'Unknown error'
+    : null;
+
+  // Backward-compatible combined error (prefer create error as it's more common)
+  const error = createError ?? deleteError;
+
   return {
     isLoading,
-    error,
+    error, // Backward compatible - returns whichever error exists
+    createError,
+    deleteError,
     createDirectDepositSession,
     getDirectDepositSession,
     deleteDirectDepositSession,
