@@ -102,6 +102,15 @@ export default {
             compileSdkVersion: 36,
             enableProguardInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
+            extraProguardRules: `
+              # JNA (Java Native Access) - WalletConnect dependency
+              # JNA includes desktop-specific code paths that reference java.awt classes
+              # These are not available on Android but also not used at runtime
+              -dontwarn java.awt.**
+              -dontwarn com.sun.jna.platform.win32.**
+              -dontwarn com.sun.jna.platform.mac.**
+              -dontwarn com.sun.jna.platform.unix.**
+            `,
           },
         },
       ],
