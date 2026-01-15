@@ -30,18 +30,12 @@ const SwapModalProvider = () => {
   const router = useRouter();
   const intercom = useIntercom();
 
-  // Use useShallow for object selection to prevent unnecessary re-renders
-  const {
-    currentModal,
-    previousModal,
-    transaction,
-    actions: { setModal },
-  } = useSwapState(
+  const { currentModal, previousModal, transaction, setModal } = useSwapState(
     useShallow(state => ({
       currentModal: state.currentModal,
       previousModal: state.previousModal,
       transaction: state.transaction,
-      actions: state.actions,
+      setModal: state.actions.setModal,
     })),
   );
 
