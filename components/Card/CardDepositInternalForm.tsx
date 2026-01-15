@@ -15,6 +15,7 @@ import { Address, erc20Abi, TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
@@ -361,7 +362,12 @@ function BorrowAndDepositButton({
 export default function CardDepositInternalForm() {
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivity();
-  const { setTransaction, setModal } = useCardDepositStore();
+  const { setTransaction, setModal } = useCardDepositStore(
+    useShallow(state => ({
+      setTransaction: state.setTransaction,
+      setModal: state.setModal,
+    })),
+  );
   const { data: cardDetails } = useCardDetails();
 
   // Get all token balances including soUSD

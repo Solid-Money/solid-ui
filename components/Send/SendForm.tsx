@@ -6,6 +6,7 @@ import { ChevronDown, Wallet } from 'lucide-react-native';
 import { formatUnits, zeroAddress } from 'viem';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -27,7 +28,15 @@ interface SendFormProps {
 }
 
 const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
-  const { selectedToken, amount, setAmount, setModal } = useSendStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { selectedToken, amount, setAmount, setModal } = useSendStore(
+    useShallow(state => ({
+      selectedToken: state.selectedToken,
+      amount: state.amount,
+      setAmount: state.setAmount,
+      setModal: state.setModal,
+    })),
+  );
   const { user } = useUser();
 
   const tokenType = selectedToken?.type || TokenType.ERC20;

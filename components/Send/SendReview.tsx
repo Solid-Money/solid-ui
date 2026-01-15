@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { Address } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import Key from '@/assets/images/key';
 import Wallet from '@/assets/images/wallet';
@@ -30,8 +31,17 @@ import ContractAddressWarning from './ContractAddressWarning';
 import SaveContact from './SaveContact';
 
 const SendReview: React.FC = () => {
-  const { selectedToken, amount, address, name, setTransaction, setModal, setName } =
-    useSendStore();
+  const { selectedToken, amount, address, name, setTransaction, setModal, setName } = useSendStore(
+    useShallow(state => ({
+      selectedToken: state.selectedToken,
+      amount: state.amount,
+      address: state.address,
+      name: state.name,
+      setTransaction: state.setTransaction,
+      setModal: state.setModal,
+      setName: state.setName,
+    })),
+  );
   const { refetchAll } = useActivity();
 
   const { send, sendStatus, totpModal } = useSend({

@@ -46,7 +46,7 @@ const UnstakeModal = ({
   buttonText = 'Withdraw',
   modal = UNSTAKE_MODAL.OPEN_OPTIONS,
 }: UnstakeModalProps) => {
-  const { setModal } = useUnstakeStore();
+  const setModal = useUnstakeStore(state => state.setModal);
 
   const handlePress = () => {
     setModal(modal);

@@ -12,6 +12,7 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { initGenericOtp, verifyGenericOtp } from '@/lib/api';
 import { useUserStore } from '@/store/useUserStore';
+import { useShallow } from 'zustand/react/shallow';
 
 const emailSchema = z.object({
   email: z.email({ error: 'Please enter a valid email address' }),
@@ -71,7 +72,7 @@ export const useEmailManagement = (
   initialStep?: 'email' | 'existing',
 ): EmailManagementState & EmailManagementActions => {
   const { user } = useUser();
-  const { updateUser } = useUserStore();
+  const updateUser = useUserStore(state => state.updateUser);
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<EmailManagementState['step']>(() => {
     if (initialStep) return initialStep;

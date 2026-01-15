@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react-native';
 import { Address } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -29,7 +30,13 @@ const SendTrigger: React.FC<SendTriggerProps> = ({
   tokenType,
   onPress,
 }) => {
-  const { setSelectedToken, setModal, setCurrentTokenAddress } = useSendStore();
+  const { setSelectedToken, setModal, setCurrentTokenAddress } = useSendStore(
+    useShallow(state => ({
+      setSelectedToken: state.setSelectedToken,
+      setModal: state.setModal,
+      setCurrentTokenAddress: state.setCurrentTokenAddress,
+    })),
+  );
 
   const handlePress = () => {
     if (token) {

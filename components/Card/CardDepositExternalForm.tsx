@@ -10,6 +10,7 @@ import { Address, encodeFunctionData, erc20Abi, formatUnits, parseUnits } from '
 import { arbitrum } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
 import Max from '@/components/Max';
@@ -34,7 +35,12 @@ export default function CardDepositExternalForm() {
   const switchChain = useSwitchActiveWalletChain();
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivity();
-  const { setTransaction, setModal } = useCardDepositStore();
+  const { setTransaction, setModal } = useCardDepositStore(
+    useShallow(state => ({
+      setTransaction: state.setTransaction,
+      setModal: state.setModal,
+    })),
+  );
   const { data: cardDetails } = useCardDetails();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
 

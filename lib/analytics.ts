@@ -62,7 +62,7 @@ export const formatAmplitudeEvent = (str: string) => {
 // Initialize Amplitude
 const initAmplitude = async () => {
   try {
-    const sampleRate = 1; // Record all user sessions
+    const sampleRate = 0.2;
 
     if (Platform.OS === 'web') {
       // Web: add plugin BEFORE init

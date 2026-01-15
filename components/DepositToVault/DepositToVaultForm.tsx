@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Fuel, Wallet } from 'lucide-react-native';
 import { Address, formatUnits } from 'viem';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
@@ -34,7 +35,14 @@ import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
 function DepositToVaultForm() {
-  const { setModal, setTransaction, srcChainId, outputToken } = useDepositStore();
+  const { setModal, setTransaction, srcChainId, outputToken } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setTransaction: state.setTransaction,
+      srcChainId: state.srcChainId,
+      outputToken: state.outputToken,
+    })),
+  );
   const { isScreenMedium } = useDimension();
 
   const selectedTokenInfo = useMemo(() => {

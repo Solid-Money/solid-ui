@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { EllipsisVertical, Plus } from 'lucide-react-native';
 import { isAddress } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import Avatar from '@/components/Avatar';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,15 @@ import AddAddress from './AddAddress';
 import ToInput from './ToInput';
 
 const SendSearch: React.FC = () => {
-  const { setAddress, setModal, setName, setSearchQuery, searchQuery } = useSendStore();
+  const { setAddress, setModal, setName, setSearchQuery, searchQuery } = useSendStore(
+    useShallow(state => ({
+      setAddress: state.setAddress,
+      setModal: state.setModal,
+      setName: state.setName,
+      setSearchQuery: state.setSearchQuery,
+      searchQuery: state.searchQuery,
+    })),
+  );
   const insets = useSafeAreaInsets();
   const { activities } = useActivity();
 

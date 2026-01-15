@@ -29,6 +29,16 @@ module.exports = defineConfig([
       // Allow console.log/warn/error in development
       'no-console': ['warn', { allow: ['warn', 'error'] }],
 
+      // Zustand: Warn when store selectors return objects without useShallow
+      // Pattern: useXxxStore(state => ({ ... })) - should be wrapped with useShallow
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'CallExpression[callee.name=/^use.*Store$/] > ArrowFunctionExpression > ObjectExpression',
+          message: 'Zustand selectors returning objects should use useShallow() to prevent re-renders. Wrap with: useStore(useShallow(state => ({ ... })))',
+        },
+      ],
+
       // Import sorting with CSS files always first
       'sort-imports': 'off', // Disable built-in sort-imports
       'simple-import-sort/imports': ['error', {

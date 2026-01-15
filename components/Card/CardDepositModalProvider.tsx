@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -22,7 +23,14 @@ import CardDepositOptions from './CardDepositOptions';
  */
 const CardDepositModalProvider = () => {
   const router = useRouter();
-  const { currentModal, previousModal, setModal, transaction } = useCardDepositStore();
+  const { currentModal, previousModal, setModal, transaction } = useCardDepositStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+      setModal: state.setModal,
+      transaction: state.transaction,
+    })),
+  );
 
   const isClose = currentModal.name === CARD_DEPOSIT_MODAL.CLOSE.name;
   const isOptions = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_OPTIONS.name;

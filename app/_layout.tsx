@@ -91,8 +91,7 @@ export default wrapWithSentry(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
 
-  const users = useUserStore(state => state.users);
-  const user = users.find(u => u.selected);
+  const hasSelectedUser = useUserStore(state => state.users.some(u => u.selected));
 
   const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
 
@@ -294,7 +293,7 @@ export default wrapWithSentry(function RootLayout() {
                       </Stack>
                       <PortalHost />
                       <DeferredModalProviders />
-                      {user && whatsNew && (
+                      {hasSelectedUser && whatsNew && (
                         <WhatsNewModal
                           whatsNew={whatsNew}
                           isOpen={isVisible}

@@ -26,7 +26,7 @@ const ConnectedWalletDropdown = ({ chainId }: ConnectedWalletDropdownProps = {})
   const activeAccount = useActiveAccount();
   const { disconnect } = useDisconnect();
   const [isOpen, setIsOpen] = useState(false);
-  const { srcChainId } = useDepositStore();
+  const srcChainId = useDepositStore(state => state.srcChainId);
   const address = activeAccount?.address;
   const effectiveChainId = chainId || srcChainId;
   const networkName = BRIDGE_TOKENS[effectiveChainId].name;

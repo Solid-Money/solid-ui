@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
@@ -31,7 +32,12 @@ interface SavingVaultProps {
 }
 
 const SavingVault = ({ vault }: SavingVaultProps) => {
-  const { selectedVault, setSelectedVault } = useSavingStore();
+  const { selectedVault, setSelectedVault } = useSavingStore(
+    useShallow(state => ({
+      selectedVault: state.selectedVault,
+      setSelectedVault: state.setSelectedVault,
+    })),
+  );
   const { data: tvl } = useTVL();
   const { maxAPY } = useMaxAPY();
   const { isScreenMedium } = useDimension();

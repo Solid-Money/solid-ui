@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 
 import useUser from '@/hooks/useUser';
 import { syncActivities } from '@/lib/api';
@@ -154,7 +155,18 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
     acquireSyncLock,
     releaseSyncLock,
     isSyncingLock,
-  } = useSyncStore();
+  } = useSyncStore(
+    useShallow(state => ({
+      setLastSync: state.setLastSync,
+      getLastSync: state.getLastSync,
+      isWithinCooldown: state.isWithinCooldown,
+      isStale: state.isStale,
+      canSync: state.canSync,
+      acquireSyncLock: state.acquireSyncLock,
+      releaseSyncLock: state.releaseSyncLock,
+      isSyncingLock: state.isSyncingLock,
+    })),
+  );
 
   const userId = user?.userId;
 

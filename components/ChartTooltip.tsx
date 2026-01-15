@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { ChartPayload } from '@/lib/types';
@@ -42,7 +43,14 @@ const ChartTooltip = ({
   isPriceChange,
 }: ChartTooltipProps) => {
   const { selectedPrice, selectedPriceChange, setSelectedPriceChange, setSelectedPrice } =
-    useCoinStore();
+    useCoinStore(
+      useShallow(state => ({
+        selectedPrice: state.selectedPrice,
+        selectedPriceChange: state.selectedPriceChange,
+        setSelectedPriceChange: state.setSelectedPriceChange,
+        setSelectedPrice: state.setSelectedPrice,
+      })),
+    );
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const prevPayloadRef = useRef<any>(null);
 

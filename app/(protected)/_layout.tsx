@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { readContractQueryOptions } from 'wagmi/query';
+import { useShallow } from 'zustand/react/shallow';
 
 import {
   BridgeTransferCryptoCurrency,
@@ -30,7 +31,9 @@ const Loading = lazy(() => import('@/components/Loading'));
 
 export default function ProtectedLayout() {
   const { user } = useUser();
-  const { users, _hasHydrated } = useUserStore();
+  const { usersCount, _hasHydrated } = useUserStore(
+    useShallow(state => ({ usersCount: state.users.length, _hasHydrated: state._hasHydrated })),
+  );
   const searchParams = useLocalSearchParams();
   const queryClient = useQueryClient();
 
@@ -141,12 +144,12 @@ export default function ProtectedLayout() {
     );
   }
 
-  if (!users.length) {
+  if (!usersCount) {
     // Show onboarding first (if not seen), then signup flow
     return <Redirect href={path.ONBOARDING} />;
   }
 
-  if (users.length && !user) {
+  if (usersCount && !user) {
     return <Redirect href={path.WELCOME} />;
   }
 

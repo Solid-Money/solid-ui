@@ -22,7 +22,7 @@ type WithdrawModalProps = {
  * since the global WithdrawModalProvider handles the modal state.
  */
 const WithdrawModal = ({ trigger }: WithdrawModalProps) => {
-  const { setModal } = useWithdrawStore();
+  const setModal = useWithdrawStore(state => state.setModal);
 
   const handlePress = () => {
     track(TRACKING_EVENTS.WITHDRAW_MODAL_OPENED, {

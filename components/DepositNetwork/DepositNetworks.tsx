@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
@@ -12,7 +13,13 @@ import { useDepositStore } from '@/store/useDepositStore';
 import DepositNetwork from './DepositNetwork';
 
 const DepositNetworks = () => {
-  const { setModal, setSrcChainId, setOutputToken } = useDepositStore();
+  const { setModal, setSrcChainId, setOutputToken } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setSrcChainId: state.setSrcChainId,
+      setOutputToken: state.setOutputToken,
+    })),
+  );
   const { user } = useUser();
   const hasTrackedNetworkView = useRef(false);
 

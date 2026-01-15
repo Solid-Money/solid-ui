@@ -1,16 +1,24 @@
+import { useEffect } from 'react';
+import { ADDRESS_ZERO } from '@cryptoalgebra/fuse-sdk';
+import { Address } from 'viem';
+import { fuse } from 'viem/chains';
+import { useShallow } from 'zustand/react/shallow';
+
 import {
   useReadAlgebraBasePluginIncentive,
   useReadAlgebraPoolGlobalState,
   useReadAlgebraPoolPlugin,
 } from '@/generated/wagmi';
 import { usePoolsStore } from '@/store/poolsStore';
-import { ADDRESS_ZERO } from '@cryptoalgebra/fuse-sdk';
-import { useEffect } from 'react';
-import { Address } from 'viem';
-import { fuse } from 'viem/chains';
 
 export function usePoolPlugins(poolId: Address | undefined) {
-  const { pluginsForPools, setPluginsForPool } = usePoolsStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { pluginsForPools, setPluginsForPool } = usePoolsStore(
+    useShallow(state => ({
+      pluginsForPools: state.pluginsForPools,
+      setPluginsForPool: state.setPluginsForPool,
+    })),
+  );
 
   const skipFetch = Boolean(poolId && pluginsForPools[poolId]);
 
