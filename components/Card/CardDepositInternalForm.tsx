@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Control,
   Controller,
@@ -7,16 +7,25 @@ import {
   UseFormSetValue,
   UseFormTrigger,
 } from 'react-hook-form';
-import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  PanResponder,
+  Platform,
+  Pressable,
+  TextInput,
+  View,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
-import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
-import { Address, erc20Abi, TransactionReceipt } from 'viem';
-import { fuse } from 'viem/chains';
+import { ChevronDown, Fuel, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
+import { Address, erc20Abi, TransactionReceipt, formatUnits, parseUnits } from 'viem';
+import { fuse, mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
 
 import Max from '@/components/Max';
+import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -47,11 +56,11 @@ import {
 } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
-type FormData = { amount: string; from: 'wallet' | 'savings' };
+type FormData = { amount: string; from: 'wallet' | 'savings' | 'borrow' };
 
 type SourceSelectorProps = {
   control: Control<FormData>;
-  from: 'wallet' | 'savings';
+  from: 'wallet' | 'savings' | 'borrow';
 };
 
 function SourceSelectorNative({
@@ -59,11 +68,23 @@ function SourceSelectorNative({
   onChange,
   from,
 }: {
-  value: 'wallet' | 'savings';
-  onChange: (value: 'wallet' | 'savings') => void;
-  from: 'wallet' | 'savings';
+  value: 'wallet' | 'savings' | 'borrow';
+  onChange: (value: 'wallet' | 'savings' | 'borrow') => void;
+  from: 'wallet' | 'savings' | 'borrow';
 }) {
   const [isOpen, setIsOpen] = useState(false);
+
+  const getDisplayText = () => {
+    if (value === 'wallet') return 'Wallet';
+    if (value === 'savings') return 'Savings';
+    return 'Borrow against Savings';
+  };
+
+  const getTokenSymbol = () => {
+    if (from === 'wallet') return 'USDC.e';
+    if (from === 'savings') return 'soUSD';
+    return 'USDC';
+  };
 
   return (
     <View>
@@ -74,15 +95,17 @@ function SourceSelectorNative({
         <View className="flex-row items-center gap-2">
           {value === 'wallet' ? (
             <WalletIcon color="#A1A1A1" size={24} />
+          ) : value === 'savings' ? (
+            <Leaf color="#A1A1A1" size={24} />
           ) : (
             <Leaf color="#A1A1A1" size={24} />
           )}
-          <Text className="text-lg font-semibold">{value === 'wallet' ? 'Wallet' : 'Savings'}</Text>
+          <Text className="text-lg font-semibold">{getDisplayText()}</Text>
         </View>
         <View className="flex-row items-center gap-2">
-          <Text className="text-sm text-muted-foreground">
-            {from === 'wallet' ? 'USDC.e' : 'soUSD'}
-          </Text>
+          {value !== 'borrow' && (
+            <Text className="text-sm text-muted-foreground">{getTokenSymbol()}</Text>
+          )}
           <ChevronDown color="#A1A1A1" size={20} />
         </View>
       </Pressable>
@@ -108,6 +131,16 @@ function SourceSelectorNative({
             <WalletIcon color="#A1A1A1" size={20} />
             <Text className="text-lg">Wallet</Text>
           </Pressable>
+          <Pressable
+            className="flex-row items-center gap-2 px-4 py-3"
+            onPress={() => {
+              onChange('borrow');
+              setIsOpen(false);
+            }}
+          >
+            <Leaf color="#A1A1A1" size={20} />
+            <Text className="text-lg">Borrow against Savings</Text>
+          </Pressable>
         </View>
       )}
     </View>
@@ -119,10 +152,22 @@ function SourceSelectorWeb({
   onChange,
   from,
 }: {
-  value: 'wallet' | 'savings';
-  onChange: (value: 'wallet' | 'savings') => void;
-  from: 'wallet' | 'savings';
+  value: 'wallet' | 'savings' | 'borrow';
+  onChange: (value: 'wallet' | 'savings' | 'borrow') => void;
+  from: 'wallet' | 'savings' | 'borrow';
 }) {
+  const getDisplayText = () => {
+    if (value === 'wallet') return 'Wallet';
+    if (value === 'savings') return 'Savings';
+    return 'Borrow against Savings';
+  };
+
+  const getTokenSymbol = () => {
+    if (from === 'wallet') return 'USDC.e';
+    if (from === 'savings') return 'soUSD';
+    return 'USDC';
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -130,17 +175,15 @@ function SourceSelectorWeb({
           <View className="flex-row items-center gap-2">
             {value === 'wallet' ? (
               <WalletIcon color="#A1A1A1" size={24} />
+            ) : value === 'savings' ? (
+              <Leaf color="#A1A1A1" size={24} />
             ) : (
               <Leaf color="#A1A1A1" size={24} />
             )}
-            <Text className="text-lg font-semibold">
-              {value === 'wallet' ? 'Wallet' : 'Savings'}
-            </Text>
+            <Text className="text-lg font-semibold">{getDisplayText()}</Text>
           </View>
           <View className="flex-row items-center gap-2">
-            <Text className="text-sm text-muted-foreground">
-              {from === 'wallet' ? 'USDC.e' : 'soUSD'}
-            </Text>
+            <Text className="text-sm text-muted-foreground">{getTokenSymbol()}</Text>
             <ChevronDown color="#A1A1A1" size={20} />
           </View>
         </Pressable>
@@ -159,6 +202,13 @@ function SourceSelectorWeb({
         >
           <WalletIcon color="#A1A1A1" size={20} />
           <Text className="text-lg">Wallet</Text>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onPress={() => onChange('borrow')}
+          className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+        >
+          <Leaf color="#A1A1A1" size={20} />
+          <Text className="text-lg">Borrow against Savings</Text>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -187,13 +237,27 @@ function SourceSelector({ control, from }: SourceSelectorProps) {
 type AmountInputProps = {
   control: Control<FormData>;
   errors: FieldErrors<FormData>;
-  from: 'wallet' | 'savings';
+  from: 'wallet' | 'savings' | 'borrow';
 };
 
 function AmountInput({ control, errors, from }: AmountInputProps) {
+  const getTokenImage = () => {
+    if (from === 'wallet') return getAsset('images/usdc-4x.png');
+    if (from === 'savings') return getAsset('images/sousd-4x.png');
+    return getAsset('images/usdc-4x.png');
+  };
+
+  const getTokenSymbol = () => {
+    if (from === 'wallet') return 'USDC.e';
+    if (from === 'savings') return 'soUSD';
+    return 'USDC';
+  };
+
   return (
     <View className="gap-2">
-      <Text className="font-medium opacity-50">Deposit amount</Text>
+      <Text className="font-medium opacity-50">
+        {from === 'borrow' ? 'Amount to borrow' : 'Deposit amount'}
+      </Text>
       <View
         className={cn(
           'w-full flex-row items-center justify-between gap-4 rounded-2xl bg-accent px-5 py-3',
@@ -216,16 +280,153 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
           )}
         />
         <View className="native:shrink-0 flex-row items-center gap-2">
-          <Image
-            source={
-              from === 'wallet' ? getAsset('images/usdc-4x.png') : getAsset('images/sousd-4x.png')
-            }
-            alt={from === 'wallet' ? 'USDC.e' : 'soUSD'}
-            style={{ width: 34, height: 34 }}
-          />
-          <Text className="text-lg font-semibold text-white">
-            {from === 'wallet' ? 'USDC.e' : 'soUSD'}
+          <Image source={getTokenImage()} alt={getTokenSymbol()} style={{ width: 34, height: 34 }} />
+          <Text className="text-lg font-semibold text-white">{getTokenSymbol()}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+type SliderProps = {
+  value: number;
+  onValueChange: (value: number) => void;
+  min: number;
+  max: number;
+};
+
+function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
+  const [sliderWidth, setSliderWidth] = useState(0);
+  const sliderContainerRef = useRef<View>(null);
+  const sliderPageX = useRef(0);
+  const isDragging = useRef(false);
+
+  // Ensure value is valid number
+  const safeValue = useMemo(() => {
+    const numValue = Number(value);
+    if (isNaN(numValue) || !isFinite(numValue)) return min;
+    return Math.max(min, Math.min(max, numValue));
+  }, [value, min, max]);
+
+  const safeMax = useMemo(() => {
+    const numMax = Number(max);
+    if (isNaN(numMax) || !isFinite(numMax) || numMax <= min) return min + 1;
+    return numMax;
+  }, [max, min]);
+
+  const percentage = safeMax > min ? ((safeValue - min) / (safeMax - min)) * 100 : 0;
+  const thumbPosition = (percentage / 100) * sliderWidth;
+
+  const stateRef = useRef({ sliderWidth, min, safeMax, onValueChange, thumbPosition });
+  stateRef.current = { sliderWidth, min, safeMax, onValueChange, thumbPosition };
+
+  const updateValue = (newValue: number) => {
+    const numValue = Number(newValue);
+    if (isNaN(numValue) || !isFinite(numValue)) return;
+    const clampedValue = Math.max(min, Math.min(safeMax, numValue));
+    onValueChange(Math.round(clampedValue * 100) / 100);
+  };
+
+  const handleTrackPress = (event: any) => {
+    if (sliderWidth === 0) return;
+    const { locationX } = event.nativeEvent;
+    const newPercentage = Math.max(0, Math.min(100, (locationX / sliderWidth) * 100));
+    const newValue = min + (newPercentage / 100) * (safeMax - min);
+    updateValue(newValue);
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        isDragging.current = true;
+        const thumbPageX = evt.nativeEvent.pageX;
+        if (sliderContainerRef.current) {
+          sliderContainerRef.current.measure((x, y, width, height, pageX, pageY) => {
+            sliderPageX.current = pageX;
+          });
+        }
+        // Use current thumb position as fallback
+        const { thumbPosition } = stateRef.current;
+        if (sliderPageX.current === 0) {
+          // Estimate based on thumb position
+          sliderPageX.current = thumbPageX - thumbPosition;
+        }
+      },
+      onPanResponderMove: (evt) => {
+        const { sliderWidth, min, safeMax, onValueChange, thumbPosition } = stateRef.current;
+        
+        if (sliderWidth === 0 || !isDragging.current) return;
+        const currentPageX = evt.nativeEvent.pageX;
+        // If pageX wasn't set, use the initial touch position
+        if (sliderPageX.current === 0) {
+          sliderPageX.current = currentPageX - thumbPosition;
+        }
+        const relativeX = currentPageX - sliderPageX.current;
+        const newPercentage = Math.max(0, Math.min(100, (relativeX / sliderWidth) * 100));
+        const newValue = min + (newPercentage / 100) * (safeMax - min);
+        
+        // updateValue logic inline using ref values
+        const numValue = Number(newValue);
+        if (isNaN(numValue) || !isFinite(numValue)) return;
+        const clampedValue = Math.max(min, Math.min(safeMax, numValue));
+        onValueChange(Math.round(clampedValue * 100) / 100);
+      },
+      onPanResponderRelease: () => {
+        isDragging.current = false;
+      },
+      onPanResponderTerminate: () => {
+        isDragging.current = false;
+      },
+    }),
+  ).current;
+
+  return (
+    <View className="gap-4">
+      <View className="gap-2">
+        <Text className="text-center text-base font-medium opacity-50 mt-10">Amount to borrow</Text>
+        <View className="flex-row items-center justify-center">
+          <Text className="text-3xl font-semibold text-white">
+            ${formatNumber(safeValue)}
           </Text>
+        </View>
+      </View>
+      <View className="items-center">
+        <View
+          ref={sliderContainerRef}
+          onLayout={event => {
+            const width = event.nativeEvent.layout.width;
+            if (width > 0 && sliderWidth !== width) {
+              setSliderWidth(width);
+            }
+          }}
+          className="relative w-full max-w-[320px]"
+        >
+          <Pressable
+            onPress={handleTrackPress}
+            className="relative h-8 w-full justify-center"
+            style={{ zIndex: 1 }}
+          >
+            <View className="absolute h-2 w-full rounded-full bg-accent" />
+            <View
+              className="absolute h-2 rounded-full bg-brand"
+              style={{ width: `${Math.max(0, Math.min(100, percentage))}%` }}
+            />
+          </Pressable>
+          <View
+            {...panResponder.panHandlers}
+            className="absolute h-6 w-6 rounded-full bg-brand shadow-lg"
+            style={{
+              transform: [{ translateX: Math.max(0, Math.min(sliderWidth - 24, thumbPosition - 12)) }],
+              top: 1,
+              zIndex: 10,
+            }}
+          />
+        </View>
+        <View className="mt-2 flex-row w-full max-w-[320px] justify-between">
+          <Text className="text-sm text-muted-foreground">${formatNumber(min)}</Text>
+          <Text className="text-sm text-muted-foreground">${formatNumber(safeMax)}</Text>
         </View>
       </View>
     </View>
@@ -238,7 +439,7 @@ type BalanceDisplayProps = {
   formattedBalance: string;
   setValue: UseFormSetValue<FormData>;
   trigger: UseFormTrigger<FormData>;
-  from: 'wallet' | 'savings';
+  from: 'wallet' | 'savings' | 'borrow';
 };
 
 function BalanceDisplay({
@@ -249,7 +450,11 @@ function BalanceDisplay({
   trigger,
   from,
 }: BalanceDisplayProps) {
-  const tokenSymbol = from === 'wallet' ? 'USDC.e' : 'soUSD';
+  const tokenSymbol = from === 'wallet' ? 'USDC.e' : from === 'savings' ? 'soUSD' : 'USDC';
+
+  if (from === 'borrow') {
+    return null;
+  }
 
   return (
     <View className="flex-row items-center gap-2">
@@ -352,7 +557,7 @@ function BorrowAndDepositButton({
       {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
         <ActivityIndicator color="black" />
       ) : (
-        <Text className="text-lg font-semibold text-black">Borrow and Deposit to Card</Text>
+        <Text className="text-lg font-semibold text-black">Deposit</Text>
       )}
     </Button>
   );
@@ -394,6 +599,30 @@ export default function CardDepositInternalForm() {
   const watchedAmount = watch('amount');
   const watchedFrom = watch('from');
 
+  // Get borrow rate from accountant contract
+  const ACCOUNTANT_ABI = [
+    {
+      inputs: [],
+      name: 'getRate',
+      outputs: [
+        {
+          internalType: 'uint256',
+          name: 'rate',
+          type: 'uint256',
+        },
+      ],
+      stateMutability: 'view',
+      type: 'function',
+    },
+  ] as const;
+
+  const { data: rate, isLoading: isRateLoading } = useReadContract({
+    address: ADDRESSES.ethereum.accountant,
+    abi: ACCOUNTANT_ABI,
+    functionName: 'getRate',
+    chainId: mainnet.id,
+  });
+
   const usdcBalanceAmount = fuseUsdcBalance ? Number(fuseUsdcBalance) / 1e6 : 0;
   const soUsdBalanceAmount = soUsdToken
     ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
@@ -401,9 +630,19 @@ export default function CardDepositInternalForm() {
 
   const balanceAmount = watchedFrom === 'wallet' ? usdcBalanceAmount : soUsdBalanceAmount;
   const isBalanceLoading = watchedFrom === 'wallet' ? isUsdcBalanceLoading : isBalancesLoading;
-  const tokenSymbol = watchedFrom === 'wallet' ? 'USDC.e' : 'soUSD';
+  const tokenSymbol = watchedFrom === 'wallet' ? 'USDC.e' : watchedFrom === 'savings' ? 'soUSD' : 'USDC';
+
+  // Calculate borrow rate and max borrow amount
+  const borrowRate = rate ? Number(formatUnits(rate, 6)) : 0;
+  const maxBorrowAmount = useMemo(() => {
+    if (soUsdBalanceAmount > 0 && borrowRate > 0) {
+      return soUsdBalanceAmount * borrowRate * 0.7; // 70% of savings value
+    }
+    return 0;
+  }, [soUsdBalanceAmount, borrowRate]);
+
   const { amountOut: estimatedUSDC, isLoading: isEstimatedUSDCLoading } = usePreviewDepositToCard(
-    watchedAmount,
+    watchedFrom === 'borrow' ? watchedAmount : watchedAmount,
     ADDRESSES.fuse.stargateOftUSDC,
   );
 
@@ -413,11 +652,22 @@ export default function CardDepositInternalForm() {
         .string()
         .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Enter a valid amount' })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
-        .refine(val => Number(val) <= balanceAmount, {
-          error: `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
-        }),
+        .refine(
+          val => {
+            if (watchedFrom === 'borrow') {
+              return Number(val) <= maxBorrowAmount;
+            }
+            return Number(val) <= balanceAmount;
+          },
+          {
+            error:
+              watchedFrom === 'borrow'
+                ? `Maximum borrow amount is ${formatNumber(maxBorrowAmount)} USDC`
+                : `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
+          },
+        ),
     });
-  }, [balanceAmount, tokenSymbol]);
+  }, [balanceAmount, tokenSymbol, watchedFrom, maxBorrowAmount]);
 
   const formattedBalance = balanceAmount.toString();
 
@@ -455,7 +705,7 @@ export default function CardDepositInternalForm() {
         return;
       }
 
-      const sourceSymbol = watchedFrom === 'savings' ? 'soUSD' : 'USDC.e';
+      const sourceSymbol = watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
 
       // Create activity event (stays PENDING until Bridge processes it)
       const clientTxId = await createActivity({
@@ -526,7 +776,7 @@ export default function CardDepositInternalForm() {
         return;
       }
 
-      const sourceSymbol = watchedFrom === 'savings' ? 'soUSD' : 'USDC.e';
+      const sourceSymbol = watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
 
       // Create activity event (stays PENDING until Bridge processes it)
       const clientTxId = await createActivity({
@@ -590,7 +840,8 @@ export default function CardDepositInternalForm() {
   const disabled =
     bridgeStatus === Status.PENDING ||
     swapAndBridgeStatus === Status.PENDING ||
-    isEstimatedUSDCLoading ||
+    (watchedFrom !== 'borrow' && isEstimatedUSDCLoading) ||
+    (watchedFrom === 'borrow' && isRateLoading) ||
     !isValid ||
     !watchedAmount;
 
@@ -605,21 +856,81 @@ export default function CardDepositInternalForm() {
     }
   }, [watchedAmount, schema]);
 
+  // Slider value for borrow option - initialize to 0 or current amount
+  const [sliderValue, setSliderValue] = useState(() => {
+    if (watchedFrom === 'borrow' && watchedAmount) {
+      const numValue = Number(watchedAmount);
+      return !isNaN(numValue) && isFinite(numValue) && numValue >= 0 ? numValue : 0;
+    }
+    return 0;
+  });
+
+  // Update form amount when slider changes
+  const handleSliderChange = (value: number) => {
+    const numValue = Number(value);
+    if (isNaN(numValue) || !isFinite(numValue)) return;
+    const clampedValue = Math.max(0, Math.min(maxBorrowAmount || 0, numValue));
+    if (!isNaN(clampedValue) && isFinite(clampedValue)) {
+      setSliderValue(clampedValue);
+      setValue('amount', clampedValue.toString());
+      trigger('amount');
+    }
+  };
+
+  // Reset slider when switching away from borrow mode or initialize when switching to borrow
+  useEffect(() => {
+    if (watchedFrom !== 'borrow') {
+      setSliderValue(0);
+    } else if (watchedFrom === 'borrow' && maxBorrowAmount > 0) {
+      // Only initialize if value is 0 or invalid
+      const currentValue = Number(watchedAmount || sliderValue);
+      if (currentValue === 0 || isNaN(currentValue) || !isFinite(currentValue)) {
+        // Initialize to 10% of max or minimum of 10
+        const initialValue = Math.max(10, Math.min(maxBorrowAmount * 0.1, maxBorrowAmount));
+        if (!isNaN(initialValue) && isFinite(initialValue) && initialValue > 0) {
+          setSliderValue(initialValue);
+          setValue('amount', initialValue.toString());
+        }
+      }
+    }
+  }, [watchedFrom, maxBorrowAmount]);
+
+  // Update slider when form amount changes (for manual input)
+  useEffect(() => {
+    if (watchedFrom === 'borrow' && watchedAmount) {
+      const numValue = Number(watchedAmount);
+      if (!isNaN(numValue) && isFinite(numValue) && numValue >= 0 && numValue <= maxBorrowAmount) {
+        setSliderValue(numValue);
+      }
+    }
+  }, [watchedAmount, watchedFrom, maxBorrowAmount]);
+
   return (
     <View className="flex-1 gap-3">
       <SourceSelector control={control} from={watchedFrom} />
 
-      <View className="gap-2">
-        <AmountInput control={control} errors={formState.errors} from={watchedFrom} />
-        <BalanceDisplay
-          balanceAmount={balanceAmount}
-          isBalanceLoading={isBalanceLoading}
-          formattedBalance={formattedBalance}
-          setValue={setValue}
-          trigger={trigger}
-          from={watchedFrom}
-        />
-      </View>
+      {watchedFrom === 'borrow' ? (
+        <View className="gap-4">
+          <BorrowSlider
+            value={sliderValue}
+            onValueChange={handleSliderChange}
+            min={0}
+            max={maxBorrowAmount}
+          />
+        </View>
+      ) : (
+        <View className="gap-2">
+          <AmountInput control={control} errors={formState.errors} from={watchedFrom} />
+          <BalanceDisplay
+            balanceAmount={balanceAmount}
+            isBalanceLoading={isBalanceLoading}
+            formattedBalance={formattedBalance}
+            setValue={setValue}
+            trigger={trigger}
+            from={watchedFrom}
+          />
+        </View>
+      )}
 
       {watchedFrom === 'savings' && watchedAmount && (
         <EstimatedReceive
@@ -628,25 +939,73 @@ export default function CardDepositInternalForm() {
         />
       )}
 
+      {watchedFrom === 'borrow' && (
+        <TokenDetails>
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+            <Text className="text-base text-muted-foreground">Borrow rate</Text>
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+              {isRateLoading ? (
+                <Skeleton className="h-5 w-16 rounded-md" />
+              ) : (
+                <Text className="text-base font-semibold">
+                  {formatNumber(borrowRate * 100, 2)}%
+                </Text>
+              )}
+            </View>
+          </View>
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+            <View className="flex-row items-center gap-2">
+              <Fuel size={16} color="#A1A1AA" />
+              <Text className="text-base text-muted-foreground">Fee</Text>
+            </View>
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+              <Text className="text-base font-semibold">0 USDC</Text>
+            </View>
+          </View>
+          <View className="px-5 py-6 md:p-5">
+            <Pressable
+              onPress={() => {
+                Linking.openURL('https://help.solid.xyz');
+              }}
+            >
+              <Text className="text-center text-sm text-muted-foreground">
+                Read more about terms & rates
+              </Text>
+            </Pressable>
+          </View>
+        </TokenDetails>
+      )}
+
       <View className="flex-1" />
 
-      <DestinationDisplay />
+      {watchedFrom !== 'borrow' && <DestinationDisplay />}
 
       <ErrorDisplay error={validationError || bridgeError || swapAndBridgeError} />
 
-      <SubmitButton
-        disabled={disabled}
-        bridgeStatus={bridgeStatus}
-        swapAndBridgeStatus={swapAndBridgeStatus}
-        onPress={handleSubmit(onSubmit)}
-      />
-      {watchedFrom === 'savings' && isUserAllowedToUseTestFeature(user?.username ?? '') && (
+      {watchedFrom === 'borrow' ? (
         <BorrowAndDepositButton
-          disabled={disabled}
+          disabled={disabled || borrowAndDepositStatus === Status.PENDING}
           bridgeStatus={borrowAndDepositStatus}
           swapAndBridgeStatus={borrowAndDepositStatus}
           onPress={handleSubmit(onBorrowAndDepositSubmit)}
         />
+      ) : (
+        <>
+          <SubmitButton
+            disabled={disabled}
+            bridgeStatus={bridgeStatus}
+            swapAndBridgeStatus={swapAndBridgeStatus}
+            onPress={handleSubmit(onSubmit)}
+          />
+          {watchedFrom === 'savings' && isUserAllowedToUseTestFeature(user?.username ?? '') && (
+            <BorrowAndDepositButton
+              disabled={disabled}
+              bridgeStatus={borrowAndDepositStatus}
+              swapAndBridgeStatus={borrowAndDepositStatus}
+              onPress={handleSubmit(onBorrowAndDepositSubmit)}
+            />
+          )}
+        </>
       )}
     </View>
   );
