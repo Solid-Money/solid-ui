@@ -22,7 +22,7 @@ type StakeModalProps = {
  * since the global StakeModalProvider handles the modal state.
  */
 const StakeModal = ({ trigger }: StakeModalProps) => {
-  const { setModal } = useStakeStore();
+  const setModal = useStakeStore(state => state.setModal);
 
   const handlePress = () => {
     track(TRACKING_EVENTS.STAKE_MODAL_OPENED, {

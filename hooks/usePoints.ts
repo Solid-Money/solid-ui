@@ -1,10 +1,20 @@
+import { useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+
 import useUser from '@/hooks/useUser';
 import { usePointsStore } from '@/store/usePointsStore';
-import { useEffect } from 'react';
 
 export const usePoints = () => {
   const { user } = useUser();
-  const { points, isLoading, error, fetchPoints } = usePointsStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { points, isLoading, error, fetchPoints } = usePointsStore(
+    useShallow(state => ({
+      points: state.points,
+      isLoading: state.isLoading,
+      error: state.error,
+      fetchPoints: state.fetchPoints,
+    })),
+  );
 
   useEffect(() => {
     if (user) {

@@ -9,7 +9,7 @@ import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositBuyCryptoOptions = () => {
-  const { setModal } = useDepositStore();
+  const setModal = useDepositStore(state => state.setModal);
   const { isEnabled: isDepositBonusEnabled, percentage } = useDepositBonusConfig();
 
   const handleBankDepositPress = useCallback(() => {

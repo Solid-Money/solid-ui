@@ -46,6 +46,7 @@ import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 import useUser from './useUser';
+import { useShallow } from 'zustand/react/shallow';
 
 type DepositResult = {
   balance: bigint | undefined;
@@ -69,8 +70,8 @@ const useDepositFromEOA = (
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<Address | undefined>();
   const eoaAddress = account?.address as Address;
-  const { updateUser } = useUserStore();
-  const { srcChainId } = useDepositStore();
+  const updateUser = useUserStore(state => state.updateUser);
+  const srcChainId = useDepositStore(state => state.srcChainId);
   const isEthereum = srcChainId === mainnet.id;
   const { createActivity } = useActivity();
 

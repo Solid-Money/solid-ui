@@ -24,7 +24,7 @@ interface SendModalProps extends Omit<SendOptionProps, 'trigger'> {
  * since the global SendModalProvider handles the modal state.
  */
 const SendModal = ({ token, trigger, modal }: SendModalProps) => {
-  const { setModal } = useSendStore();
+  const setModal = useSendStore(state => state.setModal);
 
   // If token is provided, use the specialized SendTrigger
   if (token) {

@@ -12,6 +12,7 @@ import Animated, {
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { getBackgroundImage, GRADIENT_COLORS, ONBOARDING_DATA } from '@/lib/types/onboarding';
@@ -89,7 +90,12 @@ interface DesktopCarouselProps {
  * Supports real-time horizontal swipe/drag navigation with gesture feedback.
  */
 export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
-  const { currentIndex, setCurrentIndex } = useCarouselStore();
+  const { currentIndex, setCurrentIndex } = useCarouselStore(
+    useShallow(state => ({
+      currentIndex: state.currentIndex,
+      setCurrentIndex: state.setCurrentIndex,
+    })),
+  );
 
   // Continuous progress value (0-2 range) - drives all animations
   const progress = useSharedValue(currentIndex);

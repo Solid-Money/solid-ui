@@ -1,14 +1,24 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+
 import { fetchLatestWhatsNew } from '@/lib/api';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { useWhatsNewStore } from '@/store/useWhatsNewStore';
-import { useCallback, useEffect, useState } from 'react';
 
 const storage = mmkvStorage('whats-new');
 const SEEN_IDS_KEY = 'seen_popup_ids';
 const DISMISSED_IDS_KEY = 'dismissed_popup_ids';
 
 export const useWhatsNew = () => {
-  const { whatsNew, isVisible, setWhatsNew, setIsVisible } = useWhatsNewStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { whatsNew, isVisible, setWhatsNew, setIsVisible } = useWhatsNewStore(
+    useShallow(state => ({
+      whatsNew: state.whatsNew,
+      isVisible: state.isVisible,
+      setWhatsNew: state.setWhatsNew,
+      setIsVisible: state.setIsVisible,
+    })),
+  );
   const [loading, setLoading] = useState(true);
 
   const getSeenIds = (): string[] => {

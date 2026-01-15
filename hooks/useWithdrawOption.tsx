@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Pressable, PressableProps, View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import TransactionStatus from '@/components/TransactionStatus';
 import { buttonVariants } from '@/components/ui/button';
@@ -27,7 +28,15 @@ const useWithdrawOption = ({
   trigger,
   modal = UNSTAKE_MODAL.OPEN_FORM,
 }: WithdrawOptionProps = {}) => {
-  const { currentModal, previousModal, transaction, setModal } = useUnstakeStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal, previousModal, transaction, setModal } = useUnstakeStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+      transaction: state.transaction,
+      setModal: state.setModal,
+    })),
+  );
   const router = useRouter();
   const { isScreenMedium } = useDimension();
   const { triggerElement } = useResponsiveModal();

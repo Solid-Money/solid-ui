@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { formatUnits } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
@@ -13,7 +14,14 @@ import { cn, formatNumber } from '@/lib/utils';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 const UnstakeTokenSelector: React.FC = () => {
-  const { selectedToken, setSelectedToken, setModal } = useUnstakeStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { selectedToken, setSelectedToken, setModal } = useUnstakeStore(
+    useShallow(state => ({
+      selectedToken: state.selectedToken,
+      setSelectedToken: state.setSelectedToken,
+      setModal: state.setModal,
+    })),
+  );
   const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
   // Filter for soUSD tokens only (vault tokens)

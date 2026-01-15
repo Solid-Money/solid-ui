@@ -13,6 +13,7 @@ import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { mainnet } from 'viem/chains';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -104,7 +105,18 @@ function WalletLoadingIcon() {
 export default function SignupCreating() {
   const router = useRouter();
   const { safeAA } = useUser();
-  const { users, storeUser, _hasHydrated: userStoreHydrated } = useUserStore();
+  const {
+    hasUsers,
+    storeUser,
+    _hasHydrated: userStoreHydrated,
+  } = useUserStore(
+    useShallow(state => ({
+      hasUsers: state.users.length > 0,
+      storeUser: state.storeUser,
+      _hasHydrated: state._hasHydrated,
+    })),
+  );
+
   const {
     email,
     verificationToken,
@@ -116,7 +128,20 @@ export default function SignupCreating() {
     _hasHydrated,
     setStep,
     setError,
-  } = useSignupFlowStore();
+  } = useSignupFlowStore(
+    useShallow(state => ({
+      email: state.email,
+      verificationToken: state.verificationToken,
+      challenge: state.challenge,
+      attestation: state.attestation,
+      credentialId: state.credentialId,
+      marketingConsent: state.marketingConsent,
+      referralCode: state.referralCode,
+      _hasHydrated: state._hasHydrated,
+      setStep: state.setStep,
+      setError: state.setError,
+    })),
+  );
   const _attributionHydrated = useAttributionStore(state => state._hasHydrated);
   // Guard against duplicate execution (React Strict Mode double-invokes effects in dev)
   const isCreatingRef = useRef(false);
@@ -128,7 +153,7 @@ export default function SignupCreating() {
 
     // If user already exists (signup previously succeeded), redirect to home
     // This prevents duplicate createAccount() calls if user navigates back
-    if (users.length > 0) {
+    if (hasUsers) {
       if (Platform.OS === 'web') {
         router.replace(path.HOME);
       } else {

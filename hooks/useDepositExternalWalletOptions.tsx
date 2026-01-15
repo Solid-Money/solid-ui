@@ -1,6 +1,7 @@
 import { Wallet } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -14,7 +15,7 @@ import HomeQR from '@/assets/images/home-qr';
 const useDepositExternalWalletOptions = () => {
   const activeAccount = useActiveAccount();
   const { connect } = useConnectModal();
-  const { setModal } = useDepositStore();
+  const setModal = useDepositStore(state => state.setModal);
   const { isScreenMedium } = useDimension();
   const address = activeAccount?.address;
 

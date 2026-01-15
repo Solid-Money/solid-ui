@@ -1,3 +1,17 @@
+import { useCallback, useEffect } from 'react';
+import { Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import * as Sentry from '@sentry/react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
+import { createAccount } from '@turnkey/viem';
+import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
+import { toSafeSmartAccount } from 'permissionless/accounts';
+import { Chain, hashTypedData, http } from 'viem';
+import { entryPoint07Address } from 'viem/account-abstraction';
+import { mainnet } from 'viem/chains';
+import { useShallow } from 'zustand/react/shallow';
+
 import { ERRORS } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -16,18 +30,7 @@ import { useBalanceStore } from '@/store/useBalanceStore';
 import { useKycStore } from '@/store/useKycStore';
 import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
-import * as Sentry from '@sentry/react-native';
-import { useQueryClient } from '@tanstack/react-query';
-import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
-import { createAccount } from '@turnkey/viem';
-import { useRouter } from 'expo-router';
-import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
-import { toSafeSmartAccount } from 'permissionless/accounts';
-import { useCallback, useEffect, useMemo } from 'react';
-import { Platform } from 'react-native';
-import { Chain, hashTypedData, http } from 'viem';
-import { entryPoint07Address } from 'viem/account-abstraction';
-import { mainnet } from 'viem/chains';
+
 import { fetchIsDeposited } from './useAnalytics';
 
 interface UseUserReturn {
@@ -55,6 +58,7 @@ const useUser = (): UseUserReturn => {
   const { httpClient, createHttpClient, createPasskey } = useTurnkey();
 
   const {
+    user,
     users,
     storeUser,
     updateUser,
@@ -65,13 +69,25 @@ const useUser = (): UseUserReturn => {
     setLoginInfo,
     setSignupUser,
     markSafeAddressSynced,
-  } = useUserStore();
+  } = useUserStore(
+    useShallow(state => ({
+      users: state.users,
+      storeUser: state.storeUser,
+      updateUser: state.updateUser,
+      selectUserById: state.selectUserById,
+      unselectUser: state.unselectUser,
+      removeUsers: state.removeUsers,
+      setSignupInfo: state.setSignupInfo,
+      setLoginInfo: state.setLoginInfo,
+      setSignupUser: state.setSignupUser,
+      markSafeAddressSynced: state.markSafeAddressSynced,
+      user: state.users.find((u: User) => u.selected),
+    })),
+  );
 
-  const { clearKycLinkId } = useKycStore();
-  const { removeEvents } = useActivityStore();
-  const { clearBalance } = useBalanceStore();
-
-  const user = useMemo(() => users.find((user: User) => user.selected), [users]);
+  const clearKycLinkId = useKycStore(state => state.clearKycLinkId);
+  const removeEvents = useActivityStore(state => state.removeEvents);
+  const clearBalance = useBalanceStore(state => state.clearBalance);
 
   const safeAA = useCallback(
     async (chain: Chain, subOrganization: string, signWith: string) => {

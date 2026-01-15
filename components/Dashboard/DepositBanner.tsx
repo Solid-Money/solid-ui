@@ -15,7 +15,7 @@ import SwipeableBanner from './SwipeableBanner';
 
 const DepositBanner = () => {
   const { isScreenMedium } = useDimension();
-  const { setModal } = useDepositStore();
+  const setModal = useDepositStore(state => state.setModal);
 
   const handleAddFundsPress = () => {
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);

@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -23,7 +24,18 @@ export function useCountryCheck(options?: { skip?: boolean }) {
     setCachedIp,
     countryDetectionFailed,
     setCountryDetectionFailed,
-  } = useCountryStore();
+  } = useCountryStore(
+    useShallow(state => ({
+      countryInfo: state.countryInfo,
+      setCountryInfo: state.setCountryInfo,
+      getIpDetectedCountry: state.getIpDetectedCountry,
+      setIpDetectedCountry: state.setIpDetectedCountry,
+      getCachedIp: state.getCachedIp,
+      setCachedIp: state.setCachedIp,
+      countryDetectionFailed: state.countryDetectionFailed,
+      setCountryDetectionFailed: state.setCountryDetectionFailed,
+    })),
+  );
 
   // Allow both IP-detected and manually-selected supported countries
   const validCountryInfo = countryInfo?.isAvailable ? countryInfo : null;

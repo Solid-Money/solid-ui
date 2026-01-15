@@ -8,6 +8,7 @@ import { Address } from 'abitype';
 import { Wallet } from 'lucide-react-native';
 import { isAddress, TransactionReceipt } from 'viem';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import Max from '@/components/Max';
@@ -34,7 +35,13 @@ import { useUnstakeStore } from '@/store/useUnstakeStore';
 const FastWithdrawForm = () => {
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivity();
-  const { setModal, setTransaction, selectedNetwork } = useUnstakeStore();
+  const { setModal, setTransaction, selectedNetwork } = useUnstakeStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setTransaction: state.setTransaction,
+      selectedNetwork: state.selectedNetwork,
+    })),
+  );
 
   const chainId = useMemo(() => {
     if (!selectedNetwork) return undefined;

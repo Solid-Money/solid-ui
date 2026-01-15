@@ -8,10 +8,13 @@ import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { ActivityTab } from '@/lib/types';
 import { hasCard } from '@/lib/utils';
 
 export default function Activity() {
+  useRenderMonitor({ componentName: MONITORED_COMPONENTS.ACTIVITY_SCREEN });
+
   const { data: cardStatus, isLoading: isCardLoading } = useCardStatus();
   const { refetchAll, isSyncing, isLoading } = useActivity();
   const isWeb = Platform.OS === 'web';

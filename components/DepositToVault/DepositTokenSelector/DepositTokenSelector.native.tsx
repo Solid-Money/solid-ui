@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
@@ -8,7 +9,13 @@ import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositTokenSelector = () => {
-  const { setModal, setOutputToken, srcChainId } = useDepositStore();
+  const { setModal, setOutputToken, srcChainId } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setOutputToken: state.setOutputToken,
+      srcChainId: state.srcChainId,
+    })),
+  );
 
   const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
 

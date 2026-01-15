@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -22,7 +23,15 @@ import { Withdraw } from '.';
  */
 const WithdrawModalProvider = () => {
   const router = useRouter();
-  const { currentModal, previousModal, setModal, transaction } = useWithdrawStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal, previousModal, setModal, transaction } = useWithdrawStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+      setModal: state.setModal,
+      transaction: state.transaction,
+    })),
+  );
 
   const isTransactionStatus = currentModal.name === WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isClose = currentModal.name === WITHDRAW_MODAL.CLOSE.name;

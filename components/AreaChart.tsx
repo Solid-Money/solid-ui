@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Dimensions, GestureResponderEvent, View } from 'react-native';
 import { Defs, LinearGradient, Stop } from 'react-native-svg';
 import { VictoryArea, VictoryAxis, VictoryChart } from 'victory-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { calculatePercentageChange } from '@/components/ChartTooltip';
 import { Text } from '@/components/ui/text';
@@ -29,7 +30,12 @@ const formatTimestamp = (timestamp: number) => {
 const TOUCH_THROTTLE_MS = 32;
 
 const Chart = ({ data, formatToolTip }: AreaChartProps) => {
-  const { setSelectedPrice, setSelectedPriceChange } = useCoinStore();
+  const { setSelectedPrice, setSelectedPriceChange } = useCoinStore(
+    useShallow(state => ({
+      setSelectedPrice: state.setSelectedPrice,
+      setSelectedPriceChange: state.setSelectedPriceChange,
+    })),
+  );
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [touchX, setTouchX] = useState<number>(0);
   const lastTouchTime = useRef(0);

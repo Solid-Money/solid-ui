@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronDown } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import CountryFlagImage from '@/components/CountryFlagImage';
 import PageLayout from '@/components/PageLayout';
@@ -38,7 +39,14 @@ export default function ActivateCountrySelection() {
 
   const [processing, setProcessing] = useState(false);
 
-  const { countryInfo, setCountryInfo, setCountryDetectionFailed } = useCountryStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { countryInfo, setCountryInfo, setCountryDetectionFailed } = useCountryStore(
+    useShallow(state => ({
+      countryInfo: state.countryInfo,
+      setCountryInfo: state.setCountryInfo,
+      setCountryDetectionFailed: state.setCountryDetectionFailed,
+    })),
+  );
 
   // Function to get country from IP and check card access
   const getCountryFromIpAndCheckAccess = async (): Promise<{

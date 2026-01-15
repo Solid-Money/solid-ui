@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { formatUnits } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
@@ -15,7 +16,14 @@ import { useSendStore } from '@/store/useSendStore';
 import ToInput from './ToInput';
 
 const TokenSelector: React.FC = () => {
-  const { selectedToken, setSelectedToken, setModal } = useSendStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { selectedToken, setSelectedToken, setModal } = useSendStore(
+    useShallow(state => ({
+      selectedToken: state.selectedToken,
+      setSelectedToken: state.setSelectedToken,
+      setModal: state.setModal,
+    })),
+  );
   const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
   // Combine and sort tokens by USD value (descending)
