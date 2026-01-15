@@ -1,10 +1,11 @@
 // Amplitude imports
+import { Platform } from 'react-native';
 import {
   add,
   getDeviceId,
   getSessionId,
-  identify,
   Identify,
+  identify,
   init as initAmplitudeSDK,
   setUserId as setAmplitudeUserId,
   track as trackAmplitude,
@@ -18,7 +19,7 @@ import {
   setUserProperties,
 } from '@react-native-firebase/analytics';
 import { getApps, initializeApp, setReactNativeAsyncStorage } from '@react-native-firebase/app';
-import { Platform } from 'react-native';
+
 // Local imports
 import { getAttributionChannel } from '@/lib/attribution';
 import {
@@ -61,7 +62,7 @@ export const formatAmplitudeEvent = (str: string) => {
 // Initialize Amplitude
 const initAmplitude = async () => {
   try {
-    const sampleRate = 0.2;
+    const sampleRate = 1; // Record all user sessions
 
     if (Platform.OS === 'web') {
       // Web: add plugin BEFORE init
