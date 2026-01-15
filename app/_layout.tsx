@@ -76,6 +76,16 @@ SplashScreen.setOptions({
   fade: false,
 });
 
+// WhatsNew wrapper component - must be inside QueryClientProvider
+// since useWhatsNew uses React Query hooks
+function WhatsNewWrapper() {
+  const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
+
+  if (!whatsNew) return null;
+
+  return <WhatsNewModal whatsNew={whatsNew} isOpen={isVisible} onClose={closeWhatsNew} />;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -92,8 +102,6 @@ export default wrapWithSentry(function RootLayout() {
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
 
   const hasSelectedUser = useUserStore(state => state.users.some(u => u.selected));
-
-  const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
 
   // Initialize attribution tracking automatically (handles web and mobile)
   useAttributionInitialization();
@@ -293,13 +301,7 @@ export default wrapWithSentry(function RootLayout() {
                       </Stack>
                       <PortalHost />
                       <DeferredModalProviders />
-                      {hasSelectedUser && whatsNew && (
-                        <WhatsNewModal
-                          whatsNew={whatsNew}
-                          isOpen={isVisible}
-                          onClose={closeWhatsNew}
-                        />
-                      )}
+                      {hasSelectedUser && <WhatsNewWrapper />}
                     </BottomSheetModalProvider>
                   </GestureHandlerRootView>
                 </Intercom>
