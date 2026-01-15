@@ -260,7 +260,7 @@ export default function SignupEmail() {
           {isLoading ? (
             <ActivityIndicator color="gray" />
           ) : (
-            <Text className="text-lg font-semibold">Create account</Text>
+            <Text className="native:text-lg text-lg font-semibold">Create account</Text>
           )}
         </Button>
       </View>
@@ -396,7 +396,7 @@ export default function SignupEmail() {
                 {isLoading ? (
                   <ActivityIndicator color="gray" />
                 ) : (
-                  <Text className="text-lg font-semibold">Create account</Text>
+                  <Text className="native:text-lg text-lg font-semibold">Create account</Text>
                 )}
               </Button>
             </View>

@@ -271,7 +271,7 @@ export default function SignupOtp() {
         {isLoading ? (
           <ActivityIndicator color="gray" />
         ) : (
-          <Text className="text-lg font-semibold">Continue</Text>
+          <Text className="native:text-lg text-lg font-semibold">Continue</Text>
         )}
       </Button>
 
@@ -365,7 +365,7 @@ export default function SignupOtp() {
               {isLoading ? (
                 <ActivityIndicator color="gray" />
               ) : (
-                <Text className="text-lg font-semibold">Continue</Text>
+                <Text className="native:text-lg text-lg font-semibold">Continue</Text>
               )}
             </Button>
           </View>

@@ -93,7 +93,7 @@ export default function Welcome() {
               disabled={loadingUserId !== null}
             >
               <View className="flex-row items-center gap-2">
-                <Text className="text-lg font-semibold">
+                <Text className="native:text-lg text-lg font-semibold">
                   {eclipseUsername(user.username || user.email || '', 20)}
                 </Text>
               </View>

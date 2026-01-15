@@ -167,7 +167,7 @@ export default function SignupPasskey() {
           ) : (
             <View className="flex-row items-center">
               <LoginKeyIcon color="#000" />
-              <Text className="ml-2 text-lg font-semibold text-black">Continue</Text>
+              <Text className="ml-2 native:text-lg text-lg font-semibold text-black">Continue</Text>
             </View>
           )}
         </Button>
@@ -229,7 +229,7 @@ export default function SignupPasskey() {
               ) : (
                 <>
                   <LoginKeyIcon color="#000" />
-                  <Text className="ml-2 text-lg font-semibold text-black">Continue</Text>
+                  <Text className="ml-2 native:text-lg text-lg font-semibold text-black">Continue</Text>
                 </>
               )}
             </Button>

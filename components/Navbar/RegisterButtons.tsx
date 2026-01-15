@@ -13,7 +13,7 @@ const RegisterButtons = () => {
         variant="ghost"
         className="rounded-xl border-0 px-6"
       >
-        <Text className="text-lg font-semibold">Log in</Text>
+        <Text className="native:text-lg text-lg font-semibold">Log in</Text>
       </Button>
 
       <Button
@@ -21,7 +21,7 @@ const RegisterButtons = () => {
         variant="brand"
         className="rounded-xl border-0 px-6"
       >
-        <Text className="text-lg font-semibold">Sign up</Text>
+        <Text className="native:text-lg text-lg font-semibold">Sign up</Text>
       </Button>
     </View>
   );
