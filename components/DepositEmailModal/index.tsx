@@ -5,6 +5,7 @@ import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
@@ -131,11 +132,13 @@ const DepositEmailModal: React.FC = () => {
             <View className="flex-row items-baseline justify-between">
               <Text className="font-medium text-foreground">Verification Code</Text>
               {currentStep === 'otp' && !rateLimitError && (
-                <Pressable onPress={handleResendOtp} disabled={isLoading} className="group">
-                  <Text className="text-sm underline group-hover:opacity-70">
-                    Resend verification code
-                  </Text>
-                </Pressable>
+                <Underline
+                  onPress={handleResendOtp}
+                  textClassName="text-sm group-hover:opacity-70"
+                  borderColor="rgba(255, 255, 255, 1)"
+                >
+                  Resend verification code
+                </Underline>
               )}
             </View>
             <Controller

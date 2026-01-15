@@ -6,6 +6,7 @@ import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { useTotalAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
@@ -49,9 +50,13 @@ const StartEarning = ({ className }: StartEarningProps) => {
             {isTotalAPYLoading ? (
               <Skeleton className="h-10 w-24 bg-purple/50" />
             ) : (
-              <Text className="text-3xl font-bold text-brand underline">
+              <Underline
+                inline
+                textClassName="text-3xl font-bold text-brand"
+                borderColor="rgba(148, 242, 127, 1)"
+              >
                 {totalAPY?.toFixed(2)}%
-              </Text>
+              </Underline>
             )}{' '}
             per year
           </Text>

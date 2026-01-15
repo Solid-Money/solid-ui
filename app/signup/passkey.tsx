@@ -13,6 +13,7 @@ import PasskeySvg from '@/assets/images/passkey-svg';
 import { DesktopCarousel } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
@@ -142,13 +143,17 @@ export default function SignupPasskey() {
           <Text className="mb-4 text-center text-[38px] font-semibold leading-none -tracking-[1px] text-white">
             Secure sign-in{'\n'}with Passkey
           </Text>
-          <Text className="px-4 text-center text-base text-white/60">
-            Passkeys let you sign in using biometrics or your device PIN—no email needed.
-            They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
-            <Text className="text-white/60 underline" onPress={handleLearnMore}>
-              Learn more
-            </Text>
-          </Text>
+          <View className="px-4">
+            <View className="flex-row flex-wrap items-baseline justify-center">
+              <Text className="text-center text-base text-white/60">
+                Passkeys let you sign in using biometrics or your device PIN—no email needed.
+                They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
+              </Text>
+              <Underline onPress={handleLearnMore} textClassName="text-base text-white/60">
+                Learn more
+              </Underline>
+            </View>
+          </View>
         </View>
 
         {/* Continue Button */}
@@ -195,13 +200,17 @@ export default function SignupPasskey() {
               <Text className="mb-4 text-center text-[38px] font-semibold leading-[1.1] -tracking-[1px] text-white">
                 Your account is{'\n'}protected with{'\n'}Passkey
               </Text>
-              <Text className="px-4 text-center text-[16px] text-white/60">
-                Passkeys let you sign in using biometrics or your device PIN—no email needed.
-                They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
-                <Text className="font-medium text-white/60 underline" onPress={handleLearnMore}>
-                  Learn more
-                </Text>
-              </Text>
+              <View className="px-4">
+                <View className="flex-row flex-wrap items-baseline justify-center">
+                  <Text className="text-center text-[16px] text-white/60">
+                    Passkeys let you sign in using biometrics or your device PIN—no email needed.
+                    They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
+                  </Text>
+                  <Underline onPress={handleLearnMore} textClassName="text-[16px] font-medium text-white/60">
+                    Learn more
+                  </Underline>
+                </View>
+              </View>
             </View>
           </View>
 

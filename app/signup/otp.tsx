@@ -13,6 +13,7 @@ import { DesktopCarousel } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
 import { OtpInput } from '@/components/ui/otp-input';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
@@ -278,9 +279,9 @@ export default function SignupOtp() {
       <View className="mt-6 flex-row items-center justify-center gap-1">
         <Text className="text-base text-white/60">Didn&apos;t receive it?</Text>
         {canResend ? (
-          <Pressable onPress={handleResendOtp}>
-            <Text className="text-base font-semibold text-white/60 underline">Resend Code</Text>
-          </Pressable>
+          <Underline onPress={handleResendOtp} textClassName="text-base font-semibold text-white/60">
+            Resend Code
+          </Underline>
         ) : (
           <Text className="text-base text-white/60">Resend in {resendCooldown}s</Text>
         )}
@@ -338,9 +339,9 @@ export default function SignupOtp() {
             <View className="flex-row items-center gap-1">
               <Text className="text-white/60">Didn&apos;t receive it?</Text>
               {canResend ? (
-                <Pressable onPress={handleResendOtp}>
-                  <Text className="font-semibold text-white/60 underline">Resend Code</Text>
-                </Pressable>
+                <Underline onPress={handleResendOtp} textClassName="font-semibold text-white/60">
+                  Resend Code
+                </Underline>
               ) : (
                 <Text className="text-white/40">Resend in {resendCooldown}s</Text>
               )}

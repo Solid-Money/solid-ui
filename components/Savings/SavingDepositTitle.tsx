@@ -1,5 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { VAULTS } from '@/constants/vaults';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useSavingStore } from '@/store/useSavingStore';
@@ -14,9 +15,13 @@ const SavingDepositTitle = () => {
       {isMaxAPYsLoading ? (
         <Skeleton className="h-6 w-14 bg-purple/50 md:h-10 md:w-24" />
       ) : (
-        <Text className="text-2xl font-bold text-brand underline md:text-4.5xl">
+        <Underline
+          inline
+          textClassName="text-2xl font-bold text-brand md:text-4.5xl"
+          borderColor="rgba(148, 242, 127, 1)"
+        >
           {maxAPY?.toFixed(2)}%
-        </Text>
+        </Underline>
       )}{' '}
       per year
     </Text>

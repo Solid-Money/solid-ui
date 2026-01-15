@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { getAsset } from '@/lib/assets';
+import { Underline } from '@/components/ui/underline';
 
 export function DashboardCardsNoFunds() {
   return <DepositStableCoinsCard />;
@@ -16,7 +17,10 @@ function DepositStableCoinsCard() {
           <View className="flex-1 items-start gap-24">
             <Text className="text-xl font-semibold text-white sm:text-2xl md:text-3xl lg:text-4xl">
               Deposit your stablecoins{'\n'}and earn{' '}
-              <Text className="text-[#94F27F] underline">4.5%</Text> per year
+              <Underline inline textClassName="text-[#94F27F]" borderColor="rgba(148, 242, 127, 1)">
+                4.5%
+              </Underline>{' '}
+              per year
             </Text>
             <IconsWithText />
           </View>
