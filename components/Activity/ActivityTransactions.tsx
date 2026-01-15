@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Platform, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
+import { useShallow } from 'zustand/react/shallow';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
@@ -41,7 +42,13 @@ export default function ActivityTransactions({
   symbol,
   showTimestamp = true,
 }: ActivityTransactionsProps) {
-  const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore();
+  const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setBankTransferData: state.setBankTransferData,
+      setDirectDepositSession: state.setDirectDepositSession,
+    })),
+  );
   const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);

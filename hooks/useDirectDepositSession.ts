@@ -18,7 +18,12 @@ import { useActivity } from './useActivity';
 export const useDirectDepositSession = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setDirectDepositSession, clearDirectDepositSession } = useDepositStore();
+  const { setDirectDepositSession, clearDirectDepositSession } = useDepositStore(
+    useShallow(state => ({
+      setDirectDepositSession: state.setDirectDepositSession,
+      clearDirectDepositSession: state.clearDirectDepositSession,
+    })),
+  );
   const { refetchAll } = useActivity();
 
   const createDirectDepositSession = async (chainId: number, tokenSymbol: string) => {

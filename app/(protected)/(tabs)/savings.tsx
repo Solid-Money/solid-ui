@@ -23,6 +23,7 @@ import {
 } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
+import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { getAsset } from '@/lib/assets';
@@ -31,6 +32,8 @@ import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
 
 export default function Savings() {
+  useRenderMonitor({ componentName: MONITORED_COMPONENTS.SAVINGS_SCREEN });
+
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
   const {

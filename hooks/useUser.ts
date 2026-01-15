@@ -58,6 +58,7 @@ const useUser = (): UseUserReturn => {
   const { httpClient, createHttpClient, createPasskey } = useTurnkey();
 
   const {
+    user,
     users,
     storeUser,
     updateUser,
@@ -68,13 +69,25 @@ const useUser = (): UseUserReturn => {
     setLoginInfo,
     setSignupUser,
     markSafeAddressSynced,
-  } = useUserStore();
+  } = useUserStore(
+    useShallow(state => ({
+      users: state.users,
+      storeUser: state.storeUser,
+      updateUser: state.updateUser,
+      selectUserById: state.selectUserById,
+      unselectUser: state.unselectUser,
+      removeUsers: state.removeUsers,
+      setSignupInfo: state.setSignupInfo,
+      setLoginInfo: state.setLoginInfo,
+      setSignupUser: state.setSignupUser,
+      markSafeAddressSynced: state.markSafeAddressSynced,
+      user: state.users.find((u: User) => u.selected),
+    })),
+  );
 
-  const { clearKycLinkId } = useKycStore();
-  const { removeEvents } = useActivityStore();
-  const { clearBalance } = useBalanceStore();
-
-  const user = useUserStore(useShallow(state => state.users.find((u: User) => u.selected)));
+  const clearKycLinkId = useKycStore(state => state.clearKycLinkId);
+  const removeEvents = useActivityStore(state => state.removeEvents);
+  const clearBalance = useBalanceStore(state => state.clearBalance);
 
   const safeAA = useCallback(
     async (chain: Chain, subOrganization: string, signWith: string) => {

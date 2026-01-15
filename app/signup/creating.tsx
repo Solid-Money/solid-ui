@@ -128,7 +128,20 @@ export default function SignupCreating() {
     _hasHydrated,
     setStep,
     setError,
-  } = useSignupFlowStore();
+  } = useSignupFlowStore(
+    useShallow(state => ({
+      email: state.email,
+      verificationToken: state.verificationToken,
+      challenge: state.challenge,
+      attestation: state.attestation,
+      credentialId: state.credentialId,
+      marketingConsent: state.marketingConsent,
+      referralCode: state.referralCode,
+      _hasHydrated: state._hasHydrated,
+      setStep: state.setStep,
+      setError: state.setError,
+    })),
+  );
   const _attributionHydrated = useAttributionStore(state => state._hasHydrated);
   // Guard against duplicate execution (React Strict Mode double-invokes effects in dev)
   const isCreatingRef = useRef(false);

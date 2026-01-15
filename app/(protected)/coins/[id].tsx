@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { Address } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import ActivityTransactions from '@/components/Activity/ActivityTransactions';
 import AreaChart from '@/components/AreaChart';
@@ -40,7 +41,13 @@ export default function Coin() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [chainId, contractAddress] = id.split('-');
   const { tokens, isLoading } = useWalletTokens();
-  const { selectedTime, selectedPrice, selectedPriceChange } = useCoinStore();
+  const { selectedTime, selectedPrice, selectedPriceChange } = useCoinStore(
+    useShallow(state => ({
+      selectedTime: state.selectedTime,
+      selectedPrice: state.selectedPrice,
+      selectedPriceChange: state.selectedPriceChange,
+    })),
+  );
   const { isScreenMedium } = useDimension();
   const isPriceIncrease = selectedPriceChange && selectedPriceChange >= 0;
 

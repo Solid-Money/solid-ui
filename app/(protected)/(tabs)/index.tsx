@@ -20,6 +20,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { useCalculateSavings } from '@/hooks/useFinancial';
+import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
@@ -30,6 +31,8 @@ import { fontSize, hasCard } from '@/lib/utils';
 import { useUserStore } from '@/store/useUserStore';
 
 export default function Home() {
+  useRenderMonitor({ componentName: MONITORED_COMPONENTS.HOME_SCREEN });
+
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
   const {
@@ -37,7 +40,7 @@ export default function Home() {
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
   } = useVaultBalance(user?.safeAddress as Address);
-  const { updateUser } = useUserStore();
+  const updateUser = useUserStore(state => state.updateUser);
   const intercom = useIntercom();
   const { data: cardStatus } = useCardStatus();
   const { data: cardDetails } = useCardDetails();

@@ -30,6 +30,7 @@ import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useShallow } from 'zustand/react/shallow';
 import useResponsiveModal from './useResponsiveModal';
 
 export interface DepositOptionProps {
@@ -56,7 +57,21 @@ const useDepositOption = ({
     sessionStartTime,
     setSessionStartTime,
     clearSessionStartTime,
-  } = useDepositStore();
+  } = useDepositStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+      transaction: state.transaction,
+      setModal: state.setModal,
+      srcChainId: state.srcChainId,
+      outputToken: state.outputToken,
+      bankTransfer: state.bankTransfer,
+      directDepositSession: state.directDepositSession,
+      sessionStartTime: state.sessionStartTime,
+      setSessionStartTime: state.setSessionStartTime,
+      clearSessionStartTime: state.clearSessionStartTime,
+    })),
+  );
   const activeAccount = useActiveAccount();
   const status = useActiveWalletConnectionStatus();
   const address = activeAccount?.address;

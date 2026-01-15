@@ -32,8 +32,7 @@ import { useUserStore } from '@/store/useUserStore';
 export default function Onboarding() {
   const router = useRouter();
   const { handleLogin, handleDummyLogin } = useUser();
-  const { setHasSeenOnboarding } = useOnboardingStore();
-  // Use useShallow for object selection to prevent unnecessary re-renders
+  const setHasSeenOnboarding = useOnboardingStore(state => state.setHasSeenOnboarding);
   const { loginInfo } = useUserStore(
     useShallow(state => ({
       loginInfo: state.loginInfo,

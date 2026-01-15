@@ -10,17 +10,13 @@ import {
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
 import { base64urlToUint8Array } from '@/lib/utils';
-import { useUserStore } from '@/store/useUserStore';
+import { selectSelectedCredentialId, useUserStore } from '@/store/useUserStore';
 
 // Helper to get current hostname in runtime; falls back to configured value during SSR.
 export const getRuntimeRpId = () => (Platform.OS === 'web' && __DEV__ ? 'localhost' : 'solid.xyz');
 
 export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const selectedCredentialId = useUserStore(state => {
-    const users = state.users;
-    const selectedUser = users.find(u => u.selected) ?? (users.length === 1 ? users[0] : undefined);
-    return selectedUser?.credentialId;
-  });
+  const selectedCredentialId = useUserStore(selectSelectedCredentialId);
 
   const config = useMemo<TurnkeyProviderConfig>(() => {
     const baseConfig: TurnkeyProviderConfig = {

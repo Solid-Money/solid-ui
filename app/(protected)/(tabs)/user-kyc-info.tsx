@@ -21,7 +21,7 @@ import { useKycStore } from '@/store/useKycStore';
 export default function UserKycInfo() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setKycLinkId } = useKycStore();
+  const setKycLinkId = useKycStore(state => state.setKycLinkId);
 
   // redirectUri tells where to resume after KYC.
   const params = useLocalSearchParams<{

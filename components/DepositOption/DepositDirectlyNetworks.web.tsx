@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import * as Sentry from '@sentry/react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
@@ -14,7 +15,12 @@ import { track } from '@/lib/analytics';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositDirectlyNetworks = () => {
-  const { setModal, setDirectDepositSession } = useDepositStore();
+  const { setModal, setDirectDepositSession } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setDirectDepositSession: state.setDirectDepositSession,
+    })),
+  );
   const { user } = useUser();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const [selectedChainId, setSelectedChainId] = useState<number | null>(null);

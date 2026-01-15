@@ -114,15 +114,10 @@ export function useActivity() {
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
 
-  // Stabilize userTransactions reference using lightweight comparison
-  // Only track what we actually use: withdraws array length and latest transaction hashes
-  // This avoids expensive JSON.stringify on potentially large transaction objects
   const transactionsRef = useRef(userTransactions);
   const withdrawsKey = useMemo(() => {
     const withdraws = userTransactions?.withdraws;
     if (!withdraws?.length) return 'empty';
-    // Create a lightweight key from withdraws count + first 3 transaction hashes
-    // This captures meaningful changes without serializing the entire object
     const hashSample = withdraws
       .slice(0, 3)
       .map(w => `${w.requestTxHash?.slice(0, 10) ?? ''}-${w.requestStatus ?? ''}`)
@@ -130,7 +125,6 @@ export function useActivity() {
     return `${withdraws.length}:${hashSample}`;
   }, [userTransactions?.withdraws]);
 
-  // Update ref only when actual data changes (not just reference)
   useEffect(() => {
     transactionsRef.current = userTransactions;
   }, [withdrawsKey, userTransactions]);

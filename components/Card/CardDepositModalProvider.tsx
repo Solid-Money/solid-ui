@@ -23,7 +23,6 @@ import CardDepositOptions from './CardDepositOptions';
  */
 const CardDepositModalProvider = () => {
   const router = useRouter();
-  // Use useShallow for object selection to prevent unnecessary re-renders
   const { currentModal, previousModal, setModal, transaction } = useCardDepositStore(
     useShallow(state => ({
       currentModal: state.currentModal,
