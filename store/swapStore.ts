@@ -143,16 +143,16 @@ export function useSwapActionHandlers(): {
         field,
         currency.isToken ? currency.address : currency.isNative ? ADDRESS_ZERO : '',
       ),
-    [],
+    [selectCurrency],
   );
 
   const onSwitchTokens = useCallback(() => {
     switchCurrencies();
-  }, []);
+  }, [switchCurrencies]);
 
   const onUserInput = useCallback((field: SwapFieldType, typedValue: string) => {
     typeInput(field, typedValue);
-  }, []);
+  }, [typeInput]);
 
   return {
     onSwitchTokens,

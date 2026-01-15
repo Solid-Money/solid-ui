@@ -181,8 +181,11 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
       if (userId) {
         setLastSync(userId, Date.now());
       }
-      // Invalidate activity queries to refetch fresh data
-      queryClient.invalidateQueries({ queryKey: ['activity-events'] });
+      // Reset activity queries to clear cache and refetch only page 1
+      // Using resetQueries instead of invalidateQueries because:
+      // invalidateQueries on useInfiniteQuery refetches ALL cached pages in parallel
+      // resetQueries clears cache, so only page 1 is fetched (not pages 1-8)
+      queryClient.resetQueries({ queryKey: ['activity-events'] });
     },
     onError: error => {
       console.error('Failed to sync activities:', error);
