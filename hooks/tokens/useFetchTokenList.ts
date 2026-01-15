@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { secondsToMilliseconds } from 'date-fns';
 import { Address } from 'viem';
 import { fuse } from 'viem/chains';
 
