@@ -307,7 +307,7 @@ export default function SignupOtp() {
           <View className="flex-1 items-center px-6">
             {/* Header */}
             <View className="mb-8 mt-8 items-center">
-              <Text className="mb-4 text-center text-[38px] font-medium leading-10 -tracking-[1px] text-white">
+              <Text className="mb-4 text-center text-[38px] font-medium leading-[1.1] -tracking-[1px] text-white">
                 Check your email
               </Text>
               <Text className="text-center text-[16px] leading-4 text-white/60">

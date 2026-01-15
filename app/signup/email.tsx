@@ -306,7 +306,7 @@ export default function SignupEmail() {
             <View className="w-full">
               {/* Header */}
               <View className="mb-8 mt-4">
-                <Text className="mb-4 text-center text-[38px] font-semibold leading-10 -tracking-[1px] text-white">
+                <Text className="mb-4 text-center text-[38px] font-semibold leading-[1.1] -tracking-[1px] text-white">
                   Create your{'\n'}account
                 </Text>
                 <Text className="text-center text-[16px] text-white/60">

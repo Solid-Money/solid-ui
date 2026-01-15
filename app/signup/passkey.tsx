@@ -192,7 +192,7 @@ export default function SignupPasskey() {
 
             {/* Header */}
             <View className="mt-8 items-center">
-              <Text className="mb-4 text-center text-[38px] font-semibold leading-10 -tracking-[1px] text-white">
+              <Text className="mb-4 text-center text-[38px] font-semibold leading-[1.1] -tracking-[1px] text-white">
                 Your account is{'\n'}protected with{'\n'}Passkey
               </Text>
               <Text className="px-4 text-center text-[16px] text-white/60">
