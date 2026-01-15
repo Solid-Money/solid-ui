@@ -177,17 +177,18 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
       if (!userId) throw new Error('User not authenticated');
       return withRefreshToken(() => syncActivities(syncOptions));
     },
+    // CRITICAL: Clear cache BEFORE sync starts, not after!
+    // If we clear in onSuccess, the useInfiniteQuery sees stale cached pages
+    // and refetches ALL of them while waiting for sync to complete.
+    // By clearing in onMutate (before mutation), the query has no cache
+    // to refetch, so it starts fresh from page 1.
+    onMutate: () => {
+      queryClient.removeQueries({ queryKey: ['activity-events'] });
+    },
     onSuccess: () => {
       if (userId) {
         setLastSync(userId, Date.now());
       }
-      // Remove activity queries to completely clear cache
-      // Using removeQueries instead of invalidateQueries/resetQueries because:
-      // - invalidateQueries on useInfiniteQuery refetches ALL cached pages sequentially
-      // - resetQueries still notifies observers which can trigger refetches
-      // - removeQueries completely removes the query from cache
-      // When user navigates to Activity, the query re-initializes fresh from page 1
-      queryClient.removeQueries({ queryKey: ['activity-events'] });
     },
     onError: error => {
       console.error('Failed to sync activities:', error);
