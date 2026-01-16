@@ -666,7 +666,7 @@ function CardActions({
           <CircularActionButton
             icon={getAsset('images/card_actions_fund.png')}
             label="Add funds"
-            onPress={() => { }}
+            onPress={() => {}}
           />
         }
       />

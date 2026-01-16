@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -64,7 +65,9 @@ export default function Onboarding() {
   // Derive current index from scroll position
   useDerivedValue(() => {
     const index = Math.round(scrollX.value / widthSV.value);
-    setCurrentIndex(index);
+    scheduleOnRN(() => {
+      setCurrentIndex(index);
+    });
   });
 
   const handleLoginPress = useCallback(async () => {

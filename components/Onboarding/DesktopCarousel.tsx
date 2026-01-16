@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
@@ -163,7 +164,9 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
       const targetIndex = clamp(Math.round(projectedProgress), 0, maxIndex);
 
       progress.value = withSpring(targetIndex, SNAP_SPRING_CONFIG);
-      syncIndexToStore(targetIndex);
+      scheduleOnRN(() => {
+        syncIndexToStore(targetIndex);
+      });
     });
 
   // Use shared hook for gradient opacity styles
