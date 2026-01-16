@@ -13,7 +13,7 @@ import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
 
 import { useUserTransactions } from './useAnalytics';
-import { useSyncActivities } from './useSyncActivities';
+import { useSyncActivities, useSyncStore } from './useSyncActivities';
 
 // Get explorer URL for a transaction hash based on chain ID
 function getExplorerUrl(chainId: number, txHash: string): string {
@@ -91,6 +91,10 @@ export type TrackTransaction = <TransactionResult>(
 
 export function useActivity() {
   const { user } = useUser();
+  // Check sync lock SYNCHRONOUSLY to prevent query from fetching during sync
+  // This is read during render phase, before effects run
+  const isSyncingLock = useSyncStore(state => state.isSyncingLock);
+
   // Select only functions (stable references) and current user's events
   const bulkUpsertEvent = useActivityStore(state => state.bulkUpsertEvent);
   const upsertEvent = useActivityStore(state => state.upsertEvent);
@@ -146,7 +150,9 @@ export function useActivity() {
       }
     },
     initialPageParam: 1,
-    enabled: !!user?.userId,
+    // Disable query during sync to prevent bulk refetch of cached pages
+    // The UI still shows data from Zustand store while sync is in progress
+    enabled: !!user?.userId && !isSyncingLock,
     // Prevent excessive refetches - only refetch when explicitly triggered
     refetchOnMount: false, // Don't refetch when components mount (20+ components use this hook!)
     refetchOnWindowFocus: false, // Don't refetch on window focus

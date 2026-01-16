@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Dimensions, GestureResponderEvent, View } from 'react-native';
+import { GestureResponderEvent, useWindowDimensions, View } from 'react-native';
 import { Defs, LinearGradient, Stop } from 'react-native-svg';
 import { VictoryArea, VictoryAxis, VictoryChart } from 'victory-native';
 import { useShallow } from 'zustand/react/shallow';
@@ -40,7 +40,7 @@ const Chart = ({ data, formatToolTip }: AreaChartProps) => {
   const [touchX, setTouchX] = useState<number>(0);
   const lastTouchTime = useRef(0);
 
-  const screenWidth = Dimensions.get('window').width;
+  const { width: screenWidth } = useWindowDimensions();
 
   const chartData = useMemo(() => {
     if (!data || data.length < 2) return null;

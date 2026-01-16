@@ -1,7 +1,9 @@
 import * as Sentry from '@sentry/react-native';
 import { useEffect, useRef } from 'react';
 
+import { updateSafeAddress } from '@/lib/api';
 import { User } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useQueryClient } from '@tanstack/react-query';
@@ -16,6 +18,7 @@ export const usePostSignupInit = (user: User | undefined) => {
   const queryClient = useQueryClient();
   const hasInitialized = useRef(false);
   const lastUserId = useRef<string | undefined>(undefined);
+  const { safeAddressSynced, markSafeAddressSynced } = useUserStore();
 
   useEffect(() => {
     // Only run when we have a new user (different userId)
@@ -28,7 +31,32 @@ export const usePostSignupInit = (user: User | undefined) => {
       try {
         // Mark as initialized immediately to prevent duplicate runs
         hasInitialized.current = true;
-        // Check balance and update deposit status (non-blocking)
+
+        // 1. Update safe address if needed (non-blocking failure)
+        if (user.safeAddress && !safeAddressSynced[user.userId]) {
+          try {
+            await withRefreshToken(() => updateSafeAddress(user.safeAddress));
+            markSafeAddressSynced(user.userId);
+          } catch (error: any) {
+            // 409 means safe address is already registered - this is expected, not an error
+            if (error?.status === 409) {
+              markSafeAddressSynced(user.userId);
+              return;
+            }
+            Sentry.captureException(error, {
+              tags: {
+                type: 'safe_address_update_error_lazy',
+              },
+              user: {
+                id: user.userId,
+                address: user.safeAddress,
+              },
+              level: 'warning',
+            });
+          }
+        }
+
+        // 2. Check balance and update deposit status (non-blocking)
         try {
           const isDeposited = await fetchIsDeposited(queryClient, user.safeAddress);
           if (isDeposited && !user.isDeposited) {
@@ -50,7 +78,7 @@ export const usePostSignupInit = (user: User | undefined) => {
           });
         }
 
-        // Fetch points (non-blocking)
+        // 3. Fetch points (non-blocking)
         try {
           const { fetchPoints } = usePointsStore.getState();
           await fetchPoints();

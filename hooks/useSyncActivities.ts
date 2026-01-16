@@ -177,12 +177,14 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
       if (!userId) throw new Error('User not authenticated');
       return withRefreshToken(() => syncActivities(syncOptions));
     },
-    // CRITICAL: Clear cache BEFORE sync starts, not after!
-    // If we clear in onSuccess, the useInfiniteQuery sees stale cached pages
-    // and refetches ALL of them while waiting for sync to complete.
-    // By clearing in onMutate (before mutation), the query has no cache
-    // to refetch, so it starts fresh from page 1.
-    onMutate: () => {
+    // CRITICAL: Cancel and clear BEFORE sync starts!
+    // If bulk refetch is already in progress when sync triggers,
+    // we must CANCEL those requests first, then remove the cache.
+    // removeQueries alone does NOT cancel in-flight requests!
+    onMutate: async () => {
+      // Cancel any in-flight activity-events requests to prevent bulk refetch from continuing
+      await queryClient.cancelQueries({ queryKey: ['activity-events'] });
+      // Remove the cache so query starts fresh from page 1
       queryClient.removeQueries({ queryKey: ['activity-events'] });
     },
     onSuccess: () => {
