@@ -5,15 +5,16 @@ import { Address } from 'viem';
 import CountUp from '@/components/CountUp';
 import { DashboardHeaderMobile } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
-import { HomeBanners } from '@/components/Dashboard/HomeBanners';
+import LazyHomeBanners from '@/components/Dashboard/LazyHomeBanners';
 import HomeEmptyState from '@/components/Home/EmptyState';
 import PageLayout from '@/components/PageLayout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WalletInfo } from '@/components/Wallet';
 import DesktopCards from '@/components/Wallet/DesktopCards';
+import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
 import MobileCards from '@/components/Wallet/MobileCards';
-import WalletTabs from '@/components/Wallet/WalletTabs';
+import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
 import { useAPYs, useLatestTokenTransfer, useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
@@ -154,8 +155,11 @@ export default function Home() {
     return <HomeEmptyState />;
   }
 
+  // Note: We don't pass isLoading to PageLayout because we want the skeleton
+  // fallbacks from LazyWalletTabs and LazyHomeBanners to be visible immediately.
+  // This improves perceived performance - users see content structure right away.
   return (
-    <PageLayout isLoading={isBalanceLoading}>
+    <PageLayout>
       <View className="mx-auto mb-5 w-full max-w-7xl gap-8 px-0 py-0 pb-20 md:gap-12 md:px-4 md:py-12">
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
@@ -244,9 +248,9 @@ export default function Home() {
               </TouchableOpacity>
             </View>
           ) : isLoadingTokens ? (
-            <WalletInfo text="Loading tokens..." />
+            <TokenListSkeleton />
           ) : hasTokens ? (
-            <WalletTabs />
+            <LazyWalletTabs />
           ) : (
             <WalletInfo text="No tokens found" />
           )}
@@ -254,7 +258,7 @@ export default function Home() {
 
         <View className="gap-6 px-4 md:mt-10 md:px-0">
           <Text className="text-lg font-semibold text-muted-foreground">Promotions</Text>
-          <HomeBanners />
+          <LazyHomeBanners />
         </View>
       </View>
     </PageLayout>

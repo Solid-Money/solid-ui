@@ -151,6 +151,8 @@ export default function Welcome() {
     <View className="flex-1 flex-row bg-background">
       {/* Left Section - Interactive Carousel */}
       <DesktopCarousel />
+      {/* TODO: lazy-loaded for FCP improvement */}
+      {/* <LazyDesktopCarousel /> */}
 
       {/* Right Section - Form (70%) */}
       <View className="relative flex-1">

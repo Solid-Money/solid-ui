@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { StyleProp, ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -11,10 +12,14 @@ import { cn } from '@/lib/utils';
 
 const duration = 1000;
 
-function Skeleton({
-  className,
-  ...props
-}: Omit<React.ComponentPropsWithoutRef<typeof Animated.View>, 'style'>) {
+interface SkeletonProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof Animated.View>,
+  'style'
+> {
+  style?: StyleProp<ViewStyle>;
+}
+
+function Skeleton({ className, style: customStyle, ...props }: SkeletonProps) {
   const sv = useSharedValue(1);
 
   React.useEffect(() => {
@@ -24,14 +29,18 @@ function Skeleton({
     );
   }, [sv]);
 
-  const style = useAnimatedStyle(() => ({
+  const animatedStyle = useAnimatedStyle(() => ({
     opacity: sv.value,
   }));
 
+  // Check if custom backgroundColor is provided - skip default bg classes if so
+  const hasCustomBg =
+    customStyle && typeof customStyle === 'object' && 'backgroundColor' in customStyle;
+
   return (
     <Animated.View
-      style={style}
-      className={cn('rounded-md bg-secondary dark:bg-muted', className)}
+      style={[animatedStyle, customStyle]}
+      className={cn('rounded-md', !hasCustomBg && 'bg-secondary dark:bg-muted', className)}
       {...props}
     />
   );

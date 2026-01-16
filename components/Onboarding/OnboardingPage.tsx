@@ -74,6 +74,9 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
             zIndex: 0,
           }}
           contentFit="contain"
+          cachePolicy="memory-disk"
+          priority={index === 0 ? 'high' : 'normal'}
+          transition={100}
         />
       )}
 

@@ -4,7 +4,6 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -164,7 +163,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
       const targetIndex = clamp(Math.round(projectedProgress), 0, maxIndex);
 
       progress.value = withSpring(targetIndex, SNAP_SPRING_CONFIG);
-      runOnJS(syncIndexToStore)(targetIndex);
+      syncIndexToStore(targetIndex);
     });
 
   // Use shared hook for gradient opacity styles
@@ -262,6 +261,9 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
                           zIndex: 0,
                         }}
                         contentFit="contain"
+                        cachePolicy="memory-disk"
+                        priority={index === 0 ? 'high' : 'normal'}
+                        transition={100}
                       />
                     )}
 

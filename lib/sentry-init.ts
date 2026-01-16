@@ -15,14 +15,13 @@
  * - Unpredictable behavior in error tracking
  */
 import * as Sentry from '@sentry/react-native';
+import { isProduction, EXPO_PUBLIC_ENVIRONMENT } from './config';
 
 let isInitialized = false;
 let areIntegrationsAdded = false;
 
 const SENTRY_DSN =
   'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952';
-
-const isProduction = process.env.EXPO_PUBLIC_ENVIRONMENT === 'production' && !__DEV__;
 
 /**
  * Phase 1: Initialize Sentry with full configuration but minimal integrations.
@@ -34,9 +33,9 @@ const initSentry = () => {
 
   Sentry.init({
     dsn: SENTRY_DSN,
-    enabled: isProduction,
-    environment: process.env.EXPO_PUBLIC_ENVIRONMENT || 'development',
-    debug: process.env.EXPO_PUBLIC_ENVIRONMENT !== 'production',
+    enabled: isProduction && !__DEV__,
+    environment: EXPO_PUBLIC_ENVIRONMENT || 'development',
+    debug: !isProduction,
     sendDefaultPii: true,
 
     // Performance Monitoring - configured upfront, integrations added later
