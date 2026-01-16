@@ -105,7 +105,6 @@ export default function Root({ children }: PropsWithChildren) {
           crossOrigin="anonymous"
         />
 
-        {/* Ensure dark background, loading state, and prevent viewport overscroll bounce */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
