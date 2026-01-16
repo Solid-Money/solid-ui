@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Platform, Pressable, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
@@ -10,26 +10,15 @@ import { ChevronRight, Copy, Plus } from 'lucide-react-native';
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
-import Loading from '@/components/Loading';
 import PageLayout from '@/components/PageLayout';
-import RenderTokenIcon from '@/components/RenderTokenIcon';
-import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
-import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
-import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
-import getTokenIcon from '@/lib/getTokenIcon';
-import { CardHolderName, CardStatus, CardTransaction } from '@/lib/types';
-import {
-  formatCardAmountWithCurrency,
-  getColorForTransaction,
-  getInitials,
-} from '@/lib/utils/cardHelpers';
+import { CardHolderName, CardStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
 
 export default function CardDetails() {
@@ -41,14 +30,6 @@ export default function CardDetails() {
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
-
-  const {
-    data: transactionsData,
-    isLoading: isLoadingTransactions,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-  } = useCardTransactions();
 
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
@@ -137,24 +118,23 @@ export default function CardDetails() {
             </View>
           </View>
 
-          {/* Row 2: Bonus Banner + Add to Wallet (same height) */}
-          <View className="mt-4 flex-row gap-6">
+          {/* Row 2: View Card Transactions + Add to Wallet */}
+          <View className="mt-6 flex-row gap-6">
             <View className="flex-[3]">
-              <DepositBonusBanner />
+              <ViewCardTransactionsButton />
             </View>
             <View className="flex-[2]">
               <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
             </View>
           </View>
 
-          {/* Recent Transactions */}
-          <RecentTransactions
-            transactions={transactionsData?.pages.flatMap(page => page.data) ?? []}
-            isLoading={isLoadingTransactions}
-            isFetchingNextPage={isFetchingNextPage}
-            hasNextPage={hasNextPage}
-            onLoadMore={fetchNextPage}
-          />
+          {/* Deposit Bonus Banner */}
+          <View className="mt-6 flex-row gap-6">
+            <View className="flex-[3]">
+              <DepositBonusBanner />
+            </View>
+            <View className="flex-[2]" />
+          </View>
         </View>
 
         <AddToWalletModal
@@ -166,7 +146,7 @@ export default function CardDetails() {
     );
   }
 
-  // Mobile layout (unchanged)
+  // Mobile layout
   return (
     <PageLayout isLoading={isLoading}>
       <View className="mx-auto w-full max-w-lg px-4 pt-6">
@@ -193,14 +173,9 @@ export default function CardDetails() {
           />
           <DepositBonusBanner />
           <CashbackDisplay cashback={cardDetails?.cashback} />
+          <ViewCardTransactionsButton />
           <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
-          <RecentTransactions
-            transactions={transactionsData?.pages.flatMap(page => page.data) ?? []}
-            isLoading={isLoadingTransactions}
-            isFetchingNextPage={isFetchingNextPage}
-            hasNextPage={hasNextPage}
-            onLoadMore={fetchNextPage}
-          />
+          <View className="h-32"></View>
         </View>
       </View>
 
@@ -894,7 +869,7 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center justify-between rounded-2xl bg-[#1E1E1E] p-4 web:hover:bg-[#2a2a2a] md:h-full"
+      className="flex-row items-center justify-between rounded-2xl bg-[#1E1E1E] p-6 web:hover:bg-[#2a2a2a] md:h-full"
     >
       <View className="flex-1 flex-row items-center">
         <Text className="mr-2 text-base font-bold text-white">
@@ -919,177 +894,16 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
   );
 }
 
-interface RecentTransactionsProps {
-  transactions: CardTransaction[];
-  isLoading: boolean;
-  isFetchingNextPage: boolean;
-  hasNextPage?: boolean;
-  onLoadMore: () => void;
-}
-
-function RecentTransactions({
-  transactions,
-  isLoading,
-  isFetchingNextPage,
-  hasNextPage,
-  onLoadMore,
-}: RecentTransactionsProps) {
+function ViewCardTransactionsButton() {
   const router = useRouter();
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const isToday = date.toDateString() === today.toDateString();
-    const isYesterday = date.toDateString() === yesterday.toDateString();
-
-    if (isToday) return 'Today';
-    if (isYesterday) return 'Yesterday';
-
-    return date.toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  // Group transactions by date
-  const groupedTransactions = transactions.reduce(
-    (groups, transaction) => {
-      const dateKey = formatDate(transaction.posted_at);
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(transaction);
-      return groups;
-    },
-    {} as Record<string, CardTransaction[]>,
-  );
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
-
-  const renderTransaction = (item: CardTransaction, isLast: boolean) => {
-    const isPurchase = item.category === 'purchase';
-    const merchantName = item.merchant_name || item.description;
-    const color = getColorForTransaction(merchantName);
-
-    const transactionUrl = item.crypto_transaction_details?.tx_hash
-      ? `https://etherscan.io/tx/${item.crypto_transaction_details.tx_hash}`
-      : undefined;
-
-    return (
-      <Pressable
-        key={item.id}
-        onPress={() =>
-          router.push({
-            pathname: '/activity/[clientTxId]',
-            params: { clientTxId: `card-${item.id}`, from: 'card' },
-          })
-        }
-        className={cn(
-          'flex-row items-center justify-between p-4 md:px-6',
-          'border-b border-border/40',
-          {
-            'border-b-0': isLast,
-          },
-        )}
-      >
-        <View className="mr-2 flex-1 flex-row items-center gap-2 md:gap-4">
-          {isPurchase ? (
-            <View
-              className="items-center justify-center overflow-hidden rounded-full"
-              style={{ width: 43, height: 43, backgroundColor: color.bg }}
-            >
-              <Text className="text-lg font-semibold" style={{ color: color.text }}>
-                {getInitials(merchantName)}
-              </Text>
-            </View>
-          ) : (
-            <RenderTokenIcon
-              tokenIcon={getTokenIcon({
-                tokenSymbol: item.currency?.toUpperCase(),
-                size: 43,
-              })}
-              size={43}
-            />
-          )}
-          <View className="flex-1">
-            <Text className="text-lg font-medium" numberOfLines={1}>
-              {merchantName}
-            </Text>
-            <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-              {formatDate(item.posted_at)}
-              {', '}
-              {formatTime(item.posted_at)}
-            </Text>
-          </View>
-        </View>
-        <View className="flex-shrink-0 flex-row items-center gap-2 md:gap-10">
-          <Text className={`text-right font-bold text-white`}>
-            {formatCardAmountWithCurrency(item.amount, item.currency)}
-          </Text>
-          {Platform.OS === 'web' ? (
-            <TransactionDropdown url={transactionUrl} />
-          ) : (
-            <TransactionDrawer url={transactionUrl} />
-          )}
-        </View>
-      </Pressable>
-    );
-  };
-
-  if (isLoading) {
-    return (
-      <View className="mb-28">
-        <Text className="mb-4 mt-4 text-lg font-semibold text-[#A1A1A1]">Recent transactions</Text>
-        <View className="py-8">
-          <Loading />
-        </View>
-      </View>
-    );
-  }
-
-  if (transactions.length === 0) {
-    return (
-      <View className="mb-28">
-        <Text className="mb-4 mt-4 text-lg font-semibold text-[#A1A1A1]">Recent transactions</Text>
-        <View className="rounded-2xl bg-[#1C1C1C] p-8">
-          <Text className="text-center text-[#ACACAC]">No transactions yet</Text>
-        </View>
-      </View>
-    );
-  }
-
   return (
-    <View className="mb-28 mt-24">
-      <Text className="mb-4 text-lg font-semibold text-[#A1A1A1]">Recent transactions</Text>
-      {Object.entries(groupedTransactions).map(([date, txs], groupIndex) => (
-        <View key={groupIndex} className="mb-4 mt-5">
-          <Text className="mb-2 text-base font-semibold text-white/60">{date}</Text>
-          <View className="overflow-hidden rounded-2xl bg-[#1C1C1C]">
-            {txs.map((tx, index) => renderTransaction(tx, index === txs.length - 1))}
-          </View>
-        </View>
-      ))}
-      {isFetchingNextPage && (
-        <View className="py-4">
-          <Loading />
-        </View>
-      )}
-      {hasNextPage && !isFetchingNextPage && (
-        <Pressable onPress={onLoadMore} className="items-center rounded-2xl bg-[#1E1E1E] p-4">
-          <Text className="font-bold text-white">Load more</Text>
-        </Pressable>
-      )}
-    </View>
+    <Pressable
+      onPress={() => router.push('/activity?tab=card')}
+      className="mb-4 flex-row items-center justify-between rounded-2xl bg-[#1E1E1E] p-6 web:hover:bg-[#2a2a2a] md:mb-0 md:h-full"
+    >
+      <Text className="text-base font-bold text-white">View card transactions</Text>
+      <ChevronRight color="white" size={24} />
+    </Pressable>
   );
 }
