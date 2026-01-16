@@ -92,7 +92,7 @@ export default function ActivateMobile() {
     return (
       <PageLayout desktopOnly contentClassName="pb-10">
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#94F27F" />
+          <ActivityIndicator size="large" color="#cccccc" />
           <Text className="mt-4 text-white/70">Checking availability...</Text>
         </View>
       </PageLayout>

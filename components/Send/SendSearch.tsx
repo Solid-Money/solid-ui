@@ -47,17 +47,28 @@ const SendSearch: React.FC = () => {
   });
 
   const sendActivities = useMemo(() => {
-    return activities
-      .filter(
-        activity =>
-          activity.type === TransactionType.SEND &&
-          activity.toAddress &&
-          activity.status === TransactionStatus.SUCCESS,
-      )
-      .map(activity => ({
-        ...activity,
-        walletAddress: activity.toAddress!,
-      }));
+    const filtered = activities.filter(
+      activity =>
+        activity.type === TransactionType.SEND &&
+        activity.toAddress &&
+        activity.status === TransactionStatus.SUCCESS,
+    );
+
+    // Deduplicate by address - keep only the most recent transaction per address
+    const addressMap = new Map<string, (typeof filtered)[0]>();
+    for (const activity of filtered) {
+      const addressKey = activity.toAddress!.toLowerCase();
+      const existing = addressMap.get(addressKey);
+      // Keep the transaction with the more recent timestamp
+      if (!existing || parseInt(activity.timestamp) > parseInt(existing.timestamp)) {
+        addressMap.set(addressKey, activity);
+      }
+    }
+
+    return Array.from(addressMap.values()).map(activity => ({
+      ...activity,
+      walletAddress: activity.toAddress!,
+    }));
   }, [activities]);
 
   const filteredAddressBook = useMemo(() => {

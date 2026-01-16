@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, useWindowDimensions, View } from 'react-native';
 import Animated, {
-  runOnJS,
   useAnimatedScrollHandler,
   useDerivedValue,
   useSharedValue,
@@ -65,7 +64,7 @@ export default function Onboarding() {
   // Derive current index from scroll position
   useDerivedValue(() => {
     const index = Math.round(scrollX.value / widthSV.value);
-    runOnJS(setCurrentIndex)(index);
+    setCurrentIndex(index);
   });
 
   const handleLoginPress = useCallback(async () => {
@@ -190,6 +189,8 @@ export default function Onboarding() {
   return (
     <View className="flex-1 flex-row bg-background">
       {/* Left Section - Interactive Carousel */}
+      {/* TODO: lazy-loaded for FCP improvement */}
+      {/* <LazyDesktopCarousel onHelpCenterPress={handleHelpCenter} /> */}
       <DesktopCarousel onHelpCenterPress={handleHelpCenter} />
 
       {/* Right Section - Auth Options (70%) */}

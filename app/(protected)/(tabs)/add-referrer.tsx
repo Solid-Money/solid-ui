@@ -79,7 +79,7 @@ export default function AddReferrer() {
           <View className=" w-full">
             {checkingReferrer ? (
               <View className="flex items-center justify-center py-8">
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color="#cccccc" />
               </View>
             ) : hasReferrer ? (
               <View className="rounded-xl bg-[#1A1A1A] p-4">

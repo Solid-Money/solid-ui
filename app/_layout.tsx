@@ -32,16 +32,16 @@ import { WagmiProvider } from 'wagmi';
 import DeferredModalProviders from '@/components/DeferredModalProviders';
 import AppErrorBoundary from '@/components/ErrorBoundary';
 import Intercom from '@/components/Intercom';
-// Lazy-loaded to defer thirdweb bundle until actually needed
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
+import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
 import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { Button } from '@/components/ui/button';
-import WhatsNewModal from '@/components/WhatsNewModal';
 import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
+import { isProduction } from '@/lib/config';
 import { initSentryDeferred, wrapWithSentry } from '@/lib/sentry-init';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
@@ -79,12 +79,13 @@ SplashScreen.setOptions({
 // WhatsNew wrapper component - must be inside QueryClientProvider
 // since useWhatsNew uses React Query hooks.
 // Note: Only rendered when hasSelectedUser is true (see conditional render below)
+// Uses LazyWhatsNewModal to defer react-native-reanimated-carousel bundle
 function WhatsNewWrapper() {
   const { whatsNew, isVisible, closeWhatsNew } = useWhatsNew();
 
   if (!whatsNew) return null;
 
-  return <WhatsNewModal whatsNew={whatsNew} isOpen={isVisible} onClose={closeWhatsNew} />;
+  return <LazyWhatsNewModal whatsNew={whatsNew} isOpen={isVisible} onClose={closeWhatsNew} />;
 }
 
 const queryClient = new QueryClient({
@@ -133,7 +134,7 @@ export default wrapWithSentry(function RootLayout() {
 
   useEffect(() => {
     // Only run on Web and only in production
-    if (Platform.OS === 'web' && process.env.EXPO_PUBLIC_ENVIRONMENT === 'production') {
+    if (Platform.OS === 'web' && isProduction) {
       injectSpeedInsights();
     }
   }, []);

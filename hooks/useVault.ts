@@ -64,18 +64,12 @@ export const useVaultBalance = (safeAddress: Address) => {
   return useQuery({
     queryKey: [VAULT, 'balance', safeAddress],
     queryFn: async () => {
-      const ethereumBalance = await fetchVaultBalance(
-        queryClient,
-        safeAddress,
-        mainnet.id,
-        ADDRESSES.ethereum.vault,
-      );
-      const fuseBalance = await fetchVaultBalance(
-        queryClient,
-        safeAddress,
-        fuse.id,
-        ADDRESSES.fuse.vault,
-      );
+      // PERFORMANCE: Fetch both chains in parallel instead of sequentially
+      // This reduces latency from ~2x RPC call time to ~1x RPC call time
+      const [ethereumBalance, fuseBalance] = await Promise.all([
+        fetchVaultBalance(queryClient, safeAddress, mainnet.id, ADDRESSES.ethereum.vault),
+        fetchVaultBalance(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.vault),
+      ]);
       return ethereumBalance + fuseBalance;
     },
     enabled: !!safeAddress,

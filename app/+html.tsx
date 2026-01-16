@@ -62,7 +62,50 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="dns-prefetch" href="https://li.quest" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
-        {/* Ensure dark background and prevent viewport overscroll bounce on Safari */}
+        {/* Preload critical onboarding images - starts loading immediately, parallel to JS */}
+        <link
+          rel="preload"
+          href="/assets/images/purple_onboarding_bg.png"
+          as="image"
+          type="image/png"
+        />
+        <link
+          rel="preload"
+          href="/assets/images/green_onboarding_bg.png"
+          as="image"
+          type="image/png"
+        />
+        <link
+          rel="preload"
+          href="/assets/images/yellow_onboarding_bg.png"
+          as="image"
+          type="image/png"
+        />
+
+        {/* Preload Lottie animations used in onboarding */}
+        <link
+          rel="preload"
+          href="/assets/animations/rocket.json"
+          as="fetch"
+          type="application/json"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/assets/animations/card.json"
+          as="fetch"
+          type="application/json"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/assets/animations/vault.json"
+          as="fetch"
+          type="application/json"
+          crossOrigin="anonymous"
+        />
+
+        {/* Ensure dark background, loading state, and prevent viewport overscroll bounce */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -95,7 +138,6 @@ export default function Root({ children }: PropsWithChildren) {
         />
       </head>
       <body>
-        {/* Loading spinner - immediately visible, hidden when React mounts */}
         {children}
 
         {/* Google Tag Manager */}
