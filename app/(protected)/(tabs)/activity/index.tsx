@@ -2,7 +2,7 @@ import { Platform, View } from 'react-native';
 
 import { ActivityTabs, ActivityTransactions } from '@/components/Activity';
 import ActivityRefreshButton from '@/components/Activity/ActivityRefreshButton';
-import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import LazyDepositOptionModal from '@/components/DepositOption/LazyDepositOptionModal';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';
@@ -42,7 +42,7 @@ export default function Activity() {
         {userHasCard ? <ActivityTabs /> : <ActivityTransactions tab={ActivityTab.WALLET} />}
       </View>
       {/* Hidden modal that responds to store state changes from activity clicks */}
-      <DepositOptionModal trigger={null} />
+      <LazyDepositOptionModal trigger={null} />
     </PageLayout>
   );
 }

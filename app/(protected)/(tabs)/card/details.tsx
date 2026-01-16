@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Pressable, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Pressable, StyleSheet, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
@@ -666,7 +666,7 @@ function CardActions({
           <CircularActionButton
             icon={getAsset('images/card_actions_fund.png')}
             label="Add funds"
-            onPress={() => {}}
+            onPress={() => { }}
           />
         }
       />

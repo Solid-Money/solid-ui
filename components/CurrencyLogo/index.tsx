@@ -54,6 +54,8 @@ const CurrencyLogo = ({ currency, size, style = {} }: CurrencyLogoProps) => {
         style={baseImageStyle}
         contentFit="contain"
         alt="FUSE token icon"
+        cachePolicy="memory-disk"
+        priority="high"
       />
     );
   }
@@ -71,6 +73,8 @@ const CurrencyLogo = ({ currency, size, style = {} }: CurrencyLogoProps) => {
         style={baseImageStyle}
         contentFit="contain"
         alt={`${currency.symbol || 'Token'} icon`}
+        cachePolicy="memory-disk"
+        transition={150}
       />
     );
   }

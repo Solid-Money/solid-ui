@@ -27,6 +27,7 @@ const WalletCardIcons = ({ tokens, size = 28 }: WalletCardIconsProps) => {
               size,
             })}
             size={size}
+            priority="high"
           />
         </View>
       ))}

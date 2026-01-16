@@ -1,4 +1,4 @@
-const IS_PROD = process.env.EXPO_PUBLIC_ENVIRONMENT === 'production';
+const IS_PROD = ['production', 'qa'].includes(process.env.EXPO_PUBLIC_ENVIRONMENT);
 
 export default {
   expo: {

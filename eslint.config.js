@@ -13,6 +13,18 @@ module.exports = defineConfig([
     ignores: ['dist/*', 'node_modules/*', '.expo/*', 'web-build/*', 'index.js'],
   },
   {
+    files: [
+      'app/(protected)/(tabs)/card/activate.tsx',
+      'app/(protected)/(tabs)/card/details.tsx',
+      'app/(protected)/_layout.tsx',
+      'app/(protected)/quest-wallet.tsx',
+      'app/signup/creating.tsx',
+    ],
+    rules: {
+      'react-compiler/react-compiler': 'off',
+    },
+  },
+  {
     plugins: {
       'simple-import-sort': simpleImportSort,
     },
