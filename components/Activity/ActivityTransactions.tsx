@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Platform, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
+import { useShallow } from 'zustand/react/shallow';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
@@ -41,10 +42,20 @@ export default function ActivityTransactions({
   symbol,
   showTimestamp = true,
 }: ActivityTransactionsProps) {
-  const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore();
+  const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setBankTransferData: state.setBankTransferData,
+      setDirectDepositSession: state.setDirectDepositSession,
+    })),
+  );
   const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
+  // Ref-based guard to prevent rapid fetchNextPage calls
+  // React state (isFetchingNextPage) updates async, so onEndReached can fire multiple times
+  // before state reflects the pending fetch. This ref updates synchronously.
+  const isFetchingRef = useRef(false);
   const [completedBridgeTxHashes, setCompletedBridgeTxHashes] = useState<Set<string>>(new Set());
 
   const { data: cardData } = useCardTransactions();
@@ -381,8 +392,12 @@ export default function ActivityTransactions({
           return `tx-${baseKey}-${index}`;
         }}
         onEndReached={() => {
-          if (hasNextPage && !isFetchingNextPage) {
-            fetchNextPage();
+          // Use ref for synchronous guard - state updates are async and too slow
+          if (hasNextPage && !isFetchingNextPage && !isFetchingRef.current) {
+            isFetchingRef.current = true;
+            fetchNextPage().finally(() => {
+              isFetchingRef.current = false;
+            });
           }
         }}
         onEndReachedThreshold={0.5}

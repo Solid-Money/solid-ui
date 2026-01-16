@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -22,7 +23,15 @@ import { Stake } from '.';
  */
 const StakeModalProvider = () => {
   const router = useRouter();
-  const { currentModal, previousModal, setModal, transaction } = useStakeStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal, previousModal, setModal, transaction } = useStakeStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+      setModal: state.setModal,
+      transaction: state.transaction,
+    })),
+  );
 
   const isTransactionStatus = currentModal.name === STAKE_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isClose = currentModal.name === STAKE_MODAL.CLOSE.name;

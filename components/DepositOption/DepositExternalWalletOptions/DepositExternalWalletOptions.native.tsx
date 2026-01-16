@@ -10,7 +10,7 @@ import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositExternalWalletOptions = () => {
-  const { setModal } = useDepositStore();
+  const setModal = useDepositStore(state => state.setModal);
 
   const handleDepositDirectly = useCallback(async () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {

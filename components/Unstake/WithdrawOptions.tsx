@@ -8,7 +8,7 @@ import { UNSTAKE_MODAL } from '@/constants/modals';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 const WithdrawOptions = () => {
-  const { setModal } = useUnstakeStore();
+  const setModal = useUnstakeStore(state => state.setModal);
 
   const handleFastWithdraw = () => {
     setModal(UNSTAKE_MODAL.OPEN_NETWORKS);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import { NotificationEmailModalDialog } from '@/components/NotificationEmailModal/NotificationEmailModalDialog';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,16 @@ const ReserveCardButton = () => {
     getCachedIp,
     setCachedIp,
     setCountryDetectionFailed,
-  } = useCountryStore();
+  } = useCountryStore(
+    useShallow(state => ({
+      setCountryInfo: state.setCountryInfo,
+      getIpDetectedCountry: state.getIpDetectedCountry,
+      setIpDetectedCountry: state.setIpDetectedCountry,
+      getCachedIp: state.getCachedIp,
+      setCachedIp: state.setCachedIp,
+      setCountryDetectionFailed: state.setCountryDetectionFailed,
+    })),
+  );
 
   const handleAddToWaitlist = async (countryCode: string) => {
     if (user?.email) {

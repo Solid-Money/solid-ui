@@ -7,6 +7,7 @@ import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 
 // Import helpers
@@ -34,8 +35,24 @@ export function useCardSteps(
   cardStatusResponse?: CardStatusResponse | null,
 ) {
   const router = useRouter();
-  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore();
-  const countryStore = useCountryStore();
+  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore(
+    useShallow(state => ({
+      kycLinkId: state.kycLinkId,
+      processingUntil: state.processingUntil,
+      setProcessingUntil: state.setProcessingUntil,
+      clearProcessingUntil: state.clearProcessingUntil,
+    })),
+  );
+  const countryStore = useCountryStore(
+    useShallow(state => ({
+      countryInfo: state.countryInfo,
+      getCachedIp: state.getCachedIp,
+      setCachedIp: state.setCachedIp,
+      getIpDetectedCountry: state.getIpDetectedCountry,
+      setIpDetectedCountry: state.setIpDetectedCountry,
+      countryDetectionFailed: state.countryDetectionFailed,
+    })),
+  );
 
   // Get customer data with cards endorsement
   const { data: customer } = useCustomer();

@@ -225,7 +225,7 @@ function DesktopHeader({
             ) : (
               <Image
                 source={getAsset('images/reveal_card_details_icon.png')}
-                style={{ width: 15, height: 15 }}
+                style={styles.smallIcon}
                 contentFit="contain"
               />
             )}
@@ -246,7 +246,7 @@ function DesktopHeader({
             ) : (
               <Image
                 source={getAsset('images/freeze_button_icon.png')}
-                style={{ width: 18, height: 18 }}
+                style={styles.mediumIcon}
                 contentFit="contain"
               />
             )}
@@ -257,10 +257,7 @@ function DesktopHeader({
         </Button>
         <DepositToCardModal
           trigger={
-            <Button
-              className="h-12 rounded-xl border-0 px-6"
-              style={{ backgroundColor: '#94F27F' }}
-            >
+            <Button className="h-12 rounded-xl border-0 px-6" style={styles.depositButton}>
               <View className="flex-row items-center gap-2">
                 <Plus size={22} color="black" />
                 <Text className="text-base font-bold text-black">Deposit</Text>
@@ -296,15 +293,7 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.6, y: 1 }}
         pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: -1,
-          opacity: 0.25,
-        }}
+        style={styles.gradientOverlayWithOpacity}
       />
       <View className="flex-1 justify-between">
         {/* Spending Balance Section */}
@@ -324,10 +313,10 @@ function SpendingBalanceCard({ amount, cashback }: SpendingBalanceCardProps) {
           <View className="flex-row  items-center gap-1 px-4">
             <Image
               source={getAsset('images/diamond.png')}
-              style={{ width: 82, aspectRatio: 72 / 66 }}
+              style={styles.diamondIconLarge}
               contentFit="contain"
             />
-            <Text className="text-lg font-light text-white" style={{ lineHeight: 20 }}>
+            <Text className="text-lg font-light text-white" style={styles.lineHeight20}>
               you are receiving{'\n'}
               <Text className="font-bold text-[#94F27F]">
                 {Math.round(cashbackPercentage * 100)}%
@@ -407,45 +396,33 @@ function CardImageSection({
         paddingHorizontal: isCardFrozen || !isScreenMedium ? 0 : 2,
       }}
     >
-      <View style={{ position: 'relative', width: '100%' }}>
+      <View style={styles.cardContainer}>
         {/* Front of card */}
         <Animated.View
-          style={{
-            backfaceVisibility: 'hidden',
-            transform: [{ rotateY: frontRotation }],
-            opacity: frontOpacity,
-          }}
+          style={[
+            styles.cardFront,
+            { transform: [{ rotateY: frontRotation }], opacity: frontOpacity },
+          ]}
         >
           <Image
             source={desktopImagePath}
             alt="Solid Card"
-            style={{
-              width: '100%',
-              aspectRatio: desktopImageAspectRatio,
-            }}
+            style={[styles.cardImage, { aspectRatio: desktopImageAspectRatio }]}
             contentFit="contain"
           />
         </Animated.View>
 
         {/* Back of card with details overlay */}
         <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            backfaceVisibility: 'hidden',
-            transform: [{ rotateY: backRotation }],
-            opacity: backOpacity,
-          }}
+          style={[
+            styles.cardBack,
+            { transform: [{ rotateY: backRotation }], opacity: backOpacity },
+          ]}
         >
           <Image
             source={desktopImagePath}
             alt="Solid Card"
-            style={{
-              width: '100%',
-              aspectRatio: desktopImageAspectRatio,
-            }}
+            style={[styles.cardImage, { aspectRatio: desktopImageAspectRatio }]}
             contentFit="contain"
           />
           {shouldRevealDetails && (
@@ -566,12 +543,12 @@ function CardDetailsOverlay({
   if (!visible) {
     return (
       <View
-        style={{ opacity: 0, pointerEvents: 'none' }}
+        style={styles.cardDetailsHidden}
         className="absolute inset-0 mt-24 justify-center rounded-2xl p-6"
       >
         <View className="mb-5">
           <View className="flex-row items-center gap-2">
-            <Text className="text-3xl font-medium" style={{ color: '#2E6A25' }}>
+            <Text className="text-3xl font-medium" style={styles.cardDetailsText}>
               {formatCardNumber(safeCardDetails.card_number)}
             </Text>
             <Pressable
@@ -588,26 +565,26 @@ function CardDetailsOverlay({
         <View className="flex-row">
           <View className="mr-6 flex-1">
             <View className="mt-4 flex-row items-end">
-              <Text className="mb-1 text-[9px] font-extrabold" style={{ color: '#2E6A25' }}>
+              <Text className="mb-1 text-[9px] font-extrabold" style={styles.cardDetailsText}>
                 {'GOOD\nTHRU'}
               </Text>
-              <Text className="ml-2 text-lg font-semibold" style={{ color: '#2E6A25' }}>
+              <Text className="ml-2 text-lg font-semibold" style={styles.cardDetailsText}>
                 {formatExpiryDate(cardDetails.expiry_date)}
               </Text>
             </View>
             <Text
               className="mt-6 text-sm font-semibold md:text-lg"
-              style={{ color: '#2E6A25' }}
+              style={styles.cardDetailsText}
               numberOfLines={1}
             >
               {displayName}
             </Text>
           </View>
           <View className="mt-4 flex-1">
-            <Text className="text-xs font-semibold" style={{ color: '#2E6A25' }}>
+            <Text className="text-xs font-semibold" style={styles.cardDetailsText}>
               CVV
             </Text>
-            <Text className="text-lg font-semibold" style={{ color: '#2E6A25' }}>
+            <Text className="text-lg font-semibold" style={styles.cardDetailsText}>
               {cardDetails.card_security_code}
             </Text>
           </View>
@@ -620,7 +597,7 @@ function CardDetailsOverlay({
     <View className="absolute inset-0 mt-12 justify-center rounded-2xl p-6 md:mt-24">
       <View className="mb-5">
         <View className="flex-row items-center gap-2">
-          <Text className="text-lg font-medium md:text-3xl" style={{ color: '#2E6A25' }}>
+          <Text className="text-lg font-medium md:text-3xl" style={styles.cardDetailsText}>
             {formatCardNumber(cardDetails.card_number)}
           </Text>
           <Pressable
@@ -637,26 +614,26 @@ function CardDetailsOverlay({
       <View className="flex-row">
         <View className="mr-6 flex-1">
           <View className="flex-row items-end md:mt-4">
-            <Text className="mb-1 text-[9px] font-extrabold" style={{ color: '#2E6A25' }}>
+            <Text className="mb-1 text-[9px] font-extrabold" style={styles.cardDetailsText}>
               {'GOOD\nTHRU'}
             </Text>
-            <Text className="ml-2 text-lg font-semibold" style={{ color: '#2E6A25' }}>
+            <Text className="ml-2 text-lg font-semibold" style={styles.cardDetailsText}>
               {formatExpiryDate(cardDetails.expiry_date)}
             </Text>
           </View>
           <Text
             className="mt-6 text-sm font-semibold md:text-lg"
-            style={{ color: '#2E6A25' }}
+            style={styles.cardDetailsText}
             numberOfLines={1}
           >
             {displayName}
           </Text>
         </View>
         <View className="flex-1 md:mt-4">
-          <Text className="text-xs font-semibold" style={{ color: '#2E6A25' }}>
+          <Text className="text-xs font-semibold" style={styles.cardDetailsText}>
             CVV
           </Text>
-          <Text className="font-semibold md:text-lg" style={{ color: '#2E6A25' }}>
+          <Text className="font-semibold md:text-lg" style={styles.cardDetailsText}>
             {cardDetails.card_security_code}
           </Text>
         </View>
@@ -720,14 +697,7 @@ function DepositBonusBanner() {
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
           pointerEvents="none"
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            zIndex: -1,
-          }}
+          style={styles.gradientOverlay}
         />
         <View className="flex-row items-center gap-4 p-4 md:p-5">
           <Link
@@ -770,14 +740,7 @@ function DepositBonusBanner() {
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: -1,
-        }}
+        style={styles.gradientOverlay}
       />
       <View className="flex-col items-center gap-3 p-4">
         <Link
@@ -819,15 +782,7 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.6, y: 1 }}
         pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: -1,
-          opacity: 0.25,
-        }}
+        style={styles.gradientOverlayWithOpacity}
       />
       {/* Top Section */}
       <View className="mb-2 flex-row items-start justify-between px-4">
@@ -837,17 +792,17 @@ function CashbackDisplay({ cashback }: CashbackDisplayProps) {
         </View>
         <Image
           source={getAsset('images/diamond.png')}
-          style={{ width: 80, aspectRatio: 56 / 51 }}
+          style={styles.diamondIconSmall}
           contentFit="contain"
         />
       </View>
 
       {/* Divider */}
-      <View style={{ height: 1, backgroundColor: '#3D5A3B', width: '100%', marginBottom: 16 }} />
+      <View style={styles.cashbackDivider} />
 
       {/* Bottom Text */}
       <View>
-        <Text className="pb-2 pl-4 text-lg font-light text-white" style={{ lineHeight: 20 }}>
+        <Text className="pb-2 pl-4 text-lg font-light text-white" style={styles.lineHeight20}>
           you are receiving{' '}
           <Text className="font-bold text-[#94F27F]">{Math.round(cashbackPercentage * 100)}%</Text>{' '}
           cashback on
@@ -878,13 +833,13 @@ function AddToWalletButton({ onPress }: AddToWalletButtonProps) {
         <View className="flex-row items-center">
           <Image
             source={getAsset('images/apple_pay.png')}
-            style={{ width: 49, height: 22 }}
+            style={styles.applePayIcon}
             contentFit="contain"
           />
           <View className="mx-2 h-6 w-px bg-white/30" />
           <Image
             source={getAsset('images/google_pay.png')}
-            style={{ width: 47, height: 19 }}
+            style={styles.googlePayIcon}
             contentFit="contain"
           />
         </View>
@@ -907,3 +862,64 @@ function ViewCardTransactionsButton() {
     </Pressable>
   );
 }
+
+// Extracted styles for better performance - avoids creating new objects on each render
+const styles = StyleSheet.create({
+  // Icon sizes
+  smallIcon: { width: 15, height: 15 },
+  mediumIcon: { width: 18, height: 18 },
+  diamondIconLarge: { width: 82, aspectRatio: 72 / 66 },
+  diamondIconSmall: { width: 80, aspectRatio: 56 / 51 },
+  applePayIcon: { width: 49, height: 22 },
+  googlePayIcon: { width: 47, height: 19 },
+  transactionAvatar: { width: 43, height: 43 },
+
+  // Button backgrounds
+  depositButton: { backgroundColor: '#94F27F' },
+
+  // Gradient overlays (used with LinearGradient)
+  gradientOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: -1,
+  },
+  gradientOverlayWithOpacity: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: -1,
+    opacity: 0.25,
+  },
+
+  // Card flip animation
+  cardContainer: { position: 'relative', width: '100%' },
+  cardFront: { backfaceVisibility: 'hidden' },
+  cardBack: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backfaceVisibility: 'hidden',
+  },
+  cardImage: { width: '100%' },
+
+  // Card details overlay
+  cardDetailsHidden: { opacity: 0, pointerEvents: 'none' },
+  cardDetailsText: { color: '#2E6A25' },
+
+  // Cashback display
+  cashbackDivider: {
+    height: 1,
+    backgroundColor: '#3D5A3B',
+    width: '100%',
+    marginBottom: 16,
+  },
+
+  // Text styles
+  lineHeight20: { lineHeight: 20 },
+});

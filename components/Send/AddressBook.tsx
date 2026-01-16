@@ -8,7 +8,7 @@ import { useAddressBook } from '@/hooks/useAddressBook';
 import { useSendStore } from '@/store/useSendStore';
 
 const AddressBook: React.FC = () => {
-  const { address } = useSendStore();
+  const address = useSendStore(state => state.address);
 
   const { control, handleSubmit, errors, isValid, handleAddContact, addToAddressBookMutation } =
     useAddressBook({

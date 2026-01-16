@@ -40,8 +40,8 @@ const initSentry = () => {
     sendDefaultPii: true,
 
     // Performance Monitoring - configured upfront, integrations added later
-    tracesSampleRate: 0.2,
-    profilesSampleRate: 0.2,
+    tracesSampleRate: 0.5,
+    profilesSampleRate: 0.5,
 
     // Release Health
     enableAutoSessionTracking: true,
@@ -76,7 +76,7 @@ const initSentry = () => {
     },
 
     // Configure Session Replay - rates set upfront, integration added later
-    replaysSessionSampleRate: 0.1,
+    replaysSessionSampleRate: 0.5,
     replaysOnErrorSampleRate: 1,
 
     // Start with no heavy integrations - they'll be added via addIntegration()
@@ -87,7 +87,7 @@ const initSentry = () => {
     attachViewHierarchy: true,
 
     // Network tracking
-    tracePropagationTargets: [/^https:\/\/app\.solid\.xyz/],
+    // tracePropagationTargets: [/^https:\/\/app\.solid\.xyz/],
   });
 
   isInitialized = true;

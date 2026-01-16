@@ -8,7 +8,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 import HomeQR from '@/assets/images/home-qr';
 
 const useDepositExternalWalletOptionsNative = () => {
-  const { setModal } = useDepositStore();
+  const setModal = useDepositStore(state => state.setModal);
 
   const handleDepositDirectly = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {

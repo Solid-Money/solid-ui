@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import SlotTrigger from '@/components/SlotTrigger';
 import { buttonVariants } from '@/components/ui/button';
@@ -32,7 +33,12 @@ const DepositTrigger = ({
   source = 'unknown',
 }: DepositTriggerProps) => {
   const { user } = useUser();
-  const { setModal, srcChainId } = useDepositStore();
+  const { setModal, srcChainId } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      srcChainId: state.srcChainId,
+    })),
+  );
 
   const handlePress = () => {
     // Track deposit trigger click with source context

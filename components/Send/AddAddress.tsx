@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import Plus from '@/assets/images/Plus';
 import { Text } from '@/components/ui/text';
@@ -12,7 +13,12 @@ interface AddAddressProps {
 }
 
 const AddAddress: React.FC<AddAddressProps> = ({ address }) => {
-  const { setAddress, setModal } = useSendStore();
+  const { setAddress, setModal } = useSendStore(
+    useShallow(state => ({
+      setAddress: state.setAddress,
+      setModal: state.setModal,
+    })),
+  );
 
   const handlePress = () => {
     setAddress(address);

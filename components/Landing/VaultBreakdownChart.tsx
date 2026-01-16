@@ -32,14 +32,15 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
   const availableAngle = 360 - totalPadding;
 
   // Calculate segments
-  let currentAngle = 0;
   const segments = data.map((item, index) => {
     const segmentAngle = (item.allocation / 100) * availableAngle;
     const segmentLength = (segmentAngle / 360) * circumference;
-    const startAngle = currentAngle + index * paddingAngle;
+    // Sum of all previous segment angles
+    const previousAngles = data
+      .slice(0, index)
+      .reduce((acc, prev) => acc + (prev.allocation / 100) * availableAngle, 0);
+    const startAngle = previousAngles + index * paddingAngle;
     const offset = (startAngle / 360) * circumference;
-
-    currentAngle += segmentAngle;
 
     return {
       color: colors[index % colors.length],

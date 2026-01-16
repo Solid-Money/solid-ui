@@ -13,7 +13,7 @@ import { DepositTrigger } from '.';
  * This component only renders the trigger button to open the modal.
  */
 const DepositModal = () => {
-  const { setModal } = useDepositFromSafeAccountStore();
+  const setModal = useDepositFromSafeAccountStore(state => state.setModal);
 
   const handlePress = () => {
     setModal(DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.OPEN_FORM);

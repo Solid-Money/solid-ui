@@ -9,6 +9,7 @@ import { ChevronDown, Wallet } from 'lucide-react-native';
 import { formatUnits, zeroAddress } from 'viem';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
@@ -28,7 +29,14 @@ import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 const RegularWithdrawForm = () => {
   const { user } = useUser();
-  const { selectedToken, setModal, setTransaction } = useUnstakeStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { selectedToken, setModal, setTransaction } = useUnstakeStore(
+    useShallow(state => ({
+      selectedToken: state.selectedToken,
+      setModal: state.setModal,
+      setTransaction: state.setTransaction,
+    })),
+  );
 
   // Use vault balance for selected token, fallback to Fuse vault balance
   const { data: formattedBalance, isLoading: isLoadingFuseBalance } = useFuseVaultBalance(

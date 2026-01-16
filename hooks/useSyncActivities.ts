@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 
 import useUser from '@/hooks/useUser';
 import { syncActivities } from '@/lib/api';
@@ -154,7 +155,18 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
     acquireSyncLock,
     releaseSyncLock,
     isSyncingLock,
-  } = useSyncStore();
+  } = useSyncStore(
+    useShallow(state => ({
+      setLastSync: state.setLastSync,
+      getLastSync: state.getLastSync,
+      isWithinCooldown: state.isWithinCooldown,
+      isStale: state.isStale,
+      canSync: state.canSync,
+      acquireSyncLock: state.acquireSyncLock,
+      releaseSyncLock: state.releaseSyncLock,
+      isSyncingLock: state.isSyncingLock,
+    })),
+  );
 
   const userId = user?.userId;
 
@@ -165,12 +177,20 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
       if (!userId) throw new Error('User not authenticated');
       return withRefreshToken(() => syncActivities(syncOptions));
     },
+    // CRITICAL: Cancel and clear BEFORE sync starts!
+    // If bulk refetch is already in progress when sync triggers,
+    // we must CANCEL those requests first, then remove the cache.
+    // removeQueries alone does NOT cancel in-flight requests!
+    onMutate: async () => {
+      // Cancel any in-flight activity-events requests to prevent bulk refetch from continuing
+      await queryClient.cancelQueries({ queryKey: ['activity-events'] });
+      // Remove the cache so query starts fresh from page 1
+      queryClient.removeQueries({ queryKey: ['activity-events'] });
+    },
     onSuccess: () => {
       if (userId) {
         setLastSync(userId, Date.now());
       }
-      // Invalidate activity queries to refetch fresh data
-      queryClient.invalidateQueries({ queryKey: ['activity-events'] });
     },
     onError: error => {
       console.error('Failed to sync activities:', error);

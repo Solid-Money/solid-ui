@@ -43,7 +43,7 @@ const SwapParams = () => {
     isVoltageTrade,
     isVoltageTradeLoading,
   } = useDerivedSwapInfo();
-  const { typedValue } = useSwapState();
+  const typedValue = useSwapState(state => state.typedValue);
 
   const { wrapType } = useWrapCallback(
     currencies[SwapField.INPUT],
@@ -61,6 +61,9 @@ const SwapParams = () => {
   const [slidingFee, setSlidingFee] = useState<number>();
 
   useEffect(() => {
+    // Track whether component is still mounted to prevent state updates after unmount
+    let cancelled = false;
+
     async function getFees() {
       if (!trade || !tradeState.fee) return;
 
@@ -71,6 +74,9 @@ const SwapParams = () => {
 
       for (const route of trade.swaps) {
         for (const pool of route.route.pools) {
+          // Early exit if cancelled during iteration
+          if (cancelled) return;
+
           const address = computePoolAddress({
             tokenA: pool.token0,
             tokenB: pool.token1,
@@ -82,6 +88,9 @@ const SwapParams = () => {
             address,
           });
           const plugin = await poolContract.read.plugin();
+
+          // Check cancelled after async operation
+          if (cancelled) return;
 
           const pluginContract = getContract({
             client: publicClient(fuse.id),
@@ -128,6 +137,10 @@ const SwapParams = () => {
             });
             beforeSwap = ['', 0, 0];
           }
+
+          // Check cancelled after async operation
+          if (cancelled) return;
+
           const [, overrideFee, pluginFee] = beforeSwap || ['', 0, 0];
 
           if (overrideFee) {
@@ -143,10 +156,17 @@ const SwapParams = () => {
         p *= 1 - Number(fee) / 1_000_000;
       }
 
-      setSlidingFee(100 - p);
+      // Only update state if still mounted
+      if (!cancelled) {
+        setSlidingFee(100 - p);
+      }
     }
 
     getFees();
+
+    return () => {
+      cancelled = true;
+    };
   }, [trade, tradeState.fee]);
 
   const { realizedLPFee, priceImpact } = useMemo(() => {

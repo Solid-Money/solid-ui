@@ -7,7 +7,6 @@ import FAQs from '@/components/FAQ/FAQs';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
-import { VAULTS } from '@/constants/vaults';
 import { useDimension } from '@/hooks/useDimension';
 
 import SavingDepositBenefits from './SavingDepositBenefits';
@@ -16,7 +15,6 @@ import SavingDepositDescription from './SavingDepositDescription';
 import SavingDepositImage from './SavingDepositImage';
 import SavingDepositTitle from './SavingDepositTitle';
 import SavingsHeaderButtonsMobile from './SavingsHeaderButtonsMobile';
-import SavingVault from './SavingVault';
 
 export default function SavingsEmptyState() {
   const { isScreenMedium } = useDimension();
@@ -37,12 +35,6 @@ export default function SavingsEmptyState() {
 
         <View className="gap-[1.875rem]">
           <View className="gap-3 md:flex-row md:gap-6">
-            <View className="gap-5">
-              {VAULTS.map(vault => (
-                <SavingVault key={vault.name} vault={vault} />
-              ))}
-            </View>
-
             <View
               className="relative flex-1 overflow-hidden md:min-h-96"
               style={{

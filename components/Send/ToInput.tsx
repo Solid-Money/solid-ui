@@ -3,6 +3,7 @@ import { Pressable, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, X } from 'lucide-react-native';
 import { isAddress } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import Avatar from '@/components/Avatar';
 import { Text } from '@/components/ui/text';
@@ -25,10 +26,23 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
     setModal,
     setName,
     setSearchQuery,
-  } = useSendStore();
+  } = useSendStore(
+    useShallow(state => ({
+      address: state.address,
+      name: state.name,
+      searchQuery: state.searchQuery,
+      currentModal: state.currentModal,
+      setAddress: state.setAddress,
+      setModal: state.setModal,
+      setName: state.setName,
+      setSearchQuery: state.setSearchQuery,
+    })),
+  );
   const { data: addressBook = [] } = useQuery({
     queryKey: ['address-book'],
     queryFn: () => withRefreshToken(() => fetchAddressBook()),
+    staleTime: 5 * 60 * 1000, // 5 minutes - address book changes infrequently
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const prevNameRef = useRef(name);

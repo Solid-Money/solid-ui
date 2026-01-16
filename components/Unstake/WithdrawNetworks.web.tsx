@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
@@ -8,7 +9,12 @@ import { UNSTAKE_MODAL } from '@/constants/modals';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 const WithdrawNetworks = () => {
-  const { setModal, setSelectedNetwork } = useUnstakeStore();
+  const { setModal, setSelectedNetwork } = useUnstakeStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setSelectedNetwork: state.setSelectedNetwork,
+    })),
+  );
 
   const sortedNetworks = useMemo(
     () => Object.entries(BRIDGE_TOKENS).sort((a, b) => a[1].sort - b[1].sort),

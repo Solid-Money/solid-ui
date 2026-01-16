@@ -8,6 +8,7 @@ import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
 import { Info, Minus, Wallet } from 'lucide-react-native';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -25,7 +26,12 @@ import { useWithdrawStore } from '@/store/useWithdrawStore';
 
 const Withdraw = () => {
   const { user } = useUser();
-  const { setModal, setTransaction } = useWithdrawStore();
+  const { setModal, setTransaction } = useWithdrawStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setTransaction: state.setTransaction,
+    })),
+  );
 
   const { data: ethereumBalance, isLoading: isEthereumBalanceLoading } = useEthereumVaultBalance(
     user?.safeAddress as Address,

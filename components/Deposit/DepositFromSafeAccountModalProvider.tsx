@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -20,7 +21,15 @@ import { Deposit } from '.';
  */
 const DepositFromSafeAccountModalProvider = () => {
   const router = useRouter();
-  const { currentModal, previousModal, setModal, transaction } = useDepositFromSafeAccountStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal, previousModal, setModal, transaction } = useDepositFromSafeAccountStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+      setModal: state.setModal,
+      transaction: state.transaction,
+    })),
+  );
 
   const isTransactionStatus =
     currentModal.name === DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.OPEN_TRANSACTION_STATUS.name;

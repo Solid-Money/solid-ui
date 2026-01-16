@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import * as Sentry from '@sentry/react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
@@ -24,7 +25,14 @@ type TokenOption = {
 };
 
 const DepositDirectlyTokens = () => {
-  const { setModal, directDepositSession, setDirectDepositSession } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { setModal, directDepositSession, setDirectDepositSession } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      directDepositSession: state.directDepositSession,
+      setDirectDepositSession: state.setDirectDepositSession,
+    })),
+  );
   const { user } = useUser();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const [selectedToken, setSelectedToken] = useState<string | null>(null);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform, View } from 'react-native';
 import { ChevronRight, Wallet } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -8,7 +9,12 @@ import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 export default function CardDepositOptions() {
-  const { setModal, setSource } = useCardDepositStore();
+  const { setModal, setSource } = useCardDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setSource: state.setSource,
+    })),
+  );
 
   const Item = ({ text, onPress }: { text: string; onPress: () => void }) => (
     <Button
