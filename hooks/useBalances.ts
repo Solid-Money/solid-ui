@@ -409,6 +409,7 @@ export const useBalances = (): BalanceData => {
     refetchOnReconnect: true, // refetch when network reconnects
     // Refetch every 30 seconds when data becomes stale
     refetchInterval: 30 * 1000,
+    refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });
 
   const defaultData = {

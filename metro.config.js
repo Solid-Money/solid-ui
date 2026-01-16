@@ -57,7 +57,6 @@ config.resolver = {
     // Default resolver for all other modules
     return context.resolveRequest(context, moduleName, platform);
   },
-  unstable_enablePackageExports: true,
 };
 
 config.transformer.minifierConfig = {

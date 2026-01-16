@@ -9,7 +9,6 @@ export default {
     icon: './assets/images/adaptive-icon.png',
     scheme: 'solid',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: true,
     owner: 'fuseio',
     ios: {
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? './GoogleService-Info.plist',
@@ -133,6 +132,7 @@ export default {
     ],
     experiments: {
       typedRoutes: true,
+      reactCompiler: true,
     },
     extra: {
       router: {},

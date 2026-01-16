@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dimensions, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { Image } from 'expo-image';
 import { X } from 'lucide-react-native';
@@ -10,9 +10,6 @@ import { Text } from '@/components/ui/text';
 import { WhatsNew, WhatsNewStep } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const MODAL_WIDTH = Math.min(SCREEN_WIDTH * 0.9, 560);
-
 interface WhatsNewModalProps {
   whatsNew: WhatsNew;
   isOpen: boolean;
@@ -22,6 +19,8 @@ interface WhatsNewModalProps {
 const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const carouselRef = React.useRef<any>(null);
+  const { width: screenWidth } = useWindowDimensions();
+  const modalWidth = Math.min(screenWidth * 0.9, 560);
 
   const renderItem = ({ item }: { item: WhatsNewStep }) => (
     <View className="flex-1">
@@ -65,7 +64,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
           <Carousel
             ref={carouselRef}
             loop={false}
-            width={MODAL_WIDTH}
+            width={modalWidth}
             height={480}
             data={whatsNew.steps}
             onProgressChange={(_, progress) => {
