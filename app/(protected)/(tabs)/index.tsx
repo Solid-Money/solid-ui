@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { Address } from 'viem';
 
@@ -72,11 +72,30 @@ export default function Home() {
     ADDRESSES.fuse.vault,
   );
 
+  // IMPORTANT: Guard to prevent infinite re-render loop
+  // ─────────────────────────────────────────────────────────────────────────
+  // Without this ref, the following cascade occurs:
+  // 1. balance loads → useEffect calls refreshTokens()
+  // 2. refreshTokens() invalidates queries → triggers re-render
+  // 3. If refreshTokens reference changes → useEffect runs again → loop
+  //
+  // The ref ensures refreshTokens() only runs ONCE when balance first loads.
+  // DO NOT REMOVE - this fixed Sentry error "Excessive renders in HomeScreen"
+  // (12+ renders in ~1.6 seconds). See: useRenderMonitor.ts
+  // ─────────────────────────────────────────────────────────────────────────
+  const hasTriggeredInitialRefresh = useRef(false);
+
   useEffect(() => {
-    if (balance && !isBalanceLoading) {
+    if (balance && !isBalanceLoading && !hasTriggeredInitialRefresh.current) {
+      hasTriggeredInitialRefresh.current = true;
       refreshTokens();
     }
   }, [balance, isBalanceLoading, refreshTokens]);
+
+  // Reset when user changes (e.g., account switch) to allow fresh token sync
+  useEffect(() => {
+    hasTriggeredInitialRefresh.current = false;
+  }, [user?.safeAddress]);
 
   const {
     data: userDepositTransactions,

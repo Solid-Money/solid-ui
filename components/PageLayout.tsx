@@ -119,7 +119,10 @@ export default function PageLayout({
   if (scrollable) {
     return (
       <SafeAreaView className={`flex-1 bg-background text-foreground ${className}`} edges={edges}>
-        <ScrollView className={`flex-1 ${contentClassName}`}>
+        <ScrollView
+          className={`flex-1 ${contentClassName}`}
+          contentInsetAdjustmentBehavior="automatic"
+        >
           {renderNavbar()}
           {children}
         </ScrollView>

@@ -6,7 +6,6 @@ import { Address } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import ActivityTransactions from '@/components/Activity/ActivityTransactions';
-import AreaChart from '@/components/AreaChart';
 import BalanceBreakdown from '@/components/Coin/BalanceBreakdown';
 import CoinBackButton from '@/components/Coin/CoinBackButton';
 import CoinButtons from '@/components/Coin/CoinButtons';
@@ -14,6 +13,7 @@ import CoinChartTime from '@/components/Coin/CoinChartTime';
 import CoinName from '@/components/Coin/CoinName';
 import EarningYield from '@/components/Coin/EarningYield';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import LazyAreaChart from '@/components/LazyAreaChart';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { times } from '@/constants/coins';
@@ -164,7 +164,7 @@ export default function Coin() {
                   </View>
                 ) : formattedChartData.length > 0 ? (
                   <View style={{ marginLeft: -16, marginRight: -16 }}>
-                    <AreaChart data={formattedChartData} />
+                    <LazyAreaChart data={formattedChartData} />
                   </View>
                 ) : null}
               </View>

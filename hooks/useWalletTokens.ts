@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useBalances } from './useBalances';
 import useUser from './useUser';
@@ -41,14 +41,14 @@ export const useWalletTokens = () => {
   );
 
   // Enhanced refresh function that invalidates the query when balances change
-  const enhancedRefresh = useMemo(() => {
-    return () => {
-      // Invalidate the token balances query to force a fresh fetch
-      queryClient.invalidateQueries({
-        queryKey: ['tokenBalances', user?.safeAddress],
-      });
-      refresh();
-    };
+  // Using useCallback for stable reference - important to prevent re-render loops
+  // when this function is used as a useEffect dependency
+  const enhancedRefresh = useCallback(() => {
+    // Invalidate the token balances query to force a fresh fetch
+    queryClient.invalidateQueries({
+      queryKey: ['tokenBalances', user?.safeAddress],
+    });
+    refresh();
   }, [queryClient, user?.safeAddress, refresh]);
 
   return {
