@@ -257,7 +257,7 @@ function DesktopHeader({
         </Button>
         <DepositToCardModal
           trigger={
-            <Button className="h-12 rounded-xl border-0 px-6" style={styles.depositButton}>
+            <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
               <View className="flex-row items-center gap-2">
                 <Plus size={22} color="black" />
                 <Text className="text-base font-bold text-black">Deposit</Text>
@@ -873,9 +873,6 @@ const styles = StyleSheet.create({
   applePayIcon: { width: 49, height: 22 },
   googlePayIcon: { width: 47, height: 19 },
   transactionAvatar: { width: 43, height: 43 },
-
-  // Button backgrounds
-  depositButton: { backgroundColor: '#94F27F' },
 
   // Gradient overlays (used with LinearGradient)
   gradientOverlay: {
