@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import CardDepositModalProvider from '@/components/Card/CardDepositModalProvider';
+import CardRepayModalProvider from '@/components/Card/CardRepayModalProvider';
 import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
 import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
 import SendModalProvider from '@/components/Send/SendModalProvider';
@@ -47,6 +48,7 @@ const DeferredModalProviders = () => {
       <UnstakeModalProvider />
       <DepositFromSafeAccountModalProvider />
       <CardDepositModalProvider />
+      <CardRepayModalProvider />
       <TierModalProvider />
     </>
   );

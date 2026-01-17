@@ -31,6 +31,9 @@ import {
   getInitials,
 } from '@/lib/utils/cardHelpers';
 import { cn } from '@/lib/utils/utils';
+import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
+import { isUserAllowedToUseTestFeature } from '@/lib/utils/testFeatures';
+import useUser from '@/hooks/useUser';
 
 export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
@@ -41,6 +44,7 @@ export default function CardDetails() {
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
+  const { user } = useUser();
 
   const {
     data: transactionsData,
@@ -192,6 +196,9 @@ export default function CardDetails() {
             onFreezeToggle={handleFreezeToggle}
           />
           <DepositBonusBanner />
+          {isUserAllowedToUseTestFeature(user?.username ?? '') && (
+            <BorrowPositionCard className="mb-4" />
+          )}
           <CashbackDisplay cashback={cardDetails?.cashback} />
           <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
           <RecentTransactions

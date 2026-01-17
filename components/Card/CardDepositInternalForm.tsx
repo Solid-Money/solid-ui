@@ -54,23 +54,29 @@ import {
   getArbitrumFundingAddress,
   isUserAllowedToUseTestFeature,
 } from '@/lib/utils';
+import { BorrowSlider } from './BorrowSlider';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
-type FormData = { amount: string; from: 'wallet' | 'savings' | 'borrow' };
+type SourceType = 'wallet' | 'savings' | 'borrow';
+
+type FormData = { amount: string; from: SourceType };
 
 type SourceSelectorProps = {
   control: Control<FormData>;
-  from: 'wallet' | 'savings' | 'borrow';
+  from: SourceType;
+  showBorrowOption: boolean;
 };
 
 function SourceSelectorNative({
   value,
   onChange,
   from,
+  showBorrowOption,
 }: {
-  value: 'wallet' | 'savings' | 'borrow';
-  onChange: (value: 'wallet' | 'savings' | 'borrow') => void;
-  from: 'wallet' | 'savings' | 'borrow';
+  value: SourceType;
+  onChange: (value: SourceType) => void;
+  from: SourceType;
+  showBorrowOption: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -83,7 +89,7 @@ function SourceSelectorNative({
   const getTokenSymbol = () => {
     if (from === 'wallet') return 'USDC.e';
     if (from === 'savings') return 'soUSD';
-    return 'USDC';
+    return '';
   };
 
   return (
@@ -131,16 +137,18 @@ function SourceSelectorNative({
             <WalletIcon color="#A1A1A1" size={20} />
             <Text className="text-lg">Wallet</Text>
           </Pressable>
-          <Pressable
-            className="flex-row items-center gap-2 px-4 py-3"
-            onPress={() => {
-              onChange('borrow');
-              setIsOpen(false);
-            }}
-          >
-            <Leaf color="#A1A1A1" size={20} />
-            <Text className="text-lg">Borrow against Savings</Text>
-          </Pressable>
+          {showBorrowOption && (
+            <Pressable
+              className="flex-row items-center gap-2 px-4 py-3"
+              onPress={() => {
+                onChange('borrow');
+                setIsOpen(false);
+              }}
+            >
+              <Leaf color="#A1A1A1" size={20} />
+              <Text className="text-lg">Borrow against Savings</Text>
+            </Pressable>
+          )}
         </View>
       )}
     </View>
@@ -151,10 +159,12 @@ function SourceSelectorWeb({
   value,
   onChange,
   from,
+  showBorrowOption,
 }: {
-  value: 'wallet' | 'savings' | 'borrow';
-  onChange: (value: 'wallet' | 'savings' | 'borrow') => void;
-  from: 'wallet' | 'savings' | 'borrow';
+  value: SourceType;
+  onChange: (value: SourceType) => void;
+  from: SourceType;
+  showBorrowOption: boolean;
 }) {
   const getDisplayText = () => {
     if (value === 'wallet') return 'Wallet';
@@ -165,7 +175,7 @@ function SourceSelectorWeb({
   const getTokenSymbol = () => {
     if (from === 'wallet') return 'USDC.e';
     if (from === 'savings') return 'soUSD';
-    return 'USDC';
+    return '';
   };
 
   return (
@@ -203,19 +213,21 @@ function SourceSelectorWeb({
           <WalletIcon color="#A1A1A1" size={20} />
           <Text className="text-lg">Wallet</Text>
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onPress={() => onChange('borrow')}
-          className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
-        >
-          <Leaf color="#A1A1A1" size={20} />
-          <Text className="text-lg">Borrow against Savings</Text>
-        </DropdownMenuItem>
+        {showBorrowOption && (
+          <DropdownMenuItem
+            onPress={() => onChange('borrow')}
+            className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+          >
+            <Leaf color="#A1A1A1" size={20} />
+            <Text className="text-lg">Borrow against Savings</Text>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-function SourceSelector({ control, from }: SourceSelectorProps) {
+function SourceSelector({ control, from, showBorrowOption }: SourceSelectorProps) {
   return (
     <View className="gap-2">
       <Text className="font-medium opacity-50">From</Text>
@@ -224,9 +236,19 @@ function SourceSelector({ control, from }: SourceSelectorProps) {
         name="from"
         render={({ field: { onChange, value } }) =>
           Platform.OS === 'web' ? (
-            <SourceSelectorWeb value={value} onChange={onChange} from={from} />
+            <SourceSelectorWeb
+              value={value}
+              onChange={onChange}
+              from={from}
+              showBorrowOption={showBorrowOption}
+            />
           ) : (
-            <SourceSelectorNative value={value} onChange={onChange} from={from} />
+            <SourceSelectorNative
+              value={value}
+              onChange={onChange}
+              from={from}
+              showBorrowOption={showBorrowOption}
+            />
           )
         }
       />
@@ -237,7 +259,7 @@ function SourceSelector({ control, from }: SourceSelectorProps) {
 type AmountInputProps = {
   control: Control<FormData>;
   errors: FieldErrors<FormData>;
-  from: 'wallet' | 'savings' | 'borrow';
+  from: SourceType;
 };
 
 function AmountInput({ control, errors, from }: AmountInputProps) {
@@ -280,153 +302,12 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
           )}
         />
         <View className="native:shrink-0 flex-row items-center gap-2">
-          <Image source={getTokenImage()} alt={getTokenSymbol()} style={{ width: 34, height: 34 }} />
-          <Text className="text-lg font-semibold text-white">{getTokenSymbol()}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-type SliderProps = {
-  value: number;
-  onValueChange: (value: number) => void;
-  min: number;
-  max: number;
-};
-
-function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
-  const [sliderWidth, setSliderWidth] = useState(0);
-  const sliderContainerRef = useRef<View>(null);
-  const sliderPageX = useRef(0);
-  const isDragging = useRef(false);
-
-  // Ensure value is valid number
-  const safeValue = useMemo(() => {
-    const numValue = Number(value);
-    if (isNaN(numValue) || !isFinite(numValue)) return min;
-    return Math.max(min, Math.min(max, numValue));
-  }, [value, min, max]);
-
-  const safeMax = useMemo(() => {
-    const numMax = Number(max);
-    if (isNaN(numMax) || !isFinite(numMax) || numMax <= min) return min + 1;
-    return numMax;
-  }, [max, min]);
-
-  const percentage = safeMax > min ? ((safeValue - min) / (safeMax - min)) * 100 : 0;
-  const thumbPosition = (percentage / 100) * sliderWidth;
-
-  const stateRef = useRef({ sliderWidth, min, safeMax, onValueChange, thumbPosition });
-  stateRef.current = { sliderWidth, min, safeMax, onValueChange, thumbPosition };
-
-  const updateValue = (newValue: number) => {
-    const numValue = Number(newValue);
-    if (isNaN(numValue) || !isFinite(numValue)) return;
-    const clampedValue = Math.max(min, Math.min(safeMax, numValue));
-    onValueChange(Math.round(clampedValue * 100) / 100);
-  };
-
-  const handleTrackPress = (event: any) => {
-    if (sliderWidth === 0) return;
-    const { locationX } = event.nativeEvent;
-    const newPercentage = Math.max(0, Math.min(100, (locationX / sliderWidth) * 100));
-    const newValue = min + (newPercentage / 100) * (safeMax - min);
-    updateValue(newValue);
-  };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        isDragging.current = true;
-        const thumbPageX = evt.nativeEvent.pageX;
-        if (sliderContainerRef.current) {
-          sliderContainerRef.current.measure((x, y, width, height, pageX, pageY) => {
-            sliderPageX.current = pageX;
-          });
-        }
-        // Use current thumb position as fallback
-        const { thumbPosition } = stateRef.current;
-        if (sliderPageX.current === 0) {
-          // Estimate based on thumb position
-          sliderPageX.current = thumbPageX - thumbPosition;
-        }
-      },
-      onPanResponderMove: (evt) => {
-        const { sliderWidth, min, safeMax, onValueChange, thumbPosition } = stateRef.current;
-        
-        if (sliderWidth === 0 || !isDragging.current) return;
-        const currentPageX = evt.nativeEvent.pageX;
-        // If pageX wasn't set, use the initial touch position
-        if (sliderPageX.current === 0) {
-          sliderPageX.current = currentPageX - thumbPosition;
-        }
-        const relativeX = currentPageX - sliderPageX.current;
-        const newPercentage = Math.max(0, Math.min(100, (relativeX / sliderWidth) * 100));
-        const newValue = min + (newPercentage / 100) * (safeMax - min);
-        
-        // updateValue logic inline using ref values
-        const numValue = Number(newValue);
-        if (isNaN(numValue) || !isFinite(numValue)) return;
-        const clampedValue = Math.max(min, Math.min(safeMax, numValue));
-        onValueChange(Math.round(clampedValue * 100) / 100);
-      },
-      onPanResponderRelease: () => {
-        isDragging.current = false;
-      },
-      onPanResponderTerminate: () => {
-        isDragging.current = false;
-      },
-    }),
-  ).current;
-
-  return (
-    <View className="gap-4">
-      <View className="gap-2">
-        <Text className="text-center text-base font-medium opacity-50 mt-10">Amount to borrow</Text>
-        <View className="flex-row items-center justify-center">
-          <Text className="text-3xl font-semibold text-white">
-            ${formatNumber(safeValue)}
-          </Text>
-        </View>
-      </View>
-      <View className="items-center">
-        <View
-          ref={sliderContainerRef}
-          onLayout={event => {
-            const width = event.nativeEvent.layout.width;
-            if (width > 0 && sliderWidth !== width) {
-              setSliderWidth(width);
-            }
-          }}
-          className="relative w-full max-w-[320px]"
-        >
-          <Pressable
-            onPress={handleTrackPress}
-            className="relative h-8 w-full justify-center"
-            style={{ zIndex: 1 }}
-          >
-            <View className="absolute h-2 w-full rounded-full bg-accent" />
-            <View
-              className="absolute h-2 rounded-full bg-brand"
-              style={{ width: `${Math.max(0, Math.min(100, percentage))}%` }}
-            />
-          </Pressable>
-          <View
-            {...panResponder.panHandlers}
-            className="absolute h-6 w-6 rounded-full bg-brand shadow-lg"
-            style={{
-              transform: [{ translateX: Math.max(0, Math.min(sliderWidth - 24, thumbPosition - 12)) }],
-              top: 1,
-              zIndex: 10,
-            }}
+          <Image
+            source={getTokenImage()}
+            alt={getTokenSymbol()}
+            style={{ width: 34, height: 34 }}
           />
-        </View>
-        <View className="mt-2 flex-row w-full max-w-[320px] justify-between">
-          <Text className="text-sm text-muted-foreground">${formatNumber(min)}</Text>
-          <Text className="text-sm text-muted-foreground">${formatNumber(safeMax)}</Text>
+          <Text className="text-lg font-semibold text-white">{getTokenSymbol()}</Text>
         </View>
       </View>
     </View>
@@ -439,7 +320,7 @@ type BalanceDisplayProps = {
   formattedBalance: string;
   setValue: UseFormSetValue<FormData>;
   trigger: UseFormTrigger<FormData>;
-  from: 'wallet' | 'savings' | 'borrow';
+  from: SourceType;
 };
 
 function BalanceDisplay({
@@ -450,7 +331,11 @@ function BalanceDisplay({
   trigger,
   from,
 }: BalanceDisplayProps) {
-  const tokenSymbol = from === 'wallet' ? 'USDC.e' : from === 'savings' ? 'soUSD' : 'USDC';
+  const tokenSymbol = useMemo(() => {
+    if (from === 'wallet') return 'USDC.e';
+    if (from === 'savings') return 'soUSD';
+    return 'USDC';
+  }, [from]);
 
   if (from === 'borrow') {
     return null;
@@ -630,16 +515,17 @@ export default function CardDepositInternalForm() {
 
   const balanceAmount = watchedFrom === 'wallet' ? usdcBalanceAmount : soUsdBalanceAmount;
   const isBalanceLoading = watchedFrom === 'wallet' ? isUsdcBalanceLoading : isBalancesLoading;
-  const tokenSymbol = watchedFrom === 'wallet' ? 'USDC.e' : watchedFrom === 'savings' ? 'soUSD' : 'USDC';
+  const tokenSymbol =
+    watchedFrom === 'wallet' ? 'USDC.e' : watchedFrom === 'savings' ? 'soUSD' : 'USDC';
 
   // Calculate borrow rate and max borrow amount
-  const borrowRate = rate ? Number(formatUnits(rate, 6)) : 0;
+  const exchangeRate = rate ? Number(formatUnits(rate, 6)) : 0;
   const maxBorrowAmount = useMemo(() => {
-    if (soUsdBalanceAmount > 0 && borrowRate > 0) {
-      return soUsdBalanceAmount * borrowRate * 0.7; // 70% of savings value
+    if (soUsdBalanceAmount > 0 && exchangeRate > 0) {
+      return soUsdBalanceAmount * exchangeRate * 0.8; // 70% of savings value
     }
     return 0;
-  }, [soUsdBalanceAmount, borrowRate]);
+  }, [soUsdBalanceAmount, exchangeRate]);
 
   const { amountOut: estimatedUSDC, isLoading: isEstimatedUSDCLoading } = usePreviewDepositToCard(
     watchedFrom === 'borrow' ? watchedAmount : watchedAmount,
@@ -705,7 +591,8 @@ export default function CardDepositInternalForm() {
         return;
       }
 
-      const sourceSymbol = watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
+      const sourceSymbol =
+        watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
 
       // Create activity event (stays PENDING until Bridge processes it)
       const clientTxId = await createActivity({
@@ -776,7 +663,8 @@ export default function CardDepositInternalForm() {
         return;
       }
 
-      const sourceSymbol = watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
+      const sourceSymbol =
+        watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
 
       // Create activity event (stays PENDING until Bridge processes it)
       const clientTxId = await createActivity({
@@ -905,9 +793,19 @@ export default function CardDepositInternalForm() {
     }
   }, [watchedAmount, watchedFrom, maxBorrowAmount]);
 
+  const showBorrowOption = isUserAllowedToUseTestFeature(user?.username ?? '');
+
+  // Reset to 'savings' if user is on 'borrow' but doesn't have permission
+  useEffect(() => {
+    if (watchedFrom === 'borrow' && !showBorrowOption) {
+      setValue('from', 'savings');
+      setValue('amount', '');
+    }
+  }, [showBorrowOption, watchedFrom, setValue]);
+
   return (
     <View className="flex-1 gap-3">
-      <SourceSelector control={control} from={watchedFrom} />
+      <SourceSelector control={control} from={watchedFrom} showBorrowOption={showBorrowOption} />
 
       {watchedFrom === 'borrow' ? (
         <View className="gap-4">
@@ -947,9 +845,7 @@ export default function CardDepositInternalForm() {
               {isRateLoading ? (
                 <Skeleton className="h-5 w-16 rounded-md" />
               ) : (
-                <Text className="text-base font-semibold">
-                  {formatNumber(borrowRate * 100, 2)}%
-                </Text>
+                <Text className="text-base font-semibold">{4}%</Text>
               )}
             </View>
           </View>
@@ -990,22 +886,12 @@ export default function CardDepositInternalForm() {
           onPress={handleSubmit(onBorrowAndDepositSubmit)}
         />
       ) : (
-        <>
-          <SubmitButton
-            disabled={disabled}
-            bridgeStatus={bridgeStatus}
-            swapAndBridgeStatus={swapAndBridgeStatus}
-            onPress={handleSubmit(onSubmit)}
-          />
-          {watchedFrom === 'savings' && isUserAllowedToUseTestFeature(user?.username ?? '') && (
-            <BorrowAndDepositButton
-              disabled={disabled}
-              bridgeStatus={borrowAndDepositStatus}
-              swapAndBridgeStatus={borrowAndDepositStatus}
-              onPress={handleSubmit(onBorrowAndDepositSubmit)}
-            />
-          )}
-        </>
+        <SubmitButton
+          disabled={disabled}
+          bridgeStatus={bridgeStatus}
+          swapAndBridgeStatus={swapAndBridgeStatus}
+          onPress={handleSubmit(onSubmit)}
+        />
       )}
     </View>
   );
