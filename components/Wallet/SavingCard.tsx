@@ -50,7 +50,7 @@ const SavingCard = memo(
       >
         <View
           className={cn(
-            'relative h-full w-full justify-between overflow-hidden rounded-twice p-[30px] pb-[21px]',
+            'relative h-full w-full justify-between overflow-hidden rounded-twice p-5 pb-4 md:p-[30px] md:pb-[21px]',
           )}
         >
           {/* Base gradient */}
