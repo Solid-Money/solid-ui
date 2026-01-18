@@ -3,11 +3,12 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { Hash } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
+import useDebounce from '@/hooks/useDebounce';
 import useUser from '@/hooks/useUser';
 import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
+import { USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
@@ -168,6 +169,8 @@ export function useActivity() {
 
   const { data: activityData, isLoading, isRefetching } = activityEvents;
 
+  const debouncedActivityData = useDebounce(activityData, 150);
+
   // Refetch all data sources (backend handles all syncing now)
   // IMPORTANT: Do NOT call refetchActivityEvents() here!
   // syncFromBackend() invalidates the 'activity-events' query on success,
@@ -272,10 +275,13 @@ export function useActivity() {
   }, [activities]);
 
   // Sync backend activities to local store for offline access
+  // Uses debounced activityData to prevent render cascade from maxPages refetches
+  // When query re-enables after sync lock, multiple pages may refetch rapidly -
+  // debouncing ensures bulkUpsertEvent only fires once after all pages stabilize
   useEffect(() => {
-    if (!user?.userId || !activityData) return;
+    if (!user?.userId || !debouncedActivityData) return;
 
-    const events = activityData.pages
+    const events = debouncedActivityData.pages
       .flatMap(page => {
         // Guard against undefined/null pages or docs
         if (!page?.docs || !Array.isArray(page.docs)) return [];
@@ -287,7 +293,7 @@ export function useActivity() {
     if (!events.length) return;
 
     bulkUpsertEvent(user.userId, events);
-  }, [activityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
+  }, [debouncedActivityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
 
   // Create new activity
   const createActivity = useCallback(
@@ -381,20 +387,20 @@ export function useActivity() {
       const isSuccess = params.status === TransactionStatus.SUCCESS;
 
       try {
-      // Execute the transaction with callback for immediate userOpHash
-      const result = await executeTransaction(async userOpHash => {
-        // Create activity IMMEDIATELY when we get userOpHash (before waiting for receipt)
-        clientTxId = await createActivity({
-          ...params,
-          userOpHash,
+        // Execute the transaction with callback for immediate userOpHash
+        const result = await executeTransaction(async userOpHash => {
+          // Create activity IMMEDIATELY when we get userOpHash (before waiting for receipt)
+          clientTxId = await createActivity({
+            ...params,
+            userOpHash,
+          });
         });
-      });
 
-      if ((result as any) === USER_CANCELLED_TRANSACTION) {
-        return result;
-      }
+        if ((result as any) === USER_CANCELLED_TRANSACTION) {
+          return result;
+        }
 
-      // Extract transaction data
+        // Extract transaction data
         const transaction =
           result && typeof result === 'object' && 'transaction' in result
             ? (result as any).transaction
