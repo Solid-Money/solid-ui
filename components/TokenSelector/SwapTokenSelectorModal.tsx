@@ -4,7 +4,7 @@ import { Currency } from '@cryptoalgebra/fuse-sdk';
 import { ChevronDown } from 'lucide-react-native';
 
 import CurrencyLogo from '@/components/CurrencyLogo';
-import ResponsiveDialog from '@/components/ResponsiveDialog';
+import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,9 @@ const SwapTokenSelectorModal = ({
   placeholder = 'Select token',
   className = '',
 }: SwapTokenSelectorModalProps) => {
+  const currentModal: ModalState = { name: 'tokenSelector', number: 1 };
+  const previousModal: ModalState = { name: 'close', number: 0 };
+  const isOpen = open ?? false;
   const handleTokenClick = useCallback(
     (token: Currency) => {
       onSelect(token);
@@ -61,11 +64,14 @@ const SwapTokenSelectorModal = ({
   );
 
   return (
-    <ResponsiveDialog
-      open={open ?? false}
+    <ResponsiveModal
+      currentModal={currentModal}
+      previousModal={previousModal}
+      isOpen={isOpen}
       onOpenChange={setOpen ?? (() => {})}
       title="Select Token"
       contentClassName="md:gap-8 md:max-w-md"
+      contentKey="token-selector"
       trigger={
         <Button
           className={cn(
@@ -87,7 +93,7 @@ const SwapTokenSelectorModal = ({
           showNativeToken={showNativeToken}
         />
       </View>
-    </ResponsiveDialog>
+    </ResponsiveModal>
   );
 };
 
