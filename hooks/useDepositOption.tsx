@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Plus, Trash2 } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, PressableProps, View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
@@ -31,6 +31,8 @@ import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import useResponsiveModal from './useResponsiveModal';
+
+import Trash from '@/assets/images/trash';
 
 export interface DepositOptionProps {
   buttonText?: string;
@@ -487,14 +489,14 @@ const useDepositOption = ({
       return (
         <Button
           variant="ghost"
-          className="rounded-full p-0 web:hover:bg-transparent web:hover:opacity-70"
+          className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
           onPress={handleDeleteDeposit}
           disabled={isDeleting}
         >
           {isDeleting ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
-            <Trash2 size={20} color="white" />
+            <Trash />
           )}
         </Button>
       );
