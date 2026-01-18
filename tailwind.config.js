@@ -1,4 +1,5 @@
 import { platformSelect } from 'nativewind/theme';
+import { Platform } from 'react-native';
 
 const { hairlineWidth } = require('nativewind/theme');
 
@@ -51,7 +52,7 @@ module.exports = {
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',
-          hover: 'color-mix(in srgb, hsl(var(--secondary)) 90%, white 10%)',
+          hover: Platform.OS === 'web' ? 'color-mix(in srgb, hsl(var(--secondary)) 90%, white 10%)' : 'hsl(var(--button-secondary))',
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',

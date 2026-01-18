@@ -246,7 +246,7 @@ const DepositDirectlyAddress = () => {
       </View>
 
       {/* Address card */}
-      <View className="mt-2 w-full rounded-[20px] bg-accent p-4">
+      <View className="mt-2 w-full rounded-[20px] bg-card p-4">
         <View className="gap-4">
           <View className="flex-row items-center justify-center">
             <Text className="text-center text-lg tracking-wide text-foreground">
@@ -300,7 +300,7 @@ const DepositDirectlyAddress = () => {
 
       {/* Yield Info Rows */}
       {!isExpired && (
-        <View className="w-full rounded-2xl bg-accent">
+        <View className="w-full rounded-2xl bg-card">
           {priceRows.map((row, index) => (
             <View key={row.label}>
               <View className="flex-row items-center justify-between gap-1.5 px-5 py-4">
@@ -326,7 +326,7 @@ const DepositDirectlyAddress = () => {
 
       {/* Details Info Rows */}
       {!isExpired && (
-        <View className="w-full rounded-2xl bg-accent">
+        <View className="w-full rounded-2xl bg-card">
           {infoRows.map((row, index) => (
             <View key={row.label}>
               <View className="flex-row items-center justify-between gap-1.5 px-5 py-4">
