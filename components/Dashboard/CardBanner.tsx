@@ -112,21 +112,6 @@ const CardBanner = () => {
             </Text>
             <Text className="native:text-base font-medium text-muted-foreground max-w-60">
               {bannerContent.description}
-              {bannerContent.showPromo && (
-                <>
-                  {' '}
-                  <Link
-                    target="_blank"
-                    href={
-                      'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-                    }
-                    className="web:underline"
-                  >
-                    Read more
-                  </Link>
-                  {' >'}
-                </>
-              )}
             </Text>
             <Button
               className="h-11 rounded-xl border-0 bg-button-earning px-6 web:hover:bg-button-earning web:hover:brightness-110 md:h-12"
