@@ -102,6 +102,7 @@ const CardBanner = () => {
           flex: 1,
           width: '100%',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
@@ -109,7 +110,7 @@ const CardBanner = () => {
             <Text className="native:text-lg text-lg font-semibold md:text-3xl">
               {bannerContent.title}
             </Text>
-            <Text className="native:text-base font-semibold text-muted-foreground">
+            <Text className="native:text-base font-semibold text-muted-foreground max-w-60">
               {bannerContent.description}
               {bannerContent.showPromo && (
                 <>
@@ -134,7 +135,7 @@ const CardBanner = () => {
               <Text className="text-base font-bold text-primary">{bannerContent.ctaText}</Text>
             </Button>
           </View>
-          <View className="pointer-events-none -ml-4 -mt-14 md:-mt-4">
+          <View className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2">
             <Image
               source={
                 isScreenMedium
