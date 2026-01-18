@@ -110,7 +110,7 @@ const CardBanner = () => {
             <Text className="native:text-lg text-lg font-semibold md:text-3xl">
               {bannerContent.title}
             </Text>
-            <Text className="native:text-base font-semibold text-muted-foreground max-w-60">
+            <Text className="native:text-base font-medium text-muted-foreground max-w-60">
               {bannerContent.description}
               {bannerContent.showPromo && (
                 <>
