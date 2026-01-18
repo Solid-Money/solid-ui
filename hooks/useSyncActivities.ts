@@ -177,15 +177,24 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
       if (!userId) throw new Error('User not authenticated');
       return withRefreshToken(() => syncActivities(syncOptions));
     },
-    // CRITICAL: Cancel and clear BEFORE sync starts!
+    // CRITICAL: Cancel and reset BEFORE sync starts!
     // If bulk refetch is already in progress when sync triggers,
-    // we must CANCEL those requests first, then remove the cache.
-    // removeQueries alone does NOT cancel in-flight requests!
+    // we must CANCEL those requests first, then reset to page 1 only.
+    // This prevents React Query from refetching all 5 cached pages.
     onMutate: async () => {
       // Cancel any in-flight activity-events requests to prevent bulk refetch from continuing
       await queryClient.cancelQueries({ queryKey: ['activity-events'] });
-      // Remove the cache so query starts fresh from page 1
-      queryClient.removeQueries({ queryKey: ['activity-events'] });
+      // Reset to first page only - this prevents bulk refetch of all cached pages
+      // See: https://tanstack.com/query/v4/docs/react/guides/infinite-queries#what-if-i-want-to-refetch-only-the-first-page
+      if (userId) {
+        queryClient.setQueryData(['activity-events', userId], (oldData: any) => {
+          if (!oldData?.pages?.length) return oldData;
+          return {
+            pages: oldData.pages.slice(0, 1),
+            pageParams: oldData.pageParams.slice(0, 1),
+          };
+        });
+      }
     },
     onSuccess: () => {
       if (userId) {

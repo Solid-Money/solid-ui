@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -18,6 +18,12 @@ const CARD_TRANSACTIONS_KEY = 'card-transactions-poller';
  */
 export const useCardDepositPoller = () => {
   const { activities, updateActivity } = useActivity();
+
+  // Track which clientTxIds we've already updated to prevent duplicate updates
+  // This prevents infinite loops when updateActivity triggers a re-render
+  const updatedIdsRef = useRef<Set<string>>(new Set());
+  // Guard against concurrent update operations
+  const isUpdatingRef = useRef(false);
 
   // Find pending card deposits - memoized to prevent excessive effect runs
   const pendingCardDeposits = useMemo(
@@ -43,13 +49,16 @@ export const useCardDepositPoller = () => {
   });
 
   // Check if any pending deposits have been processed by Bridge
-  // Uses Promise.all for parallel updates instead of sequential awaits
+  // Uses ref guards to prevent duplicate updates and infinite loops
   useEffect(() => {
     if (!cardTransactions || pendingCardDeposits.length === 0) return;
+    // Prevent concurrent update operations
+    if (isUpdatingRef.current) return;
 
     const checkAndUpdate = async () => {
-      // Map pending deposits to completed updates (parallel-friendly)
+      // Filter to only activities we haven't already updated
       const updates = pendingCardDeposits
+        .filter(activity => !updatedIdsRef.current.has(activity.clientTxId))
         .map(activity => {
           const matchingCardTx = cardTransactions.find(
             tx => tx.crypto_transaction_details?.tx_hash === activity.hash,
@@ -61,6 +70,16 @@ export const useCardDepositPoller = () => {
           return null;
         })
         .filter((update): update is NonNullable<typeof update> => update !== null);
+
+      // No new updates to process
+      if (updates.length === 0) return;
+
+      isUpdatingRef.current = true;
+
+      // Mark all as updated BEFORE making async calls to prevent race conditions
+      for (const { activity } of updates) {
+        updatedIdsRef.current.add(activity.clientTxId);
+      }
 
       // Process all updates in parallel - use allSettled so one failure doesn't block others
       await Promise.allSettled(
@@ -80,6 +99,8 @@ export const useCardDepositPoller = () => {
           });
         }),
       );
+
+      isUpdatingRef.current = false;
     };
 
     void checkAndUpdate();

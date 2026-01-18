@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
@@ -56,6 +56,8 @@ export default function ActivityTransactions({
   // React state (isFetchingNextPage) updates async, so onEndReached can fire multiple times
   // before state reflects the pending fetch. This ref updates synchronously.
   const isFetchingRef = useRef(false);
+  // Timestamp-based debounce to prevent rapid pagination during re-render loops
+  const lastFetchTimeRef = useRef(0);
   const [completedBridgeTxHashes, setCompletedBridgeTxHashes] = useState<Set<string>>(new Set());
 
   const { data: cardData } = useCardTransactions();
@@ -90,8 +92,60 @@ export default function ActivityTransactions({
 
   useCardDepositPoller();
 
+  // Track which bridge deposits are fully completed (delivered + found in card)
+  // This is computed separately to avoid setState inside useMemo
+  const newlyCompletedBridgeHashes = useMemo(() => {
+    const completed: string[] = [];
+    for (const transaction of activities) {
+      if (
+        transaction.type === TransactionType.BRIDGE_DEPOSIT &&
+        transaction.status === TransactionStatus.SUCCESS &&
+        transaction.hash &&
+        !completedBridgeTxHashes.has(transaction.hash) &&
+        lzStatusMap.has(transaction.hash)
+      ) {
+        const query = lzStatusMap.get(transaction.hash);
+        if (!query.data) continue;
+
+        const lzData = query.data.data?.[0];
+        const isDelivered = lzData?.status?.name === LayerZeroTransactionStatus.DELIVERED;
+        if (!isDelivered) continue;
+
+        const dstTxHash = lzData?.destination?.tx?.txHash;
+        if (!dstTxHash) continue;
+
+        const foundInCard = cardTransactions.some(
+          ct => ct.crypto_transaction_details?.tx_hash?.toLowerCase() === dstTxHash.toLowerCase(),
+        );
+        if (foundInCard) {
+          completed.push(transaction.hash);
+        }
+      }
+    }
+    return completed;
+  }, [activities, lzStatusMap, cardTransactions, completedBridgeTxHashes]);
+
+  // Update completed hashes in a separate effect (not inside useMemo)
+  // The functional setState with early return (prev === next) prevents unnecessary re-renders
+  useEffect(() => {
+    if (newlyCompletedBridgeHashes.length === 0) return;
+
+    setCompletedBridgeTxHashes(prev => {
+      // Check if all hashes are already in the set - if so, return same reference (no re-render)
+      const allAlreadyPresent = newlyCompletedBridgeHashes.every(hash => prev.has(hash));
+      if (allAlreadyPresent) return prev;
+
+      // Only create new Set if we have actual changes
+      const next = new Set(prev);
+      for (const hash of newlyCompletedBridgeHashes) {
+        next.add(hash);
+      }
+      return next;
+    });
+  }, [newlyCompletedBridgeHashes]);
+
   const filteredTransactions = useMemo(() => {
-    // Override statuses for bridge deposits
+    // Override statuses for bridge deposits based on LayerZero status
     const updatedActivities = activities.map(transaction => {
       if (
         transaction.type === TransactionType.BRIDGE_DEPOSIT &&
@@ -99,6 +153,11 @@ export default function ActivityTransactions({
         transaction.hash &&
         lzStatusMap.has(transaction.hash)
       ) {
+        // If already marked as completed, keep as SUCCESS
+        if (completedBridgeTxHashes.has(transaction.hash)) {
+          return transaction;
+        }
+
         const query = lzStatusMap.get(transaction.hash);
         // Default to pending if loading status
         if (!query.data) return { ...transaction, status: TransactionStatus.PENDING };
@@ -121,17 +180,7 @@ export default function ActivityTransactions({
         if (!foundInCard) {
           return { ...transaction, status: TransactionStatus.PENDING };
         }
-        // If we reach here, the transaction is delivered and found in card transactions.
-        // Mark it as completed so we stop polling it.
-        // We use a timeout to avoid update loops during render.
-        setTimeout(() => {
-          setCompletedBridgeTxHashes(prev => {
-            if (prev.has(transaction.hash!)) return prev;
-            const next = new Set(prev);
-            next.add(transaction.hash!);
-            return next;
-          });
-        }, 0);
+        // Transaction is delivered and found in card - will be marked completed by effect
       }
       return transaction;
     });
@@ -393,8 +442,18 @@ export default function ActivityTransactions({
         }}
         onEndReached={() => {
           // Use ref for synchronous guard - state updates are async and too slow
-          if (hasNextPage && !isFetchingNextPage && !isFetchingRef.current) {
+          // Also skip fetching during sync to prevent bulk page fetches
+          // Add 500ms debounce to prevent rapid pagination during re-render loops
+          const now = Date.now();
+          if (
+            hasNextPage &&
+            !isFetchingNextPage &&
+            !isFetchingRef.current &&
+            !isSyncing &&
+            now - lastFetchTimeRef.current > 500
+          ) {
             isFetchingRef.current = true;
+            lastFetchTimeRef.current = now;
             fetchNextPage().finally(() => {
               isFetchingRef.current = false;
             });
