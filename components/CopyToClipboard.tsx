@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
-import { Check, Copy } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+import Copy from '@/assets/images/copy';
 
 const CopyToClipboard = ({
   text,
@@ -47,10 +49,7 @@ const CopyToClipboard = ({
       {copied ? (
         <Check size={size} className="text-green-500" />
       ) : (
-        <Copy
-          size={size}
-          className={cn('text-muted-foreground/60 hover:text-primary', iconClassName)}
-        />
+        <Copy className={iconClassName} />
       )}
     </Button>
   );
