@@ -18,8 +18,8 @@ const SavingDepositImage = () => {
           transform: [{ translateY: '-50%' }],
         }),
         ...(!isScreenMedium && { marginLeft: 'auto', marginRight: 'auto' }),
-        width: isScreenMedium ? 349 : 233,
-        height: isScreenMedium ? 378 : 252,
+        width: isScreenMedium ? 349 : 186,
+        height: isScreenMedium ? 378 : 202,
       }}
       alt="Savings deposit illustration"
     />
