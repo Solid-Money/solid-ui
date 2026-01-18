@@ -45,6 +45,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
+import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
@@ -508,6 +509,9 @@ export default function CardDepositInternalForm() {
     chainId: mainnet.id,
   });
 
+  // Get borrow APY from Aave
+  const { borrowAPY, isLoading: isBorrowAPYLoading } = useAaveBorrowPosition();
+
   const usdcBalanceAmount = fuseUsdcBalance ? Number(fuseUsdcBalance) / 1e6 : 0;
   const soUsdBalanceAmount = soUsdToken
     ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
@@ -842,10 +846,10 @@ export default function CardDepositInternalForm() {
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Borrow rate</Text>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
-              {isRateLoading ? (
+              {isBorrowAPYLoading ? (
                 <Skeleton className="h-5 w-16 rounded-md" />
               ) : (
-                <Text className="text-base font-semibold">{4}%</Text>
+                <Text className="text-base font-semibold">{formatNumber(borrowAPY, 2)}%</Text>
               )}
             </View>
           </View>

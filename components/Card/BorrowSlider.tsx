@@ -16,6 +16,17 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   const sliderContainerRef = useRef<View>(null);
   const sliderPageX = useRef(0);
   const isDragging = useRef(false);
+  const STEP_SIZE = 0.01;
+  
+  // Calculate decimal places from step size
+  const decimalPlaces = useMemo(() => {
+    if (STEP_SIZE >= 1) return 0;
+    const stepStr = STEP_SIZE.toString();
+    if (stepStr.includes('.')) {
+      return stepStr.split('.')[1].length;
+    }
+    return 0;
+  }, []);
 
   // Ensure value is valid number
   const safeValue = useMemo(() => {
@@ -27,8 +38,10 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   const safeMax = useMemo(() => {
     const numMax = Number(max);
     if (isNaN(numMax) || !isFinite(numMax)) return min;
-    return Math.floor(Math.max(min, numMax));
-  }, [max, min]);
+    const clamped = Math.max(min, numMax);
+    // Round to nearest step size
+    return Math.round(clamped / STEP_SIZE) * STEP_SIZE;
+  }, [max, min, STEP_SIZE]);
 
   const range = safeMax - min;
   const percentage = range > 0 ? ((safeValue - min) / range) * 100 : 0;
@@ -41,8 +54,8 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
     const numValue = Number(newValue);
     if (isNaN(numValue) || !isFinite(numValue)) return;
     const clampedValue = Math.max(min, Math.min(safeMax, numValue));
-    // Round to nearest integer (1 unit steps)
-    onValueChange(Math.round(clampedValue));
+    // Round to nearest 0.1 (0.1 unit steps)
+    onValueChange(Math.round(clampedValue / STEP_SIZE) * STEP_SIZE);
   };
 
   const handleTrackPress = (event: any) => {
@@ -92,8 +105,8 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
         const numValue = Number(newValue);
         if (isNaN(numValue) || !isFinite(numValue)) return;
         const clampedValue = Math.max(min, Math.min(safeMax, numValue));
-        // Round to nearest integer (1 unit steps)
-        onValueChange(Math.round(clampedValue));
+        // Round to nearest 0.1 (0.1 unit steps)
+        onValueChange(Math.round(clampedValue / STEP_SIZE) * STEP_SIZE);
       },
       onPanResponderRelease: () => {
         isDragging.current = false;
@@ -110,7 +123,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
         <Text className="text-center text-base font-medium opacity-50 mt-10">Amount to borrow</Text>
         <View className="flex-row items-center justify-center">
           <Text className="text-3xl font-semibold text-white">
-            ${formatNumber(safeValue, 0, 0)}
+            ${formatNumber(safeValue, decimalPlaces, decimalPlaces)}
           </Text>
         </View>
       </View>
@@ -147,8 +160,8 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
           />
         </View>
         <View className="mt-2 flex-row w-full max-w-[320px] justify-between">
-          <Text className="text-sm text-muted-foreground">${formatNumber(min, 0, 0)}</Text>
-          <Text className="text-sm text-muted-foreground">${formatNumber(safeMax, 0, 0)}</Text>
+          <Text className="text-sm text-muted-foreground">${formatNumber(min, decimalPlaces, decimalPlaces)}</Text>
+          <Text className="text-sm text-muted-foreground">${formatNumber(safeMax, decimalPlaces, decimalPlaces)}</Text>
         </View>
       </View>
     </View>

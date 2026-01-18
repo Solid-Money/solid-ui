@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Fuel, Wallet as WalletIcon } from 'lucide-react-native';
 import { useActiveAccount } from 'thirdweb/react';
 import { Address, erc20Abi, formatUnits, parseUnits, zeroAddress } from 'viem';
-import { fuse } from 'viem/chains';
+import { fuse, mainnet } from 'viem/chains';
 import { useBalance, useReadContract } from 'wagmi';
 import { z } from 'zod';
 
@@ -19,19 +19,20 @@ import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
 import { CARD_REPAY_MODAL } from '@/constants/modals';
 import { useActivity } from '@/hooks/useActivity';
+import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import useRepayAndWithdrawCollateral from '@/hooks/useRepayAndWithdrawCollateral';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { USDC_STARGATE } from '@/constants/addresses';
+import { ADDRESSES } from '@/lib/config';
 import { Status, TokenType, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useCardRepayStore } from '@/store/useCardRepayStore';
 
 type FormData = { amount: string };
 
-// TODO: Replace with actual borrow position data from API
-const BORROWED_AMOUNT = 4443; // $4,443 from design
 const FEE_AMOUNT = 0; // 0 USDC from design
 
 export default function CardRepayForm() {
@@ -40,6 +41,22 @@ export default function CardRepayForm() {
   const { createActivity, updateActivity } = useActivity();
   const { setTransaction, setModal, selectedToken } = useCardRepayStore();
   const { data: cardDetails } = useCardDetails();
+  const { totalBorrowed: borrowedAmount, totalSupplied } = useAaveBorrowPosition();
+  const { repayAndWithdrawCollateral } = useRepayAndWithdrawCollateral();
+  const { data: rate, isLoading: isRateLoading } = useReadContract({
+    address: ADDRESSES.ethereum.accountant,
+    abi: [
+      {
+        inputs: [],
+        name: 'getRate',
+        outputs: [{ internalType: 'uint256', name: 'rate', type: 'uint256' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ],
+    functionName: 'getRate',
+    chainId: mainnet.id,
+  });
   const [repayStatus, setRepayStatus] = useState<Status>(Status.IDLE);
 
   const eoaAddress = account?.address as Address | undefined;
@@ -89,7 +106,6 @@ export default function CardRepayForm() {
   }, [selectedToken, balance, balanceERC20]);
 
   const schema = useMemo(() => {
-    const borrowedAmount = BORROWED_AMOUNT;
     return z.object({
       amount: z
         .string()
@@ -102,7 +118,7 @@ export default function CardRepayForm() {
           error: `Cannot repay more than ${formatNumber(borrowedAmount)} USDC`,
         }),
     });
-  }, [balanceAmount, selectedToken]);
+  }, [balanceAmount, selectedToken, borrowedAmount]);
 
   const { control, handleSubmit, formState, watch, reset, setValue, trigger } = useForm<FormData>({
     resolver: zodResolver(schema) as any,
@@ -119,7 +135,7 @@ export default function CardRepayForm() {
 
   const handleMaxPress = () => {
     if (balanceAmount > 0) {
-      const maxAmount = Math.min(balanceAmount, BORROWED_AMOUNT).toString();
+      const maxAmount = Math.min(balanceAmount, borrowedAmount).toString();
       setValue('amount', maxAmount);
       trigger('amount');
     }
@@ -135,24 +151,6 @@ export default function CardRepayForm() {
 
   const onSubmit = async (data: any) => {
     try {
-      if (!cardDetails) {
-        Toast.show({
-          type: 'error',
-          text1: 'Card details not found',
-          text2: 'Please try again later',
-        });
-        return;
-      }
-
-      if (!account) {
-        Toast.show({
-          type: 'error',
-          text1: 'Wallet not connected',
-          text2: 'Please connect your wallet to continue',
-        });
-        return;
-      }
-
       if (!user) {
         Toast.show({
           type: 'error',
@@ -163,11 +161,6 @@ export default function CardRepayForm() {
       }
 
       setRepayStatus(Status.PENDING);
-      const decimals = selectedToken?.contractDecimals || 6;
-      const amountWei = parseUnits(data.amount, decimals);
-
-      // TODO: Implement actual repay transaction logic
-      // This should call the appropriate contract method to repay the borrow position
 
       // Create activity event
       const clientTxId = await createActivity({
@@ -177,8 +170,8 @@ export default function CardRepayForm() {
         amount: data.amount,
         symbol: 'USDC',
         chainId: fuse.id,
-        fromAddress: account.address,
-        toAddress: account.address, // TODO: Update with actual repay address
+        fromAddress: user.safeAddress,
+        toAddress: ADDRESSES.fuse.aaveV3Pool,
         status: TransactionStatus.PENDING,
         metadata: {
           description: `Repay ${data.amount} USDC to card borrow position`,
@@ -186,19 +179,17 @@ export default function CardRepayForm() {
         },
       });
 
-      // TODO: Execute repay transaction
-      // const tx = await account.sendTransaction({ ... });
+      const tx = await repayAndWithdrawCollateral(data.amount);
 
-      // Update activity with transaction hash
-      // await updateActivity(clientTxId, {
-      //   status: TransactionStatus.PENDING,
-      //   hash: tx.transactionHash,
-      //   url: `https://explorer.fuse.io/tx/${tx.transactionHash}`,
-      //   metadata: {
-      //     txHash: tx.transactionHash,
-      //     processingStatus: 'processing',
-      //   },
-      // });
+      await updateActivity(clientTxId, {
+        status: TransactionStatus.PENDING,
+        hash: tx.transactionHash,
+        url: `https://explorer.fuse.io/tx/${tx.transactionHash}`,
+        metadata: {
+          txHash: tx.transactionHash,
+          processingStatus: 'processing',
+        },
+      });
 
       setRepayStatus(Status.SUCCESS);
       setTransaction({ amount: Number(data.amount) });
@@ -317,7 +308,12 @@ export default function CardRepayForm() {
         <View className="rounded-2xl bg-card p-4">
           <View className="mb-4 flex-row items-center justify-between">
             <Text className="text-base font-medium opacity-70">Amount borrowed</Text>
-            <Text className="text-base font-bold text-white">${formatNumber(BORROWED_AMOUNT)}</Text>
+            <Text className="text-base font-bold text-white">${formatNumber(borrowedAmount)}</Text>
+          </View>
+          <View className="mb-4 h-px w-full bg-white/10" />
+          <View className="mb-4 flex-row items-center justify-between">
+            <Text className="text-base font-medium opacity-70">Collateral supplied</Text>
+            <Text className="text-base font-bold text-white">${formatNumber(totalSupplied * Number(formatUnits(rate || 0n, 6)))}</Text>
           </View>
           <View className="mb-4 h-px w-full bg-white/10" />
           <View className="flex-row items-center justify-between">
@@ -338,49 +334,12 @@ export default function CardRepayForm() {
         variant="brand"
         className="h-12 rounded-xl mt-7"
         disabled={disabled}
-        onPress={() => {
-          if (!account) {
-            Toast.show({
-              type: 'error',
-              text1: 'Wallet not connected',
-              text2: 'Please connect your wallet',
-            });
-            return;
-          }
-
-          if (!watchedAmount || watchedAmount === '') {
-            Toast.show({
-              type: 'error',
-              text1: 'Enter amount',
-              text2: 'Please enter a repay amount',
-            });
-            return;
-          }
-
-          if (!formState.isValid) {
-            const errorMessage = formState.errors.amount?.message;
-            Toast.show({
-              type: 'error',
-              text1: 'Invalid amount',
-              text2: errorMessage || 'Please check your repay amount',
-            });
-            return;
-          }
-
-          if (repayStatus === Status.PENDING) {
-            Toast.show({
-              type: 'info',
-              text1: 'Transaction in progress',
-              text2: 'Please wait for the current transaction to complete',
-            });
-            return;
-          }
-
-          handleSubmit(onSubmit)();
-        }}
+        onPress={handleSubmit(onSubmit)}
       >
         <Text className="text-base font-bold text-black">
-          {repayStatus === Status.PENDING ? 'Processing...' : 'Repay'}
+          {repayStatus === Status.PENDING ?
+            <ActivityIndicator size="small" color="white" />
+            : 'Repay'}
         </Text>
       </Button>
     </Pressable>
