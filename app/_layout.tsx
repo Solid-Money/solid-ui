@@ -24,6 +24,7 @@ import {
 } from '@expo-google-fonts/mona-sans';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { PortalHost } from '@rn-primitives/portal';
+import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { ChevronLeft } from 'lucide-react-native';
@@ -41,15 +42,79 @@ import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, trackScreen } from '@/lib/analytics';
-import { isProduction } from '@/lib/config';
-import { initSentryDeferred, wrapWithSentry } from '@/lib/sentry-init';
+import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
 
 import type { ErrorBoundaryProps } from 'expo-router';
 
-// Sentry initialization is now deferred to after first paint
-// See lib/sentry-init.ts for configuration
+Sentry.init({
+  dsn: 'https://8e2914f77c8a188a9938a9eaa0ffc0ba@o4509954049376256.ingest.us.sentry.io/4509954077949952',
+  enabled: isProduction && !__DEV__,
+  environment: EXPO_PUBLIC_ENVIRONMENT || 'development',
+  debug: !isProduction,
+  sendDefaultPii: true,
+
+  // Performance Monitoring - configured upfront, integrations added later
+  tracesSampleRate: 0.5,
+  profilesSampleRate: 0.5,
+
+  // Release Health
+  enableAutoSessionTracking: true,
+  sessionTrackingIntervalMillis: 30000,
+
+  // Error Filtering
+  ignoreErrors: [
+    'Network request failed',
+    'NetworkError',
+    'Failed to fetch',
+    'AbortError',
+    'Non-serializable values were found in the navigation state',
+  ],
+
+  // Breadcrumbs
+  maxBreadcrumbs: 100,
+  beforeBreadcrumb(breadcrumb) {
+    if (breadcrumb.category === 'console' && breadcrumb.level === 'debug') {
+      return null;
+    }
+    return breadcrumb;
+  },
+
+  beforeSend(event) {
+    if (event.environment !== 'production') {
+      return null;
+    }
+    if (event.request?.cookies) {
+      delete event.request.cookies;
+    }
+    return event;
+  },
+
+  // Configure Session Replay - rates set upfront, integration added later
+  replaysSessionSampleRate: 0.5,
+  replaysOnErrorSampleRate: 1,
+
+  // Integrations
+  integrations: [
+    Sentry.mobileReplayIntegration({
+      maskAllText: false, // Set to true if you want to mask sensitive text
+      maskAllImages: false, // Set to true to mask images
+    }),
+    Sentry.feedbackIntegration(),
+    Sentry.reactNativeTracingIntegration(),
+    Sentry.reactNavigationIntegration({
+      routeChangeTimeoutMs: 50,
+    }),
+  ],
+
+  // Attachments
+  attachScreenshot: true,
+  attachViewHierarchy: true,
+
+  // Network tracking
+  // tracePropagationTargets: [/^https:\/\/app\.solid\.xyz/],
+});
 
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   return <AppErrorBoundary {...props} />;
@@ -99,7 +164,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export default wrapWithSentry(function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [splashScreenHidden, setSplashScreenHidden] = useState(false);
 
@@ -140,9 +205,6 @@ export default wrapWithSentry(function RootLayout() {
   }, []);
 
   useEffect(() => {
-    // Initialize Sentry after first paint (deferred for performance)
-    initSentryDeferred();
-
     async function prepare() {
       try {
         // Pre-load fonts, make any API calls you need to do here
