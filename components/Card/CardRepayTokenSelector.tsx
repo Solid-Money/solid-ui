@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { formatUnits } from 'viem';
 import { fuse } from 'viem/chains';
+import { useShallow } from 'zustand/react/shallow';
 
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
@@ -27,7 +28,13 @@ const DEFAULT_USDC_TOKEN: TokenBalance = {
 };
 
 const CardRepayTokenSelector: React.FC = () => {
-  const { selectedToken, setSelectedToken, setModal } = useCardRepayStore();
+  const { selectedToken, setSelectedToken, setModal } = useCardRepayStore(
+    useShallow(state => ({
+      selectedToken: state.selectedToken,
+      setSelectedToken: state.setSelectedToken,
+      setModal: state.setModal,
+    })),
+  );
   const { fuseTokens } = useWalletTokens();
 
   // Filter for USDC tokens on Fuse chain only, and ensure default USDC is always included
@@ -65,10 +72,13 @@ const CardRepayTokenSelector: React.FC = () => {
     });
   }, [usdcTokens]);
 
-  const handleTokenSelect = (token: TokenBalance) => {
-    setSelectedToken(token);
-    setModal(CARD_REPAY_MODAL.OPEN_FORM);
-  };
+  const handleTokenSelect = useCallback(
+    (token: TokenBalance) => {
+      setSelectedToken(token);
+      setModal(CARD_REPAY_MODAL.OPEN_FORM);
+    },
+    [setSelectedToken, setModal],
+  );
 
   return (
     <View className="gap-4">
