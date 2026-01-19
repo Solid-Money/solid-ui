@@ -169,7 +169,7 @@ export function useActivity() {
 
   const { data: activityData, isLoading, isRefetching } = activityEvents;
 
-  const debouncedActivityData = useDebounce(activityData, 150);
+  const debouncedActivityData = useDebounce(activityData, 1000);
 
   // Refetch all data sources (backend handles all syncing now)
   // IMPORTANT: Do NOT call refetchActivityEvents() here!
