@@ -52,19 +52,23 @@ export default function ActivityTransactions({
   const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
-  // Ref-based guard to prevent rapid fetchNextPage calls
-  // React state (isFetchingNextPage) updates async, so onEndReached can fire multiple times
+  // Ref-based guard to prevent rapid fetchNextPage calls from Load More button
+  // React state (isFetchingNextPage) updates async, so multiple clicks could fire
   // before state reflects the pending fetch. This ref updates synchronously.
   const isFetchingRef = useRef(false);
-  // Timestamp-based debounce to prevent rapid pagination during re-render loops
-  const lastFetchTimeRef = useRef(0);
-  const [completedBridgeTxHashes, setCompletedBridgeTxHashes] = useState<Set<string>>(new Set());
+  // Track completed bridge tx hashes using ref to avoid re-render cycles
+  // Using useRef instead of useState eliminates the dependency cycle:
+  // - useState would cause: useMemo depends on state -> effect updates state -> re-render -> useMemo runs again
+  // - useRef breaks this cycle: updates don't trigger re-renders, so no infinite loop possible
+  const completedBridgeTxHashesRef = useRef<Set<string>>(new Set());
 
   const { data: cardData } = useCardTransactions();
   const cardTransactions = useMemo(() => cardData?.pages.flatMap(p => p.data) || [], [cardData]);
 
   // Identify recent successful bridge deposits to check status for
   // Only check transactions from the last 24 hours to avoid checking history forever
+  // Note: completedBridgeTxHashesRef is read here but not in deps array since refs don't trigger re-renders
+  // The filtering happens on each render, which is fine since activities changes trigger the re-render anyway
   const bridgeDepositHashes = useMemo(() => {
     const now = Date.now() / 1000;
     return activities
@@ -73,12 +77,13 @@ export default function ActivityTransactions({
           a.type === TransactionType.BRIDGE_DEPOSIT &&
           a.status === TransactionStatus.SUCCESS &&
           a.hash &&
-          !completedBridgeTxHashes.has(a.hash) &&
+          !completedBridgeTxHashesRef.current.has(a.hash) &&
           now - parseInt(a.timestamp) < 86400,
       )
       .map(a => a.hash)
       .filter(Boolean) as string[];
-  }, [activities, completedBridgeTxHashes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- completedBridgeTxHashesRef is a ref, not state
+  }, [activities]);
 
   const lzStatuses = useLayerZeroStatuses(bridgeDepositHashes);
 
@@ -92,16 +97,15 @@ export default function ActivityTransactions({
 
   useCardDepositPoller();
 
-  // Track which bridge deposits are fully completed (delivered + found in card)
-  // This is computed separately to avoid setState inside useMemo
-  const newlyCompletedBridgeHashes = useMemo(() => {
-    const completed: string[] = [];
+  // Mark bridge deposits as completed when they are delivered and found in card transactions
+  // This effect updates the ref directly - no re-render cycle possible since refs don't trigger renders
+  useEffect(() => {
     for (const transaction of activities) {
       if (
         transaction.type === TransactionType.BRIDGE_DEPOSIT &&
         transaction.status === TransactionStatus.SUCCESS &&
         transaction.hash &&
-        !completedBridgeTxHashes.has(transaction.hash) &&
+        !completedBridgeTxHashesRef.current.has(transaction.hash) &&
         lzStatusMap.has(transaction.hash)
       ) {
         const query = lzStatusMap.get(transaction.hash);
@@ -118,31 +122,12 @@ export default function ActivityTransactions({
           ct => ct.crypto_transaction_details?.tx_hash?.toLowerCase() === dstTxHash.toLowerCase(),
         );
         if (foundInCard) {
-          completed.push(transaction.hash);
+          // Mark as completed - this is a ref mutation, no re-render triggered
+          completedBridgeTxHashesRef.current.add(transaction.hash);
         }
       }
     }
-    return completed;
-  }, [activities, lzStatusMap, cardTransactions, completedBridgeTxHashes]);
-
-  // Update completed hashes in a separate effect (not inside useMemo)
-  // The functional setState with early return (prev === next) prevents unnecessary re-renders
-  useEffect(() => {
-    if (newlyCompletedBridgeHashes.length === 0) return;
-
-    setCompletedBridgeTxHashes(prev => {
-      // Check if all hashes are already in the set - if so, return same reference (no re-render)
-      const allAlreadyPresent = newlyCompletedBridgeHashes.every(hash => prev.has(hash));
-      if (allAlreadyPresent) return prev;
-
-      // Only create new Set if we have actual changes
-      const next = new Set(prev);
-      for (const hash of newlyCompletedBridgeHashes) {
-        next.add(hash);
-      }
-      return next;
-    });
-  }, [newlyCompletedBridgeHashes]);
+  }, [activities, lzStatusMap, cardTransactions]);
 
   const filteredTransactions = useMemo(() => {
     // Override statuses for bridge deposits based on LayerZero status
@@ -154,7 +139,7 @@ export default function ActivityTransactions({
         lzStatusMap.has(transaction.hash)
       ) {
         // If already marked as completed, keep as SUCCESS
-        if (completedBridgeTxHashes.has(transaction.hash)) {
+        if (completedBridgeTxHashesRef.current.has(transaction.hash)) {
           return transaction;
         }
 
@@ -465,26 +450,10 @@ export default function ActivityTransactions({
           // Use a combination of identifiers to ensure uniqueness even if hash/userOpHash/clientTxId are the same
           return `tx-${baseKey}-${index}`;
         }}
-        onEndReached={() => {
-          // Use ref for synchronous guard - state updates are async and too slow
-          // Also skip fetching during sync to prevent bulk page fetches
-          // Add 500ms debounce to prevent rapid pagination during re-render loops
-          const now = Date.now();
-          if (
-            hasNextPage &&
-            !isFetchingNextPage &&
-            !isFetchingRef.current &&
-            !isSyncing &&
-            now - lastFetchTimeRef.current > 500
-          ) {
-            isFetchingRef.current = true;
-            lastFetchTimeRef.current = now;
-            fetchNextPage().finally(() => {
-              isFetchingRef.current = false;
-            });
-          }
-        }}
-        onEndReachedThreshold={0.5}
+        // NOTE: onEndReached was intentionally removed to prevent bulk page fetches
+        // FlashList fires onEndReached on every re-render when content doesn't fill viewport
+        // This caused all pages to fetch immediately (Sentry: "10+ renders/second")
+        // Users now use the "Load More" button instead (renderFooter)
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={() => <View className="h-0" />}
