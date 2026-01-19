@@ -30,7 +30,7 @@ interface UserState {
 
 /** Get the currently selected user, or the only user if there's just one */
 export const selectSelectedUser = ({ users }: UserState): User | undefined =>
-  users.find(u => u.selected) ?? (users.length === 1 ? users[0] : undefined);
+  users.find(u => u.selected);
 
 /** Get the credentialId of the selected user (for passkey filtering) */
 export const selectSelectedCredentialId = (state: UserState): string | undefined => {
