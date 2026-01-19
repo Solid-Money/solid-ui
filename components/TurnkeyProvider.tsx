@@ -4,6 +4,7 @@ import {
   TurnkeyProvider as TurnkeyProviderKit,
   type TurnkeyProviderConfig,
 } from '@turnkey/react-native-wallet-kit';
+import { useShallow } from 'zustand/react/shallow';
 
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
@@ -16,7 +17,7 @@ import { selectSelectedCredentialId, useUserStore } from '@/store/useUserStore';
 export const getRuntimeRpId = () => (Platform.OS === 'web' && __DEV__ ? 'localhost' : 'solid.xyz');
 
 export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const selectedCredentialId = useUserStore(selectSelectedCredentialId);
+  const selectedCredentialId = useUserStore(useShallow(selectSelectedCredentialId));
 
   const config = useMemo<TurnkeyProviderConfig>(() => {
     const baseConfig: TurnkeyProviderConfig = {
