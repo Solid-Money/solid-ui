@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { ArrowLeft } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import PasskeySvg from '@/assets/images/passkey-svg';
@@ -26,7 +27,16 @@ export default function SignupPasskey() {
   const router = useRouter();
   const { isDesktop } = useDimension();
   const { email, verificationToken, _hasHydrated, setStep, setPasskeyData, setError } =
-    useSignupFlowStore();
+    useSignupFlowStore(
+      useShallow(state => ({
+        email: state.email,
+        verificationToken: state.verificationToken,
+        _hasHydrated: state._hasHydrated,
+        setStep: state.setStep,
+        setPasskeyData: state.setPasskeyData,
+        setError: state.setError,
+      })),
+    );
   const [isLoading, setIsLoading] = useState(false);
   const { createPasskey } = useTurnkey();
 

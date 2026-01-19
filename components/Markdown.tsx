@@ -14,7 +14,7 @@ type MarkdownProps = {
   style?: MarkdownStyle;
 };
 
-const Markdown = ({ value, style = { backgroundColor: '#000000' } }: MarkdownProps) => {
+const Markdown = ({ value, style = { backgroundColor: 'transparent' } }: MarkdownProps) => {
   return (
     <RNMarkdown
       value={value}

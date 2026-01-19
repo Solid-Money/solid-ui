@@ -15,7 +15,7 @@ const FAQs = ({ faqs, className }: FAQsProps) => {
   return (
     <View
       className={cn(
-        'relative w-full justify-between gap-y-6 rounded-twice p-4 py-6 md:mt-8 md:flex-row md:p-10',
+        'relative w-full justify-between gap-y-6 rounded-twice bg-card p-4 py-6 md:mt-8 md:flex-row md:p-10',
         className,
       )}
     >
