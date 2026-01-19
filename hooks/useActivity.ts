@@ -106,6 +106,16 @@ export function useActivity() {
   );
   const [cachedActivities, setCachedActivities] = useState<ActivityEvent[]>([]);
 
+  // Memoize sync options to ensure stable reference
+  // (useSyncActivities extracts primitives, but this prevents potential re-render issues)
+  const syncOptions = useMemo(
+    () => ({
+      syncOnAppActive: true,
+      syncOnMount: true,
+    }),
+    [],
+  );
+
   // Sync all activities from backend (handles smart caching internally)
   // Backend now syncs: Blockscout, deposits, bridges, and bank transfers
   const {
@@ -113,10 +123,7 @@ export function useActivity() {
     isSyncing,
     isStale: isSyncStale,
     canSync,
-  } = useSyncActivities({
-    syncOnAppActive: true,
-    syncOnMount: true,
-  });
+  } = useSyncActivities(syncOptions);
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
 
