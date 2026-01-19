@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, RefreshControl, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useShallow } from 'zustand/react/shallow';
@@ -384,9 +384,34 @@ export default function ActivityTransactions({
     </View>
   );
 
+  const handleLoadMore = () => {
+    if (hasNextPage && !isFetchingNextPage && !isFetchingRef.current) {
+      isFetchingRef.current = true;
+      fetchNextPage().finally(() => {
+        isFetchingRef.current = false;
+      });
+    }
+  };
+
   const renderFooter = () => {
-    if (isFetchingNextPage) {
-      return renderLoading();
+    if (hasNextPage) {
+      return (
+        <View className="items-center py-7">
+          <Pressable
+            onPress={handleLoadMore}
+            disabled={isFetchingNextPage}
+            className={cn(
+              'flex-row items-center gap-2 rounded-lg bg-card px-6 py-3',
+              isFetchingNextPage ? 'opacity-70' : 'active:opacity-70',
+            )}
+          >
+            {isFetchingNextPage && <ActivityIndicator size="small" color="gray" />}
+            <Text className="text-base font-medium text-foreground">
+              {isFetchingNextPage ? 'Loading...' : 'Load More'}
+            </Text>
+          </Pressable>
+        </View>
+      );
     }
     return null;
   };

@@ -6,4 +6,5 @@ export * from './pegSwap';
 
 export * from './plugins';
 export * from './tokens';
+export * from './UiPoolDataProviderV3';
 
