@@ -8,6 +8,7 @@ import { Link, useRouter } from 'expo-router';
 import { ChevronRight, Copy, Plus } from 'lucide-react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
+import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import PageLayout from '@/components/PageLayout';
@@ -16,13 +17,12 @@ import { Text } from '@/components/ui/text';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useDimension } from '@/hooks/useDimension';
+import useUser from '@/hooks/useUser';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { CardHolderName, CardStatus } from '@/lib/types';
-import { cn } from '@/lib/utils/utils';
-import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { isUserAllowedToUseTestFeature } from '@/lib/utils/testFeatures';
-import useUser from '@/hooks/useUser';
+import { cn } from '@/lib/utils/utils';
 
 export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();

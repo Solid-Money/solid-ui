@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
@@ -21,7 +22,14 @@ import CardRepayTokenSelector from './CardRepayTokenSelector';
  */
 const CardRepayModalProvider = () => {
   const router = useRouter();
-  const { currentModal, previousModal, setModal, transaction } = useCardRepayStore();
+  const { currentModal, previousModal, setModal, transaction } = useCardRepayStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+      setModal: state.setModal,
+      transaction: state.transaction,
+    })),
+  );
 
   const isClose = currentModal.name === CARD_REPAY_MODAL.CLOSE.name;
   const isForm = currentModal.name === CARD_REPAY_MODAL.OPEN_FORM.name;
