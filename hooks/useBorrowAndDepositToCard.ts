@@ -44,6 +44,8 @@ type BridgeResult = {
   error: string | null;
 };
 
+const soUSDLTV = 79n; // 80% LTV for soUSD (79% to avoid rounding errors)
+
 const useBorrowAndDepositToCard = (): BridgeResult => {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivity();
@@ -52,12 +54,12 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
   const [error, setError] = useState<string | null>(null);
 
   const borrowAndDeposit = useCallback(
-    async (amount: string) => {
+    async (amountToBorrow: string) => {
       try {
         if (!user) {
           const error = new Error('User is not selected');
           track(TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_ERROR, {
-            amount: amount,
+            amount: amountToBorrow,
             error: 'User not found',
             step: 'validation',
             source: 'useBridgeToCard',
@@ -68,7 +70,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
               step: 'validation',
             },
             extra: {
-              amount,
+              amount: amountToBorrow,
               hasUser: !!user,
             },
           });
@@ -85,7 +87,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
         if (!arbitrumFundingAddress) {
           const error = new Error('Arbitrum funding address not found for card');
           track(TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_ERROR, {
-            amount: amount,
+            amount: amountToBorrow,
             error: 'Arbitrum funding address not found',
             step: 'validation',
             source: 'useBridgeToCard',
@@ -96,7 +98,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
               step: 'validation',
             },
             extra: {
-              amount,
+              amount: amountToBorrow,
               hasCardDetails: !!cardDetails,
             },
           });
@@ -104,7 +106,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
         }
 
         track(TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_INITIATED, {
-          amount: amount,
+          amount: amountToBorrow,
           from_chain: fuse.id,
           to_chain: 42161, // Arbitrum
           source: 'useBridgeToCard',
@@ -113,41 +115,40 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
         setBridgeStatus(Status.PENDING);
         setError(null);
 
-        const destinationAddress = arbitrumFundingAddress;
-        const amountWei = parseUnits(amount, 6);
-
-        const supplyApproveCalldata = encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [ADDRESSES.fuse.aaveV3Pool, amountWei],
-        });
-
-        const supplyCalldata = encodeFunctionData({
-          abi: AaveV3Pool_ABI,
-          functionName: 'supply',
-          args: [ADDRESSES.fuse.vault, amountWei, user.safeAddress as Address, 0],
-        });
-
         const rate = await readContract(publicClient(mainnet.id), {
           address: ADDRESSES.ethereum.accountant,
           abi: ACCOUNTANT_ABI,
           functionName: 'getRate',
         });
 
-        const borrowAmount = (((amountWei * rate) / 1000000n) * 70n) / 100n;
+        const destinationAddress = arbitrumFundingAddress;
+        const borrowAmountWei = parseUnits(amountToBorrow, 6);
+        const supplyAmountWei = (borrowAmountWei * 100n * 1000000n) / (soUSDLTV * rate);
+
+        const supplyApproveCalldata = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [ADDRESSES.fuse.aaveV3Pool, supplyAmountWei],
+        }); 
+
+        const supplyCalldata = encodeFunctionData({
+          abi: AaveV3Pool_ABI,
+          functionName: 'supply',
+          args: [ADDRESSES.fuse.vault, supplyAmountWei, user.safeAddress as Address, 0],
+        });
 
         const borrowCalldata = encodeFunctionData({
           abi: AaveV3Pool_ABI,
           functionName: 'borrow',
-          args: [USDC_STARGATE, borrowAmount, 2, 0, user.safeAddress as Address],
+          args: [USDC_STARGATE, borrowAmountWei, 2, 0, user.safeAddress as Address],
         });
 
         Sentry.addBreadcrumb({
           message: 'Starting bridge to Card transaction',
           category: 'bridge',
           data: {
-            amount,
-            amountWei: amountWei.toString(),
+            amount: amountToBorrow,
+            amountWei: borrowAmountWei.toString(),
             userAddress: user.safeAddress,
             destinationAddress,
             chainId: fuse.id,
@@ -156,7 +157,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
 
         // Get Stargate quote for taxi route
         // Calculate minimum destination amount (95% of source amount for 5% slippage tolerance)
-        const dstAmountMin = (borrowAmount * 95n) / 100n;
+        const dstAmountMin = (borrowAmountWei * 95n) / 100n;
 
         const quoteParams: StargateQuoteParams = {
           srcToken: USDC_STARGATE,
@@ -165,7 +166,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
           dstChainKey: 'arbitrum', // Arbitrum chain key
           srcAddress: ADDRESSES.fuse.bridgePaymasterAddress,
           dstAddress: destinationAddress,
-          srcAmount: borrowAmount.toString(),
+          srcAmount: borrowAmountWei.toString(),
           dstAmountMin: dstAmountMin.toString(),
         };
         const quote = await getStargateQuote(quoteParams);
@@ -194,7 +195,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
           to: pad(destinationAddress as `0x${string}`, {
             size: 32,
           }),
-          amountLD: borrowAmount,
+          amountLD: borrowAmountWei,
           minAmountLD: dstAmountMin,
           extraOptions: '0x',
           composeMsg: '0x',
@@ -235,7 +236,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
             data: encodeFunctionData({
               abi: erc20Abi,
               functionName: 'approve',
-              args: [ADDRESSES.fuse.cardDepositManager, borrowAmount],
+              args: [ADDRESSES.fuse.cardDepositManager, borrowAmountWei],
             }),
             value: 0n,
           },
@@ -260,16 +261,16 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
 
         const result = await trackTransaction(
           {
-            type: TransactionType.BRIDGE_DEPOSIT,
-            title: `Deposit USDC to Card`,
-            shortTitle: `Deposit USDC`,
-            amount,
+            type: TransactionType.BORROW_AND_DEPOSIT_TO_CARD,
+            title: `Borrow and deposit to Card`,
+            shortTitle: `Borrow and deposit to Card`,
+            amount: amountToBorrow,
             symbol: 'USDC.e', // Source symbol - bridging USDC.e
             chainId: fuse.id,
             fromAddress: user.safeAddress,
-            toAddress: destinationAddress,
+            toAddress: arbitrumFundingAddress,
             metadata: {
-              description: `Bridge ${amount} USDC from Fuse to Card on Arbitrum`,
+              description: `Borrow and deposit ${amountToBorrow} USDC from Fuse to Card on Arbitrum`,
               fee: transaction.value,
               sourceSymbol: 'USDC.e', // Track source symbol for display
             },
@@ -278,7 +279,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
             executeTransactions(
               smartAccountClient,
               transactions,
-              'Bridge to Card failed',
+              'Borrow and deposit to Card failed',
               fuse,
               onUserOpHash,
             ),
@@ -292,7 +293,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
         if (transaction_result === USER_CANCELLED_TRANSACTION) {
           const error = new Error('User cancelled transaction');
           track(TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_CANCELLED, {
-            amount: amount,
+            amount: amountToBorrow,
             fee: transaction.value,
             from_chain: fuse.id,
             to_chain: 42161,
@@ -305,7 +306,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
               reason: 'user_cancelled',
             },
             extra: {
-              amount,
+              amount: amountToBorrow,
               userAddress: user.safeAddress,
               destinationAddress,
               chainId: fuse.id,
@@ -320,7 +321,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
         }
 
         track(TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_COMPLETED, {
-          amount: amount,
+          amount: amountToBorrow,
           transaction_hash: transaction_result.transactionHash,
           fee: transaction.value,
           from_chain: fuse.id,
@@ -332,7 +333,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
           message: 'Bridge to Card transaction successful',
           category: 'bridge',
           data: {
-            amount,
+            amount: amountToBorrow,
             transactionHash: transaction_result.transactionHash,
             userAddress: user.safeAddress,
             destinationAddress,
@@ -346,7 +347,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
         console.error(error);
 
         track(TRACKING_EVENTS.BRIDGE_TO_ARBITRUM_ERROR, {
-          amount: amount,
+          amount: amountToBorrow,
           from_chain: fuse.id,
           to_chain: 42161,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -361,7 +362,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
             step: 'execution',
           },
           extra: {
-            amount,
+            amount: amountToBorrow,
             userAddress: user?.safeAddress,
             chainId: fuse.id,
             errorMessage: error instanceof Error ? error.message : 'Unknown error',
