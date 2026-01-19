@@ -127,7 +127,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
           </Text>
         </View>
       </View>
-      <View className="items-center">
+      <View>
         <View
           ref={sliderContainerRef}
           onLayout={event => {
@@ -136,7 +136,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
               setSliderWidth(width);
             }
           }}
-          className="relative w-full max-w-[320px]"
+          className="relative w-full"
         >
           <Pressable
             onPress={handleTrackPress}
@@ -161,7 +161,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
             }}
           />
         </View>
-        <View className="mt-2 w-full max-w-[320px] flex-row justify-between">
+        <View className="mt-2 w-full flex-row justify-between">
           <Text className="text-sm text-muted-foreground">
             ${formatNumber(min, decimalPlaces, decimalPlaces)}
           </Text>
