@@ -121,7 +121,7 @@ export function useAaveBorrowPosition(): AaveBorrowPositionData {
                 borrowAPY: 0,
                 savingsAPY: savingsAPY || 0,
                 cashbackAPY: 0,
-                netAPY: -(savingsAPY || 0),
+                netAPY: 0,
                 isLoading: false,
                 error: null,
             };
@@ -137,7 +137,7 @@ export function useAaveBorrowPosition(): AaveBorrowPositionData {
                 borrowAPY: 0,
                 savingsAPY: savingsAPY || 0,
                 cashbackAPY: 0,
-                netAPY: -(savingsAPY || 0),
+                netAPY: 0,
                 isLoading: false,
                 error: null,
             };
@@ -153,7 +153,7 @@ export function useAaveBorrowPosition(): AaveBorrowPositionData {
                 borrowAPY: 0,
                 savingsAPY: savingsAPY || 0,
                 cashbackAPY: 0,
-                netAPY: -(savingsAPY || 0),
+                netAPY: 0,
                 isLoading: false,
                 error: null,
             };
@@ -172,8 +172,8 @@ export function useAaveBorrowPosition(): AaveBorrowPositionData {
         // Cashback APY is hardcoded to 0
         const cashbackAPY = 0;
 
-        // Calculate net APY: Borrow APY - Savings APY - Cashback APY
-        const netAPY = (savingsAPY || 0) - borrowAPY;
+        // Calculate net APY: if borrowAPY is 0, netAPY should be 0, otherwise savingsAPY - borrowAPY
+        const netAPY = borrowAPY === 0 ? 0 : (savingsAPY || 0) - borrowAPY;
 
         return {
             totalBorrowed,
