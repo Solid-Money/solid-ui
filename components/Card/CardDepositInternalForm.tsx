@@ -543,7 +543,7 @@ export default function CardDepositInternalForm() {
   }, [soUsdBalanceAmount, exchangeRate]);
 
   // Calculate collateral required using the same formula as useBorrowAndDepositToCard
-  const soUSDLTV = 79n; // 79% LTV
+  const soUSDLTV = 70n; // 79% LTV
   const collateralRequired = useMemo(() => {
     if (watchedAmount === '' || watchedAmount === '0') {
       return 0;
