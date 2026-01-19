@@ -115,7 +115,7 @@ const FAQSection = () => {
         Frequently asked questions
       </Text>
       <View className="w-full max-w-3xl rounded-twice bg-card p-2 md:p-6">
-        <FAQ faqs={faqs} markdownStyle={{ backgroundColor: '#212121' }} />
+        <FAQ faqs={faqs} />
       </View>
     </View>
   );

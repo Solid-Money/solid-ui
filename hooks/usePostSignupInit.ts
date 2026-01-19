@@ -8,6 +8,7 @@ import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchIsDeposited } from './useAnalytics';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Hook to handle post-signup/post-login initialization tasks that don't need to block
@@ -18,7 +19,12 @@ export const usePostSignupInit = (user: User | undefined) => {
   const queryClient = useQueryClient();
   const hasInitialized = useRef(false);
   const lastUserId = useRef<string | undefined>(undefined);
-  const { safeAddressSynced, markSafeAddressSynced } = useUserStore();
+  const { safeAddressSynced, markSafeAddressSynced } = useUserStore(
+    useShallow(state => ({
+      safeAddressSynced: state.safeAddressSynced,
+      markSafeAddressSynced: state.markSafeAddressSynced,
+    })),
+  );
 
   useEffect(() => {
     // Only run when we have a new user (different userId)
