@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { formatUnits } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
@@ -40,10 +40,13 @@ const TokenSelector: React.FC = () => {
     });
   }, [ethereumTokens, fuseTokens, baseTokens]);
 
-  const handleTokenSelect = (token: TokenBalance) => {
-    setSelectedToken(token);
-    setModal(SEND_MODAL.OPEN_FORM);
-  };
+  const handleTokenSelect = useCallback(
+    (token: TokenBalance) => {
+      setSelectedToken(token);
+      setModal(SEND_MODAL.OPEN_FORM);
+    },
+    [setSelectedToken, setModal],
+  );
 
   return (
     <View className="gap-8">

@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn, formatNumber } from '@/lib/utils';
+
 import RepayToCardModal from '@/components/Card/RepayToCardModal';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
+import { cn, formatNumber } from '@/lib/utils';
 
 type BorrowPositionCardProps = {
-    className?: string;
-}
+  className?: string;
+};
 
 export function BorrowPositionCard({ className }: BorrowPositionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -65,9 +66,7 @@ export function BorrowPositionCard({ className }: BorrowPositionCardProps) {
             {isLoading ? (
               <Skeleton className="h-5 w-12 rounded-md bg-white/10" />
             ) : (
-              <Text className="text-base font-bold text-white">
-                {formatNumber(borrowAPY, 2)}%
-              </Text>
+              <Text className="text-base font-bold text-white">{formatNumber(borrowAPY, 2)}%</Text>
             )}
           </View>
           <View className="mb-4 h-px w-full bg-white/10" />
@@ -78,9 +77,7 @@ export function BorrowPositionCard({ className }: BorrowPositionCardProps) {
             {isLoading ? (
               <Skeleton className="h-5 w-12 rounded-md bg-white/10" />
             ) : (
-              <Text className="text-base font-bold text-white">
-                {formatNumber(savingsAPY, 2)}%
-              </Text>
+              <Text className="text-base font-bold text-white">{formatNumber(savingsAPY, 2)}%</Text>
             )}
           </View>
           <View className="mb-4 h-px w-full bg-white/10" />

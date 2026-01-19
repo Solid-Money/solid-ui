@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Control,
   Controller,
@@ -7,19 +7,11 @@ import {
   UseFormSetValue,
   UseFormTrigger,
 } from 'react-hook-form';
-import {
-  ActivityIndicator,
-  Linking,
-  PanResponder,
-  Platform,
-  Pressable,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { ChevronDown, Fuel, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
-import { Address, erc20Abi, TransactionReceipt, formatUnits, parseUnits } from 'viem';
+import { Address, erc20Abi, formatUnits, TransactionReceipt } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
@@ -38,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { USDC_STARGATE } from '@/constants/addresses';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
+import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import { useActivity } from '@/hooks/useActivity';
 import { useBalances } from '@/hooks/useBalances';
 import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
@@ -46,7 +39,6 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
-import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
@@ -56,8 +48,9 @@ import {
   getArbitrumFundingAddress,
   isUserAllowedToUseTestFeature,
 } from '@/lib/utils';
-import { BorrowSlider } from './BorrowSlider';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
+
+import { BorrowSlider } from './BorrowSlider';
 
 type SourceType = 'wallet' | 'savings' | 'borrow';
 
@@ -791,7 +784,7 @@ export default function CardDepositInternalForm() {
         }
       }
     }
-  }, [watchedFrom, maxBorrowAmount]);
+  }, [watchedFrom, maxBorrowAmount, watchedAmount, sliderValue, setValue]);
 
   // Update slider when form amount changes (for manual input)
   useEffect(() => {

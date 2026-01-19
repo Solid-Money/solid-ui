@@ -6,27 +6,26 @@ import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Fuel, Wallet as WalletIcon } from 'lucide-react-native';
 import { useActiveAccount } from 'thirdweb/react';
-import { Address, erc20Abi, formatUnits, parseUnits, zeroAddress } from 'viem';
+import { Address, formatUnits, zeroAddress } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { useBalance, useReadContract } from 'wagmi';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { USDC_STARGATE } from '@/constants/addresses';
 import { getBridgeChain } from '@/constants/bridge';
 import { CARD_REPAY_MODAL } from '@/constants/modals';
-import { useActivity } from '@/hooks/useActivity';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
-import { useCardDetails } from '@/hooks/useCardDetails';
+import { useActivity } from '@/hooks/useActivity';
 import useRepayAndWithdrawCollateral from '@/hooks/useRepayAndWithdrawCollateral';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
-import getTokenIcon from '@/lib/getTokenIcon';
-import { USDC_STARGATE } from '@/constants/addresses';
 import { ADDRESSES } from '@/lib/config';
+import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useCardRepayStore } from '@/store/useCardRepayStore';
@@ -39,11 +38,16 @@ export default function CardRepayForm() {
   const account = useActiveAccount();
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivity();
-  const { setTransaction, setModal, selectedToken } = useCardRepayStore();
-  const { data: cardDetails } = useCardDetails();
+  const { setTransaction, setModal, selectedToken } = useCardRepayStore(
+    useShallow(state => ({
+      setTransaction: state.setTransaction,
+      setModal: state.setModal,
+      selectedToken: state.selectedToken,
+    })),
+  );
   const { totalBorrowed: borrowedAmount, totalSupplied } = useAaveBorrowPosition();
   const { repayAndWithdrawCollateral } = useRepayAndWithdrawCollateral();
-  const { data: rate, isLoading: isRateLoading } = useReadContract({
+  const { data: rate } = useReadContract({
     address: ADDRESSES.ethereum.accountant,
     abi: [
       {
@@ -82,7 +86,9 @@ export default function CardRepayForm() {
           : undefined,
     chainId: selectedToken?.chainId || fuse.id,
     query: {
-      enabled: !!eoaAddress && (!selectedToken || (!isNative && selectedToken.contractAddress !== zeroAddress)),
+      enabled:
+        !!eoaAddress &&
+        (!selectedToken || (!isNative && selectedToken.contractAddress !== zeroAddress)),
     },
   });
 
@@ -313,7 +319,9 @@ export default function CardRepayForm() {
           <View className="mb-4 h-px w-full bg-white/10" />
           <View className="mb-4 flex-row items-center justify-between">
             <Text className="text-base font-medium opacity-70">Collateral supplied</Text>
-            <Text className="text-base font-bold text-white">${formatNumber(totalSupplied * Number(formatUnits(rate || 0n, 6)))}</Text>
+            <Text className="text-base font-bold text-white">
+              ${formatNumber(totalSupplied * Number(formatUnits(rate || 0n, 6)))}
+            </Text>
           </View>
           <View className="mb-4 h-px w-full bg-white/10" />
           <View className="flex-row items-center justify-between">
@@ -321,9 +329,7 @@ export default function CardRepayForm() {
               <Fuel color="rgba(255, 255, 255, 0.7)" size={16} />
               <Text className="text-base font-medium opacity-70">Fee</Text>
             </View>
-            <Text className="text-base font-bold text-white">
-              {formatNumber(FEE_AMOUNT)} USDC
-            </Text>
+            <Text className="text-base font-bold text-white">{formatNumber(FEE_AMOUNT)} USDC</Text>
           </View>
         </View>
       </View>
@@ -332,14 +338,16 @@ export default function CardRepayForm() {
 
       <Button
         variant="brand"
-        className="h-12 rounded-xl mt-7"
+        className="mt-7 h-12 rounded-xl"
         disabled={disabled}
         onPress={handleSubmit(onSubmit)}
       >
         <Text className="text-base font-bold text-black">
-          {repayStatus === Status.PENDING ?
+          {repayStatus === Status.PENDING ? (
             <ActivityIndicator size="small" color="white" />
-            : 'Repay'}
+          ) : (
+            'Repay'
+          )}
         </Text>
       </Button>
     </Pressable>

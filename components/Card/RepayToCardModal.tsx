@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 
 import SlotTrigger from '@/components/SlotTrigger';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,11 @@ import { useCardRepayStore } from '@/store/useCardRepayStore';
  * since the global CardRepayModalProvider handles the modal state.
  */
 export default function RepayToCardModal({ trigger }: { trigger?: React.ReactNode }) {
-  const { setModal } = useCardRepayStore();
+  const setModal = useCardRepayStore(state => state.setModal);
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     setModal(CARD_REPAY_MODAL.OPEN_FORM);
-  };
+  }, [setModal]);
 
   if (trigger === null) {
     return null;
@@ -31,10 +31,7 @@ export default function RepayToCardModal({ trigger }: { trigger?: React.ReactNod
   }
 
   return (
-    <Button
-      className="h-12 rounded-[13px] border-0 bg-[#303030]"
-      onPress={handlePress}
-    >
+    <Button className="h-12 rounded-[13px] border-0 bg-[#303030]" onPress={handlePress}>
       <Text className="text-base font-bold text-white">Repay</Text>
     </Button>
   );
