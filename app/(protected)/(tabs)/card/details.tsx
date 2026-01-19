@@ -17,11 +17,9 @@ import { Text } from '@/components/ui/text';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useDimension } from '@/hooks/useDimension';
-import useUser from '@/hooks/useUser';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { CardHolderName, CardStatus } from '@/lib/types';
-import { isUserAllowedToUseTestFeature } from '@/lib/utils/testFeatures';
 import { cn } from '@/lib/utils/utils';
 
 export default function CardDetails() {
@@ -33,7 +31,6 @@ export default function CardDetails() {
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
-  const { user } = useUser();
 
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
@@ -132,6 +129,14 @@ export default function CardDetails() {
             </View>
           </View>
 
+          {/* Row 3: Borrow Position Card */}
+          <View className="mt-6 flex-row gap-6">
+            <View className="flex-[3]">
+              <BorrowPositionCard variant="desktop" />
+            </View>
+            <View className="flex-[2]"></View>
+          </View>
+
           {/* Temporary disabled deposit bonus banner */}
           {/* <View className="mt-6 flex-row gap-6">
             <View className="flex-[3]">
@@ -177,9 +182,7 @@ export default function CardDetails() {
           />
           {/* Temporary disabled deposit bonus banner */}
           {/* <DepositBonusBanner /> */}
-          {isUserAllowedToUseTestFeature(user?.username ?? '') && (
-            <BorrowPositionCard className="mb-4" />
-          )}
+          <BorrowPositionCard className="mb-4" />
           <CashbackDisplay cashback={cardDetails?.cashback} />
           <ViewCardTransactionsButton />
           <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
