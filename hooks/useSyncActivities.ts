@@ -197,6 +197,11 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
     },
   });
 
+  // Extract stable function reference from mutation object
+  // CRITICAL: useMutation returns a new object on every render, but mutateAsync is stable
+  // Using the whole object as a dependency would cause infinite re-renders (React error #185)
+  const mutateAsync = syncMutation.mutateAsync;
+
   // Smart sync function that respects cooldowns
   // Uses synchronous lock to prevent race conditions across 20+ components
   const smartSync = useCallback(
@@ -215,14 +220,14 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
       }
 
       try {
-        return await syncMutation.mutateAsync(syncOptions);
+        return await mutateAsync(syncOptions);
       } finally {
         // Always release the lock, regardless of success or failure
         // This ensures no memory leaks even if mutation is cancelled/aborted
         releaseSyncLock();
       }
     },
-    [userId, canSync, acquireSyncLock, releaseSyncLock, syncMutation],
+    [userId, canSync, acquireSyncLock, releaseSyncLock, mutateAsync],
   );
 
   // Manual sync for pull-to-refresh (respects min interval throttle by default)
