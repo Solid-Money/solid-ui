@@ -10,8 +10,8 @@ import {
 import { ActivityIndicator, Linking, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
-import { ChevronDown, Fuel, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
-import { Address, erc20Abi, formatUnits, TransactionReceipt } from 'viem';
+import { ChevronDown, Info, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
+import { Address, erc20Abi, formatUnits, parseUnits, TransactionReceipt } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
@@ -42,12 +42,7 @@ import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
-import {
-  cn,
-  formatNumber,
-  getArbitrumFundingAddress,
-  isUserAllowedToUseTestFeature,
-} from '@/lib/utils';
+import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 import { BorrowSlider } from './BorrowSlider';
@@ -112,6 +107,18 @@ function SourceSelectorNative({
       </Pressable>
       {isOpen && (
         <View className="mt-1 overflow-hidden rounded-2xl bg-accent">
+          {showBorrowOption && (
+            <Pressable
+              className="flex-row items-center gap-2 px-4 py-3"
+              onPress={() => {
+                onChange('borrow');
+                setIsOpen(false);
+              }}
+            >
+              <Leaf color="#A1A1A1" size={20} />
+              <Text className="text-lg">Borrow against Savings</Text>
+            </Pressable>
+          )}
           <Pressable
             className="flex-row items-center gap-2 px-4 py-3"
             onPress={() => {
@@ -132,18 +139,6 @@ function SourceSelectorNative({
             <WalletIcon color="#A1A1A1" size={20} />
             <Text className="text-lg">Wallet</Text>
           </Pressable>
-          {showBorrowOption && (
-            <Pressable
-              className="flex-row items-center gap-2 px-4 py-3"
-              onPress={() => {
-                onChange('borrow');
-                setIsOpen(false);
-              }}
-            >
-              <Leaf color="#A1A1A1" size={20} />
-              <Text className="text-lg">Borrow against Savings</Text>
-            </Pressable>
-          )}
         </View>
       )}
     </View>
@@ -194,6 +189,15 @@ function SourceSelectorWeb({
         </Pressable>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="-mt-4 w-full min-w-[380px] rounded-b-2xl rounded-t-none border-0">
+        {showBorrowOption && (
+          <DropdownMenuItem
+            onPress={() => onChange('borrow')}
+            className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+          >
+            <Leaf color="#A1A1A1" size={20} />
+            <Text className="text-lg">Borrow against Savings</Text>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           onPress={() => onChange('savings')}
           className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
@@ -208,15 +212,6 @@ function SourceSelectorWeb({
           <WalletIcon color="#A1A1A1" size={20} />
           <Text className="text-lg">Wallet</Text>
         </DropdownMenuItem>
-        {showBorrowOption && (
-          <DropdownMenuItem
-            onPress={() => onChange('borrow')}
-            className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
-          >
-            <Leaf color="#A1A1A1" size={20} />
-            <Text className="text-lg">Borrow against Savings</Text>
-          </DropdownMenuItem>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -478,7 +473,7 @@ export default function CardDepositInternalForm() {
 
   const { control, handleSubmit, formState, watch, reset, setValue, trigger } = useForm<FormData>({
     mode: 'onChange',
-    defaultValues: { amount: '', from: 'savings' },
+    defaultValues: { amount: '', from: 'borrow' },
   });
 
   const watchedAmount = watch('amount');
@@ -525,10 +520,28 @@ export default function CardDepositInternalForm() {
   const exchangeRate = rate ? Number(formatUnits(rate, 6)) : 0;
   const maxBorrowAmount = useMemo(() => {
     if (soUsdBalanceAmount > 0 && exchangeRate > 0) {
-      return soUsdBalanceAmount * exchangeRate * 0.8; // 70% of savings value
+      return soUsdBalanceAmount * exchangeRate * 0.79; // 79% of savings value
     }
     return 0;
   }, [soUsdBalanceAmount, exchangeRate]);
+
+  // Calculate collateral required using the same formula as useBorrowAndDepositToCard
+  const soUSDLTV = 79n; // 79% LTV
+  const collateralRequired = useMemo(() => {
+    if (watchedAmount === '' || watchedAmount === '0') {
+      return 0;
+    }
+    if (watchedFrom === 'borrow' && watchedAmount && rate && Number(watchedAmount) > 0) {
+      try {
+        const borrowAmountWei = parseUnits(watchedAmount, 6);
+        const supplyAmountWei = (borrowAmountWei * 100n * 1000000n) / (soUSDLTV * rate);
+        return Number(formatUnits(supplyAmountWei, 6));
+      } catch {
+        return 0;
+      }
+    }
+    return 0;
+  }, [watchedFrom, watchedAmount, rate, soUSDLTV]);
 
   const { amountOut: estimatedUSDC, isLoading: isEstimatedUSDCLoading } = usePreviewDepositToCard(
     watchedFrom === 'borrow' ? watchedAmount : watchedAmount,
@@ -768,24 +781,6 @@ export default function CardDepositInternalForm() {
     }
   };
 
-  // Reset slider when switching away from borrow mode or initialize when switching to borrow
-  useEffect(() => {
-    if (watchedFrom !== 'borrow') {
-      setSliderValue(0);
-    } else if (watchedFrom === 'borrow' && maxBorrowAmount > 0) {
-      // Only initialize if value is 0 or invalid
-      const currentValue = Number(watchedAmount || sliderValue);
-      if (currentValue === 0 || isNaN(currentValue) || !isFinite(currentValue)) {
-        // Initialize to 10% of max or minimum of 10
-        const initialValue = Math.max(10, Math.min(maxBorrowAmount * 0.1, maxBorrowAmount));
-        if (!isNaN(initialValue) && isFinite(initialValue) && initialValue > 0) {
-          setSliderValue(initialValue);
-          setValue('amount', initialValue.toString());
-        }
-      }
-    }
-  }, [watchedFrom, maxBorrowAmount, watchedAmount, sliderValue, setValue]);
-
   // Update slider when form amount changes (for manual input)
   useEffect(() => {
     if (watchedFrom === 'borrow' && watchedAmount) {
@@ -796,7 +791,7 @@ export default function CardDepositInternalForm() {
     }
   }, [watchedAmount, watchedFrom, maxBorrowAmount]);
 
-  const showBorrowOption = isUserAllowedToUseTestFeature(user?.username ?? '');
+  const showBorrowOption = true;
 
   // Reset to 'savings' if user is on 'borrow' but doesn't have permission
   useEffect(() => {
@@ -811,7 +806,7 @@ export default function CardDepositInternalForm() {
       <SourceSelector control={control} from={watchedFrom} showBorrowOption={showBorrowOption} />
 
       {watchedFrom === 'borrow' ? (
-        <View className="gap-4">
+        <View className="gap-4 px-2">
           <BorrowSlider
             value={sliderValue}
             onValueChange={handleSliderChange}
@@ -854,11 +849,16 @@ export default function CardDepositInternalForm() {
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <View className="flex-row items-center gap-2">
-              <Fuel size={16} color="#A1A1AA" />
-              <Text className="text-base text-muted-foreground">Fee</Text>
+              <Text className="text-base text-muted-foreground">Collateral Required</Text>
             </View>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
-              <Text className="text-base font-semibold">0 USDC</Text>
+              {isRateLoading || !watchedAmount ? (
+                <Skeleton className="h-5 w-20 rounded-md" />
+              ) : (
+                <Text className="text-base font-semibold">
+                  {formatNumber(collateralRequired)} soUSD
+                </Text>
+              )}
             </View>
           </View>
           <View className="px-5 py-6 md:p-5">
@@ -867,8 +867,8 @@ export default function CardDepositInternalForm() {
                 Linking.openURL('https://help.solid.xyz');
               }}
             >
-              <Text className="text-center text-sm text-muted-foreground">
-                Read more about terms & rates
+              <Text className="text-sm text-muted-foreground">
+                Use your soUSD as collateral to borrow USDC and spend while earning yield.
               </Text>
             </Pressable>
           </View>

@@ -82,7 +82,6 @@ export default function ActivityTransactions({
       )
       .map(a => a.hash)
       .filter(Boolean) as string[];
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- completedBridgeTxHashesRef is a ref, not state
   }, [activities]);
 
   const lzStatuses = useLayerZeroStatuses(bridgeDepositHashes);

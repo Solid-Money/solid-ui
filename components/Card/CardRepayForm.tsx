@@ -7,8 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Fuel, Wallet as WalletIcon } from 'lucide-react-native';
 import { useActiveAccount } from 'thirdweb/react';
 import { Address, formatUnits, zeroAddress } from 'viem';
-import { fuse, mainnet } from 'viem/chains';
-import { useBalance, useReadContract } from 'wagmi';
+import { fuse } from 'viem/chains';
+import { useBalance } from 'wagmi';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -47,20 +47,6 @@ export default function CardRepayForm() {
   );
   const { totalBorrowed: borrowedAmount, totalSupplied } = useAaveBorrowPosition();
   const { repayAndWithdrawCollateral } = useRepayAndWithdrawCollateral();
-  const { data: rate } = useReadContract({
-    address: ADDRESSES.ethereum.accountant,
-    abi: [
-      {
-        inputs: [],
-        name: 'getRate',
-        outputs: [{ internalType: 'uint256', name: 'rate', type: 'uint256' }],
-        stateMutability: 'view',
-        type: 'function',
-      },
-    ],
-    functionName: 'getRate',
-    chainId: mainnet.id,
-  });
   const [repayStatus, setRepayStatus] = useState<Status>(Status.IDLE);
 
   const eoaAddress = account?.address as Address | undefined;
@@ -320,7 +306,7 @@ export default function CardRepayForm() {
           <View className="mb-4 flex-row items-center justify-between">
             <Text className="text-base font-medium opacity-70">Collateral supplied</Text>
             <Text className="text-base font-bold text-white">
-              ${formatNumber(totalSupplied * Number(formatUnits(rate || 0n, 6)))}
+              {formatNumber(totalSupplied)} soUSD
             </Text>
           </View>
           <View className="mb-4 h-px w-full bg-white/10" />
