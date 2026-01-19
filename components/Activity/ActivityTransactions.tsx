@@ -52,12 +52,10 @@ export default function ActivityTransactions({
   const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
-  // Ref-based guard to prevent rapid fetchNextPage calls
-  // React state (isFetchingNextPage) updates async, so onEndReached can fire multiple times
+  // Ref-based guard to prevent rapid fetchNextPage calls from Load More button
+  // React state (isFetchingNextPage) updates async, so multiple clicks could fire
   // before state reflects the pending fetch. This ref updates synchronously.
   const isFetchingRef = useRef(false);
-  // Timestamp-based debounce to prevent rapid pagination during re-render loops
-  const lastFetchTimeRef = useRef(0);
   // Track completed bridge tx hashes using ref to avoid re-render cycles
   // Using useRef instead of useState eliminates the dependency cycle:
   // - useState would cause: useMemo depends on state -> effect updates state -> re-render -> useMemo runs again
@@ -452,26 +450,10 @@ export default function ActivityTransactions({
           // Use a combination of identifiers to ensure uniqueness even if hash/userOpHash/clientTxId are the same
           return `tx-${baseKey}-${index}`;
         }}
-        onEndReached={() => {
-          // Use ref for synchronous guard - state updates are async and too slow
-          // Also skip fetching during sync to prevent bulk page fetches
-          // Add 500ms debounce to prevent rapid pagination during re-render loops
-          const now = Date.now();
-          if (
-            hasNextPage &&
-            !isFetchingNextPage &&
-            !isFetchingRef.current &&
-            !isSyncing &&
-            now - lastFetchTimeRef.current > 500
-          ) {
-            isFetchingRef.current = true;
-            lastFetchTimeRef.current = now;
-            fetchNextPage().finally(() => {
-              isFetchingRef.current = false;
-            });
-          }
-        }}
-        onEndReachedThreshold={0.5}
+        // NOTE: onEndReached was intentionally removed to prevent bulk page fetches
+        // FlashList fires onEndReached on every re-render when content doesn't fill viewport
+        // This caused all pages to fetch immediately (Sentry: "10+ renders/second")
+        // Users now use the "Load More" button instead (renderFooter)
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={() => <View className="h-0" />}
