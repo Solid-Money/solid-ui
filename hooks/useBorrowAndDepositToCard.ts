@@ -44,7 +44,7 @@ type BridgeResult = {
   error: string | null;
 };
 
-const soUSDLTV = 79n; // 80% LTV for soUSD (79% to avoid rounding errors)
+const soUSDLTV = 70n; // 80% LTV for soUSD (79% to avoid rounding errors)
 
 const useBorrowAndDepositToCard = (): BridgeResult => {
   const { user, safeAA } = useUser();
