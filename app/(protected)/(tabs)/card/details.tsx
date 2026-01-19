@@ -132,13 +132,13 @@ export default function CardDetails() {
             </View>
           </View>
 
-          {/* Deposit Bonus Banner */}
-          <View className="mt-6 flex-row gap-6">
+          {/* Temporary disabled deposit bonus banner */}
+          {/* <View className="mt-6 flex-row gap-6">
             <View className="flex-[3]">
               <DepositBonusBanner />
             </View>
             <View className="flex-[2]" />
-          </View>
+          </View> */}
         </View>
 
         <AddToWalletModal
@@ -175,7 +175,8 @@ export default function CardDetails() {
             onCardDetails={handleCardFlip}
             onFreezeToggle={handleFreezeToggle}
           />
-          <DepositBonusBanner />
+          {/* Temporary disabled deposit bonus banner */}
+          {/* <DepositBonusBanner /> */}
           {isUserAllowedToUseTestFeature(user?.username ?? '') && (
             <BorrowPositionCard className="mb-4" />
           )}
