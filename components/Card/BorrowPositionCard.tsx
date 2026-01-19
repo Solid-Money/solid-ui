@@ -42,9 +42,9 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
   // Shared breakdown section component
   const BreakdownSection = () => (
     <View className={cn(isDesktop ? 'mt-4 border-t border-white/10 pt-4' : 'mb-4')}>
-      {/* Borrow APY */}
+      {/* Borrow APR */}
       <View className="mb-4 flex-row justify-between">
-        <Text className="text-base font-medium text-white/70">Borrow APY</Text>
+        <Text className="text-base font-medium text-white/70">Borrow APR</Text>
         {isLoading ? (
           <Skeleton className="h-5 w-12 rounded-md bg-white/10" />
         ) : (
