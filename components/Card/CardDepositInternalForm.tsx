@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Control,
   Controller,
@@ -30,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { USDC_STARGATE } from '@/constants/addresses';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import { useActivity } from '@/hooks/useActivity';
 import { useBalances } from '@/hooks/useBalances';
@@ -39,6 +40,7 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
+import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
@@ -70,17 +72,17 @@ function SourceSelectorNative({
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const getDisplayText = () => {
+  const getDisplayText = useCallback(() => {
     if (value === 'wallet') return 'Wallet';
     if (value === 'savings') return 'Savings';
     return 'Borrow against Savings';
-  };
+  }, [value]);
 
-  const getTokenSymbol = () => {
+  const getTokenSymbol = useCallback(() => {
     if (from === 'wallet') return 'USDC.e';
     if (from === 'savings') return 'soUSD';
     return '';
-  };
+  }, [from]);
 
   return (
     <View>
@@ -156,17 +158,17 @@ function SourceSelectorWeb({
   from: SourceType;
   showBorrowOption: boolean;
 }) {
-  const getDisplayText = () => {
+  const getDisplayText = useCallback(() => {
     if (value === 'wallet') return 'Wallet';
     if (value === 'savings') return 'Savings';
     return 'Borrow against Savings';
-  };
+  }, [value]);
 
-  const getTokenSymbol = () => {
+  const getTokenSymbol = useCallback(() => {
     if (from === 'wallet') return 'USDC.e';
     if (from === 'savings') return 'soUSD';
     return '';
-  };
+  }, [from]);
 
   return (
     <DropdownMenu>
@@ -250,20 +252,21 @@ type AmountInputProps = {
   control: Control<FormData>;
   errors: FieldErrors<FormData>;
   from: SourceType;
+  onAmountEntry?: () => void;
 };
 
-function AmountInput({ control, errors, from }: AmountInputProps) {
+function AmountInput({ control, errors, from, onAmountEntry }: AmountInputProps) {
   const getTokenImage = () => {
     if (from === 'wallet') return getAsset('images/usdc-4x.png');
     if (from === 'savings') return getAsset('images/sousd-4x.png');
     return getAsset('images/usdc-4x.png');
   };
 
-  const getTokenSymbol = () => {
+  const getTokenSymbol = useCallback(() => {
     if (from === 'wallet') return 'USDC.e';
     if (from === 'savings') return 'soUSD';
     return 'USDC';
-  };
+  }, [from]);
 
   return (
     <View className="gap-2">
@@ -286,7 +289,12 @@ function AmountInput({ control, errors, from }: AmountInputProps) {
               value={value as any}
               placeholder="0.0"
               placeholderTextColor="#666"
-              onChangeText={onChange}
+              onChangeText={text => {
+                onChange(text);
+                if (text.length > 0) {
+                  onAmountEntry?.();
+                }
+              }}
               onBlur={onBlur}
             />
           )}
@@ -311,6 +319,7 @@ type BalanceDisplayProps = {
   setValue: UseFormSetValue<FormData>;
   trigger: UseFormTrigger<FormData>;
   from: SourceType;
+  onMaxClick?: () => void;
 };
 
 function BalanceDisplay({
@@ -320,6 +329,7 @@ function BalanceDisplay({
   setValue,
   trigger,
   from,
+  onMaxClick,
 }: BalanceDisplayProps) {
   const tokenSymbol = useMemo(() => {
     if (from === 'wallet') return 'USDC.e';
@@ -345,6 +355,7 @@ function BalanceDisplay({
         onPress={() => {
           setValue('amount', formattedBalance);
           trigger('amount');
+          onMaxClick?.();
         }}
       />
     </View>
@@ -448,6 +459,12 @@ export default function CardDepositInternalForm() {
     })),
   );
   const { data: cardDetails } = useCardDetails();
+
+  // Tracking refs
+  const hasTrackedFormViewedRef = useRef(false);
+  const hasTrackedAmountEntryRef = useRef(false);
+  const sliderDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTrackedValidationErrorRef = useRef<string | null>(null);
 
   // Get all token balances including soUSD
   const { tokens, isLoading: isBalancesLoading } = useBalances();
@@ -583,153 +600,273 @@ export default function CardDepositInternalForm() {
 
   const { borrowAndDeposit, bridgeStatus: borrowAndDepositStatus } = useBorrowAndDepositToCard();
 
-  const onBorrowAndDepositSubmit = async (data: any) => {
-    if (!user) return;
+  // Track form viewed (once on mount)
+  useEffect(() => {
+    if (!hasTrackedFormViewedRef.current) {
+      hasTrackedFormViewedRef.current = true;
+      track(TRACKING_EVENTS.CARD_DEPOSIT_INTERNAL_FORM_VIEWED);
+    }
+  }, []);
 
-    try {
-      // Check for Arbitrum funding address
-      if (!cardDetails) {
-        Toast.show({
-          type: 'error',
-          text1: 'Card details not found',
-          text2: 'Please try again later',
-        });
-        return;
-      }
-      const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
-
-      if (!arbitrumFundingAddress) {
-        Toast.show({
-          type: 'error',
-          text1: 'Arbitrum deposits not available',
-          text2: 'This card does not support Arbitrum deposits',
-        });
-        return;
-      }
-
-      const sourceSymbol =
-        watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
-
-      // Create activity event (stays PENDING until Bridge processes it)
-      const clientTxId = await createActivity({
-        type: TransactionType.CARD_TRANSACTION,
-        title: `Card Deposit`,
-        shortTitle: `Card Deposit`,
-        amount: data.amount,
-        symbol: sourceSymbol,
-        chainId: fuse.id,
-        fromAddress: user.safeAddress,
-        toAddress: arbitrumFundingAddress,
-        status: TransactionStatus.PENDING,
-        metadata: {
-          description: `Deposit ${data.amount} ${sourceSymbol} to card`,
-          processingStatus: 'bridging',
-        },
-      });
-
-      let tx: TransactionReceipt | undefined;
-
-      tx = await borrowAndDeposit(data.amount);
-
-      // Update activity with transaction hash, keeping it PENDING
-      await updateActivity(clientTxId, {
-        status: TransactionStatus.PENDING,
-        hash: tx.transactionHash,
-        url: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
-        metadata: {
-          txHash: tx.transactionHash,
-          processingStatus: 'awaiting_bridge',
-        },
-      });
-
-      setTransaction({ amount: Number(data.amount) });
-      setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
-      reset();
-    } catch (error) {
-      console.error('Bridge error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Bridge failed',
-        text2: error instanceof Error ? error.message : 'Unknown error occurred',
+  // Track source selection changes
+  const previousSourceRef = useRef<SourceType | null>(null);
+  useEffect(() => {
+    // Only track if the source actually changed (not on initial render)
+    if (previousSourceRef.current !== null && previousSourceRef.current !== watchedFrom) {
+      track(TRACKING_EVENTS.CARD_DEPOSIT_SOURCE_SELECTED, {
+        source_type: watchedFrom,
+        wallet_balance: usdcBalanceAmount,
+        savings_balance: soUsdBalanceAmount,
+        max_borrow_amount: maxBorrowAmount,
       });
     }
-  };
+    previousSourceRef.current = watchedFrom;
+  }, [watchedFrom, usdcBalanceAmount, soUsdBalanceAmount, maxBorrowAmount]);
 
-  const onSubmit = async (data: any) => {
-    if (!user) return;
+  // Track amount entry started
+  const trackAmountEntry = useCallback(() => {
+    if (!hasTrackedAmountEntryRef.current) {
+      hasTrackedAmountEntryRef.current = true;
+      track(TRACKING_EVENTS.CARD_DEPOSIT_AMOUNT_ENTRY_STARTED, {
+        source_type: watchedFrom,
+      });
+    }
+  }, [watchedFrom]);
 
-    try {
-      // Check for Arbitrum funding address
-      if (!cardDetails) {
-        Toast.show({
-          type: 'error',
-          text1: 'Card details not found',
-          text2: 'Please try again later',
-        });
-        return;
+  // Track max button clicked
+  const trackMaxButtonClicked = useCallback(() => {
+    track(TRACKING_EVENTS.CARD_DEPOSIT_MAX_BUTTON_CLICKED, {
+      source_type: watchedFrom,
+      max_amount: balanceAmount,
+    });
+  }, [watchedFrom, balanceAmount]);
+
+  // Track borrow slider changed (debounced)
+  const trackSliderChanged = useCallback(
+    (value: number) => {
+      // Clear existing timer
+      if (sliderDebounceTimerRef.current) {
+        clearTimeout(sliderDebounceTimerRef.current);
       }
-      const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
-
-      if (!arbitrumFundingAddress) {
-        Toast.show({
-          type: 'error',
-          text1: 'Arbitrum deposits not available',
-          text2: 'This card does not support Arbitrum deposits',
+      // Set new timer with 500ms debounce
+      sliderDebounceTimerRef.current = setTimeout(() => {
+        track(TRACKING_EVENTS.CARD_DEPOSIT_BORROW_SLIDER_CHANGED, {
+          borrow_amount: value,
+          max_borrow_amount: maxBorrowAmount,
+          slider_percentage: maxBorrowAmount > 0 ? (value / maxBorrowAmount) * 100 : 0,
         });
-        return;
+      }, 500);
+    },
+    [maxBorrowAmount],
+  );
+
+  // Clean up slider debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (sliderDebounceTimerRef.current) {
+        clearTimeout(sliderDebounceTimerRef.current);
       }
+    };
+  }, []);
 
-      const sourceSymbol =
-        watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
+  const onBorrowAndDepositSubmit = useCallback(
+    async (data: any) => {
+      if (!user) return;
 
-      // Create activity event (stays PENDING until Bridge processes it)
-      const clientTxId = await createActivity({
-        type: TransactionType.CARD_TRANSACTION,
-        title: `Card Deposit`,
-        shortTitle: `Card Deposit`,
+      // Track submission
+      track(TRACKING_EVENTS.CARD_DEPOSIT_INTERNAL_SUBMITTED, {
+        source_type: 'borrow',
         amount: data.amount,
-        symbol: sourceSymbol,
-        chainId: fuse.id,
-        fromAddress: user.safeAddress,
-        toAddress: arbitrumFundingAddress,
-        status: TransactionStatus.PENDING,
-        metadata: {
-          description: `Deposit ${data.amount} ${sourceSymbol} to card`,
-          processingStatus: 'bridging',
-        },
+        estimated_usdc_output: data.amount, // For borrow, amount is in USDC
+        collateral_required: collateralRequired,
+        borrow_apy: borrowAPY,
       });
 
-      let tx: TransactionReceipt | undefined;
+      try {
+        // Check for Arbitrum funding address
+        if (!cardDetails) {
+          Toast.show({
+            type: 'error',
+            text1: 'Card details not found',
+            text2: 'Please try again later',
+          });
+          return;
+        }
+        const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
 
+        if (!arbitrumFundingAddress) {
+          Toast.show({
+            type: 'error',
+            text1: 'Arbitrum deposits not available',
+            text2: 'This card does not support Arbitrum deposits',
+          });
+          return;
+        }
+
+        const sourceSymbol =
+          watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
+
+        // Create activity event (stays PENDING until Bridge processes it)
+        const clientTxId = await createActivity({
+          type: TransactionType.CARD_TRANSACTION,
+          title: `Card Deposit`,
+          shortTitle: `Card Deposit`,
+          amount: data.amount,
+          symbol: sourceSymbol,
+          chainId: fuse.id,
+          fromAddress: user.safeAddress,
+          toAddress: arbitrumFundingAddress,
+          status: TransactionStatus.PENDING,
+          metadata: {
+            description: `Deposit ${data.amount} ${sourceSymbol} to card`,
+            processingStatus: 'bridging',
+          },
+        });
+
+        let tx: TransactionReceipt | undefined;
+
+        tx = await borrowAndDeposit(data.amount);
+
+        // Update activity with transaction hash, keeping it PENDING
+        await updateActivity(clientTxId, {
+          status: TransactionStatus.PENDING,
+          hash: tx.transactionHash,
+          url: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+          metadata: {
+            txHash: tx.transactionHash,
+            processingStatus: 'awaiting_bridge',
+          },
+        });
+
+        setTransaction({ amount: Number(data.amount) });
+        setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+        reset();
+      } catch (error) {
+        console.error('Bridge error:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Bridge failed',
+          text2: error instanceof Error ? error.message : 'Unknown error occurred',
+        });
+      }
+    },
+    [
+      watchedFrom,
+      cardDetails,
+      user,
+      borrowAndDeposit,
+      borrowAPY,
+      collateralRequired,
+      createActivity,
+      reset,
+      setModal,
+      setTransaction,
+      updateActivity,
+    ],
+  );
+
+  const onSubmit = useCallback(
+    async (data: any) => {
+      if (!user) return;
+
+      // Track submission
+      const trackingParams: Record<string, unknown> = {
+        source_type: watchedFrom,
+        amount: data.amount,
+        estimated_usdc_output: watchedFrom === 'savings' ? estimatedUSDC : data.amount,
+      };
       if (watchedFrom === 'savings') {
-        tx = await swapAndBridge(data.amount, estimatedUSDC ?? '0');
-      } else {
-        tx = await bridge(data.amount);
+        trackingParams.exchange_rate = exchangeRate;
       }
+      track(TRACKING_EVENTS.CARD_DEPOSIT_INTERNAL_SUBMITTED, trackingParams);
 
-      // Update activity with transaction hash, keeping it PENDING
-      await updateActivity(clientTxId, {
-        status: TransactionStatus.PENDING,
-        hash: tx.transactionHash,
-        url: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
-        metadata: {
-          txHash: tx.transactionHash,
-          processingStatus: 'awaiting_bridge',
-        },
-      });
+      try {
+        // Check for Arbitrum funding address
+        if (!cardDetails) {
+          Toast.show({
+            type: 'error',
+            text1: 'Card details not found',
+            text2: 'Please try again later',
+          });
+          return;
+        }
+        const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
 
-      setTransaction({ amount: Number(data.amount) });
-      setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
-      reset();
-    } catch (error) {
-      console.error('Bridge error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Bridge failed',
-        text2: error instanceof Error ? error.message : 'Unknown error occurred',
-      });
-    }
-  };
+        if (!arbitrumFundingAddress) {
+          Toast.show({
+            type: 'error',
+            text1: 'Arbitrum deposits not available',
+            text2: 'This card does not support Arbitrum deposits',
+          });
+          return;
+        }
+
+        const sourceSymbol =
+          watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
+
+        // Create activity event (stays PENDING until Bridge processes it)
+        const clientTxId = await createActivity({
+          type: TransactionType.CARD_TRANSACTION,
+          title: `Card Deposit`,
+          shortTitle: `Card Deposit`,
+          amount: data.amount,
+          symbol: sourceSymbol,
+          chainId: fuse.id,
+          fromAddress: user.safeAddress,
+          toAddress: arbitrumFundingAddress,
+          status: TransactionStatus.PENDING,
+          metadata: {
+            description: `Deposit ${data.amount} ${sourceSymbol} to card`,
+            processingStatus: 'bridging',
+          },
+        });
+
+        let tx: TransactionReceipt | undefined;
+
+        if (watchedFrom === 'savings') {
+          tx = await swapAndBridge(data.amount, estimatedUSDC ?? '0');
+        } else {
+          tx = await bridge(data.amount);
+        }
+
+        // Update activity with transaction hash, keeping it PENDING
+        await updateActivity(clientTxId, {
+          status: TransactionStatus.PENDING,
+          hash: tx.transactionHash,
+          url: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+          metadata: {
+            txHash: tx.transactionHash,
+            processingStatus: 'awaiting_bridge',
+          },
+        });
+
+        setTransaction({ amount: Number(data.amount) });
+        setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
+        reset();
+      } catch (error) {
+        console.error('Bridge error:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Bridge failed',
+          text2: error instanceof Error ? error.message : 'Unknown error occurred',
+        });
+      }
+    },
+    [
+      watchedFrom,
+      estimatedUSDC,
+      exchangeRate,
+      cardDetails,
+      user,
+      bridge,
+      createActivity,
+      reset,
+      setModal,
+      setTransaction,
+      swapAndBridge,
+      updateActivity,
+    ],
+  );
 
   // Dynamically apply validation
   const isValid = useMemo(() => {
@@ -760,6 +897,31 @@ export default function CardDepositInternalForm() {
     }
   }, [watchedAmount, schema]);
 
+  // Track validation errors (only when error changes)
+  useEffect(() => {
+    if (validationError && validationError !== lastTrackedValidationErrorRef.current) {
+      lastTrackedValidationErrorRef.current = validationError;
+      // Determine error type
+      let errorType = 'invalid_input';
+      if (validationError.includes('balance') || validationError.includes('borrow amount')) {
+        errorType = 'insufficient_balance';
+      } else if (validationError.includes('greater than 0')) {
+        errorType = 'min_amount';
+      }
+      track(TRACKING_EVENTS.CARD_DEPOSIT_VALIDATION_ERROR, {
+        error_type: errorType,
+        error_message: validationError,
+        attempted_amount: watchedAmount,
+        available_balance: balanceAmount,
+        source_type: watchedFrom,
+      });
+    }
+    // Reset when error clears
+    if (!validationError) {
+      lastTrackedValidationErrorRef.current = null;
+    }
+  }, [validationError, watchedAmount, balanceAmount, watchedFrom]);
+
   // Slider value for borrow option - initialize to 0 or current amount
   const [sliderValue, setSliderValue] = useState(() => {
     if (watchedFrom === 'borrow' && watchedAmount) {
@@ -778,6 +940,8 @@ export default function CardDepositInternalForm() {
       setSliderValue(clampedValue);
       setValue('amount', clampedValue.toString());
       trigger('amount');
+      // Track slider change (debounced)
+      trackSliderChanged(clampedValue);
     }
   };
 
@@ -816,7 +980,12 @@ export default function CardDepositInternalForm() {
         </View>
       ) : (
         <View className="gap-2">
-          <AmountInput control={control} errors={formState.errors} from={watchedFrom} />
+          <AmountInput
+            control={control}
+            errors={formState.errors}
+            from={watchedFrom}
+            onAmountEntry={trackAmountEntry}
+          />
           <BalanceDisplay
             balanceAmount={balanceAmount}
             isBalanceLoading={isBalanceLoading}
@@ -824,6 +993,7 @@ export default function CardDepositInternalForm() {
             setValue={setValue}
             trigger={trigger}
             from={watchedFrom}
+            onMaxClick={trackMaxButtonClicked}
           />
         </View>
       )}

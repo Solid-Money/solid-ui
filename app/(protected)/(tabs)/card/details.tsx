@@ -4,7 +4,7 @@ import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { ChevronRight, Copy, Plus } from 'lucide-react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
@@ -697,79 +697,79 @@ function CardActions({
   );
 }
 
-function DepositBonusBanner() {
-  const { isScreenMedium } = useDimension();
+// function DepositBonusBanner() {
+//   const { isScreenMedium } = useDimension();
 
-  if (isScreenMedium) {
-    return (
-      <View className="relative h-full overflow-hidden rounded-2xl border border-[#FFD15126]">
-        <LinearGradient
-          colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          pointerEvents="none"
-          style={styles.gradientOverlay}
-        />
-        <View className="flex-row items-center gap-4 p-4 md:p-5">
-          <Link
-            href={
-              'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-            }
-            target="_blank"
-            className="rounded-full bg-[#FFD151]/20 px-3 py-1"
-          >
-            <Text className="text-sm font-bold text-[#FFD151]">
-              Receive your $50 sign up bonus!
-            </Text>
-          </Link>
-          <View className="flex-1 flex-row items-center justify-between">
-            <Text className="text-sm font-medium text-[#FFD151]">On a minimum deposit of $100</Text>
-            <View className="flex-row items-center gap-1">
-              <Link
-                target="_blank"
-                href={
-                  'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-                }
-                className="font-bold text-[#FFD151]"
-              >
-                Learn more
-              </Link>
-              <View className="pt-0.5">
-                <ChevronRight size={16} color="#FFD151" />
-              </View>
-            </View>
-          </View>
-        </View>
-      </View>
-    );
-  }
+//   if (isScreenMedium) {
+//     return (
+//       <View className="relative h-full overflow-hidden rounded-2xl border border-[#FFD15126]">
+//         <LinearGradient
+//           colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
+//           start={{ x: 0.5, y: 0 }}
+//           end={{ x: 0.5, y: 1 }}
+//           pointerEvents="none"
+//           style={styles.gradientOverlay}
+//         />
+//         <View className="flex-row items-center gap-4 p-4 md:p-5">
+//           <Link
+//             href={
+//               'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
+//             }
+//             target="_blank"
+//             className="rounded-full bg-[#FFD151]/20 px-3 py-1"
+//           >
+//             <Text className="text-sm font-bold text-[#FFD151]">
+//               Receive your $50 sign up bonus!
+//             </Text>
+//           </Link>
+//           <View className="flex-1 flex-row items-center justify-between">
+//             <Text className="text-sm font-medium text-[#FFD151]">On a minimum deposit of $100</Text>
+//             <View className="flex-row items-center gap-1">
+//               <Link
+//                 target="_blank"
+//                 href={
+//                   'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
+//                 }
+//                 className="font-bold text-[#FFD151]"
+//               >
+//                 Learn more
+//               </Link>
+//               <View className="pt-0.5">
+//                 <ChevronRight size={16} color="#FFD151" />
+//               </View>
+//             </View>
+//           </View>
+//         </View>
+//       </View>
+//     );
+//   }
 
-  return (
-    <View className="relative mb-4 overflow-hidden rounded-3xl border border-[#FFD15126]">
-      <LinearGradient
-        colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-        style={styles.gradientOverlay}
-      />
-      <View className="flex-col items-center gap-3 p-4">
-        <Link
-          href={
-            'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-          }
-          target="_blank"
-          className="rounded-full bg-[#FFD151]/20 px-4 py-1.5"
-        >
-          <Text className="text-lg font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
-        </Link>
-        <Text className="text-center text-lg font-medium text-[#FFD151]">
-          On a minimum deposit of $100
-        </Text>
-      </View>
-    </View>
-  );
-}
+//   return (
+//     <View className="relative mb-4 overflow-hidden rounded-3xl border border-[#FFD15126]">
+//       <LinearGradient
+//         colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
+//         start={{ x: 0.5, y: 0 }}
+//         end={{ x: 0.5, y: 1 }}
+//         pointerEvents="none"
+//         style={styles.gradientOverlay}
+//       />
+//       <View className="flex-col items-center gap-3 p-4">
+//         <Link
+//           href={
+//             'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
+//           }
+//           target="_blank"
+//           className="rounded-full bg-[#FFD151]/20 px-4 py-1.5"
+//         >
+//           <Text className="text-lg font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
+//         </Link>
+//         <Text className="text-center text-lg font-medium text-[#FFD151]">
+//           On a minimum deposit of $100
+//         </Text>
+//       </View>
+//     </View>
+//   );
+// }
 
 interface CashbackDisplayProps {
   cashback?: {
