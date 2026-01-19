@@ -52,55 +52,69 @@ export const useCardDepositPoller = () => {
   // Uses ref guards to prevent duplicate updates and infinite loops
   useEffect(() => {
     if (!cardTransactions || pendingCardDeposits.length === 0) return;
-    // Prevent concurrent update operations
+    // Prevent concurrent update operations - check BEFORE any async work
     if (isUpdatingRef.current) return;
 
+    // Set lock immediately (synchronously) to prevent race conditions
+    // If effect runs twice before async work completes, second invocation will exit above
+    isUpdatingRef.current = true;
+
     const checkAndUpdate = async () => {
-      // Filter to only activities we haven't already updated
-      const updates = pendingCardDeposits
-        .filter(activity => !updatedIdsRef.current.has(activity.clientTxId))
-        .map(activity => {
-          const matchingCardTx = cardTransactions.find(
-            tx => tx.crypto_transaction_details?.tx_hash === activity.hash,
+      try {
+        // Filter to only activities we haven't already updated
+        const updates = pendingCardDeposits
+          .filter(activity => !updatedIdsRef.current.has(activity.clientTxId))
+          .map(activity => {
+            const matchingCardTx = cardTransactions.find(
+              tx => tx.crypto_transaction_details?.tx_hash === activity.hash,
+            );
+
+            if (matchingCardTx && matchingCardTx.status.toLowerCase() === 'posted') {
+              return { activity, matchingCardTx };
+            }
+            return null;
+          })
+          .filter((update): update is NonNullable<typeof update> => update !== null);
+
+        // No new updates to process
+        if (updates.length === 0) return;
+
+        // Mark all as updated BEFORE making async calls to prevent duplicate processing
+        for (const { activity } of updates) {
+          updatedIdsRef.current.add(activity.clientTxId);
+        }
+
+        // Process all updates in parallel - use allSettled so one failure doesn't block others
+        const results = await Promise.allSettled(
+          updates.map(async ({ activity }) => {
+            // Update activity to SUCCESS
+            await updateActivity(activity.clientTxId, {
+              status: TransactionStatus.SUCCESS,
+              metadata: activity.metadata,
+            });
+
+            // Track deposit completed
+            track(TRACKING_EVENTS.CARD_DEPOSIT_COMPLETED, {
+              amount: Number(activity.amount),
+              token_symbol: activity.symbol,
+              chain_id: activity.chainId,
+              tx_hash: activity.hash,
+            });
+          }),
+        );
+
+        // Log any failures for debugging
+        const failures = results.filter(r => r.status === 'rejected');
+        if (failures.length > 0) {
+          console.error(
+            '[useCardDepositPoller] Some updates failed:',
+            failures.map(f => (f as PromiseRejectedResult).reason),
           );
-
-          if (matchingCardTx && matchingCardTx.status.toLowerCase() === 'posted') {
-            return { activity, matchingCardTx };
-          }
-          return null;
-        })
-        .filter((update): update is NonNullable<typeof update> => update !== null);
-
-      // No new updates to process
-      if (updates.length === 0) return;
-
-      isUpdatingRef.current = true;
-
-      // Mark all as updated BEFORE making async calls to prevent race conditions
-      for (const { activity } of updates) {
-        updatedIdsRef.current.add(activity.clientTxId);
+        }
+      } finally {
+        // Always release lock, even if errors occur
+        isUpdatingRef.current = false;
       }
-
-      // Process all updates in parallel - use allSettled so one failure doesn't block others
-      await Promise.allSettled(
-        updates.map(async ({ activity }) => {
-          // Update activity to SUCCESS
-          await updateActivity(activity.clientTxId, {
-            status: TransactionStatus.SUCCESS,
-            metadata: activity.metadata,
-          });
-
-          // Track deposit completed
-          track(TRACKING_EVENTS.CARD_DEPOSIT_COMPLETED, {
-            amount: Number(activity.amount),
-            token_symbol: activity.symbol,
-            chain_id: activity.chainId,
-            tx_hash: activity.hash,
-          });
-        }),
-      );
-
-      isUpdatingRef.current = false;
     };
 
     void checkAndUpdate();
