@@ -31,7 +31,7 @@ const CardBanner = () => {
     if (!cardStatus?.status) {
       return {
         title: 'Solid Card is live!',
-        description: 'Get your card today and receive $50 bonus.',
+        description: 'Get your card today.',
         ctaText: 'Get your card',
         action: () => router.push(path.CARD_WAITLIST),
         showPromo: true,
