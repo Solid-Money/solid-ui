@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -133,76 +133,90 @@ export default function CardRepayForm() {
     }
   };
 
-  const handleTokenSelectorPress = () => {
+  const handleTokenSelectorPress = useCallback(() => {
     setModal(CARD_REPAY_MODAL.OPEN_TOKEN_SELECTOR);
-  };
+  }, [setModal]);
 
-  const resetRepayStatus = () => {
+  const resetRepayStatus = useCallback(() => {
     setRepayStatus(Status.IDLE);
-  };
+  }, []);
 
-  const onSubmit = async (data: any) => {
-    try {
-      if (!user) {
+  const onSubmit = useCallback(
+    async (data: any) => {
+      try {
+        if (!user) {
+          Toast.show({
+            type: 'error',
+            text1: 'User not authenticated',
+            text2: 'Please refresh and try again',
+          });
+          return;
+        }
+
+        setRepayStatus(Status.PENDING);
+
+        // Create activity event
+        const clientTxId = await createActivity({
+          type: TransactionType.CARD_TRANSACTION,
+          title: `Card Repay`,
+          shortTitle: `Card Repay`,
+          amount: data.amount,
+          symbol: 'USDC',
+          chainId: fuse.id,
+          fromAddress: user.safeAddress,
+          toAddress: ADDRESSES.fuse.aaveV3Pool,
+          status: TransactionStatus.PENDING,
+          metadata: {
+            description: `Repay ${data.amount} USDC to card borrow position`,
+            processingStatus: 'sending',
+          },
+        });
+
+        const tx = await repayAndWithdrawCollateral(data.amount);
+
+        await updateActivity(clientTxId, {
+          status: TransactionStatus.PENDING,
+          hash: tx.transactionHash,
+          url: `https://explorer.fuse.io/tx/${tx.transactionHash}`,
+          metadata: {
+            txHash: tx.transactionHash,
+            processingStatus: 'processing',
+          },
+        });
+
+        setRepayStatus(Status.SUCCESS);
+        setTransaction({ amount: Number(data.amount) });
+        setModal(CARD_REPAY_MODAL.OPEN_TRANSACTION_STATUS);
+        reset();
+
+        setTimeout(() => {
+          resetRepayStatus();
+        }, 2000);
+      } catch (error) {
+        setRepayStatus(Status.ERROR);
+        console.error('Repay error:', error);
         Toast.show({
           type: 'error',
-          text1: 'User not authenticated',
-          text2: 'Please refresh and try again',
+          text1: 'Repay failed',
+          text2: 'Please try again or check your wallet balance',
         });
-        return;
       }
+    },
+    [
+      user,
+      createActivity,
+      updateActivity,
+      repayAndWithdrawCollateral,
+      reset,
+      resetRepayStatus,
+      setTransaction,
+      setModal,
+    ],
+  );
 
-      setRepayStatus(Status.PENDING);
-
-      // Create activity event
-      const clientTxId = await createActivity({
-        type: TransactionType.CARD_TRANSACTION,
-        title: `Card Repay`,
-        shortTitle: `Card Repay`,
-        amount: data.amount,
-        symbol: 'USDC',
-        chainId: fuse.id,
-        fromAddress: user.safeAddress,
-        toAddress: ADDRESSES.fuse.aaveV3Pool,
-        status: TransactionStatus.PENDING,
-        metadata: {
-          description: `Repay ${data.amount} USDC to card borrow position`,
-          processingStatus: 'sending',
-        },
-      });
-
-      const tx = await repayAndWithdrawCollateral(data.amount);
-
-      await updateActivity(clientTxId, {
-        status: TransactionStatus.PENDING,
-        hash: tx.transactionHash,
-        url: `https://explorer.fuse.io/tx/${tx.transactionHash}`,
-        metadata: {
-          txHash: tx.transactionHash,
-          processingStatus: 'processing',
-        },
-      });
-
-      setRepayStatus(Status.SUCCESS);
-      setTransaction({ amount: Number(data.amount) });
-      setModal(CARD_REPAY_MODAL.OPEN_TRANSACTION_STATUS);
-      reset();
-
-      setTimeout(() => {
-        resetRepayStatus();
-      }, 2000);
-    } catch (error) {
-      setRepayStatus(Status.ERROR);
-      console.error('Repay error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Repay failed',
-        text2: 'Please try again or check your wallet balance',
-      });
-    }
-  };
-
-  const disabled = repayStatus === Status.PENDING || !formState.isValid || !watchedAmount;
+  const disabled = useMemo(() => {
+    return repayStatus === Status.PENDING || !formState.isValid || !watchedAmount;
+  }, [repayStatus, formState.isValid, watchedAmount]);
 
   return (
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>

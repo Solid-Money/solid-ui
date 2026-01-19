@@ -233,6 +233,31 @@ export const TRACKING_EVENTS = {
   CARD_DEPOSIT_COMPLETED: 'card_deposit_completed',
   CARD_DEPOSIT_FAILED: 'card_deposit_failed',
 
+  // Card Deposit Funnel Events
+  // Funnel Entry
+  CARD_DEPOSIT_MODAL_OPENED: 'card_deposit_modal_opened',
+  CARD_DEPOSIT_MODAL_CLOSED: 'card_deposit_modal_closed',
+  CARD_DEPOSIT_OPTION_SELECTED: 'card_deposit_option_selected',
+
+  // Internal Deposit Flow
+  CARD_DEPOSIT_INTERNAL_FORM_VIEWED: 'card_deposit_internal_form_viewed',
+  CARD_DEPOSIT_SOURCE_SELECTED: 'card_deposit_source_selected',
+  CARD_DEPOSIT_AMOUNT_ENTRY_STARTED: 'card_deposit_amount_entry_started',
+  CARD_DEPOSIT_MAX_BUTTON_CLICKED: 'card_deposit_max_button_clicked',
+  CARD_DEPOSIT_BORROW_SLIDER_CHANGED: 'card_deposit_borrow_slider_changed',
+  CARD_DEPOSIT_VALIDATION_ERROR: 'card_deposit_validation_error',
+  CARD_DEPOSIT_INTERNAL_SUBMITTED: 'card_deposit_internal_submitted',
+
+  // External Deposit Flow
+  CARD_DEPOSIT_EXTERNAL_FORM_VIEWED: 'card_deposit_external_form_viewed',
+  CARD_DEPOSIT_EXTERNAL_WALLET_CONNECTED: 'card_deposit_external_wallet_connected',
+  CARD_DEPOSIT_EXTERNAL_WALLET_DISCONNECTED: 'card_deposit_external_wallet_disconnected',
+  CARD_DEPOSIT_EXTERNAL_SUBMITTED: 'card_deposit_external_submitted',
+
+  // Transaction Status
+  CARD_DEPOSIT_TRANSACTION_STATUS_VIEWED: 'card_deposit_transaction_status_viewed',
+  CARD_DEPOSIT_TRANSACTION_STATUS_PRESSED: 'card_deposit_transaction_status_pressed',
+
   // Fast Withdraw Events
   FAST_WITHDRAW_INITIATED: 'fast_withdraw_initiated',
   FAST_WITHDRAW_TRANSACTION_SENT: 'fast_withdraw_transaction_sent',
