@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Hash } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -92,6 +92,7 @@ export type TrackTransaction = <TransactionResult>(
 
 export function useActivity() {
   const { user } = useUser();
+  const queryClient = useQueryClient();
   // Check sync lock SYNCHRONOUSLY to prevent query from fetching during sync
   // This is read during render phase, before effects run
   const isSyncingLock = useSyncStore(state => state.isSyncingLock);
@@ -178,24 +179,34 @@ export function useActivity() {
 
   const debouncedActivityData = useDebounce(activityData, 1000);
 
+  // Helper to reset infinite query to first page only
+  // This prevents React Query from refetching all cached pages
+  const resetToFirstPage = useCallback(() => {
+    queryClient.setQueryData(['activity-events', user?.userId], (oldData: any) => {
+      if (!oldData?.pages?.length) return oldData;
+      return {
+        pages: oldData.pages.slice(0, 1),
+        pageParams: oldData.pageParams.slice(0, 1),
+      };
+    });
+  }, [queryClient, user?.userId]);
+
   // Refetch all data sources (backend handles all syncing now)
   // IMPORTANT: Do NOT call refetchActivityEvents() here!
-  // syncFromBackend() invalidates the 'activity-events' query on success,
-  // which triggers React Query to auto-refetch. Calling both causes double fetches.
+  // syncFromBackend() resets to first page before sync starts
   const refetchAll = useCallback(
     (force = false) => {
       if (isSyncing || isRefetching) {
         return;
       }
-      // Trigger backend sync - this will:
-      // 1. Call /v1/activity/sync API
-      // 2. On success, invalidate 'activity-events' query (useSyncActivities.ts:130)
-      // 3. React Query auto-refetches the invalidated query
+      // Reset to first page before sync to prevent bulk refetch
+      resetToFirstPage();
+      // Trigger backend sync
       syncFromBackend(undefined, force).catch((error: any) => {
         console.error('Background sync failed:', error);
       });
     },
-    [isSyncing, isRefetching, syncFromBackend],
+    [isSyncing, isRefetching, syncFromBackend, resetToFirstPage],
   );
 
   // Get user's activities from local storage
@@ -270,7 +281,8 @@ export function useActivity() {
   useEffect(() => {
     if (!activities?.length) return;
     setCachedActivities(activities);
-  }, [activities, setCachedActivities]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setCachedActivities is stable useState setter
+  }, [activities]);
 
   // Get pending activities
   const pendingActivities = useMemo(() => {
