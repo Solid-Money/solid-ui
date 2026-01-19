@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useSyncActivities } from '@/hooks/useSyncActivities';
 import useUser from '@/hooks/useUser';
@@ -14,14 +14,21 @@ import useUser from '@/hooks/useUser';
 export function useActivityRefresh() {
   const { user } = useUser();
 
+  // Memoize options to ensure stable reference
+  // (useSyncActivities extracts primitives, but this is good defensive coding)
+  const syncOptions = useMemo(
+    () => ({
+      syncOnAppActive: false, // Don't auto-sync, this is just for manual refresh
+      syncOnMount: false,
+    }),
+    [],
+  );
+
   const {
     sync: syncFromBackend,
     isSyncing,
     isStale: isSyncStale,
-  } = useSyncActivities({
-    syncOnAppActive: false, // Don't auto-sync, this is just for manual refresh
-    syncOnMount: false,
-  });
+  } = useSyncActivities(syncOptions);
 
   const refetchAll = useCallback(
     (force = false) => {
