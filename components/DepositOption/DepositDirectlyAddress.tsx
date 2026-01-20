@@ -12,7 +12,7 @@ import CopyToClipboard from '@/components/CopyToClipboard';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';

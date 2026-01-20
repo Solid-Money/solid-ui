@@ -7,7 +7,7 @@ import { useReadContract } from 'wagmi';
 
 import RepayToCardModal from '@/components/Card/RepayToCardModal';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
 import { ADDRESSES } from '@/lib/config';

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { buttonVariants } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useTotalAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';

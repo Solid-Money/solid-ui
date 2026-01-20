@@ -12,7 +12,7 @@ import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
 import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import TooltipPopover from '@/components/Tooltip';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import faqs from '@/constants/faqs';
 import {

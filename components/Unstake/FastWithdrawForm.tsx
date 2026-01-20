@@ -14,7 +14,7 @@ import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import Max from '@/components/Max';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL, UNSTAKE_MODAL } from '@/constants/modals';

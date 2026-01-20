@@ -15,7 +15,7 @@ import { useShallow } from 'zustand/react/shallow';
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
 import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';

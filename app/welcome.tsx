@@ -9,7 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { DesktopCarousel } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
