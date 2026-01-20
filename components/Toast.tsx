@@ -51,7 +51,9 @@ const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
             <Link href={link} target="_blank" className="opacity-50 web:hover:opacity-100">
               <View className="flex-row items-center gap-1">
                 <ExternalLink color="white" size={16} />
-                {linkText && <Text className="web:underline web:underline-offset-2">{linkText}</Text>}
+                {linkText && (
+                  <Text className="web:underline web:underline-offset-2">{linkText}</Text>
+                )}
               </View>
             </Link>
           )}

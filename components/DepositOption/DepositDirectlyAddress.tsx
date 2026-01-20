@@ -272,7 +272,7 @@ const DepositDirectlyAddress = () => {
             <Button
               variant="secondary"
               onPress={handleQrOpen}
-              className="h-9 flex-1 rounded-2xl border-0 bg-secondary-hover"
+              className="bg-secondary-hover h-9 flex-1 rounded-2xl border-0"
             >
               <Copy size={14} color="white" />
               <Text className="font-bold text-white">Show QR</Text>
@@ -280,7 +280,7 @@ const DepositDirectlyAddress = () => {
             <Button
               variant="secondary"
               onPress={handleShare}
-              className="h-9 flex-1 rounded-2xl border-0 bg-secondary-hover"
+              className="bg-secondary-hover h-9 flex-1 rounded-2xl border-0"
             >
               <Share2 size={18} color="white" />
               <Text className="font-bold text-white">Share</Text>

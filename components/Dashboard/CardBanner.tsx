@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -110,7 +110,7 @@ const CardBanner = () => {
             <Text className="native:text-lg text-lg font-semibold md:text-3xl">
               {bannerContent.title}
             </Text>
-            <Text className="native:text-base font-medium text-muted-foreground max-w-60">
+            <Text className="native:text-base max-w-60 font-medium text-muted-foreground">
               {bannerContent.description}
             </Text>
             <Button

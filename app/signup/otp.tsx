@@ -299,7 +299,10 @@ export default function SignupOtp() {
       <View className="mt-6 flex-row items-center justify-center gap-1">
         <Text className="text-base text-white/60">Didn&apos;t receive it?</Text>
         {canResend ? (
-          <Underline onPress={handleResendOtp} textClassName="text-base font-semibold text-white/60">
+          <Underline
+            onPress={handleResendOtp}
+            textClassName="text-base font-semibold text-white/60"
+          >
             Resend Code
           </Underline>
         ) : (

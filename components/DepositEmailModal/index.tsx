@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';

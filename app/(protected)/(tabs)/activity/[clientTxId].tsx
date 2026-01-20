@@ -132,7 +132,11 @@ const SupportSection = memo(function SupportSection({ transactionContext }: Supp
         <SupportIcon width={18} height={18} />
         <Text className="text-sm text-white/70">
           Got question?{' '}
-          <Underline inline textClassName="text-sm text-white/70" borderColor="rgba(255, 255, 255, 0.7)">
+          <Underline
+            inline
+            textClassName="text-sm text-white/70"
+            borderColor="rgba(255, 255, 255, 0.7)"
+          >
             Click here
           </Underline>{' '}
           to talk with support
@@ -433,14 +437,14 @@ export default function ActivityDetail() {
           key: 'explorer',
           label: <Label>Explorer</Label>,
           value: (
-          <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
-            <View className="flex-row items-center gap-1">
-              <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
-                {eclipseAddress(hash)}
-              </Underline>
-              <ArrowUpRight color="white" size={16} />
-            </View>
-          </Pressable>
+            <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
+              <View className="flex-row items-center gap-1">
+                <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                  {eclipseAddress(hash)}
+                </Underline>
+                <ArrowUpRight color="white" size={16} />
+              </View>
+            </Pressable>
           ),
         },
       isDeposit &&

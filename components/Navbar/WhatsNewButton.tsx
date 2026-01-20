@@ -13,7 +13,7 @@ const WhatsNewButton = () => {
   return (
     <Pressable
       onPress={showLatest}
-      className="h-9 flex-row items-center gap-1 rounded-full bg-[#2A2A2A] pl-4 pr-3 transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className="web:hover:bg-secondary-hover h-9 flex-row items-center gap-1 rounded-full bg-[#2A2A2A] pl-4 pr-3 transition-all active:scale-95 active:opacity-80"
     >
       <Text className="text-base font-medium text-white/70">What&apos;s new?</Text>
       <Pressable

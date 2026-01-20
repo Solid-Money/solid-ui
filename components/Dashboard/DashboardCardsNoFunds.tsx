@@ -2,8 +2,8 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
 
-import { getAsset } from '@/lib/assets';
 import { Underline } from '@/components/ui/underline';
+import { getAsset } from '@/lib/assets';
 
 export function DashboardCardsNoFunds() {
   return <DepositStableCoinsCard />;

@@ -2,10 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import { Check } from 'lucide-react-native';
 
+import Copy from '@/assets/images/copy';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-import Copy from '@/assets/images/copy';
 
 const CopyToClipboard = ({
   text,

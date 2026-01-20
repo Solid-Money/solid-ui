@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, TextInput, View } from 'react-native';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';

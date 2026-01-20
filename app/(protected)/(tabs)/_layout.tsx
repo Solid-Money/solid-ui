@@ -9,7 +9,6 @@ import CardNavBarIcon from '@/assets/images/card-nav-bar-icon';
 import SavingsNavBarIcon from '@/assets/images/savings-nav-bar-icon';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
-import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 

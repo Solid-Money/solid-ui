@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Sentry from '@sentry/react-native';
 
+import Trash from '@/assets/images/trash';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
@@ -19,8 +20,6 @@ import {
   TransactionType,
 } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
-
-import Trash from '@/assets/images/trash';
 
 type TransactionClassNames = {
   container?: string;

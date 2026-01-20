@@ -20,7 +20,7 @@ const AccountCenterTrigger = (props: any) => {
 
   return (
     <Pressable
-      className="flex-row items-center justify-between gap-1 rounded-full bg-[#2C2C2C] px-3 py-2 transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
+      className="web:hover:bg-secondary-hover flex-row items-center justify-between gap-1 rounded-full bg-[#2C2C2C] px-3 py-2 transition-all active:scale-95 active:opacity-80"
       {...props}
     >
       <ProfileIcon width={20} height={20} />

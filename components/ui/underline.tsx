@@ -2,7 +2,6 @@ import * as React from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
 
 type UnderlineProps = {
   children: React.ReactNode;
@@ -39,7 +38,10 @@ export function Underline({
 
   // For block mode, use View with border
   const content = (
-    <View style={{ borderBottomWidth: borderWidth, borderBottomColor: borderColor }} className={className}>
+    <View
+      style={{ borderBottomWidth: borderWidth, borderBottomColor: borderColor }}
+      className={className}
+    >
       <Text className={textClassName}>{children}</Text>
     </View>
   );

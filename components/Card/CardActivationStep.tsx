@@ -54,7 +54,7 @@ export function CardActivationStep({
       <View className="ml-4 mt-1 flex-1">
         <Pressable onPress={canToggle ? () => onToggle(step.id) : undefined} disabled={!canToggle}>
           <Text
-            className={`mb-1 native:text-lg text-lg font-semibold ${canToggle ? 'text-white' : 'text-white/50'}`}
+            className={`native:text-lg mb-1 text-lg font-semibold ${canToggle ? 'text-white' : 'text-white/50'}`}
           >
             {step.title}
           </Text>

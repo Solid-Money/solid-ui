@@ -288,7 +288,11 @@ export default function SignupEmail() {
       <View className="mt-auto pt-8">
         <Text className="text-center text-sm text-white/70">
           I acknowledge that I have read and agreed to{'\n'}
-          <Link href="https://solid.xyz/terms" target="_blank" className="text-white/70 web:underline">
+          <Link
+            href="https://solid.xyz/terms"
+            target="_blank"
+            className="text-white/70 web:underline"
+          >
             Terms and Conditions
           </Link>{' '}
           and{' '}

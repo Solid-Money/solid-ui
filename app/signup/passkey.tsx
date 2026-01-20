@@ -177,7 +177,7 @@ export default function SignupPasskey() {
           ) : (
             <View className="flex-row items-center">
               <LoginKeyIcon color="#000" />
-              <Text className="ml-2 native:text-lg text-lg font-semibold text-black">Continue</Text>
+              <Text className="native:text-lg ml-2 text-lg font-semibold text-black">Continue</Text>
             </View>
           )}
         </Button>
@@ -216,7 +216,10 @@ export default function SignupPasskey() {
                     Passkeys let you sign in using biometrics or your device PIN—no email needed.
                     They&apos;re fast, secure, and act as 2FA to protect your account.{' '}
                   </Text>
-                  <Underline onPress={handleLearnMore} textClassName="text-[16px] font-medium text-white/60">
+                  <Underline
+                    onPress={handleLearnMore}
+                    textClassName="text-[16px] font-medium text-white/60"
+                  >
                     Learn more
                   </Underline>
                 </View>
@@ -239,7 +242,9 @@ export default function SignupPasskey() {
               ) : (
                 <>
                   <LoginKeyIcon color="#000" />
-                  <Text className="ml-2 native:text-lg text-lg font-semibold text-black">Continue</Text>
+                  <Text className="native:text-lg ml-2 text-lg font-semibold text-black">
+                    Continue
+                  </Text>
                 </>
               )}
             </Button>
