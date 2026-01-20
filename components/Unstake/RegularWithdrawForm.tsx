@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
+import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import { UNSTAKE_MODAL } from '@/constants/modals';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance } from '@/hooks/useVault';
+import { useWalletTokens } from '@/hooks/useWalletTokens';
 import useWithdraw from '@/hooks/useWithdraw';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
@@ -30,13 +32,40 @@ import { useUnstakeStore } from '@/store/useUnstakeStore';
 const RegularWithdrawForm = () => {
   const { user } = useUser();
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { selectedToken, setModal, setTransaction } = useUnstakeStore(
+  const { selectedToken, setModal, setTransaction, setSelectedToken } = useUnstakeStore(
     useShallow(state => ({
       selectedToken: state.selectedToken,
       setModal: state.setModal,
       setTransaction: state.setTransaction,
+      setSelectedToken: state.setSelectedToken,
     })),
   );
+
+  const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
+
+  // Filter for soUSD tokens only (vault tokens) and sort by USD value
+  const sortedTokens = useMemo(() => {
+    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
+    const vaultTokens = allTokens.filter(
+      token => token.contractTickerSymbol?.toLowerCase() === 'sousd',
+    );
+    return vaultTokens.sort((a, b) => {
+      const balanceA = Number(formatUnits(BigInt(a.balance || '0'), a.contractDecimals));
+      const balanceUSD_A = balanceA * (a.quoteRate || 0);
+
+      const balanceB = Number(formatUnits(BigInt(b.balance || '0'), b.contractDecimals));
+      const balanceUSD_B = balanceB * (b.quoteRate || 0);
+
+      return balanceUSD_B - balanceUSD_A; // Descending order
+    });
+  }, [ethereumTokens, fuseTokens, baseTokens]);
+
+  // Auto-select the first token if no token is selected
+  useEffect(() => {
+    if (!selectedToken && sortedTokens.length > 0) {
+      setSelectedToken(sortedTokens[0]);
+    }
+  }, [selectedToken, sortedTokens, setSelectedToken]);
 
   // Use vault balance for selected token, fallback to Fuse vault balance
   const { data: formattedBalance, isLoading: isLoadingFuseBalance } = useFuseVaultBalance(
@@ -201,7 +230,7 @@ const RegularWithdrawForm = () => {
                 <Text className="text-base opacity-50">
                   {isLoading || isLoadingFuseBalance
                     ? '...'
-                    : `${formatNumber(balanceAmount)} ${selectedToken.contractTickerSymbol}`}
+                    : `${formatNumber(balanceAmount, 2)} ${selectedToken.contractTickerSymbol}`}
                 </Text>
                 {balanceAmount > 0 && <Max onPress={handleMaxPress} />}
               </View>
@@ -340,7 +369,7 @@ const RegularWithdrawForm = () => {
                       : 'web:disabled:hover:bg-brand',
                   )}
                   onPress={handleSubmit(onBridgeSubmit)}
-                  disabled={isWithdrawFormDisabled() || activeStep !== 1 || isBridgeLoading}
+                  disabled={isBridgeLoading}
                 >
                   {isBridgeLoading ? (
                     <ActivityIndicator color="gray" />
@@ -468,10 +497,7 @@ const RegularWithdrawForm = () => {
           ) : null}
         </TokenDetails>
         <View className="mt-2 flex-row items-center justify-center gap-2">
-          <View className="h-4 w-4 items-center justify-center rounded-full border border-muted-foreground">
-            <Text className="text-[10px] text-muted-foreground">?</Text>
-          </View>
-          <Text className="text-base font-medium text-muted-foreground">Need help?</Text>
+          <NeedHelp />
         </View>
       </View>
     </Pressable>

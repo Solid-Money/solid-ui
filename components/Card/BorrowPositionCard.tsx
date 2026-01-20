@@ -134,8 +134,13 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
           <View className="flex-1 items-end">
             <RepayToCardModal
               trigger={
-                <Button className="h-12 w-40 rounded-[13px] border-0 bg-[#303030]">
-                  <Text className="text-base font-bold text-white">Repay</Text>
+                <Button
+                  variant="secondary"
+                  className="h-12 w-40 rounded-xl border-0 bg-[#303030] px-6"
+                >
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-base font-bold text-white">Repay</Text>
+                  </View>
                 </Button>
               }
             />
