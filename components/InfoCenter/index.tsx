@@ -10,7 +10,7 @@ import { useIntercom } from '@/lib/intercom';
 const InfoCenterTrigger = (props: any) => {
   return (
     <Pressable
-      className="web:hover:bg-secondary-hover h-9 w-9 flex-row items-center justify-center rounded-full bg-[#2C2C2C] transition-all active:scale-95 active:opacity-80"
+      className="h-9 w-9 flex-row items-center justify-center rounded-full bg-[#2C2C2C] transition-all active:scale-95 active:opacity-80 web:hover:bg-secondary-hover"
       {...props}
     >
       <QuestionIcon width={14} height={14} />
