@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import WalletIcon from '@/assets/images/wallet';
 import CountUp from '@/components/CountUp';
 import TooltipPopover from '@/components/Tooltip';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import WalletCardIcons from '@/components/Wallet/WalletCardIcons';
 import { useDimension } from '@/hooks/useDimension';

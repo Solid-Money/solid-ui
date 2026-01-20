@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { TOKEN_IMAGES } from '@/constants/tokens';
 import { useTokenSelector } from '@/hooks/useToken';

@@ -2,7 +2,7 @@ import { Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { getAsset } from '@/lib/assets';

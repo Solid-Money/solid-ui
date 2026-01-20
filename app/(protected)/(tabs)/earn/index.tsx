@@ -6,7 +6,7 @@ import { ChevronRight, Minus, Plus } from 'lucide-react-native';
 import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { TOKEN_IMAGES } from '@/constants/tokens';
 import { useTotalAPY } from '@/hooks/useAnalytics';
