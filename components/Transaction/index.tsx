@@ -296,7 +296,7 @@ const Transaction = ({
         {directDepositIsPendingOrProcessing && (
           <Pressable
             onPress={handleDeletePress}
-            className="items-center justify-center h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+            className="h-10 w-10 items-center justify-center rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
           >
             <Trash />
           </Pressable>

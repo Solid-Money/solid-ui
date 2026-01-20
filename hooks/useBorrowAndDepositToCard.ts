@@ -129,7 +129,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
           abi: erc20Abi,
           functionName: 'approve',
           args: [ADDRESSES.fuse.aaveV3Pool, supplyAmountWei],
-        }); 
+        });
 
         const supplyCalldata = encodeFunctionData({
           abi: AaveV3Pool_ABI,

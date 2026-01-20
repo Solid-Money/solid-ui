@@ -1006,7 +1006,7 @@ export default function CardDepositInternalForm() {
       )}
 
       {watchedFrom === 'borrow' && (
-        <TokenDetails>
+        <TokenDetails className="mt-3">
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Borrow rate</Text>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">

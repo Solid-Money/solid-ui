@@ -24,11 +24,7 @@ export function useActivityRefresh() {
     [],
   );
 
-  const {
-    sync: syncFromBackend,
-    isSyncing,
-    isStale: isSyncStale,
-  } = useSyncActivities(syncOptions);
+  const { sync: syncFromBackend, isSyncing, isStale: isSyncStale } = useSyncActivities(syncOptions);
 
   const refetchAll = useCallback(
     (force = false) => {

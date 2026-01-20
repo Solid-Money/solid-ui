@@ -16,7 +16,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   const sliderContainerRef = useRef<View>(null);
   const sliderPageX = useRef(0);
   const isDragging = useRef(false);
-  const STEP_SIZE = 0.01;
+  const STEP_SIZE = useMemo(() => (max < 1 ? 0.01 : 1), [max]);
 
   // Calculate decimal places from step size
   const decimalPlaces = useMemo(() => {
@@ -26,7 +26,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
       return stepStr.split('.')[1].length;
     }
     return 0;
-  }, []);
+  }, [STEP_SIZE]);
 
   // Ensure value is valid number
   const safeValue = useMemo(() => {
@@ -120,7 +120,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   return (
     <View className="gap-4">
       <View className="gap-2">
-        <Text className="mt-10 text-center text-base font-medium opacity-50">Amount to borrow</Text>
+        <Text className="mt-5 text-center text-base font-medium opacity-50">Amount to borrow</Text>
         <View className="flex-row items-center justify-center">
           <Text className="text-3xl font-semibold text-white">
             ${formatNumber(safeValue, decimalPlaces, decimalPlaces)}

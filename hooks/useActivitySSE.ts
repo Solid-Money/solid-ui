@@ -812,7 +812,7 @@ const sseManager = new SSEConnectionManager();
 interface UseActivitySSEOptions {
   /** Whether SSE connection should be enabled */
   enabled?: boolean;
-  /** 
+  /**
    * Whether to subscribe to SSE state changes (connectionState, error)
    * Set to false if you just want to enable SSE without subscribing to state updates
    * This prevents unnecessary re-renders in components that don't use the return values
@@ -852,7 +852,7 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
   // Only create local state if we need to subscribe to updates
   // This prevents re-renders when used just to enable SSE (like in _layout)
   const [state, setState] = useState<SSEState | null>(() =>
-    subscribe ? sseManager.getState() : null
+    subscribe ? sseManager.getState() : null,
   );
 
   // Track if we've already subscribed to prevent duplicate subscriptions

@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { View } from 'react-native';
 
 import SlotTrigger from '@/components/SlotTrigger';
 import { Button } from '@/components/ui/button';
@@ -31,8 +32,14 @@ export default function RepayToCardModal({ trigger }: { trigger?: React.ReactNod
   }
 
   return (
-    <Button className="h-12 rounded-[13px] border-0 bg-[#303030]" onPress={handlePress}>
-      <Text className="text-base font-bold text-white">Repay</Text>
+    <Button
+      variant="secondary"
+      className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+      onPress={handlePress}
+    >
+      <View className="flex-row items-center gap-2">
+        <Text className="text-base font-bold text-white">Repay</Text>
+      </View>
     </Button>
   );
 }
