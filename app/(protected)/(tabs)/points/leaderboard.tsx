@@ -5,7 +5,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useInfiniteQuery } from '@tanstack/react-query';
 
 import PageLayout from '@/components/PageLayout';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
 import { usePoints } from '@/hooks/usePoints';

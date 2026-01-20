@@ -8,7 +8,7 @@ import SavingsIcon from '@/assets/images/savings';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import TooltipPopover from '@/components/Tooltip';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';

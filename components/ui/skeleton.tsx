@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { StyleProp, ViewStyle } from 'react-native';
+import { Platform, StyleProp, View, ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -19,7 +19,7 @@ interface SkeletonProps extends Omit<
   style?: StyleProp<ViewStyle>;
 }
 
-function Skeleton({ className, style: customStyle, ...props }: SkeletonProps) {
+export default function Skeleton({ className, style: customStyle, ...props }: SkeletonProps) {
   const sv = useSharedValue(1);
 
   React.useEffect(() => {
@@ -37,6 +37,15 @@ function Skeleton({ className, style: customStyle, ...props }: SkeletonProps) {
   const hasCustomBg =
     customStyle && typeof customStyle === 'object' && 'backgroundColor' in customStyle;
 
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        className={cn('rounded-md', !hasCustomBg && 'bg-secondary dark:bg-muted', className)}
+        style={customStyle}
+      />
+    );
+  }
+
   return (
     <Animated.View
       style={[animatedStyle, customStyle]}
@@ -45,5 +54,3 @@ function Skeleton({ className, style: customStyle, ...props }: SkeletonProps) {
     />
   );
 }
-
-export { Skeleton };

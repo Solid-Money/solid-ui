@@ -1,4 +1,4 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
 import { useMaxAPY } from '@/hooks/useAnalytics';

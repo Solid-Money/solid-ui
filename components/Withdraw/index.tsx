@@ -12,7 +12,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WITHDRAW_MODAL } from '@/constants/modals';
 import useUser from '@/hooks/useUser';

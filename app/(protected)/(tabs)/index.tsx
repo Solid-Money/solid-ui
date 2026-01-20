@@ -8,7 +8,7 @@ import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButton
 import LazyHomeBanners from '@/components/Dashboard/LazyHomeBanners';
 import HomeEmptyState from '@/components/Home/EmptyState';
 import PageLayout from '@/components/PageLayout';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WalletInfo } from '@/components/Wallet';
 import DesktopCards from '@/components/Wallet/DesktopCards';

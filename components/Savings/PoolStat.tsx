@@ -3,7 +3,7 @@ import { Link } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 
 import TooltipPopover from '@/components/Tooltip';
-import { Skeleton } from '@/components/ui/skeleton';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useMaxAPY, useTVL } from '@/hooks/useAnalytics';

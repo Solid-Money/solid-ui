@@ -125,14 +125,13 @@ export default function ActivateMobile() {
         </View>
         <View className="mb-10 mt-8">
           <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] p-12">
-            <Text className="text-2xl font-bold text-white text-center">Card issuance is temporarily disabled</Text>
-            <Text className="mt-4 text-center text-[#ACACAC]">
-              Please check back later
+            <Text className="text-center text-2xl font-bold text-white">
+              Card issuance is temporarily disabled
             </Text>
+            <Text className="mt-4 text-center text-[#ACACAC]">Please check back later</Text>
           </View>
         </View>
       </View>
     </PageLayout>
   );
-
 }
