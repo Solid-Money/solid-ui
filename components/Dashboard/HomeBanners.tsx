@@ -1,13 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import PointsBanner from '@/components/Points/PointsBanner';
 import { useDimension } from '@/hooks/useDimension';
@@ -181,19 +177,25 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
 
               panGesture.onBegin(() => {
                 'worklet';
-                runOnJS(setPanning)(false);
+                scheduleOnRN(() => {
+                  setPanning(false);
+                });
               });
               panGesture.onUpdate(event => {
                 'worklet';
                 // Only set panning if gesture moved significantly
                 if (Math.abs(event.translationX) > 10 || Math.abs(event.translationY) > 10) {
-                  runOnJS(setPanning)(true);
+                  scheduleOnRN(() => {
+                    setPanning(true);
+                  });
                 }
               });
               panGesture.onFinalize(() => {
                 'worklet';
                 // Clear flag after a short delay to allow press handler to check
-                runOnJS(clearPanningDelayed)();
+                scheduleOnRN(() => {
+                  clearPanningDelayed();
+                });
               });
             }}
             renderItem={renderItem}
@@ -248,3 +250,5 @@ const styles = StyleSheet.create({
     width: 20,
   },
 });
+
+export default HomeBanners;

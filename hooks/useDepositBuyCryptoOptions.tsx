@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { useCallback, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -9,7 +10,7 @@ import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const useDepositBuyCryptoOptions = () => {
-  const { setModal } = useDepositStore();
+  const setModal = useDepositStore(state => state.setModal);
   const { isEnabled: isDepositBonusEnabled, percentage } = useDepositBonusConfig();
 
   const handleBankDepositPress = useCallback(() => {

@@ -225,3 +225,23 @@ export const CARD_DEPOSIT_MODAL = {
     number: 3,
   },
 };
+
+// Card repay modal
+export const CARD_REPAY_MODAL = {
+  CLOSE: {
+    name: 'close',
+    number: 0,
+  },
+  OPEN_FORM: {
+    name: 'open_form',
+    number: 1,
+  },
+  OPEN_TOKEN_SELECTOR: {
+    name: 'open_token_selector',
+    number: 2,
+  },
+  OPEN_TRANSACTION_STATUS: {
+    name: 'open_transaction_status',
+    number: 3,
+  },
+};

@@ -8,6 +8,7 @@ import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchIsDeposited } from './useAnalytics';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Hook to handle post-signup/post-login initialization tasks that don't need to block
@@ -18,7 +19,12 @@ export const usePostSignupInit = (user: User | undefined) => {
   const queryClient = useQueryClient();
   const hasInitialized = useRef(false);
   const lastUserId = useRef<string | undefined>(undefined);
-  const { safeAddressSynced, markSafeAddressSynced } = useUserStore();
+  const { safeAddressSynced, markSafeAddressSynced } = useUserStore(
+    useShallow(state => ({
+      safeAddressSynced: state.safeAddressSynced,
+      markSafeAddressSynced: state.markSafeAddressSynced,
+    })),
+  );
 
   useEffect(() => {
     // Only run when we have a new user (different userId)
@@ -56,44 +62,53 @@ export const usePostSignupInit = (user: User | undefined) => {
           }
         }
 
-        // 2. Check balance and update deposit status (non-blocking)
-        try {
-          const isDeposited = await fetchIsDeposited(queryClient, user.safeAddress);
-          if (isDeposited && !user.isDeposited) {
-            useUserStore.getState().updateUser({
-              ...user,
-              isDeposited: true,
-            });
-          }
-        } catch (error) {
-          Sentry.captureException(error, {
-            tags: {
-              type: 'balance_check_error_lazy',
-            },
-            user: {
-              id: user.userId,
-              address: user.safeAddress,
-            },
-            level: 'warning',
-          });
-        }
+        // PERFORMANCE: Run independent operations in parallel using Promise.allSettled
+        // This reduces total initialization time from sequential (~sum of times) to parallel (~max time)
+        // Using allSettled so failures in one don't block others
+        await Promise.allSettled([
+          // 2. Check balance and update deposit status (non-blocking)
+          (async () => {
+            try {
+              const isDeposited = await fetchIsDeposited(queryClient, user.safeAddress);
+              if (isDeposited && !user.isDeposited) {
+                useUserStore.getState().updateUser({
+                  ...user,
+                  isDeposited: true,
+                });
+              }
+            } catch (error) {
+              Sentry.captureException(error, {
+                tags: {
+                  type: 'balance_check_error_lazy',
+                },
+                user: {
+                  id: user.userId,
+                  address: user.safeAddress,
+                },
+                level: 'warning',
+              });
+            }
+          })(),
 
-        // 3. Fetch points (non-blocking)
-        try {
-          const { fetchPoints } = usePointsStore.getState();
-          await fetchPoints();
-        } catch (error) {
-          Sentry.captureException(error, {
-            tags: {
-              type: 'points_fetch_error_lazy',
-            },
-            user: {
-              id: user.userId,
-              address: user.safeAddress,
-            },
-            level: 'warning',
-          });
-        }
+          // 3. Fetch points (non-blocking)
+          (async () => {
+            try {
+              const { fetchPoints } = usePointsStore.getState();
+              await fetchPoints();
+            } catch (error) {
+              Sentry.captureException(error, {
+                tags: {
+                  type: 'points_fetch_error_lazy',
+                },
+                user: {
+                  id: user.userId,
+                  address: user.safeAddress,
+                },
+                level: 'warning',
+              });
+            }
+          })(),
+        ]);
       } catch (error) {
         Sentry.captureException(error, {
           tags: {

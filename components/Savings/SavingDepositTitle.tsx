@@ -6,7 +6,7 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useSavingStore } from '@/store/useSavingStore';
 
 const SavingDepositTitle = () => {
-  const { selectedVault } = useSavingStore();
+  const selectedVault = useSavingStore(state => state.selectedVault);
   const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
 
   return (

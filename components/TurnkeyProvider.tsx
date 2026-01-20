@@ -4,21 +4,20 @@ import {
   TurnkeyProvider as TurnkeyProviderKit,
   type TurnkeyProviderConfig,
 } from '@turnkey/react-native-wallet-kit';
+import { useShallow } from 'zustand/react/shallow';
 
 import {
   EXPO_PUBLIC_TURNKEY_API_BASE_URL,
   EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID,
 } from '@/lib/config';
 import { base64urlToUint8Array } from '@/lib/utils';
-import { useUserStore } from '@/store/useUserStore';
+import { selectSelectedCredentialId, useUserStore } from '@/store/useUserStore';
 
 // Helper to get current hostname in runtime; falls back to configured value during SSR.
 export const getRuntimeRpId = () => (Platform.OS === 'web' && __DEV__ ? 'localhost' : 'solid.xyz');
 
 export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Get the selected user's credentialId from the store
-  const users = useUserStore(state => state.users);
-  const selectedUser = users.find(u => u.selected) ?? (users.length === 1 ? users[0] : undefined);
+  const selectedCredentialId = useUserStore(useShallow(selectSelectedCredentialId));
 
   const config = useMemo<TurnkeyProviderConfig>(() => {
     const baseConfig: TurnkeyProviderConfig = {
@@ -41,8 +40,8 @@ export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // - credentialId is stored as base64url (from passkey creation)
     // - Web: SDK passes Uint8Array directly to WebAuthn API
     // - React Native: SDK converts Uint8Array to hex string for react-native-passkey
-    if (selectedUser?.credentialId) {
-      const credentialIdBytes = base64urlToUint8Array(selectedUser.credentialId);
+    if (selectedCredentialId) {
+      const credentialIdBytes = base64urlToUint8Array(selectedCredentialId);
       baseConfig.passkeyConfig = {
         ...baseConfig.passkeyConfig,
         allowCredentials: [
@@ -55,12 +54,12 @@ export const TurnkeyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     return baseConfig;
-  }, [selectedUser?.credentialId]);
+  }, [selectedCredentialId]);
 
   // Use key to force re-mount when credentialId changes
   // This ensures the SDK reinitializes with the new allowCredentials config
   return (
-    <TurnkeyProviderKit key={selectedUser?.credentialId ?? 'no-credential'} config={config}>
+    <TurnkeyProviderKit key={selectedCredentialId ?? 'no-credential'} config={config}>
       {children}
     </TurnkeyProviderKit>
   );

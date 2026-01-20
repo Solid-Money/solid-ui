@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -8,6 +8,7 @@ import { Address } from 'abitype';
 import { Wallet } from 'lucide-react-native';
 import { isAddress, TransactionReceipt } from 'viem';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import Max from '@/components/Max';
@@ -34,7 +35,13 @@ import { useUnstakeStore } from '@/store/useUnstakeStore';
 const FastWithdrawForm = () => {
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivity();
-  const { setModal, setTransaction, selectedNetwork } = useUnstakeStore();
+  const { setModal, setTransaction, selectedNetwork } = useUnstakeStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setTransaction: state.setTransaction,
+      selectedNetwork: state.selectedNetwork,
+    })),
+  );
 
   const chainId = useMemo(() => {
     if (!selectedNetwork) return undefined;
@@ -96,99 +103,114 @@ const FastWithdrawForm = () => {
     useFastWithdrawAndBridge();
   const { fastWithdraw, fastWithdrawStatus: fastWithdrawStatus } = useFastWithdraw();
 
-  const isLoading =
-    fastWithdrawAndBridgeStatus === Status.PENDING || fastWithdrawStatus === Status.PENDING;
+  const isLoading = useMemo(() => {
+    return fastWithdrawAndBridgeStatus === Status.PENDING || fastWithdrawStatus === Status.PENDING;
+  }, [fastWithdrawAndBridgeStatus, fastWithdrawStatus]);
 
-  const onSubmit = async (data: any) => {
-    if (!user) return;
+  const onSubmit = useCallback(
+    async (data: any) => {
+      if (!user) return;
 
-    try {
-      // Create activity event (stays PENDING until Bridge processes it)
-      const clientTxId = await createActivity({
-        type: TransactionType.FAST_WITHDRAW,
-        title: `Fast Withdraw`,
-        shortTitle: `Fast Withdraw`,
-        amount: data.amount,
-        symbol: 'soUSD',
-        chainId: chainId ?? 0,
-        fromAddress: user.safeAddress,
-        toAddress: data.address,
-        status: TransactionStatus.PENDING,
-        metadata: {
-          description: `Withdraw ${data.amount} soUSD to ${data.address}`,
-          processingStatus: chainId === 122 ? 'fast_withdraw' : 'bridging',
-        },
-      });
-
-      let tx: TransactionReceipt | undefined;
-
-      if (chainId === 122) {
-        tx = await fastWithdraw(data.amount.toString(), data.address);
-        await updateActivity(clientTxId, {
-          status: TransactionStatus.SUCCESS,
-          hash: tx.transactionHash,
-          url: `https://explorer.fuse.io/tx/${tx.transactionHash}`,
-          metadata: {
-            txHash: tx.transactionHash,
-            processingStatus: 'fast_withdraw',
-          },
-        });
-        Toast.show({
-          type: 'success',
-          text1: 'Fast withdraw transaction completed',
-          text2: `${data.amount} soUSD`,
-          props: {
-            link: `https://explorer.fuse.io/tx/${tx.transactionHash}`,
-            linkText: eclipseAddress(tx.transactionHash),
-            image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
-          },
-        });
-      } else {
-        tx = await fastWithdrawAndBridge(
-          data.amount.toString(),
-          previewData?.minAmountOut?.toString() ?? '0',
-          data.address,
-          chainId ?? 0,
-        );
-
-        // Update activity with transaction hash, keeping it PENDING
-        await updateActivity(clientTxId, {
+      try {
+        // Create activity event (stays PENDING until Bridge processes it)
+        const clientTxId = await createActivity({
+          type: TransactionType.FAST_WITHDRAW,
+          title: `Fast Withdraw`,
+          shortTitle: `Fast Withdraw`,
+          amount: data.amount,
+          symbol: 'soUSD',
+          chainId: chainId ?? 0,
+          fromAddress: user.safeAddress,
+          toAddress: data.address,
           status: TransactionStatus.PENDING,
-          hash: tx.transactionHash,
-          url: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
           metadata: {
-            txHash: tx.transactionHash,
-            processingStatus: chainId === 122 ? 'fast_withdraw' : 'awaiting_bridge',
+            description: `Withdraw ${data.amount} soUSD to ${data.address}`,
+            processingStatus: chainId === 122 ? 'fast_withdraw' : 'bridging',
           },
         });
+
+        let tx: TransactionReceipt | undefined;
+
+        if (chainId === 122) {
+          tx = await fastWithdraw(data.amount.toString(), data.address);
+          await updateActivity(clientTxId, {
+            status: TransactionStatus.SUCCESS,
+            hash: tx.transactionHash,
+            url: `https://explorer.fuse.io/tx/${tx.transactionHash}`,
+            metadata: {
+              txHash: tx.transactionHash,
+              processingStatus: 'fast_withdraw',
+            },
+          });
+          Toast.show({
+            type: 'success',
+            text1: 'Fast withdraw transaction completed',
+            text2: `${data.amount} soUSD`,
+            props: {
+              link: `https://explorer.fuse.io/tx/${tx.transactionHash}`,
+              linkText: eclipseAddress(tx.transactionHash),
+              image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
+            },
+          });
+        } else {
+          tx = await fastWithdrawAndBridge(
+            data.amount.toString(),
+            previewData?.minAmountOut?.toString() ?? '0',
+            data.address,
+            chainId ?? 0,
+          );
+
+          // Update activity with transaction hash, keeping it PENDING
+          await updateActivity(clientTxId, {
+            status: TransactionStatus.PENDING,
+            hash: tx.transactionHash,
+            url: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+            metadata: {
+              txHash: tx.transactionHash,
+              processingStatus: chainId === 122 ? 'fast_withdraw' : 'awaiting_bridge',
+            },
+          });
+          Toast.show({
+            type: 'success',
+            text1: 'Withdraw transaction submitted',
+            text2: `${data.amount} soUSD`,
+            props: {
+              link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
+              linkText: eclipseAddress(tx.transactionHash),
+              image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
+            },
+          });
+        }
+
+        setTransaction({ amount: Number(data.amount) });
+        setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
+        reset();
+      } catch (error) {
+        console.error('Bridge error:', error);
         Toast.show({
-          type: 'success',
-          text1: 'Withdraw transaction submitted',
-          text2: `${data.amount} soUSD`,
-          props: {
-            link: `https://layerzeroscan.com/tx/${tx.transactionHash}`,
-            linkText: eclipseAddress(tx.transactionHash),
-            image: getTokenIcon({ tokenSymbol: 'SoUSD' }),
-          },
+          type: 'error',
+          text1: 'Bridge failed',
+          text2: error instanceof Error ? error.message : 'Unknown error occurred',
         });
       }
+    },
+    [
+      user,
+      createActivity,
+      updateActivity,
+      chainId,
+      fastWithdraw,
+      fastWithdrawAndBridge,
+      previewData?.minAmountOut,
+      reset,
+      setTransaction,
+      setModal,
+    ],
+  );
 
-      setTransaction({ amount: Number(data.amount) });
-      setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
-      reset();
-    } catch (error) {
-      console.error('Bridge error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Bridge failed',
-        text2: error instanceof Error ? error.message : 'Unknown error occurred',
-      });
-    }
-  };
-
-  const isFormDisabled = () => {
+  const isFormDisabled = useMemo(() => {
     return isPreviewLoading || !isValid || !watchedAmount || isLoading;
-  };
+  }, [isPreviewLoading, isValid, watchedAmount, isLoading]);
 
   return (
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
@@ -322,7 +344,7 @@ const FastWithdrawForm = () => {
             variant="brand"
             className="h-12 rounded-2xl"
             onPress={handleSubmit(onSubmit)}
-            disabled={isFormDisabled()}
+            disabled={isFormDisabled}
           >
             {isLoading ? (
               <ActivityIndicator color="gray" />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import useWithdrawOption from '@/hooks/useWithdrawOption';
@@ -26,7 +27,13 @@ const UnstakeModalProvider = () => {
     handleOpenChange,
     handleBackPress,
   } = useWithdrawOption();
-  const { currentModal, previousModal } = useUnstakeStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal, previousModal } = useUnstakeStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+    })),
+  );
 
   return (
     <ResponsiveModal

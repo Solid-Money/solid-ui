@@ -22,7 +22,7 @@ const DefaultTrigger = () => (
  * since the global CardDepositModalProvider handles the modal state.
  */
 export default function DepositToCardModal({ trigger }: { trigger?: React.ReactNode }) {
-  const { setModal } = useCardDepositStore();
+  const setModal = useCardDepositStore(state => state.setModal);
 
   const handlePress = () => {
     setModal(CARD_DEPOSIT_MODAL.OPEN_OPTIONS);

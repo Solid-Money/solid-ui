@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { EllipsisVertical, Plus } from 'lucide-react-native';
 import { isAddress } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
 import Avatar from '@/components/Avatar';
 import { Button } from '@/components/ui/button';
@@ -26,27 +27,48 @@ import AddAddress from './AddAddress';
 import ToInput from './ToInput';
 
 const SendSearch: React.FC = () => {
-  const { setAddress, setModal, setName, setSearchQuery, searchQuery } = useSendStore();
+  const { setAddress, setModal, setName, setSearchQuery, searchQuery } = useSendStore(
+    useShallow(state => ({
+      setAddress: state.setAddress,
+      setModal: state.setModal,
+      setName: state.setName,
+      setSearchQuery: state.setSearchQuery,
+      searchQuery: state.searchQuery,
+    })),
+  );
   const insets = useSafeAreaInsets();
   const { activities } = useActivity();
 
   const { data: addressBook = [], isLoading: isLoadingAddressBook } = useQuery({
     queryKey: ['address-book'],
     queryFn: () => withRefreshToken(() => fetchAddressBook()),
+    staleTime: 5 * 60 * 1000, // 5 minutes - address book changes infrequently
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const sendActivities = useMemo(() => {
-    return activities
-      .filter(
-        activity =>
-          activity.type === TransactionType.SEND &&
-          activity.toAddress &&
-          activity.status === TransactionStatus.SUCCESS,
-      )
-      .map(activity => ({
-        ...activity,
-        walletAddress: activity.toAddress!,
-      }));
+    const filtered = activities.filter(
+      activity =>
+        activity.type === TransactionType.SEND &&
+        activity.toAddress &&
+        activity.status === TransactionStatus.SUCCESS,
+    );
+
+    // Deduplicate by address - keep only the most recent transaction per address
+    const addressMap = new Map<string, (typeof filtered)[0]>();
+    for (const activity of filtered) {
+      const addressKey = activity.toAddress!.toLowerCase();
+      const existing = addressMap.get(addressKey);
+      // Keep the transaction with the more recent timestamp
+      if (!existing || parseInt(activity.timestamp) > parseInt(existing.timestamp)) {
+        addressMap.set(addressKey, activity);
+      }
+    }
+
+    return Array.from(addressMap.values()).map(activity => ({
+      ...activity,
+      walletAddress: activity.toAddress!,
+    }));
   }, [activities]);
 
   const filteredAddressBook = useMemo(() => {

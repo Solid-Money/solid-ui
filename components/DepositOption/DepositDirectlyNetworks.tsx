@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { mainnet } from 'viem/chains';
+import { useShallow } from 'zustand/react/shallow';
 
 import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
@@ -19,7 +20,12 @@ const ESTIMATED_TIMES: Record<number, string> = {
 const DEFAULT_ESTIMATED_TIME = 'Estimated speed: 30 min';
 
 const DepositDirectlyNetworks = () => {
-  const { setModal, setDirectDepositSession } = useDepositStore();
+  const { setModal, setDirectDepositSession } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setDirectDepositSession: state.setDirectDepositSession,
+    })),
+  );
   const { user } = useUser();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const [selectedChainId, setSelectedChainId] = useState<number | null>(null);

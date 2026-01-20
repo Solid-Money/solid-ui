@@ -3,12 +3,26 @@ const { defineConfig } = require('eslint/config')
 const expoConfig = require('eslint-config-expo/flat')
 const eslintPluginPrettierRecommended = require('eslint-plugin-prettier/recommended')
 const simpleImportSort = require('eslint-plugin-simple-import-sort')
+const reactCompiler = require('eslint-plugin-react-compiler');
 
 module.exports = defineConfig([
   expoConfig,
+  reactCompiler.configs.recommended,
   eslintPluginPrettierRecommended,
   {
     ignores: ['dist/*', 'node_modules/*', '.expo/*', 'web-build/*', 'index.js'],
+  },
+  {
+    files: [
+      'app/(protected)/(tabs)/card/activate.tsx',
+      'app/(protected)/(tabs)/card/details.tsx',
+      'app/(protected)/_layout.tsx',
+      'app/(protected)/quest-wallet.tsx',
+      'app/signup/creating.tsx',
+    ],
+    rules: {
+      'react-compiler/react-compiler': 'off',
+    },
   },
   {
     plugins: {
@@ -28,6 +42,16 @@ module.exports = defineConfig([
 
       // Allow console.log/warn/error in development
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+
+      // Zustand: Warn when store selectors return objects without useShallow
+      // Pattern: useXxxStore(state => ({ ... })) - should be wrapped with useShallow
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'CallExpression[callee.name=/^use.*Store$/] > ArrowFunctionExpression > ObjectExpression',
+          message: 'Zustand selectors returning objects should use useShallow() to prevent re-renders. Wrap with: useStore(useShallow(state => ({ ... })))',
+        },
+      ],
 
       // Import sorting with CSS files always first
       'sort-imports': 'off', // Disable built-in sort-imports

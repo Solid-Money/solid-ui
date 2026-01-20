@@ -2,6 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MessageCircle } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import SwapButton from '@/components/Swap/SwapButton';
@@ -29,12 +30,14 @@ const SwapModalProvider = () => {
   const router = useRouter();
   const intercom = useIntercom();
 
-  const {
-    currentModal,
-    previousModal,
-    transaction,
-    actions: { setModal },
-  } = useSwapState();
+  const { currentModal, previousModal, transaction, setModal } = useSwapState(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+      transaction: state.transaction,
+      setModal: state.actions.setModal,
+    })),
+  );
 
   const isTransactionStatus = currentModal?.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isClose = !currentModal || currentModal?.name === SWAP_MODAL.CLOSE.name;

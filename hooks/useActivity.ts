@@ -1,17 +1,20 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Hash } from 'viem';
+import { useShallow } from 'zustand/react/shallow';
 
+import useDebounce from '@/hooks/useDebounce';
 import useUser from '@/hooks/useUser';
 import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
+import { USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { generateId } from '@/lib/utils/generate-id';
 import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
+
 import { useUserTransactions } from './useAnalytics';
-import { useSyncActivities } from './useSyncActivities';
+import { useSyncActivities, useSyncStore } from './useSyncActivities';
 
 // Get explorer URL for a transaction hash based on chain ID
 function getExplorerUrl(chainId: number, txHash: string): string {
@@ -89,8 +92,30 @@ export type TrackTransaction = <TransactionResult>(
 
 export function useActivity() {
   const { user } = useUser();
-  const { events, bulkUpsertEvent, upsertEvent } = useActivityStore();
+  const queryClient = useQueryClient();
+  // Check sync lock SYNCHRONOUSLY to prevent query from fetching during sync
+  // This is read during render phase, before effects run
+  const isSyncingLock = useSyncStore(state => state.isSyncingLock);
+
+  // Select only functions (stable references) and current user's events
+  const bulkUpsertEvent = useActivityStore(state => state.bulkUpsertEvent);
+  const upsertEvent = useActivityStore(state => state.upsertEvent);
+  // Select only current user's events array to minimize re-renders
+  // Using useShallow for array comparison
+  const userEventsFromStore = useActivityStore(
+    useShallow(state => (user?.userId ? state.events[user.userId] : undefined)),
+  );
   const [cachedActivities, setCachedActivities] = useState<ActivityEvent[]>([]);
+
+  // Memoize sync options to ensure stable reference
+  // (useSyncActivities extracts primitives, but this prevents potential re-render issues)
+  const syncOptions = useMemo(
+    () => ({
+      syncOnAppActive: true,
+      syncOnMount: true,
+    }),
+    [],
+  );
 
   // Sync all activities from backend (handles smart caching internally)
   // Backend now syncs: Blockscout, deposits, bridges, and bank transfers
@@ -99,12 +124,24 @@ export function useActivity() {
     isSyncing,
     isStale: isSyncStale,
     canSync,
-  } = useSyncActivities({
-    syncOnAppActive: true,
-    syncOnMount: true,
-  });
+  } = useSyncActivities(syncOptions);
 
   const { data: userTransactions } = useUserTransactions(user?.safeAddress);
+
+  const transactionsRef = useRef(userTransactions);
+  const withdrawsKey = useMemo(() => {
+    const withdraws = userTransactions?.withdraws;
+    if (!withdraws?.length) return 'empty';
+    const hashSample = withdraws
+      .slice(0, 3)
+      .map(w => `${w.requestTxHash?.slice(0, 10) ?? ''}-${w.requestStatus ?? ''}`)
+      .join('|');
+    return `${withdraws.length}:${hashSample}`;
+  }, [userTransactions?.withdraws]);
+
+  useEffect(() => {
+    transactionsRef.current = userTransactions;
+  }, [withdrawsKey, userTransactions]);
 
   // Helper to get unique key for event
   const getKey = useCallback((event: ActivityEvent): string => {
@@ -122,7 +159,9 @@ export function useActivity() {
       }
     },
     initialPageParam: 1,
-    enabled: !!user?.userId,
+    // Disable query during sync to prevent bulk refetch of cached pages
+    // The UI still shows data from Zustand store while sync is in progress
+    enabled: !!user?.userId && !isSyncingLock,
     // Prevent excessive refetches - only refetch when explicitly triggered
     refetchOnMount: false, // Don't refetch when components mount (20+ components use this hook!)
     refetchOnWindowFocus: false, // Don't refetch on window focus
@@ -138,33 +177,45 @@ export function useActivity() {
 
   const { data: activityData, isLoading, isRefetching } = activityEvents;
 
+  const debouncedActivityData = useDebounce(activityData, 1000);
+
+  // Helper to reset infinite query to first page only
+  // This prevents React Query from refetching all cached pages
+  const resetToFirstPage = useCallback(() => {
+    queryClient.setQueryData(['activity-events', user?.userId], (oldData: any) => {
+      if (!oldData?.pages?.length) return oldData;
+      return {
+        pages: oldData.pages.slice(0, 1),
+        pageParams: oldData.pageParams.slice(0, 1),
+      };
+    });
+  }, [queryClient, user?.userId]);
+
   // Refetch all data sources (backend handles all syncing now)
   // IMPORTANT: Do NOT call refetchActivityEvents() here!
-  // syncFromBackend() invalidates the 'activity-events' query on success,
-  // which triggers React Query to auto-refetch. Calling both causes double fetches.
+  // syncFromBackend() resets to first page before sync starts
   const refetchAll = useCallback(
     (force = false) => {
       if (isSyncing || isRefetching) {
         return;
       }
-      // Trigger backend sync - this will:
-      // 1. Call /v1/activity/sync API
-      // 2. On success, invalidate 'activity-events' query (useSyncActivities.ts:130)
-      // 3. React Query auto-refetches the invalidated query
+      // Reset to first page before sync to prevent bulk refetch
+      resetToFirstPage();
+      // Trigger backend sync
       syncFromBackend(undefined, force).catch((error: any) => {
         console.error('Background sync failed:', error);
       });
     },
-    [isSyncing, isRefetching, syncFromBackend],
+    [isSyncing, isRefetching, syncFromBackend, resetToFirstPage],
   );
 
   // Get user's activities from local storage
   const activities = useMemo(() => {
-    if (!user?.userId || !events[user.userId]) return [];
+    if (!user?.userId || !userEventsFromStore) return [];
 
     // CRITICAL: Filter out null/corrupted activities FIRST before any map operations
     // This prevents "null is not an object (evaluating 't.type')" errors
-    let userEvents = events[user.userId].filter(
+    let userEvents = userEventsFromStore.filter(
       (activity): activity is ActivityEvent =>
         activity != null &&
         typeof activity === 'object' &&
@@ -173,13 +224,13 @@ export function useActivity() {
         typeof activity.status === 'string',
     );
 
-    if (userTransactions?.withdraws) {
+    if (transactionsRef.current?.withdraws) {
       userEvents = userEvents.map(activity => {
         if (
           activity.type === TransactionType.WITHDRAW &&
           activity.status === TransactionStatus.SUCCESS
         ) {
-          const matchingWithdraw = userTransactions.withdraws.find(w => {
+          const matchingWithdraw = transactionsRef.current?.withdraws.find(w => {
             if (
               activity.hash &&
               (w.requestTxHash?.toLowerCase() === activity.hash.toLowerCase() ||
@@ -224,12 +275,14 @@ export function useActivity() {
         return true;
       })
       .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
-  }, [events, user?.userId, userTransactions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- withdrawsKey is intentional: stable lightweight key replaces unstable object reference
+  }, [userEventsFromStore, user?.userId, withdrawsKey]);
 
   useEffect(() => {
     if (!activities?.length) return;
     setCachedActivities(activities);
-  }, [activities, setCachedActivities]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setCachedActivities is stable useState setter
+  }, [activities]);
 
   // Get pending activities
   const pendingActivities = useMemo(() => {
@@ -241,10 +294,13 @@ export function useActivity() {
   }, [activities]);
 
   // Sync backend activities to local store for offline access
+  // Uses debounced activityData to prevent render cascade from maxPages refetches
+  // When query re-enables after sync lock, multiple pages may refetch rapidly -
+  // debouncing ensures bulkUpsertEvent only fires once after all pages stabilize
   useEffect(() => {
-    if (!user?.userId || !activityData) return;
+    if (!user?.userId || !debouncedActivityData) return;
 
-    const events = activityData.pages
+    const events = debouncedActivityData.pages
       .flatMap(page => {
         // Guard against undefined/null pages or docs
         if (!page?.docs || !Array.isArray(page.docs)) return [];
@@ -256,7 +312,7 @@ export function useActivity() {
     if (!events.length) return;
 
     bulkUpsertEvent(user.userId, events);
-  }, [activityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
+  }, [debouncedActivityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
 
   // Create new activity
   const createActivity = useCallback(
@@ -350,20 +406,20 @@ export function useActivity() {
       const isSuccess = params.status === TransactionStatus.SUCCESS;
 
       try {
-      // Execute the transaction with callback for immediate userOpHash
-      const result = await executeTransaction(async userOpHash => {
-        // Create activity IMMEDIATELY when we get userOpHash (before waiting for receipt)
-        clientTxId = await createActivity({
-          ...params,
-          userOpHash,
+        // Execute the transaction with callback for immediate userOpHash
+        const result = await executeTransaction(async userOpHash => {
+          // Create activity IMMEDIATELY when we get userOpHash (before waiting for receipt)
+          clientTxId = await createActivity({
+            ...params,
+            userOpHash,
+          });
         });
-      });
 
-      if ((result as any) === USER_CANCELLED_TRANSACTION) {
-        return result;
-      }
+        if ((result as any) === USER_CANCELLED_TRANSACTION) {
+          return result;
+        }
 
-      // Extract transaction data
+        // Extract transaction data
         const transaction =
           result && typeof result === 'object' && 'transaction' in result
             ? (result as any).transaction

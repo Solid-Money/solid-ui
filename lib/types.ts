@@ -390,6 +390,7 @@ export enum TransactionType {
   BRIDGE = 'bridge',
   CANCEL_WITHDRAW = 'cancel_withdraw',
   BRIDGE_DEPOSIT = 'bridge_deposit',
+  BORROW_AND_DEPOSIT_TO_CARD = 'borrow_and_deposit_to_card',
   BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
   CARD_TRANSACTION = 'card_transaction',
@@ -401,6 +402,7 @@ export enum TransactionType {
   CARD_WELCOME_BONUS = 'card_welcome_bonus',
   DEPOSIT_BONUS = 'deposit_bonus',
   FAST_WITHDRAW = 'fast_withdraw',
+  REPAY_AND_WITHDRAW_COLLATERAL = 'repay_and_withdraw_collateral',
 }
 
 export enum TransactionDirection {

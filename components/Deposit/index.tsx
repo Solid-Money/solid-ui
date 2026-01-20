@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Address } from 'abitype';
 import { ArrowUp, Info, Wallet } from 'lucide-react-native';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -24,7 +25,12 @@ import { useStakeStore } from '@/store/useStakeStore';
 
 const Deposit = () => {
   const { user } = useUser();
-  const { setModal, setTransaction } = useStakeStore();
+  const { setModal, setTransaction } = useStakeStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setTransaction: state.setTransaction,
+    })),
+  );
 
   const { data: ethereumBalance, isLoading: isEthereumBalanceLoading } = useUsdcVaultBalance(
     user?.safeAddress as Address,

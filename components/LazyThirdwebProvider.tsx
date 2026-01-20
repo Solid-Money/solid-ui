@@ -16,7 +16,7 @@ interface LazyThirdwebProviderProps {
 // Minimal loading fallback
 const LoadingFallback = () => (
   <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-    <ActivityIndicator size="small" color="#94F27F" />
+    <ActivityIndicator size="large" color="#cccccc" />
   </View>
 );
 

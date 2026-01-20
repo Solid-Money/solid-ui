@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef } from 'react';
+import { createContext, useContext, useMemo, useRef } from 'react';
 
 const PanGestureContext = createContext<{ isPanning: React.MutableRefObject<boolean> } | null>(
   null,
@@ -6,7 +6,8 @@ const PanGestureContext = createContext<{ isPanning: React.MutableRefObject<bool
 
 export const PanGestureProvider = ({ children }: { children: React.ReactNode }) => {
   const isPanning = useRef(false);
-  return <PanGestureContext.Provider value={{ isPanning }}>{children}</PanGestureContext.Provider>;
+  const value = useMemo(() => ({ isPanning }), []);
+  return <PanGestureContext.Provider value={value}>{children}</PanGestureContext.Provider>;
 };
 
 export const usePanGesture = () => {

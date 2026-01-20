@@ -18,7 +18,7 @@ import { useUserStore } from '@/store/useUserStore';
 export default function QuestWallet() {
   const router = useRouter();
   const { user } = useUser();
-  const { updateUser } = useUserStore();
+  const updateUser = useUserStore(state => state.updateUser);
   const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

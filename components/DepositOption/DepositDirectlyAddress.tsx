@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
 import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
+import { useShallow } from 'zustand/react/shallow';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
@@ -65,7 +66,14 @@ type InfoRow = {
 };
 
 const DepositDirectlyAddress = () => {
-  const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore(
+    useShallow(state => ({
+      directDepositSession: state.directDepositSession,
+      setModal: state.setModal,
+      clearDirectDepositSession: state.clearDirectDepositSession,
+    })),
+  );
   const chainId = directDepositSession.chainId || mainnet.id;
   const selectedToken = directDepositSession.selectedToken || 'USDC';
   const tokenIcon = TOKEN_ICONS[selectedToken] || USDC_ICON;

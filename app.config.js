@@ -1,4 +1,4 @@
-const IS_PROD = process.env.EXPO_PUBLIC_ENVIRONMENT === 'production';
+const IS_PROD = ['production', 'qa'].includes(process.env.EXPO_PUBLIC_ENVIRONMENT);
 
 export default {
   expo: {
@@ -9,7 +9,6 @@ export default {
     icon: './assets/images/adaptive-icon.png',
     scheme: 'solid',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: true,
     owner: 'fuseio',
     ios: {
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? './GoogleService-Info.plist',
@@ -133,6 +132,7 @@ export default {
     ],
     experiments: {
       typedRoutes: true,
+      reactCompiler: true,
     },
     extra: {
       router: {},

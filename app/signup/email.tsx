@@ -7,6 +7,7 @@ import { Link, useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react-native';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import InfoError from '@/assets/images/info-error';
 import { DesktopCarousel } from '@/components/Onboarding';
@@ -50,7 +51,25 @@ export default function SignupEmail() {
     setIsLoading,
     setError,
     setRateLimitError,
-  } = useSignupFlowStore();
+  } = useSignupFlowStore(
+    useShallow(state => ({
+      email: state.email,
+      marketingConsent: state.marketingConsent,
+      isLoading: state.isLoading,
+      error: state.error,
+      rateLimitError: state.rateLimitError,
+      _hasHydrated: state._hasHydrated,
+      setEmail: state.setEmail,
+      setMarketingConsent: state.setMarketingConsent,
+      setOtpId: state.setOtpId,
+      setReferralCode: state.setReferralCode,
+      setLastOtpSentAt: state.setLastOtpSentAt,
+      setStep: state.setStep,
+      setIsLoading: state.setIsLoading,
+      setError: state.setError,
+      setRateLimitError: state.setRateLimitError,
+    })),
+  );
 
   const {
     control,
@@ -411,6 +430,8 @@ export default function SignupEmail() {
     <View className="flex-1 flex-row bg-background">
       {/* Left Section - Interactive Carousel */}
       <DesktopCarousel />
+      {/* TODO: lazy-loaded for FCP improvement */}
+      {/* <LazyDesktopCarousel /> */}
 
       {/* Right Section - Form (70%) */}
       <View className="relative flex-1">

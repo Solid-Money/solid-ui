@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { router } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import {
   BridgeTransferCryptoCurrency,
@@ -50,7 +51,12 @@ export function PaymentMethodList({ fiat, crypto, fiatAmount, isModal = false }:
   const normalizedFiat = (fiat || '') as BridgeTransferFiatCurrency;
   const { data: customer, isLoading: isLoadingCustomer } = useCustomer();
   const [loadingMethod, setLoadingMethod] = useState<BridgeTransferMethod | null>(null);
-  const { setBankTransferData, setModal } = useDepositStore();
+  const { setBankTransferData, setModal } = useDepositStore(
+    useShallow(state => ({
+      setBankTransferData: state.setBankTransferData,
+      setModal: state.setModal,
+    })),
+  );
   const { user } = useUser();
   const methodSelectionStartTime = useRef<number | null>(null);
 

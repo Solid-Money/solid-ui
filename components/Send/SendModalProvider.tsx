@@ -1,4 +1,5 @@
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import useSendOption from '@/hooks/useSendOption';
@@ -26,7 +27,13 @@ const SendModalProvider = () => {
     handleOpenChange,
     handleBackPress,
   } = useSendOption();
-  const { currentModal, previousModal } = useSendStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal, previousModal } = useSendStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+    })),
+  );
 
   return (
     <ResponsiveModal

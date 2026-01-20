@@ -250,7 +250,7 @@ function EmailInput({ onSubmit, loading, apiError }: EmailInputProps) {
           disabled={!isValid || loading}
         >
           {loading ? (
-            <ActivityIndicator color="gray" />
+            <ActivityIndicator color="#cccccc" />
           ) : (
             <Text className="text-base font-bold text-black">Send Code</Text>
           )}
@@ -330,7 +330,7 @@ function OtpVerify({ email, onSubmit, onResend, loading, apiError }: OtpVerifyPr
           disabled={!isValid || loading}
         >
           {loading ? (
-            <ActivityIndicator color="gray" />
+            <ActivityIndicator color="#cccccc" />
           ) : (
             <Text className="text-base font-bold text-black">Verify</Text>
           )}
@@ -370,7 +370,7 @@ function AddPasskey({ onSubmit, loading, error }: AddPasskeyProps) {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="gray" />
+            <ActivityIndicator color="#cccccc" />
           ) : (
             <Text className="text-base font-bold text-black">Create Passkey</Text>
           )}

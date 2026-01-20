@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Pressable, PressableProps, View } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import AddressBook from '@/components/Send/AddressBook';
 import SendForm from '@/components/Send/SendForm';
@@ -28,7 +29,16 @@ const useSendOption = ({
   trigger,
   modal = SEND_MODAL.OPEN_SEND_SEARCH,
 }: SendOptionProps = {}) => {
-  const { currentModal, previousModal, transaction, selectedToken, setModal } = useSendStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal, previousModal, transaction, selectedToken, setModal } = useSendStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
+      transaction: state.transaction,
+      selectedToken: state.selectedToken,
+      setModal: state.setModal,
+    })),
+  );
   const router = useRouter();
   const { triggerElement } = useResponsiveModal();
 

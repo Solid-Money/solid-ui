@@ -92,13 +92,14 @@ export default function ActivateMobile() {
     return (
       <PageLayout desktopOnly contentClassName="pb-10">
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#94F27F" />
+          <ActivityIndicator size="large" color="#cccccc" />
           <Text className="mt-4 text-white/70">Checking availability...</Text>
         </View>
       </PageLayout>
     );
   }
 
+  // Temporary: Card issuance disabled
   return (
     <PageLayout desktopOnly contentClassName="pb-10">
       <View className="mx-auto w-full max-w-lg px-4 pt-8">
@@ -122,70 +123,16 @@ export default function ActivateMobile() {
             contentFit="contain"
           />
         </View>
-
-        {/* Under review state (endorsement has pending items) */}
-        {isUnderReview ? (
-          <View className="mb-10 mt-8">
-            <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] p-12">
-              <View className="mb-4">
-                <Image
-                  source={getAsset('images/kyc_under_review.png')}
-                  alt="KYC under review"
-                  style={{ width: 144, height: 144 }}
-                  contentFit="contain"
-                />
-              </View>
-
-              <Text className="mt-6 text-2xl font-bold text-white">Your card is on its way!</Text>
-              <Text className="my-3 text-center text-[#ACACAC]">
-                Thanks for your submission. Your
-                <br />
-                identity is now being verified.
-              </Text>
-            </View>
+        <View className="mb-10 mt-8">
+          <View className="items-center rounded-2xl border border-white/5 bg-[#1C1C1C] p-12">
+            <Text className="text-2xl font-bold text-white text-center">Card issuance is temporarily disabled</Text>
+            <Text className="mt-4 text-center text-[#ACACAC]">
+              Please check back later
+            </Text>
           </View>
-        ) : (
-          /* Card issuance status */
-          <View className="mb-4 mt-8">
-            <Text className="mb-4 text-lg font-medium text-white/70">Card issuance status</Text>
-
-            {isCardPending && (
-              <View className="mb-4 rounded-xl border border-yellow-500/30 bg-[#1C1C1C] p-4">
-                <Text className="text-base font-semibold text-white">Your card is on its way</Text>
-                <Text className="mt-2 text-sm text-white/70">
-                  We&rsquo;re finishing up your card. This may take some time.
-                </Text>
-              </View>
-            )}
-            {isCardBlocked && (
-              <View className="mb-4 rounded-xl border border-red-500/30 bg-[#1C1C1C] p-4">
-                <Text className="text-base font-semibold text-white">Card activation rejected</Text>
-                <Text className="mt-2 text-sm text-white/70">{activationBlockedReason}</Text>
-              </View>
-            )}
-
-            <View className="rounded-xl bg-[#1C1C1C] p-6">
-              {steps.map((step, index) => (
-                <CardActivationStep
-                  key={step.id}
-                  step={
-                    isCardPending && step.id === 2
-                      ? { ...step, buttonText: 'Card creation pending' }
-                      : step
-                  }
-                  index={index}
-                  totalSteps={steps.length}
-                  isActive={activeStepId === step.id}
-                  canToggle={canToggleStep(step.id)}
-                  isButtonEnabled={!isCardPending && isStepButtonEnabled(index)}
-                  activatingCard={activatingCard}
-                  onToggle={toggleStep}
-                />
-              ))}
-            </View>
-          </View>
-        )}
+        </View>
       </View>
     </PageLayout>
   );
+
 }

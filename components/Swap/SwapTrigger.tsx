@@ -16,9 +16,7 @@ type SwapTriggerProps = {
  * The actual modal is rendered by SwapModalProvider at the app root.
  */
 const SwapTrigger = ({ trigger, children }: SwapTriggerProps) => {
-  const {
-    actions: { setModal },
-  } = useSwapState();
+  const setModal = useSwapState(state => state.actions.setModal);
 
   const handlePress = () => {
     setModal(SWAP_MODAL.OPEN_FORM);

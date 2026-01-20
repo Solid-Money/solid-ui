@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+
 import {
   BridgeTransferCryptoCurrency,
   BridgeTransferFiatCurrency,
@@ -5,9 +7,9 @@ import {
 import { getExchangeRate } from '@/lib/api';
 import { ExchangeRateResponse, FromCurrency, ToCurrency } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { useEffect, useState } from 'react';
 
-const REFRESH_INTERVAL = 30000; // 30 seconds
+const EXCHANGE_RATE_KEY = 'exchange-rate';
+const REFRESH_INTERVAL = 30 * 1000; // 30 seconds
 
 // Helper function to convert BridgeTransfer currencies to API currencies
 const mapCurrencyToFromCurrency = (
@@ -34,95 +36,74 @@ const mapCurrencyToToCurrency = (
   return currency.toLowerCase() as ToCurrency;
 };
 
+// Check if both currencies are USD-based (USD/USDC/USDT)
+const isUSDBasedPair = (
+  fromCurrency: BridgeTransferFiatCurrency | BridgeTransferCryptoCurrency,
+  toCurrency: BridgeTransferFiatCurrency | BridgeTransferCryptoCurrency,
+): boolean => {
+  const isFromUSDBased =
+    fromCurrency === BridgeTransferFiatCurrency.USD ||
+    fromCurrency === BridgeTransferCryptoCurrency.USDC ||
+    fromCurrency === BridgeTransferCryptoCurrency.USDT;
+
+  const isToUSDBased =
+    toCurrency === BridgeTransferFiatCurrency.USD ||
+    toCurrency === BridgeTransferCryptoCurrency.USDC ||
+    toCurrency === BridgeTransferCryptoCurrency.USDT;
+
+  return isFromUSDBased && isToUSDBased;
+};
+
+async function fetchExchangeRate(
+  fromCurrency: BridgeTransferFiatCurrency | BridgeTransferCryptoCurrency,
+  toCurrency: BridgeTransferFiatCurrency | BridgeTransferCryptoCurrency,
+): Promise<ExchangeRateResponse> {
+  // Special case: If both currencies are USD-based, return 1:1 rate
+  if (isUSDBasedPair(fromCurrency, toCurrency)) {
+    return {
+      midmarket_rate: '1',
+      buy_rate: '1',
+      sell_rate: '1',
+    };
+  }
+
+  // For all other cases, convert using USD as the base currency
+  // Example: EUR -> USDT becomes EUR -> USD
+  const from = mapCurrencyToFromCurrency(fromCurrency);
+  const to = mapCurrencyToToCurrency(toCurrency);
+
+  const response = await withRefreshToken(async () => getExchangeRate(from, to));
+  if (!response) {
+    throw new Error('Failed to fetch exchange rate');
+  }
+  return response;
+}
+
 export const useExchangeRate = (
   fromCurrency: BridgeTransferFiatCurrency | BridgeTransferCryptoCurrency,
   toCurrency: BridgeTransferFiatCurrency | BridgeTransferCryptoCurrency,
 ) => {
-  const [rate, setRate] = useState<ExchangeRateResponse | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const isUSD = isUSDBasedPair(fromCurrency, toCurrency);
 
-  useEffect(() => {
-    let isMounted = true;
-    let intervalId: ReturnType<typeof setInterval>;
+  const {
+    data: rate,
+    error,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: [EXCHANGE_RATE_KEY, fromCurrency, toCurrency],
+    queryFn: () => fetchExchangeRate(fromCurrency, toCurrency),
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache
+    // Only poll for non-USD pairs (USD pairs are always 1:1)
+    refetchInterval: isUSD ? false : REFRESH_INTERVAL,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: !isUSD, // Don't refetch static USD pairs on focus
+  });
 
-    const fetchRate = async () => {
-      try {
-        setLoading(true);
-
-        // Special case: If both currencies are USD-based (USD/USDC/USDT)
-        const isFromUSDBased =
-          fromCurrency === BridgeTransferFiatCurrency.USD ||
-          fromCurrency === BridgeTransferCryptoCurrency.USDC ||
-          fromCurrency === BridgeTransferCryptoCurrency.USDT;
-
-        const isToUSDBased =
-          toCurrency === BridgeTransferFiatCurrency.USD ||
-          toCurrency === BridgeTransferCryptoCurrency.USDC ||
-          toCurrency === BridgeTransferCryptoCurrency.USDT;
-
-        if (isFromUSDBased && isToUSDBased) {
-          if (isMounted) {
-            setRate({
-              midmarket_rate: '1',
-              buy_rate: '1',
-              sell_rate: '1',
-            });
-            setError(null);
-            setLoading(false);
-            setInitialLoading(false);
-          }
-          return;
-        }
-
-        // For all other cases, convert using USD as the base currency
-        // Example: EUR -> USDT becomes EUR -> USD
-        const from = mapCurrencyToFromCurrency(fromCurrency);
-        const to = mapCurrencyToToCurrency(toCurrency);
-
-        const response = await withRefreshToken(async () => getExchangeRate(from, to));
-
-        if (isMounted && response) {
-          setRate(response);
-          setError(null);
-          setInitialLoading(false);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err as Error);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    // Initial fetch
-    fetchRate();
-
-    // Set up interval for auto-refresh only if we're not dealing with USD-based pairs
-    const isUSDBasedPair =
-      (fromCurrency === BridgeTransferFiatCurrency.USD ||
-        fromCurrency === BridgeTransferCryptoCurrency.USDC ||
-        fromCurrency === BridgeTransferCryptoCurrency.USDT) &&
-      (toCurrency === BridgeTransferFiatCurrency.USD ||
-        toCurrency === BridgeTransferCryptoCurrency.USDC ||
-        toCurrency === BridgeTransferCryptoCurrency.USDT);
-
-    if (!isUSDBasedPair) {
-      intervalId = setInterval(fetchRate, REFRESH_INTERVAL);
-    }
-
-    // Cleanup
-    return () => {
-      isMounted = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [fromCurrency, toCurrency]);
-
-  return { rate, error, loading, initialLoading };
+  return {
+    rate: rate ?? null,
+    error: error ?? null,
+    loading: isFetching,
+    initialLoading: isLoading,
+  };
 };

@@ -2,18 +2,22 @@ import { Platform, View } from 'react-native';
 
 import { ActivityTabs, ActivityTransactions } from '@/components/Activity';
 import ActivityRefreshButton from '@/components/Activity/ActivityRefreshButton';
-import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import LazyDepositOptionModal from '@/components/DepositOption/LazyDepositOptionModal';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityRefresh } from '@/hooks/useActivityRefresh';
 import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { ActivityTab } from '@/lib/types';
 import { hasCard } from '@/lib/utils';
 
 export default function Activity() {
+  useRenderMonitor({ componentName: MONITORED_COMPONENTS.ACTIVITY_SCREEN });
+
   const { data: cardStatus, isLoading: isCardLoading } = useCardStatus();
-  const { refetchAll, isSyncing, isLoading } = useActivity();
+  // Use lightweight hook to avoid re-renders from activity data changes
+  const { refetchAll, isSyncing } = useActivityRefresh();
   const isWeb = Platform.OS === 'web';
 
   // Enable real-time activity updates via SSE only when viewing this tab
@@ -32,14 +36,14 @@ export default function Activity() {
             <ActivityRefreshButton
               onRefresh={refetchAll}
               isSyncing={isSyncing}
-              isLoading={isLoading}
+              isLoading={isSyncing}
             />
           )}
         </View>
         {userHasCard ? <ActivityTabs /> : <ActivityTransactions tab={ActivityTab.WALLET} />}
       </View>
       {/* Hidden modal that responds to store state changes from activity clicks */}
-      <DepositOptionModal trigger={null} />
+      <LazyDepositOptionModal trigger={null} />
     </PageLayout>
   );
 }

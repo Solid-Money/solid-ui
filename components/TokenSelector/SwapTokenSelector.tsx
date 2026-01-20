@@ -147,7 +147,7 @@ const Search = ({
           }}
           className="absolute right-3 top-3 rounded-full bg-primary/10 p-2"
         >
-          <ActivityIndicator size="small" color="rgba(59, 130, 246, 0.9)" />
+          <ActivityIndicator size="small" color="#cccccc" />
         </Animated.View>
       )}
       {query && query.length > 0 && !isLoading && (
@@ -477,7 +477,7 @@ const LoadingState = () => {
       className="flex h-[534px] items-center justify-center"
     >
       <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-        <ActivityIndicator size="large" color="rgba(59, 130, 246, 0.8)" />
+        <ActivityIndicator size="large" color="#cccccc" />
       </Animated.View>
       <Text className="mt-4 text-base font-medium text-muted-foreground">Loading tokens...</Text>
       <Text className="mt-2 text-sm text-muted-foreground/60">Fetching balances and prices</Text>

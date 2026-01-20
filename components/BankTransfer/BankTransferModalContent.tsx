@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { ChevronDown, ChevronUp, Fuel, Info } from 'lucide-react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import NeedHelp from '@/components/NeedHelp';
@@ -28,7 +29,14 @@ import { PaymentMethodList } from './payment/PaymentMethodList';
 
 // Modal version of BankTransferAmount
 const BankTransferAmountModal = () => {
-  const { bankTransfer, setBankTransferData, setModal } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { bankTransfer, setBankTransferData, setModal } = useDepositStore(
+    useShallow(state => ({
+      bankTransfer: state.bankTransfer,
+      setBankTransferData: state.setBankTransferData,
+      setModal: state.setModal,
+    })),
+  );
 
   const [fiatAmount, setFiatAmount] = useState(bankTransfer.fiatAmount || '1500');
   const [cryptoAmount, setCryptoAmount] = useState(bankTransfer.cryptoAmount || '1500');
@@ -210,7 +218,12 @@ const BankTransferAmountModal = () => {
 
 // Modal version of PaymentMethodList
 const BankTransferPaymentMethodModal = () => {
-  const { bankTransfer } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { bankTransfer } = useDepositStore(
+    useShallow(state => ({
+      bankTransfer: state.bankTransfer,
+    })),
+  );
 
   // Track when payment method modal is viewed (once per mount)
   const hasTrackedPaymentView = useRef(false);
@@ -240,7 +253,13 @@ const BankTransferPaymentMethodModal = () => {
 
 // Modal version of Preview
 const BankTransferPreviewModal = () => {
-  const { bankTransfer, setModal } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { bankTransfer, setModal } = useDepositStore(
+    useShallow(state => ({
+      bankTransfer: state.bankTransfer,
+      setModal: state.setModal,
+    })),
+  );
   const data = bankTransfer.instructions;
 
   // Track when instructions modal is viewed (once per mount)
@@ -354,7 +373,12 @@ const BankTransferPreviewModal = () => {
 
 // Main component that renders the appropriate step
 export const BankTransferModalContent = () => {
-  const { currentModal } = useDepositStore();
+  // Use useShallow for object selection to prevent unnecessary re-renders
+  const { currentModal } = useDepositStore(
+    useShallow(state => ({
+      currentModal: state.currentModal,
+    })),
+  );
 
   if (currentModal.name === 'open_bank_transfer_amount') {
     return <BankTransferAmountModal />;

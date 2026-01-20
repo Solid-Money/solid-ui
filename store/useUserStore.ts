@@ -25,6 +25,18 @@ interface UserState {
   setHasHydrated: (state: boolean) => void;
 }
 
+// Selectors - pure functions for deriving state
+// These can be used with useUserStore(selector) for optimal re-render behavior
+
+/** Get the currently selected user, or the only user if there's just one */
+export const selectSelectedUser = ({ users }: UserState): User | undefined =>
+  users.find(u => u.selected);
+
+/** Get the credentialId of the selected user (for passkey filtering) */
+export const selectSelectedCredentialId = (state: UserState): string | undefined => {
+  return selectSelectedUser(state)?.credentialId;
+};
+
 export const useUserStore = create<UserState>()(
   persist(
     set => ({

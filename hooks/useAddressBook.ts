@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import Toast from 'react-native-toast-message';
 import { isAddress } from 'viem';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import { SEND_MODAL } from '@/constants/modals';
 import { addToAddressBook, fetchAddressBook } from '@/lib/api';
@@ -48,12 +49,14 @@ export const useAddressBook = (options?: {
   onError?: () => void;
   optionalName?: boolean;
 }) => {
-  const { setModal } = useSendStore();
+  const setModal = useSendStore(state => state.setModal);
   const queryClient = useQueryClient();
 
   const { data: addressBook = [] } = useQuery({
     queryKey: ['address-book'],
     queryFn: () => withRefreshToken(() => fetchAddressBook()),
+    staleTime: 5 * 60 * 1000, // 5 minutes - address book changes infrequently
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const addressBookEntry = useMemo(() => {

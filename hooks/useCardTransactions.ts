@@ -28,6 +28,7 @@ export const useCardTransactions = () => {
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: lastPage => lastPage.nextPage,
+    maxPages: 10, // Limit pages in memory to prevent memory issues with large transaction history
   });
 };
 

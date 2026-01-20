@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
-import { Platform, RefreshControl, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
+import { useShallow } from 'zustand/react/shallow';
 
 import TimeGroupHeader from '@/components/Activity/TimeGroupHeader';
 import Transaction from '@/components/Transaction';
@@ -41,17 +42,33 @@ export default function ActivityTransactions({
   symbol,
   showTimestamp = true,
 }: ActivityTransactionsProps) {
-  const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore();
+  const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setBankTransferData: state.setBankTransferData,
+      setDirectDepositSession: state.setDirectDepositSession,
+    })),
+  );
   const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
-  const [completedBridgeTxHashes, setCompletedBridgeTxHashes] = useState<Set<string>>(new Set());
+  // Ref-based guard to prevent rapid fetchNextPage calls from Load More button
+  // React state (isFetchingNextPage) updates async, so multiple clicks could fire
+  // before state reflects the pending fetch. This ref updates synchronously.
+  const isFetchingRef = useRef(false);
+  // Track completed bridge tx hashes using ref to avoid re-render cycles
+  // Using useRef instead of useState eliminates the dependency cycle:
+  // - useState would cause: useMemo depends on state -> effect updates state -> re-render -> useMemo runs again
+  // - useRef breaks this cycle: updates don't trigger re-renders, so no infinite loop possible
+  const completedBridgeTxHashesRef = useRef<Set<string>>(new Set());
 
   const { data: cardData } = useCardTransactions();
   const cardTransactions = useMemo(() => cardData?.pages.flatMap(p => p.data) || [], [cardData]);
 
   // Identify recent successful bridge deposits to check status for
   // Only check transactions from the last 24 hours to avoid checking history forever
+  // Note: completedBridgeTxHashesRef is read here but not in deps array since refs don't trigger re-renders
+  // The filtering happens on each render, which is fine since activities changes trigger the re-render anyway
   const bridgeDepositHashes = useMemo(() => {
     const now = Date.now() / 1000;
     return activities
@@ -60,12 +77,12 @@ export default function ActivityTransactions({
           a.type === TransactionType.BRIDGE_DEPOSIT &&
           a.status === TransactionStatus.SUCCESS &&
           a.hash &&
-          !completedBridgeTxHashes.has(a.hash) &&
+          !completedBridgeTxHashesRef.current.has(a.hash) &&
           now - parseInt(a.timestamp) < 86400,
       )
       .map(a => a.hash)
       .filter(Boolean) as string[];
-  }, [activities, completedBridgeTxHashes]);
+  }, [activities]);
 
   const lzStatuses = useLayerZeroStatuses(bridgeDepositHashes);
 
@@ -79,8 +96,40 @@ export default function ActivityTransactions({
 
   useCardDepositPoller();
 
+  // Mark bridge deposits as completed when they are delivered and found in card transactions
+  // This effect updates the ref directly - no re-render cycle possible since refs don't trigger renders
+  useEffect(() => {
+    for (const transaction of activities) {
+      if (
+        transaction.type === TransactionType.BRIDGE_DEPOSIT &&
+        transaction.status === TransactionStatus.SUCCESS &&
+        transaction.hash &&
+        !completedBridgeTxHashesRef.current.has(transaction.hash) &&
+        lzStatusMap.has(transaction.hash)
+      ) {
+        const query = lzStatusMap.get(transaction.hash);
+        if (!query.data) continue;
+
+        const lzData = query.data.data?.[0];
+        const isDelivered = lzData?.status?.name === LayerZeroTransactionStatus.DELIVERED;
+        if (!isDelivered) continue;
+
+        const dstTxHash = lzData?.destination?.tx?.txHash;
+        if (!dstTxHash) continue;
+
+        const foundInCard = cardTransactions.some(
+          ct => ct.crypto_transaction_details?.tx_hash?.toLowerCase() === dstTxHash.toLowerCase(),
+        );
+        if (foundInCard) {
+          // Mark as completed - this is a ref mutation, no re-render triggered
+          completedBridgeTxHashesRef.current.add(transaction.hash);
+        }
+      }
+    }
+  }, [activities, lzStatusMap, cardTransactions]);
+
   const filteredTransactions = useMemo(() => {
-    // Override statuses for bridge deposits
+    // Override statuses for bridge deposits based on LayerZero status
     const updatedActivities = activities.map(transaction => {
       if (
         transaction.type === TransactionType.BRIDGE_DEPOSIT &&
@@ -88,6 +137,11 @@ export default function ActivityTransactions({
         transaction.hash &&
         lzStatusMap.has(transaction.hash)
       ) {
+        // If already marked as completed, keep as SUCCESS
+        if (completedBridgeTxHashesRef.current.has(transaction.hash)) {
+          return transaction;
+        }
+
         const query = lzStatusMap.get(transaction.hash);
         // Default to pending if loading status
         if (!query.data) return { ...transaction, status: TransactionStatus.PENDING };
@@ -110,17 +164,7 @@ export default function ActivityTransactions({
         if (!foundInCard) {
           return { ...transaction, status: TransactionStatus.PENDING };
         }
-        // If we reach here, the transaction is delivered and found in card transactions.
-        // Mark it as completed so we stop polling it.
-        // We use a timeout to avoid update loops during render.
-        setTimeout(() => {
-          setCompletedBridgeTxHashes(prev => {
-            if (prev.has(transaction.hash!)) return prev;
-            const next = new Set(prev);
-            next.add(transaction.hash!);
-            return next;
-          });
-        }, 0);
+        // Transaction is delivered and found in card - will be marked completed by effect
       }
       return transaction;
     });
@@ -324,9 +368,34 @@ export default function ActivityTransactions({
     </View>
   );
 
+  const handleLoadMore = () => {
+    if (hasNextPage && !isFetchingNextPage && !isFetchingRef.current) {
+      isFetchingRef.current = true;
+      fetchNextPage().finally(() => {
+        isFetchingRef.current = false;
+      });
+    }
+  };
+
   const renderFooter = () => {
-    if (isFetchingNextPage) {
-      return renderLoading();
+    if (hasNextPage) {
+      return (
+        <View className="items-center py-7">
+          <Pressable
+            onPress={handleLoadMore}
+            disabled={isFetchingNextPage}
+            className={cn(
+              'flex-row items-center gap-2 rounded-lg bg-card px-6 py-3',
+              isFetchingNextPage ? 'opacity-70' : 'active:opacity-70',
+            )}
+          >
+            {isFetchingNextPage && <ActivityIndicator size="small" color="gray" />}
+            <Text className="text-base font-medium text-foreground">
+              {isFetchingNextPage ? 'Loading...' : 'Load More'}
+            </Text>
+          </Pressable>
+        </View>
+      );
     }
     return null;
   };
@@ -380,12 +449,10 @@ export default function ActivityTransactions({
           // Use a combination of identifiers to ensure uniqueness even if hash/userOpHash/clientTxId are the same
           return `tx-${baseKey}-${index}`;
         }}
-        onEndReached={() => {
-          if (hasNextPage && !isFetchingNextPage) {
-            fetchNextPage();
-          }
-        }}
-        onEndReachedThreshold={0.5}
+        // NOTE: onEndReached was intentionally removed to prevent bulk page fetches
+        // FlashList fires onEndReached on every re-render when content doesn't fill viewport
+        // This caused all pages to fetch immediately (Sentry: "10+ renders/second")
+        // Users now use the "Load More" button instead (renderFooter)
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={() => <View className="h-0" />}

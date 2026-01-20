@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, useWindowDimensions, View } from 'react-native';
 import Animated, {
-  runOnJS,
   useAnimatedScrollHandler,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import {
@@ -31,8 +32,12 @@ import { useUserStore } from '@/store/useUserStore';
 export default function Onboarding() {
   const router = useRouter();
   const { handleLogin, handleDummyLogin } = useUser();
-  const { setHasSeenOnboarding } = useOnboardingStore();
-  const { loginInfo } = useUserStore();
+  const setHasSeenOnboarding = useOnboardingStore(state => state.setHasSeenOnboarding);
+  const { loginInfo } = useUserStore(
+    useShallow(state => ({
+      loginInfo: state.loginInfo,
+    })),
+  );
   const { isDesktop } = useDimension();
 
   const isLoginPending = loginInfo.status === Status.PENDING;
@@ -60,7 +65,9 @@ export default function Onboarding() {
   // Derive current index from scroll position
   useDerivedValue(() => {
     const index = Math.round(scrollX.value / widthSV.value);
-    runOnJS(setCurrentIndex)(index);
+    scheduleOnRN(() => {
+      setCurrentIndex(index);
+    });
   });
 
   const handleLoginPress = useCallback(async () => {
@@ -185,6 +192,8 @@ export default function Onboarding() {
   return (
     <View className="flex-1 flex-row bg-background">
       {/* Left Section - Interactive Carousel */}
+      {/* TODO: lazy-loaded for FCP improvement */}
+      {/* <LazyDesktopCarousel onHelpCenterPress={handleHelpCenter} /> */}
       <DesktopCarousel onHelpCenterPress={handleHelpCenter} />
 
       {/* Right Section - Auth Options (70%) */}

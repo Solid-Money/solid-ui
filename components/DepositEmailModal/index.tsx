@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositEmailModal: React.FC = () => {
-  const { setModal } = useDepositStore();
+  const setModal = useDepositStore(state => state.setModal);
   const { user } = useUser();
 
   const {

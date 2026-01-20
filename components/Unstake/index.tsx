@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Address } from 'abitype';
 import { ArrowDownLeft, Info, Wallet } from 'lucide-react-native';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import Max from '@/components/Max';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -24,7 +25,12 @@ import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 const Unstake = () => {
   const { user } = useUser();
-  const { setModal, setTransaction } = useUnstakeStore();
+  const { setModal, setTransaction } = useUnstakeStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setTransaction: state.setTransaction,
+    })),
+  );
 
   const { data: fuseBalance, isLoading: isFuseBalanceLoading } = useFuseVaultBalance(
     user?.safeAddress as Address,

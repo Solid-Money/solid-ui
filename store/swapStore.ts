@@ -26,6 +26,7 @@ import { Address } from 'viem';
 import { fuse } from 'viem/chains';
 import { useBalance } from 'wagmi';
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 
 interface SwapState {
   readonly independentField: SwapFieldType;
@@ -128,9 +129,13 @@ export function useSwapActionHandlers(): {
   onSwitchTokens: () => void;
   onUserInput: (field: SwapFieldType, typedValue: string) => void;
 } {
-  const {
-    actions: { selectCurrency, switchCurrencies, typeInput },
-  } = useSwapState();
+  const { selectCurrency, switchCurrencies, typeInput } = useSwapState(
+    useShallow(state => ({
+      selectCurrency: state.actions.selectCurrency,
+      switchCurrencies: state.actions.switchCurrencies,
+      typeInput: state.actions.typeInput,
+    })),
+  );
 
   const onCurrencySelection = useCallback(
     (field: SwapFieldType, currency: Currency) =>
@@ -138,16 +143,16 @@ export function useSwapActionHandlers(): {
         field,
         currency.isToken ? currency.address : currency.isNative ? ADDRESS_ZERO : '',
       ),
-    [],
+    [selectCurrency],
   );
 
   const onSwitchTokens = useCallback(() => {
     switchCurrencies();
-  }, []);
+  }, [switchCurrencies]);
 
   const onUserInput = useCallback((field: SwapFieldType, typedValue: string) => {
     typeInput(field, typedValue);
-  }, []);
+  }, [typeInput]);
 
   return {
     onSwitchTokens,
@@ -197,12 +202,14 @@ export function useDerivedSwapInfo(): {
   const { user } = useUser();
   const account = user?.safeAddress;
   const [isVoltageTrade, setIsVoltageTrade] = useState(false);
-  const {
-    independentField,
-    typedValue,
-    [SwapField.INPUT]: { currencyId: inputCurrencyId },
-    [SwapField.OUTPUT]: { currencyId: outputCurrencyId },
-  } = useSwapState();
+  const { independentField, typedValue, inputCurrencyId, outputCurrencyId } = useSwapState(
+    useShallow(state => ({
+      independentField: state.independentField,
+      typedValue: state.typedValue,
+      inputCurrencyId: state[SwapField.INPUT].currencyId,
+      outputCurrencyId: state[SwapField.OUTPUT].currencyId,
+    })),
+  );
 
   const inputCurrency = useCurrency(inputCurrencyId);
   const outputCurrency = useCurrency(outputCurrencyId);

@@ -1,11 +1,12 @@
 import { useEffect, useMemo } from 'react';
 import { Address, zeroAddress } from 'viem';
+import { fuse } from 'viem/chains';
+import { useShallow } from 'zustand/react/shallow';
 
 import { useFetchTokenList } from '@/hooks/tokens/useFetchTokenList';
 import { TokenListItem } from '@/lib/types/tokens';
 import { useCachedTokensStore } from '@/store/cachedTokensStore';
 import { useTokensState } from '@/store/tokensStore';
-import { fuse } from 'viem/chains';
 
 export function useAllTokens(showNativeToken = true) {
   const chainId = fuse.id;
@@ -15,8 +16,13 @@ export function useAllTokens(showNativeToken = true) {
   // });
   const { tokenList, loading: loadingTokenList } = useFetchTokenList();
 
-  const { importedTokens } = useTokensState();
-  const { getCachedTokens, setCachedTokens } = useCachedTokensStore();
+  const importedTokens = useTokensState(state => state.importedTokens);
+  const { getCachedTokens, setCachedTokens } = useCachedTokensStore(
+    useShallow(state => ({
+      getCachedTokens: state.getCachedTokens,
+      setCachedTokens: state.setCachedTokens,
+    })),
+  );
 
   // Try to get cached tokens first
   const cachedTokens = getCachedTokens(chainId);

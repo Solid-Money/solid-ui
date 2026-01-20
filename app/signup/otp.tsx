@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react-native';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 
 import InfoError from '@/assets/images/info-error';
 import { DesktopCarousel } from '@/components/Onboarding';
@@ -56,7 +57,26 @@ export default function SignupOtp() {
     setError,
     setRateLimitError,
     setLastOtpSentAt,
-  } = useSignupFlowStore();
+  } = useSignupFlowStore(
+    useShallow(state => ({
+      email: state.email,
+      otpId: state.otpId,
+      isLoading: state.isLoading,
+      error: state.error,
+      rateLimitError: state.rateLimitError,
+      lastOtpSentAt: state.lastOtpSentAt,
+      referralCode: state.referralCode,
+      marketingConsent: state.marketingConsent,
+      _hasHydrated: state._hasHydrated,
+      setOtpId: state.setOtpId,
+      setVerificationToken: state.setVerificationToken,
+      setStep: state.setStep,
+      setIsLoading: state.setIsLoading,
+      setError: state.setError,
+      setRateLimitError: state.setRateLimitError,
+      setLastOtpSentAt: state.setLastOtpSentAt,
+    })),
+  );
 
   const [resendCooldown, setResendCooldown] = useState(0);
   // Track last submitted OTP to prevent duplicate API calls
@@ -379,6 +399,8 @@ export default function SignupOtp() {
     <View className="flex-1 flex-row bg-background">
       {/* Left Section - Interactive Carousel */}
       <DesktopCarousel />
+      {/* TODO: lazy-loaded for FCP improvement */}
+      {/* <LazyDesktopCarousel /> */}
 
       {/* Right Section - Form (70%) */}
       <View className="relative flex-1">
