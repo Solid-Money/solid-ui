@@ -129,7 +129,7 @@ const CardDepositModalProvider = () => {
   const handleOpenChange = useCallback(
     (value: boolean) => {
       if (value) {
-        setModal(CARD_DEPOSIT_MODAL.OPEN_OPTIONS);
+        setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
       } else {
         track(TRACKING_EVENTS.CARD_DEPOSIT_MODAL_CLOSED, {
           close_reason: 'user_dismissed',
@@ -142,7 +142,7 @@ const CardDepositModalProvider = () => {
   );
 
   const handleBackPress = useCallback(() => {
-    setModal(CARD_DEPOSIT_MODAL.OPEN_OPTIONS);
+    setModal(CARD_DEPOSIT_MODAL.CLOSE);
   }, [setModal]);
 
   return (
@@ -155,7 +155,7 @@ const CardDepositModalProvider = () => {
       title={getTitle()}
       containerClassName="min-h-[42rem] overflow-y-auto flex-1"
       contentKey={getContentKey()}
-      showBackButton={!isOptions && !isTransactionStatus}
+      showBackButton={isInternal && !isTransactionStatus}
       onBackPress={handleBackPress}
       shouldAnimate={shouldAnimate}
       isForward={isForward}

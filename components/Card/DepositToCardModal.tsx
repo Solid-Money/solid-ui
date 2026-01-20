@@ -1,4 +1,5 @@
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 
 import SlotTrigger from '@/components/SlotTrigger';
 import { Button } from '@/components/ui/button';
@@ -22,10 +23,16 @@ const DefaultTrigger = () => (
  * since the global CardDepositModalProvider handles the modal state.
  */
 export default function DepositToCardModal({ trigger }: { trigger?: React.ReactNode }) {
-  const setModal = useCardDepositStore(state => state.setModal);
+  const { setModal, setSource } = useCardDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setSource: state.setSource,
+    })),
+  );
 
   const handlePress = () => {
-    setModal(CARD_DEPOSIT_MODAL.OPEN_OPTIONS);
+    setSource('wallet');
+    setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
   };
 
   if (trigger === null) {

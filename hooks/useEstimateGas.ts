@@ -37,13 +37,7 @@ export const useEstimateGas = (
   token: string = 'ETH',
 ) => {
   const { data: costInUsd = 0, isLoading: loading } = useQuery({
-    queryKey: [
-      GAS_ESTIMATE_KEY,
-      chainId,
-      token,
-      gasEstimate.toString(),
-      bridgeFee.toString(),
-    ],
+    queryKey: [GAS_ESTIMATE_KEY, chainId, token, gasEstimate.toString(), bridgeFee.toString()],
     queryFn: () => estimateGasCost(gasEstimate, bridgeFee, chainId, token),
     staleTime: 30 * 1000, // 30s - gas prices change frequently
     gcTime: 60 * 1000, // 1 minute

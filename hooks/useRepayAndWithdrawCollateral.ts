@@ -54,7 +54,9 @@ const useRepayAndWithdrawCollateral = (): RepayAndWithdrawCollateralResult => {
   const { trackTransaction } = useActivity();
   const { data: cardDetails } = useCardDetails();
   const { totalBorrowed, totalSupplied } = useAaveBorrowPosition();
-  const [repayAndWithdrawCollateralStatus, setRepayAndWithdrawCollateralStatus] = useState<Status>(Status.IDLE);
+  const [repayAndWithdrawCollateralStatus, setRepayAndWithdrawCollateralStatus] = useState<Status>(
+    Status.IDLE,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const repayAndWithdrawCollateral = useCallback(
@@ -92,8 +94,10 @@ const useRepayAndWithdrawCollateral = (): RepayAndWithdrawCollateralResult => {
         const totalBorrowedWei = parseUnits(totalBorrowed.toFixed(6), 6);
         const totalSuppliedSoUSDWei = parseUnits(totalSupplied.toFixed(6), 6);
         const totalSuppliedUsdWei = (totalSuppliedSoUSDWei * rate) / RATE_SCALE;
-        const cappedRepayWei = repayAmountWei > totalBorrowedWei ? totalBorrowedWei : repayAmountWei;
-        const remainingBorrowWei = totalBorrowedWei > cappedRepayWei ? totalBorrowedWei - cappedRepayWei : 0n;
+        const cappedRepayWei =
+          repayAmountWei > totalBorrowedWei ? totalBorrowedWei : repayAmountWei;
+        const remainingBorrowWei =
+          totalBorrowedWei > cappedRepayWei ? totalBorrowedWei - cappedRepayWei : 0n;
         const requiredCollateralValueWei =
           remainingBorrowWei === 0n
             ? 0n
@@ -247,7 +251,15 @@ const useRepayAndWithdrawCollateral = (): RepayAndWithdrawCollateralResult => {
         throw error;
       }
     },
-    [user, cardDetails, safeAA, trackTransaction, repayAndWithdrawCollateralStatus, totalBorrowed, totalSupplied],
+    [
+      user,
+      cardDetails,
+      safeAA,
+      trackTransaction,
+      repayAndWithdrawCollateralStatus,
+      totalBorrowed,
+      totalSupplied,
+    ],
   );
 
   return { repayAndWithdrawCollateral, repayAndWithdrawCollateralStatus, error };
