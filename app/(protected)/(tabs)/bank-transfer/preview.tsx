@@ -91,7 +91,7 @@ export default function BankTransferPreviewScreen() {
           style={{ backgroundColor: '#94F27F' }}
           onPress={() => router.replace(path.ACTIVITY)}
         >
-          <Text className="text-lg font-bold text-black">Done</Text>
+          <Text className="native:text-lg text-lg font-bold text-black">Done</Text>
         </Button>
       </View>
     </View>

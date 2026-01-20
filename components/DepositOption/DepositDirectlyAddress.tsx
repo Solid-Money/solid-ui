@@ -201,7 +201,7 @@ const DepositDirectlyAddress = () => {
       valueContent: (
         <View className="flex-row items-center gap-1.5">
           <Image source={SOUSD_ICON} style={{ width: 18, height: 18 }} contentFit="cover" />
-          <Text className="text-base font-bold text-white">
+          <Text className="text-lg font-bold text-white">
             {formatNumber(soUSDAmount, 2, 2)}{' '}
             <Text className="text-white/70">soUSD on Ethereum</Text>
           </Text>
@@ -212,7 +212,7 @@ const DepositDirectlyAddress = () => {
     rows.push({
       label: 'Price',
       valueContent: (
-        <Text className="text-base font-bold text-white">
+        <Text className="text-lg font-bold text-white">
           1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
           {selectedToken}
         </Text>
@@ -224,7 +224,7 @@ const DepositDirectlyAddress = () => {
       valueContent: isAPYsLoading ? (
         <Skeleton className="h-7 w-16 bg-white/20" />
       ) : (
-        <Text className="text-base font-bold text-[#94F27F]">{formattedAPY}</Text>
+        <Text className="text-lg font-bold text-[#94F27F]">{formattedAPY}</Text>
       ),
     });
 
@@ -254,7 +254,7 @@ const DepositDirectlyAddress = () => {
       </View>
 
       {/* Address card */}
-      <View className="mt-2 w-full rounded-[20px] bg-accent p-4">
+      <View className="mt-2 w-full rounded-[20px] bg-card p-4">
         <View className="gap-4">
           <View className="flex-row items-center justify-center">
             <Text className="text-center text-lg tracking-wide text-foreground">
@@ -272,7 +272,7 @@ const DepositDirectlyAddress = () => {
             <Button
               variant="secondary"
               onPress={handleQrOpen}
-              className="h-9 flex-1 rounded-2xl border-0 bg-secondary-hover"
+              className="h-9 flex-1 rounded-2xl border-0 bg-secondary"
             >
               <Copy size={14} color="white" />
               <Text className="font-bold text-white">Show QR</Text>
@@ -280,7 +280,7 @@ const DepositDirectlyAddress = () => {
             <Button
               variant="secondary"
               onPress={handleShare}
-              className="h-9 flex-1 rounded-2xl border-0 bg-secondary-hover"
+              className="h-9 flex-1 rounded-2xl border-0 bg-secondary"
             >
               <Share2 size={18} color="white" />
               <Text className="font-bold text-white">Share</Text>
@@ -296,7 +296,7 @@ const DepositDirectlyAddress = () => {
       {/* Warning Text */}
       <View className="my-2 flex-row items-center justify-center gap-1.5 px-4 md:my-0">
         <Info size={16} color="#A1A1AA" />
-        <Text className="text-center text-sm text-[#A1A1AA]">
+        <Text className="text-center text-base text-[#A1A1AA]">
           Please send only {selectedToken} to this address
         </Text>
         <TooltipPopover
@@ -308,17 +308,17 @@ const DepositDirectlyAddress = () => {
 
       {/* Yield Info Rows */}
       {!isExpired && (
-        <View className="w-full rounded-2xl bg-accent">
+        <View className="w-full rounded-2xl bg-card">
           {priceRows.map((row, index) => (
             <View key={row.label}>
               <View className="flex-row items-center justify-between gap-1.5 px-5 py-4">
-                <Text className="text-base font-medium text-muted-foreground">{row.label}</Text>
+                <Text className="text-lg font-medium text-muted-foreground">{row.label}</Text>
                 <View className="flex-row items-center gap-2">
                   {row.valueContent ? (
                     row.valueContent
                   ) : (
                     <Text
-                      className={`text-base font-medium text-foreground ${row.valueClassName ? row.valueClassName : ''}`}
+                      className={`text-lg font-medium text-foreground ${row.valueClassName ? row.valueClassName : ''}`}
                     >
                       {row.value}
                     </Text>
@@ -334,13 +334,13 @@ const DepositDirectlyAddress = () => {
 
       {/* Details Info Rows */}
       {!isExpired && (
-        <View className="w-full rounded-2xl bg-accent">
+        <View className="w-full rounded-2xl bg-card">
           {infoRows.map((row, index) => (
             <View key={row.label}>
               <View className="flex-row items-center justify-between gap-1.5 px-5 py-4">
                 <View className="flex-row items-center gap-1.5">
                   {row.icon}
-                  <Text className="text-base font-medium text-muted-foreground">{row.label}</Text>
+                  <Text className="text-lg font-medium text-muted-foreground">{row.label}</Text>
                 </View>
                 <View className="flex-row items-center gap-2">
                   {row.valueContent ? (

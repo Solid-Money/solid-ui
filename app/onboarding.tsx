@@ -257,12 +257,14 @@ export default function Onboarding() {
                 {isLoginPending ? (
                   <View className="flex-row items-center">
                     <ActivityIndicator size="small" color="white" />
-                    <Text className="ml-2 text-lg font-semibold">Authenticating...</Text>
+                    <Text className="native:text-lg ml-2 text-lg font-semibold">
+                      Authenticating...
+                    </Text>
                   </View>
                 ) : (
                   <View className="flex-row items-center">
                     <LoginKeyIcon />
-                    <Text className="ml-2 text-lg font-semibold">Login</Text>
+                    <Text className="native:text-lg ml-2 text-lg font-semibold">Login</Text>
                   </View>
                 )}
               </Button>

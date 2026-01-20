@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -102,6 +102,7 @@ const CardBanner = () => {
           flex: 1,
           width: '100%',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
@@ -109,23 +110,8 @@ const CardBanner = () => {
             <Text className="native:text-lg text-lg font-semibold md:text-3xl">
               {bannerContent.title}
             </Text>
-            <Text className="native:text-base font-semibold text-muted-foreground">
+            <Text className="native:text-base max-w-60 font-medium text-muted-foreground">
               {bannerContent.description}
-              {bannerContent.showPromo && (
-                <>
-                  {' '}
-                  <Link
-                    target="_blank"
-                    href={
-                      'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-                    }
-                    className="underline"
-                  >
-                    Read more
-                  </Link>
-                  {' >'}
-                </>
-              )}
             </Text>
             <Button
               className="h-11 rounded-xl border-0 bg-button-earning px-6 web:hover:bg-button-earning web:hover:brightness-110 md:h-12"
@@ -134,7 +120,7 @@ const CardBanner = () => {
               <Text className="text-base font-bold text-primary">{bannerContent.ctaText}</Text>
             </Button>
           </View>
-          <View className="pointer-events-none -ml-4 -mt-14 md:-mt-4">
+          <View className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2">
             <Image
               source={
                 isScreenMedium

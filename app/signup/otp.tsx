@@ -14,6 +14,7 @@ import { DesktopCarousel } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
 import { OtpInput } from '@/components/ui/otp-input';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
@@ -290,7 +291,7 @@ export default function SignupOtp() {
         {isLoading ? (
           <ActivityIndicator color="gray" />
         ) : (
-          <Text className="text-lg font-semibold">Continue</Text>
+          <Text className="native:text-lg text-lg font-semibold">Continue</Text>
         )}
       </Button>
 
@@ -298,9 +299,12 @@ export default function SignupOtp() {
       <View className="mt-6 flex-row items-center justify-center gap-1">
         <Text className="text-base text-white/60">Didn&apos;t receive it?</Text>
         {canResend ? (
-          <Pressable onPress={handleResendOtp}>
-            <Text className="text-base font-semibold text-white/60 underline">Resend Code</Text>
-          </Pressable>
+          <Underline
+            onPress={handleResendOtp}
+            textClassName="text-base font-semibold text-white/60"
+          >
+            Resend Code
+          </Underline>
         ) : (
           <Text className="text-base text-white/60">Resend in {resendCooldown}s</Text>
         )}
@@ -327,7 +331,7 @@ export default function SignupOtp() {
           <View className="flex-1 items-center px-6">
             {/* Header */}
             <View className="mb-8 mt-8 items-center">
-              <Text className="mb-4 text-center text-[38px] font-medium leading-10 -tracking-[1px] text-white">
+              <Text className="mb-4 text-center text-[38px] font-medium leading-[1.1] -tracking-[1px] text-white">
                 Check your email
               </Text>
               <Text className="text-center text-[16px] leading-4 text-white/60">
@@ -358,9 +362,9 @@ export default function SignupOtp() {
             <View className="flex-row items-center gap-1">
               <Text className="text-white/60">Didn&apos;t receive it?</Text>
               {canResend ? (
-                <Pressable onPress={handleResendOtp}>
-                  <Text className="font-semibold text-white/60 underline">Resend Code</Text>
-                </Pressable>
+                <Underline onPress={handleResendOtp} textClassName="font-semibold text-white/60">
+                  Resend Code
+                </Underline>
               ) : (
                 <Text className="text-white/40">Resend in {resendCooldown}s</Text>
               )}
@@ -384,7 +388,7 @@ export default function SignupOtp() {
               {isLoading ? (
                 <ActivityIndicator color="gray" />
               ) : (
-                <Text className="text-lg font-semibold">Continue</Text>
+                <Text className="native:text-lg text-lg font-semibold">Continue</Text>
               )}
             </Button>
           </View>

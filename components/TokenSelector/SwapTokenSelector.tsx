@@ -14,7 +14,6 @@ import { Address, erc20Abi } from 'viem';
 import { fuse } from 'viem/chains';
 import { useBalance } from 'wagmi';
 
-import CopyToClipboard from '@/components/CopyToClipboard';
 import CurrencyLogo from '@/components/CurrencyLogo';
 import { Text } from '@/components/ui/text';
 import { useAllTokens } from '@/hooks/tokens/useAllTokens';
@@ -332,7 +331,6 @@ const TokenRow = ({
                     <Text className="text-xs font-medium text-primary">Native</Text>
                   </View>
                 )}
-                <CopyToClipboard text={token.address} className="h-6 w-6" />
               </View>
               <Text
                 className={`text-sm leading-tight opacity-80 ${
