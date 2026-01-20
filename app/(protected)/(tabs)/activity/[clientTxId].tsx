@@ -15,6 +15,7 @@ import PageLayout from '@/components/PageLayout';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { path } from '@/constants/path';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
@@ -130,7 +131,15 @@ const SupportSection = memo(function SupportSection({ transactionContext }: Supp
       >
         <SupportIcon width={18} height={18} />
         <Text className="text-sm text-white/70">
-          Got question? <Text className="underline">Click here</Text> to talk with support
+          Got question?{' '}
+          <Underline
+            inline
+            textClassName="text-sm text-white/70"
+            borderColor="rgba(255, 255, 255, 0.7)"
+          >
+            Click here
+          </Underline>{' '}
+          to talk with support
         </Text>
       </Pressable>
     </View>
@@ -186,7 +195,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         value: (
           <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
             <View className="flex-row items-center gap-1">
-              <Value className="underline">{eclipseAddress(txHash)}</Value>
+              <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                {eclipseAddress(txHash)}
+              </Underline>
               <ArrowUpRight color="white" size={16} />
             </View>
           </Pressable>
@@ -428,7 +439,9 @@ export default function ActivityDetail() {
           value: (
             <Pressable onPress={handleExplorerPress} className="hover:opacity-70">
               <View className="flex-row items-center gap-1">
-                <Value className="underline">{eclipseAddress(hash)}</Value>
+                <Underline textClassName="text-lg font-bold" borderColor="rgba(255, 255, 255, 1)">
+                  {eclipseAddress(hash)}
+                </Underline>
                 <ArrowUpRight color="white" size={16} />
               </View>
             </Pressable>

@@ -1,5 +1,6 @@
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { formatNumber } from '@/lib/utils';
 
@@ -14,9 +15,13 @@ const DepositTitle = () => {
       {isMaxAPYsLoading ? (
         <Skeleton className="h-6 w-14 bg-purple/50 md:h-10 md:w-24" />
       ) : (
-        <Text className="text-2xl font-semibold text-brand underline underline-offset-4 md:text-4.5xl">
+        <Underline
+          inline
+          textClassName="text-2xl font-semibold text-brand md:text-4.5xl"
+          borderColor="rgba(148, 242, 127, 1)"
+        >
           ${formatNumber(earnings, 2)}
-        </Text>
+        </Underline>
       )}{' '}
       per year for every ${formatNumber(total, 0, 0)} you keep in Solid
     </Text>

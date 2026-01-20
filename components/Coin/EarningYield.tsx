@@ -33,19 +33,31 @@ const EarningYield = ({ token, className }: EarningYieldProps) => {
   }
 
   return (
-    <LinearGradient
-      colors={['rgba(122, 84, 234, 0.3)', 'rgba(122, 84, 234, 0.2)']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.6, y: 1 }}
-      className={cn('rounded-twice', className)}
-    >
+    <View className={cn('relative rounded-twice', className)}>
+      <LinearGradient
+        colors={['rgba(122, 84, 234, 1)', 'rgba(122, 84, 234, 0.5)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.6, y: 1 }}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: -1,
+          opacity: 0.3,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+        }}
+      />
       <View className="flex-row items-center justify-center gap-2 px-5 pb-4 pt-6">
         <Text className="text-base font-medium text-brand">
           Earning {formatNumber(maxAPY, 1, 1)}% yield
         </Text>
         <Ping />
       </View>
-    </LinearGradient>
+    </View>
   );
 };
 

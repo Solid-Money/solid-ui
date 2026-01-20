@@ -408,7 +408,7 @@ export enum TransactionType {
 export enum TransactionDirection {
   IN = '+',
   OUT = '-',
-  FAILED = '✕',
+  FAILED = '',
   CANCELLED = '⊘',
 }
 

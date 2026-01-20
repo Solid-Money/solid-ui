@@ -23,7 +23,7 @@ const Card = ({ balance, className, tokens, isLoading, decimalPlaces }: CardProp
   return (
     <View
       className={cn(
-        'h-full w-full justify-between rounded-twice bg-card p-[30px] pb-[21px]',
+        'h-full w-full justify-between rounded-twice bg-card p-5 pb-4 md:p-[30px] md:pb-[21px]',
         className,
       )}
     >

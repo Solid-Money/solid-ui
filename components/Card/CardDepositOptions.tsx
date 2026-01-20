@@ -28,7 +28,7 @@ export default function CardDepositOptions() {
       >
         <View className="flex-row items-center gap-3">
           <Wallet color="white" size={24} />
-          <Text className="text-lg font-semibold">{text}</Text>
+          <Text className="native:text-lg text-lg font-semibold">{text}</Text>
         </View>
         <ChevronRight color="white" size={20} />
       </Button>

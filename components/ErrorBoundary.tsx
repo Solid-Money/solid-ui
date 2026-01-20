@@ -62,14 +62,14 @@ const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
               className="h-12 rounded-xl px-6"
               onPress={() => router.replace(path.HOME)}
             >
-              <Text className="text-lg font-semibold">Visit Home</Text>
+              <Text className="native:text-lg text-lg font-semibold">Visit Home</Text>
             </Button>
             <Button
               variant="secondary"
               className="h-12 rounded-xl border-0 px-6"
               onPress={handleRetry}
             >
-              <Text className="text-lg font-semibold">Try again</Text>
+              <Text className="native:text-lg text-lg font-semibold">Try again</Text>
             </Button>
           </View>
         </View>

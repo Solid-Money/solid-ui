@@ -235,7 +235,7 @@ const ExtraYield = () => {
           </Text>
           <Link href={'#' as Href} target="_blank" className="hover:opacity-70">
             <View className="flex-row items-center">
-              <Text className="text-base font-medium leading-4 text-muted-foreground underline">
+              <Text className="text-base font-medium leading-4 text-muted-foreground web:underline">
                 Read more
               </Text>
               <ChevronRight size={18} color="white" className="mt-0.5" />

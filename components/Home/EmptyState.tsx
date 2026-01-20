@@ -79,8 +79,10 @@ export default function HomeEmptyState() {
             ) : (
               <View className="justify-between gap-y-6">
                 <SavingDepositImage />
-                <DepositTitle />
-                <DepositDescription />
+                <View className="gap-2.5">
+                  <DepositTitle />
+                  <DepositDescription />
+                </View>
                 <DepositButton />
               </View>
             )}

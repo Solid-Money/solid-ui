@@ -4,6 +4,7 @@ import { Linking, Pressable, View } from 'react-native';
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 
 interface AddToWalletModalProps {
   trigger: React.ReactNode;
@@ -86,9 +87,13 @@ export default function AddToWalletModal({ trigger, isOpen, onOpenChange }: AddT
               </View>
             </View>
 
-            <Pressable onPress={() => Linking.openURL('https://support.apple.com/en-gb/108398')}>
-              <Text className="text-base text-[#94F27F] underline">Read More</Text>
-            </Pressable>
+            <Underline
+              onPress={() => Linking.openURL('https://support.apple.com/en-gb/108398')}
+              textClassName="text-base text-[#94F27F]"
+              borderColor="rgba(148, 242, 127, 1)"
+            >
+              Read More
+            </Underline>
           </View>
         )}
 
@@ -135,13 +140,15 @@ export default function AddToWalletModal({ trigger, isOpen, onOpenChange }: AddT
               </View>
             </View>
 
-            <Pressable
+            <Underline
               onPress={() =>
                 Linking.openURL('https://support.google.com/pay/india/answer/14253923?hl=en-GB')
               }
+              textClassName="text-base text-[#94F27F]"
+              borderColor="rgba(148, 242, 127, 1)"
             >
-              <Text className="text-base text-[#94F27F] underline">Read More</Text>
-            </Pressable>
+              Read More
+            </Underline>
           </View>
         )}
 

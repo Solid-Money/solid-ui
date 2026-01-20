@@ -111,7 +111,7 @@ export default function Coin() {
             </View>
           )}
 
-          <View className="justify-between gap-8 md:flex-row md:gap-10">
+          <View className="justify-between gap-6 md:flex-row md:gap-10">
             {!isScreenMedium && (
               <View className="items-start">
                 <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />

@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { Controller } from 'react-hook-form';
-import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, TextInput, View } from 'react-native';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
+import { Underline } from '@/components/ui/underline';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useEmailManagement } from '@/hooks/useEmailManagement';
 import useUser from '@/hooks/useUser';
@@ -98,11 +99,13 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
             <View className="flex-row items-baseline justify-between">
               <Text className="font-medium text-foreground">Verification Code</Text>
               {currentStep === 'otp' && !rateLimitError && (
-                <Pressable onPress={handleResendOtp} disabled={isLoading} className="group">
-                  <Text className="text-sm underline group-hover:opacity-70">
-                    Resend verification code
-                  </Text>
-                </Pressable>
+                <Underline
+                  onPress={handleResendOtp}
+                  textClassName="text-sm group-hover:opacity-70"
+                  borderColor="rgba(255, 255, 255, 1)"
+                >
+                  Resend verification code
+                </Underline>
               )}
             </View>
             <Controller

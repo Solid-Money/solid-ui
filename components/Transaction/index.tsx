@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Sentry from '@sentry/react-native';
-import { Trash2 } from 'lucide-react-native';
 
+import Trash from '@/assets/images/trash';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { Button } from '@/components/ui/button';
@@ -294,8 +294,11 @@ const Transaction = ({
           </Text>
         )}
         {directDepositIsPendingOrProcessing && (
-          <Pressable onPress={handleDeletePress} className="p-1 hover:opacity-70">
-            <Trash2 size={18} color="#A1A1AA" />
+          <Pressable
+            onPress={handleDeletePress}
+            className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+          >
+            <Trash />
           </Pressable>
         )}
       </View>
