@@ -43,8 +43,8 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
   const { isScreenMedium } = useDimension();
   const vaultIndex = VAULTS.findIndex(v => v.name === vault.name);
   const isSelected = selectedVault === vaultIndex;
-  const GAP_HEIGHT = isScreenMedium ? 40 : 16;
-  const ICON_SIZE_SELECTED = isScreenMedium ? 53 : 28;
+  const gapHeight = isScreenMedium ? 40 : 16;
+  const iconSizeSelected = isScreenMedium ? 53 : 28;
 
   const progress = useSharedValue(isSelected ? 1 : 0);
 
@@ -53,12 +53,12 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
   }, [isSelected, progress]);
 
   const animatedIconStyle = useAnimatedStyle(() => {
-    const size = ICON_SIZE_COLLAPSED + (ICON_SIZE_SELECTED - ICON_SIZE_COLLAPSED) * progress.value;
+    const size = ICON_SIZE_COLLAPSED + (iconSizeSelected - ICON_SIZE_COLLAPSED) * progress.value;
     return {
       width: size,
       height: size,
     };
-  });
+  }, [iconSizeSelected]);
 
   const animatedBalanceStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
@@ -66,9 +66,12 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
     overflow: 'hidden' as const,
   }));
 
-  const animatedGapStyle = useAnimatedStyle(() => ({
-    height: progress.value * GAP_HEIGHT,
-  }));
+  const animatedGapStyle = useAnimatedStyle(
+    () => ({
+      height: progress.value * gapHeight,
+    }),
+    [gapHeight],
+  );
 
   const animatedGradientStyle = useAnimatedStyle(() => ({
     opacity: progress.value * 0.3,

@@ -137,6 +137,7 @@ export const ASSETS = {
   },
   'images/cards.png': { module: require('@/assets/images/cards.png'), hash: '6c671c63' },
   'images/checkmark.tsx': { module: require('@/assets/images/checkmark.tsx'), hash: '66caebb4' },
+  'images/copy.tsx': { module: require('@/assets/images/copy.tsx'), hash: '25734d53' },
   'images/delete-account.tsx': {
     module: require('@/assets/images/delete-account.tsx'),
     hash: 'cda6dcfa',
@@ -500,6 +501,7 @@ export const ASSETS = {
     module: require('@/assets/images/three-percent.png'),
     hash: 'f1e94427',
   },
+  'images/trash.tsx': { module: require('@/assets/images/trash.tsx'), hash: 'feb342aa' },
   'images/two-percent-yellow.png': {
     module: require('@/assets/images/two-percent-yellow.png'),
     hash: '71c88645',

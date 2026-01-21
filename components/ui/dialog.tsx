@@ -125,8 +125,6 @@ const DialogContent = React.forwardRef<
           damping: 12,
           mass: 0.8,
           stiffness: 300,
-          restSpeedThreshold: 0.01,
-          restDisplacementThreshold: 0.01,
         };
         opacityWeb.value = withSpring(1, springConfig);
         translateYWeb.value = withSpring(0, springConfig);
@@ -143,13 +141,13 @@ const DialogContent = React.forwardRef<
         opacity: opacityWeb.value,
         transform: [{ translateY: translateYWeb.value }],
       };
-    });
+    }, [isWebBounce]);
 
     const enteringAnimation = isScreenMedium
       ? FadeIn.duration(150)
       : Platform.OS === 'web'
         ? undefined // Using useAnimatedStyle for web instead
-        : FadeInDown.springify().stiffness(300).damping(12).mass(0.8).restSpeedThreshold(0.01);
+        : FadeInDown.springify().stiffness(300).damping(12).mass(0.8);
 
     const content = (
       <>
