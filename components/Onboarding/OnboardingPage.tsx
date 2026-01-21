@@ -28,11 +28,10 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
   const subtitleSize = isSmallScreen ? 16 : 20;
   const textMarginTop = isSmallScreen ? 12 : 24;
 
-  // Calculate the input range for this specific page
-  const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
-
   // Animated style for the illustration - slides in from right, exits to left
   const illustrationAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
     const translateX = interpolate(scrollX.value, inputRange, [100, 0, -100], 'clamp');
     const opacity = interpolate(scrollX.value, inputRange, [0, 1, 0], 'clamp');
     const scale = interpolate(scrollX.value, inputRange, [0.8, 1, 0.8], 'clamp');
@@ -40,17 +39,19 @@ export function OnboardingPage({ data, index, scrollX }: OnboardingPageProps) {
       transform: [{ translateX }, { scale }],
       opacity,
     };
-  });
+  }, [index, screenWidth]);
 
   // Animated style for the text - slides in with a slight delay effect
   const textAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    const inputRange = [(index - 1) * screenWidth, index * screenWidth, (index + 1) * screenWidth];
     const translateY = interpolate(scrollX.value, inputRange, [30, 0, -30], 'clamp');
     const opacity = interpolate(scrollX.value, inputRange, [0, 1, 0], 'clamp');
     return {
       transform: [{ translateY }],
       opacity,
     };
-  });
+  }, [index, screenWidth]);
 
   return (
     <View
