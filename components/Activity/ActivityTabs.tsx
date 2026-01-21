@@ -123,7 +123,7 @@ const ActivityTabs = () => {
       onValueChange={value => handleTabChange(value as ActivityTab)}
       className="flex-1 pt-6"
     >
-      <View className="flex-row items-center justify-between">
+      <View className="flex-row items-center justify-between native:pb-6">
         <TabsList className="h-auto flex-row self-start rounded-full bg-[#1C1C1E] p-1">
           <Animated.View style={underlineStyle} />
           <TabsTrigger
