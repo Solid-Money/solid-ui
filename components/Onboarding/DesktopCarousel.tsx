@@ -34,12 +34,13 @@ interface InteractiveDotProps {
 
 function InteractiveDot({ isActive, onPress }: InteractiveDotProps) {
   const animatedStyle = useAnimatedStyle(() => {
+    'worklet';
     const width = withSpring(isActive ? 20 : 8, { damping: 15, stiffness: 200 });
     return {
       width,
       backgroundColor: isActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
     };
-  });
+  }, [isActive]);
 
   return (
     <Pressable onPress={onPress} hitSlop={8}>
@@ -99,6 +100,8 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
 
   // Continuous progress value (0-2 range) - drives all animations
   const progress = useSharedValue(currentIndex);
+  // Scale of 1 means progress is already normalized (0-maxIndex range)
+  const scaleSV = useSharedValue(1);
   // Track if we're currently dragging
   const isDragging = useSharedValue(false);
 
@@ -143,6 +146,7 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
   // Pan gesture with real-time tracking
   const panGesture = Gesture.Pan()
     .onStart(() => {
+      'worklet';
       isDragging.value = true;
     })
     .onUpdate(e => {
@@ -164,13 +168,11 @@ export function DesktopCarousel({ onHelpCenterPress }: DesktopCarouselProps) {
       const targetIndex = clamp(Math.round(projectedProgress), 0, maxIndex);
 
       progress.value = withSpring(targetIndex, SNAP_SPRING_CONFIG);
-      scheduleOnRN(() => {
-        syncIndexToStore(targetIndex);
-      });
+      scheduleOnRN(syncIndexToStore, targetIndex);
     });
 
   // Use shared hook for gradient opacity styles
-  const gradientStyles = useGradientStyles(progress);
+  const gradientStyles = useGradientStyles(progress, scaleSV);
 
   // Content animated styles for each slide (crossfade + slight translate)
   const contentStyle0 = useAnimatedStyle(() => {

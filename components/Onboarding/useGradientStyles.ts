@@ -8,31 +8,34 @@ const INPUT_RANGE = [0, 1, 2, 3];
 
 function useGradientStyle(
   progress: SharedValue<number>,
-  scale: SharedValue<number> | number,
+  scale: SharedValue<number>,
   targetIndex: number,
 ) {
-  return useAnimatedStyle(() => {
-    'worklet';
-    const s = typeof scale === 'number' ? scale : scale.value;
-    const normalizedProgress = s === 0 ? 0 : progress.value / s;
-    const outputRange = [0, 0, 0, 0];
-    outputRange[targetIndex] = 1;
-    const opacity = interpolate(normalizedProgress, INPUT_RANGE, outputRange, 'clamp');
-    return { opacity };
-  });
+  return useAnimatedStyle(
+    () => {
+      'worklet';
+      const s = scale.value;
+      const normalizedProgress = s === 0 ? 0 : progress.value / s;
+      const outputRange = [0, 0, 0, 0];
+      outputRange[targetIndex] = 1;
+      const opacity = interpolate(normalizedProgress, INPUT_RANGE, outputRange, 'clamp');
+      return { opacity };
+    },
+    [targetIndex],
+  );
 }
 
 /**
- * Hook that creates animated opacity styles for n-slide gradient crossfade.
- * Works with both scroll-based (pixel values) and index-based (0 to n-1) progress values.
+ * Hook that creates animated opacity styles for 4-slide gradient crossfade.
+ * Normalizes scroll position to page index (0-3) and creates opacity styles.
  *
- * @param progress - Shared value representing current position (either scrollX or index)
- * @param scale - Multiplier to normalize progress to 0 to n-1 range (use screenWidth for scroll, 1 for index)
- * @returns Array of n animated styles for gradient opacity
+ * @param progress - SharedValue representing scroll position (scrollX)
+ * @param scale - SharedValue for screen width to normalize progress to 0-3 range
+ * @returns Array of 4 animated styles for gradient opacity
  */
 export function useGradientStyles(
   progress: SharedValue<number>,
-  scale: SharedValue<number> | number = 1,
+  scale: SharedValue<number>,
 ): GradientStyle[] {
   const style0 = useGradientStyle(progress, scale, 0);
   const style1 = useGradientStyle(progress, scale, 1);

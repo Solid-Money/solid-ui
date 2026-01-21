@@ -23,7 +23,6 @@ export function AnimatedGradientBackground({ scrollX, children }: AnimatedGradie
     widthSV.value = width;
   }, [width, widthSV]);
 
-  // Use shared hook for gradient opacity styles (scrollX normalized by screen width)
   const gradientStyles = useGradientStyles(scrollX, widthSV);
 
   return (

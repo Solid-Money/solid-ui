@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, useWindowDimensions, View } from 'react-native';
 import Animated, {
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useDerivedValue,
   useSharedValue,
@@ -58,17 +59,26 @@ export default function Onboarding() {
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
+      'worklet';
       scrollX.value = event.contentOffset.x;
     },
   });
 
-  // Derive current index from scroll position
-  useDerivedValue(() => {
+  const derivedIndex = useDerivedValue(() => {
+    'worklet';
     const index = Math.round(scrollX.value / widthSV.value);
-    scheduleOnRN(() => {
-      setCurrentIndex(index);
-    });
+    return index;
   });
+
+  useAnimatedReaction(
+    () => derivedIndex.value,
+    (current, previous) => {
+      'worklet';
+      if (previous !== null && current !== previous) {
+        scheduleOnRN(setCurrentIndex, current);
+      }
+    },
+  );
 
   const handleLoginPress = useCallback(async () => {
     // Mark onboarding as seen

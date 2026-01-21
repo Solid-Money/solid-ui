@@ -110,7 +110,7 @@ const ResponsiveModal = ({
         easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       }),
     };
-  });
+  }, [shouldAnimate]);
 
   // Prevent page scroll when modal closes by stopping focus restoration to trigger
   const handleCloseAutoFocus = useCallback((event: Event) => {

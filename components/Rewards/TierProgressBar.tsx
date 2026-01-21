@@ -27,9 +27,12 @@ const TierProgressBar = ({
   const { isScreenMedium } = useDimension();
   const progress = nextTier ? Math.min((currentPoints / nextTierPoints) * 100, 100) : 100;
 
-  const animatedProgress = useAnimatedStyle(() => ({
-    width: withTiming(`${progress}%`, { duration: 500 }),
-  }));
+  const animatedProgress = useAnimatedStyle(
+    () => ({
+      width: withTiming(`${progress}%`, { duration: 500 }),
+    }),
+    [progress],
+  );
 
   const pointsNeeded = nextTier ? Math.max(0, nextTierPoints - currentPoints) : 0;
 

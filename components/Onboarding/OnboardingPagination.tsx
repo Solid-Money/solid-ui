@@ -13,7 +13,7 @@ function Dot({ isActive }: { isActive: boolean }) {
       width,
       backgroundColor: '#CACACA',
     };
-  });
+  }, [isActive]);
 
   return (
     <Animated.View
