@@ -1,37 +1,25 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, MapPin, ShieldAlert } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { ArrowLeft, ShieldAlert } from 'lucide-react-native';
 
-import CountryFlagImage from '@/components/CountryFlagImage';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { COUNTRIES } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { openIntercom } from '@/lib/intercom';
 
 /**
- * Country Verification Required Screen
+ * Verification Failed Screen
  *
- * Shown when device intelligence detects a mismatch between
- * the user's claimed country and their detected location.
+ * Shown when device intelligence detects an issue during verification.
  *
- * NOTE: We intentionally show a generic message without revealing
- * the specific reason (VPN, spoofing, etc.) to avoid helping
- * fraudsters bypass detection.
+ * SECURITY NOTE: We intentionally show a generic message without revealing
+ * the specific reason (VPN, location spoofing, device tampering, etc.)
+ * to avoid helping fraudsters identify and bypass our detection methods.
  */
 export default function CountryVerificationRequired() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    claimedCountry: string;
-    detectedCountry?: string;
-  }>();
-
-  const claimedCountry = COUNTRIES.find(c => c.code === params.claimedCountry);
-  const detectedCountry = params.detectedCountry
-    ? COUNTRIES.find(c => c.code === params.detectedCountry)
-    : null;
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -73,59 +61,14 @@ export default function CountryVerificationRequired() {
 
             {/* Title */}
             <Text className="mb-4 text-center text-2xl font-bold text-white">
-              Unable to Verify Location
+              Verification Failed
             </Text>
 
-            {/* Explanation - Generic message */}
+            {/* Explanation - Intentionally generic to not help fraudsters */}
             <Text className="mb-6 text-center leading-6 text-[#ACACAC]">
-              We couldn&apos;t verify that you&apos;re located in the country you selected. This
-              verification helps us comply with financial regulations.
+              We couldn&apos;t complete verification at this time. This check helps us comply with
+              financial regulations and protect your account.
             </Text>
-
-            {/* Country Comparison - Only show if we have detected country */}
-            {detectedCountry && (
-              <View className="mb-6 w-full rounded-xl bg-[#2A2A2A] p-4">
-                <View className="flex-row items-center justify-between">
-                  {/* Claimed Country */}
-                  <View className="flex-1 items-center">
-                    <Text className="mb-2 text-xs text-white/60">Selected</Text>
-                    {claimedCountry ? (
-                      <>
-                        <CountryFlagImage
-                          isoCode={claimedCountry.code}
-                          size={48}
-                          countryName={claimedCountry.name}
-                        />
-                        <Text className="mt-2 text-center text-sm text-white">
-                          {claimedCountry.name}
-                        </Text>
-                      </>
-                    ) : (
-                      <Text className="text-white">{params.claimedCountry || 'Unknown'}</Text>
-                    )}
-                  </View>
-
-                  {/* Arrow/Separator */}
-                  <View className="mx-4 items-center">
-                    <MapPin size={24} color="#FF6B6B" />
-                    <Text className="mt-1 text-xs text-[#FF6B6B]">≠</Text>
-                  </View>
-
-                  {/* Detected Country */}
-                  <View className="flex-1 items-center">
-                    <Text className="mb-2 text-xs text-white/60">Detected</Text>
-                    <CountryFlagImage
-                      isoCode={detectedCountry.code}
-                      size={48}
-                      countryName={detectedCountry.name}
-                    />
-                    <Text className="mt-2 text-center text-sm text-white">
-                      {detectedCountry.name}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
 
             {/* Instructions */}
             <Text className="mb-6 text-center text-sm leading-5 text-white/70">
