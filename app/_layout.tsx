@@ -32,6 +32,7 @@ import { WagmiProvider } from 'wagmi';
 
 import DeferredModalProviders from '@/components/DeferredModalProviders';
 import AppErrorBoundary from '@/components/ErrorBoundary';
+import { FingerprintProvider } from '@/components/FingerprintProvider';
 import Intercom from '@/components/Intercom';
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
@@ -267,114 +268,116 @@ export default Sentry.wrap(function RootLayout() {
 
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
-      <TurnkeyProvider>
-        <LazyThirdwebProvider>
-          <WagmiProvider config={config}>
-            <QueryClientProvider client={queryClient}>
-              <ApolloProvider client={getInfoClient()}>
-                <Intercom>
-                  <GestureHandlerRootView>
-                    <BottomSheetModalProvider>
-                      {Platform.OS === 'web' && (
-                        <Head>
-                          <title>Solid - The Savings Super-App</title>
-                        </Head>
-                      )}
-                      <Stack
-                        screenOptions={{
-                          contentStyle: {
-                            backgroundColor: '#000',
-                          },
-                        }}
-                      >
-                        <Stack.Screen
-                          name="(protected)"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                        <Stack.Screen
-                          name="overview"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                        <Stack.Screen
-                          name="welcome"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                        <Stack.Screen
-                          name="notifications"
-                          options={{
-                            animation: 'none',
-                            title: 'Turn on notifications',
-                            headerStyle: {
+      <FingerprintProvider>
+        <TurnkeyProvider>
+          <LazyThirdwebProvider>
+            <WagmiProvider config={config}>
+              <QueryClientProvider client={queryClient}>
+                <ApolloProvider client={getInfoClient()}>
+                  <Intercom>
+                    <GestureHandlerRootView>
+                      <BottomSheetModalProvider>
+                        {Platform.OS === 'web' && (
+                          <Head>
+                            <title>Solid - The Savings Super-App</title>
+                          </Head>
+                        )}
+                        <Stack
+                          screenOptions={{
+                            contentStyle: {
                               backgroundColor: '#000',
                             },
-                            headerTintColor: '#fff',
-                            headerTitleStyle: {
-                              fontSize: 20,
-                              fontWeight: 'bold',
-                            },
-                            headerLeft: () => (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onPress={() => router.back()}
-                                className="mr-4"
-                              >
-                                <ChevronLeft size={28} color="white" />
-                              </Button>
-                            ),
-                            headerTitleAlign: 'center',
                           }}
-                        />
-                        <Stack.Screen
-                          name="passkey-not-supported"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                        <Stack.Screen
-                          name="onboarding"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                        <Stack.Screen
-                          name="signup"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                        <Stack.Screen
-                          name="recovery"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                      </Stack>
-                      <PortalHost />
-                      <DeferredModalProviders />
-                      {hasSelectedUser && <WhatsNewWrapper />}
-                    </BottomSheetModalProvider>
-                  </GestureHandlerRootView>
-                </Intercom>
-              </ApolloProvider>
-            </QueryClientProvider>
-          </WagmiProvider>
-        </LazyThirdwebProvider>
-        <Toast {...toastProps} />
-      </TurnkeyProvider>
+                        >
+                          <Stack.Screen
+                            name="(protected)"
+                            options={{
+                              headerShown: false,
+                              animation: 'none',
+                            }}
+                          />
+                          <Stack.Screen
+                            name="overview"
+                            options={{
+                              headerShown: false,
+                              animation: 'none',
+                            }}
+                          />
+                          <Stack.Screen
+                            name="welcome"
+                            options={{
+                              headerShown: false,
+                              animation: 'none',
+                            }}
+                          />
+                          <Stack.Screen
+                            name="notifications"
+                            options={{
+                              animation: 'none',
+                              title: 'Turn on notifications',
+                              headerStyle: {
+                                backgroundColor: '#000',
+                              },
+                              headerTintColor: '#fff',
+                              headerTitleStyle: {
+                                fontSize: 20,
+                                fontWeight: 'bold',
+                              },
+                              headerLeft: () => (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onPress={() => router.back()}
+                                  className="mr-4"
+                                >
+                                  <ChevronLeft size={28} color="white" />
+                                </Button>
+                              ),
+                              headerTitleAlign: 'center',
+                            }}
+                          />
+                          <Stack.Screen
+                            name="passkey-not-supported"
+                            options={{
+                              headerShown: false,
+                              animation: 'none',
+                            }}
+                          />
+                          <Stack.Screen
+                            name="onboarding"
+                            options={{
+                              headerShown: false,
+                              animation: 'none',
+                            }}
+                          />
+                          <Stack.Screen
+                            name="signup"
+                            options={{
+                              headerShown: false,
+                              animation: 'none',
+                            }}
+                          />
+                          <Stack.Screen
+                            name="recovery"
+                            options={{
+                              headerShown: false,
+                              animation: 'none',
+                            }}
+                          />
+                        </Stack>
+                        <PortalHost />
+                        <DeferredModalProviders />
+                        {hasSelectedUser && <WhatsNewWrapper />}
+                      </BottomSheetModalProvider>
+                    </GestureHandlerRootView>
+                  </Intercom>
+                </ApolloProvider>
+              </QueryClientProvider>
+            </WagmiProvider>
+          </LazyThirdwebProvider>
+          <Toast {...toastProps} />
+        </TurnkeyProvider>
+      </FingerprintProvider>
     </SafeAreaProvider>
   );
 });

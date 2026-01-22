@@ -36,6 +36,7 @@ type Path = {
   OVERVIEW: Href;
   CARD_WAITLIST: Href;
   CARD_WAITLIST_SUCCESS: Href;
+  CARD_COUNTRY_VERIFICATION_REQUIRED: Href;
   RECOVERY: Route;
   ADD_REFERRER: Href;
   QUEST_WALLET: Route;
@@ -77,6 +78,8 @@ export const path: Path = {
   OVERVIEW: '/overview',
   CARD_WAITLIST: '/card-onboard',
   CARD_WAITLIST_SUCCESS: '/card-onboard/success',
+  // Note: Type assertion needed because Expo Router types are regenerated at dev server start
+  CARD_COUNTRY_VERIFICATION_REQUIRED: '/card-onboard/country-verification-required' as Href,
   RECOVERY: '/recovery',
   ADD_REFERRER: '/add-referrer',
   QUEST_WALLET: '/quest-wallet',

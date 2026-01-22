@@ -31,6 +31,8 @@ import {
   BridgeTransactionRequest,
   CardAccessResponse,
   CardDetailsResponseDto,
+  VerifyCountryRequest,
+  VerifyCountryResponse,
   CardDetailsRevealResponse,
   CardResponse,
   CardStatusResponse,
@@ -608,6 +610,37 @@ export const checkCardAccess = async (countryCode: string): Promise<CardAccessRe
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Verify that the user's detected location matches their claimed country.
+ * Uses Fingerprint.com device intelligence for fraud prevention during card onboarding.
+ *
+ * @param request - Contains visitorId, requestId from Fingerprint SDK, and claimedCountry
+ * @returns Verification result indicating if the user can proceed or needs additional verification
+ */
+export const verifyCountryWithFingerprint = async (
+  request: VerifyCountryRequest,
+): Promise<VerifyCountryResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/fingerprint/verify-country`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        'Content-Type': 'application/json',
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify(request),
     },
   );
 
