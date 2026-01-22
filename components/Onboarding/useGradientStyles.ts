@@ -11,18 +11,15 @@ function useGradientStyle(
   scale: SharedValue<number>,
   targetIndex: number,
 ) {
-  return useAnimatedStyle(
-    () => {
-      'worklet';
-      const s = scale.value;
-      const normalizedProgress = s === 0 ? 0 : progress.value / s;
-      const outputRange = [0, 0, 0, 0];
-      outputRange[targetIndex] = 1;
-      const opacity = interpolate(normalizedProgress, INPUT_RANGE, outputRange, 'clamp');
-      return { opacity };
-    },
-    [targetIndex],
-  );
+  return useAnimatedStyle(() => {
+    'worklet';
+    const s = scale.value;
+    const normalizedProgress = s === 0 ? 0 : progress.value / s;
+    const outputRange = [0, 0, 0, 0];
+    outputRange[targetIndex] = 1;
+    const opacity = interpolate(normalizedProgress, INPUT_RANGE, outputRange, 'clamp');
+    return { opacity };
+  }, [targetIndex]);
 }
 
 /**
