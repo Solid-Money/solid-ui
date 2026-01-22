@@ -649,6 +649,52 @@ export const verifyCountryWithFingerprint = async (
   return response.json();
 };
 
+/**
+ * Context values for fingerprint observation.
+ * Matches FingerprintContext enum in backend.
+ */
+export type FingerprintContext = 'create_card' | 'kyc_start';
+
+export interface ObserveFingerprintRequest {
+  requestId: string;
+  context: FingerprintContext;
+}
+
+export interface ObserveFingerprintResponse {
+  visitorId: string;
+}
+
+/**
+ * Observe and link a device fingerprint to the authenticated user.
+ * This must be called BEFORE card creation to enable duplicate device detection.
+ *
+ * @param request - Contains requestId from Fingerprint SDK and context
+ * @returns The resolved visitorId that was linked to the user
+ */
+export const observeFingerprint = async (
+  request: ObserveFingerprintRequest,
+): Promise<ObserveFingerprintResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/fingerprint/observe`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        'Content-Type': 'application/json',
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const addToCardWaitlist = async (
   email: string,
   countryCode: string,
