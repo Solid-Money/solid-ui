@@ -12,20 +12,20 @@ import { path } from '@/constants/path';
 import { useCountdownTimer } from '@/hooks/useCountdownTimer';
 import { useDimension } from '@/hooks/useDimension';
 import { useHoldingFundsPointsMultiplier } from '@/hooks/useHoldingFundsPointsMultiplier';
-import { usePoints } from '@/hooks/usePoints';
+import { useUserRewards } from '@/hooks/useRewards';
 import { getAsset } from '@/lib/assets';
 import { RewardsType } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
 export default function Points() {
-  const { points, isLoading: isPointsLoading } = usePoints();
+  const { data: points, isLoading: isPointsLoading } = useUserRewards();
   const { multiplier } = useHoldingFundsPointsMultiplier();
   const { isScreenMedium } = useDimension();
-  const countdownTime = useCountdownTimer(points.nextRewardTime);
+  const countdownTime = useCountdownTimer(points?.nextRewardTime || 0);
 
-  const referrer = points.userRefferer;
+  const referrer = points?.userRefferer;
 
-  const depositRewards = points.userRewardsSummary.rewardsByType.find(
+  const depositRewards = points?.userRewardsSummary.rewardsByType.find(
     r => r.type === RewardsType.DEPOSIT,
   );
 
@@ -69,7 +69,7 @@ export default function Points() {
                     className="font-semibold text-rewards"
                     style={{ fontSize: 80, lineHeight: 88 }}
                   >
-                    {formatNumber(points.userRewardsSummary.totalPoints, 0, 0)}
+                    {formatNumber(points?.userRewardsSummary?.totalPoints || 0, 0, 0)}
                   </Text>
                 </View>
               </View>
@@ -87,13 +87,13 @@ export default function Points() {
                     <Text className="text-rewards/70 md:text-lg">From referrals</Text>
                     <View className="flex-row items-end">
                       <Text className="native:leading-[1.2] text-4xl font-semibold text-rewards md:text-4.5xl">
-                        {points.userRewardsSummary.rewardsByType.find(
+                        {points?.userRewardsSummary?.rewardsByType.find(
                           r => r.type === RewardsType.RECURRING_REFERRAL,
                         )?.totalPoints || 0}
                       </Text>
                       <Text className="ml-2 text-base text-rewards/70">
-                        {points.userRewardsSummary.referredUsersCount || 0} referred |{' '}
-                        {points.userRewardsSummary.referredUsersDepositedCount || 0} deposited
+                        {points?.userRewardsSummary?.referredUsersCount || 0} referred |{' '}
+                        {points?.userRewardsSummary?.referredUsersDepositedCount || 0} deposited
                       </Text>
                     </View>
                   </View>
@@ -116,7 +116,7 @@ export default function Points() {
                 <Text className="mt-2 text-3xl font-semibold text-rewards">{countdownTime}</Text>
               </View>
               <Text className="mt-4 text-sm text-rewards/70">
-                Earned yesterday: {formatNumber(points.pointsLast24Hours, 0, 0)} points
+                Earned yesterday: {formatNumber(points?.pointsLast24Hours || 0, 0, 0)} points
               </Text>
             </View>
 

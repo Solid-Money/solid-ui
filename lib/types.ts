@@ -711,21 +711,33 @@ export interface ExchangeRateResponse {
   sell_rate: string;
 }
 
+export interface RewardTypeSummary {
+  type: RewardsType;
+  count: number;
+  totalPoints: number;
+}
+
 export interface Points {
   nextRewardTime: number;
   pointsLast24Hours: number;
   userRewardsSummary: {
     totalPoints: number;
-    rewardsByType: {
-      type: RewardsType;
-      count: number;
-      totalPoints: number;
-    }[];
+    rewardsByType: RewardTypeSummary[];
     referredUsersCount?: number;
     referredUsersDepositedCount?: number;
   };
   userRefferer: string;
-  leaderboardPosition?: number;
+  leaderboardPosition: number;
+  rewardsUserData: {
+    currentTier: RewardsTier;
+    totalPoints: number;
+    nextTierPoints: number;
+    nextTier: RewardsTier | null;
+    savingsAPY: number;
+    cashbackRate: number;
+    cashbackThisMonth: number;
+    maxCashbackMonthly: number;
+  };
 }
 
 export enum RewardsTier {

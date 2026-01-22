@@ -9,17 +9,17 @@ import RewardsDashboard from '@/components/Rewards/RewardsDashboard';
 import TierBenefitsCards from '@/components/Rewards/TierBenefitsCards';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
-import { useRewardsUserData } from '@/hooks/useRewards';
+import { useUserRewards } from '@/hooks/useRewards';
 import { useRewards } from '@/store/useRewardsStore';
 
 export default function Rewards() {
   const { isScreenMedium } = useDimension();
-  const { data: rewardsData, isLoading } = useRewardsUserData();
+  const { data: rewardsData, isLoading } = useUserRewards();
   const { setSelectedTierModalId } = useRewards();
 
   const bannerData = useMemo(() => {
     if (!rewardsData) return [];
-    const { cashbackThisMonth, cashbackRate, maxCashbackMonthly } = rewardsData;
+    const { cashbackThisMonth, cashbackRate, maxCashbackMonthly } = rewardsData.rewardsUserData;
     return [
       <CashbackCard
         key="cashback"
@@ -35,7 +35,7 @@ export default function Rewards() {
     return <PageLayout isLoading={true}>{null}</PageLayout>;
   }
 
-  const { currentTier, totalPoints, nextTier, nextTierPoints } = rewardsData;
+  const { currentTier, totalPoints, nextTier, nextTierPoints } = rewardsData.rewardsUserData;
 
   return (
     <PageLayout isLoading={isLoading}>

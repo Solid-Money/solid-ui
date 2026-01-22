@@ -2,11 +2,13 @@ import { ImageBackground, Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { getTierDisplayName, getTierIcon, TIER_BENEFITS } from '@/constants/rewards';
+import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
+import { useTierBenefits } from '@/hooks/useRewards';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { RewardsTier } from '@/lib/types';
@@ -31,6 +33,31 @@ const RewardsDashboard = ({
   onTierPress,
 }: RewardsDashboardProps) => {
   const { isScreenMedium } = useDimension();
+  const { data: tierBenefitsData } = useTierBenefits();
+  
+  const currentTierBenefits = tierBenefitsData?.find(tier => tier.tier === currentTier);
+
+  const benefits = useMemo(() => {
+    if (!currentTierBenefits) return [];
+
+    return [
+      {
+        icon: 'images/dollar-yellow.png',
+        title: currentTierBenefits.depositBoost.title,
+        description: currentTierBenefits.depositBoost.subtitle || 'On your savings',
+      },
+      {
+        icon: 'images/two-percent-yellow.png',
+        title: currentTierBenefits.cardCashback.title,
+        description: currentTierBenefits.cardCashbackCap.title,
+      },
+      {
+        icon: 'images/rocket-yellow.png',
+        title: 'Free virtual card',
+        description: '200M+ Visa merchants',
+      },
+    ];
+  }, [currentTierBenefits]);
 
   return (
     <View
@@ -129,9 +156,9 @@ const RewardsDashboard = ({
           <Text className="text-lg font-medium text-rewards/70">Your top benefits</Text>
         </View>
         <View className="flex-row flex-wrap items-center justify-between gap-6 md:gap-2">
-          {TIER_BENEFITS[currentTier].map(benefit => (
+          {benefits.map((benefit, index) => (
             <RewardBenefit
-              key={benefit.icon}
+              key={index}
               icon={benefit.icon}
               title={benefit.title}
               description={benefit.description}
