@@ -141,9 +141,7 @@ export default function CardTransactions() {
             {formatCardAmount(transaction.amount)}
           </Text>
           {cashbackInfo && (
-            <Text className="mt-0.5 text-sm font-medium text-[#34C759]">
-              {cashbackInfo.amount}
-            </Text>
+            <Text className="mt-0.5 text-sm font-medium text-[#34C759]">{cashbackInfo.amount}</Text>
           )}
         </View>
       </Pressable>
