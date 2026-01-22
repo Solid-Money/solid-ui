@@ -129,6 +129,8 @@ export default {
           organization: 'fuse-4b',
         },
       ],
+      // Fingerprint.com device intelligence - adds required Maven repo for Android
+      '@fingerprintjs/fingerprintjs-pro-react-native',
     ],
     experiments: {
       typedRoutes: true,
