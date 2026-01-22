@@ -1,13 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import PointsBanner from '@/components/Points/PointsBanner';
 import { useDimension } from '@/hooks/useDimension';
