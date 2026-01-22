@@ -85,6 +85,7 @@ export default function CardTransactions() {
     const color = getColorForTransaction(merchantName);
     const isFirst = isFirstInGroup(groupedTransactions, index);
     const isLast = isLastInGroup(groupedTransactions, index);
+    const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
     return (
       <Pressable
@@ -123,10 +124,14 @@ export default function CardTransactions() {
             <Text className="text-lg font-medium text-white" numberOfLines={1}>
               {merchantName}
             </Text>
-            <View className="mt-0.5 flex-row items-center gap-1">
-              <Diamond />
-              <Text className="text-sm text-[#8E8E93]">Cashback</Text>
-            </View>
+            {cashbackInfo && (
+              <View className="mt-0.5 flex-row items-center gap-1">
+                <Diamond />
+                <Text className="text-sm text-[#8E8E93]">
+                  {cashbackInfo.isPending ? 'Cashback (Pending)' : 'Cashback'}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -135,9 +140,11 @@ export default function CardTransactions() {
           <Text className="text-xl font-semibold text-white">
             {formatCardAmount(transaction.amount)}
           </Text>
-          <Text className="mt-0.5 text-sm font-medium text-[#34C759]">
-            {getCashbackAmount(transaction.id, cashbacks)}
-          </Text>
+          {cashbackInfo && (
+            <Text className="mt-0.5 text-sm font-medium text-[#34C759]">
+              {cashbackInfo.amount}
+            </Text>
+          )}
         </View>
       </Pressable>
     );

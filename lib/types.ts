@@ -630,7 +630,12 @@ export enum ActivityTab {
 
 export enum CashbackStatus {
   Pending = 'Pending',
+  Escrowed = 'Escrowed',
   Paid = 'Paid',
+  DeductedFromDebt = 'DeductedFromDebt',
+  PartiallyRefunded = 'PartiallyRefunded',
+  FullyRefunded = 'FullyRefunded',
+  Canceled = 'Canceled',
   Failed = 'Failed',
   PermanentlyFailed = 'PermanentlyFailed',
 }
@@ -642,6 +647,11 @@ export interface Cashback {
   fuseAmount?: string;
   fuseUsdPrice?: string;
   createdAt: string;
+}
+
+export interface CashbackInfo {
+  amount: string;
+  isPending: boolean;
 }
 
 export interface SourceDepositInstructions {
