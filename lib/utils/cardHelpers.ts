@@ -1,4 +1,4 @@
-import { Cashback } from '@/lib/types';
+import { Cashback, CashbackInfo, CashbackStatus } from '@/lib/types';
 
 /**
  * Get initials from merchant/person name for avatar display
@@ -65,29 +65,50 @@ export const formatCardAmountWithCurrency = (amount: string, currency: string): 
   return `${numAmount >= 0 ? '+' : ''}${numAmount.toFixed(2)} ${currency.toUpperCase()}`;
 };
 
+// Statuses that should display cashback UI
+const VISIBLE_CASHBACK_STATUSES: CashbackStatus[] = [
+  CashbackStatus.Paid,
+  CashbackStatus.Escrowed,
+  CashbackStatus.Pending,
+];
+
+// Statuses that indicate cashback is still pending
+const PENDING_CASHBACK_STATUSES: CashbackStatus[] = [
+  CashbackStatus.Escrowed,
+  CashbackStatus.Pending,
+];
+
 /**
- * Get cashback amount for a transaction
+ * Get cashback info for a transaction
  * @param transactionId - The card transaction ID
  * @param cashbacks - Array of cashback records
- * @returns Formatted cashback amount string
+ * @returns CashbackInfo object with amount and pending status, or null if no valid cashback
  */
 export const getCashbackAmount = (
   transactionId: string,
   cashbacks: Cashback[] | undefined,
-): string => {
-  if (!cashbacks) return '+$0.00';
+): CashbackInfo | null => {
+  if (!cashbacks) return null;
 
   const cashback = cashbacks.find(cb => cb.transactionId === transactionId);
 
-  if (!cashback || cashback.status !== 'Paid' || !cashback.fuseAmount) {
-    return '+$0.00';
+  if (!cashback || !cashback.fuseAmount) {
+    return null;
+  }
+
+  // Only show cashback for Paid, Escrowed, or Pending statuses
+  if (!VISIBLE_CASHBACK_STATUSES.includes(cashback.status)) {
+    return null;
   }
 
   const amount = parseFloat(cashback.fuseAmount);
 
   if (isNaN(amount) || amount <= 0) {
-    return '+$0.00';
+    return null;
   }
 
-  return `+$${amount.toFixed(2)}`;
+  return {
+    amount: `+$${amount.toFixed(2)}`,
+    isPending: PENDING_CASHBACK_STATUSES.includes(cashback.status),
+  };
 };

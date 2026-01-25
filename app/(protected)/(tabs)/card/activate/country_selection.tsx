@@ -11,13 +11,20 @@ import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useFingerprint } from '@/hooks/useFingerprint';
 import { track } from '@/lib/analytics';
-import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
+import {
+  checkCardAccess,
+  getClientIp,
+  getCountryFromIp,
+  verifyCountryWithFingerprint,
+} from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function ActivateCountrySelection() {
   const router = useRouter();
+  const { getVisitorData, isAvailable: isFingerprintAvailable } = useFingerprint();
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -186,7 +193,37 @@ export default function ActivateCountrySelection() {
     if (selectedCountry) {
       setProcessing(true);
       try {
-        // Check card access via backend API
+        // Step 1: Verify location with Fingerprint (if available)
+        // This ensures the user's actual location matches their claimed country
+        if (isFingerprintAvailable) {
+          const visitorData = await getVisitorData();
+
+          if (visitorData) {
+            const verification = await withRefreshToken(() =>
+              verifyCountryWithFingerprint({
+                visitorId: visitorData.visitorId,
+                requestId: visitorData.requestId,
+                claimedCountry: selectedCountry.code,
+              }),
+            );
+
+            // If location mismatch detected, redirect to verification required screen
+            if (verification?.requiresVerification) {
+              router.push({
+                pathname: path.CARD_COUNTRY_VERIFICATION_REQUIRED,
+                params: {
+                  claimedCountry: selectedCountry.code,
+                  detectedCountry: verification.detectedCountry || 'unknown',
+                  blockingReason: verification.blockingReason || '',
+                },
+              } as any);
+              return;
+            }
+          }
+          // If visitor data is null (SDK not configured/error), continue without blocking
+        }
+
+        // Step 2: Check card access via backend API
         const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
 
         if (!accessCheck) throw new Error('Failed to check card access');

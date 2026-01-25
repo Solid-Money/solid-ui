@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
+import { useFingerprint } from '@/hooks/useFingerprint';
 import useUser from '@/hooks/useUser';
 import {
   addToCardWaitlist,
@@ -19,6 +20,7 @@ import {
   checkCardWaitlistToNotifyStatus,
   getClientIp,
   getCountryFromIp,
+  verifyCountryWithFingerprint,
 } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
@@ -26,6 +28,7 @@ import { useCountryStore } from '@/store/useCountryStore';
 export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
+  const { getVisitorData, isAvailable: isFingerprintAvailable } = useFingerprint();
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -244,7 +247,38 @@ export default function CountrySelection() {
     if (selectedCountry) {
       setProcessingWaitlist(true);
       try {
-        // Check card access via backend API
+        // Step 1: Verify location with Fingerprint (if available)
+        // This ensures the user's actual location matches their claimed country
+        if (isFingerprintAvailable) {
+          const visitorData = await getVisitorData();
+
+          if (visitorData) {
+            const verification = await withRefreshToken(() =>
+              verifyCountryWithFingerprint({
+                visitorId: visitorData.visitorId,
+                requestId: visitorData.requestId,
+                claimedCountry: selectedCountry.code,
+              }),
+            );
+
+            // If location mismatch detected, redirect to verification required screen
+            if (verification?.requiresVerification) {
+              // Note: TypeScript type assertion needed because Expo Router types are generated at dev server start
+              router.push({
+                pathname: path.CARD_COUNTRY_VERIFICATION_REQUIRED,
+                params: {
+                  claimedCountry: selectedCountry.code,
+                  detectedCountry: verification.detectedCountry || 'unknown',
+                  blockingReason: verification.blockingReason || '',
+                },
+              } as any);
+              return;
+            }
+          }
+          // If visitor data is null (SDK not configured/error), continue without blocking
+        }
+
+        // Step 2: Check card access via backend API
         const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
 
         if (!accessCheck) throw new Error('Failed to check card access');

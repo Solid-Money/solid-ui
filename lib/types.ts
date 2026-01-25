@@ -29,6 +29,53 @@ export interface CardAccessResponse {
   countryCode: string;
 }
 
+export interface VerifyCountryRequest {
+  visitorId: string;
+  requestId: string;
+  claimedCountry: string;
+}
+
+/**
+ * Fraud signals from Fingerprint.com Smart Signals API.
+ * These signals help detect various fraud vectors like VPNs, location spoofing,
+ * device tampering (Frida), and other suspicious behaviors.
+ */
+export interface FraudSignals {
+  isVpn: boolean;
+  vpnMethods?: {
+    timezoneMismatch?: boolean;
+    publicVPN?: boolean;
+    osMismatch?: boolean;
+  };
+  vpnOriginCountry?: string;
+  isLocationSpoofed: boolean;
+  isFridaDetected: boolean;
+  suspectScore?: number;
+  isJailbroken?: boolean;
+  isRooted?: boolean;
+  isProxy?: boolean;
+  isHighActivity?: boolean;
+  factoryResetTime?: string;
+  isClonedApp?: boolean;
+  isMitmAttack?: boolean;
+}
+
+export interface VerifyCountryResponse {
+  verified: boolean;
+  detectedCountry: string | null;
+  confidence: number;
+  requiresVerification: boolean;
+  reason?: string;
+  /** Detailed fraud signals from Fingerprint.com Smart Signals */
+  fraudSignals?: FraudSignals;
+  /** Specific reason why verification was blocked */
+  blockingReason?:
+    | 'vpn_country_mismatch'
+    | 'location_spoofing'
+    | 'automation_detected'
+    | 'service_unavailable';
+}
+
 export interface CardWaitlistResponse {
   isInWaitlist: boolean;
   email?: string;
@@ -630,7 +677,12 @@ export enum ActivityTab {
 
 export enum CashbackStatus {
   Pending = 'Pending',
+  Escrowed = 'Escrowed',
   Paid = 'Paid',
+  DeductedFromDebt = 'DeductedFromDebt',
+  PartiallyRefunded = 'PartiallyRefunded',
+  FullyRefunded = 'FullyRefunded',
+  Canceled = 'Canceled',
   Failed = 'Failed',
   PermanentlyFailed = 'PermanentlyFailed',
 }
@@ -642,6 +694,11 @@ export interface Cashback {
   fuseAmount?: string;
   fuseUsdPrice?: string;
   createdAt: string;
+}
+
+export interface CashbackInfo {
+  amount: string;
+  isPending: boolean;
 }
 
 export interface SourceDepositInstructions {

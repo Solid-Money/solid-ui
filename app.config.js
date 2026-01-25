@@ -109,6 +109,10 @@ export default {
               -dontwarn com.sun.jna.platform.win32.**
               -dontwarn com.sun.jna.platform.mac.**
               -dontwarn com.sun.jna.platform.unix.**
+
+              # Fingerprint SDK - Google Play Services Location is optional
+              # SDK uses location for enhanced device identification but works without it
+              -dontwarn com.google.android.gms.location.**
             `,
           },
         },
@@ -129,6 +133,8 @@ export default {
           organization: 'fuse-4b',
         },
       ],
+      // Fingerprint.com device intelligence - adds required Maven repo for Android
+      '@fingerprintjs/fingerprintjs-pro-react-native',
     ],
     experiments: {
       typedRoutes: true,
