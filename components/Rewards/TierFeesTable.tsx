@@ -1,47 +1,16 @@
-import { RewardsTier, TierBenefits } from '@/lib/types';
+import { useTierTableData } from '@/hooks/useTierTableData';
+import { TierTableDocument } from '@/lib/types';
 
-import RewardTable, { RewardTableRow } from './RewardTable';
+import RewardTable from './RewardTable';
 
 interface TierFeesTableProps {
-  tierBenefits: TierBenefits[];
+  tierTable: TierTableDocument;
 }
 
-const TierFeesTable = ({ tierBenefits }: TierFeesTableProps) => {
-  const sortedTiers = tierBenefits.sort((a, b) => {
-    const order = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
-    return order.indexOf(a.tier) - order.indexOf(b.tier);
-  });
+const TierFeesTable = ({ tierTable }: TierFeesTableProps) => {
+  const { getTierHeaders, getTableRows } = useTierTableData(tierTable);
 
-  const rows: RewardTableRow[] = [
-    {
-      label: 'Card cashback',
-      subtitle: 'On every purchase',
-      values: sortedTiers.map(tier => tier.cardCashbackCap),
-    },
-    {
-      label: 'Subscription discounts',
-      subtitle: 'For select monthly\nservices',
-      values: sortedTiers.map(tier => tier.subscriptionDiscountCap),
-    },
-    {
-      label: 'Card fees',
-      values: sortedTiers.map(tier => tier.cardFees),
-    },
-    {
-      label: 'Bank deposit',
-      values: sortedTiers.map(tier => tier.bankDeposit),
-    },
-    {
-      label: 'Swaps',
-      values: sortedTiers.map(tier => tier.swapFees),
-    },
-    {
-      label: 'Support',
-      values: sortedTiers.map(tier => tier.support),
-    },
-  ];
-
-  return <RewardTable title="Tier fees & caps" rows={rows} tierBenefits={tierBenefits} />;
+  return <RewardTable title="Tier fees & caps" rows={getTableRows} tierHeaders={getTierHeaders} />;
 };
 
 export default TierFeesTable;
