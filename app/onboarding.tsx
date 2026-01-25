@@ -145,7 +145,9 @@ export default function Onboarding() {
                     className={`rounded-xl ${isSmallScreen ? 'h-12' : 'h-14'}`}
                     onPress={handleCreateAccount}
                   >
-                    <Text className="native:text-lg text-lg font-bold">Create account</Text>
+                    <Text className="native:text-lg native:-mt-1 text-lg font-bold">
+                      Create account
+                    </Text>
                   </Button>
 
                   {/* OR Divider */}
@@ -166,12 +168,12 @@ export default function Onboarding() {
                     {isLoginPending ? (
                       <View className="flex-row items-center">
                         <ActivityIndicator size="small" color="white" />
-                        <Text className="native:text-lg ml-2 text-lg font-bold">
+                        <Text className="native:text-lg native:-mt-1 ml-2 text-lg font-bold">
                           Authenticating...
                         </Text>
                       </View>
                     ) : (
-                      <Text className="native:text-lg text-lg font-bold">Login</Text>
+                      <Text className="native:text-lg native:-mt-1 text-lg font-bold">Login</Text>
                     )}
                   </Button>
 
