@@ -14,7 +14,7 @@ interface RewardTableProps {
     labelCell: TierTableMatrixCell | null;
     valueCells: (TierTableMatrixCell | null)[];
   }[];
-  tierHeaders: TierTableMatrixCell[];
+  tierHeaders: (TierTableMatrixCell | null)[];
   valueTextClassName?: string;
 }
 
@@ -106,31 +106,33 @@ const RewardTable = ({
                 style={{ minHeight: rowMinHeight }}
                 className="flex-row"
               >
-                {tierHeaders.map(headerCell => (
+                {tierHeaders.map((headerCell, colIndex) => (
                   <View
-                    key={headerCell.columnId}
+                    key={headerCell?.columnId || colIndex}
                     style={{ width: dataColumnWidth }}
                     className="p-4"
                   >
-                    <View className="gap-1">
-                      <View className="flex-row items-center gap-2">
-                        <Text className="text-2xl font-semibold text-rewards">
-                          {headerCell.title}
-                        </Text>
-                        {headerCell.image && (
-                          <Image
-                            source={getAsset(headerCell.image as keyof typeof getAsset)}
-                            contentFit="contain"
-                            style={{ width: 18, height: 18 }}
-                          />
+                    {headerCell ? (
+                      <View className="gap-1">
+                        <View className="flex-row items-center gap-2">
+                          <Text className="text-2xl font-semibold text-rewards">
+                            {headerCell.title}
+                          </Text>
+                          {headerCell.image && (
+                            <Image
+                              source={getAsset(headerCell.image as keyof typeof getAsset)}
+                              contentFit="contain"
+                              style={{ width: 18, height: 18 }}
+                            />
+                          )}
+                        </View>
+                        {headerCell.description && (
+                          <Text className="font-medium leading-5 opacity-70 md:text-base">
+                            {headerCell.description}
+                          </Text>
                         )}
                       </View>
-                      {headerCell.description && (
-                        <Text className="font-medium leading-5 opacity-70 md:text-base">
-                          {headerCell.description}
-                        </Text>
-                      )}
-                    </View>
+                    ) : null}
                   </View>
                 ))}
               </View>

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft } from 'lucide-react-native';
 
 import InfoError from '@/assets/images/info-error';
 import PageLayout from '@/components/PageLayout';
@@ -35,7 +35,7 @@ export default function AddReferrer() {
     };
 
     checkReferrer();
-  }, []);
+  }, [queryClient]);
 
   const onSubmit = async () => {
     setLoading(true);

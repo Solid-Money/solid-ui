@@ -27,17 +27,17 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
 
   /**
    * Get tier headers (row 0, columns 1+)
+   * Returns array with same length as structure.dataColumns, with null for missing cells
+   * to ensure alignment with getTableRows.valueCells
    */
-  const getTierHeaders = useMemo((): TierTableMatrixCell[] => {
+  const getTierHeaders = useMemo((): (TierTableMatrixCell | null)[] => {
     if (!tierTable || !structure.headerRow) return [];
 
-    return structure.dataColumns
-      .map((col) => {
-        return tierTable.cells.find(
-          (c) => c.rowId === structure.headerRow!.id && c.columnId === col.id
-        );
-      })
-      .filter((cell): cell is TierTableMatrixCell => cell !== undefined);
+    return structure.dataColumns.map((col) => {
+      return tierTable.cells.find(
+        (c) => c.rowId === structure.headerRow!.id && c.columnId === col.id
+      ) || null;
+    });
   }, [tierTable, structure]);
 
   /**
