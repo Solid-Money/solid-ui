@@ -9,6 +9,7 @@ import CardNavBarIcon from '@/assets/images/card-nav-bar-icon';
 import SavingsNavBarIcon from '@/assets/images/savings-nav-bar-icon';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
+import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 
@@ -27,6 +28,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
         tabBarButton: Platform.OS !== 'web' ? HapticTab : undefined,
+        tabBarBackground: Platform.OS !== 'web' ? TabBarBackground : undefined,
         tabBarLabelStyle: {
           fontSize: 12,
           marginTop: 5,
@@ -37,7 +39,8 @@ export default function TabLayout() {
           paddingTop: 4,
           paddingBottom: 10,
           borderTopWidth: 0,
-          backgroundColor: 'rgba(18, 18, 18, 0.7)',
+          // Native uses TabBarBackground (BlurView + overlay), web uses CSS backdropFilter
+          backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
           borderTopColor: 'rgba(61, 61, 61, 0.0)',
           borderColor: 'rgba(61, 61, 61, 0.0)',
           elevation: 0,

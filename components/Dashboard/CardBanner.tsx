@@ -110,7 +110,7 @@ const CardBanner = () => {
             <Text className="native:text-lg text-lg font-semibold md:text-3xl">
               {bannerContent.title}
             </Text>
-            <Text className="native:text-base max-w-60 font-medium text-muted-foreground">
+            <Text className="native:text-base native:leading-tight native:font-normal max-w-60 font-medium text-muted-foreground">
               {bannerContent.description}
             </Text>
             <Button

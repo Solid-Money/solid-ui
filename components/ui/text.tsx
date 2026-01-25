@@ -41,7 +41,7 @@ const TextClassContext = React.createContext<string | undefined>(undefined);
 // };
 
 const Text = React.forwardRef<TextRef, SlottableTextProps>(
-  ({ className, asChild = false, ...props }, ref) => {
+  ({ className, asChild = false, style, ...props }, ref) => {
     const textClass = React.useContext(TextClassContext);
     const Component = asChild ? Slot.Text : RNText;
     const textClassName = cn('text-foreground web:select-text', textClass, className);
@@ -49,9 +49,13 @@ const Text = React.forwardRef<TextRef, SlottableTextProps>(
     return (
       <Component
         className={textClassName}
-        //style={{
-        //  fontFamily,
-        //}}
+        style={[
+          {
+            textAlignVertical: 'center',
+            includeFontPadding: false,
+          },
+          style,
+        ]}
         ref={ref}
         {...props}
       />
