@@ -1,17 +1,20 @@
+import { useCallback, useEffect, useMemo } from 'react';
+import { useRouter } from 'expo-router';
+import { useShallow } from 'zustand/react/shallow';
+
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
+import { useFingerprint } from '@/hooks/useFingerprint';
 import { track } from '@/lib/analytics';
 import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { CardStatusResponse, KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
-import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 
 // Import helpers
 import { shouldStopKycFlow } from './endorsementHelpers';
+import { observeFingerprintBeforeKyc } from './fingerprintHelpers';
 import {
   checkAndBlockForCountryAccess,
   redirectToCollectUserInfo,
@@ -53,6 +56,9 @@ export function useCardSteps(
       countryDetectionFailed: state.countryDetectionFailed,
     })),
   );
+
+  // Get fingerprint SDK for duplicate device detection
+  const { getVisitorData } = useFingerprint();
 
   // Get customer data with cards endorsement
   const { data: customer } = useCustomer();
@@ -113,6 +119,17 @@ export function useCardSteps(
     // Check country access
     const isBlocked = await checkAndBlockForCountryAccess(countryStore, kycLinkId);
     if (isBlocked) return;
+
+    // Fingerprint observation + duplicate device check (fail fast before KYC)
+    const fingerprintResult = await observeFingerprintBeforeKyc(getVisitorData);
+    if (!fingerprintResult.canProceed) {
+      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+        action: 'blocked',
+        reason: fingerprintResult.reason,
+        kycLinkId,
+      });
+      return;
+    }
 
     // Check latest KYC status
     try {
@@ -177,6 +194,7 @@ export function useCardSteps(
     processingUntil,
     countryStore,
     cardsEndorsement?.status,
+    getVisitorData,
   ]);
 
   // Build steps based on endorsement status

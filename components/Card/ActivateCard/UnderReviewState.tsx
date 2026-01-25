@@ -19,9 +19,7 @@ export function UnderReviewState() {
 
         <Text className="mt-6 text-2xl font-bold text-white">Your card is on its way!</Text>
         <Text className="my-3 text-center text-[#ACACAC]">
-          Thanks for your submission. Your
-          <br />
-          identity is now being verified.
+          Thanks for your submission. Your{'\n'}identity is now being verified.
         </Text>
       </View>
     </View>
