@@ -68,6 +68,8 @@ import {
   SwapTokenResponse,
   SyncActivitiesOptions,
   SyncActivitiesResponse,
+  Attribute,
+  AttributeCategory,
   TierTableCategory,
   TierTableDocument,
   ToCurrency,
@@ -779,6 +781,24 @@ export const fetchTierTable = async (category: TierTableCategory): Promise<TierT
   const jwt = getJWTToken();
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/tier-table?category=${category}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const fetchAttributes = async (category: AttributeCategory): Promise<Attribute[]> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/attributes?category=${category}`,
     {
       method: 'GET',
       headers: {

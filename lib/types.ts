@@ -778,6 +778,21 @@ export enum TierTableCategory {
   FEE = 'fee',
 }
 
+export enum AttributeCategory {
+  EARN = 'earn',
+  FUSE = 'fuse',
+}
+
+export interface Attribute {
+  category: AttributeCategory;
+  value: string[];
+  title: string;
+  description: string;
+  image: string;
+  implemented: boolean;
+  enabled: boolean;
+}
+
 export interface TierTableDocument {
   category: TierTableCategory;
   rows: TierTableRow[];
