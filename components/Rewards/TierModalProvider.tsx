@@ -85,7 +85,7 @@ const TierModalProvider = () => {
             {benefits.map((benefit, index) => (
               <RewardBenefit
                 key={index}
-                icon={benefit.image}
+                icon={benefit.image || 'images/dollar-yellow.png'}
                 title={benefit.title}
                 description={benefit.description}
                 iconSize={48}
