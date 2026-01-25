@@ -1,14 +1,17 @@
+import { useMemo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
 
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
-import { useTierBenefits } from '@/hooks/useRewards';
+import { useTierTable } from '@/hooks/useRewards';
+import { useTierTableData } from '@/hooks/useTierTableData';
+import { getAsset } from '@/lib/assets';
+import { TierTableCategory } from '@/lib/types';
+import { toTitleCase } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
 
 import RewardBenefit from './RewardBenefit';
@@ -26,37 +29,20 @@ const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
  */
 const TierModalProvider = () => {
   const { selectedTierModalId, setSelectedTierModalId } = useRewards();
-  const { data: tierBenefitsData } = useTierBenefits();
+  const { data: tierTable } = useTierTable(TierTableCategory.COMPARE);
+  const { getTierBenefits, getTierInfo } = useTierTableData(tierTable);
 
   const isOpen = selectedTierModalId !== null;
-  const tierBenefits = selectedTierModalId && tierBenefitsData 
-    ? tierBenefitsData.find(tier => tier.tier === selectedTierModalId)
-    : null;
 
   const benefits = useMemo(() => {
-    if (!tierBenefits) return [];
+    if (!selectedTierModalId) return [];
+    return getTierBenefits(selectedTierModalId, 3);
+  }, [getTierBenefits, selectedTierModalId]);
 
-    return [
-      {
-        icon: 'images/dollar-yellow.png',
-        title: tierBenefits.depositBoost.title,
-        description: tierBenefits.depositBoost.subtitle || 'On your savings',
-        iconSize: 48,
-      },
-      {
-        icon: 'images/two-percent-yellow.png',
-        title: tierBenefits.cardCashback.title,
-        description: tierBenefits.cardCashbackCap.title,
-        iconSize: 48,
-      },
-      {
-        icon: 'images/rocket-yellow.png',
-        title: 'Free virtual card',
-        description: '200M+ Visa merchants',
-        iconSize: 48,
-      },
-    ];
-  }, [tierBenefits]);
+  const selectedTierInfo = useMemo(() => {
+    if (!selectedTierModalId) return null;
+    return getTierInfo(selectedTierModalId);
+  }, [getTierInfo, selectedTierModalId]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -80,13 +66,15 @@ const TierModalProvider = () => {
           <View className="items-center gap-2">
             <View className="flex-row items-center gap-2">
               <Text className="text-4.5xl font-semibold text-rewards">
-                {getTierDisplayName(selectedTierModalId)}
+                {selectedTierInfo?.title || toTitleCase(selectedTierModalId)}
               </Text>
-              <Image
-                source={getTierIcon(selectedTierModalId)}
-                contentFit="contain"
-                style={{ width: 24, height: 24 }}
-              />
+              {selectedTierInfo?.image && (
+                <Image
+                  source={getAsset(selectedTierInfo.image as keyof typeof getAsset)}
+                  contentFit="contain"
+                  style={{ width: 24, height: 24 }}
+                />
+              )}
             </View>
           </View>
         )}
@@ -97,10 +85,10 @@ const TierModalProvider = () => {
             {benefits.map((benefit, index) => (
               <RewardBenefit
                 key={index}
-                icon={benefit.icon}
+                icon={benefit.image}
                 title={benefit.title}
                 description={benefit.description}
-                iconSize={benefit.iconSize}
+                iconSize={48}
               />
             ))}
           </View>

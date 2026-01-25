@@ -1,26 +1,26 @@
+import { useMemo } from 'react';
 import { ImageBackground, Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
-import { useTierBenefits } from '@/hooks/useRewards';
 import { useDimension } from '@/hooks/useDimension';
+import { useTierTable } from '@/hooks/useRewards';
+import { useTierTableData } from '@/hooks/useTierTableData';
 import { getAsset } from '@/lib/assets';
-import { RewardsTier } from '@/lib/types';
-import { formatNumber } from '@/lib/utils';
+import { TierTableCategory } from '@/lib/types';
+import { formatNumber, toTitleCase } from '@/lib/utils';
 
 import RewardBenefit from './RewardBenefit';
 import TierProgressBar from './TierProgressBar';
 
 interface RewardsDashboardProps {
-  currentTier: RewardsTier;
+  currentTier: string;
   totalPoints: number;
-  nextTier: RewardsTier | null;
+  nextTier: string | null;
   nextTierPoints: number;
   onTierPress: () => void;
 }
@@ -33,31 +33,16 @@ const RewardsDashboard = ({
   onTierPress,
 }: RewardsDashboardProps) => {
   const { isScreenMedium } = useDimension();
-  const { data: tierBenefitsData } = useTierBenefits();
-  
-  const currentTierBenefits = tierBenefitsData?.find(tier => tier.tier === currentTier);
+  const { data: tierTable } = useTierTable(TierTableCategory.COMPARE);
+  const { getTierBenefits, getTierInfo } = useTierTableData(tierTable);
 
   const benefits = useMemo(() => {
-    if (!currentTierBenefits) return [];
+    return getTierBenefits(currentTier, 3);
+  }, [getTierBenefits, currentTier]);
 
-    return [
-      {
-        icon: 'images/dollar-yellow.png',
-        title: currentTierBenefits.depositBoost.title,
-        description: currentTierBenefits.depositBoost.subtitle || 'On your savings',
-      },
-      {
-        icon: 'images/two-percent-yellow.png',
-        title: currentTierBenefits.cardCashback.title,
-        description: currentTierBenefits.cardCashbackCap.title,
-      },
-      {
-        icon: 'images/rocket-yellow.png',
-        title: 'Free virtual card',
-        description: '200M+ Visa merchants',
-      },
-    ];
-  }, [currentTierBenefits]);
+  const currentTierInfo = useMemo(() => {
+    return getTierInfo(currentTier);
+  }, [getTierInfo, currentTier]);
 
   return (
     <View
@@ -110,13 +95,15 @@ const RewardsDashboard = ({
                 <Text className="text-rewards/70 md:text-lg">Your tier</Text>
                 <View className="flex-row items-center gap-2">
                   <Text className="text-4.5xl font-semibold text-rewards">
-                    {getTierDisplayName(currentTier)}
+                    {currentTierInfo?.title || toTitleCase(currentTier)}
                   </Text>
-                  <Image
-                    source={getTierIcon(currentTier)}
-                    contentFit="contain"
-                    style={{ width: 24, height: 24 }}
-                  />
+                  {currentTierInfo?.image && (
+                    <Image
+                      source={getAsset(currentTierInfo.image as keyof typeof getAsset)}
+                      contentFit="contain"
+                      style={{ width: 24, height: 24 }}
+                    />
+                  )}
                 </View>
               </View>
               <View>
@@ -159,7 +146,7 @@ const RewardsDashboard = ({
           {benefits.map((benefit, index) => (
             <RewardBenefit
               key={index}
-              icon={benefit.icon}
+              icon={benefit.image}
               title={benefit.title}
               description={benefit.description}
             />

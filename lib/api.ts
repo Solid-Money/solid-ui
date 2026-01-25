@@ -60,7 +60,6 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
-  RewardsUserData,
   SearchCoin,
   SourceDepositInstructions,
   StargateQuoteParams,
@@ -69,7 +68,8 @@ import {
   SwapTokenResponse,
   SyncActivitiesOptions,
   SyncActivitiesResponse,
-  TierBenefits,
+  TierTableCategory,
+  TierTableDocument,
   ToCurrency,
   TokenPriceUsd,
   UpdateActivityEvent,
@@ -775,10 +775,10 @@ export const fetchLeaderboardUsers = async (params: {
   return response.json();
 };
 
-export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
+export const fetchTierTable = async (category: TierTableCategory): Promise<TierTableDocument> => {
   const jwt = getJWTToken();
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/tier-benefits`,
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/tier-table?category=${category}`,
     {
       method: 'GET',
       headers: {

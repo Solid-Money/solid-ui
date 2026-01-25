@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { secondsToMilliseconds } from 'date-fns';
 
-import { fetchPoints, fetchTierBenefits } from '@/lib/api';
+import { fetchPoints, fetchTierTable } from '@/lib/api';
+import { TierTableCategory } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 const REWARDS = 'rewards';
@@ -17,11 +18,11 @@ export const useUserRewards = () => {
   });
 };
 
-export const useTierBenefits = () => {
+export const useTierTable = (category: TierTableCategory) => {
   return useQuery({
-    queryKey: [REWARDS, 'tierBenefits'],
+    queryKey: [REWARDS, 'tierTable', category],
     queryFn: async () => {
-      return await withRefreshToken(() => fetchTierBenefits());
+      return await withRefreshToken(() => fetchTierTable(category));
     },
     staleTime: secondsToMilliseconds(60),
   });
