@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react-native';
 
 import InfoError from '@/assets/images/info-error';
@@ -11,6 +12,7 @@ import { path } from '@/constants/path';
 import { addReferrer, fetchPoints } from '@/lib/api';
 
 export default function AddReferrer() {
+  const queryClient = useQueryClient();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,6 +23,7 @@ export default function AddReferrer() {
     const checkReferrer = async () => {
       try {
         const points = await fetchPoints();
+        queryClient.setQueryData(['rewards', 'user'], points);
         if (points.userRefferer) {
           setHasReferrer(true);
         }
@@ -32,7 +35,7 @@ export default function AddReferrer() {
     };
 
     checkReferrer();
-  }, []);
+  }, [queryClient]);
 
   const onSubmit = async () => {
     setLoading(true);
