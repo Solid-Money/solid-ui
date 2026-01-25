@@ -223,6 +223,9 @@ export const TRACKING_EVENTS = {
   KYC_LINK_CANCELLED: 'kyc_link_cancelled',
   KYC_LINK_ERROR: 'kyc_link_error',
 
+  // Fingerprint Events
+  FINGERPRINT_OBSERVED_BEFORE_KYC: 'fingerprint_observed_before_kyc',
+
   CARD_ACTIVATION_STARTED: 'card_activation_started',
   CARD_ACTIVATION_SUCCEEDED: 'card_activation_succeeded',
   CARD_ACTIVATION_FAILED: 'card_activation_failed',
