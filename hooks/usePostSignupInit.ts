@@ -93,7 +93,9 @@ export const usePostSignupInit = (user: User | undefined) => {
           // 3. Fetch points (non-blocking)
           (async () => {
             try {
-              await withRefreshToken(() => fetchPoints());
+              const points = await withRefreshToken(() => fetchPoints());
+              // Populate React Query cache so useUserRewards() doesn't need to re-fetch
+              queryClient.setQueryData(['rewards', 'user'], points);
             } catch (error) {
               Sentry.captureException(error, {
                 tags: {

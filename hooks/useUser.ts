@@ -333,7 +333,8 @@ const useUser = (): UseUserReturn => {
 
       // Fetch points after successful login
       try {
-        await withRefreshToken(() => fetchPoints());
+        const points = await withRefreshToken(() => fetchPoints());
+        queryClient.setQueryData(['rewards', 'user'], points);
       } catch (error) {
         console.warn('Failed to fetch points:', error);
         Sentry.captureException(new Error('Error fetching points'), {
