@@ -28,10 +28,10 @@ import { useActivityStore } from '@/store/useActivityStore';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useBalanceStore } from '@/store/useBalanceStore';
 import { useKycStore } from '@/store/useKycStore';
+import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import { fetchIsDeposited } from './useAnalytics';
-import { fetchPoints } from '@/lib/api';
 
 interface UseUserReturn {
   user: User | undefined;
@@ -333,8 +333,8 @@ const useUser = (): UseUserReturn => {
 
       // Fetch points after successful login
       try {
-        const points = await withRefreshToken(() => fetchPoints());
-        queryClient.setQueryData(['rewards', 'user'], points);
+        const { fetchPoints } = usePointsStore.getState();
+        await fetchPoints();
       } catch (error) {
         console.warn('Failed to fetch points:', error);
         Sentry.captureException(new Error('Error fetching points'), {

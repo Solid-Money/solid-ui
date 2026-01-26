@@ -4,6 +4,7 @@ import axios, { AxiosRequestHeaders } from 'axios';
 import { fuse } from 'viem/chains';
 
 import { explorerUrls } from '@/constants/explorers';
+import { MOCK_REWARDS_USER_DATA, MOCK_TIER_BENEFITS } from '@/constants/rewards';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -63,6 +64,7 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
+  RewardsUserData,
   SearchCoin,
   SourceDepositInstructions,
   StargateQuoteParams,
@@ -71,8 +73,7 @@ import {
   SwapTokenResponse,
   SyncActivitiesOptions,
   SyncActivitiesResponse,
-  TierTableCategory,
-  TierTableDocument,
+  TierBenefits,
   ToCurrency,
   TokenPriceUsd,
   UpdateActivityEvent,
@@ -863,10 +864,14 @@ export const fetchLeaderboardUsers = async (params: {
   return response.json();
 };
 
-export const fetchTierTable = async (category: TierTableCategory): Promise<TierTableDocument> => {
+export const mockFetchRewardsUserData = async (): Promise<RewardsUserData> => {
+  return Promise.resolve(MOCK_REWARDS_USER_DATA);
+};
+
+export const fetchRewardsUserData = async (): Promise<RewardsUserData> => {
   const jwt = getJWTToken();
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/tier-table?category=${category}`,
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/user-data`,
     {
       method: 'GET',
       headers: {
@@ -881,10 +886,14 @@ export const fetchTierTable = async (category: TierTableCategory): Promise<TierT
   return response.json();
 };
 
-export const fetchAttributes = async (category: AttributeCategory): Promise<Attribute[]> => {
+export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
+  return Promise.resolve(MOCK_TIER_BENEFITS);
+};
+
+export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
   const jwt = getJWTToken();
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/attributes?category=${category}`,
+    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/tier-benefits`,
     {
       method: 'GET',
       headers: {

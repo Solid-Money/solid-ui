@@ -1,38 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
 import { secondsToMilliseconds } from 'date-fns';
 
-import { fetchAttributes, fetchPoints, fetchTierTable } from '@/lib/api';
-import { AttributeCategory, TierTableCategory } from '@/lib/types';
+import { mockFetchRewardsUserData, mockFetchTierBenefits } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 
 const REWARDS = 'rewards';
 
-export const useUserRewards = () => {
+export const useRewardsUserData = () => {
   return useQuery({
-    queryKey: [REWARDS, 'user'],
+    queryKey: [REWARDS, 'userData'],
     queryFn: async () => {
-      return await withRefreshToken(() => fetchPoints());
+      return await withRefreshToken(() => mockFetchRewardsUserData());
     },
     staleTime: secondsToMilliseconds(30),
     gcTime: secondsToMilliseconds(300),
   });
 };
 
-export const useTierTable = (category: TierTableCategory) => {
+export const useTierBenefits = () => {
   return useQuery({
-    queryKey: [REWARDS, 'tierTable', category],
+    queryKey: [REWARDS, 'tierBenefits'],
     queryFn: async () => {
-      return await withRefreshToken(() => fetchTierTable(category));
-    },
-    staleTime: secondsToMilliseconds(60),
-  });
-};
-
-export const useAttributes = (category: AttributeCategory) => {
-  return useQuery({
-    queryKey: [REWARDS, 'attributes', category],
-    queryFn: async () => {
-      return await withRefreshToken(() => fetchAttributes(category));
+      return await withRefreshToken(() => mockFetchTierBenefits());
     },
     staleTime: secondsToMilliseconds(60),
   });

@@ -2,15 +2,22 @@ import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { useAttributes } from '@/hooks/useRewards';
-import { AttributeCategory } from '@/lib/types';
 
 import RewardBenefit from './RewardBenefit';
 
 const SkipLineSection = () => {
-  const { data: attributes, isLoading } = useAttributes(AttributeCategory.FUSE);
-
-  const skipLineMethods = attributes?.filter(attr => attr.enabled && attr.implemented) || [];
+  const skipLineMethods = [
+    {
+      icon: 'images/dollar-yellow.png',
+      title: 'Unlock Builder',
+      description: '15,000 FUSE',
+    },
+    {
+      icon: 'images/dollar-yellow.png',
+      title: 'Unlock Operator',
+      description: '100,000 FUSE',
+    },
+  ];
 
   return (
     <View className="gap-6 rounded-twice bg-card p-6 md:gap-10 md:p-10">
@@ -20,19 +27,17 @@ const SkipLineSection = () => {
           Stake FUSE or hold it in your vault to immediately unlock higher membership tiers
         </Text>
       </View>
-      {!isLoading && skipLineMethods.length > 0 && (
-        <View className="flex-row flex-wrap gap-6">
-          {skipLineMethods.map((method, index) => (
-            <View key={index} style={{ width: '48%' }}>
-              <RewardBenefit
-                icon={method.image}
-                title={method.title}
-                description={method.description}
-              />
-            </View>
-          ))}
-        </View>
-      )}
+      <View className="flex-row flex-wrap gap-6">
+        {skipLineMethods.map((method, index) => (
+          <View key={index} style={{ width: '48%' }}>
+            <RewardBenefit
+              icon={method.icon}
+              title={method.title}
+              description={method.description}
+            />
+          </View>
+        ))}
+      </View>
       <View className="flex-row gap-4">
         <Button
           variant="rewards"
