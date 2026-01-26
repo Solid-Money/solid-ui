@@ -19,7 +19,12 @@ const CashbackCard = ({
 }: CashbackCardProps) => {
   const { isScreenMedium } = useDimension();
   const progress = maxCashbackMonthly > 0 ? (cashbackThisMonth / maxCashbackMonthly) * 100 : 0;
-  const remaining = Math.max(0, maxCashbackMonthly - cashbackThisMonth);
+
+  // Calculate remaining spending needed to hit the cashback cap
+  // Formula: (cap - earned) * 100 / percentage
+  // e.g., ($20 - $9) * 100 / 2 = $550 more spending needed
+  const remainingCashback = Math.max(0, maxCashbackMonthly - cashbackThisMonth);
+  const remainingSpend = cashbackRate > 0 ? (remainingCashback * 100) / cashbackRate : 0;
 
   return (
     <View className="flex-1 justify-between overflow-hidden rounded-twice bg-card p-6">
@@ -45,7 +50,7 @@ const CashbackCard = ({
         {maxCashbackMonthly > 0 && (
           <View className="gap-4">
             <Text className="text-base font-medium opacity-70">
-              Spend ${formatNumber(remaining, 0, 0)} more for max cashback this month
+              Spend ${formatNumber(remainingSpend, 0, 0)} more for max cashback this month
             </Text>
             <View className="h-2.5 w-full overflow-hidden rounded-full bg-white/10">
               <View className="h-full bg-brand" style={{ width: `${Math.min(progress, 100)}%` }} />

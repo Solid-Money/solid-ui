@@ -74,6 +74,7 @@ import {
   SyncActivitiesOptions,
   SyncActivitiesResponse,
   TierBenefits,
+  FullRewardsConfig,
   ToCurrency,
   TokenPriceUsd,
   UpdateActivityEvent,
@@ -871,7 +872,7 @@ export const mockFetchRewardsUserData = async (): Promise<RewardsUserData> => {
 export const fetchRewardsUserData = async (): Promise<RewardsUserData> => {
   const jwt = getJWTToken();
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/user-data`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/user-data`,
     {
       method: 'GET',
       headers: {
@@ -891,15 +892,29 @@ export const mockFetchTierBenefits = async (): Promise<TierBenefits[]> => {
 };
 
 export const fetchTierBenefits = async (): Promise<TierBenefits[]> => {
-  const jwt = getJWTToken();
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL}/rewards/v1/tier-benefits`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards/tier-benefits`,
     {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const fetchRewardsConfig = async (): Promise<FullRewardsConfig> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/rewards-config`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
       },
       credentials: 'include',
     },

@@ -796,7 +796,6 @@ export interface RewardsUserData {
   totalPoints: number;
   nextTierPoints: number;
   nextTier: RewardsTier | null;
-  savingsAPY: number;
   cashbackRate: number;
   cashbackThisMonth: number;
   maxCashbackMonthly: number;
@@ -825,6 +824,69 @@ export interface TierBenefitItem {
   icon: string;
   title: string;
   description: string;
+}
+
+// Rewards Config Types (from backend)
+export interface TierThresholds {
+  tier1: { min: number; max: number };
+  tier2: { min: number; max: number };
+  tier3: { min: number };
+}
+
+export interface TierCashbackConfig {
+  percentage: number;
+  monthlyCap: number;
+}
+
+export interface TierSubscriptionDiscountConfig {
+  percentage: number;
+  serviceLimit: number;
+}
+
+export interface CashbackConfig {
+  enabled: boolean;
+  settlementDays: number;
+  tier1: TierCashbackConfig;
+  tier2: TierCashbackConfig;
+  tier3: TierCashbackConfig;
+}
+
+export interface SubscriptionDiscountConfig {
+  enabled: boolean;
+  eligibleServices: string[];
+  tier1: TierSubscriptionDiscountConfig;
+  tier2: TierSubscriptionDiscountConfig;
+  tier3: TierSubscriptionDiscountConfig;
+}
+
+export interface FuseStakingConfig {
+  tier2Amount: number;
+  tier3Amount: number;
+}
+
+export interface ReferralConfig {
+  recurringEnabled: boolean;
+  boostEnabled: boolean;
+  recurringPercentage: number;
+  boostPercentage: number;
+}
+
+export interface PointsEarningConfig {
+  cardSpendEnabled: boolean;
+  swapEnabled: boolean;
+  holdingFundsEnabled: boolean;
+  cardSpendPointsPerDollar: number;
+  swapPointsPerDollar: number;
+  holdingFundsMultiplier: number;
+}
+
+export interface FullRewardsConfig {
+  tiers: TierThresholds;
+  points: PointsEarningConfig;
+  cashback: CashbackConfig;
+  subscriptionDiscount: SubscriptionDiscountConfig;
+  fuseStaking: FuseStakingConfig;
+  referral: ReferralConfig;
 }
 
 export enum LifiOrder {
