@@ -4,18 +4,16 @@ import { Image } from 'expo-image';
 import { ChevronRightIcon } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
+import { getTierIcon } from '@/constants/rewards';
 import { useDimension } from '@/hooks/useDimension';
-import { useTierTable } from '@/hooks/useRewards';
-import { useTierTableData } from '@/hooks/useTierTableData';
-import { getAsset } from '@/lib/assets';
-import { TierTableCategory } from '@/lib/types';
+import { RewardsTier } from '@/lib/types';
 import { formatNumber, toTitleCase } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
 
 interface TierProgressBarProps {
-  currentTier: string;
+  currentTier: RewardsTier;
   currentPoints: number;
-  nextTier: string | null;
+  nextTier: RewardsTier | null;
   nextTierPoints: number;
 }
 
@@ -27,11 +25,7 @@ const TierProgressBar = ({
 }: TierProgressBarProps) => {
   const { setSelectedTierModalId } = useRewards();
   const { isScreenMedium } = useDimension();
-  const { data: tierTable } = useTierTable(TierTableCategory.COMPARE);
-  const { getTierInfo } = useTierTableData(tierTable);
   const progress = nextTier ? Math.min((currentPoints / nextTierPoints) * 100, 100) : 100;
-
-  const nextTierInfo = nextTier ? getTierInfo(nextTier) : null;
 
   const animatedProgress = useAnimatedStyle(
     () => ({
@@ -56,13 +50,11 @@ const TierProgressBar = ({
             <View className="flex-row items-center gap-1">
               <Text className="text-base">{formatNumber(pointsNeeded, 0, 0)} more points to</Text>
               <Text className="text-base text-rewards/70">{toTitleCase(nextTier)}</Text>
-              {nextTierInfo?.image && (
-                <Image
-                  source={getAsset(nextTierInfo.image as keyof typeof getAsset)}
-                  contentFit="contain"
-                  style={{ width: 16, height: 16 }}
-                />
-              )}
+              <Image
+                source={getTierIcon(nextTier)}
+                contentFit="contain"
+                style={{ width: 16, height: 16 }}
+              />
             </View>
 
             {isScreenMedium && (
