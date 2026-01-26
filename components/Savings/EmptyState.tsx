@@ -26,7 +26,7 @@ export default function SavingsEmptyState() {
           {isScreenMedium ? (
             <View className="flex-row items-center justify-between">
               <Text className="text-5xl font-semibold">Savings</Text>
-              <DashboardHeaderButtons />
+              <DashboardHeaderButtons hideSend />
             </View>
           ) : (
             <Text className="text-3xl font-semibold">Savings</Text>
@@ -82,7 +82,7 @@ export default function SavingsEmptyState() {
             </View>
           </View>
 
-          {!isScreenMedium && <SavingsHeaderButtonsMobile />}
+          {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
         </View>
         <FAQs faqs={faqs} className="md:mt-20" />
       </View>

@@ -82,7 +82,7 @@ export default function Savings() {
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
             <DashboardTitle />
-            <DashboardHeaderButtons />
+            <DashboardHeaderButtons hideSend />
           </View>
         ) : (
           <Text className="text-3xl font-semibold">Savings</Text>
@@ -235,7 +235,7 @@ export default function Savings() {
           </View>
         </View>
 
-        {!isScreenMedium && <SavingsHeaderButtonsMobile />}
+        {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
       </View>
       <View className="mx-auto w-full max-w-7xl px-4 pb-24">
         <FAQs faqs={faqs} className="md:mt-20" />
