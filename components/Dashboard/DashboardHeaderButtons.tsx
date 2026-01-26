@@ -20,9 +20,10 @@ type DashboardHeaderButtonsProps = {
   withdraw?: {
     isWithdraw: boolean;
   };
+  hideWithdraw?: boolean;
 };
 
-const DashboardHeaderButtons = ({ deposit, withdraw }: DashboardHeaderButtonsProps) => {
+const DashboardHeaderButtons = ({ deposit, withdraw, hideWithdraw }: DashboardHeaderButtonsProps) => {
   const withdrawTrigger = (
     <Button
       variant="secondary"
@@ -43,10 +44,14 @@ const DashboardHeaderButtons = ({ deposit, withdraw }: DashboardHeaderButtonsPro
 
   return (
     <View className="flex-row gap-2">
-      {withdraw?.isWithdraw ? (
-        <WithdrawModal trigger={withdrawTrigger} />
-      ) : (
-        <UnstakeModal trigger={withdrawTrigger} />
+      {!hideWithdraw && (
+        <>
+          {withdraw?.isWithdraw ? (
+            <WithdrawModal trigger={withdrawTrigger} />
+          ) : (
+            <UnstakeModal trigger={withdrawTrigger} />
+          )}
+        </>
       )}
 
       <SwapModal
