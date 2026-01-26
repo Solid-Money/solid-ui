@@ -171,7 +171,7 @@ const SendSearch: React.FC = () => {
                             onPress={() => handleAddToAddressBook(walletAddress)}
                           >
                             <Plus size={16} color="white" />
-                            <Text className="text-white">Address book</Text>
+                            <Text className="text-white">Add to contacts</Text>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -195,7 +195,7 @@ const SendSearch: React.FC = () => {
                 <Text className="text-center text-muted-foreground">
                   {searchQuery.trim()
                     ? 'No matches found'
-                    : 'No address book entries or recent sends'}
+                    : 'No contacts or recent sends'}
                 </Text>
               </View>
             );

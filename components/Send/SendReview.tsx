@@ -94,7 +94,7 @@ const SendReview: React.FC = () => {
         await handleAddContact();
         setName(nameValue?.trim() || '');
       } catch (error) {
-        console.error('Failed to add to address book:', error);
+        console.error('Failed to add to contacts:', error);
       }
     }
 
