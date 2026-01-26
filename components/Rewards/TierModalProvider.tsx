@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 
@@ -6,13 +6,61 @@ import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { getTierDisplayName, getTierIcon, TIER_BENEFITS } from '@/constants/rewards';
+import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
+import { useTierBenefits } from '@/hooks/useRewards';
 import { useRewards } from '@/store/useRewardsStore';
+import { TierBenefits } from '@/lib/types';
 
 import RewardBenefit from './RewardBenefit';
 
 const MODAL_STATE: ModalState = { name: 'tier-benefits', number: 1 };
 const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
+
+// Extended type to support both icon images and text-based icons
+interface ModalBenefitItem {
+  icon?: string;
+  iconText?: string;
+  title: string;
+  description: string;
+}
+
+/**
+ * Transform tier benefits from API format to display format
+ */
+const transformTierBenefitsToItems = (
+  tierBenefits: TierBenefits | undefined,
+): ModalBenefitItem[] => {
+  if (!tierBenefits) {
+    return [];
+  }
+
+  const items: ModalBenefitItem[] = [];
+
+  // APY benefit - use depositBoost title from API
+  items.push({
+    icon: 'images/dollar-yellow.png',
+    title: tierBenefits.depositBoost.title,
+    description: 'On your savings',
+  });
+
+  // Cashback benefit - use dynamic percentage as icon text
+  const cashbackPercent = tierBenefits.cardCashback.title; // e.g., "2%" or "3%"
+
+  items.push({
+    iconText: cashbackPercent,
+    title: `${cashbackPercent} Cashback`,
+    description: 'for every purchase',
+  });
+
+  // Virtual card benefit
+  items.push({
+    icon: 'images/rocket-yellow.png',
+    title: 'Free virtual card',
+    description: '200M+ Visa merchants',
+  });
+
+  return items;
+};
 
 /**
  * Global tier modal provider that renders a single ResponsiveModal instance.
@@ -24,9 +72,15 @@ const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
  */
 const TierModalProvider = () => {
   const { selectedTierModalId, setSelectedTierModalId } = useRewards();
+  const { data: allTierBenefits, isLoading: isLoadingBenefits } = useTierBenefits();
 
   const isOpen = selectedTierModalId !== null;
-  const tierBenefits = selectedTierModalId ? TIER_BENEFITS[selectedTierModalId] : [];
+
+  // Find the selected tier's benefits from the API data
+  const selectedTierBenefits = allTierBenefits?.find(tb => tb.tier === selectedTierModalId);
+
+  // Transform API data to display format
+  const tierBenefitItems = transformTierBenefitsToItems(selectedTierBenefits);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -63,17 +117,24 @@ const TierModalProvider = () => {
 
         <View className="gap-6">
           <Text className="text-lg font-medium opacity-70">Your benefits</Text>
-          <View className="flex-row flex-wrap justify-between gap-6 md:pr-10">
-            {tierBenefits.map((benefit, index) => (
-              <RewardBenefit
-                key={index}
-                icon={benefit.icon}
-                title={benefit.title}
-                description={benefit.description}
-                iconSize={48}
-              />
-            ))}
-          </View>
+          {isLoadingBenefits ? (
+            <View className="items-center justify-center py-8">
+              <ActivityIndicator />
+            </View>
+          ) : (
+            <View className="flex-row flex-wrap justify-between gap-6 md:pr-10">
+              {tierBenefitItems.map((benefit, index) => (
+                <RewardBenefit
+                  key={index}
+                  icon={benefit.icon}
+                  iconText={benefit.iconText}
+                  title={benefit.title}
+                  description={benefit.description}
+                  iconSize={48}
+                />
+              ))}
+            </View>
+          )}
         </View>
 
         <Button

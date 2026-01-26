@@ -1,23 +1,41 @@
-import { View } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { useRewardsConfig } from '@/hooks/useRewards';
 
 import RewardBenefit from './RewardBenefit';
 
 const SkipLineSection = () => {
-  const skipLineMethods = [
-    {
-      icon: 'images/dollar-yellow.png',
-      title: 'Unlock Builder',
-      description: '15,000 FUSE',
-    },
-    {
-      icon: 'images/dollar-yellow.png',
-      title: 'Unlock Operator',
-      description: '100,000 FUSE',
-    },
-  ];
+  const { data: config, isLoading } = useRewardsConfig();
+
+  // Format FUSE staking methods based on config
+  const getSkipLineMethods = () => {
+    if (!config) {
+      // Fallback values while loading
+      return [
+        { icon: 'images/dollar-yellow.png', title: 'Unlock Builder', description: 'Loading...' },
+        { icon: 'images/dollar-yellow.png', title: 'Unlock Operator', description: 'Loading...' },
+      ];
+    }
+
+    const { fuseStaking } = config;
+
+    return [
+      {
+        icon: 'images/dollar-yellow.png',
+        title: 'Unlock Builder',
+        description: `${fuseStaking.tier2Amount.toLocaleString()} FUSE`,
+      },
+      {
+        icon: 'images/dollar-yellow.png',
+        title: 'Unlock Operator',
+        description: `${fuseStaking.tier3Amount.toLocaleString()} FUSE`,
+      },
+    ];
+  };
+
+  const skipLineMethods = getSkipLineMethods();
 
   return (
     <View className="gap-6 rounded-twice bg-card p-6 md:gap-10 md:p-10">
@@ -27,17 +45,23 @@ const SkipLineSection = () => {
           Stake FUSE or hold it in your vault to immediately unlock higher membership tiers
         </Text>
       </View>
-      <View className="flex-row flex-wrap gap-6">
-        {skipLineMethods.map((method, index) => (
-          <View key={index} style={{ width: '48%' }}>
-            <RewardBenefit
-              icon={method.icon}
-              title={method.title}
-              description={method.description}
-            />
-          </View>
-        ))}
-      </View>
+      {isLoading ? (
+        <View className="items-center justify-center py-8">
+          <ActivityIndicator />
+        </View>
+      ) : (
+        <View className="flex-row flex-wrap gap-6">
+          {skipLineMethods.map((method, index) => (
+            <View key={index} style={{ width: '48%' }}>
+              <RewardBenefit
+                icon={method.icon}
+                title={method.title}
+                description={method.description}
+              />
+            </View>
+          ))}
+        </View>
+      )}
       <View className="flex-row gap-4">
         <Button
           variant="rewards"

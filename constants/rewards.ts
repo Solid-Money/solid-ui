@@ -26,7 +26,6 @@ export const MOCK_REWARDS_USER_DATA: RewardsUserData = {
   totalPoints: 100,
   nextTierPoints: 1000,
   nextTier: RewardsTier.PRIME,
-  savingsAPY: 11,
   cashbackRate: 2,
   cashbackThisMonth: 9,
   maxCashbackMonthly: 20,
