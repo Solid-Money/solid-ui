@@ -94,7 +94,7 @@ export const useAddressBook = (options?: {
       } else {
         Toast.show({
           type: 'success',
-          text1: 'Added to address book',
+          text1: 'Added to contacts',
           props: {
             badgeText: 'Success',
           },
@@ -105,7 +105,7 @@ export const useAddressBook = (options?: {
     onError: () => {
       Toast.show({
         type: 'error',
-        text1: 'Failed to add to address book',
+        text1: 'Failed to add to contacts',
         props: {
           badgeText: 'Error',
         },

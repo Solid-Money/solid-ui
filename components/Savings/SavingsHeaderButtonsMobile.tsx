@@ -12,7 +12,12 @@ import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 
-const SavingsHeaderButtonsMobile = () => {
+type SavingsHeaderButtonsMobileProps = {
+  hideWithdraw?: boolean;
+  hideSend?: boolean;
+};
+
+const SavingsHeaderButtonsMobile = ({ hideWithdraw, hideSend }: SavingsHeaderButtonsMobileProps = {}) => {
   const withdrawTrigger = (
     <CircleButton
       icon={HomeWithdraw}
@@ -41,15 +46,17 @@ const SavingsHeaderButtonsMobile = () => {
         }
       />
 
-      <UnstakeModal trigger={withdrawTrigger} />
+      {!hideWithdraw && <UnstakeModal trigger={withdrawTrigger} />}
 
       <SwapModal
         trigger={<CircleButton icon={HomeSwap} label="Swap" scale={1} viewBox="0 0 29 28" />}
       />
 
-      <SendModal
-        trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
-      />
+      {!hideSend && (
+        <SendModal
+          trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
+        />
+      )}
     </View>
   );
 };
