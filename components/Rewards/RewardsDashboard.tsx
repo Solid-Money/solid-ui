@@ -6,14 +6,49 @@ import { router } from 'expo-router';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
-import { getTierDisplayName, getTierIcon, TIER_BENEFITS } from '@/constants/rewards';
+import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
 import { useDimension } from '@/hooks/useDimension';
+import { useTierBenefits } from '@/hooks/useRewards';
 import { getAsset } from '@/lib/assets';
-import { RewardsTier } from '@/lib/types';
+import { RewardsTier, TierBenefits } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
 
 import RewardBenefit from './RewardBenefit';
 import TierProgressBar from './TierProgressBar';
+
+// Transform API tier benefits to display items with dynamic icons
+interface DashboardBenefitItem {
+  icon?: string;
+  iconText?: string;
+  title: string;
+  description: string;
+}
+
+const transformTierBenefitsForDashboard = (
+  tierBenefits: TierBenefits | undefined,
+): DashboardBenefitItem[] => {
+  if (!tierBenefits) {
+    return [];
+  }
+
+  return [
+    {
+      icon: 'images/dollar-yellow.png',
+      title: tierBenefits.depositBoost.title,
+      description: 'On your savings',
+    },
+    {
+      iconText: tierBenefits.cardCashback.title, // e.g., "2%", "3%", "5%"
+      title: `${tierBenefits.cardCashback.title} Cashback`,
+      description: 'for every purchase',
+    },
+    {
+      icon: 'images/rocket-yellow.png',
+      title: 'Free virtual card',
+      description: '200M+ Visa merchants',
+    },
+  ];
+};
 
 interface RewardsDashboardProps {
   currentTier: RewardsTier;
@@ -31,6 +66,11 @@ const RewardsDashboard = ({
   onTierPress,
 }: RewardsDashboardProps) => {
   const { isScreenMedium } = useDimension();
+  const { data: allTierBenefits } = useTierBenefits();
+
+  // Get benefits for the current tier from API data
+  const currentTierBenefits = allTierBenefits?.find(tb => tb.tier === currentTier);
+  const dashboardBenefits = transformTierBenefitsForDashboard(currentTierBenefits);
 
   return (
     <View
@@ -129,10 +169,11 @@ const RewardsDashboard = ({
           <Text className="text-lg font-medium text-rewards/70">Your top benefits</Text>
         </View>
         <View className="flex-row flex-wrap items-center justify-between gap-6 md:gap-2">
-          {TIER_BENEFITS[currentTier].map(benefit => (
+          {dashboardBenefits.map((benefit, index) => (
             <RewardBenefit
-              key={benefit.icon}
+              key={index}
               icon={benefit.icon}
+              iconText={benefit.iconText}
               title={benefit.title}
               description={benefit.description}
             />
