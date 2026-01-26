@@ -1,16 +1,13 @@
 import { View } from 'react-native';
 
-import { useTierTable } from '@/hooks/useRewards';
-import { useTierTableData } from '@/hooks/useTierTableData';
-import { getAsset } from '@/lib/assets';
-import { TierTableCategory } from '@/lib/types';
-import { toTitleCase } from '@/lib/utils';
+import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
+import { RewardsTier } from '@/lib/types';
 
 import TierBenefitsCard from './TierBenefitsCard';
 
 interface TierBenefitsCardsProps {
-  currentTier: string;
-  nextTier: string | null;
+  currentTier: RewardsTier;
+  nextTier: RewardsTier | null;
   onCurrentTierPress: () => void;
   onNextTierPress: () => void;
 }
@@ -21,31 +18,19 @@ const TierBenefitsCards = ({
   onCurrentTierPress,
   onNextTierPress,
 }: TierBenefitsCardsProps) => {
-  const { data: tierTable } = useTierTable(TierTableCategory.COMPARE);
-  const { getTierInfo } = useTierTableData(tierTable);
-
-  const currentTierInfo = getTierInfo(currentTier);
-  const nextTierInfo = nextTier ? getTierInfo(nextTier) : null;
-
   return (
     <View className="gap-6 md:flex-row md:gap-10">
       <TierBenefitsCard
-        label={`Your ${currentTierInfo?.title || toTitleCase(currentTier)} tier benefits`}
+        label={`Your ${getTierDisplayName(currentTier)} tier benefits`}
         onPress={onCurrentTierPress}
-        icon={
-          currentTierInfo?.image
-            ? getAsset(currentTierInfo.image as keyof typeof getAsset)
-            : undefined
-        }
+        icon={getTierIcon(currentTier)}
       />
 
       {nextTier && (
         <TierBenefitsCard
-          label={`Next tier: ${nextTierInfo?.title || toTitleCase(nextTier)}`}
+          label={`Next tier: ${getTierDisplayName(nextTier)}`}
           onPress={onNextTierPress}
-          icon={
-            nextTierInfo?.image ? getAsset(nextTierInfo.image as keyof typeof getAsset) : undefined
-          }
+          icon={getTierIcon(nextTier)}
         />
       )}
     </View>

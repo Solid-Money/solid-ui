@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { ImageBackground, Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,20 +6,19 @@ import { router } from 'expo-router';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { getTierDisplayName, getTierIcon, TIER_BENEFITS } from '@/constants/rewards';
 import { useDimension } from '@/hooks/useDimension';
-import { useTierTable } from '@/hooks/useRewards';
-import { useTierTableData } from '@/hooks/useTierTableData';
 import { getAsset } from '@/lib/assets';
-import { TierTableCategory } from '@/lib/types';
-import { formatNumber, toTitleCase } from '@/lib/utils';
+import { RewardsTier } from '@/lib/types';
+import { formatNumber } from '@/lib/utils';
 
 import RewardBenefit from './RewardBenefit';
 import TierProgressBar from './TierProgressBar';
 
 interface RewardsDashboardProps {
-  currentTier: string;
+  currentTier: RewardsTier;
   totalPoints: number;
-  nextTier: string | null;
+  nextTier: RewardsTier | null;
   nextTierPoints: number;
   onTierPress: () => void;
 }
@@ -33,16 +31,6 @@ const RewardsDashboard = ({
   onTierPress,
 }: RewardsDashboardProps) => {
   const { isScreenMedium } = useDimension();
-  const { data: tierTable } = useTierTable(TierTableCategory.COMPARE);
-  const { getTierBenefits, getTierInfo } = useTierTableData(tierTable);
-
-  const benefits = useMemo(() => {
-    return getTierBenefits(currentTier, 3);
-  }, [getTierBenefits, currentTier]);
-
-  const currentTierInfo = useMemo(() => {
-    return getTierInfo(currentTier);
-  }, [getTierInfo, currentTier]);
 
   return (
     <View
@@ -95,15 +83,13 @@ const RewardsDashboard = ({
                 <Text className="text-rewards/70 md:text-lg">Your tier</Text>
                 <View className="flex-row items-center gap-2">
                   <Text className="text-4.5xl font-semibold text-rewards">
-                    {currentTierInfo?.title || toTitleCase(currentTier)}
+                    {getTierDisplayName(currentTier)}
                   </Text>
-                  {currentTierInfo?.image && (
-                    <Image
-                      source={getAsset(currentTierInfo.image as keyof typeof getAsset)}
-                      contentFit="contain"
-                      style={{ width: 24, height: 24 }}
-                    />
-                  )}
+                  <Image
+                    source={getTierIcon(currentTier)}
+                    contentFit="contain"
+                    style={{ width: 24, height: 24 }}
+                  />
                 </View>
               </View>
               <View>
@@ -143,10 +129,10 @@ const RewardsDashboard = ({
           <Text className="text-lg font-medium text-rewards/70">Your top benefits</Text>
         </View>
         <View className="flex-row flex-wrap items-center justify-between gap-6 md:gap-2">
-          {benefits.map((benefit, index) => (
+          {TIER_BENEFITS[currentTier].map(benefit => (
             <RewardBenefit
-              key={index}
-              icon={benefit.image}
+              key={benefit.icon}
+              icon={benefit.icon}
               title={benefit.title}
               description={benefit.description}
             />

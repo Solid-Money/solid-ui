@@ -4,11 +4,11 @@ import { useEffect, useRef } from 'react';
 import { updateSafeAddress } from '@/lib/api';
 import { User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { usePointsStore } from '@/store/usePointsStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchIsDeposited } from './useAnalytics';
 import { useShallow } from 'zustand/react/shallow';
-import { fetchPoints } from '@/lib/api';
 
 /**
  * Hook to handle post-signup/post-login initialization tasks that don't need to block
@@ -93,9 +93,8 @@ export const usePostSignupInit = (user: User | undefined) => {
           // 3. Fetch points (non-blocking)
           (async () => {
             try {
-              const points = await withRefreshToken(() => fetchPoints());
-              // Populate React Query cache so useUserRewards() doesn't need to re-fetch
-              queryClient.setQueryData(['rewards', 'user'], points);
+              const { fetchPoints } = usePointsStore.getState();
+              await fetchPoints();
             } catch (error) {
               Sentry.captureException(error, {
                 tags: {

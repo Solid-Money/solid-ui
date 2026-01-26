@@ -3,18 +3,22 @@ import { ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Text } from '@/components/ui/text';
+import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
-import { TierTableMatrixCell } from '@/lib/types';
+import { RewardsTier, TierBenefit, TierBenefits } from '@/lib/types';
+
+export interface RewardTableRow {
+  label: string;
+  subtitle?: string;
+  values: (TierBenefit | null)[];
+}
 
 interface RewardTableProps {
   title: string;
   headerLabel?: string;
-  rows: {
-    labelCell: TierTableMatrixCell | null;
-    valueCells: (TierTableMatrixCell | null)[];
-  }[];
-  tierHeaders: (TierTableMatrixCell | null)[];
+  rows: RewardTableRow[];
+  tierBenefits: TierBenefits[];
   valueTextClassName?: string;
 }
 
@@ -22,13 +26,18 @@ const RewardTable = ({
   title,
   headerLabel,
   rows,
-  tierHeaders,
+  tierBenefits,
   valueTextClassName = 'text-base font-semibold',
 }: RewardTableProps) => {
   const { isScreenMedium } = useDimension();
   const [rowHeights, setRowHeights] = useState<number[]>([]);
   const [headerHeight, setHeaderHeight] = useState<number>(0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
+
+  const sortedTiers = tierBenefits.sort((a, b) => {
+    const order = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
+    return order.indexOf(a.tier) - order.indexOf(b.tier);
+  });
 
   const rowMinHeight = 80;
   const labelColumnWidth = isScreenMedium ? (containerWidth > 0 ? containerWidth * 0.25 : 0) : 150;
@@ -81,13 +90,9 @@ const RewardTable = ({
                 style={{ height: rowHeights[rowIndex] || rowMinHeight }}
                 className="p-4"
               >
-                <Text className="text-base font-semibold leading-5">
-                  {row.labelCell?.title || ''}
-                </Text>
-                {row.labelCell?.description && (
-                  <Text className="text-xs font-medium opacity-70">
-                    {row.labelCell.description}
-                  </Text>
+                <Text className="text-base font-semibold leading-5">{row.label}</Text>
+                {row.subtitle && (
+                  <Text className="text-xs font-medium opacity-70">{row.subtitle}</Text>
                 )}
               </View>
             ))}
@@ -106,33 +111,27 @@ const RewardTable = ({
                 style={{ minHeight: rowMinHeight }}
                 className="flex-row"
               >
-                {tierHeaders.map((headerCell, colIndex) => (
-                  <View
-                    key={headerCell?.columnId || colIndex}
-                    style={{ width: dataColumnWidth }}
-                    className="p-4"
-                  >
-                    {headerCell ? (
-                      <View className="gap-1">
-                        <View className="flex-row items-center gap-2">
-                          <Text className="text-2xl font-semibold text-rewards">
-                            {headerCell.title}
-                          </Text>
-                          {headerCell.image && (
-                            <Image
-                              source={getAsset(headerCell.image as keyof typeof getAsset)}
-                              contentFit="contain"
-                              style={{ width: 18, height: 18 }}
-                            />
-                          )}
-                        </View>
-                        {headerCell.description && (
-                          <Text className="font-medium leading-5 opacity-70 md:text-base">
-                            {headerCell.description}
-                          </Text>
-                        )}
+                {sortedTiers.map(tier => (
+                  <View key={tier.tier} style={{ width: dataColumnWidth }} className="p-4">
+                    <View className="gap-1">
+                      <View className="flex-row items-center gap-2">
+                        <Text className="text-2xl font-semibold text-rewards">
+                          {getTierDisplayName(tier.tier)}
+                        </Text>
+                        <Image
+                          source={getTierIcon(tier.tier)}
+                          contentFit="contain"
+                          style={{ width: 18, height: 18 }}
+                        />
                       </View>
-                    ) : null}
+                      <Text className="font-medium leading-5 opacity-70 md:text-base">
+                        {tier.tier === RewardsTier.CORE
+                          ? 'All members'
+                          : tier.tier === RewardsTier.PRIME
+                            ? 'Tier unlocked at\n5M Points'
+                            : 'Tier unlocked at\n35M Points'}
+                      </Text>
+                    </View>
                   </View>
                 ))}
               </View>
@@ -145,21 +144,21 @@ const RewardTable = ({
                   style={{ minHeight: rowMinHeight }}
                   className="flex-row"
                 >
-                  {row.valueCells.map((cell, colIndex) => (
+                  {row.values.map((value, colIndex) => (
                     <View key={colIndex} style={{ width: dataColumnWidth }} className="p-4">
-                      {cell ? (
+                      {value ? (
                         <View className="gap-1">
-                          {cell.image && (
+                          {value.image && (
                             <Image
-                              source={getAsset(cell.image as keyof typeof getAsset)}
+                              source={getAsset(value.image as keyof typeof getAsset)}
                               contentFit="contain"
                               style={{ width: 80, height: 30 }}
                             />
                           )}
-                          <Text className={valueTextClassName}>{cell.title}</Text>
-                          {cell.description && (
+                          <Text className={valueTextClassName}>{value.title}</Text>
+                          {value.subtitle && (
                             <Text className="text-sm font-medium leading-4 opacity-70">
-                              {cell.description}
+                              {value.subtitle}
                             </Text>
                           )}
                         </View>

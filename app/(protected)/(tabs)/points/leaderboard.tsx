@@ -8,7 +8,7 @@ import PageLayout from '@/components/PageLayout';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
-import { useUserRewards } from '@/hooks/useRewards';
+import { usePoints } from '@/hooks/usePoints';
 import useUser from '@/hooks/useUser';
 import { fetchLeaderboardUsers } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
@@ -89,7 +89,7 @@ const Row = ({ leaderboardUser, position, isStar, skipAnimation }: RowProps) => 
 
 const Leaderboard = () => {
   const { user } = useUser();
-  const { data: points } = useUserRewards();
+  const { points } = usePoints();
   const { isScreenMedium } = useDimension();
 
   const {
@@ -120,8 +120,8 @@ const Leaderboard = () => {
   const constructedUser: LeaderboardUser = {
     id: user.userId,
     walletAddress: user.walletAddress || user.safeAddress,
-    points: points?.userRewardsSummary?.totalPoints || 0,
-    leaderboardPosition: points?.leaderboardPosition || 0,
+    points: points.userRewardsSummary.totalPoints || 0,
+    leaderboardPosition: points.leaderboardPosition || 0,
   };
 
   const renderItem = ({ item }: { item: LeaderboardUser }) => (
@@ -150,9 +150,9 @@ const Leaderboard = () => {
           <Text className="text-lg font-semibold">Your Ranking</Text>
           <Row
             leaderboardUser={constructedUser}
-            position={points?.leaderboardPosition || 1}
+            position={points.leaderboardPosition || 1}
             isStar={
-              (points?.leaderboardPosition || 0) <= 3 && (points?.leaderboardPosition || 0) >= 1
+              (points.leaderboardPosition || 0) <= 3 && (points.leaderboardPosition || 0) >= 1
             }
             skipAnimation
           />
