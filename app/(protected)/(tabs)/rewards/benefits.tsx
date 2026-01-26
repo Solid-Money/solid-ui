@@ -9,19 +9,13 @@ import SkipLineSection from '@/components/Rewards/SkipLineSection';
 import TierFeesTable from '@/components/Rewards/TierFeesTable';
 import { Text } from '@/components/ui/text';
 import { useDimension } from '@/hooks/useDimension';
-import { useTierTable } from '@/hooks/useRewards';
-import { TierTableCategory } from '@/lib/types';
+import { useTierBenefits } from '@/hooks/useRewards';
 
 export default function RewardsBenefits() {
   const { isScreenMedium } = useDimension();
-  const { data: tierTableCompare, isLoading: isLoadingCompare } = useTierTable(
-    TierTableCategory.COMPARE,
-  );
-  const { data: tierTableFee, isLoading: isLoadingFee } = useTierTable(TierTableCategory.FEE);
+  const { data: tierBenefits, isLoading } = useTierBenefits();
 
-  const isLoading = isLoadingCompare || isLoadingFee;
-
-  if (isLoading || !tierTableCompare || !tierTableFee) {
+  if (isLoading || !tierBenefits) {
     return <PageLayout isLoading={true}>{null}</PageLayout>;
   }
 
@@ -48,8 +42,8 @@ export default function RewardsBenefits() {
 
         <EarnPointsSection />
         <SkipLineSection />
-        <CompareTiersTable tierTable={tierTableCompare} />
-        <TierFeesTable tierTable={tierTableFee} />
+        <CompareTiersTable tierBenefits={tierBenefits} />
+        <TierFeesTable tierBenefits={tierBenefits} />
       </View>
     </PageLayout>
   );

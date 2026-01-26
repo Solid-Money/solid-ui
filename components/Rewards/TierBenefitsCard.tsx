@@ -7,7 +7,7 @@ import { useDimension } from '@/hooks/useDimension';
 
 interface TierBenefitsCardProps {
   label: string;
-  icon?: string;
+  icon: string;
   onPress: () => void;
 }
 
@@ -21,13 +21,11 @@ const TierBenefitsCard = ({ label, icon, onPress }: TierBenefitsCardProps) => {
       <View className="flex-row items-center justify-between">
         <Text className="text-lg font-semibold md:text-xl">{label}</Text>
         <View className="flex-row items-center gap-4">
-          {icon && (
-            <Image
-              source={icon}
-              contentFit="contain"
-              style={{ width: isScreenMedium ? 34 : 24, height: isScreenMedium ? 34 : 24 }}
-            />
-          )}
+          <Image
+            source={icon}
+            contentFit="contain"
+            style={{ width: isScreenMedium ? 34 : 24, height: isScreenMedium ? 34 : 24 }}
+          />
           <ChevronRight size={isScreenMedium ? 30 : 24} strokeWidth={1} color="#FFD151" />
         </View>
       </View>

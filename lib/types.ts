@@ -768,93 +768,63 @@ export interface ExchangeRateResponse {
   sell_rate: string;
 }
 
-export interface RewardTypeSummary {
-  type: RewardsType;
-  count: number;
-  totalPoints: number;
-}
-
 export interface Points {
   nextRewardTime: number;
   pointsLast24Hours: number;
   userRewardsSummary: {
     totalPoints: number;
-    rewardsByType: RewardTypeSummary[];
+    rewardsByType: {
+      type: RewardsType;
+      count: number;
+      totalPoints: number;
+    }[];
     referredUsersCount?: number;
     referredUsersDepositedCount?: number;
   };
   userRefferer: string;
-  leaderboardPosition: number;
-  rewardsUserData: {
-    currentTier: string;
-    totalPoints: number;
-    nextTierPoints: number;
-    nextTier: string | null;
-    savingsAPY: number;
-    cashbackRate: number;
-    cashbackThisMonth: number;
-    maxCashbackMonthly: number;
-  };
+  leaderboardPosition?: number;
+}
+
+export enum RewardsTier {
+  CORE = 'core',
+  PRIME = 'prime',
+  ULTRA = 'ultra',
 }
 
 export interface RewardsUserData {
-  currentTier: string;
+  currentTier: RewardsTier;
   totalPoints: number;
   nextTierPoints: number;
-  nextTier: string | null;
+  nextTier: RewardsTier | null;
   savingsAPY: number;
   cashbackRate: number;
   cashbackThisMonth: number;
   maxCashbackMonthly: number;
 }
 
-export interface TierTableCell {
+export interface TierBenefit {
   title: string;
-  description?: string;
+  subtitle?: string;
   image?: string;
-  value?: string[];
-  implemented: boolean;
-  enabled: boolean;
 }
 
-export interface TierTableRow {
-  id: string;
+export interface TierBenefits {
+  tier: RewardsTier;
+  depositBoost: TierBenefit;
+  cardCashback: TierBenefit;
+  subscriptionDiscount: TierBenefit | null;
+  cardCashbackCap: TierBenefit;
+  subscriptionDiscountCap: TierBenefit | null;
+  cardFees: TierBenefit;
+  bankDeposit: TierBenefit;
+  swapFees: TierBenefit;
+  support: TierBenefit;
 }
 
-export interface TierTableColumn {
-  id: string;
-}
-
-export interface TierTableMatrixCell extends TierTableCell {
-  rowId: string;
-  columnId: string;
-}
-
-export enum TierTableCategory {
-  COMPARE = 'compare',
-  FEE = 'fee',
-}
-
-export enum AttributeCategory {
-  EARN = 'earn',
-  FUSE = 'fuse',
-}
-
-export interface Attribute {
-  category: AttributeCategory;
-  value: string[];
+export interface TierBenefitItem {
+  icon: string;
   title: string;
   description: string;
-  image: string;
-  implemented: boolean;
-  enabled: boolean;
-}
-
-export interface TierTableDocument {
-  category: TierTableCategory;
-  rows: TierTableRow[];
-  columns: TierTableColumn[];
-  cells: TierTableMatrixCell[];
 }
 
 export enum LifiOrder {
