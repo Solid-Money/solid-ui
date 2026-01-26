@@ -504,7 +504,8 @@ const useDepositOption = ({
       return (
         <Button
           variant="ghost"
-          className="h-10 w-10 items-center justify-center rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+          size="icon"
+          className="items-center justify-center rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
           onPress={handleDeleteDeposit}
           disabled={isDeleting}
         >

@@ -33,10 +33,11 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
   const getTierHeaders = useMemo((): (TierTableMatrixCell | null)[] => {
     if (!tierTable || !structure.headerRow) return [];
 
-    return structure.dataColumns.map((col) => {
-      return tierTable.cells.find(
-        (c) => c.rowId === structure.headerRow!.id && c.columnId === col.id
-      ) || null;
+    return structure.dataColumns.map(col => {
+      return (
+        tierTable.cells.find(c => c.rowId === structure.headerRow!.id && c.columnId === col.id) ||
+        null
+      );
     });
   }, [tierTable, structure]);
 
@@ -49,14 +50,16 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
 
       // Normalize tier string for comparison (capitalize first letter)
       const normalizedTier = toTitleCase(tier);
-      return structure.dataColumns.find((col) => {
-        const headerCell = tierTable.cells.find(
-          (c) => c.rowId === structure.headerRow!.id && c.columnId === col.id
-        );
-        return headerCell?.title?.toLowerCase() === normalizedTier.toLowerCase();
-      }) || null;
+      return (
+        structure.dataColumns.find(col => {
+          const headerCell = tierTable.cells.find(
+            c => c.rowId === structure.headerRow!.id && c.columnId === col.id,
+          );
+          return headerCell?.title?.toLowerCase() === normalizedTier.toLowerCase();
+        }) || null
+      );
     },
-    [tierTable, structure]
+    [tierTable, structure],
   );
 
   /**
@@ -65,9 +68,9 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
   const getCell = useCallback(
     (rowId: string, columnId: string): TierTableMatrixCell | null => {
       if (!tierTable) return null;
-      return tierTable.cells.find((c) => c.rowId === rowId && c.columnId === columnId) || null;
+      return tierTable.cells.find(c => c.rowId === rowId && c.columnId === columnId) || null;
     },
-    [tierTable]
+    [tierTable],
   );
 
   /**
@@ -76,7 +79,7 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
   const getColumnCells = useCallback(
     (
       columnId: string,
-      filterEnabled: boolean = true
+      filterEnabled: boolean = true,
     ): Array<{ cell: TierTableMatrixCell; row: TierTableRow; rowIndex: number }> => {
       if (!tierTable) return [];
 
@@ -87,9 +90,12 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
           if (filterEnabled && (!cell.enabled || !cell.implemented)) return null;
           return { cell, row, rowIndex: index + 1 }; // +1 because we skipped row 0
         })
-        .filter((item): item is { cell: TierTableMatrixCell; row: TierTableRow; rowIndex: number } => item !== null);
+        .filter(
+          (item): item is { cell: TierTableMatrixCell; row: TierTableRow; rowIndex: number } =>
+            item !== null,
+        );
     },
-    [tierTable, structure, getCell]
+    [tierTable, structure, getCell],
   );
 
   /**
@@ -98,7 +104,7 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
   const getTierBenefits = useCallback(
     (
       tier: string,
-      limit: number = 3
+      limit: number = 3,
     ): Array<{ image?: string; title: string; description?: string }> => {
       const matchingColumn = findColumnByTier(tier);
       if (!matchingColumn) return [];
@@ -114,7 +120,7 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
 
       return cells;
     },
-    [findColumnByTier, getColumnCells]
+    [findColumnByTier, getColumnCells],
   );
 
   /**
@@ -126,12 +132,12 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
   }> => {
     if (!tierTable || !structure.labelColumn) return [];
 
-    return structure.dataRows.map((row) => {
+    return structure.dataRows.map(row => {
       // Get row label from column 0
       const labelCell = getCell(row.id, structure.labelColumn!.id);
 
       // Get data cells for this row (columns 1+)
-      const valueCells = structure.dataColumns.map((col) => {
+      const valueCells = structure.dataColumns.map(col => {
         const cell = getCell(row.id, col.id);
 
         // Only include cells where enabled and implemented are true
@@ -164,7 +170,7 @@ export const useTierTableData = (tierTable: TierTableDocument | undefined) => {
         image: headerCell.image,
       };
     },
-    [findColumnByTier, structure, getCell]
+    [findColumnByTier, structure, getCell],
   );
 
   return {

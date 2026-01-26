@@ -147,7 +147,8 @@ const ResponsiveModal = ({
                 {hasBackButton ? (
                   <Button
                     variant="ghost"
-                    className="h-10 w-10 rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
+                    size="icon"
+                    className="rounded-full bg-popover p-0 web:transition-colors web:hover:bg-muted"
                     onPress={onBackPress}
                   >
                     <ArrowLeft color="white" size={20} />
@@ -155,15 +156,19 @@ const ResponsiveModal = ({
                 ) : (
                   <View className="w-10" />
                 )}
-                {title && (
+                {title ? (
                   <Animated.View key={contentKey} entering={titleEntering} exiting={titleExiting}>
                     <DialogTitle className="native:text-2xl text-xl font-semibold">
                       {title}
                     </DialogTitle>
                   </Animated.View>
+                ) : (
+                  <View className="flex-1" />
                 )}
-                {hasActionButton && actionButton}
-                <DialogCloseButton />
+                <View className="flex-row items-center gap-2">
+                  {hasActionButton && actionButton}
+                  <DialogCloseButton />
+                </View>
               </DialogHeader>
             ) : (
               <View className="flex-row justify-end">

@@ -1,11 +1,12 @@
+import { Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import axios, { AxiosRequestHeaders } from 'axios';
-import { Platform } from 'react-native';
 import { fuse } from 'viem/chains';
 
 import { explorerUrls } from '@/constants/explorers';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { useUserStore } from '@/store/useUserStore';
+
 import {
   EXPO_PUBLIC_ALCHEMY_API_KEY,
   EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL,
@@ -22,6 +23,8 @@ import {
   AddressBookRequest,
   AddressBookResponse,
   APYs,
+  Attribute,
+  AttributeCategory,
   BlockscoutTransactions,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
@@ -30,8 +33,6 @@ import {
   BridgeTransactionRequest,
   CardAccessResponse,
   CardDetailsResponseDto,
-  VerifyCountryRequest,
-  VerifyCountryResponse,
   CardDetailsRevealResponse,
   CardResponse,
   CardStatusResponse,
@@ -70,8 +71,6 @@ import {
   SwapTokenResponse,
   SyncActivitiesOptions,
   SyncActivitiesResponse,
-  Attribute,
-  AttributeCategory,
   TierTableCategory,
   TierTableDocument,
   ToCurrency,
@@ -79,6 +78,8 @@ import {
   UpdateActivityEvent,
   User,
   VaultBreakdown,
+  VerifyCountryRequest,
+  VerifyCountryResponse,
   WebhookStatus,
   WhatsNew,
 } from './types';
@@ -663,6 +664,12 @@ export interface ObserveFingerprintRequest {
 
 export interface ObserveFingerprintResponse {
   visitorId: string;
+  /** Whether this device has been used by multiple users (potential fraud indicator) */
+  isDuplicate?: boolean;
+  /** Number of distinct users associated with this device */
+  userCount?: number;
+  /** Whether this device is allowlisted (manually approved for shared device use) */
+  isAllowlisted?: boolean;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
@@ -66,6 +67,7 @@ type InfoRow = {
 };
 
 const DepositDirectlyAddress = () => {
+  const insets = useSafeAreaInsets();
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore(
     useShallow(state => ({
@@ -232,7 +234,7 @@ const DepositDirectlyAddress = () => {
   }, [exchangeRate, isAPYsLoading, formattedAPY, selectedToken]);
 
   return (
-    <View className="flex-col gap-3">
+    <View className="flex-col gap-3" style={{ paddingBottom: insets.bottom }}>
       {/* Header - Transfer token to this address */}
       <View className="flex-row flex-wrap items-center justify-center">
         <Text className="text-xl font-bold text-[#ACACAC]">Transfer</Text>
@@ -372,7 +374,7 @@ const DepositDirectlyAddress = () => {
 
       {/* Done button */}
       <Button onPress={handleDone} className="mt-2 h-14 w-full rounded-2xl bg-[#94F27F]">
-        <Text className="text-lg font-bold text-black">Done</Text>
+        <Text className="native:text-xl text-lg font-bold text-black">Done</Text>
       </Button>
 
       {/* Need help? */}
