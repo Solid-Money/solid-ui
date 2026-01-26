@@ -200,7 +200,7 @@ export default function Home() {
                 )}
               </View>
             </View>
-            <DashboardHeaderButtons />
+            <DashboardHeaderButtons hideWithdraw />
           </View>
         ) : (
           <DashboardHeaderMobile

@@ -20,9 +20,11 @@ type DashboardHeaderButtonsProps = {
   withdraw?: {
     isWithdraw: boolean;
   };
+  hideWithdraw?: boolean;
+  hideSend?: boolean;
 };
 
-const DashboardHeaderButtons = ({ deposit, withdraw }: DashboardHeaderButtonsProps) => {
+const DashboardHeaderButtons = ({ deposit, withdraw, hideWithdraw, hideSend }: DashboardHeaderButtonsProps) => {
   const withdrawTrigger = (
     <Button
       variant="secondary"
@@ -43,10 +45,14 @@ const DashboardHeaderButtons = ({ deposit, withdraw }: DashboardHeaderButtonsPro
 
   return (
     <View className="flex-row gap-2">
-      {withdraw?.isWithdraw ? (
-        <WithdrawModal trigger={withdrawTrigger} />
-      ) : (
-        <UnstakeModal trigger={withdrawTrigger} />
+      {!hideWithdraw && (
+        <>
+          {withdraw?.isWithdraw ? (
+            <WithdrawModal trigger={withdrawTrigger} />
+          ) : (
+            <UnstakeModal trigger={withdrawTrigger} />
+          )}
+        </>
       )}
 
       <SwapModal
@@ -69,25 +75,27 @@ const DashboardHeaderButtons = ({ deposit, withdraw }: DashboardHeaderButtonsPro
         }
       />
 
-      <SendModal
-        trigger={
-          <Button
-            variant="secondary"
-            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
-            onPress={() => {
-              track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
-                button_name: 'send',
-                source: 'dashboard_header',
-              });
-            }}
-          >
-            <View className="flex-row items-center gap-2">
-              <HomeSend />
-              <Text className="text-base font-bold text-white">Send</Text>
-            </View>
-          </Button>
-        }
-      />
+      {!hideSend && (
+        <SendModal
+          trigger={
+            <Button
+              variant="secondary"
+              className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+              onPress={() => {
+                track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
+                  button_name: 'send',
+                  source: 'dashboard_header',
+                });
+              }}
+            >
+              <View className="flex-row items-center gap-2">
+                <HomeSend />
+                <Text className="text-base font-bold text-white">Send</Text>
+              </View>
+            </Button>
+          }
+        />
+      )}
 
       <DepositOptionModal buttonText={deposit?.title || 'Add funds'} />
     </View>

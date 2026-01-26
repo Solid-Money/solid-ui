@@ -27,7 +27,7 @@ export default function HomeEmptyState() {
                 <Text className="text-5xl font-semibold">$0</Text>
                 <Text className="text-2xl">.00</Text>
               </View>
-              <DashboardHeaderButtons />
+              <DashboardHeaderButtons hideWithdraw />
             </View>
           ) : (
             <View className="flex-row items-baseline justify-center">
@@ -38,7 +38,7 @@ export default function HomeEmptyState() {
         </View>
 
         <View className="gap-[1.875rem]">
-          {!isScreenMedium && <SavingsHeaderButtonsMobile />}
+          {!isScreenMedium && <SavingsHeaderButtonsMobile hideWithdraw />}
 
           <View
             className="relative overflow-hidden md:min-h-96"
