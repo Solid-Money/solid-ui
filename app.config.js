@@ -16,6 +16,7 @@ export default {
       bundleIdentifier: 'xyz.solid.ios',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        NSCameraUsageDescription: 'Solid needs camera access to scan QR codes for wallet addresses',
       },
       associatedDomains: ['webcredentials:solid.xyz', 'applinks:solid.xyz'],
       appleTeamId: 'QC9255BHMY',
@@ -135,6 +136,13 @@ export default {
       ],
       // Fingerprint.com device intelligence - adds required Maven repo for Android
       '@fingerprintjs/fingerprintjs-pro-react-native',
+      // Camera for QR code scanning
+      [
+        'expo-camera',
+        {
+          cameraPermission: 'Allow Solid to access your camera to scan QR codes',
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

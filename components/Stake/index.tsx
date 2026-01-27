@@ -178,7 +178,7 @@ const Stake = () => {
         onPress={handleStakeSubmit(onStakeSubmit)}
         disabled={isStakeFormDisabled()}
       >
-        <Text className="text-lg font-semibold text-black">{getStakeText()}</Text>
+        <Text className="text-base font-bold text-black">{getStakeText()}</Text>
         {isStakeLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>

@@ -9,7 +9,7 @@ import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 const DefaultTrigger = () => (
   <Button className="h-12 rounded-xl px-6" style={{ backgroundColor: '#94F27F' }}>
-    <Text className="font-bold text-black">Add funds</Text>
+    <Text className="text-base font-bold text-black">Add funds</Text>
   </Button>
 );
 

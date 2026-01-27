@@ -30,9 +30,7 @@ const TokenSelectorModal = () => {
             alt={selectedToken.symbol}
             style={{ width: 32, height: 32 }}
           />
-          <Text className="native:text-lg text-lg font-bold text-white">
-            {selectedToken.symbol}
-          </Text>
+          <Text className="text-base font-bold text-white">{selectedToken.symbol}</Text>
           <ChevronDown />
         </Button>
       }

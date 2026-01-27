@@ -53,6 +53,7 @@ const Text = React.forwardRef<TextRef, SlottableTextProps>(
           {
             textAlignVertical: 'center',
             includeFontPadding: false,
+            verticalAlign: 'middle',
           },
           style,
         ]}
