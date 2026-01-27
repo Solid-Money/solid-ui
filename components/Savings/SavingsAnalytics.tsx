@@ -30,7 +30,7 @@ const SavingsAnalytics = () => {
   const isMountedRef = useRef(true);
 
   // Fetch all historical data
-  const { data: yieldHistory, isLoading: isYieldHistoryLoading } = useHistoricalAPY('365');
+  const { data: yieldHistory, isLoading: isYieldHistoryLoading } = useHistoricalAPY('-1');
   const { data: vaultBreakdown } = useVaultBreakdown();
 
   useEffect(() => {
