@@ -1,4 +1,4 @@
-import { View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { useRewardsConfig } from '@/hooks/useRewards';

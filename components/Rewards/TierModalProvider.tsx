@@ -1,4 +1,4 @@
-import { View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 
@@ -8,8 +8,8 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
 import { useTierBenefits } from '@/hooks/useRewards';
-import { useRewards } from '@/store/useRewardsStore';
 import { TierBenefits } from '@/lib/types';
+import { useRewards } from '@/store/useRewardsStore';
 
 import RewardBenefit from './RewardBenefit';
 

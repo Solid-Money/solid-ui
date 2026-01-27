@@ -17,7 +17,10 @@ type SavingsHeaderButtonsMobileProps = {
   hideSend?: boolean;
 };
 
-const SavingsHeaderButtonsMobile = ({ hideWithdraw, hideSend }: SavingsHeaderButtonsMobileProps = {}) => {
+const SavingsHeaderButtonsMobile = ({
+  hideWithdraw,
+  hideSend,
+}: SavingsHeaderButtonsMobileProps = {}) => {
   const withdrawTrigger = (
     <CircleButton
       icon={HomeWithdraw}
