@@ -204,7 +204,7 @@ const Withdraw = () => {
         onPress={handleWithdrawSubmit(onWithdrawSubmit)}
         disabled={isWithdrawFormDisabled()}
       >
-        <Text className="text-lg font-semibold text-black">{getWithdrawText()}</Text>
+        <Text className="text-base font-bold text-black">{getWithdrawText()}</Text>
         {isWithdrawLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>
@@ -223,7 +223,7 @@ const WithdrawTrigger = (props: any) => {
     >
       <View className="flex-row items-center gap-4">
         <Minus color="white" />
-        <Text className="font-bold">Withdraw</Text>
+        <Text className="text-base font-bold">Withdraw</Text>
       </View>
     </Button>
   );

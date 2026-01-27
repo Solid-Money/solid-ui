@@ -237,19 +237,19 @@ const DepositDirectlyAddress = () => {
     <View className="flex-col gap-3" style={{ paddingBottom: insets.bottom }}>
       {/* Header - Transfer token to this address */}
       <View className="flex-row flex-wrap items-center justify-center">
-        <Text className="text-xl font-bold text-[#ACACAC]">Transfer</Text>
+        <Text className="text-2xl font-bold text-[#ACACAC]">Transfer</Text>
         <View className="flex-row items-center gap-1 px-1">
-          <Image source={tokenIcon} style={{ width: 21, height: 21 }} contentFit="cover" />
-          <Text className="text-xl font-bold text-white">{selectedToken}</Text>
+          <Image source={tokenIcon} style={{ width: 24, height: 24 }} contentFit="cover" />
+          <Text className="text-2xl font-bold text-white">{selectedToken}</Text>
         </View>
-        <Text className="text-xl font-semibold text-[#ACACAC]">to this</Text>
+        <Text className="text-2xl font-semibold text-[#ACACAC]">to this</Text>
         <View className="flex-row items-center gap-1 px-2">
           <Image
             source={network?.icon}
-            style={{ width: 21, height: 21, borderRadius: 9 }}
+            style={{ width: 24, height: 24, borderRadius: 12 }}
             contentFit="cover"
           />
-          <Text className="text-xl font-semibold text-[#ACACAC]">
+          <Text className="text-2xl font-semibold text-[#ACACAC]">
             {network?.name || 'Ethereum'} address
           </Text>
         </View>
@@ -374,7 +374,7 @@ const DepositDirectlyAddress = () => {
 
       {/* Done button */}
       <Button onPress={handleDone} className="mt-2 h-14 w-full rounded-2xl bg-[#94F27F]">
-        <Text className="native:text-xl text-lg font-bold text-black">Done</Text>
+        <Text className="text-base font-bold text-black">Done</Text>
       </Button>
 
       {/* Need help? */}

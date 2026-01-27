@@ -76,7 +76,7 @@ const TransactionStatus = ({
           onPress={handlePress}
           disabled={isLoading}
         >
-          <Text className="native:text-lg text-lg font-semibold">{buttonText}</Text>
+          <Text className="text-base font-bold">{buttonText}</Text>
           {isLoading && <ActivityIndicator color="white" />}
         </Button>
       </View>

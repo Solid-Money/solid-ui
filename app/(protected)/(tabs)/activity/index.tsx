@@ -10,12 +10,12 @@ import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { ActivityTab } from '@/lib/types';
-import { hasCard } from '@/lib/utils';
+import { cn, hasCard } from '@/lib/utils';
 
 export default function Activity() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.ACTIVITY_SCREEN });
 
-  const { data: cardStatus, isLoading: isCardLoading } = useCardStatus();
+  const { data: cardStatus } = useCardStatus();
   // Use lightweight hook to avoid re-renders from activity data changes
   const { refetchAll, isSyncing } = useActivityRefresh();
   const isWeb = Platform.OS === 'web';
@@ -26,8 +26,12 @@ export default function Activity() {
   const userHasCard = hasCard(cardStatus);
 
   return (
-    <PageLayout isLoading={isCardLoading} scrollable={isWeb}>
-      <View className={`mx-auto w-full max-w-7xl px-4 pb-8 pt-6 md:py-12 ${isWeb ? '' : 'flex-1'}`}>
+    <PageLayout>
+      <View
+        className={cn('mx-auto w-full max-w-7xl px-4 pb-8 pt-6 md:py-12', {
+          'flex-1': !isWeb,
+        })}
+      >
         <View className="flex-row items-center justify-between">
           <Text className="text-3xl font-semibold">Activity</Text>
 

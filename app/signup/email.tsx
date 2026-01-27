@@ -216,7 +216,7 @@ export default function SignupEmail() {
 
         {/* Header */}
         <View className="mb-8">
-          <Text className="mb-4 text-center text-[38px] font-medium -tracking-[1px] text-white">
+          <Text className="mb-4 text-center text-[34px] font-medium -tracking-[1px] text-white">
             Create your account
           </Text>
           <Text className="text-center text-base font-medium text-white/60">
@@ -279,7 +279,7 @@ export default function SignupEmail() {
           {isLoading ? (
             <ActivityIndicator color="gray" />
           ) : (
-            <Text className="native:text-lg text-lg font-semibold">Create account</Text>
+            <Text className="text-base font-bold">Create account</Text>
           )}
         </Button>
       </View>
@@ -329,7 +329,7 @@ export default function SignupEmail() {
             <View className="w-full">
               {/* Header */}
               <View className="mb-8 mt-4">
-                <Text className="mb-4 text-center text-[38px] font-semibold leading-[1.1] -tracking-[1px] text-white">
+                <Text className="mb-4 text-center text-[34px] font-semibold leading-[1.1] -tracking-[1px] text-white">
                   Create your{'\n'}account
                 </Text>
                 <Text className="text-center text-[16px] text-white/60">
@@ -419,7 +419,7 @@ export default function SignupEmail() {
                 {isLoading ? (
                   <ActivityIndicator color="gray" />
                 ) : (
-                  <Text className="native:text-lg text-lg font-semibold">Create account</Text>
+                  <Text className="text-base font-bold">Create account</Text>
                 )}
               </Button>
             </View>

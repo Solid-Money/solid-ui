@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, PressableProps, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import AddressBook from '@/components/Send/AddressBook';
 import SendForm from '@/components/Send/SendForm';
+import SendQRScanner from '@/components/Send/SendQRScanner';
 import SendReview from '@/components/Send/SendReview';
 import SendSearch from '@/components/Send/SendSearch';
 import TokenSelector from '@/components/Send/TokenSelector';
@@ -15,7 +16,7 @@ import { SEND_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { SendModal } from '@/lib/types';
-import { useSendStore } from '@/store/useSendStore';
+import { hasUnsavedSendData, useSendStore } from '@/store/useSendStore';
 import useResponsiveModal from './useResponsiveModal';
 
 export interface SendOptionProps {
@@ -29,16 +30,20 @@ const useSendOption = ({
   trigger,
   modal = SEND_MODAL.OPEN_SEND_SEARCH,
 }: SendOptionProps = {}) => {
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { currentModal, previousModal, transaction, selectedToken, setModal } = useSendStore(
-    useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
-      transaction: state.transaction,
-      selectedToken: state.selectedToken,
-      setModal: state.setModal,
-    })),
-  );
+  const { currentModal, previousModal, transaction, selectedToken, setModal, resetAll } =
+    useSendStore(
+      useShallow(state => ({
+        currentModal: state.currentModal,
+        previousModal: state.previousModal,
+        transaction: state.transaction,
+        selectedToken: state.selectedToken,
+        setModal: state.setModal,
+        resetAll: state.resetAll,
+      })),
+    );
   const router = useRouter();
   const { triggerElement } = useResponsiveModal();
 
@@ -48,6 +53,7 @@ const useSendOption = ({
   const isReview = currentModal.name === SEND_MODAL.OPEN_REVIEW.name;
   const isTransactionStatus = currentModal.name === SEND_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isAddressBook = currentModal.name === SEND_MODAL.OPEN_ADDRESS_BOOK.name;
+  const isQRScanner = currentModal.name === SEND_MODAL.OPEN_QR_SCANNER.name;
   const isClose = currentModal.name === SEND_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== SEND_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -134,6 +140,10 @@ const useSendOption = ({
       return <AddressBook />;
     }
 
+    if (isQRScanner) {
+      return <SendQRScanner />;
+    }
+
     return <SendSearch />;
   };
 
@@ -143,6 +153,7 @@ const useSendOption = ({
     if (isTokenSelector) return 'token-selector';
     if (isForm) return 'form';
     if (isAddressBook) return 'address-book';
+    if (isQRScanner) return 'qr-scanner';
     return 'send-search';
   };
 
@@ -152,17 +163,26 @@ const useSendOption = ({
     if (isTokenSelector) return 'Select token';
     if (isForm) return 'Send';
     if (isAddressBook) return 'Contacts';
+    if (isQRScanner) return undefined; // Fullscreen camera, no title needed
     return 'Send';
   };
 
   const getContentClassName = () => {
+    // Fullscreen camera view: remove padding, margins, and size constraints
+    if (isQRScanner) return '!p-0 !mt-0 !min-h-screen !max-w-none !rounded-none';
     return '';
   };
 
   const getContainerClassName = () => {
+    if (isQRScanner) return 'flex-1'; // Fill available space for camera view
     if (isSearch) return 'min-h-[40rem]';
     if (isReview) return 'min-h-[30rem]';
     return '';
+  };
+
+  const getDisableScroll = () => {
+    // Camera view needs to escape ScrollView constraints
+    return isQRScanner;
   };
 
   const handleOpenChange = useCallback(
@@ -170,11 +190,25 @@ const useSendOption = ({
       if (value) {
         setModal(modal);
       } else {
-        setModal(SEND_MODAL.CLOSE);
+        // Check for unsaved data before closing
+        if (hasUnsavedSendData()) {
+          setShowDiscardDialog(true);
+        } else {
+          resetAll();
+        }
       }
     },
-    [modal, setModal, router],
+    [modal, setModal, resetAll],
   );
+
+  const handleDiscardConfirm = useCallback(() => {
+    setShowDiscardDialog(false);
+    resetAll();
+  }, [resetAll]);
+
+  const handleDiscardCancel = useCallback(() => {
+    setShowDiscardDialog(false);
+  }, []);
 
   const handleBackPress = () => {
     if (isReview) {
@@ -185,6 +219,8 @@ const useSendOption = ({
       setModal(SEND_MODAL.OPEN_SEND_SEARCH);
     } else if (isAddressBook) {
       setModal(SEND_MODAL.OPEN_SEND_SEARCH);
+    } else if (isQRScanner) {
+      setModal(SEND_MODAL.OPEN_SEND_SEARCH);
     } else {
       setModal(SEND_MODAL.CLOSE);
     }
@@ -192,6 +228,7 @@ const useSendOption = ({
 
   const shouldOpen = !isClose;
 
+  // QR scanner has its own header with close button, so don't show modal back button
   const showBackButton = isForm || isTokenSelector || isReview || isAddressBook;
 
   return {
@@ -205,8 +242,12 @@ const useSendOption = ({
     getTitle,
     getContentClassName,
     getContainerClassName,
+    getDisableScroll,
     handleOpenChange,
     handleBackPress,
+    showDiscardDialog,
+    handleDiscardConfirm,
+    handleDiscardCancel,
   };
 };
 

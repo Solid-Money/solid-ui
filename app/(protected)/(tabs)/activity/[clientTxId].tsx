@@ -186,7 +186,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </View>
         ),
         value: (
-          <Value className="text-[#34C759]">{getCashbackAmount(transaction.id, cashbacks)}</Value>
+          <Value className="text-[#34C759]">
+            {getCashbackAmount(transaction.id, cashbacks)?.amount}
+          </Value>
         ),
       },
       txHash && {

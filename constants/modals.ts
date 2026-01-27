@@ -106,6 +106,10 @@ export const SEND_MODAL = {
     name: 'open_address_book',
     number: 6,
   },
+  OPEN_QR_SCANNER: {
+    name: 'open_qr_scanner',
+    number: 7,
+  },
 };
 
 export const WITHDRAW_MODAL = {

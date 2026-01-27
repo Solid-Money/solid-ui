@@ -38,9 +38,17 @@ export const ASSETS = {
     module: require('@/assets/images/activity-nav-bar-icon.tsx'),
     hash: '53f2f412',
   },
+  'images/adaptive-icon-backup1.png': {
+    module: require('@/assets/images/adaptive-icon-backup1.png'),
+    hash: '9750723d',
+  },
+  'images/adaptive-icon-before-resize.png': {
+    module: require('@/assets/images/adaptive-icon-before-resize.png'),
+    hash: '13aeb9b5',
+  },
   'images/adaptive-icon.png': {
     module: require('@/assets/images/adaptive-icon.png'),
-    hash: '9750723d',
+    hash: 'd2020cd7',
   },
   'images/apple-google-pay.png': {
     module: require('@/assets/images/apple-google-pay.png'),
@@ -245,10 +253,6 @@ export const ASSETS = {
   'images/fuse-4x.png': { module: require('@/assets/images/fuse-4x.png'), hash: '280845e7' },
   'images/fuse.png': { module: require('@/assets/images/fuse.png'), hash: '573a1a32' },
   'images/google_pay.png': { module: require('@/assets/images/google_pay.png'), hash: '78c91f8f' },
-  'images/grant_notifications.png': {
-    module: require('@/assets/images/grant_notifications.png'),
-    hash: 'f6a1d711',
-  },
   'images/gray_onboarding_bg.png': {
     module: require('@/assets/images/gray_onboarding_bg.png'),
     hash: 'b4c20e0b',
@@ -304,6 +308,10 @@ export const ASSETS = {
   'images/no_funds_withdraw_icon.png': {
     module: require('@/assets/images/no_funds_withdraw_icon.png'),
     hash: '972fd805',
+  },
+  'images/notification.tsx': {
+    module: require('@/assets/images/notification.tsx'),
+    hash: '4ee89298',
   },
   'images/onboarding_solid.png': {
     module: require('@/assets/images/onboarding_solid.png'),
@@ -380,6 +388,10 @@ export const ASSETS = {
     hash: 'd9241a35',
   },
   'images/savings.tsx': { module: require('@/assets/images/savings.tsx'), hash: '860feed3' },
+  'images/scan-address.tsx': {
+    module: require('@/assets/images/scan-address.tsx'),
+    hash: '91c9ca50',
+  },
   'images/security_email.png': {
     module: require('@/assets/images/security_email.png'),
     hash: '7e1661ef',

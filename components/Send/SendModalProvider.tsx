@@ -2,6 +2,7 @@ import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
+import DiscardChangesDialog from '@/components/Send/DiscardChangesDialog';
 import useSendOption from '@/hooks/useSendOption';
 import { useSendStore } from '@/store/useSendStore';
 
@@ -24,8 +25,12 @@ const SendModalProvider = () => {
     getTitle,
     getContentClassName,
     getContainerClassName,
+    getDisableScroll,
     handleOpenChange,
     handleBackPress,
+    showDiscardDialog,
+    handleDiscardConfirm,
+    handleDiscardCancel,
   } = useSendOption();
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { currentModal, previousModal } = useSendStore(
@@ -36,23 +41,31 @@ const SendModalProvider = () => {
   );
 
   return (
-    <ResponsiveModal
-      currentModal={currentModal}
-      previousModal={previousModal}
-      isOpen={shouldOpen}
-      onOpenChange={handleOpenChange}
-      trigger={null}
-      title={getTitle()}
-      contentClassName={getContentClassName()}
-      containerClassName={getContainerClassName()}
-      showBackButton={showBackButton}
-      onBackPress={handleBackPress}
-      shouldAnimate={shouldAnimate}
-      isForward={isForward}
-      contentKey={getContentKey()}
-    >
-      {getContent()}
-    </ResponsiveModal>
+    <>
+      <ResponsiveModal
+        currentModal={currentModal}
+        previousModal={previousModal}
+        isOpen={shouldOpen}
+        onOpenChange={handleOpenChange}
+        trigger={null}
+        title={getTitle()}
+        contentClassName={getContentClassName()}
+        containerClassName={getContainerClassName()}
+        showBackButton={showBackButton}
+        onBackPress={handleBackPress}
+        shouldAnimate={shouldAnimate}
+        isForward={isForward}
+        contentKey={getContentKey()}
+        disableScroll={getDisableScroll()}
+      >
+        {getContent()}
+      </ResponsiveModal>
+      <DiscardChangesDialog
+        visible={showDiscardDialog}
+        onDiscard={handleDiscardConfirm}
+        onCancel={handleDiscardCancel}
+      />
+    </>
   );
 };
 

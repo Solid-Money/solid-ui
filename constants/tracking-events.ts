@@ -271,6 +271,17 @@ export const TRACKING_EVENTS = {
   // Global / Error Events
   ERROR_BOUNDARY: 'error_boundary',
   RETRY_ATTEMPTED: 'retry_attempted',
+
+  // QR Scanner Events
+  QR_SCANNER_OPENED: 'qr_scanner_opened',
+  QR_SCANNER_CLOSED: 'qr_scanner_closed',
+  QR_CODE_SCANNED: 'qr_code_scanned',
+  QR_CODE_SCAN_SUCCESS: 'qr_code_scan_success',
+  QR_CODE_SCAN_FAILED: 'qr_code_scan_failed',
+  QR_SCANNER_FLASH_TOGGLED: 'qr_scanner_flash_toggled',
+  QR_SCANNER_PERMISSION_REQUESTED: 'qr_scanner_permission_requested',
+  QR_SCANNER_PERMISSION_GRANTED: 'qr_scanner_permission_granted',
+  QR_SCANNER_PERMISSION_DENIED: 'qr_scanner_permission_denied',
 } as const;
 
 export type TrackingEvent = (typeof TRACKING_EVENTS)[keyof typeof TRACKING_EVENTS];

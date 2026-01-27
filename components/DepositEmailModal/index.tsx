@@ -175,7 +175,7 @@ const DepositEmailModal: React.FC = () => {
             variant="brand"
             className="h-14 rounded-2xl"
           >
-            <Text className="text-lg font-semibold">{getButtonText()}</Text>
+            <Text className="text-base font-bold">{getButtonText()}</Text>
             {isLoading && <ActivityIndicator color="gray" />}
           </Button>
 
@@ -186,12 +186,12 @@ const DepositEmailModal: React.FC = () => {
               disabled={isLoading}
               className="h-14 rounded-2xl border-0"
             >
-              <Text className="text-lg font-semibold">Back to Email</Text>
+              <Text className="text-base font-semibold">Back to Email</Text>
             </Button>
           )}
 
           <Button onPress={handleSkip} variant="ghost" className="h-14 rounded-2xl border-0">
-            <Text className="text-lg font-semibold">Skip</Text>
+            <Text className="text-base font-semibold">Skip</Text>
           </Button>
         </View>
       </View>

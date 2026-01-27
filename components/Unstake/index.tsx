@@ -186,7 +186,7 @@ const Unstake = () => {
         onPress={handleBridgeSubmit(onBridgeSubmit)}
         disabled={isBridgeFormDisabled()}
       >
-        <Text className="text-lg font-semibold text-primary-foreground">{getBridgeText()}</Text>
+        <Text className="text-base font-bold text-primary-foreground">{getBridgeText()}</Text>
         {isBridgeLoading && <ActivityIndicator color="black" />}
       </Button>
     </View>
