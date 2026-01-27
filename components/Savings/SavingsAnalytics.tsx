@@ -99,6 +99,10 @@ const SavingsAnalytics = () => {
     return `${formatNumber(value, 2)}%`;
   };
 
+  const formatYAxis = (value: number) => {
+    return `${formatNumber(value, 1, 0)}%`;
+  };
+
   return (
     <View className="gap-6 rounded-twice bg-card p-5 md:p-8">
       <View className="flex-row items-center justify-between gap-2">
@@ -119,7 +123,7 @@ const SavingsAnalytics = () => {
                   <Text className="text-muted-foreground">Loading...</Text>
                 </View>
               ) : filteredYieldHistory.length > 0 ? (
-                <LazyAreaChart data={filteredYieldHistory} formatToolTip={formatToolTip} />
+                <LazyAreaChart data={filteredYieldHistory} formatToolTip={formatToolTip} formatYAxis={formatYAxis} />
               ) : (
                 <View className="h-[200px] items-center justify-center">
                   <Text className="text-muted-foreground">No data available</Text>
