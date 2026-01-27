@@ -24,7 +24,12 @@ type DashboardHeaderButtonsProps = {
   hideSend?: boolean;
 };
 
-const DashboardHeaderButtons = ({ deposit, withdraw, hideWithdraw, hideSend }: DashboardHeaderButtonsProps) => {
+const DashboardHeaderButtons = ({
+  deposit,
+  withdraw,
+  hideWithdraw,
+  hideSend,
+}: DashboardHeaderButtonsProps) => {
   const withdrawTrigger = (
     <Button
       variant="secondary"
