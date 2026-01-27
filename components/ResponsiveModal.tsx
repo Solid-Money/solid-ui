@@ -147,10 +147,12 @@ const ResponsiveModal = ({
           className={disableScroll ? '' : 'overflow-hidden'}
         >
           <View
-            className={cn({
-              'gap-8': !disableScroll,
+            className={cn(
+              {
+                'gap-8': !disableScroll,
+              },
               containerClassName,
-            })}
+            )}
             onLayout={event => {
               if (!disableScroll) {
                 dialogHeight.value = event.nativeEvent.layout.height;
