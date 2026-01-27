@@ -148,7 +148,8 @@ const ResponsiveModal = ({
         >
           <View
             className={cn({
-              'overflow-hidden': !disableScroll,
+              'gap-8': !disableScroll,
+              containerClassName,
             })}
             onLayout={event => {
               if (!disableScroll) {
@@ -159,7 +160,7 @@ const ResponsiveModal = ({
             {/* Render header only for non-fullscreen content */}
             {disableScroll ? null : hasHeader ? (
               <DialogHeader
-                className={cn('flex-row items-center justify-between gap-2 mb-8', titleClassName)}
+                className={cn('flex-row items-center justify-between gap-2', titleClassName)}
               >
                 {hasBackButton ? (
                   <Button

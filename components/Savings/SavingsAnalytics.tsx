@@ -58,7 +58,8 @@ const SavingsAnalytics = () => {
     const cutoffDateString = cutoffDate.toISOString().split('T')[0];
 
     return yieldHistory.filter((item: ChartPayload) => {
-      const itemTime = typeof item.time === 'string' ? item.time : new Date(item.time).toISOString().split('T')[0];
+      const itemTime =
+        typeof item.time === 'string' ? item.time : new Date(item.time).toISOString().split('T')[0];
       return itemTime >= cutoffDateString;
     });
   }, [yieldHistory, timeFilter]);
@@ -123,7 +124,11 @@ const SavingsAnalytics = () => {
                   <Text className="text-muted-foreground">Loading...</Text>
                 </View>
               ) : filteredYieldHistory.length > 0 ? (
-                <LazyAreaChart data={filteredYieldHistory} formatToolTip={formatToolTip} formatYAxis={formatYAxis} />
+                <LazyAreaChart
+                  data={filteredYieldHistory}
+                  formatToolTip={formatToolTip}
+                  formatYAxis={formatYAxis}
+                />
               ) : (
                 <View className="h-[200px] items-center justify-center">
                   <Text className="text-muted-foreground">No data available</Text>

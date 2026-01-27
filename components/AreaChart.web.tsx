@@ -61,7 +61,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
 
         <XAxis
           dataKey="index"
-          tickFormatter={(index) => {
+          tickFormatter={index => {
             return data[index] ? formatTimeForAxis(data[index].time) : '';
           }}
           ticks={xAxisTicks}
@@ -71,8 +71,9 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
         />
         <YAxis
           orientation="right"
-          tickFormatter={(value) => {
-            if (typeof value !== 'number' || !isFinite(value)) return formatYAxis ? formatYAxis(0) : '0';
+          tickFormatter={value => {
+            if (typeof value !== 'number' || !isFinite(value))
+              return formatYAxis ? formatYAxis(0) : '0';
             return formatYAxis ? formatYAxis(value) : `${formatNumber(value, 1, 0)}`;
           }}
           tick={{ fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 }}
