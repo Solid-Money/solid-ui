@@ -6,6 +6,7 @@ import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typ
 import { scheduleOnRN } from 'react-native-worklets';
 
 import PointsBanner from '@/components/Points/PointsBanner';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 
 import CardBanner from './CardBanner';
@@ -71,15 +72,15 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const [containerWidth, setContainerWidth] = useState(0);
   const gapPadding = useSharedValue(0);
   const isPanning = usePanGesture();
+  const { data: cardStatus, isLoading } = useCardStatus();
 
-  const defaultData = useMemo(
-    () => [
-      <CardBanner key="card" />,
-      <PointsBanner key="points" />,
-      <DepositBanner key="deposit" />,
-    ],
-    [],
-  );
+  const defaultData = useMemo(() => {
+    const data = [<PointsBanner key="points" />, <DepositBanner key="deposit" />];
+    if (!isLoading && !cardStatus?.status) {
+      data.unshift(<CardBanner key="card" />);
+    }
+    return data;
+  }, [cardStatus, isLoading]);
 
   const data = propData || defaultData;
 

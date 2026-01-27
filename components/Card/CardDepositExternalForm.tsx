@@ -379,7 +379,7 @@ export default function CardDepositExternalForm() {
           handleSubmit(onSubmit)();
         }}
       >
-        <Text className="text-lg font-semibold text-black">
+        <Text className="text-base font-bold text-black">
           {sendStatus === Status.PENDING ? 'Processing...' : 'Deposit'}
         </Text>
       </Button>

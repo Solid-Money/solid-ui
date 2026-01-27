@@ -212,7 +212,7 @@ export default function Email() {
                 }
                 disabled={isFormDisabled()}
               >
-                <Text className="text-lg font-semibold">{getButtonText()}</Text>
+                <Text className="text-base font-bold">{getButtonText()}</Text>
                 {isLoading && <ActivityIndicator color="white" />}
               </Button>
 
@@ -248,7 +248,7 @@ export default function Email() {
               }
               disabled={isFormDisabled()}
             >
-              <Text className="text-lg font-semibold">{getButtonText()}</Text>
+              <Text className="text-base font-bold">{getButtonText()}</Text>
               {isLoading && <ActivityIndicator color="white" />}
             </Button>
 

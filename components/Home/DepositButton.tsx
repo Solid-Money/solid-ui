@@ -11,7 +11,7 @@ const DepositButton = () => {
       <Button variant="indigo" className="h-[3.375rem] rounded-xl pr-6 md:w-72">
         <View className="flex-row items-center gap-2">
           <Plus color="white" />
-          <Text className="text-lg font-bold text-foreground">Make your first deposit</Text>
+          <Text className="text-base font-bold text-foreground">Make your first deposit</Text>
         </View>
       </Button>
     );

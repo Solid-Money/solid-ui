@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Platform, Pressable, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, X } from 'lucide-react-native';
 import { isAddress } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
+import ScanAddress from '@/assets/images/scan-address';
 import Avatar from '@/components/Avatar';
 import { Text } from '@/components/ui/text';
 import { SEND_MODAL } from '@/constants/modals';
@@ -38,6 +39,11 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
       setSearchQuery: state.setSearchQuery,
     })),
   );
+
+  const handleOpenScanner = useCallback(() => {
+    // Open QR scanner within the Send modal for seamless UX
+    setModal(SEND_MODAL.OPEN_QR_SCANNER);
+  }, [setModal]);
   const { data: addressBook = [] } = useQuery({
     queryKey: ['address-book'],
     queryFn: () => withRefreshToken(() => fetchAddressBook()),
@@ -186,6 +192,14 @@ const ToInput: React.FC<ToInputProps> = ({ placeholder = 'Address or name' }) =>
             className="flex h-10 w-10 items-center justify-center rounded-full bg-popover web:transition-colors web:hover:bg-muted"
           >
             <ArrowRight size={20} color="white" />
+          </Pressable>
+        ) : Platform.OS !== 'web' ? (
+          <Pressable
+            onPress={handleOpenScanner}
+            className="flex h-10 w-10 items-center justify-center"
+            hitSlop={10}
+          >
+            <ScanAddress width={22} height={22} />
           </Pressable>
         ) : null}
       </Pressable>

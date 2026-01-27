@@ -159,7 +159,7 @@ export function UserInfoFooter({
         onPress={onContinue}
         disabled={!isValid || isLoading}
       >
-        <Text className="text-lg font-bold text-black">
+        <Text className="text-base font-bold text-black">
           {isLoading ? 'Please wait...' : 'Continue'}
         </Text>
       </Button>

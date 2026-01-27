@@ -24,8 +24,6 @@ import {
   AddressBookRequest,
   AddressBookResponse,
   APYs,
-  Attribute,
-  AttributeCategory,
   BlockscoutTransactions,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,

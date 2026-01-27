@@ -203,7 +203,7 @@ const BankTransferAmountModal = () => {
         onPress={handleContinue}
       >
         <Text
-          className={`native:text-lg text-lg font-bold ${minimumAmountError ? 'text-gray-400' : 'text-black'}`}
+          className={`text-base font-bold ${minimumAmountError ? 'text-gray-400' : 'text-black'}`}
         >
           Continue
         </Text>
@@ -365,7 +365,7 @@ const BankTransferPreviewModal = () => {
         style={{ backgroundColor: '#94F27F' }}
         onPress={() => setModal(DEPOSIT_MODAL.CLOSE)}
       >
-        <Text className="native:text-lg text-lg font-bold text-black">Done</Text>
+        <Text className="text-base font-bold text-black">Done</Text>
       </Button>
     </View>
   );

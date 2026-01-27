@@ -528,17 +528,17 @@ const SwapButton: React.FC = () => {
         disabled={isButtonDisabled}
       >
         {isAnyLoading ? (
-          <Text className="text-base font-semibold">Processing Transaction...</Text>
+          <Text className="text-base font-bold">Processing Transaction...</Text>
         ) : priceImpactSeverity > 2 && !priceImpactTooHigh ? (
-          <Text className="text-base font-semibold">Swap Anyway</Text>
+          <Text className="text-base font-bold">Swap Anyway</Text>
         ) : needsApproval ? (
-          <Text className="text-base font-semibold">Approve & Swap</Text>
+          <Text className="text-base font-bold">Approve & Swap</Text>
         ) : !typedValue ? (
-          <Text className="text-base font-semibold">Enter an amount</Text>
+          <Text className="text-base font-bold">Enter an amount</Text>
         ) : (
           <View className="flex-row items-center gap-2">
             <Image source={getAsset('images/security_key.png')} style={{ width: 21, height: 10 }} />
-            <Text className="text-base font-semibold">Swap</Text>
+            <Text className="text-base font-bold">Swap</Text>
           </View>
         )}
       </Button>
