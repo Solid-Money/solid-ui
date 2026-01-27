@@ -140,14 +140,19 @@ const ResponsiveModal = ({
           contentClassName, // Put last so overrides take effect
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
-        showCloseButton={disableScroll ? false : false} // Always false, we render our own
+        showCloseButton={false}
       >
         <Animated.View
           style={dialogAnimatedStyle}
           className={disableScroll ? '' : 'overflow-hidden'}
         >
           <View
-            className={cn(!disableScroll && 'gap-8', containerClassName)}
+            className={cn(
+              {
+                'gap-8': !disableScroll,
+              },
+              containerClassName,
+            )}
             onLayout={event => {
               if (!disableScroll) {
                 dialogHeight.value = event.nativeEvent.layout.height;
