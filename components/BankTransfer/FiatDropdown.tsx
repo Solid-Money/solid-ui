@@ -22,8 +22,7 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
       BridgeTransferFiatCurrency.USD,
       BridgeTransferFiatCurrency.EUR,
       BridgeTransferFiatCurrency.MXN,
-      // TODO: Temporarily hidden - re-enable when PIX is ready
-      // BridgeTransferFiatCurrency.BRL,
+      BridgeTransferFiatCurrency.BRL,
     ],
     [],
   );
