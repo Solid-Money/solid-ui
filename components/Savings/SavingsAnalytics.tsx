@@ -55,9 +55,12 @@ const SavingsAnalytics = () => {
         : timeFilter === TimeFilter.THREE_MONTHS
           ? subMonths(now, 3)
           : now;
-    const cutoffTime = cutoffDate.getTime();
+    const cutoffDateString = cutoffDate.toISOString().split('T')[0];
 
-    return yieldHistory.filter((item: ChartPayload) => item.time >= cutoffTime);
+    return yieldHistory.filter((item: ChartPayload) => {
+      const itemTime = typeof item.time === 'string' ? item.time : new Date(item.time).toISOString().split('T')[0];
+      return itemTime >= cutoffDateString;
+    });
   }, [yieldHistory, timeFilter]);
 
   // Animate container height
@@ -96,6 +99,10 @@ const SavingsAnalytics = () => {
     return `${formatNumber(value, 2)}%`;
   };
 
+  const formatYAxis = (value: number) => {
+    return `${formatNumber(value, 1, 0)}%`;
+  };
+
   return (
     <View className="gap-6 rounded-twice bg-card p-5 md:p-8">
       <View className="flex-row items-center justify-between gap-2">
@@ -116,7 +123,7 @@ const SavingsAnalytics = () => {
                   <Text className="text-muted-foreground">Loading...</Text>
                 </View>
               ) : filteredYieldHistory.length > 0 ? (
-                <LazyAreaChart data={filteredYieldHistory} formatToolTip={formatToolTip} />
+                <LazyAreaChart data={filteredYieldHistory} formatToolTip={formatToolTip} formatYAxis={formatYAxis} />
               ) : (
                 <View className="h-[200px] items-center justify-center">
                   <Text className="text-muted-foreground">No data available</Text>
