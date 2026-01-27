@@ -144,7 +144,9 @@ const ResponsiveModal = ({
       >
         <Animated.View
           style={dialogAnimatedStyle}
-          className={disableScroll ? '' : 'overflow-hidden'}
+          className={cn({
+            'overflow-hidden': !disableScroll,
+          })}
         >
           <View
             className={cn(
