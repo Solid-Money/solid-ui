@@ -55,9 +55,12 @@ const SavingsAnalytics = () => {
         : timeFilter === TimeFilter.THREE_MONTHS
           ? subMonths(now, 3)
           : now;
-    const cutoffTime = cutoffDate.getTime();
+    const cutoffDateString = cutoffDate.toISOString().split('T')[0];
 
-    return yieldHistory.filter((item: ChartPayload) => item.time >= cutoffTime);
+    return yieldHistory.filter((item: ChartPayload) => {
+      const itemTime = typeof item.time === 'string' ? item.time : new Date(item.time).toISOString().split('T')[0];
+      return itemTime >= cutoffDateString;
+    });
   }, [yieldHistory, timeFilter]);
 
   // Animate container height
