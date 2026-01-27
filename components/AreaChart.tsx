@@ -214,11 +214,9 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
           </Defs>
           <VictoryAxis
             tickValues={xAxisTicks.ticks}
-            tickFormat={(t) => {
+            tickFormat={t => {
               const index = Math.round(t);
-              return index >= 0 && index < xAxisTicks.labels.length
-                ? xAxisTicks.labels[index]
-                : '';
+              return index >= 0 && index < xAxisTicks.labels.length ? xAxisTicks.labels[index] : '';
             }}
             style={{
               axis: { stroke: 'transparent' },
@@ -231,7 +229,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
             dependentAxis
             orientation="right"
             tickValues={yAxisTicks}
-            tickFormat={(t) => {
+            tickFormat={t => {
               if (typeof t !== 'number' || !isFinite(t)) return formatYAxis ? formatYAxis(0) : '0';
               return formatYAxis ? formatYAxis(t) : `${formatNumber(t, 1, 0)}`;
             }}

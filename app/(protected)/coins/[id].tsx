@@ -166,7 +166,7 @@ export default function Coin() {
                   <View style={{ marginLeft: -16, marginRight: -16 }}>
                     <LazyAreaChart
                       data={formattedChartData}
-                      formatYAxis={(value) => `$${formatNumber(value, 1, 0)}`}
+                      formatYAxis={value => `$${formatNumber(value, 1, 0)}`}
                     />
                   </View>
                 ) : null}
