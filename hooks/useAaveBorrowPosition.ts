@@ -118,14 +118,23 @@ export function useAaveBorrowPosition(): AaveBorrowPositionData {
       }
     }
 
+    // Calculate borrow APY from variableBorrowRate (available regardless of borrow status)
+    let borrowAPY = 0;
+    if (usdcReserve) {
+      const variableBorrowRate = BigInt(usdcReserve.variableBorrowRate || 0);
+      borrowAPY = (Number(variableBorrowRate) / 1e27) * 100;
+    }
+
     if (!usdcUserReserve || !usdcReserve) {
+      const cashbackAPY = 0;
+      const netAPY = borrowAPY === 0 ? 0 : (savingsAPY || 0) - borrowAPY;
       return {
         totalBorrowed: 0,
         totalSupplied,
-        borrowAPY: 0,
+        borrowAPY,
         savingsAPY: savingsAPY || 0,
-        cashbackAPY: 0,
-        netAPY: 0,
+        cashbackAPY,
+        netAPY,
         isLoading: false,
         error: null,
       };
@@ -134,44 +143,19 @@ export function useAaveBorrowPosition(): AaveBorrowPositionData {
     // Check if user has variable debt
     const scaledVariableDebt = BigInt(usdcUserReserve.scaledVariableDebt || 0);
 
-    if (scaledVariableDebt === 0n) {
-      return {
-        totalBorrowed: 0,
-        totalSupplied,
-        borrowAPY: 0,
-        savingsAPY: savingsAPY || 0,
-        cashbackAPY: 0,
-        netAPY: 0,
-        isLoading: false,
-        error: null,
-      };
+    // Calculate total borrowed (only if user has debt)
+    let totalBorrowed = 0;
+    if (scaledVariableDebt > 0n) {
+      // Get variableBorrowIndex from reserve data
+      const variableBorrowIndex = BigInt(usdcReserve.variableBorrowIndex || 0);
+
+      if (variableBorrowIndex > 0n) {
+        // Calculate actual debt: scaledVariableDebt * variableBorrowIndex / 1e27
+        // variableBorrowIndex is scaled by 1e27
+        const actualDebt = (scaledVariableDebt * variableBorrowIndex) / BigInt(1e27);
+        totalBorrowed = Number(formatUnits(actualDebt, 6)); // USDC has 6 decimals
+      }
     }
-
-    // Get variableBorrowIndex from reserve data
-    const variableBorrowIndex = BigInt(usdcReserve.variableBorrowIndex || 0);
-
-    if (variableBorrowIndex === 0n) {
-      return {
-        totalBorrowed: 0,
-        totalSupplied,
-        borrowAPY: 0,
-        savingsAPY: savingsAPY || 0,
-        cashbackAPY: 0,
-        netAPY: 0,
-        isLoading: false,
-        error: null,
-      };
-    }
-
-    // Calculate actual debt: scaledVariableDebt * variableBorrowIndex / 1e27
-    // variableBorrowIndex is scaled by 1e27
-    const actualDebt = (scaledVariableDebt * variableBorrowIndex) / BigInt(1e27);
-    const totalBorrowed = Number(formatUnits(actualDebt, 6)); // USDC has 6 decimals
-
-    // Get borrow APY from variableBorrowRate (already in ray)
-    const variableBorrowRate = BigInt(usdcReserve.variableBorrowRate || 0);
-
-    const borrowAPY = (Number(variableBorrowRate) / 1e27) * 100;
 
     // Cashback APY is hardcoded to 0
     const cashbackAPY = 0;
