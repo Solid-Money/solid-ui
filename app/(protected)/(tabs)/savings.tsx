@@ -10,6 +10,7 @@ import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
+import SavingsAnalytics from '@/components/Savings/SavingsAnalytics';
 import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
@@ -234,6 +235,8 @@ export default function Savings() {
             </View>
           </View>
         </View>
+
+        <SavingsAnalytics />
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
       </View>
