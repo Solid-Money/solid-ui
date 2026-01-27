@@ -122,7 +122,6 @@ const SwapModalProvider = () => {
       title={title}
       titleClassName="items-center w-full"
       containerClassName="w-full max-w-md"
-      contentClassName="md:max-w-md w-full"
       showBackButton={false}
       contentKey={contentKey}
     >
