@@ -349,7 +349,7 @@ const FastWithdrawForm = () => {
             {isLoading ? (
               <ActivityIndicator color="gray" />
             ) : (
-              <Text className="text-lg font-semibold text-black">Withdraw</Text>
+              <Text className="text-base font-bold text-black">Withdraw</Text>
             )}
           </Button>
         </CheckConnectionWrapper>

@@ -70,7 +70,7 @@ export default function Welcome() {
     <View className="w-full max-w-[440px] items-center">
       {/* Header */}
       <View className="mb-4 items-center">
-        <Text className="text-center text-[38px] font-medium leading-none text-white md:text-4xl">
+        <Text className="text-center text-[34px] font-semibold leading-none text-white md:text-4xl">
           Welcome back
         </Text>
       </View>
@@ -94,7 +94,7 @@ export default function Welcome() {
               disabled={loadingUserId !== null}
             >
               <View className="flex-row items-center gap-2">
-                <Text className="native:-mt-1 native:text-xl text-lg font-semibold">
+                <Text className="text-base font-bold">
                   {eclipseUsername(user.username || user.email || '', 20)}
                 </Text>
               </View>
@@ -112,17 +112,13 @@ export default function Welcome() {
         onPress={handleUseAnotherAccount}
         className="mb-6 h-14 w-full rounded-xl border-0"
       >
-        <Text className="native:text-xl text-base font-semibold text-white">
-          Use another account
-        </Text>
+        <Text className="text-base font-semibold text-white">Use another account</Text>
       </Button>
 
       {/* Forget all users */}
       {users.length > 0 && (
         <Button variant="ghost" className="h-14 rounded-xl" onPress={handleRemoveUsers}>
-          <Text className="native:text-xl text-base font-bold text-muted-foreground">
-            Forget all users
-          </Text>
+          <Text className="text-base font-bold text-muted-foreground">Forget all users</Text>
         </Button>
       )}
     </View>

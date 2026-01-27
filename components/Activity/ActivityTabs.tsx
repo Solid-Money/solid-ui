@@ -136,7 +136,7 @@ const ActivityTabs = () => {
           >
             <Text
               className={cn(
-                'text-base font-semibold leading-none',
+                'native:leading-tight text-base font-semibold leading-none',
                 tab === ActivityTab.WALLET ? 'text-white' : 'text-[rgba(255,255,255,0.6)]',
               )}
             >
@@ -153,7 +153,7 @@ const ActivityTabs = () => {
           >
             <Text
               className={cn(
-                'text-base font-semibold leading-none',
+                'native:leading-tight text-base font-semibold leading-none',
                 tab === ActivityTab.CARD ? 'text-white' : 'text-[rgba(255,255,255,0.6)]',
               )}
             >

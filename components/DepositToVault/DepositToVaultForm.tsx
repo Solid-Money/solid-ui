@@ -383,7 +383,7 @@ function DepositToVaultForm() {
             onPress={handleSubmit(onSubmit)}
             disabled={isFormDisabled()}
           >
-            <Text className="text-lg font-semibold">{getButtonText()?.slice(0, 30)}</Text>
+            <Text className="text-base font-bold">{getButtonText()?.slice(0, 30)}</Text>
             {isLoading && <ActivityIndicator color="gray" />}
           </Button>
         </CheckConnectionWrapper>

@@ -347,7 +347,7 @@ const DepositDirectlyAddress = () => {
         onPress={handleDone}
         className="mt-2 h-14 w-full rounded-2xl bg-[#94F27F] web:hover:bg-[#94F27F]/90"
       >
-        <Text className="text-lg font-bold text-black">Done</Text>
+        <Text className="text-base font-bold text-black">Done</Text>
       </Button>
 
       {/* Need help? */}

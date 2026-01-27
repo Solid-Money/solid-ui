@@ -248,7 +248,7 @@ export default function SignupOtp() {
 
       {/* Header */}
       <View className="mb-8 items-center">
-        <Text className="mb-3 text-center text-[38px] font-medium -tracking-[1px] text-white">
+        <Text className="mb-3 text-center text-[34px] font-semibold -tracking-[1px] text-white">
           Check your email
         </Text>
         <Text className="text-center text-base leading-none text-white/60">
@@ -291,7 +291,7 @@ export default function SignupOtp() {
         {isLoading ? (
           <ActivityIndicator color="gray" />
         ) : (
-          <Text className="native:text-lg text-lg font-semibold">Continue</Text>
+          <Text className="text-base font-bold">Continue</Text>
         )}
       </Button>
 
@@ -331,10 +331,10 @@ export default function SignupOtp() {
           <View className="flex-1 items-center px-6">
             {/* Header */}
             <View className="mb-8 mt-8 items-center">
-              <Text className="mb-4 text-center text-[38px] font-medium leading-[1.1] -tracking-[1px] text-white">
+              <Text className="mb-4 text-center text-[34px] font-semibold leading-[1.1] -tracking-[1px] text-white">
                 Check your email
               </Text>
-              <Text className="text-center text-[16px] leading-4 text-white/60">
+              <Text className="text-center text-[16px] text-white/60">
                 We sent a verification code to{'\n'}
                 <Text className="font-semibold text-white/90">{email}</Text>
               </Text>
@@ -388,7 +388,7 @@ export default function SignupOtp() {
               {isLoading ? (
                 <ActivityIndicator color="gray" />
               ) : (
-                <Text className="native:text-lg text-lg font-semibold">Continue</Text>
+                <Text className="text-base font-bold">Continue</Text>
               )}
             </Button>
           </View>

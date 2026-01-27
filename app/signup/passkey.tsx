@@ -150,7 +150,7 @@ export default function SignupPasskey() {
 
         {/* Header */}
         <View className="mb-8 mt-8 items-center">
-          <Text className="mb-4 text-center text-[38px] font-semibold leading-none -tracking-[1px] text-white">
+          <Text className="mb-4 text-center text-[34px] font-semibold leading-none -tracking-[1px] text-white">
             Secure sign-in{'\n'}with Passkey
           </Text>
           <View className="px-4">
@@ -177,7 +177,7 @@ export default function SignupPasskey() {
           ) : (
             <View className="flex-row items-center">
               <LoginKeyIcon color="#000" />
-              <Text className="native:text-lg ml-2 text-lg font-semibold text-black">Continue</Text>
+              <Text className="ml-2 text-base font-bold text-black">Continue</Text>
             </View>
           )}
         </Button>
@@ -207,7 +207,7 @@ export default function SignupPasskey() {
 
             {/* Header */}
             <View className="mt-8 items-center">
-              <Text className="mb-4 text-center text-[38px] font-semibold leading-[1.1] -tracking-[1px] text-white">
+              <Text className="mb-4 text-center text-[34px] font-semibold leading-[1.1] -tracking-[1px] text-white">
                 Your account is{'\n'}protected with{'\n'}Passkey
               </Text>
               <View className="px-4">
@@ -242,9 +242,7 @@ export default function SignupPasskey() {
               ) : (
                 <>
                   <LoginKeyIcon color="#000" />
-                  <Text className="native:text-lg ml-2 text-lg font-semibold text-black">
-                    Continue
-                  </Text>
+                  <Text className="ml-2 text-base font-bold text-black">Continue</Text>
                 </>
               )}
             </Button>

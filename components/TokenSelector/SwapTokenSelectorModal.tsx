@@ -56,7 +56,7 @@ const SwapTokenSelectorModal = ({
     () => (
       <View className="flex flex-row items-center gap-1">
         <CurrencyLogo currency={currentCurrency} size={24} />
-        <Text className="native:text-lg text-lg font-semibold text-white">{buttonText}</Text>
+        <Text className="text-lg font-semibold text-white">{buttonText}</Text>
         <ChevronDown className="text-white" />
       </View>
     ),

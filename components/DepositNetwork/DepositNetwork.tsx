@@ -8,7 +8,7 @@ import { Text } from '@/components/ui/text';
 
 type DepositNetworkProps = {
   name: string;
-  description: string;
+  description?: string;
   icon: ImageSourcePropType;
   isComingSoon?: boolean;
   disabled?: boolean;
@@ -36,7 +36,7 @@ const DepositNetwork = ({
         <Image source={icon} style={{ width: 34, height: 34 }} />
         <View>
           <Text className="text-lg font-semibold leading-5 text-primary">{name}</Text>
-          <Text className="leading-4 text-muted-foreground">{description}</Text>
+          {description && <Text className="leading-4 text-muted-foreground">{description}</Text>}
         </View>
       </View>
       {isComingSoon ? (

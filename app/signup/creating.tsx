@@ -298,7 +298,7 @@ export default function SignupCreating() {
         {/* Header section */}
         <View className="mb-10 items-center">
           <Text className="mb-2 text-[16px] text-white/60">Please wait</Text>
-          <Text className="text-center text-[38px] font-semibold -tracking-[1px] text-white md:text-4xl">
+          <Text className="text-center text-[34px] font-semibold -tracking-[1px] text-white md:text-4xl">
             Creating your wallet
           </Text>
         </View>

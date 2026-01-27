@@ -25,6 +25,7 @@ interface SendState {
   setName: (name: string) => void;
   setSearchQuery: (query: string) => void;
   clearForm: () => void;
+  resetAll: () => void;
 }
 
 export const useSendStore = create<SendState>()(
@@ -55,6 +56,20 @@ export const useSendStore = create<SendState>()(
       clearForm: () =>
         set({
           selectedToken: null,
+          currentTokenAddress: null,
+          transaction: {},
+          amount: '',
+          address: '',
+          name: '',
+          searchQuery: '',
+        }),
+      resetAll: () =>
+        set({
+          currentModal: SEND_MODAL.CLOSE,
+          previousModal: SEND_MODAL.CLOSE,
+          transaction: {},
+          currentTokenAddress: null,
+          selectedToken: null,
           amount: '',
           address: '',
           name: '',
@@ -67,3 +82,12 @@ export const useSendStore = create<SendState>()(
     },
   ),
 );
+
+/**
+ * Check if there is unsaved data in the send form.
+ * Used to determine if a discard confirmation dialog should be shown.
+ */
+export const hasUnsavedSendData = (): boolean => {
+  const state = useSendStore.getState();
+  return !!(state.amount || state.address || state.selectedToken || state.name);
+};

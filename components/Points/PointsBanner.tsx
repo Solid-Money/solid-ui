@@ -55,7 +55,7 @@ const PointsBanner = () => {
                 onPress={() => router.push(path.POINTS)}
               >
                 <Plus color="white" />
-                <Text className="native:-mt-1 text-base font-bold text-primary">Earn points</Text>
+                <Text className="text-base font-bold text-primary">Earn points</Text>
               </Button>
               <Link href={path.POINTS} className="web:hover:opacity-70">
                 <View className="flex-row items-center gap-0.5">

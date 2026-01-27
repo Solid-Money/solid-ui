@@ -162,7 +162,7 @@ export default function BankTransferAmount() {
         }}
       >
         <Text
-          className={`native:text-lg text-lg font-bold ${minimumAmountError ? 'text-gray-400' : 'text-black'}`}
+          className={`text-base font-bold ${minimumAmountError ? 'text-gray-400' : 'text-black'}`}
         >
           Continue
         </Text>

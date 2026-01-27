@@ -145,9 +145,7 @@ export default function Onboarding() {
                     className={`rounded-xl ${isSmallScreen ? 'h-12' : 'h-14'}`}
                     onPress={handleCreateAccount}
                   >
-                    <Text className="native:text-lg native:-mt-1 text-lg font-bold">
-                      Create account
-                    </Text>
+                    <Text className="text-base font-bold">Create account</Text>
                   </Button>
 
                   {/* OR Divider */}
@@ -168,12 +166,10 @@ export default function Onboarding() {
                     {isLoginPending ? (
                       <View className="flex-row items-center">
                         <ActivityIndicator size="small" color="white" />
-                        <Text className="native:text-lg native:-mt-1 ml-2 text-lg font-bold">
-                          Authenticating...
-                        </Text>
+                        <Text className="ml-2 text-base font-bold">Authenticating...</Text>
                       </View>
                     ) : (
-                      <Text className="native:text-lg native:-mt-1 text-lg font-bold">Login</Text>
+                      <Text className="text-base font-bold">Login</Text>
                     )}
                   </Button>
 
@@ -249,7 +245,7 @@ export default function Onboarding() {
                 className="h-14 w-full rounded-xl"
                 onPress={handleCreateAccount}
               >
-                <Text className="text-lg font-semibold">Create account</Text>
+                <Text className="text-base font-bold">Create account</Text>
               </Button>
 
               {/* OR Divider */}
@@ -269,14 +265,12 @@ export default function Onboarding() {
                 {isLoginPending ? (
                   <View className="flex-row items-center">
                     <ActivityIndicator size="small" color="white" />
-                    <Text className="native:text-lg ml-2 text-lg font-semibold">
-                      Authenticating...
-                    </Text>
+                    <Text className="ml-2 text-base font-bold">Authenticating...</Text>
                   </View>
                 ) : (
                   <View className="flex-row items-center">
                     <LoginKeyIcon />
-                    <Text className="native:text-lg ml-2 text-lg font-semibold">Login</Text>
+                    <Text className="ml-2 text-base font-bold">Login</Text>
                   </View>
                 )}
               </Button>

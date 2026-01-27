@@ -426,7 +426,7 @@ function SubmitButton({ disabled, bridgeStatus, swapAndBridgeStatus, onPress }: 
       {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
         <ActivityIndicator color="black" />
       ) : (
-        <Text className="text-lg font-semibold text-black">Deposit to Card</Text>
+        <Text className="text-base font-bold text-black">Deposit to Card</Text>
       )}
     </Button>
   );
@@ -443,7 +443,7 @@ function BorrowAndDepositButton({
       {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
         <ActivityIndicator color="black" />
       ) : (
-        <Text className="text-lg font-semibold text-black">Deposit</Text>
+        <Text className="text-base font-bold text-black">Deposit</Text>
       )}
     </Button>
   );

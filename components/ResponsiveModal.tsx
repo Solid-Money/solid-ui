@@ -56,6 +56,10 @@ export interface ResponsiveModalProps {
   shouldAnimate?: boolean;
   isForward?: boolean;
   contentKey: string;
+
+  // Layout
+  /** Disable ScrollView wrapper for fullscreen content like camera views */
+  disableScroll?: boolean;
 }
 
 const ResponsiveModal = ({
@@ -75,6 +79,7 @@ const ResponsiveModal = ({
   shouldAnimate = previousModal.name !== 'close',
   isForward = currentModal.number > previousModal.number,
   contentKey,
+  disableScroll = false,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
   const dialogHeight = useSharedValue(0);
@@ -95,6 +100,10 @@ const ResponsiveModal = ({
   const contentExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(250);
 
   const dialogAnimatedStyle = useAnimatedStyle(() => {
+    // Skip height constraints for fullscreen content (e.g., camera)
+    if (disableScroll) {
+      return {};
+    }
     // on native, let the content determine its own height initially
     if (dialogHeight.value === 0) {
       return {};
@@ -110,7 +119,7 @@ const ResponsiveModal = ({
         easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       }),
     };
-  }, [shouldAnimate]);
+  }, [shouldAnimate, disableScroll]);
 
   // Prevent page scroll when modal closes by stopping focus restoration to trigger
   const handleCloseAutoFocus = useCallback((event: Event) => {
@@ -127,20 +136,26 @@ const ResponsiveModal = ({
       <DialogContent
         className={cn(
           'px-4 pb-0 pt-4 md:max-w-md md:px-8 md:pb-0 md:pt-8',
-          contentClassName,
           !isScreenMedium ? 'mt-[5vh] w-screen max-w-full justify-start' : '',
+          contentClassName, // Put last so overrides take effect
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
-        showCloseButton={false}
+        showCloseButton={disableScroll ? false : false} // Always false, we render our own
       >
-        <Animated.View style={dialogAnimatedStyle} className="overflow-hidden">
+        <Animated.View
+          style={dialogAnimatedStyle}
+          className={disableScroll ? '' : 'overflow-hidden'}
+        >
           <View
-            className={cn('gap-8', containerClassName)}
+            className={cn(!disableScroll && 'gap-8', containerClassName)}
             onLayout={event => {
-              dialogHeight.value = event.nativeEvent.layout.height;
+              if (!disableScroll) {
+                dialogHeight.value = event.nativeEvent.layout.height;
+              }
             }}
           >
-            {hasHeader ? (
+            {/* Render header only for non-fullscreen content */}
+            {disableScroll ? null : hasHeader ? (
               <DialogHeader
                 className={cn('flex-row items-center justify-between gap-2', titleClassName)}
               >
@@ -175,46 +190,65 @@ const ResponsiveModal = ({
                 <DialogCloseButton />
               </View>
             )}
-            <View className="relative">
-              <ScrollView
-                className="max-h-[80vh]"
-                contentContainerClassName="pb-4 md:pb-8"
-                showsVerticalScrollIndicator={false}
-                onLayout={e => {
-                  containerHeightRef.current = e.nativeEvent.layout.height;
-                  setShowBottomFade(contentHeightRef.current > containerHeightRef.current + 4);
-                }}
-                onContentSizeChange={(_, h) => {
-                  contentHeightRef.current = h;
-                  if (containerHeightRef.current > 0) {
-                    setShowBottomFade(h > containerHeightRef.current + 4);
-                  }
-                }}
-                onScroll={e => {
-                  const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-                  const atBottom =
-                    contentOffset.y + layoutMeasurement.height >= contentSize.height - 8;
-                  setShowBottomFade(!atBottom);
-                }}
-                scrollEventThrottle={16}
+            {disableScroll ? (
+              <Animated.View
+                entering={contentEntering}
+                exiting={contentExiting}
+                key={contentKey}
+                className="flex-1"
               >
-                <Animated.View entering={contentEntering} exiting={contentExiting} key={contentKey}>
-                  {children}
-                </Animated.View>
-              </ScrollView>
-              {showBottomFade && (
-                <View
-                  pointerEvents="none"
-                  style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 48 }}
+                {children}
+              </Animated.View>
+            ) : (
+              <View className="relative">
+                <ScrollView
+                  className="max-h-[80vh]"
+                  contentContainerClassName="pb-4 md:pb-8"
+                  showsVerticalScrollIndicator={false}
+                  onLayout={e => {
+                    containerHeightRef.current = e.nativeEvent.layout.height;
+                    setShowBottomFade(contentHeightRef.current > containerHeightRef.current + 4);
+                  }}
+                  onContentSizeChange={(_, h) => {
+                    contentHeightRef.current = h;
+                    if (containerHeightRef.current > 0) {
+                      setShowBottomFade(h > containerHeightRef.current + 4);
+                    }
+                  }}
+                  onScroll={e => {
+                    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                    const atBottom =
+                      contentOffset.y + layoutMeasurement.height >= contentSize.height - 8;
+                    setShowBottomFade(!atBottom);
+                  }}
+                  scrollEventThrottle={16}
                 >
-                  <LinearGradient
-                    colors={['rgba(16, 16, 16, 0)', 'rgba(16, 16, 16, 0.5)', 'rgba(16, 16, 16, 1)']}
-                    locations={[0, 0.6, 1]}
-                    style={{ flex: 1 }}
-                  />
-                </View>
-              )}
-            </View>
+                  <Animated.View
+                    entering={contentEntering}
+                    exiting={contentExiting}
+                    key={contentKey}
+                  >
+                    {children}
+                  </Animated.View>
+                </ScrollView>
+                {showBottomFade && (
+                  <View
+                    pointerEvents="none"
+                    style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 48 }}
+                  >
+                    <LinearGradient
+                      colors={[
+                        'rgba(16, 16, 16, 0)',
+                        'rgba(16, 16, 16, 0.5)',
+                        'rgba(16, 16, 16, 1)',
+                      ]}
+                      locations={[0, 0.6, 1]}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         </Animated.View>
       </DialogContent>

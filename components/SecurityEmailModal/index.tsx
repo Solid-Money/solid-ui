@@ -142,7 +142,7 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
             variant="brand"
             className="h-14 rounded-2xl"
           >
-            <Text className="text-lg font-semibold">{getButtonText()}</Text>
+            <Text className="text-base font-bold">{getButtonText()}</Text>
             {isLoading && <ActivityIndicator color="gray" />}
           </Button>
 
@@ -153,7 +153,7 @@ const SecurityEmailModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuc
               disabled={isLoading}
               className="h-14 rounded-2xl border-0"
             >
-              <Text className="text-lg font-semibold">Back to Email</Text>
+              <Text className="text-base font-bold">Back to Email</Text>
             </Button>
           )}
         </View>

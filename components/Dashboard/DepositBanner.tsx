@@ -29,7 +29,7 @@ const DepositBanner = () => {
         onPress={handleAddFundsPress}
       >
         <Plus color="white" />
-        <Text className="native:mt-1 font-bold">Add funds</Text>
+        <Text className="text-base font-bold">Add funds</Text>
       </Button>
     );
   };
