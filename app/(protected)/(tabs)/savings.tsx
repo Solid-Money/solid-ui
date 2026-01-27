@@ -10,6 +10,7 @@ import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
 import SavingCountUp from '@/components/SavingCountUp';
 import SavingsEmptyState from '@/components/Savings/EmptyState';
+import SavingsAnalytics from '@/components/Savings/SavingsAnalytics';
 import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
@@ -27,7 +28,7 @@ import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { getAsset } from '@/lib/assets';
-import { ADDRESSES } from '@/lib/config';
+import { ADDRESSES, isProduction } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
 
@@ -234,6 +235,8 @@ export default function Savings() {
             </View>
           </View>
         </View>
+
+        {!isProduction && <SavingsAnalytics />}
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
       </View>

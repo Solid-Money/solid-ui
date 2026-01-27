@@ -164,7 +164,10 @@ export default function Coin() {
                   </View>
                 ) : formattedChartData.length > 0 ? (
                   <View style={{ marginLeft: -16, marginRight: -16 }}>
-                    <LazyAreaChart data={formattedChartData} />
+                    <LazyAreaChart
+                      data={formattedChartData}
+                      formatYAxis={value => `$${formatNumber(value, 1, 0)}`}
+                    />
                   </View>
                 ) : null}
               </View>

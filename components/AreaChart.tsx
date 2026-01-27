@@ -13,23 +13,32 @@ import { useCoinStore } from '@/store/useCoinStore';
 interface AreaChartProps {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
+  formatYAxis?: (value: number) => string;
 }
 
-const CHART_HEIGHT = 200;
-const CHART_PADDING = { top: 10, bottom: 10, left: 0, right: 0 };
+const CHART_HEIGHT = 300;
+const CHART_PADDING = { top: 10, bottom: 60, left: 0, right: 70 };
 
-const formatTimestamp = (timestamp: number) => {
-  return new Date(timestamp).toLocaleDateString('en-US', {
-    year: 'numeric',
+const formatTimestamp = (time: number | string) => {
+  const date = typeof time === 'string' ? new Date(time) : new Date(time);
+  return date.toLocaleDateString('en-US', {
     month: 'short',
-    day: '2-digit',
+    day: 'numeric',
+  });
+};
+
+const formatTimeForAxis = (time: number | string) => {
+  const date = typeof time === 'string' ? new Date(time) : new Date(time);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
   });
 };
 
 // Throttle interval for touch events (~30fps for smooth performance on Android)
 const TOUCH_THROTTLE_MS = 32;
 
-const Chart = ({ data, formatToolTip }: AreaChartProps) => {
+const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
   const { setSelectedPrice, setSelectedPriceChange } = useCoinStore(
     useShallow(state => ({
       setSelectedPrice: state.setSelectedPrice,
@@ -48,7 +57,43 @@ const Chart = ({ data, formatToolTip }: AreaChartProps) => {
     return data.map((d, index) => ({
       x: index,
       y: d.value,
+      time: d.time,
     }));
+  }, [data]);
+
+  // Get x-axis tick values and labels
+  const xAxisTicks = useMemo(() => {
+    if (!data || data.length < 2) return { ticks: [], labels: [] };
+    const tickCount = Math.min(5, data.length);
+    // Exclude last 10% of data points to avoid overlap with y-axis
+    const maxIndex = Math.floor(data.length * 0.9);
+    const step = Math.max(1, Math.floor(maxIndex / (tickCount - 1)));
+    const ticks: number[] = [];
+    const labels: string[] = [];
+    for (let i = 0; i < maxIndex; i += step) {
+      ticks.push(i);
+      labels.push(formatTimeForAxis(data[i].time));
+    }
+    return { ticks, labels };
+  }, [data]);
+
+  // Get y-axis tick values
+  const yAxisTicks = useMemo(() => {
+    if (!data || data.length < 2) return [];
+    const values = data.map(d => d.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const padding = range * 0.1;
+    const minValue = min - padding;
+    const maxValue = max + padding;
+    const tickCount = 5;
+    const step = (maxValue - minValue) / (tickCount - 1);
+    const ticks: number[] = [];
+    for (let i = 0; i < tickCount; i++) {
+      ticks.push(minValue + step * i);
+    }
+    return ticks;
   }, [data]);
 
   // Calculate min/max for Y position calculation
@@ -168,11 +213,32 @@ const Chart = ({ data, formatToolTip }: AreaChartProps) => {
             </LinearGradient>
           </Defs>
           <VictoryAxis
-            style={{ axis: { stroke: 'transparent' }, tickLabels: { fill: 'transparent' } }}
+            tickValues={xAxisTicks.ticks}
+            tickFormat={t => {
+              const index = Math.round(t);
+              return index >= 0 && index < xAxisTicks.labels.length ? xAxisTicks.labels[index] : '';
+            }}
+            style={{
+              axis: { stroke: 'transparent' },
+              ticks: { stroke: 'transparent' },
+              tickLabels: { fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 },
+              grid: { stroke: 'transparent' },
+            }}
           />
           <VictoryAxis
             dependentAxis
-            style={{ axis: { stroke: 'transparent' }, tickLabels: { fill: 'transparent' } }}
+            orientation="right"
+            tickValues={yAxisTicks}
+            tickFormat={t => {
+              if (typeof t !== 'number' || !isFinite(t)) return formatYAxis ? formatYAxis(0) : '0';
+              return formatYAxis ? formatYAxis(t) : `${formatNumber(t, 1, 0)}`;
+            }}
+            style={{
+              axis: { stroke: 'transparent' },
+              ticks: { stroke: 'transparent' },
+              tickLabels: { fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 },
+              grid: { stroke: 'transparent' },
+            }}
           />
           <VictoryArea
             data={chartData}

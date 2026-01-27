@@ -10,6 +10,7 @@ const AreaChart = React.lazy(() => import('@/components/AreaChart'));
 interface LazyAreaChartProps {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
+  formatYAxis?: (value: number) => string;
 }
 
 const ChartFallback = () => (
@@ -26,10 +27,10 @@ const ChartFallback = () => (
  * - Improves initial bundle size and FCP for screens that don't show charts
  * - Shows a loading spinner while the chart component loads
  */
-const LazyAreaChart = ({ data, formatToolTip }: LazyAreaChartProps) => {
+const LazyAreaChart = ({ data, formatToolTip, formatYAxis }: LazyAreaChartProps) => {
   return (
     <Suspense fallback={<ChartFallback />}>
-      <AreaChart data={data} formatToolTip={formatToolTip} />
+      <AreaChart data={data} formatToolTip={formatToolTip} formatYAxis={formatYAxis} />
     </Suspense>
   );
 };

@@ -1208,7 +1208,7 @@ export interface CoinHistoricalChart {
 }
 
 export interface ChartPayload {
-  time: number;
+  time: number | string;
   value: number;
 }
 
