@@ -1431,6 +1431,7 @@ export const emailSignUp = async (
   credentialId?: string,
   referralCode?: string,
   marketingConsent?: boolean,
+  fingerprintRequestId?: string,
 ) => {
   const body: Record<string, any> = {
     email,
@@ -1441,6 +1442,7 @@ export const emailSignUp = async (
   };
   if (credentialId) body.credentialId = credentialId;
   if (referralCode) body.referralCode = referralCode;
+  if (fingerprintRequestId) body.fingerprintRequestId = fingerprintRequestId;
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email-signup`, {
     method: 'POST',
