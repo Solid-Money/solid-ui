@@ -193,9 +193,7 @@ const SendSearch: React.FC = () => {
             return (
               <View className="items-center py-8">
                 <Text className="text-center text-muted-foreground">
-                  {searchQuery.trim()
-                    ? 'No matches found'
-                    : 'No contacts or recent sends'}
+                  {searchQuery.trim() ? 'No matches found' : 'No contacts or recent sends'}
                 </Text>
               </View>
             );
