@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import AddressBook from '@/components/Send/AddressBook';
 import SendForm from '@/components/Send/SendForm';
-import SendQRScanner from '@/components/Send/SendQRScanner.native';
+import SendQRScanner from '@/components/Send/SendQRScanner';
 import SendReview from '@/components/Send/SendReview';
 import SendSearch from '@/components/Send/SendSearch';
 import TokenSelector from '@/components/Send/TokenSelector';

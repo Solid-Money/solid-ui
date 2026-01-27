@@ -1,3 +1,4 @@
+import type { FC } from 'react';
 /**
  * SendQRScanner - Web Stub
  *
@@ -5,6 +6,6 @@
  * This stub ensures the import doesn't break on web.
  */
 
-const SendQRScanner: React.FC = () => null;
+const SendQRScanner: FC = () => null;
 
 export default SendQRScanner;
