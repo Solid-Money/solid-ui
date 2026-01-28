@@ -22,15 +22,17 @@ import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
+import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
+import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
-import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
 import { CardHolderName, CardStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
+import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
@@ -142,9 +144,9 @@ export default function CardDetails() {
           {/* Row 3: Borrow Position Card + Deposit Bonus Banner */}
           <View className="mt-6 flex-row items-start gap-6">
             <View className="flex-[3]">
-              <BorrowPositionCard variant="desktop" />
+              <BorrowPositionCard variant="desktop" className="min-h-[180px]" />
             </View>
-            <View className="flex-[2]">
+            <View className="h-[180px] flex-[2]">
               <DepositBonusBanner />
             </View>
           </View>
@@ -704,13 +706,19 @@ function DepositBonusBanner() {
   const { isScreenMedium } = useDimension();
   const { isEnabled: configIsEnabled, percentage, cap, isLoading } = useCardDepositBonusConfig();
   const isEnabled = EXPO_PUBLIC_ENVIRONMENT === 'qa' ? true : configIsEnabled;
+  const { setModal, setSource } = useCardDepositStore();
 
-  const learnMoreUrl =
-    'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions';
+  const learnMoreUrl = 'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings';
 
-  const handleLearnMorePress = useCallback(() => {
+  const handleLearnMorePress = useCallback((e: any) => {
+    e?.stopPropagation();
     void Linking.openURL(learnMoreUrl);
   }, []);
+
+  const handleBannerPress = useCallback(() => {
+    setSource(CardDepositSource.BORROW);
+    setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
+  }, [setModal, setSource]);
 
   // Don't render while loading or if disabled
   if (isLoading || !isEnabled) {
@@ -722,7 +730,10 @@ function DepositBonusBanner() {
 
   if (isScreenMedium) {
     return (
-      <View className="relative h-full overflow-hidden rounded-2xl">
+      <Pressable
+        onPress={handleBannerPress}
+        className="relative h-full overflow-hidden rounded-2xl web:hover:opacity-90"
+      >
         <LinearGradient
           colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
           start={{ x: 0.5, y: 0 }}
@@ -774,13 +785,16 @@ function DepositBonusBanner() {
             </View>
           </View>
         </View>
-      </View>
+      </Pressable>
     );
   }
 
   // Mobile layout
   return (
-    <View className="relative mb-4 overflow-hidden rounded-2xl">
+    <Pressable
+      onPress={handleBannerPress}
+      className="relative mb-4 overflow-hidden rounded-2xl web:hover:opacity-90"
+    >
       <LinearGradient
         colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
         start={{ x: 0.5, y: 0 }}
@@ -819,7 +833,7 @@ function DepositBonusBanner() {
           </View>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

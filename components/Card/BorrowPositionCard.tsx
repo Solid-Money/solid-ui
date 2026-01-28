@@ -20,9 +20,14 @@ import { cn, formatNumber } from '@/lib/utils';
 type BorrowPositionCardProps = {
   className?: string;
   variant?: 'mobile' | 'desktop';
+  style?: any;
 };
 
-export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPositionCardProps) {
+export function BorrowPositionCard({
+  className,
+  variant = 'mobile',
+  style,
+}: BorrowPositionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { totalBorrowed, totalSupplied, borrowAPY, savingsAPY, netAPY, isLoading, error } =
     useAaveBorrowPosition();
@@ -86,9 +91,9 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
   // Desktop layout
   if (isDesktop) {
     return (
-      <View className={cn('rounded-2xl bg-[#1C1C1C] p-6', className)}>
+      <View style={style} className={cn('rounded-2xl bg-[#1C1C1C] p-6', className)}>
         {/* Header Row */}
-        <View className="mb-6 flex-row items-center justify-between">
+        <View className="mb-10 flex-row items-center justify-between">
           <Text className="text-base font-medium text-white/70">Borrow position</Text>
           <Pressable onPress={() => setIsExpanded(!isExpanded)} className="flex-row items-center">
             <Text className="mr-2 text-base font-medium text-white">View breakdown</Text>
@@ -101,7 +106,7 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
         </View>
 
         {/* Main Content Row */}
-        <View className="mb-4 flex-row items-center justify-between">
+        <View className="flex-row items-center justify-between">
           {/* Stats Group */}
           <View className="flex-[3] flex-row">
             {/* Total Borrowed */}
@@ -165,7 +170,6 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
               }
             />
             <DepositToCardModal
-              initialSource="borrow"
               trigger={
                 <Button
                   variant="secondary"
@@ -189,7 +193,7 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
 
   // Mobile layout
   return (
-    <View className={cn('rounded-[20px] bg-[#1C1C1C] p-6', className)}>
+    <View style={style} className={cn('rounded-[20px] bg-[#1C1C1C] p-6', className)}>
       {/* Summary Section */}
       <View className="mb-6 flex-row items-end justify-between">
         <View className="flex-1">
@@ -269,7 +273,6 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
           }
         />
         <DepositToCardModal
-          initialSource="borrow"
           trigger={
             <Button
               variant="secondary"
