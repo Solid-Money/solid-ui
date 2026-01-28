@@ -1060,15 +1060,20 @@ export default function CardDepositInternalForm() {
             </View>
           </View>
           <View className="px-5 py-6 md:p-5">
-            <Pressable
-              onPress={() => {
-                Linking.openURL('https://help.solid.xyz');
-              }}
-            >
-              <Text className="text-sm text-muted-foreground">
-                Use your soUSD as collateral to borrow USDC and spend while earning yield.
-              </Text>
-            </Pressable>
+            <Text className="text-sm leading-5 text-muted-foreground">
+              Use your soUSD as collateral to borrow USDC and spend while earning yield.{' '}
+              <Pressable
+                onPress={() => {
+                  Linking.openURL(
+                    'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings',
+                  );
+                }}
+              >
+                <Text className="text-sm font-medium leading-5 text-[#94F27F] web:hover:opacity-70">
+                  Learn more.
+                </Text>
+              </Pressable>
+            </Text>
           </View>
         </TokenDetails>
       )}
