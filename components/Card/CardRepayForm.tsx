@@ -212,6 +212,7 @@ export default function CardRepayForm() {
       resetRepayStatus,
       setTransaction,
       setModal,
+      selectedToken?.contractAddress,
     ],
   );
 
