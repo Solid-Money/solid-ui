@@ -48,8 +48,9 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   const safeMax = useMemo(() => {
     const numMax = Number(max);
     if (isNaN(numMax) || !isFinite(numMax)) return min;
-    return Math.max(min, numMax);
-  }, [max, min]);
+    // Round down to the nearest step to ensure the max is actually reachable via steps
+    return Math.floor(numMax / STEP_SIZE) * STEP_SIZE;
+  }, [max, min, STEP_SIZE]);
 
   const range = safeMax - min;
   const percentage = range > 0 ? ((safeValue - min) / range) * 100 : 0;
@@ -63,7 +64,9 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
     if (isNaN(numValue) || !isFinite(numValue)) return;
     const clampedValue = Math.max(min, Math.min(safeMax, numValue));
     // Round to nearest step size
-    const roundedValue = Math.round(clampedValue / STEP_SIZE) * STEP_SIZE;
+    const roundedValue = Number(
+      (Math.round(clampedValue / STEP_SIZE) * STEP_SIZE).toFixed(decimalPlaces),
+    );
     onValueChange(roundedValue);
     setInputValue(roundedValue.toString());
   };
@@ -78,7 +81,9 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
     const numValue = parseFloat(sanitized);
     if (!isNaN(numValue)) {
       const clampedValue = Math.max(min, Math.min(safeMax, numValue));
-      const roundedValue = Math.round(clampedValue / STEP_SIZE) * STEP_SIZE;
+      const roundedValue = Number(
+        (Math.round(clampedValue / STEP_SIZE) * STEP_SIZE).toFixed(decimalPlaces),
+      );
       onValueChange(roundedValue);
     }
   };
@@ -96,8 +101,9 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   }, [isDraggingState, safeValue, decimalPlaces, inputValue]);
 
   const handleTrackPress = (event: any) => {
-    if (sliderWidth === 0 || range <= 0) return;
+    if (sliderWidth <= 24 || range <= 0) return;
     const { locationX } = event.nativeEvent;
+    // Adjust for the 12px padding on each side of the track
     const adjustedX = Math.max(0, Math.min(sliderWidth - 24, locationX - 12));
     const newPercentage = (adjustedX / (sliderWidth - 24)) * 100;
     const newValue = min + (newPercentage / 100) * range;
@@ -145,7 +151,9 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
         if (isNaN(numValue) || !isFinite(numValue)) return;
         const clampedValue = Math.max(min, Math.min(safeMax, numValue));
         // Round to nearest step size
-        const roundedValue = Math.round(clampedValue / STEP_SIZE) * STEP_SIZE;
+        const roundedValue = Number(
+          (Math.round(clampedValue / STEP_SIZE) * STEP_SIZE).toFixed(decimalPlaces),
+        );
         onValueChange(roundedValue);
         setInputValue(roundedValue.toString());
       },
