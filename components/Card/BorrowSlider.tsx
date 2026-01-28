@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { PanResponder, Pressable, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { formatNumber } from '@/lib/utils';
@@ -13,10 +13,20 @@ type SliderProps = {
 
 export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   const [sliderWidth, setSliderWidth] = useState(0);
+  const [inputValue, setInputValue] = useState(value.toString());
   const sliderContainerRef = useRef<View>(null);
   const sliderPageX = useRef(0);
   const isDragging = useRef(false);
   const STEP_SIZE = useMemo(() => (max < 1 ? 0.01 : 1), [max]);
+
+  const [isDraggingState, setIsDraggingState] = useState(false);
+
+  // Sync input value with prop value when not dragging
+  useEffect(() => {
+    if (!isDragging.current) {
+      setInputValue(value.toString());
+    }
+  }, [value]);
 
   // Calculate decimal places from step size
   const decimalPlaces = useMemo(() => {
@@ -58,6 +68,31 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
     onValueChange(Math.round(clampedValue / STEP_SIZE) * STEP_SIZE);
   };
 
+  const handleInputChange = (text: string) => {
+    // Remove the dollar sign if it's there
+    const cleanText = text.replace('$', '');
+    // Only allow numbers and decimal point
+    const sanitized = cleanText.replace(/[^0-9.]/g, '');
+    setInputValue(sanitized);
+
+    const numValue = parseFloat(sanitized);
+    if (!isNaN(numValue)) {
+      updateValue(numValue);
+    }
+  };
+
+  const handleInputBlur = () => {
+    // On blur, ensure the input matches the formatted safe value
+    setInputValue(safeValue.toString());
+  };
+
+  const displayValue = useMemo(() => {
+    if (isDraggingState) {
+      return `$${formatNumber(safeValue, decimalPlaces, decimalPlaces)}`;
+    }
+    return `$${inputValue}`;
+  }, [isDraggingState, safeValue, decimalPlaces, inputValue]);
+
   const handleTrackPress = (event: any) => {
     if (sliderWidth === 0 || range <= 0) return;
     const { locationX } = event.nativeEvent;
@@ -72,6 +107,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: evt => {
         isDragging.current = true;
+        setIsDraggingState(true);
         const thumbPageX = evt.nativeEvent.pageX;
         if (sliderContainerRef.current) {
           sliderContainerRef.current.measure((_x, _y, _width, _height, pageX) => {
@@ -110,9 +146,11 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
       },
       onPanResponderRelease: () => {
         isDragging.current = false;
+        setIsDraggingState(false);
       },
       onPanResponderTerminate: () => {
         isDragging.current = false;
+        setIsDraggingState(false);
       },
     }),
   ).current;
@@ -122,9 +160,18 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
       <View className="gap-2">
         <Text className="mt-5 text-center text-base font-medium opacity-50">Amount to borrow</Text>
         <View className="flex-row items-center justify-center">
-          <Text className="text-3xl font-semibold text-white">
-            ${formatNumber(safeValue, decimalPlaces, decimalPlaces)}
-          </Text>
+          <TextInput
+            value={displayValue}
+            onChangeText={handleInputChange}
+            onBlur={handleInputBlur}
+            keyboardType="decimal-pad"
+            className="text-3xl font-semibold text-white"
+            style={{
+              padding: 0,
+              minWidth: 40,
+              textAlign: 'center',
+            }}
+          />
         </View>
       </View>
       <View>
