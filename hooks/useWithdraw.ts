@@ -96,6 +96,7 @@ const useWithdraw = (): WithdrawResult => {
           metadata: {
             description: `Withdraw ${amount} soUSD`,
             needsApproval,
+            tokenAddress: ADDRESSES.ethereum.vault,
           },
         },
         onUserOpHash =>

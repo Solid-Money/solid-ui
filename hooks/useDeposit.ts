@@ -157,6 +157,7 @@ const useDeposit = (): DepositResult => {
           metadata: {
             description: `Deposit ${amount} USDC from Safe to Fuse`,
             fee: fee?.toString(),
+            tokenAddress: ADDRESSES.ethereum.usdc,
           },
         },
         onUserOpHash =>

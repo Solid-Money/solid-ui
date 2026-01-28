@@ -142,6 +142,7 @@ const useBridgeToMainnet = (): BridgeResult => {
             metadata: {
               description: `Withdraw ${amount} soUSD from Fuse to Mainnet`,
               fee: fee?.toString(),
+              tokenAddress: ADDRESSES.fuse.vault,
             },
           },
           onUserOpHash =>

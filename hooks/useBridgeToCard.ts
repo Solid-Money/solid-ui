@@ -211,6 +211,7 @@ const useBridgeToCard = (): BridgeResult => {
               description: `Bridge ${amount} USDC from Fuse to Card on Arbitrum`,
               fee: transaction.value,
               sourceSymbol: 'USDC.e', // Track source symbol for display
+              tokenAddress: USDC_STARGATE,
             },
           },
           onUserOpHash =>

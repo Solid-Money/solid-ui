@@ -273,6 +273,7 @@ const useBorrowAndDepositToCard = (): BridgeResult => {
               description: `Borrow and deposit ${amountToBorrow} USDC from Fuse to Card on Arbitrum`,
               fee: transaction.value,
               sourceSymbol: 'USDC.e', // Track source symbol for display
+              tokenAddress: USDC_STARGATE,
             },
           },
           onUserOpHash =>

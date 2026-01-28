@@ -104,6 +104,7 @@ const DepositToCard = () => {
         metadata: {
           description: `Deposit ${amount} ${selectedToken.contractTickerSymbol} to card`,
           processingStatus: 'sending',
+          tokenAddress: selectedToken.contractAddress,
         },
       });
 
