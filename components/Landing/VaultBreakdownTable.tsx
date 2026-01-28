@@ -111,9 +111,9 @@ const Row = memo(function Row({ item, columns, isLast, onPress, isScreenMedium }
                   )}
                   <Text className={cn('text-lg font-medium', c.classNames?.body?.text)}>
                     {c.percent
-                      ? formatPercent(item[c.key])
+                      ? formatPercent(item[c.key] ?? 0)
                       : c.key === 'name'
-                        ? formatName(item[c.key], item.type, isScreenMedium)
+                        ? item.title ?? formatName(item.name, item.type, isScreenMedium)
                         : item[c.key]}
                   </Text>
                 </View>
