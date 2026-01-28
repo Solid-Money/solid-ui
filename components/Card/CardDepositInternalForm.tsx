@@ -45,17 +45,15 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
-import { useCardDepositStore } from '@/store/useCardDepositStore';
+import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 import { BorrowSlider } from './BorrowSlider';
 
-type SourceType = 'wallet' | 'savings' | 'borrow';
-
-type FormData = { amount: string; from: SourceType };
+type FormData = { amount: string; from: CardDepositSource };
 
 type SourceSelectorProps = {
   control: Control<FormData>;
-  from: SourceType;
+  from: CardDepositSource;
   showBorrowOption: boolean;
 };
 
@@ -65,22 +63,22 @@ function SourceSelectorNative({
   from,
   showBorrowOption,
 }: {
-  value: SourceType;
-  onChange: (value: SourceType) => void;
-  from: SourceType;
+  value: CardDepositSource;
+  onChange: (value: CardDepositSource) => void;
+  from: CardDepositSource;
   showBorrowOption: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const getDisplayText = useCallback(() => {
-    if (value === 'wallet') return 'Wallet';
-    if (value === 'savings') return 'Savings';
+    if (value === CardDepositSource.WALLET) return 'Wallet';
+    if (value === CardDepositSource.SAVINGS) return 'Savings';
     return 'Borrow against Savings';
   }, [value]);
 
   const getTokenSymbol = useCallback(() => {
-    if (from === 'wallet') return 'USDC.e';
-    if (from === 'savings') return 'soUSD';
+    if (from === CardDepositSource.WALLET) return 'USDC.e';
+    if (from === CardDepositSource.SAVINGS) return 'soUSD';
     return '';
   }, [from]);
 
@@ -91,9 +89,9 @@ function SourceSelectorNative({
         onPress={() => setIsOpen(!isOpen)}
       >
         <View className="flex-row items-center gap-2">
-          {value === 'wallet' ? (
+          {value === CardDepositSource.WALLET ? (
             <WalletIcon color="#A1A1A1" size={24} />
-          ) : value === 'savings' ? (
+          ) : value === CardDepositSource.SAVINGS ? (
             <Leaf color="#A1A1A1" size={24} />
           ) : (
             <Leaf color="#A1A1A1" size={24} />
@@ -101,7 +99,7 @@ function SourceSelectorNative({
           <Text className="text-lg font-semibold">{getDisplayText()}</Text>
         </View>
         <View className="flex-row items-center gap-2">
-          {value !== 'borrow' && (
+          {value !== CardDepositSource.BORROW && (
             <Text className="text-sm text-muted-foreground">{getTokenSymbol()}</Text>
           )}
           <ChevronDown color="#A1A1A1" size={20} />
@@ -113,7 +111,7 @@ function SourceSelectorNative({
             <Pressable
               className="flex-row items-center gap-2 px-4 py-3"
               onPress={() => {
-                onChange('borrow');
+                onChange(CardDepositSource.BORROW);
                 setIsOpen(false);
               }}
             >
@@ -124,7 +122,7 @@ function SourceSelectorNative({
           <Pressable
             className="flex-row items-center gap-2 px-4 py-3"
             onPress={() => {
-              onChange('savings');
+              onChange(CardDepositSource.SAVINGS);
               setIsOpen(false);
             }}
           >
@@ -134,7 +132,7 @@ function SourceSelectorNative({
           <Pressable
             className="flex-row items-center gap-2 px-4 py-3"
             onPress={() => {
-              onChange('wallet');
+              onChange(CardDepositSource.WALLET);
               setIsOpen(false);
             }}
           >
@@ -153,20 +151,20 @@ function SourceSelectorWeb({
   from,
   showBorrowOption,
 }: {
-  value: SourceType;
-  onChange: (value: SourceType) => void;
-  from: SourceType;
+  value: CardDepositSource;
+  onChange: (value: CardDepositSource) => void;
+  from: CardDepositSource;
   showBorrowOption: boolean;
 }) {
   const getDisplayText = useCallback(() => {
-    if (value === 'wallet') return 'Wallet';
-    if (value === 'savings') return 'Savings';
+    if (value === CardDepositSource.WALLET) return 'Wallet';
+    if (value === CardDepositSource.SAVINGS) return 'Savings';
     return 'Borrow against Savings';
   }, [value]);
 
   const getTokenSymbol = useCallback(() => {
-    if (from === 'wallet') return 'USDC.e';
-    if (from === 'savings') return 'soUSD';
+    if (from === CardDepositSource.WALLET) return 'USDC.e';
+    if (from === CardDepositSource.SAVINGS) return 'soUSD';
     return '';
   }, [from]);
 
@@ -175,9 +173,9 @@ function SourceSelectorWeb({
       <DropdownMenuTrigger asChild>
         <Pressable className="flex-row items-center justify-between rounded-2xl bg-accent p-4">
           <View className="flex-row items-center gap-2">
-            {value === 'wallet' ? (
+            {value === CardDepositSource.WALLET ? (
               <WalletIcon color="#A1A1A1" size={24} />
-            ) : value === 'savings' ? (
+            ) : value === CardDepositSource.SAVINGS ? (
               <Leaf color="#A1A1A1" size={24} />
             ) : (
               <Leaf color="#A1A1A1" size={24} />
@@ -193,7 +191,7 @@ function SourceSelectorWeb({
       <DropdownMenuContent className="-mt-4 w-full min-w-[380px] rounded-b-2xl rounded-t-none border-0">
         {showBorrowOption && (
           <DropdownMenuItem
-            onPress={() => onChange('borrow')}
+            onPress={() => onChange(CardDepositSource.BORROW)}
             className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
           >
             <Leaf color="#A1A1A1" size={20} />
@@ -201,14 +199,14 @@ function SourceSelectorWeb({
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
-          onPress={() => onChange('savings')}
+          onPress={() => onChange(CardDepositSource.SAVINGS)}
           className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
         >
           <Leaf color="#A1A1A1" size={20} />
           <Text className="text-lg">Savings</Text>
         </DropdownMenuItem>
         <DropdownMenuItem
-          onPress={() => onChange('wallet')}
+          onPress={() => onChange(CardDepositSource.WALLET)}
           className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
         >
           <WalletIcon color="#A1A1A1" size={20} />
@@ -251,27 +249,27 @@ function SourceSelector({ control, from, showBorrowOption }: SourceSelectorProps
 type AmountInputProps = {
   control: Control<FormData>;
   errors: FieldErrors<FormData>;
-  from: SourceType;
+  from: CardDepositSource;
   onAmountEntry?: () => void;
 };
 
 function AmountInput({ control, errors, from, onAmountEntry }: AmountInputProps) {
   const getTokenImage = () => {
-    if (from === 'wallet') return getAsset('images/usdc-4x.png');
-    if (from === 'savings') return getAsset('images/sousd-4x.png');
+    if (from === CardDepositSource.WALLET) return getAsset('images/usdc-4x.png');
+    if (from === CardDepositSource.SAVINGS) return getAsset('images/sousd-4x.png');
     return getAsset('images/usdc-4x.png');
   };
 
   const getTokenSymbol = useCallback(() => {
-    if (from === 'wallet') return 'USDC.e';
-    if (from === 'savings') return 'soUSD';
+    if (from === CardDepositSource.WALLET) return 'USDC.e';
+    if (from === CardDepositSource.SAVINGS) return 'soUSD';
     return 'USDC';
   }, [from]);
 
   return (
     <View className="gap-2">
       <Text className="font-medium opacity-50">
-        {from === 'borrow' ? 'Amount to borrow' : 'Deposit amount'}
+        {from === CardDepositSource.BORROW ? 'Amount to borrow' : 'Deposit amount'}
       </Text>
       <View
         className={cn(
@@ -318,7 +316,7 @@ type BalanceDisplayProps = {
   formattedBalance: string;
   setValue: UseFormSetValue<FormData>;
   trigger: UseFormTrigger<FormData>;
-  from: SourceType;
+  from: CardDepositSource;
   onMaxClick?: () => void;
 };
 
@@ -332,12 +330,12 @@ function BalanceDisplay({
   onMaxClick,
 }: BalanceDisplayProps) {
   const tokenSymbol = useMemo(() => {
-    if (from === 'wallet') return 'USDC.e';
-    if (from === 'savings') return 'soUSD';
+    if (from === CardDepositSource.WALLET) return 'USDC.e';
+    if (from === CardDepositSource.SAVINGS) return 'soUSD';
     return 'USDC';
   }, [from]);
 
-  if (from === 'borrow') {
+  if (from === CardDepositSource.BORROW) {
     return null;
   }
 
@@ -452,10 +450,11 @@ function BorrowAndDepositButton({
 export default function CardDepositInternalForm() {
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivity();
-  const { setTransaction, setModal } = useCardDepositStore(
+  const { setTransaction, setModal, source } = useCardDepositStore(
     useShallow(state => ({
       setTransaction: state.setTransaction,
       setModal: state.setModal,
+      source: state.source,
     })),
   );
   const { data: cardDetails } = useCardDetails();
@@ -490,7 +489,10 @@ export default function CardDepositInternalForm() {
 
   const { control, handleSubmit, formState, watch, reset, setValue, trigger } = useForm<FormData>({
     mode: 'onChange',
-    defaultValues: { amount: '', from: 'borrow' },
+    defaultValues: {
+      amount: '',
+      from: source || CardDepositSource.BORROW,
+    },
   });
 
   const watchedAmount = watch('amount');
@@ -528,10 +530,16 @@ export default function CardDepositInternalForm() {
     ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
     : 0;
 
-  const balanceAmount = watchedFrom === 'wallet' ? usdcBalanceAmount : soUsdBalanceAmount;
-  const isBalanceLoading = watchedFrom === 'wallet' ? isUsdcBalanceLoading : isBalancesLoading;
+  const balanceAmount =
+    watchedFrom === CardDepositSource.WALLET ? usdcBalanceAmount : soUsdBalanceAmount;
+  const isBalanceLoading =
+    watchedFrom === CardDepositSource.WALLET ? isUsdcBalanceLoading : isBalancesLoading;
   const tokenSymbol =
-    watchedFrom === 'wallet' ? 'USDC.e' : watchedFrom === 'savings' ? 'soUSD' : 'USDC';
+    watchedFrom === CardDepositSource.WALLET
+      ? 'USDC.e'
+      : watchedFrom === CardDepositSource.SAVINGS
+        ? 'soUSD'
+        : 'USDC';
 
   // Calculate borrow rate and max borrow amount
   const exchangeRate = rate ? Number(formatUnits(rate, 6)) : 0;
@@ -548,7 +556,12 @@ export default function CardDepositInternalForm() {
     if (watchedAmount === '' || watchedAmount === '0') {
       return 0;
     }
-    if (watchedFrom === 'borrow' && watchedAmount && rate && Number(watchedAmount) > 0) {
+    if (
+      watchedFrom === CardDepositSource.BORROW &&
+      watchedAmount &&
+      rate &&
+      Number(watchedAmount) > 0
+    ) {
       try {
         const borrowAmountWei = parseUnits(watchedAmount, 6);
         const supplyAmountWei = (borrowAmountWei * 100n * 1000000n) / (soUSDLTV * rate);
@@ -561,7 +574,7 @@ export default function CardDepositInternalForm() {
   }, [watchedFrom, watchedAmount, rate, soUSDLTV]);
 
   const { amountOut: estimatedUSDC, isLoading: isEstimatedUSDCLoading } = usePreviewDepositToCard(
-    watchedFrom === 'borrow' ? watchedAmount : watchedAmount,
+    watchedFrom === CardDepositSource.BORROW ? watchedAmount : watchedAmount,
     ADDRESSES.fuse.stargateOftUSDC,
   );
 
@@ -573,14 +586,14 @@ export default function CardDepositInternalForm() {
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
         .refine(
           val => {
-            if (watchedFrom === 'borrow') {
+            if (watchedFrom === CardDepositSource.BORROW) {
               return Number(val) <= maxBorrowAmount;
             }
             return Number(val) <= balanceAmount;
           },
           {
             error:
-              watchedFrom === 'borrow'
+              watchedFrom === CardDepositSource.BORROW
                 ? `Maximum borrow amount is ${formatNumber(maxBorrowAmount)} USDC`
                 : `Available balance is ${formatNumber(balanceAmount)} ${tokenSymbol}`,
           },
@@ -609,7 +622,7 @@ export default function CardDepositInternalForm() {
   }, []);
 
   // Track source selection changes
-  const previousSourceRef = useRef<SourceType | null>(null);
+  const previousSourceRef = useRef<CardDepositSource | null>(null);
   useEffect(() => {
     // Only track if the source actually changed (not on initial render)
     if (previousSourceRef.current !== null && previousSourceRef.current !== watchedFrom) {
@@ -675,7 +688,7 @@ export default function CardDepositInternalForm() {
 
       // Track submission
       track(TRACKING_EVENTS.CARD_DEPOSIT_INTERNAL_SUBMITTED, {
-        source_type: 'borrow',
+        source_type: CardDepositSource.BORROW,
         amount: data.amount,
         estimated_usdc_output: data.amount, // For borrow, amount is in USDC
         collateral_required: collateralRequired,
@@ -704,8 +717,13 @@ export default function CardDepositInternalForm() {
         }
 
         const sourceSymbol =
-          watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
-        const sourceTokenAddress = watchedFrom === 'savings' ? ADDRESSES.fuse.vault : USDC_STARGATE;
+          watchedFrom === CardDepositSource.SAVINGS
+            ? 'soUSD'
+            : watchedFrom === CardDepositSource.BORROW
+              ? 'USDC'
+              : 'USDC.e';
+        const sourceTokenAddress =
+          watchedFrom === CardDepositSource.SAVINGS ? ADDRESSES.fuse.vault : USDC_STARGATE;
 
         // Create activity event (stays PENDING until Bridge processes it)
         const clientTxId = await createActivity({
@@ -775,9 +793,10 @@ export default function CardDepositInternalForm() {
       const trackingParams: Record<string, unknown> = {
         source_type: watchedFrom,
         amount: data.amount,
-        estimated_usdc_output: watchedFrom === 'savings' ? estimatedUSDC : data.amount,
+        estimated_usdc_output:
+          watchedFrom === CardDepositSource.SAVINGS ? estimatedUSDC : data.amount,
       };
-      if (watchedFrom === 'savings') {
+      if (watchedFrom === CardDepositSource.SAVINGS) {
         trackingParams.exchange_rate = exchangeRate;
       }
       track(TRACKING_EVENTS.CARD_DEPOSIT_INTERNAL_SUBMITTED, trackingParams);
@@ -804,8 +823,13 @@ export default function CardDepositInternalForm() {
         }
 
         const sourceSymbol =
-          watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
-        const sourceTokenAddress = watchedFrom === 'savings' ? ADDRESSES.fuse.vault : USDC_STARGATE;
+          watchedFrom === CardDepositSource.SAVINGS
+            ? 'soUSD'
+            : watchedFrom === CardDepositSource.BORROW
+              ? 'USDC'
+              : 'USDC.e';
+        const sourceTokenAddress =
+          watchedFrom === CardDepositSource.SAVINGS ? ADDRESSES.fuse.vault : USDC_STARGATE;
 
         // Create activity event (stays PENDING until Bridge processes it)
         const clientTxId = await createActivity({
@@ -827,7 +851,7 @@ export default function CardDepositInternalForm() {
 
         let tx: TransactionReceipt | undefined;
 
-        if (watchedFrom === 'savings') {
+        if (watchedFrom === CardDepositSource.SAVINGS) {
           tx = await swapAndBridge(data.amount, estimatedUSDC ?? '0');
         } else {
           tx = await bridge(data.amount);
@@ -885,8 +909,8 @@ export default function CardDepositInternalForm() {
   const disabled =
     bridgeStatus === Status.PENDING ||
     swapAndBridgeStatus === Status.PENDING ||
-    (watchedFrom !== 'borrow' && isEstimatedUSDCLoading) ||
-    (watchedFrom === 'borrow' && isRateLoading) ||
+    (watchedFrom !== CardDepositSource.BORROW && isEstimatedUSDCLoading) ||
+    (watchedFrom === CardDepositSource.BORROW && isRateLoading) ||
     !isValid ||
     !watchedAmount;
 
@@ -928,7 +952,7 @@ export default function CardDepositInternalForm() {
 
   // Slider value for borrow option - initialize to 0 or current amount
   const [sliderValue, setSliderValue] = useState(() => {
-    if (watchedFrom === 'borrow' && watchedAmount) {
+    if (watchedFrom === CardDepositSource.BORROW && watchedAmount) {
       const numValue = Number(watchedAmount);
       return !isNaN(numValue) && isFinite(numValue) && numValue >= 0 ? numValue : 0;
     }
@@ -951,7 +975,7 @@ export default function CardDepositInternalForm() {
 
   // Update slider when form amount changes (for manual input)
   useEffect(() => {
-    if (watchedFrom === 'borrow' && watchedAmount) {
+    if (watchedFrom === CardDepositSource.BORROW && watchedAmount) {
       const numValue = Number(watchedAmount);
       if (!isNaN(numValue) && isFinite(numValue) && numValue >= 0 && numValue <= maxBorrowAmount) {
         setSliderValue(numValue);
@@ -963,8 +987,8 @@ export default function CardDepositInternalForm() {
 
   // Reset to 'savings' if user is on 'borrow' but doesn't have permission
   useEffect(() => {
-    if (watchedFrom === 'borrow' && !showBorrowOption) {
-      setValue('from', 'savings');
+    if (watchedFrom === CardDepositSource.BORROW && !showBorrowOption) {
+      setValue('from', CardDepositSource.SAVINGS);
       setValue('amount', '');
     }
   }, [showBorrowOption, watchedFrom, setValue]);
@@ -973,7 +997,7 @@ export default function CardDepositInternalForm() {
     <View className="flex-1 gap-3">
       <SourceSelector control={control} from={watchedFrom} showBorrowOption={showBorrowOption} />
 
-      {watchedFrom === 'borrow' ? (
+      {watchedFrom === CardDepositSource.BORROW ? (
         <View className="gap-4 px-2">
           <BorrowSlider
             value={sliderValue}
@@ -1002,14 +1026,14 @@ export default function CardDepositInternalForm() {
         </View>
       )}
 
-      {watchedFrom === 'savings' && watchedAmount && (
+      {watchedFrom === CardDepositSource.SAVINGS && watchedAmount && (
         <EstimatedReceive
           estimatedUSDC={estimatedUSDC ? Number(estimatedUSDC) : 0}
           isLoading={isEstimatedUSDCLoading}
         />
       )}
 
-      {watchedFrom === 'borrow' && (
+      {watchedFrom === CardDepositSource.BORROW && (
         <TokenDetails className="mt-3">
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Borrow rate</Text>
@@ -1036,26 +1060,31 @@ export default function CardDepositInternalForm() {
             </View>
           </View>
           <View className="px-5 py-6 md:p-5">
-            <Pressable
-              onPress={() => {
-                Linking.openURL('https://help.solid.xyz');
-              }}
-            >
-              <Text className="text-sm text-muted-foreground">
-                Use your soUSD as collateral to borrow USDC and spend while earning yield.
-              </Text>
-            </Pressable>
+            <Text className="text-sm leading-5 text-muted-foreground">
+              Use your soUSD as collateral to borrow USDC and spend while earning yield.{' '}
+              <Pressable
+                onPress={() => {
+                  Linking.openURL(
+                    'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings',
+                  );
+                }}
+              >
+                <Text className="text-sm font-medium leading-5 text-[#94F27F] web:hover:opacity-70">
+                  Learn more.
+                </Text>
+              </Pressable>
+            </Text>
           </View>
         </TokenDetails>
       )}
 
       <View className="flex-1" />
 
-      {watchedFrom !== 'borrow' && <DestinationDisplay />}
+      {watchedFrom !== CardDepositSource.BORROW && <DestinationDisplay />}
 
       <ErrorDisplay error={validationError || bridgeError || swapAndBridgeError} />
 
-      {watchedFrom === 'borrow' ? (
+      {watchedFrom === CardDepositSource.BORROW ? (
         <BorrowAndDepositButton
           disabled={disabled || borrowAndDepositStatus === Status.PENDING}
           bridgeStatus={borrowAndDepositStatus}

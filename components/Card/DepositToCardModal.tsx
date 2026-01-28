@@ -5,7 +5,7 @@ import SlotTrigger from '@/components/SlotTrigger';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
-import { useCardDepositStore } from '@/store/useCardDepositStore';
+import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 const DefaultTrigger = () => (
   <Button className="h-12 rounded-xl px-6" style={{ backgroundColor: '#94F27F' }}>
@@ -27,7 +27,7 @@ export default function DepositToCardModal({
   initialSource,
 }: {
   trigger?: React.ReactNode;
-  initialSource?: 'wallet' | 'savings' | 'external' | 'borrow';
+  initialSource?: CardDepositSource;
 }) {
   const { setModal, setSource } = useCardDepositStore(
     useShallow(state => ({
@@ -37,7 +37,10 @@ export default function DepositToCardModal({
   );
 
   const handlePress = () => {
-    setSource((initialSource as any) || 'wallet');
+    // Only set source if explicitly provided (e.g., from banner click)
+    if (initialSource) {
+      setSource(initialSource);
+    }
     setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
   };
 

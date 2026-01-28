@@ -25,12 +25,13 @@ import CardDepositOptions from './CardDepositOptions';
  */
 const CardDepositModalProvider = () => {
   const router = useRouter();
-  const { currentModal, previousModal, setModal, transaction } = useCardDepositStore(
+  const { currentModal, previousModal, setModal, transaction, setSource } = useCardDepositStore(
     useShallow(state => ({
       currentModal: state.currentModal,
       previousModal: state.previousModal,
       setModal: state.setModal,
       transaction: state.transaction,
+      setSource: state.setSource,
     })),
   );
 
@@ -61,12 +62,13 @@ const CardDepositModalProvider = () => {
       hasTrackedOpenRef.current = true;
       track(TRACKING_EVENTS.CARD_DEPOSIT_MODAL_OPENED, {});
     }
-    // Reset tracking state when modal fully closes
+    // Reset tracking state and clear source when modal fully closes
     if (isClose) {
       hasTrackedOpenRef.current = false;
       hasTrackedTransactionStatusRef.current = false;
+      setSource(undefined); // Clear source so it defaults to BORROW next time
     }
-  }, [isClose]);
+  }, [isClose, setSource]);
 
   // Track transaction status viewed (only once per session)
   useEffect(() => {
