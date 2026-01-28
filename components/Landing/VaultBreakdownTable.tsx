@@ -3,6 +3,7 @@ import { DimensionValue, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
+import DefaultTokenIcon from '@/components/DefaultTokenIcon';
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
 import { protocols, protocolsImages, protocolTypes } from '@/constants/protocols';
@@ -102,18 +103,21 @@ const Row = memo(function Row({ item, columns, isLast, onPress, isScreenMedium }
             <View key={`vault-tb-${colIndex}`} style={{ width: c.width }}>
               {c.key ? (
                 <View className="flex-row items-center gap-2">
-                  {c.key === 'name' && (
-                    <Image
-                      source={protocolsImages[item.type]}
-                      style={{ width: 24, height: 24, borderRadius: 999 }}
-                      contentFit="contain"
-                    />
-                  )}
+                  {c.key === 'name' &&
+                    (protocolsImages[item.type] ? (
+                      <Image
+                        source={protocolsImages[item.type]}
+                        style={{ width: 24, height: 24, borderRadius: 999 }}
+                        contentFit="contain"
+                      />
+                    ) : (
+                      <DefaultTokenIcon size={24} symbol={(item.title ?? item.name).charAt(0)} />
+                    ))}
                   <Text className={cn('text-lg font-medium', c.classNames?.body?.text)}>
                     {c.percent
                       ? formatPercent(item[c.key] ?? 0)
                       : c.key === 'name'
-                        ? item.title ?? formatName(item.name, item.type, isScreenMedium)
+                        ? (item.title ?? formatName(item.name, item.type, isScreenMedium))
                         : item[c.key]}
                   </Text>
                 </View>
