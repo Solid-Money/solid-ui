@@ -1090,6 +1090,7 @@ export interface SyncActivitiesResponse {
 
 export interface VaultBreakdown {
   name: string;
+  title?: string;
   type: string;
   expiryDate: string;
   amountUSD: number;

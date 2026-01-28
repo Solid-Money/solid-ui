@@ -67,7 +67,7 @@ const VaultBreakdownChart = ({ data, selectedBreakdown }: VaultBreakdownChartPro
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   const chartData = data.map((item, index) => ({
-    name: item.name,
+    name: item.title ?? item.name,
     value: item.allocation,
     color: colors[index % colors.length],
   }));

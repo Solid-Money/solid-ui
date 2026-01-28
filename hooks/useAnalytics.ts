@@ -578,6 +578,7 @@ export const useMaxAPY = () => {
 export const formatVaultBreakdown = (vaultBreakdown: VaultBreakdown[]): VaultBreakdown[] => {
   return vaultBreakdown.map(vault => ({
     name: vault.name,
+    title: vault.title,
     type: vault.type,
     expiryDate: vault.expiryDate,
     amountUSD: vault.amountUSD,

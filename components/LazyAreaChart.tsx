@@ -13,7 +13,7 @@ interface LazyAreaChartProps {
   formatYAxis?: (value: number) => string;
 }
 
-const ChartFallback = () => (
+export const ChartFallback = () => (
   <View className="h-[200px] items-center justify-center">
     <ActivityIndicator size="large" color="white" />
   </View>
