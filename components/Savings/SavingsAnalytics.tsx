@@ -10,7 +10,7 @@ import { subMonths } from 'date-fns';
 
 import VaultBreakdownChart from '@/components/Landing/VaultBreakdownChart';
 import VaultBreakdownTable from '@/components/Landing/VaultBreakdownTable';
-import LazyAreaChart from '@/components/LazyAreaChart';
+import LazyAreaChart, { ChartFallback } from '@/components/LazyAreaChart';
 import SavingsAnalyticsTabs, { Tab } from '@/components/Savings/SavingsAnalyticsTabs';
 import SavingsRateTabs, { TimeFilter } from '@/components/Savings/SavingsRateTabs';
 import { Text } from '@/components/ui/text';
@@ -120,9 +120,7 @@ const SavingsAnalytics = () => {
           {selectedTab === Tab.SAVINGS_RATE && (
             <>
               {isYieldHistoryLoading ? (
-                <View className="h-[200px] items-center justify-center">
-                  <Text className="text-muted-foreground">Loading...</Text>
-                </View>
+                <ChartFallback />
               ) : filteredYieldHistory.length > 0 ? (
                 <LazyAreaChart
                   data={filteredYieldHistory}
