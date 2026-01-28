@@ -8,6 +8,7 @@ import { useReadContract } from 'wagmi';
 
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import RepayToCardModal from '@/components/Card/RepayToCardModal';
+import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -85,12 +86,12 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
   // Desktop layout
   if (isDesktop) {
     return (
-      <View className={cn('rounded-2xl bg-[#1E1E1E] p-6', className)}>
+      <View className={cn('rounded-2xl bg-[#1C1C1C] p-6', className)}>
         {/* Header Row */}
         <View className="mb-6 flex-row items-center justify-between">
           <Text className="text-base font-medium text-white/70">Borrow position</Text>
           <Pressable onPress={() => setIsExpanded(!isExpanded)} className="flex-row items-center">
-            <Text className="mr-2 text-base font-medium text-white/70">View breakdown</Text>
+            <Text className="mr-2 text-base font-medium text-white">View breakdown</Text>
             {isExpanded ? (
               <ChevronUp color="#FFFFFF" size={16} />
             ) : (
@@ -101,36 +102,47 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
 
         {/* Main Content Row */}
         <View className="mb-4 flex-row items-center justify-between">
-          {/* Total Borrowed */}
-          <View className="flex-[1.5]">
-            {isLoading ? (
-              <View className="mb-1 h-8 w-20">
-                <Skeleton className="h-full w-full rounded-md bg-white/10" />
-              </View>
-            ) : error ? (
-              <Text className="mb-1 text-3xl font-semibold text-white">$0</Text>
-            ) : (
-              <Text className="mb-1 text-3xl font-semibold text-white">
-                ${formatNumber(totalBorrowed, 0)}
-              </Text>
-            )}
-            <Text className="text-base font-medium text-white/70">Total borrowed</Text>
-          </View>
+          {/* Stats Group */}
+          <View className="flex-[3] flex-row">
+            {/* Total Borrowed */}
+            <View className="flex-1">
+              {isLoading ? (
+                <View className="mb-1 h-8 w-20">
+                  <Skeleton className="h-full w-full rounded-md bg-white/10" />
+                </View>
+              ) : error ? (
+                <Text className="mb-1 text-3xl font-semibold text-white">$0</Text>
+              ) : (
+                <Text className="mb-1 text-3xl font-semibold text-white">
+                  ${formatNumber(totalBorrowed, 0)}
+                </Text>
+              )}
+              <Text className="text-base font-medium text-white/70">Total borrowed</Text>
+            </View>
 
-          {/* Net APY */}
-          <View className="flex-1 items-start">
-            {isLoading ? (
-              <View className="mb-1 h-8 w-16">
-                <Skeleton className="h-full w-full rounded-md bg-white/10" />
+            {/* Net APY */}
+            <View className="flex-1 items-start">
+              {isLoading ? (
+                <View className="mb-1 h-8 w-16">
+                  <Skeleton className="h-full w-full rounded-md bg-white/10" />
+                </View>
+              ) : error ? (
+                <Text className="mb-1 text-3xl font-semibold text-white">0%</Text>
+              ) : (
+                <Text className="mb-1 text-3xl font-semibold text-white">
+                  {formatNumber(netAPY, 0)}%
+                </Text>
+              )}
+              <View className="flex-row items-center gap-1">
+                <Text className="text-base font-medium text-white/70">Net APY earned</Text>
+                <View className="mt-1">
+                  <TooltipPopover
+                    text="This is the yield you will earn on your borrowed savings balance"
+                    analyticsContext="borrow_position_net_apy"
+                  />
+                </View>
               </View>
-            ) : error ? (
-              <Text className="mb-1 text-3xl font-semibold text-white">0%</Text>
-            ) : (
-              <Text className="mb-1 text-3xl font-semibold text-white">
-                {formatNumber(netAPY, 0)}%
-              </Text>
-            )}
-            <Text className="text-base font-medium text-white/70">Net APY earned</Text>
+            </View>
           </View>
 
           {/* Action Buttons */}
@@ -139,7 +151,7 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
               trigger={
                 <Button
                   variant="secondary"
-                  className="h-12 flex-1 rounded-xl border-0 bg-[#303030] px-6"
+                  className="h-12 flex-1 rounded-xl border-0 bg-[#303030]"
                 >
                   <View className="flex-row items-center gap-3">
                     <Image
@@ -157,7 +169,7 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
               trigger={
                 <Button
                   variant="secondary"
-                  className="h-12 flex-1 rounded-xl border-0 bg-[#303030] px-6"
+                  className="h-12 flex-1 rounded-xl border-0 bg-[#303030]"
                 >
                   <View className="flex-row items-center gap-2">
                     <Plus size={20} color="white" />
@@ -177,7 +189,7 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
 
   // Mobile layout
   return (
-    <View className={cn('rounded-[28px] bg-[#141414] p-6', className)}>
+    <View className={cn('rounded-[20px] bg-[#1C1C1C] p-6', className)}>
       {/* Summary Section */}
       <View className="mb-6 flex-row items-end justify-between">
         <View className="flex-1">
@@ -207,7 +219,15 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
               {formatNumber(netAPY, 0)}%
             </Text>
           )}
-          <Text className="text-base font-medium text-white/70">APY earned</Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-base font-medium text-white/70">Net APY earned</Text>
+            <View className="mt-1">
+              <TooltipPopover
+                text="This is the yield you will earn on your borrowed savings balance"
+                analyticsContext="borrow_position_net_apy"
+              />
+            </View>
+          </View>
         </View>
       </View>
 
