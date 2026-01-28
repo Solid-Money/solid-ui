@@ -4,14 +4,14 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useDepositBonusConfig } from '@/hooks/useDepositBonusConfig';
+import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const useDepositBuyCryptoOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
-  const { isEnabled: isDepositBonusEnabled, percentage } = useDepositBonusConfig();
+  const { isEnabled: isDepositBonusEnabled, percentage } = useCardDepositBonusConfig();
 
   const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {

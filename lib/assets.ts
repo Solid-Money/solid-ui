@@ -338,6 +338,10 @@ export const ASSETS = {
     hash: '63ee97b3',
   },
   'images/pendle.png': { module: require('@/assets/images/pendle.png'), hash: 'aceaea5e' },
+  'images/percentage_circles.png': {
+    module: require('@/assets/images/percentage_circles.png'),
+    hash: '07cadb92',
+  },
   'images/person-key.tsx': { module: require('@/assets/images/person-key.tsx'), hash: '832d595f' },
   'images/points-star.png': {
     module: require('@/assets/images/points-star.png'),
@@ -375,6 +379,7 @@ export const ASSETS = {
     module: require('@/assets/images/referral_large.png'),
     hash: '79bcfd00',
   },
+  'images/repay.png': { module: require('@/assets/images/repay.png'), hash: 'a6aa5cd8' },
   'images/reveal_card_details_icon.png': {
     module: require('@/assets/images/reveal_card_details_icon.png'),
     hash: 'd1c558ce',

@@ -22,7 +22,13 @@ const DefaultTrigger = () => (
  * For headless usage (trigger={null}), this component renders nothing
  * since the global CardDepositModalProvider handles the modal state.
  */
-export default function DepositToCardModal({ trigger }: { trigger?: React.ReactNode }) {
+export default function DepositToCardModal({
+  trigger,
+  initialSource,
+}: {
+  trigger?: React.ReactNode;
+  initialSource?: 'wallet' | 'savings' | 'external' | 'borrow';
+}) {
   const { setModal, setSource } = useCardDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
@@ -31,7 +37,7 @@ export default function DepositToCardModal({ trigger }: { trigger?: React.ReactN
   );
 
   const handlePress = () => {
-    setSource('wallet');
+    setSource((initialSource as any) || 'wallet');
     setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
   };
 
