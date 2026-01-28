@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getDepositBonusConfig } from '@/lib/api';
+import { getCardDepositBonusConfig } from '@/lib/api';
 
-export const useDepositBonusConfig = () => {
+export const useCardDepositBonusConfig = () => {
   const { data, isLoading, error } = useQuery({
-    queryKey: ['deposit-bonus-config'],
-    queryFn: getDepositBonusConfig,
+    queryKey: ['card-deposit-bonus-config'],
+    queryFn: getCardDepositBonusConfig,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
