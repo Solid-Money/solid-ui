@@ -140,7 +140,7 @@ export default function CardDetails() {
           </View>
 
           {/* Row 3: Borrow Position Card + Deposit Bonus Banner */}
-          <View className="mt-6 flex-row gap-6">
+          <View className="mt-6 flex-row items-start gap-6">
             <View className="flex-[3]">
               <BorrowPositionCard variant="desktop" />
             </View>
