@@ -5,6 +5,13 @@ import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 
+export enum CardDepositSource {
+  WALLET = 'wallet',
+  SAVINGS = 'savings',
+  EXTERNAL = 'external',
+  BORROW = 'borrow',
+}
+
 export interface CardDepositTransactionState {
   amount?: number;
 }
@@ -13,7 +20,7 @@ interface CardDepositState {
   currentModal: { name: string; number: number };
   previousModal: { name: string; number: number };
   transaction: CardDepositTransactionState;
-  source: 'wallet' | 'savings' | 'external' | undefined;
+  source: CardDepositSource | undefined;
   setModal: (modal: { name: string; number: number }) => void;
   setTransaction: (tx: CardDepositTransactionState) => void;
   setSource: (src: CardDepositState['source']) => void;
