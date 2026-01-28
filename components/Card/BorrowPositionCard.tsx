@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react-native';
 import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
+import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import RepayToCardModal from '@/components/Card/RepayToCardModal';
+import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
+import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { cn, formatNumber } from '@/lib/utils';
 
@@ -82,12 +86,12 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
   // Desktop layout
   if (isDesktop) {
     return (
-      <View className={cn('rounded-2xl bg-[#1E1E1E] p-6', className)}>
+      <View className={cn('rounded-2xl bg-[#1C1C1C] p-6', className)}>
         {/* Header Row */}
         <View className="mb-6 flex-row items-center justify-between">
           <Text className="text-base font-medium text-white/70">Borrow position</Text>
           <Pressable onPress={() => setIsExpanded(!isExpanded)} className="flex-row items-center">
-            <Text className="mr-2 text-base font-medium text-white/70">View breakdown</Text>
+            <Text className="mr-2 text-base font-medium text-white">View breakdown</Text>
             {isExpanded ? (
               <ChevronUp color="#FFFFFF" size={16} />
             ) : (
@@ -98,48 +102,78 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
 
         {/* Main Content Row */}
         <View className="mb-4 flex-row items-center justify-between">
-          {/* Total Borrowed */}
-          <View className="flex-1">
-            {isLoading ? (
-              <View className="mb-1 h-8 w-20">
-                <Skeleton className="h-full w-full rounded-md bg-white/10" />
+          {/* Stats Group */}
+          <View className="flex-[3] flex-row">
+            {/* Total Borrowed */}
+            <View className="flex-1">
+              {isLoading ? (
+                <View className="mb-1 h-8 w-20">
+                  <Skeleton className="h-full w-full rounded-md bg-white/10" />
+                </View>
+              ) : error ? (
+                <Text className="mb-1 text-3xl font-semibold text-white">$0</Text>
+              ) : (
+                <Text className="mb-1 text-3xl font-semibold text-white">
+                  ${formatNumber(totalBorrowed, 0)}
+                </Text>
+              )}
+              <Text className="text-base font-medium text-white/70">Total borrowed</Text>
+            </View>
+
+            {/* Net APY */}
+            <View className="flex-1 items-start">
+              {isLoading ? (
+                <View className="mb-1 h-8 w-16">
+                  <Skeleton className="h-full w-full rounded-md bg-white/10" />
+                </View>
+              ) : error ? (
+                <Text className="mb-1 text-3xl font-semibold text-white">0%</Text>
+              ) : (
+                <Text className="mb-1 text-3xl font-semibold text-white">
+                  {formatNumber(netAPY, 0)}%
+                </Text>
+              )}
+              <View className="flex-row items-center gap-1">
+                <Text className="text-base font-medium text-white/70">Net APY earned</Text>
+                <View className="mt-1">
+                  <TooltipPopover
+                    text="This is the yield you will earn on your borrowed savings balance"
+                    analyticsContext="borrow_position_net_apy"
+                  />
+                </View>
               </View>
-            ) : error ? (
-              <Text className="mb-1 text-2xl font-semibold text-white">$0</Text>
-            ) : (
-              <Text className="mb-1 text-2xl font-semibold text-white">
-                ${formatNumber(totalBorrowed, 2)}
-              </Text>
-            )}
-            <Text className="text-base font-medium text-white/70">Total borrowed</Text>
+            </View>
           </View>
 
-          {/* Net APY */}
-          <View className="flex-1 items-center">
-            {isLoading ? (
-              <View className="mb-1 h-8 w-16">
-                <Skeleton className="h-full w-full rounded-md bg-white/10" />
-              </View>
-            ) : error ? (
-              <Text className="mb-1 text-2xl font-semibold text-white">0%</Text>
-            ) : (
-              <Text className="mb-1 text-2xl font-semibold text-white">
-                {formatNumber(netAPY, 2)}%
-              </Text>
-            )}
-            <Text className="text-base font-medium text-white/70">Net APY</Text>
-          </View>
-
-          {/* Repay Button */}
-          <View className="flex-1 items-end">
+          {/* Action Buttons */}
+          <View className="flex-[2] flex-row items-center justify-end gap-3">
             <RepayToCardModal
               trigger={
                 <Button
                   variant="secondary"
-                  className="h-12 w-40 rounded-xl border-0 bg-[#303030] px-6"
+                  className="h-12 flex-1 rounded-xl border-0 bg-[#303030]"
+                >
+                  <View className="flex-row items-center gap-3">
+                    <Image
+                      source={getAsset('images/repay.png')}
+                      style={{ width: 16, height: 14 }}
+                      contentFit="contain"
+                    />
+                    <Text className="text-base font-bold text-white">Repay</Text>
+                  </View>
+                </Button>
+              }
+            />
+            <DepositToCardModal
+              initialSource="borrow"
+              trigger={
+                <Button
+                  variant="secondary"
+                  className="h-12 flex-1 rounded-xl border-0 bg-[#303030]"
                 >
                   <View className="flex-row items-center gap-2">
-                    <Text className="text-base font-bold text-white">Repay</Text>
+                    <Plus size={20} color="white" />
+                    <Text className="text-base font-bold text-white">Borrow</Text>
                   </View>
                 </Button>
               }
@@ -155,63 +189,100 @@ export function BorrowPositionCard({ className, variant = 'mobile' }: BorrowPosi
 
   // Mobile layout
   return (
-    <View className={cn('rounded-2xl bg-[#1E1E1E] p-5', className)}>
-      {/* Header */}
-      <Text className="mb-4 text-base font-medium text-white/70">Borrow position</Text>
-
+    <View className={cn('rounded-[20px] bg-[#1C1C1C] p-6', className)}>
       {/* Summary Section */}
-      <View className="mb-4 flex-row justify-between">
+      <View className="mb-6 flex-row items-end justify-between">
         <View className="flex-1">
+          <Text className="mb-4 text-lg font-medium text-white/70">Borrow position</Text>
           {isLoading ? (
             <View className="mb-1 h-8 w-20">
               <Skeleton className="h-full w-full rounded-md bg-white/10" />
             </View>
           ) : error ? (
-            <Text className="mb-1 text-2xl font-semibold text-white">$0</Text>
+            <Text className="mb-1 text-3xl font-semibold text-white">$0</Text>
           ) : (
-            <Text className="mb-1 text-2xl font-semibold text-white">
-              ${formatNumber(totalBorrowed, 2)}
+            <Text className="mb-1 text-3xl font-semibold text-white">
+              ${formatNumber(totalBorrowed, 0)}
             </Text>
           )}
           <Text className="text-base font-medium text-white/70">Total borrowed</Text>
         </View>
-        <View className="flex-1 items-end">
+        <View className="flex-1 items-start">
           {isLoading ? (
             <View className="mb-1 h-8 w-16">
               <Skeleton className="h-full w-full rounded-md bg-white/10" />
             </View>
           ) : error ? (
-            <Text className="mb-1 text-2xl font-semibold text-white">0%</Text>
+            <Text className="mb-1 text-3xl font-semibold text-white">0%</Text>
           ) : (
-            <Text className="mb-1 text-2xl font-semibold text-white">
-              {formatNumber(netAPY, 2)}%
+            <Text className="mb-1 text-3xl font-semibold text-white">
+              {formatNumber(netAPY, 0)}%
             </Text>
           )}
-          <Text className="text-base font-medium text-white/70">Net APY</Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-base font-medium text-white/70">Net APY earned</Text>
+            <View className="mt-1">
+              <TooltipPopover
+                text="This is the yield you will earn on your borrowed savings balance"
+                analyticsContext="borrow_position_net_apy"
+              />
+            </View>
+          </View>
         </View>
       </View>
 
       {/* Divider */}
-      <View className="mb-4 h-px w-full bg-white/10" />
+      <View className="mb-5 h-px w-full bg-white/10" />
+
+      {/* Breakdown Trigger */}
+      <View className="mb-6 items-center">
+        <Pressable onPress={() => setIsExpanded(!isExpanded)} className="flex-row items-center">
+          <Text className="mr-2 text-lg font-medium text-white">View breakdown</Text>
+          {isExpanded ? (
+            <ChevronUp color="#FFFFFF" size={20} />
+          ) : (
+            <ChevronDown color="#FFFFFF" size={20} />
+          )}
+        </Pressable>
+      </View>
 
       {/* Breakdown Section (Collapsible) */}
       {isExpanded && <BreakdownSection />}
 
-      {/* View Breakdown Toggle */}
-      <Pressable
-        onPress={() => setIsExpanded(!isExpanded)}
-        className="mb-4 flex-row items-center justify-center"
-      >
-        <Text className="mr-2 text-base font-medium text-white">View breakdown</Text>
-        {isExpanded ? (
-          <ChevronUp color="#FFFFFF" size={16} />
-        ) : (
-          <ChevronDown color="#FFFFFF" size={16} />
-        )}
-      </Pressable>
-
-      {/* Repay Button */}
-      <RepayToCardModal />
+      {/* Action Buttons */}
+      <View className="flex-row gap-3">
+        <RepayToCardModal
+          trigger={
+            <Button
+              variant="secondary"
+              className="h-14 flex-1 rounded-2xl border-0 bg-[#262626] px-6"
+            >
+              <View className="flex-row items-center gap-2">
+                <Image
+                  source={getAsset('images/repay.png')}
+                  style={{ width: 18, height: 18 }}
+                  contentFit="contain"
+                />
+                <Text className="text-base font-bold text-white">Repay</Text>
+              </View>
+            </Button>
+          }
+        />
+        <DepositToCardModal
+          initialSource="borrow"
+          trigger={
+            <Button
+              variant="secondary"
+              className="h-14 flex-1 rounded-2xl border-0 bg-[#262626] px-6"
+            >
+              <View className="flex-row items-center gap-2">
+                <Plus size={24} color="white" />
+                <Text className="text-base font-bold text-white">Borrow</Text>
+              </View>
+            </Button>
+          }
+        />
+      </View>
     </View>
   );
 }

@@ -44,7 +44,7 @@ import {
   CountryFromIp,
   CustomerFromBridgeResponse,
   Deposit,
-  DepositBonusConfig,
+  CardDepositBonusConfig,
   DepositTransaction,
   DirectDepositSessionResponse,
   EnsureWebhookResponse,
@@ -2022,9 +2022,9 @@ export const addToAddressBook = async (data: AddressBookRequest): Promise<Addres
   return response.json();
 };
 
-export const getDepositBonusConfig = async (): Promise<DepositBonusConfig> => {
+export const getCardDepositBonusConfig = async (): Promise<CardDepositBonusConfig> => {
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/deposit-bonus`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/app-config/card-deposit-bonus`,
     {
       credentials: 'include',
       headers: {

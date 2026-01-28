@@ -4,13 +4,13 @@ import { Image } from 'expo-image';
 
 import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { useDepositBonusConfig } from '@/hooks/useDepositBonusConfig';
+import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositBuyCryptoOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
-  const { isEnabled: isDepositBonusEnabled, percentage } = useDepositBonusConfig();
+  const { isEnabled: isDepositBonusEnabled, percentage } = useCardDepositBonusConfig();
 
   const handleBankDepositPress = useCallback(() => {
     setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
