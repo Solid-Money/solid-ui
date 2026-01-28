@@ -140,7 +140,7 @@ export default function CardDetails() {
           </View>
 
           {/* Row 3: Borrow Position Card + Deposit Bonus Banner */}
-          <View className="mt-6 flex-row gap-6">
+          <View className="mt-6 flex-row items-start gap-6">
             <View className="flex-[3]">
               <BorrowPositionCard variant="desktop" />
             </View>
@@ -718,7 +718,7 @@ function DepositBonusBanner() {
   }
 
   const bonusPercentage = Math.round(percentage * 100);
-  const capFormatted = cap >= 1000 ? `${cap / 1000}K$` : `$${cap}`;
+  const capFormatted = cap >= 1000 ? `$${cap / 1000}K` : `$${cap}`;
 
   if (isScreenMedium) {
     return (
@@ -788,7 +788,7 @@ function DepositBonusBanner() {
         pointerEvents="none"
         style={styles.gradientOverlay}
       />
-      <View className="flex-row p-4">
+      <View className="flex-row p-5">
         {/* Left content */}
         <View className="flex-1">
           {/* Badge */}
@@ -813,7 +813,7 @@ function DepositBonusBanner() {
                 accessibilityRole="link"
               >
                 <Text className="text-base font-bold text-[#FFD151]">Learn more</Text>
-                <ChevronRight size={16} color="#FFD151" />
+                <ChevronRight size={18} color="#FFD151" />
               </Pressable>
             </View>
           </View>
