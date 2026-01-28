@@ -97,7 +97,7 @@ export interface DirectDepositSessionResponse {
   clientTxId?: string;
 }
 
-export interface DepositBonusConfig {
+export interface CardDepositBonusConfig {
   isEnabled: boolean;
   percentage: number;
   cap: number;

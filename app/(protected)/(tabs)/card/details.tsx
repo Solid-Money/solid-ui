@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Pressable, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Linking,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
@@ -14,8 +22,10 @@ import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
+import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
@@ -129,21 +139,15 @@ export default function CardDetails() {
             </View>
           </View>
 
-          {/* Row 3: Borrow Position Card */}
+          {/* Row 3: Borrow Position Card + Deposit Bonus Banner */}
           <View className="mt-6 flex-row gap-6">
             <View className="flex-[3]">
               <BorrowPositionCard variant="desktop" />
             </View>
-            <View className="flex-[2]"></View>
-          </View>
-
-          {/* Temporary disabled deposit bonus banner */}
-          {/* <View className="mt-6 flex-row gap-6">
-            <View className="flex-[3]">
+            <View className="flex-[2]">
               <DepositBonusBanner />
             </View>
-            <View className="flex-[2]" />
-          </View> */}
+          </View>
         </View>
 
         <AddToWalletModal
@@ -180,9 +184,8 @@ export default function CardDetails() {
             onCardDetails={handleCardFlip}
             onFreezeToggle={handleFreezeToggle}
           />
-          {/* Temporary disabled deposit bonus banner */}
-          {/* <DepositBonusBanner /> */}
           <BorrowPositionCard className="mb-4" />
+          <DepositBonusBanner />
           <CashbackDisplay cashback={cardDetails?.cashback} />
           <ViewCardTransactionsButton />
           <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
@@ -697,79 +700,128 @@ function CardActions({
   );
 }
 
-// function DepositBonusBanner() {
-//   const { isScreenMedium } = useDimension();
+function DepositBonusBanner() {
+  const { isScreenMedium } = useDimension();
+  const { isEnabled: configIsEnabled, percentage, cap, isLoading } = useCardDepositBonusConfig();
+  const isEnabled = EXPO_PUBLIC_ENVIRONMENT === 'qa' ? true : configIsEnabled;
 
-//   if (isScreenMedium) {
-//     return (
-//       <View className="relative h-full overflow-hidden rounded-2xl border border-[#FFD15126]">
-//         <LinearGradient
-//           colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-//           start={{ x: 0.5, y: 0 }}
-//           end={{ x: 0.5, y: 1 }}
-//           pointerEvents="none"
-//           style={styles.gradientOverlay}
-//         />
-//         <View className="flex-row items-center gap-4 p-4 md:p-5">
-//           <Link
-//             href={
-//               'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-//             }
-//             target="_blank"
-//             className="rounded-full bg-[#FFD151]/20 px-3 py-1"
-//           >
-//             <Text className="text-sm font-bold text-[#FFD151]">
-//               Receive your $50 sign up bonus!
-//             </Text>
-//           </Link>
-//           <View className="flex-1 flex-row items-center justify-between">
-//             <Text className="text-sm font-medium text-[#FFD151]">On a minimum deposit of $100</Text>
-//             <View className="flex-row items-center gap-1">
-//               <Link
-//                 target="_blank"
-//                 href={
-//                   'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-//                 }
-//                 className="font-bold text-[#FFD151]"
-//               >
-//                 Learn more
-//               </Link>
-//               <View className="pt-0.5">
-//                 <ChevronRight size={16} color="#FFD151" />
-//               </View>
-//             </View>
-//           </View>
-//         </View>
-//       </View>
-//     );
-//   }
+  const learnMoreUrl =
+    'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions';
 
-//   return (
-//     <View className="relative mb-4 overflow-hidden rounded-3xl border border-[#FFD15126]">
-//       <LinearGradient
-//         colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
-//         start={{ x: 0.5, y: 0 }}
-//         end={{ x: 0.5, y: 1 }}
-//         pointerEvents="none"
-//         style={styles.gradientOverlay}
-//       />
-//       <View className="flex-col items-center gap-3 p-4">
-//         <Link
-//           href={
-//             'https://support.solid.xyz/en/articles/13213137-solid-card-launch-campaign-terms-conditions'
-//           }
-//           target="_blank"
-//           className="rounded-full bg-[#FFD151]/20 px-4 py-1.5"
-//         >
-//           <Text className="text-lg font-bold text-[#FFD151]">Receive your $50 sign up bonus!</Text>
-//         </Link>
-//         <Text className="text-center text-lg font-medium text-[#FFD151]">
-//           On a minimum deposit of $100
-//         </Text>
-//       </View>
-//     </View>
-//   );
-// }
+  const handleLearnMorePress = useCallback(() => {
+    void Linking.openURL(learnMoreUrl);
+  }, []);
+
+  // Don't render while loading or if disabled
+  if (isLoading || !isEnabled) {
+    return null;
+  }
+
+  const bonusPercentage = Math.round(percentage * 100);
+  const capFormatted = cap >= 1000 ? `${cap / 1000}K$` : `$${cap}`;
+
+  if (isScreenMedium) {
+    return (
+      <View className="relative h-full overflow-hidden rounded-2xl">
+        <LinearGradient
+          colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          pointerEvents="none"
+          style={styles.gradientOverlay}
+        />
+        <View className="flex-1 flex-row">
+          {/* Left content */}
+          <View className="flex-1 justify-between p-6">
+            {/* Badge */}
+            <View className="self-start rounded-full bg-[#FFD151]/20 px-4 py-1">
+              <Text className="text-base font-bold text-[#FFD151]">
+                Get {bonusPercentage}% bonus for deposit
+              </Text>
+            </View>
+
+            {/* Description and Learn more */}
+            <View className="mt-4">
+              <Text className="text-base font-medium text-[#FFD151]">
+                For users that deposit to savings{'\n'}
+                and then borrow-deposit to the card.
+              </Text>
+              <View className="mt-1 flex-row items-center">
+                <Text className="text-base font-medium  text-[#FFD151]">Up to {capFormatted}</Text>
+                <Pressable
+                  onPress={handleLearnMorePress}
+                  className="ml-3 flex-row items-center gap-1"
+                  accessibilityRole="link"
+                >
+                  <Text className="text-base font-bold  text-[#FFD151]">Learn more</Text>
+                  <ChevronRight size={20} color="#FFD151" />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
+          {/* Right side - Percentage with circles background */}
+          <View className="items-center justify-center pr-6">
+            <View className="relative items-center justify-center">
+              <Image
+                source={getAsset('images/percentage_circles.png')}
+                style={styles.percentageCircles}
+                contentFit="contain"
+              />
+              <Text className="absolute text-5xl font-extralight text-[#FFD151]">
+                +{bonusPercentage}%
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Mobile layout
+  return (
+    <View className="relative mb-4 overflow-hidden rounded-2xl">
+      <LinearGradient
+        colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        pointerEvents="none"
+        style={styles.gradientOverlay}
+      />
+      <View className="flex-row p-4">
+        {/* Left content */}
+        <View className="flex-1">
+          {/* Badge */}
+          <View className="mb-3 self-start rounded-full bg-[#FFD151]/20 px-3 py-1.5">
+            <Text className="text-sm font-bold text-[#FFD151]">
+              Get {bonusPercentage}% bonus for deposit
+            </Text>
+          </View>
+
+          {/* Description and Learn more */}
+          <View>
+            <Text className="text-base font-medium leading-6 text-[#FFD151]">
+              For users that deposit to savings and then borrow-deposit to the card.
+            </Text>
+            <View className="mt-1 flex-row items-center gap-2">
+              <Text className="text-base font-medium leading-6 text-[#FFD151]">
+                Up to {capFormatted}
+              </Text>
+              <Pressable
+                onPress={handleLearnMorePress}
+                className="flex-row items-center gap-1"
+                accessibilityRole="link"
+              >
+                <Text className="text-base font-bold text-[#FFD151]">Learn more</Text>
+                <ChevronRight size={16} color="#FFD151" />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 interface CashbackDisplayProps {
   cashback?: {
@@ -930,4 +982,8 @@ const styles = StyleSheet.create({
 
   // Text styles
   lineHeight20: { lineHeight: 20 },
+
+  // Deposit bonus banner
+  percentageCircles: { width: 140, height: 140 },
+  percentageCirclesMobile: { width: 100, height: 100 },
 });
