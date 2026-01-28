@@ -47,7 +47,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
         data={chartData}
         margin={{
           top: 10,
-          right: 0,
+          right: -10,
           left: 0,
           bottom: 0,
         }}
