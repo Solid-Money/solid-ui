@@ -169,6 +169,7 @@ export default function CardRepayForm() {
           metadata: {
             description: `Repay ${data.amount} USDC to card borrow position`,
             processingStatus: 'sending',
+            tokenAddress: selectedToken?.contractAddress ?? USDC_STARGATE,
           },
         });
 
@@ -211,6 +212,7 @@ export default function CardRepayForm() {
       resetRepayStatus,
       setTransaction,
       setModal,
+      selectedToken?.contractAddress,
     ],
   );
 

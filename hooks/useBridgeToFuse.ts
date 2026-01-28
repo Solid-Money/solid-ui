@@ -124,6 +124,7 @@ const useBridgeToFuse = (): BridgeResult => {
           metadata: {
             description: `Stake ${amount} soUSD from Mainnet to Fuse`,
             fee: fee?.toString(),
+            tokenAddress: ADDRESSES.ethereum.vault,
           },
         },
         onUserOpHash =>

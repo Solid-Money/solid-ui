@@ -213,6 +213,7 @@ const useFastWithdrawAndBridge = (): BridgeResult => {
               description: `Withdraw ${amount} USDC from Fuse to ${getStargateChainKey(toChainId)}`,
               fee: transaction.value,
               sourceSymbol: 'soUSD', // Track source symbol for display
+              tokenAddress: ADDRESSES.fuse.vault,
             },
           },
           onUserOpHash =>

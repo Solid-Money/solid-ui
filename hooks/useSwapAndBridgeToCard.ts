@@ -212,6 +212,7 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
               description: `Bridge ${amount} USDC from Fuse to Card on Arbitrum`,
               fee: transaction.value,
               sourceSymbol: 'soUSD', // Track source symbol for display
+              tokenAddress: ADDRESSES.fuse.vault,
             },
           },
           onUserOpHash =>

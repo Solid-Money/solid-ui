@@ -174,6 +174,7 @@ const useRepayAndWithdrawCollateral = (): RepayAndWithdrawCollateralResult => {
             metadata: {
               description: `Repay ${amountToRepay} USDC debt and withdraw ${amountToRepay} USDC collateral`,
               sourceSymbol: 'USDC.e', // Track source symbol for display
+              tokenAddress: USDC_STARGATE,
             },
           },
           onUserOpHash =>

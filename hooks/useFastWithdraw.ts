@@ -139,6 +139,7 @@ const useFastWithdraw = (): FastWithdrawResult => {
             toAddress: destinationAddress,
             metadata: {
               description: `Withdraw ${amount} soUSD to ${toAddress}`,
+              tokenAddress: ADDRESSES.fuse.vault,
             },
           },
           onUserOpHash =>
