@@ -106,7 +106,7 @@ const SavingsAnalytics = () => {
 
   return (
     <View className="gap-6 rounded-twice bg-card p-5 md:p-8">
-      <View className="flex-row items-center justify-between gap-2">
+      <View className="items-start gap-4 md:flex-row md:items-center md:justify-between">
         <SavingsAnalyticsTabs selectedTab={selectedTab} onTabChange={setSelectedTab} />
         {selectedTab === Tab.SAVINGS_RATE && (
           <SavingsRateTabs selectedFilter={timeFilter} onFilterChange={setTimeFilter} />
