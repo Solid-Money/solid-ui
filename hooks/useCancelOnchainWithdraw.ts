@@ -74,6 +74,7 @@ const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
           metadata: {
             description: 'Cancel onchain withdraw request',
             requestId,
+            tokenAddress: ADDRESSES.ethereum.vault,
           },
         },
         onUserOpHash =>

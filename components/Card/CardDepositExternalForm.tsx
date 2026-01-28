@@ -210,6 +210,7 @@ export default function CardDepositExternalForm() {
           metadata: {
             description: `Deposit ${data.amount} USDC to card from external wallet`,
             processingStatus: 'sending',
+            tokenAddress: arbitrumUsdcAddress,
           },
         });
 

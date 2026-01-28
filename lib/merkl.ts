@@ -108,6 +108,7 @@ export const claimMerklRewards = async (
       status,
       metadata: {
         description: `Claim ${formattedAmount} soUSD from Merkl`,
+        tokenAddress: ADDRESSES.fuse.vault,
       },
     },
     () => executeTransactions(

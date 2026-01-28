@@ -126,6 +126,7 @@ const FastWithdrawForm = () => {
           metadata: {
             description: `Withdraw ${data.amount} soUSD to ${data.address}`,
             processingStatus: chainId === 122 ? 'fast_withdraw' : 'bridging',
+            tokenAddress: ADDRESSES.fuse.vault,
           },
         });
 

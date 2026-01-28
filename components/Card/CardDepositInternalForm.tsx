@@ -705,6 +705,8 @@ export default function CardDepositInternalForm() {
 
         const sourceSymbol =
           watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
+        const sourceTokenAddress =
+          watchedFrom === 'savings' ? ADDRESSES.fuse.vault : USDC_STARGATE;
 
         // Create activity event (stays PENDING until Bridge processes it)
         const clientTxId = await createActivity({
@@ -720,6 +722,7 @@ export default function CardDepositInternalForm() {
           metadata: {
             description: `Deposit ${data.amount} ${sourceSymbol} to card`,
             processingStatus: 'bridging',
+            tokenAddress: sourceTokenAddress,
           },
         });
 
@@ -803,6 +806,8 @@ export default function CardDepositInternalForm() {
 
         const sourceSymbol =
           watchedFrom === 'savings' ? 'soUSD' : watchedFrom === 'borrow' ? 'USDC' : 'USDC.e';
+        const sourceTokenAddress =
+          watchedFrom === 'savings' ? ADDRESSES.fuse.vault : USDC_STARGATE;
 
         // Create activity event (stays PENDING until Bridge processes it)
         const clientTxId = await createActivity({
@@ -818,6 +823,7 @@ export default function CardDepositInternalForm() {
           metadata: {
             description: `Deposit ${data.amount} ${sourceSymbol} to card`,
             processingStatus: 'bridging',
+            tokenAddress: sourceTokenAddress,
           },
         });
 

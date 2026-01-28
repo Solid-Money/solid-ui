@@ -288,6 +288,7 @@ const useDepositFromEOA = (
       fromAddress: eoaAddress,
       toAddress: spender,
       type: TransactionType.DEPOSIT,
+      metadata: { tokenAddress },
     });
 
     return clientTxId;
