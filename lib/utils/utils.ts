@@ -67,9 +67,15 @@ export function compactNumberFormat(number: number) {
 }
 
 export function formatNumber(number: number, maximumFractionDigits = 6, minimumFractionDigits = 2) {
+  const safeMax = Number.isFinite(maximumFractionDigits) ? maximumFractionDigits : 0;
+  const safeMin = Number.isFinite(minimumFractionDigits) ? minimumFractionDigits : 0;
+  const resolvedMin = number >= 1 ? safeMin : 0;
+  const clampedMax = Math.max(0, Math.min(20, safeMax));
+  const clampedMin = Math.min(Math.max(0, resolvedMin), clampedMax);
+
   return new Intl.NumberFormat('en-us', {
-    maximumFractionDigits,
-    minimumFractionDigits: number >= 1 ? minimumFractionDigits : 0,
+    maximumFractionDigits: clampedMax,
+    minimumFractionDigits: clampedMin,
   }).format(number);
 }
 
