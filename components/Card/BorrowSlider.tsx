@@ -48,14 +48,12 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   const safeMax = useMemo(() => {
     const numMax = Number(max);
     if (isNaN(numMax) || !isFinite(numMax)) return min;
-    const clamped = Math.max(min, numMax);
-    // Round to nearest step size
-    return Math.round(clamped / STEP_SIZE) * STEP_SIZE;
-  }, [max, min, STEP_SIZE]);
+    return Math.max(min, numMax);
+  }, [max, min]);
 
   const range = safeMax - min;
   const percentage = range > 0 ? ((safeValue - min) / range) * 100 : 0;
-  const thumbPosition = (percentage / 100) * sliderWidth;
+  const thumbPosition = (percentage / 100) * (sliderWidth - 24);
 
   const stateRef = useRef({ sliderWidth, min, safeMax, onValueChange, thumbPosition, range });
   stateRef.current = { sliderWidth, min, safeMax, onValueChange, thumbPosition, range };
@@ -64,8 +62,10 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
     const numValue = Number(newValue);
     if (isNaN(numValue) || !isFinite(numValue)) return;
     const clampedValue = Math.max(min, Math.min(safeMax, numValue));
-    // Round to nearest 0.1 (0.1 unit steps)
-    onValueChange(Math.round(clampedValue / STEP_SIZE) * STEP_SIZE);
+    // Round to nearest step size
+    const roundedValue = Math.round(clampedValue / STEP_SIZE) * STEP_SIZE;
+    onValueChange(roundedValue);
+    setInputValue(roundedValue.toString());
   };
 
   const handleInputChange = (text: string) => {
@@ -77,7 +77,9 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
 
     const numValue = parseFloat(sanitized);
     if (!isNaN(numValue)) {
-      updateValue(numValue);
+      const clampedValue = Math.max(min, Math.min(safeMax, numValue));
+      const roundedValue = Math.round(clampedValue / STEP_SIZE) * STEP_SIZE;
+      onValueChange(roundedValue);
     }
   };
 
@@ -96,7 +98,8 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
   const handleTrackPress = (event: any) => {
     if (sliderWidth === 0 || range <= 0) return;
     const { locationX } = event.nativeEvent;
-    const newPercentage = Math.max(0, Math.min(100, (locationX / sliderWidth) * 100));
+    const adjustedX = Math.max(0, Math.min(sliderWidth - 24, locationX - 12));
+    const newPercentage = (adjustedX / (sliderWidth - 24)) * 100;
     const newValue = min + (newPercentage / 100) * range;
     updateValue(newValue);
   };
@@ -111,7 +114,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
         const thumbPageX = evt.nativeEvent.pageX;
         if (sliderContainerRef.current) {
           sliderContainerRef.current.measure((_x, _y, _width, _height, pageX) => {
-            sliderPageX.current = pageX;
+            sliderPageX.current = pageX + 12; // Account for padding
           });
         }
         // Use current thumb position as fallback
@@ -134,15 +137,17 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
           sliderPageX.current = currentPageX - thumbPosition;
         }
         const relativeX = currentPageX - sliderPageX.current;
-        const newPercentage = Math.max(0, Math.min(100, (relativeX / sliderWidth) * 100));
+        const newPercentage = Math.max(0, Math.min(100, (relativeX / (sliderWidth - 24)) * 100));
         const newValue = min + (newPercentage / 100) * currentRange;
 
         // updateValue logic inline using ref values
         const numValue = Number(newValue);
         if (isNaN(numValue) || !isFinite(numValue)) return;
         const clampedValue = Math.max(min, Math.min(safeMax, numValue));
-        // Round to nearest 0.1 (0.1 unit steps)
-        onValueChange(Math.round(clampedValue / STEP_SIZE) * STEP_SIZE);
+        // Round to nearest step size
+        const roundedValue = Math.round(clampedValue / STEP_SIZE) * STEP_SIZE;
+        onValueChange(roundedValue);
+        setInputValue(roundedValue.toString());
       },
       onPanResponderRelease: () => {
         isDragging.current = false;
@@ -183,7 +188,7 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
               setSliderWidth(width);
             }
           }}
-          className="relative w-full"
+          className="relative w-full px-3"
         >
           <Pressable
             onPress={handleTrackPress}
@@ -200,9 +205,8 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
             {...panResponder.panHandlers}
             className="absolute h-6 w-6 rounded-full bg-brand shadow-lg"
             style={{
-              transform: [
-                { translateX: Math.max(0, Math.min(sliderWidth - 24, thumbPosition - 12)) },
-              ],
+              left: 0,
+              transform: [{ translateX: thumbPosition }],
               top: 3,
               zIndex: 10,
             }}
