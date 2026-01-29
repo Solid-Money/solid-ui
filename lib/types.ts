@@ -103,6 +103,30 @@ export interface CardDepositBonusConfig {
   cap: number;
 }
 
+export interface CardWithdrawalDestination {
+  chain: string;
+  address: string;
+  memo?: string;
+}
+
+export interface CardWithdrawal {
+  amount: string;
+  destination: CardWithdrawalDestination;
+  clientNote?: string;
+}
+
+export interface CardWithdrawalResponse {
+  id: string;
+  amount: string;
+  currency: string;
+  destination: CardWithdrawalDestination & {
+    tx_hash?: string;
+    gas_fee?: { amount: string; currency: string };
+  };
+  client_note?: string;
+  type?: 'top_up_balance_withdrawal' | 'fee';
+}
+
 export interface HoldingFundsPointsMultiplierConfig {
   holdingFundsPointsMultiplier: number;
 }

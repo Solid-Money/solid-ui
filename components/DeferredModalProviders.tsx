@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import CardDepositModalProvider from '@/components/Card/CardDepositModalProvider';
 import CardRepayModalProvider from '@/components/Card/CardRepayModalProvider';
+import CardWithdrawModalProvider from '@/components/Card/CardWithdrawModalProvider';
 import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFromSafeAccountModalProvider';
 import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
 import TierModalProvider from '@/components/Rewards/TierModalProvider';
@@ -48,6 +49,7 @@ const DeferredModalProviders = () => {
       <UnstakeModalProvider />
       <DepositFromSafeAccountModalProvider />
       <CardDepositModalProvider />
+      <CardWithdrawModalProvider />
       <CardRepayModalProvider />
       <TierModalProvider />
     </>

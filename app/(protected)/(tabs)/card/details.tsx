@@ -19,6 +19,7 @@ import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
+import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -26,6 +27,7 @@ import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
+import { useCardWithdrawAllowed } from '@/hooks/useCardWithdrawAllowed';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
@@ -37,6 +39,7 @@ import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositSt
 export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
   const { isScreenMedium } = useDimension();
+  const isWithdrawAllowed = useCardWithdrawAllowed();
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
   const [isLoadingCardDetails, setIsLoadingCardDetails] = useState(false);
@@ -111,6 +114,7 @@ export default function CardDetails() {
             isLoadingCardDetails={isLoadingCardDetails}
             onCardDetails={handleCardFlip}
             onFreezeToggle={handleFreezeToggle}
+            isWithdrawAllowed={isWithdrawAllowed}
           />
 
           {/* Row 1: Spending Balance Card + Card Image */}
@@ -185,6 +189,7 @@ export default function CardDetails() {
             isLoadingCardDetails={isLoadingCardDetails}
             onCardDetails={handleCardFlip}
             onFreezeToggle={handleFreezeToggle}
+            isWithdrawAllowed={isWithdrawAllowed}
           />
           <BorrowPositionCard className="mb-4" />
           <DepositBonusBanner />
@@ -215,6 +220,7 @@ interface DesktopHeaderProps {
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
+  isWithdrawAllowed: boolean;
 }
 
 function DesktopHeader({
@@ -224,6 +230,7 @@ function DesktopHeader({
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
+  isWithdrawAllowed,
 }: DesktopHeaderProps) {
   return (
     <View className="flex-row justify-between">
@@ -271,6 +278,22 @@ function DesktopHeader({
             </Text>
           </View>
         </Button>
+        {isWithdrawAllowed && (
+          <WithdrawToCardModal
+            trigger={
+              <Button variant="secondary" className="h-12 rounded-xl border-0 bg-[#303030] px-6">
+                <View className="flex-row items-center gap-2">
+                  <Image
+                    source={getAsset('images/card-withdraw.png')}
+                    style={styles.smallIcon}
+                    contentFit="contain"
+                  />
+                  <Text className="text-base font-bold text-white">Withdraw</Text>
+                </View>
+              </Button>
+            }
+          />
+        )}
         <DepositToCardModal
           trigger={
             <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
@@ -665,6 +688,7 @@ interface CardActionsProps {
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
+  isWithdrawAllowed: boolean;
 }
 
 function CardActions({
@@ -674,6 +698,7 @@ function CardActions({
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
+  isWithdrawAllowed,
 }: CardActionsProps) {
   return (
     <View className="native:gap-8 mb-8 flex-row items-center justify-center web:space-x-8">
@@ -698,6 +723,17 @@ function CardActions({
         onPress={onFreezeToggle}
         isLoading={isFreezing}
       />
+      {isWithdrawAllowed && (
+        <WithdrawToCardModal
+          trigger={
+            <CircularActionButton
+              icon={getAsset('images/card-withdraw-mobile.png')}
+              label="Withdraw"
+              onPress={() => {}}
+            />
+          }
+        />
+      )}
     </View>
   );
 }
