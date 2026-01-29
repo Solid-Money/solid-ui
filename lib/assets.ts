@@ -98,6 +98,14 @@ export const ASSETS = {
     hash: '57d7012d',
   },
   'images/card-safe.png': { module: require('@/assets/images/card-safe.png'), hash: '530d8970' },
+  'images/card-withdraw-mobile.png': {
+    module: require('@/assets/images/card-withdraw-mobile.png'),
+    hash: '7b225d3e',
+  },
+  'images/card-withdraw.png': {
+    module: require('@/assets/images/card-withdraw.png'),
+    hash: 'd076a41d',
+  },
   'images/card.tsx': { module: require('@/assets/images/card.tsx'), hash: '896e9355' },
   'images/card_actions_details.png': {
     module: require('@/assets/images/card_actions_details.png'),

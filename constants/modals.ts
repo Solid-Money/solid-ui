@@ -230,6 +230,18 @@ export const CARD_DEPOSIT_MODAL = {
   },
 };
 
+// Card withdraw modal
+export const CARD_WITHDRAW_MODAL = {
+  CLOSE: {
+    name: 'close',
+    number: 0,
+  },
+  OPEN_FORM: {
+    name: 'open_form',
+    number: 1,
+  },
+};
+
 // Card repay modal
 export const CARD_REPAY_MODAL = {
   CLOSE: {
