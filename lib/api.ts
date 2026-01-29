@@ -62,6 +62,8 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
+  CardWithdrawal,
+  CardWithdrawalResponse,
   RewardsUserData,
   SearchCoin,
   SourceDepositInstructions,
@@ -1274,6 +1276,27 @@ export const unfreezeCard = async (): Promise<{ message: string }> => {
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
     credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const withdrawFromCard = async (
+  body: CardWithdrawal,
+): Promise<CardWithdrawalResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/withdraw`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) throw response;
