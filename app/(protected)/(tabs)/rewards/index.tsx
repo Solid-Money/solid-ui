@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { View } from 'react-native';
 
@@ -5,12 +6,17 @@ import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
 import ReferBanner from '@/components/Points/ReferBanner';
 import CashbackCard from '@/components/Rewards/CashbackCard';
+import GetCardRewardsBanner from '@/components/Rewards/GetCardRewardsBanner';
 import RewardsDashboard from '@/components/Rewards/RewardsDashboard';
 import TierBenefitsCards from '@/components/Rewards/TierBenefitsCards';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import { useRewardsUserData } from '@/hooks/useRewards';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useRewards } from '@/store/useRewardsStore';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { track } from '@/lib/analytics';
 
 export default function Rewards() {
   const { isScreenMedium } = useDimension();
@@ -64,7 +70,27 @@ export default function Rewards() {
         />
 
         <HomeBanners data={bannerData} />
+        <CardBanner />
       </View>
     </PageLayout>
+  );
+}
+
+function CardBanner() {
+  const { data: cardStatus } = useCardStatus();
+  const hasCard = !!cardStatus;
+
+  if (hasCard) return null;
+
+  return (
+    <GetCardRewardsBanner
+      onGetCard={() => {
+        track(TRACKING_EVENTS.CARD_GET_CARD_PRESSED, {
+          source: 'rewards',
+        });
+
+        return router.push(path.CARD_ACTIVATE);
+      }}
+    />
   );
 }
