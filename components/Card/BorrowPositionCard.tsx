@@ -135,7 +135,7 @@ export function BorrowPositionCard({
                 <Text className="mb-1 text-3xl font-semibold text-white">0%</Text>
               ) : (
                 <Text className="mb-1 text-3xl font-semibold text-white">
-                  {formatNumber(netAPY, 0)}%
+                  {formatNumber(netAPY, 2)}%
                 </Text>
               )}
               <View className="flex-row items-center gap-1">
@@ -220,7 +220,7 @@ export function BorrowPositionCard({
             <Text className="mb-1 text-3xl font-semibold text-white">0%</Text>
           ) : (
             <Text className="mb-1 text-3xl font-semibold text-white">
-              {formatNumber(netAPY, 0)}%
+              {formatNumber(netAPY, 2)}%
             </Text>
           )}
           <View className="flex-row items-center gap-1">
