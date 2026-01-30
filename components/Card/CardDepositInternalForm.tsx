@@ -545,13 +545,13 @@ export default function CardDepositInternalForm() {
   const exchangeRate = rate ? Number(formatUnits(rate, 6)) : 0;
   const maxBorrowAmount = useMemo(() => {
     if (soUsdBalanceAmount > 0 && exchangeRate > 0) {
-      return soUsdBalanceAmount * exchangeRate * 0.79; // 79% of savings value
+      return soUsdBalanceAmount * exchangeRate * 0.69; // 79% of savings value
     }
     return 0;
   }, [soUsdBalanceAmount, exchangeRate]);
 
   // Calculate collateral required using the same formula as useBorrowAndDepositToCard
-  const soUSDLTV = 70n; // 79% LTV
+  const soUSDLTV = 70n;
   const collateralRequired = useMemo(() => {
     if (watchedAmount === '' || watchedAmount === '0') {
       return 0;
