@@ -139,11 +139,6 @@ const RewardsDashboard = ({
                 </Text>
               </View>
             </View>
-            <View className="justify-center">
-              <Button variant="rewards" className="h-11 w-40 rounded-xl" onPress={onTierPress}>
-                <Text className="text-base font-bold text-primary">View activity</Text>
-              </Button>
-            </View>
           </View>
 
           <TierProgressBar
