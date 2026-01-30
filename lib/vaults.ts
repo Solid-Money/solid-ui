@@ -18,8 +18,12 @@ export const getVaultDepositConfig = (vault?: Vault): VaultDepositConfig => {
 
   return {
     methods: config?.methods?.length ? config.methods : DEFAULT_METHODS,
-    supportedChains: config?.supportedChains?.length ? config.supportedChains : ALL_SUPPORTED_CHAINS,
-    supportedTokens: config?.supportedTokens?.length ? config.supportedTokens : ALL_SUPPORTED_TOKENS,
+    supportedChains: config?.supportedChains?.length
+      ? config.supportedChains
+      : ALL_SUPPORTED_CHAINS,
+    supportedTokens: config?.supportedTokens?.length
+      ? config.supportedTokens
+      : ALL_SUPPORTED_TOKENS,
   };
 };
 
@@ -32,7 +36,9 @@ export const getAllowedTokensForChain = (chainId: number, vault?: Vault): string
 
 export const getDefaultDepositSelection = (vault?: Vault) => {
   const config = getVaultDepositConfig(vault);
-  const supportedChains = config.supportedChains.length ? config.supportedChains : ALL_SUPPORTED_CHAINS;
+  const supportedChains = config.supportedChains.length
+    ? config.supportedChains
+    : ALL_SUPPORTED_CHAINS;
   const chainId =
     supportedChains.find(id => getAllowedTokensForChain(id, vault).length > 0) ??
     supportedChains[0];

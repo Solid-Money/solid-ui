@@ -71,7 +71,7 @@ const DepositNetworks = () => {
   };
 
   return (
-    <View className="gap-y-2">
+    <View className="min-h-[33rem] gap-y-2">
       <Text className="text-[1rem] font-medium text-muted-foreground">Choose a network</Text>
 
       <View className="gap-y-1.5">

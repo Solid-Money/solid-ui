@@ -620,6 +620,7 @@ export type Deposit = {
     deadline: number;
   };
   trackingId?: string;
+  vault?: VaultType;
 };
 
 export enum DepositTransactionStatus {
@@ -1349,6 +1350,8 @@ export interface VaultDepositConfig {
 
 export interface Vault {
   name: string;
+  type: VaultType;
+  vaultToken: string;
   icon: AssetPath;
   decimals: number;
   vaults: {
@@ -1357,4 +1360,10 @@ export interface Vault {
   }[];
   depositConfig?: VaultDepositConfig;
   isComingSoon?: boolean;
+}
+
+export enum VaultType {
+  FUSE = 'fuse',
+  USDC = 'usdc',
+  ETH = 'eth',
 }

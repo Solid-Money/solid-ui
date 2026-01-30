@@ -2,13 +2,15 @@ import { fuse, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { ADDRESSES } from '@/lib/config';
-import { Vault } from '@/lib/types';
+import { Vault, VaultType } from '@/lib/types';
 
 const BRIDGE_CHAIN_IDS = Object.keys(BRIDGE_TOKENS).map(Number);
 
 export const VAULTS: Vault[] = [
   {
     name: 'USDC',
+    type: VaultType.USDC,
+    vaultToken: 'soUSD',
     icon: 'images/usdc-4x.png',
     decimals: 6,
     vaults: [
@@ -29,6 +31,8 @@ export const VAULTS: Vault[] = [
   },
   {
     name: 'FUSE',
+    type: VaultType.FUSE,
+    vaultToken: 'soFUSE',
     icon: 'images/fuse-4x.png',
     decimals: 18,
     vaults: [
@@ -38,14 +42,16 @@ export const VAULTS: Vault[] = [
       },
     ],
     depositConfig: {
-      methods: ['wallet', 'deposit_directly'],
-      supportedChains: [fuse.id, mainnet.id],
-      supportedTokens: ['FUSE', 'WFUSE'],
+      methods: ['wallet'],
+      supportedChains: [fuse.id],
+      supportedTokens: ['WFUSE'],
     },
   },
   {
     name: 'ETH',
     icon: 'images/eth.png',
+    type: VaultType.ETH,
+    vaultToken: 'soETH',
     decimals: 18,
     vaults: [
       {

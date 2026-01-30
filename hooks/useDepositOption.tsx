@@ -392,11 +392,13 @@ const useDepositOption = ({
       const { chainId: defaultChainId, outputToken: defaultToken } =
         getDefaultDepositSelection(vault);
       const supportedChains = depositConfig.supportedChains;
-      const nextChainId = supportedChains.includes(srcChainId) ? srcChainId : defaultChainId;
+      // When srcChainId is 0 (unset), don't auto-sync so user sees options/networks to pick
+      const nextChainId =
+        srcChainId && supportedChains.includes(srcChainId) ? srcChainId : defaultChainId;
       const allowedTokens = getAllowedTokensForChain(nextChainId, vault);
       const nextToken = allowedTokens.includes(outputToken) ? outputToken : defaultToken;
 
-      if (nextChainId !== srcChainId) {
+      if (srcChainId && nextChainId !== srcChainId) {
         setSrcChainId(nextChainId);
       }
       if (nextToken !== outputToken) {
@@ -426,16 +428,12 @@ const useDepositOption = ({
         setSessionStartTime(Date.now());
       }
 
-      // Check if user has email when opening deposit modal
+      // When srcChainId is 0 (unset), keep OPEN_OPTIONS so user picks method then chain
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
-      } else if (address) {
-        if (srcChainId) {
-          setModal(DEPOSIT_MODAL.OPEN_FORM);
-        } else {
-          setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
-        }
-      } else {
+      } else if (address && srcChainId) {
+        setModal(DEPOSIT_MODAL.OPEN_FORM);
+      } else if (!address) {
         setModal(modal);
       }
     } else {

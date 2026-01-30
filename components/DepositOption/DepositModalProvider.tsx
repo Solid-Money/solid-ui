@@ -48,7 +48,6 @@ const DepositModalProvider = () => {
     if (!nextVaultName) return;
     if (previousVaultNameRef.current && previousVaultNameRef.current !== nextVaultName) {
       resetDepositFlow();
-      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
     previousVaultNameRef.current = nextVaultName;
   }, [resetDepositFlow, selectedVault, setModal]);

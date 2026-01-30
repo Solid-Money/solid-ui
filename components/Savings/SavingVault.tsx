@@ -110,8 +110,8 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
             width: isScreenMedium ? 192 : 152,
             height: isScreenMedium ? undefined : 123,
             position: 'relative',
-            paddingHorizontal: 24,
-            paddingVertical: isScreenMedium ? 20 : 10,
+            paddingHorizontal: isScreenMedium ? 24 : 14,
+            paddingVertical: isScreenMedium ? 20 : 12,
             opacity: isComingSoon ? 0.5 : 1,
           },
         ]}

@@ -6,6 +6,7 @@ import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Fuel, Wallet } from 'lucide-react-native';
 import { Address, formatUnits } from 'viem';
+import { fuse } from 'viem/chains';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -23,8 +24,11 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
+import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
+import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
@@ -44,6 +48,12 @@ function DepositToVaultForm() {
     })),
   );
   const { isScreenMedium } = useDimension();
+  const { vault } = useVaultDepositConfig();
+  const { data: vaultExchangeRate } = useVaultExchangeRate(vault.name);
+
+  const vaultToken = vault.vaultToken ?? 'soUSD';
+  const vaultTokenIcon =
+    vault.name === 'USDC' ? getAsset('images/sousd-4x.png') : getAsset(vault.icon);
 
   const selectedTokenInfo = useMemo(() => {
     const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
@@ -64,14 +74,36 @@ function DepositToVaultForm() {
     selectedTokenInfo?.version,
   );
 
-  const isLoading = depositStatus.status === Status.PENDING;
+  const {
+    balance: balanceFuse,
+    deposit: depositFuse,
+    depositStatus: depositStatusFuse,
+    hash: hashFuse,
+    error: errorFuse,
+  } = useDepositFromEOAFuse(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+  );
+
+  const isFuseVault = vault.name === 'FUSE';
+  const balanceForVault = isFuseVault ? balanceFuse : balance;
+  const balanceDecimals = isFuseVault ? 18 : 6;
+  const depositFn = isFuseVault ? depositFuse : deposit;
+  const depositStatusForVault = isFuseVault ? depositStatusFuse : depositStatus;
+  const hashForVault = isFuseVault ? hashFuse : hash;
+  const errorForVault = isFuseVault ? errorFuse : error;
+
+  const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY } = useMaxAPY();
 
-  const formattedBalance = balance ? formatUnits(balance, 6) : '0';
+  const formattedBalance = balanceForVault ? formatUnits(balanceForVault, balanceDecimals) : '0';
 
   // Create dynamic schema based on balance
   const depositSchema = useMemo(() => {
-    const balanceAmount = balance ? Number(formatUnits(balance, 6)) : 0;
+    const balanceAmount = balanceForVault
+      ? Number(formatUnits(balanceForVault, balanceDecimals))
+      : 0;
+    const tokenLabel = isFuseVault ? (selectedTokenInfo?.name ?? 'WFUSE') : 'USDC';
 
     return z.object({
       amount: z
@@ -79,14 +111,14 @@ function DepositToVaultForm() {
         .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
         .refine(val => Number(val) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT), {
-          error: `Minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} USDC`,
+          error: `Minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} ${tokenLabel}`,
         })
         .refine(val => Number(val) <= balanceAmount, {
-          error: `Available balance is ${formatNumber(balanceAmount)} USDC`,
+          error: `Available balance is ${formatNumber(balanceAmount)} ${tokenLabel}`,
         })
         .transform(val => Number(val)),
     });
-  }, [balance]);
+  }, [balanceForVault, balanceDecimals, isFuseVault, selectedTokenInfo?.name]);
 
   type DepositFormData = { amount: string };
 
@@ -152,39 +184,51 @@ function DepositToVaultForm() {
   }, [errors.amount, watchedAmount, srcChainId, selectedTokenInfo.name, formattedBalance]);
 
   const {
-    amountOut,
+    amountOut: previewAmountOut,
     isLoading: isPreviewDepositLoading,
-    exchangeRate,
+    exchangeRate: previewExchangeRate,
     routingFee,
   } = usePreviewDeposit(watchedAmount || '0', selectedTokenInfo?.address, srcChainId);
+
+  // Use vault's accountant rate for display; amountOut from preview (USDC + LiFi) or vault rate (e.g. FUSE)
+  const amountOut =
+    vault.name === 'USDC'
+      ? previewAmountOut
+      : Number(watchedAmount || 0) / (vaultExchangeRate ?? 1);
+  const isAmountOutLoading =
+    vault.name === 'USDC' ? isPreviewDepositLoading : vaultExchangeRate === undefined;
+  const displayRate = vault.name === 'USDC' ? vaultExchangeRate : vaultExchangeRate;
 
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
     if (!isValid || !watchedAmount) return 'Enter an amount';
-    if (depositStatus.status === Status.PENDING) return depositStatus.message;
-    if (depositStatus.status === Status.SUCCESS) return 'Successfully deposited!';
-    if (depositStatus.status === Status.ERROR) return error || 'Error while depositing';
+    if (depositStatusForVault.status === Status.PENDING) return depositStatusForVault.message;
+    if (depositStatusForVault.status === Status.SUCCESS) return 'Successfully deposited!';
+    if (depositStatusForVault.status === Status.ERROR)
+      return errorForVault || 'Error while depositing';
     return 'Deposit';
   };
 
   const handleSuccess = () => {
-    // Note: DEPOSIT_COMPLETED tracking is handled by useDepositFromEOA hook
-    // which has complete deposit details (amount, transaction hash, user info, etc.)
+    // Note: DEPOSIT_COMPLETED tracking is handled by useDepositFromEOA / useDepositFromEOAFuse
+    // which have complete deposit details (amount, transaction hash, user info, etc.)
 
     reset(); // Reset form after successful transaction
     setModal(DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
-    if (!hash) return;
+    if (!hashForVault) return;
 
-    const explorerUrl = explorerUrls[layerzero.id]?.layerzeroscan;
+    const explorerUrl = isFuseVault
+      ? explorerUrls[fuse.id]?.blockscout
+      : explorerUrls[layerzero.id]?.layerzeroscan;
 
     Toast.show({
       type: 'success',
-      text1: 'Depositing USDC',
-      text2: 'Staking USDC to the protocol',
+      text1: isFuseVault ? 'Depositing FUSE' : 'Depositing USDC',
+      text2: isFuseVault ? 'Staking FUSE to the protocol' : 'Staking USDC to the protocol',
       props: {
-        link: `${explorerUrl}/tx/${hash}`,
-        linkText: eclipseAddress(hash),
-        image: getAsset('images/usdc.png'),
+        link: `${explorerUrl}/tx/${hashForVault}`,
+        linkText: eclipseAddress(hashForVault),
+        image: getAsset(isFuseVault ? 'images/fuse-4x.png' : 'images/usdc.png'),
       },
     });
   };
@@ -208,15 +252,14 @@ function DepositToVaultForm() {
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
         amount: data.amount,
         chain_id: srcChainId,
-        is_ethereum: isEthereum,
+        is_ethereum: !isFuseVault && isEthereum,
         is_sponsor: isSponsor,
-        // expected_output: amountOut.toString(),
-        exchange_rate: exchangeRate,
+        exchange_rate: vaultExchangeRate,
         ...attributionData,
         attribution_channel: attributionChannel,
       });
 
-      const trackingId = await deposit(data.amount.toString());
+      const trackingId = await depositFn(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
         trackingId,
@@ -226,7 +269,7 @@ function DepositToVaultForm() {
       track(TRACKING_EVENTS.DEPOSIT_FAILED, {
         amount: data.amount,
         chain_id: srcChainId,
-        is_ethereum: isEthereum,
+        is_ethereum: !isFuseVault && isEthereum,
         error: String(error),
         ...attributionData,
         attribution_channel: attributionChannel,
@@ -307,43 +350,44 @@ function DepositToVaultForm() {
             </View>
             <View className="ml-auto flex-shrink-0 flex-row items-center gap-2">
               <Image
-                source={getAsset('images/sousd-4x.png')}
+                source={vaultTokenIcon}
                 style={{ width: 24, height: 24 }}
                 contentFit="contain"
               />
               <View className="flex-row items-baseline gap-1">
                 <Text className="text-lg font-semibold">
-                  {isPreviewDepositLoading ? (
+                  {isAmountOutLoading ? (
                     <Skeleton className="h-7 w-20 bg-white/20" />
                   ) : isScreenMedium ? (
                     compactNumberFormat(amountOut || 0)
                   ) : (
-                    parseFloat(amountOut.toFixed(3)) || 0
+                    parseFloat((amountOut || 0).toFixed(3)) || 0
                   )}
                 </Text>
-                <Text className="text-lg">soUSD</Text>
+                <Text className="text-lg">{vaultToken}</Text>
               </View>
-              {/* <Text className="text-lg opacity-40 text-right">
-                      {`(${compactNumberFormat(costInUsd)} USDC in fee)`}
-                    </Text> */}
             </View>
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Price</Text>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               <Text className="text-lg font-semibold">
-                {'1 soUSD = '}
-                {`$${formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 0)}`}
+                {`1 ${vaultToken} = `}
+                {vault.name === 'USDC'
+                  ? `$${formatNumber(displayRate ?? 0)}`
+                  : `${formatNumber(displayRate ?? 0)} ${selectedTokenInfo.name}`}
               </Text>
             </View>
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Routing Fee</Text>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
-              {isPreviewDepositLoading ? (
+              {vault.name === 'USDC' && isPreviewDepositLoading ? (
                 <Skeleton className="h-7 w-20 bg-white/20" />
               ) : (
-                <Text className="text-lg font-semibold">{`$${formatNumber(routingFee)}`}</Text>
+                <Text className="text-lg font-semibold">
+                  {vault.name === 'USDC' ? `$${formatNumber(routingFee)}` : '$0'}
+                </Text>
               )}
             </View>
           </View>
