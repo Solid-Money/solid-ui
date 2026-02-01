@@ -88,9 +88,13 @@ export default function CardWithdrawForm() {
       setIsSubmitting(true);
       try {
         if (toSavings) {
-          await withdrawFromCardToSavings({ amount: data.amount });
-          setTransaction({ amount: Number(data.amount) });
-          setModal(CARD_WITHDRAW_MODAL.CLOSE);
+          const res = await withdrawFromCardToSavings({ amount: data.amount });
+          setTransaction({
+            amount: Number(data.amount),
+            clientTxId: `card-${res.withdrawalId}`,
+            to: data.to,
+          });
+          setModal(CARD_WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS);
           await refetch();
           Toast.show({
             type: 'success',
@@ -106,8 +110,12 @@ export default function CardWithdrawForm() {
             },
           });
 
-          setTransaction({ amount: Number(data.amount) });
-          setModal(CARD_WITHDRAW_MODAL.CLOSE);
+          setTransaction({
+            amount: Number(data.amount),
+            clientTxId: `card-${response.id}`,
+            to: data.to,
+          });
+          setModal(CARD_WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS);
           await refetch();
 
           const txHash = response.destination?.tx_hash;
