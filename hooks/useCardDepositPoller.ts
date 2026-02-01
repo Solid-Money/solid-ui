@@ -10,11 +10,34 @@ import { useActivity } from './useActivity';
 
 const CARD_TRANSACTIONS_KEY = 'card-transactions-poller';
 
+// Fallback check interval - only used if SSE somehow misses an update
+// This is intentionally long since SSE should handle all real-time updates
+const FALLBACK_STALE_TIME_MS = 60_000; // 60 seconds
+
 /**
- * Polls Bridge's card transactions API to update PENDING card deposits to SUCCESS
- * when Bridge has processed them.
+ * @deprecated FALLBACK MECHANISM - SSE is now the primary source of card deposit updates
  *
- * This handles the gap between on-chain confirmation and Bridge processing.
+ * This hook was originally created as a workaround when the backend didn't emit SSE
+ * events for card deposits. As of IMPL-BE-CARD (Jan 2026), the backend now:
+ * 1. Creates Activity records when card deposits are detected via Bridge webhook
+ * 2. Emits SSE 'created' and 'updated' events for card deposit activities
+ *
+ * The useActivitySSE hook (singleton) handles all activity updates including CARD_TRANSACTION.
+ *
+ * WHY THIS STILL EXISTS:
+ * This hook is kept as a safety net fallback in case:
+ * - SSE connection drops and reconnection is delayed
+ * - An SSE event is somehow missed
+ * - Backend webhook processing has edge case failures
+ *
+ * The staleTime is set to 60 seconds to minimize unnecessary API calls while
+ * still providing a fallback mechanism. SSE should handle all real-time updates.
+ *
+ * FUTURE: This hook can be fully removed once SSE reliability is confirmed in production
+ * over several weeks. Monitor Sentry for any 'card_deposit_fallback_triggered' events.
+ *
+ * @see useActivitySSE - Primary real-time update mechanism
+ * @see IMPL-BE-CARD - Backend implementation that added SSE support
  */
 export const useCardDepositPoller = () => {
   const { activities, updateActivity } = useActivity();
@@ -37,7 +60,9 @@ export const useCardDepositPoller = () => {
     [activities],
   );
 
-  // Fetch Bridge API only if we have pending card deposits (no polling)
+  // FALLBACK: Fetch Bridge API only if we have pending card deposits
+  // Primary updates should come via SSE from useActivitySSE hook
+  // This is a safety net with long staleTime to catch any missed SSE events
   const { data: cardTransactions } = useQuery({
     queryKey: [CARD_TRANSACTIONS_KEY],
     queryFn: async () => {
@@ -45,7 +70,11 @@ export const useCardDepositPoller = () => {
       return response.data.filter(tx => tx.category === 'crypto_funding');
     },
     enabled: pendingCardDeposits.length > 0,
-    // No polling - status updates should come from backend
+    // Long staleTime since SSE should handle real-time updates
+    // This is only a fallback safety net
+    staleTime: FALLBACK_STALE_TIME_MS,
+    // Refetch on window focus as additional fallback (e.g., user returns to app)
+    refetchOnWindowFocus: true,
   });
 
   // Check if any pending deposits have been processed by Bridge
@@ -93,12 +122,16 @@ export const useCardDepositPoller = () => {
               metadata: activity.metadata,
             });
 
-            // Track deposit completed
+            // Track deposit completed via fallback mechanism
+            // Note: This should rarely trigger since SSE is the primary update mechanism
+            // If this fires frequently, investigate SSE reliability
             track(TRACKING_EVENTS.CARD_DEPOSIT_COMPLETED, {
               amount: Number(activity.amount),
               token_symbol: activity.symbol,
               chain_id: activity.chainId,
               tx_hash: activity.hash,
+              // Flag to identify updates from fallback vs SSE in analytics
+              source: 'fallback_poller',
             });
           }),
         );
@@ -122,6 +155,9 @@ export const useCardDepositPoller = () => {
 
   return {
     pendingCount: pendingCardDeposits.length,
+    // Renamed for clarity - this is now a fallback check, not active polling
+    isFallbackActive: pendingCardDeposits.length > 0,
+    /** @deprecated Use isFallbackActive instead */
     isPolling: pendingCardDeposits.length > 0,
   };
 };
