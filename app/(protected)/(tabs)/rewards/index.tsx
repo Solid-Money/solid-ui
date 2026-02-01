@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { View } from 'react-native';
+import { router } from 'expo-router';
 
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
@@ -11,12 +11,12 @@ import RewardsDashboard from '@/components/Rewards/RewardsDashboard';
 import TierBenefitsCards from '@/components/Rewards/TierBenefitsCards';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { useRewardsUserData } from '@/hooks/useRewards';
-import { useCardStatus } from '@/hooks/useCardStatus';
-import { useRewards } from '@/store/useRewardsStore';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { useRewards } from '@/store/useRewardsStore';
 
 export default function Rewards() {
   const { isScreenMedium } = useDimension();

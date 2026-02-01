@@ -51,7 +51,7 @@ const ChartTooltip = ({
         setSelectedPrice: state.setSelectedPrice,
       })),
     );
-  const [currentTimestamp, setCurrentTimestamp] = useState(0);
+  const [currentTimestamp, setCurrentTimestamp] = useState<number>(0);
   const prevPayloadRef = useRef<any>(null);
 
   useEffect(() => {
@@ -72,12 +72,12 @@ const ChartTooltip = ({
 
     prevPayloadRef.current = chartPayload;
 
-    setCurrentTimestamp(currentTimestamp);
+    setCurrentTimestamp(Number(currentTimestamp));
     setSelectedPrice(currentPrice);
 
     let previousPrice;
     for (let i = 1; i < data.length; i++) {
-      if (data[i].time === currentTimestamp) {
+      if (Number(data[i].time) === currentTimestamp) {
         previousPrice = data[i - 1]?.value;
       }
     }
