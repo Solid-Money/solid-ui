@@ -304,11 +304,20 @@ export default function ActivityTransactions({
       const isPendingOrProcessing = isPending || isProcessing;
 
       if (isDirectDeposit && isPendingOrProcessing) {
-        const sessionId = clientTxId.replace('direct_deposit_', '');
+        // Extract token symbol from clientTxId format: direct_deposit_{userId}_{chainId}_{tokenSymbol}_{timestamp}
+        // The token symbol is the 4th part (index 3) when split by underscore after removing prefix
+        const clientTxIdParts = clientTxId.replace('direct_deposit_', '').split('_');
+        // Token symbol is at index 2 (after userId and chainId)
+        const tokenSymbol = clientTxIdParts[2] as 'USDC' | 'USDT' | undefined;
+
+        // Get walletAddress from activity metadata (added by backend IMPL-BE-DD)
+        const walletAddress = transaction.metadata?.walletAddress as string | undefined;
+
         // Seed the store for the address screen and mark it as coming from activity
         setDirectDepositSession({
-          sessionId,
           chainId: transaction.chainId,
+          walletAddress,
+          selectedToken: tokenSymbol || 'USDC',
           status: 'pending',
           fromActivity: true,
         });
