@@ -127,6 +127,12 @@ export interface CardWithdrawalResponse {
   type?: 'top_up_balance_withdrawal' | 'fee';
 }
 
+export interface WithdrawFromCardToSavingsResponse {
+  withdrawalId: string;
+  status: 'pending';
+  amount: string;
+}
+
 export interface HoldingFundsPointsMultiplierConfig {
   holdingFundsPointsMultiplier: number;
 }
@@ -465,6 +471,7 @@ export enum TransactionType {
   BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
   CARD_TRANSACTION = 'card_transaction',
+  CARD_WITHDRAWAL = 'card_withdrawal',
   MERCURYO_TRANSACTION = 'mercuryo_transaction',
   SWAP = 'swap',
   WRAP = 'wrap',
@@ -490,6 +497,7 @@ export enum TransactionCategory {
   EXTERNAL_WALLET_TRANSFER = 'External wallet transfer',
   BANK_DEPOSIT = 'Bank deposit',
   CARD_DEPOSIT = 'Card deposit',
+  CARD_WITHDRAWAL = 'Card withdraw',
   REWARD = 'Reward',
   SEND = 'Send',
   SWAP = 'Swap',
