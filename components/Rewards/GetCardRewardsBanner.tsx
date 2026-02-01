@@ -1,5 +1,5 @@
-import { Image } from 'expo-image';
 import { View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -21,14 +21,13 @@ const GetCardRewardsBanner = ({ onGetCard }: GetCardRewardsBannerProps) => {
             <Text className="text-3xl font-bold text-white">
               Earn 3% cashback on your purchases
             </Text>
-            <Text className="text-base text-white/70 mt-3">
-              Use your Vault balance to spend with your Cash{'\n'}card. Repay anytime - no
-              minimums.
+            <Text className="mt-3 text-base text-white/70">
+              Use your Vault balance to spend with your Cash{'\n'}card. Repay anytime - no minimums.
             </Text>
           </View>
 
           <View className="flex-row items-center gap-6">
-            <Button variant="brand" className="h-12 px-10 rounded-xl" onPress={onGetCard}>
+            <Button variant="brand" className="h-12 rounded-xl px-10" onPress={onGetCard}>
               <Text className="text-base font-bold">Get your card</Text>
             </Button>
           </View>

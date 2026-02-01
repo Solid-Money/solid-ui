@@ -8,7 +8,7 @@ import { Text } from '@/components/ui/text';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { useCardDepositStore } from '@/store/useCardDepositStore';
+import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 export default function CardDepositOptions() {
   const { setModal, setSource } = useCardDepositStore(
@@ -41,7 +41,7 @@ export default function CardDepositOptions() {
       option: 'internal',
       option_label: 'From Wallet/Savings',
     });
-    setSource('wallet');
+    setSource(CardDepositSource.WALLET);
     setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
   }, [setSource, setModal]);
 
@@ -50,7 +50,7 @@ export default function CardDepositOptions() {
       option: 'external',
       option_label: 'From External Wallet',
     });
-    setSource('external');
+    setSource(CardDepositSource.EXTERNAL);
     setModal(CARD_DEPOSIT_MODAL.OPEN_EXTERNAL_FORM);
   }, [setSource, setModal]);
 
