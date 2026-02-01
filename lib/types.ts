@@ -127,6 +127,12 @@ export interface CardWithdrawalResponse {
   type?: 'top_up_balance_withdrawal' | 'fee';
 }
 
+export interface WithdrawFromCardToSavingsResponse {
+  withdrawalId: string;
+  status: 'pending';
+  amount: string;
+}
+
 export interface HoldingFundsPointsMultiplierConfig {
   holdingFundsPointsMultiplier: number;
 }

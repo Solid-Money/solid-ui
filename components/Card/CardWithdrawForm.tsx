@@ -2,25 +2,23 @@ import { useCallback, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Linking, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Image } from 'expo-image';
 import { Wallet as WalletIcon } from 'lucide-react-native';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 
+import ToDestinationSelector from '@/components/Card/ToDestinationSelector';
 import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useUser from '@/hooks/useUser';
-import { withdrawFromCard } from '@/lib/api';
-import { getAsset } from '@/lib/assets';
+import { withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
 import { cn, formatNumber } from '@/lib/utils';
+import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
-type FormData = { amount: string };
-
-const DOLLAR_ICON = getAsset('images/usdc-4x.png');
+type FormData = { amount: string; to: CardDepositSource };
 
 export default function CardWithdrawForm() {
   const { user } = useUser();
@@ -34,7 +32,7 @@ export default function CardWithdrawForm() {
 
   const { control, handleSubmit, formState, watch, setValue, trigger } = useForm<FormData>({
     mode: 'onChange',
-    defaultValues: { amount: '' },
+    defaultValues: { amount: '', to: CardDepositSource.SAVINGS },
   });
 
   const watchedAmount = watch('amount');
@@ -76,7 +74,9 @@ export default function CardWithdrawForm() {
 
   const onSubmit = useCallback(
     async (data: FormData) => {
-      if (!user?.safeAddress) {
+      const toSavings = data.to === CardDepositSource.SAVINGS;
+
+      if (!toSavings && !user?.safeAddress) {
         Toast.show({
           type: 'error',
           text1: 'Safe address not found',
@@ -87,28 +87,40 @@ export default function CardWithdrawForm() {
 
       setIsSubmitting(true);
       try {
-        const response = await withdrawFromCard({
-          amount: data.amount,
-          destination: {
-            chain: 'ethereum',
-            address: user.safeAddress,
-          },
-        });
+        if (toSavings) {
+          await withdrawFromCardToSavings({ amount: data.amount });
+          setTransaction({ amount: Number(data.amount) });
+          setModal(CARD_WITHDRAW_MODAL.CLOSE);
+          await refetch();
+          Toast.show({
+            type: 'success',
+            text1: 'Withdrawal to Savings requested',
+            text2: `$${data.amount} is being sent to your Savings.`,
+          });
+        } else {
+          const response = await withdrawFromCard({
+            amount: data.amount,
+            destination: {
+              chain: 'ethereum',
+              address: user!.safeAddress!,
+            },
+          });
 
-        setTransaction({ amount: Number(data.amount) });
-        setModal(CARD_WITHDRAW_MODAL.CLOSE);
-        await refetch();
+          setTransaction({ amount: Number(data.amount) });
+          setModal(CARD_WITHDRAW_MODAL.CLOSE);
+          await refetch();
 
-        const txHash = response.destination?.tx_hash;
-        const etherscanUrl = txHash ? `https://etherscan.io/tx/${txHash}` : null;
-        Toast.show({
-          type: 'success',
-          text1: 'Withdrawal requested',
-          text2: etherscanUrl ? etherscanUrl : `$${data.amount} is being sent to your wallet.`,
-          ...(etherscanUrl && {
-            onPress: () => Linking.openURL(etherscanUrl),
-          }),
-        });
+          const txHash = response.destination?.tx_hash;
+          const etherscanUrl = txHash ? `https://etherscan.io/tx/${txHash}` : null;
+          Toast.show({
+            type: 'success',
+            text1: 'Withdrawal requested',
+            text2: etherscanUrl ? etherscanUrl : `$${data.amount} is being sent to your wallet.`,
+            ...(etherscanUrl && {
+              onPress: () => Linking.openURL(etherscanUrl),
+            }),
+          });
+        }
       } catch (err: unknown) {
         let message = 'Withdrawal failed';
         if (err instanceof Response) {
@@ -126,7 +138,7 @@ export default function CardWithdrawForm() {
         setIsSubmitting(false);
       }
     },
-    [user?.safeAddress, setModal, setTransaction, refetch],
+    [user, setModal, setTransaction, refetch],
   );
 
   const disabled = !isValid || !watchedAmount || isSubmitting;
@@ -178,19 +190,16 @@ export default function CardWithdrawForm() {
         </View>
       </View>
 
-      {/* To - Wallet only */}
+      {/* To - destination dropdown */}
       <View className="gap-2">
         <Text className="font-medium opacity-50">To</Text>
-        <View className="flex-row items-center justify-between rounded-2xl bg-accent p-4">
-          <View className="flex-row items-center gap-2">
-            <WalletIcon color="#A1A1A1" size={24} />
-            <Text className="text-lg font-semibold">Wallet</Text>
-          </View>
-          <View className="flex-row items-center gap-2">
-            <Image source={DOLLAR_ICON} alt="USDC" style={{ width: 34, height: 34 }} />
-            <Text className="text-lg font-semibold text-white">USDC (Ethereum)</Text>
-          </View>
-        </View>
+        <Controller
+          control={control}
+          name="to"
+          render={({ field: { onChange, value } }) => (
+            <ToDestinationSelector value={value} onChange={onChange} />
+          )}
+        />
       </View>
 
       <View className="flex-1" />
