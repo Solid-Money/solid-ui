@@ -44,7 +44,7 @@ interface DirectDepositSession {
   sessionId?: string;
   walletAddress?: string;
   chainId?: number;
-  selectedToken?: 'USDC' | 'USDT';
+  selectedToken?: string;
   status?: 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
   expiresAt?: number;
   minDeposit?: string;
@@ -79,6 +79,7 @@ interface DepositState {
   clearDirectDepositSession: () => void;
   setSessionStartTime: (time: number) => void;
   clearSessionStartTime: () => void;
+  resetDepositFlow: () => void;
 }
 
 export const useDepositStore = create<DepositState>()(
@@ -95,8 +96,9 @@ export const useDepositStore = create<DepositState>()(
       sessionStartTime: undefined,
 
       setModal: modal => {
+        const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
         set({
-          previousModal: get().currentModal,
+          previousModal: isClose ? DEPOSIT_MODAL.CLOSE : get().currentModal,
           currentModal: modal,
         });
       },
@@ -112,6 +114,18 @@ export const useDepositStore = create<DepositState>()(
       clearDirectDepositSession: () => set({ directDepositSession: {} }),
       setSessionStartTime: time => set({ sessionStartTime: time }),
       clearSessionStartTime: () => set({ sessionStartTime: undefined }),
+      resetDepositFlow: () =>
+        set({
+          currentModal: DEPOSIT_MODAL.CLOSE,
+          previousModal: DEPOSIT_MODAL.CLOSE,
+          transaction: {},
+          srcChainId: mainnet.id,
+          outputToken: 'soUSD',
+          bankTransfer: {},
+          kyc: {},
+          directDepositSession: {},
+          sessionStartTime: undefined,
+        }),
     }),
     {
       name: USER.depositStorageKey,

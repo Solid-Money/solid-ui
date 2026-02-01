@@ -5,12 +5,15 @@ import { Image } from 'expo-image';
 import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositExternalWalletOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
+  const { depositConfig } = useVaultDepositConfig();
 
   const handleDepositDirectly = useCallback(async () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -32,6 +35,7 @@ const DepositExternalWalletOptions = () => {
           />
         ),
         onPress: handleDepositDirectly,
+        method: 'deposit_directly' as DepositMethod,
       },
     ],
     [handleDepositDirectly],
@@ -39,15 +43,17 @@ const DepositExternalWalletOptions = () => {
 
   return (
     <View className="gap-y-2.5">
-      {externalWalletOptions.map(option => (
-        <DepositOption
-          key={option.text}
-          text={option.text}
-          subtitle={option.subtitle}
-          icon={option.icon}
-          onPress={option.onPress}
-        />
-      ))}
+      {externalWalletOptions
+        .filter(option => !option.method || depositConfig.methods.includes(option.method))
+        .map(option => (
+          <DepositOption
+            key={option.text}
+            text={option.text}
+            subtitle={option.subtitle}
+            icon={option.icon}
+            onPress={option.onPress}
+          />
+        ))}
     </View>
   );
 };

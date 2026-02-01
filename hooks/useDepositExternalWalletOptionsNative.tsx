@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import HomeQR from '@/assets/images/home-qr';
@@ -25,6 +26,7 @@ const useDepositExternalWalletOptionsNative = () => {
         subtitle: 'Send USDC to your solid\ndeposit address from any supported\nnetwork',
         icon: <HomeQR />,
         onPress: handleDepositDirectly,
+        method: 'deposit_directly' as DepositMethod,
       },
     ],
     [handleDepositDirectly],
