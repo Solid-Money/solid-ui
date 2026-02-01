@@ -77,7 +77,7 @@ const ChartTooltip = ({
 
     let previousPrice;
     for (let i = 1; i < data.length; i++) {
-      if (Number(data[i].time) === currentTimestamp) {
+      if (Number(data[i].time) === Number(currentTimestamp)) {
         previousPrice = data[i - 1]?.value;
       }
     }
