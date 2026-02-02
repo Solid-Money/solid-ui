@@ -25,6 +25,7 @@ import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useIntercom } from '@/lib/intercom';
 import {
+  ActivityEvent,
   CardTransaction,
   TransactionDirection,
   TransactionStatus,
@@ -148,10 +149,12 @@ const SupportSection = memo(function SupportSection({ transactionContext }: Supp
 
 type CardTransactionDetailProps = {
   transaction: CardTransaction;
+  activity?: ActivityEvent | null;
 };
 
 const CardTransactionDetail = memo(function CardTransactionDetail({
   transaction,
+  activity,
 }: CardTransactionDetailProps) {
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
   const isPurchase = transaction.category === 'purchase';
@@ -239,7 +242,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
             <Text className="text-4xl font-bold text-white">
               {formatCardAmount(transaction.amount)}
             </Text>
-            <Text className="mt-2 font-semibold text-muted-foreground">Savings account</Text>
+            <Text className="mt-2 font-semibold text-muted-foreground">
+              {`${toTitleCase(activity?.metadata?.destination || 'savings')} account`}
+            </Text>
             <Text className="font-semibold text-muted-foreground">
               {format(postedDate, DATE_FORMAT)}
             </Text>
@@ -474,7 +479,7 @@ export default function ActivityDetail() {
 
   // Card transaction
   if (isCardTransaction && cardTransaction && !isAnyLoading) {
-    return <CardTransactionDetail transaction={cardTransaction} />;
+    return <CardTransactionDetail transaction={cardTransaction} activity={finalActivity} />;
   }
 
   // Loading
