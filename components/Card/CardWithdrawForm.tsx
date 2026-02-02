@@ -28,7 +28,7 @@ export default function CardWithdrawForm() {
   );
 
   const spendableAmount = Number(cardDetails?.balances?.available?.amount ?? 0);
-  const formattedBalance = spendableAmount.toString();
+  const formattedBalance = formatNumber(spendableAmount, 2, 2);
 
   const { control, handleSubmit, formState, watch, setValue, trigger } = useForm<FormData>({
     mode: 'onChange',
