@@ -35,12 +35,8 @@ const CardWithdrawModalProvider = () => {
 
   const handleTransactionStatusPress = useCallback(() => {
     setModal(CARD_WITHDRAW_MODAL.CLOSE);
-    if (transaction.clientTxId) {
-      router.push(`/activity/${transaction.clientTxId}?tab=card`);
-    } else {
-      router.push('/activity?tab=card');
-    }
-  }, [setModal, router, transaction.clientTxId]);
+    router.push('/activity?tab=card');
+  }, [setModal, router]);
 
   const handleOpenChange = useCallback(
     (value: boolean) => {
