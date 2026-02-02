@@ -1,3 +1,6 @@
+import { Reward } from '@merkl/api';
+import { Address, Hex } from 'viem';
+
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import {
   DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
@@ -8,8 +11,7 @@ import {
   UNSTAKE_MODAL,
   WITHDRAW_MODAL,
 } from '@/constants/modals';
-import { Reward } from '@merkl/api';
-import { Address, Hex } from 'viem';
+
 import { AssetPath } from './assets';
 
 export interface CountryFromIp {
@@ -125,6 +127,12 @@ export interface CardWithdrawalResponse {
   };
   client_note?: string;
   type?: 'top_up_balance_withdrawal' | 'fee';
+}
+
+export interface WithdrawFromCardToSavingsResponse {
+  withdrawalId: string;
+  status: 'pending';
+  amount: string;
 }
 
 export interface HoldingFundsPointsMultiplierConfig {
@@ -465,6 +473,7 @@ export enum TransactionType {
   BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
   CARD_TRANSACTION = 'card_transaction',
+  CARD_WITHDRAWAL = 'card_withdrawal',
   MERCURYO_TRANSACTION = 'mercuryo_transaction',
   SWAP = 'swap',
   WRAP = 'wrap',
@@ -490,6 +499,7 @@ export enum TransactionCategory {
   EXTERNAL_WALLET_TRANSFER = 'External wallet transfer',
   BANK_DEPOSIT = 'Bank deposit',
   CARD_DEPOSIT = 'Card deposit',
+  CARD_WITHDRAWAL = 'Card withdraw',
   REWARD = 'Reward',
   SEND = 'Send',
   SWAP = 'Swap',
@@ -610,6 +620,7 @@ export type Deposit = {
     deadline: number;
   };
   trackingId?: string;
+  vault?: VaultType;
 };
 
 export enum DepositTransactionStatus {
@@ -1329,7 +1340,30 @@ export interface EnsureWebhookResponse {
   message: string;
 }
 
+export type DepositMethod = 'wallet' | 'deposit_directly' | 'credit_card' | 'bank_transfer';
+
+export interface VaultDepositConfig {
+  methods: DepositMethod[];
+  supportedChains: number[];
+  supportedTokens: string[];
+}
+
 export interface Vault {
   name: string;
+  type: VaultType;
+  vaultToken: string;
   icon: AssetPath;
+  decimals: number;
+  vaults: {
+    address: Address;
+    chainId: number;
+  }[];
+  depositConfig?: VaultDepositConfig;
+  isComingSoon?: boolean;
+}
+
+export enum VaultType {
+  FUSE = 'fuse',
+  USDC = 'usdc',
+  ETH = 'eth',
 }

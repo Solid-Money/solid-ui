@@ -50,6 +50,10 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.CARD_DEPOSIT,
   },
+  [TransactionType.CARD_WITHDRAWAL]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.CARD_WITHDRAWAL,
+  },
   [TransactionType.MERCURYO_TRANSACTION]: {
     sign: TransactionDirection.IN,
     category: TransactionCategory.BANK_DEPOSIT,

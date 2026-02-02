@@ -6,6 +6,7 @@ export const useDepositCalculations = (
   userDepositTransactions: any,
   balance?: number,
   lastTimestamp?: number,
+  decimals: number = 6,
 ) => {
   // Stabilize userDepositTransactions reference using JSON comparison
   // This prevents infinite re-renders when React Query returns new object references
@@ -24,10 +25,10 @@ export const useDepositCalculations = (
   const originalDepositAmount = useMemo(() => {
     if (!balance || balance <= 0) return 0;
 
-    const calculated = calculateOriginalDepositAmount(transactionsRef.current);
+    const calculated = calculateOriginalDepositAmount(transactionsRef.current, decimals);
     return calculated > 0 ? calculated : balance;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- transactionsKey is intentional: stable JSON key replaces unstable object reference
-  }, [transactionsKey, balance]);
+  }, [transactionsKey, balance, decimals]);
 
   const firstDepositTimestamp = useMemo(() => {
     if (!balance || balance <= 0) return undefined;

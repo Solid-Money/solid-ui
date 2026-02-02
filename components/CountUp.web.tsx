@@ -41,9 +41,13 @@ const CountUp = ({
   return (
     <div className={cn('flex items-baseline', classNames?.wrapper)}>
       {prefix ? (
-        <span className={classNames?.decimalSeparator} style={styles?.wholeText as any}>
-          {prefix}
-        </span>
+        typeof prefix === 'string' ? (
+          <span className={classNames?.decimalSeparator} style={styles?.wholeText as any}>
+            {prefix}
+          </span>
+        ) : (
+          prefix
+        )
       ) : null}
       <NumberFlow
         value={Math.floor(safeCount)}

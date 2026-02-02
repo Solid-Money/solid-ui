@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 
 import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
+import { CardDepositSource } from '@/store/useCardDepositStore';
 
 export interface CardWithdrawTransactionState {
   amount?: number;
+  clientTxId?: string;
+  to?: CardDepositSource;
 }
 
 interface CardWithdrawState {

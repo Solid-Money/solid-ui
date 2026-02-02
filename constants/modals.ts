@@ -240,6 +240,10 @@ export const CARD_WITHDRAW_MODAL = {
     name: 'open_form',
     number: 1,
   },
+  OPEN_TRANSACTION_STATUS: {
+    name: 'open_transaction_status',
+    number: 2,
+  },
 };
 
 // Card repay modal

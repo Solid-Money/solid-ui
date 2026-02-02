@@ -4,8 +4,10 @@ import { Address, formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 import { readContractQueryOptions } from 'wagmi/query';
 
+import { VAULTS } from '@/constants/vaults';
 import FuseVault from '@/lib/abis/FuseVault';
 import { ADDRESSES } from '@/lib/config';
+import { Vault } from '@/lib/types';
 import { config } from '@/lib/wagmi';
 
 // Cache configuration for vault queries
@@ -59,18 +61,20 @@ export const useEthereumVaultBalance = (safeAddress: Address) => {
   });
 };
 
-export const useVaultBalance = (safeAddress: Address) => {
+export const useVaultBalance = (safeAddress: Address, vault?: Vault) => {
   const queryClient = useQueryClient();
+  const selectedVault = vault || VAULTS[0];
+
   return useQuery({
-    queryKey: [VAULT, 'balance', safeAddress],
+    queryKey: [VAULT, 'balance', safeAddress, selectedVault.name],
     queryFn: async () => {
-      // PERFORMANCE: Fetch both chains in parallel instead of sequentially
-      // This reduces latency from ~2x RPC call time to ~1x RPC call time
-      const [ethereumBalance, fuseBalance] = await Promise.all([
-        fetchVaultBalance(queryClient, safeAddress, mainnet.id, ADDRESSES.ethereum.vault),
-        fetchVaultBalance(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.vault),
-      ]);
-      return ethereumBalance + fuseBalance;
+      const balances = await Promise.all(
+        selectedVault.vaults?.map(v =>
+          fetchVaultBalance(queryClient, safeAddress, v.chainId, v.address, selectedVault.decimals),
+        ),
+      );
+      const totalBalance = balances.reduce((acc, curr) => acc + curr, 0);
+      return totalBalance;
     },
     enabled: !!safeAddress,
     staleTime: VAULT_STALE_TIME,
@@ -83,6 +87,29 @@ export const useUsdcVaultBalance = (safeAddress: Address) => {
   return useQuery({
     queryKey: [VAULT, 'balanceUsdc', safeAddress],
     queryFn: () => fetchVaultBalance(queryClient, safeAddress, mainnet.id, ADDRESSES.ethereum.usdc),
+    enabled: !!safeAddress,
+    staleTime: VAULT_STALE_TIME,
+    gcTime: VAULT_GC_TIME,
+  });
+};
+
+/** Total balance across all vaults (USDC + FUSE + ETH). Use for empty-state checks. */
+export const useTotalVaultBalance = (safeAddress: Address) => {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: [VAULT, 'balanceTotal', safeAddress],
+    queryFn: async () => {
+      let total = 0;
+      for (const vault of VAULTS) {
+        const balances = await Promise.all(
+          (vault.vaults ?? []).map(v =>
+            fetchVaultBalance(queryClient, safeAddress, v.chainId, v.address, vault.decimals),
+          ),
+        );
+        total += balances.reduce((acc, curr) => acc + curr, 0);
+      }
+      return total;
+    },
     enabled: !!safeAddress,
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,
