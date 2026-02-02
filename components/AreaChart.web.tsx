@@ -2,8 +2,8 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 
 import ChartTooltip from '@/components/ChartTooltip';
 import { ChartPayload } from '@/lib/types';
-import { formatChartAxisLabel } from '@/lib/utils/chartDate';
 import { formatNumber } from '@/lib/utils';
+import { formatChartAxisLabel } from '@/lib/utils/chartDate';
 
 const DEFAULT_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
 
@@ -39,12 +39,7 @@ const Chart = ({ data, formatToolTip, formatYAxis, style, margin }: AreaChartPro
 
   return (
     <ResponsiveContainer height={300} style={style}>
-      <AreaChart
-        width={500}
-        height={420}
-        data={chartData}
-        margin={chartMargin}
-      >
+      <AreaChart width={500} height={420} data={chartData} margin={chartMargin}>
         <defs>
           <linearGradient id="colorPv" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#94F27F" stopOpacity={0.15} />

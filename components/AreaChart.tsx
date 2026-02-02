@@ -7,9 +7,10 @@ import { useShallow } from 'zustand/react/shallow';
 import { calculatePercentageChange } from '@/components/ChartTooltip';
 import { Text } from '@/components/ui/text';
 import { ChartPayload } from '@/lib/types';
-import { formatChartAxisLabel, formatChartTooltipDate } from '@/lib/utils/chartDate';
 import { formatNumber } from '@/lib/utils';
+import { formatChartAxisLabel, formatChartTooltipDate } from '@/lib/utils/chartDate';
 import { useCoinStore } from '@/store/useCoinStore';
+
 import type { StyleProp, ViewStyle } from 'react-native';
 
 interface AreaChartProps {

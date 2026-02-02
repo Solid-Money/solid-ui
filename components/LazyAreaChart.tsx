@@ -1,9 +1,9 @@
 import React, { Suspense } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
-import type { StyleProp, ViewStyle } from 'react-native';
-
 import { ChartPayload } from '@/lib/types';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 // Lazy load the heavy chart component (victory-native ~1.2MB, recharts ~400KB)
 // This defers loading until the chart is actually needed

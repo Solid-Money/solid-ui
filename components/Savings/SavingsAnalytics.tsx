@@ -64,7 +64,7 @@ const SavingsAnalytics = () => {
         return itemTime >= cutoffDateString;
       });
     }
-    return data.filter((item) => item.value >= 0 && item.value <= 10);
+    return data.filter(item => item.value >= 0 && item.value <= 10);
   }, [yieldHistory, timeFilter]);
 
   // Animate container height
