@@ -2,6 +2,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 
 import ChartTooltip from '@/components/ChartTooltip';
 import { ChartPayload } from '@/lib/types';
+import { formatChartAxisLabel } from '@/lib/utils/chartDate';
 import { formatNumber } from '@/lib/utils';
 
 interface AreaChartProps {
@@ -9,14 +10,6 @@ interface AreaChartProps {
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
 }
-
-const formatTimeForAxis = (time: number | string) => {
-  const date = typeof time === 'string' ? new Date(time) : new Date(time);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-};
 
 const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
   // Transform data to include index for x-axis
@@ -62,7 +55,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
         <XAxis
           dataKey="index"
           tickFormatter={index => {
-            return data[index] ? formatTimeForAxis(data[index].time) : '';
+            return data[index] ? formatChartAxisLabel(data[index].time) : '';
           }}
           ticks={xAxisTicks}
           tick={{ fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 }}
