@@ -235,7 +235,7 @@ const Chart = ({ data, formatToolTip, formatYAxis, style }: AreaChartProps) => {
               data: {
                 fill: 'url(#areaGradient)',
                 stroke: '#94F27F',
-                strokeWidth: 2,
+                strokeWidth: 1,
               },
             }}
           />

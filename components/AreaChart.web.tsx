@@ -82,7 +82,7 @@ const Chart = ({ data, formatToolTip, formatYAxis, style, margin }: AreaChartPro
           type="linear"
           dataKey={'value'}
           stroke="#94F27F"
-          strokeWidth={2}
+          strokeWidth={1}
           fillOpacity={1}
           fill="url(#colorPv)"
         />
