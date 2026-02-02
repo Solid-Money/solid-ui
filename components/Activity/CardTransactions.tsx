@@ -15,6 +15,7 @@ import {
   ActivityGroup,
   ActivityTab,
   CardTransaction,
+  CardTransactionCategory,
   TransactionType,
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -57,11 +58,13 @@ export default function CardTransactions() {
   );
 
   const mergedItems = useMemo(() => {
-    const cardItems: CardTransactionWithTimestamp[] = transactions.map(tx => ({
-      ...tx,
-      timestamp: new Date(tx.posted_at).getTime() / 1000,
-      source: 'card' as const,
-    }));
+    const cardItems: CardTransactionWithTimestamp[] = transactions
+      .filter(tx => tx.category !== CardTransactionCategory.CRYPTO_WITHDRAWAL)
+      .map(tx => ({
+        ...tx,
+        timestamp: new Date(tx.posted_at).getTime() / 1000,
+        source: 'card' as const,
+      }));
     const all: CardListItem[] = [...cardItems, ...cardWithdrawals];
     all.sort((a, b) => b.timestamp - a.timestamp);
     return all;
@@ -139,7 +142,7 @@ export default function CardTransactions() {
     const transaction = row as CardTransactionWithTimestamp;
     const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
     const initials = getInitials(merchantName);
-    const isPurchase = transaction.category === 'purchase';
+    const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
     const color = getColorForTransaction(merchantName);
     const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 

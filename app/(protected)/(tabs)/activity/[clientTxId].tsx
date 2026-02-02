@@ -27,6 +27,7 @@ import { useIntercom } from '@/lib/intercom';
 import {
   ActivityEvent,
   CardTransaction,
+  CardTransactionCategory,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
@@ -157,7 +158,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   activity,
 }: CardTransactionDetailProps) {
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
-  const isPurchase = transaction.category === 'purchase';
+  const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
   const { data: cashbacks } = useCashbacks();
 
   const txHash = transaction.crypto_transaction_details?.tx_hash;
