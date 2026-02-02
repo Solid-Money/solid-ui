@@ -30,7 +30,7 @@
         "ascAppId": "6758618401"
       },
       "android": {
-        "serviceAccountKeyPath": "./ServiceAccountSolid.json",
+        "serviceAccountKeyPath": "$GOOGLE_SERVICE_ACCOUNT",
         "track": "internal"
       }
     }
