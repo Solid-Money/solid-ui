@@ -192,6 +192,7 @@ export default function ActivityTransactions({
   const tabFilteredActivities = useMemo(() => {
     return updatedActivities.filter(transaction => {
       if (tab === ActivityTab.WALLET) {
+        if (transaction.type === TransactionType.CARD_WITHDRAWAL) return false;
         if (symbol) {
           return transaction.symbol?.toLowerCase() === symbol?.toLowerCase();
         }

@@ -6,10 +6,17 @@ import { FlashList } from '@shopify/flash-list';
 import Diamond from '@/assets/images/diamond';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
+import { useActivity } from '@/hooks/useActivity';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { ActivityGroup, ActivityTab, CardTransaction } from '@/lib/types';
+import {
+  ActivityEvent,
+  ActivityGroup,
+  ActivityTab,
+  CardTransaction,
+  TransactionType,
+} from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   formatCardAmount,
@@ -19,10 +26,15 @@ import {
 } from '@/lib/utils/cardHelpers';
 import { groupByTime, TimeGroup } from '@/lib/utils/timeGrouping';
 
-type CardTransactionWithTimestamp = CardTransaction & { timestamp: number };
+type CardTransactionWithTimestamp = CardTransaction & { timestamp: number; source: 'card' };
+type CardWithdrawalActivity = Omit<ActivityEvent, 'timestamp'> & {
+  timestamp: number;
+  source: 'activity';
+};
+type CardListItem = CardTransactionWithTimestamp | CardWithdrawalActivity;
 
 type RenderItemProps = {
-  item: TimeGroup<CardTransactionWithTimestamp>;
+  item: TimeGroup<CardListItem>;
   index: number;
 };
 
@@ -30,24 +42,38 @@ export default function CardTransactions() {
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useCardTransactions();
   const { data: cashbacks } = useCashbacks();
+  const { activities } = useActivity();
 
   const transactions = useMemo(() => {
     return data?.pages.flatMap(page => page.data) ?? [];
   }, [data]);
 
-  const isFirstInGroup = (
-    groupedData: TimeGroup<CardTransactionWithTimestamp>[],
-    currentIndex: number,
-  ) => {
+  const cardWithdrawals = useMemo(
+    () =>
+      activities
+        .filter(a => a.type === TransactionType.CARD_WITHDRAWAL)
+        .map(a => ({ ...a, timestamp: Number(a.timestamp), source: 'activity' as const })),
+    [activities],
+  );
+
+  const mergedItems = useMemo(() => {
+    const cardItems: CardTransactionWithTimestamp[] = transactions.map(tx => ({
+      ...tx,
+      timestamp: new Date(tx.posted_at).getTime() / 1000,
+      source: 'card' as const,
+    }));
+    const all: CardListItem[] = [...cardItems, ...cardWithdrawals];
+    all.sort((a, b) => b.timestamp - a.timestamp);
+    return all;
+  }, [transactions, cardWithdrawals]);
+
+  const isFirstInGroup = (groupedData: TimeGroup<CardListItem>[], currentIndex: number) => {
     // Check if previous item is a header
     if (currentIndex === 0) return true;
     return groupedData[currentIndex - 1]?.type === ActivityGroup.HEADER;
   };
 
-  const isLastInGroup = (
-    groupedData: TimeGroup<CardTransactionWithTimestamp>[],
-    currentIndex: number,
-  ) => {
+  const isLastInGroup = (groupedData: TimeGroup<CardListItem>[], currentIndex: number) => {
     // Check if next item is a header or if this is the last item
     if (currentIndex === groupedData.length - 1) return true;
     return (
@@ -56,17 +82,9 @@ export default function CardTransactions() {
     );
   };
 
-  // Convert card transactions to a format compatible with time grouping
-  const formattedTransactions = useMemo(() => {
-    return transactions.map(tx => ({
-      ...tx,
-      timestamp: new Date(tx.posted_at).getTime() / 1000,
-    }));
-  }, [transactions]);
-
   const groupedTransactions = useMemo(() => {
-    return groupByTime(formattedTransactions);
-  }, [formattedTransactions]);
+    return groupByTime(mergedItems);
+  }, [mergedItems]);
 
   const renderItem = ({ item, index }: RenderItemProps) => {
     if (item.type === ActivityGroup.HEADER) {
@@ -77,14 +95,52 @@ export default function CardTransactions() {
       );
     }
 
-    // TypeScript now knows item.data is CardTransactionWithTimestamp
-    const transaction = item.data;
+    const row = item.data;
+    const isFirst = isFirstInGroup(groupedTransactions, index);
+    const isLast = isLastInGroup(groupedTransactions, index);
+
+    if (row.source === 'activity') {
+      const activity = row as CardWithdrawalActivity;
+      const amount = parseFloat(activity.amount);
+      const formattedAmount =
+        amount >= 0 ? `-$${Math.abs(amount).toFixed(2)}` : `$${Math.abs(amount).toFixed(2)}`;
+      return (
+        <Pressable
+          key={`${activity.clientTxId}-${index}`}
+          onPress={() => router.push(`/activity/${activity.clientTxId}?tab=${ActivityTab.CARD}`)}
+          className={cn(
+            'flex-row items-center justify-between bg-[#1C1C1E] px-4 py-4',
+            !isLast && 'border-b border-[#2C2C2E]',
+            isFirst && 'rounded-t-[20px]',
+            isLast && 'rounded-b-[20px]',
+          )}
+        >
+          <View className="mr-4 flex-1 flex-row items-center gap-3">
+            <RenderTokenIcon
+              tokenIcon={getTokenIcon({
+                tokenSymbol: activity.symbol,
+                size: 44,
+              })}
+              size={44}
+            />
+            <View className="flex-1">
+              <Text className="text-lg font-medium text-white" numberOfLines={1}>
+                {activity.title}
+              </Text>
+            </View>
+          </View>
+          <View className="items-end">
+            <Text className="text-xl font-semibold text-white">{formattedAmount}</Text>
+          </View>
+        </Pressable>
+      );
+    }
+
+    const transaction = row as CardTransactionWithTimestamp;
     const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
     const initials = getInitials(merchantName);
     const isPurchase = transaction.category === 'purchase';
     const color = getColorForTransaction(merchantName);
-    const isFirst = isFirstInGroup(groupedTransactions, index);
-    const isLast = isLastInGroup(groupedTransactions, index);
     const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
 
     return (
@@ -99,7 +155,6 @@ export default function CardTransactions() {
         )}
       >
         <View className="mr-4 flex-1 flex-row items-center gap-3">
-          {/* Avatar with initials */}
           {isPurchase ? (
             <View
               className="h-[44px] w-[44px] items-center justify-center rounded-full"
@@ -118,8 +173,6 @@ export default function CardTransactions() {
               size={44}
             />
           )}
-
-          {/* Merchant name and cashback */}
           <View className="flex-1">
             <Text className="text-lg font-medium text-white" numberOfLines={1}>
               {merchantName}
@@ -134,8 +187,6 @@ export default function CardTransactions() {
             )}
           </View>
         </View>
-
-        {/* Amount and cashback */}
         <View className="items-end">
           <Text className="text-xl font-semibold text-white">
             {formatCardAmount(transaction.amount)}
@@ -204,7 +255,9 @@ export default function CardTransactions() {
           if (item.type === ActivityGroup.HEADER) {
             return item.data.key;
           }
-          return item.data.id || `${index}`;
+          const row = item.data as CardListItem;
+          if (row.source === 'activity') return row.clientTxId;
+          return row.id || `${index}`;
         }}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
