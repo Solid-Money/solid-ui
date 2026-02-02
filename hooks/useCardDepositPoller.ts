@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { getCardTransactions } from '@/lib/api';
-import { TransactionStatus, TransactionType } from '@/lib/types';
+import { CardTransactionCategory, TransactionStatus, TransactionType } from '@/lib/types';
 
 import { useActivity } from './useActivity';
 
@@ -67,7 +67,7 @@ export const useCardDepositPoller = () => {
     queryKey: [CARD_TRANSACTIONS_KEY],
     queryFn: async () => {
       const response = await getCardTransactions();
-      return response.data.filter(tx => tx.category === 'crypto_funding');
+      return response.data.filter(tx => tx.category === CardTransactionCategory.CRYPTO_FUNDING);
     },
     enabled: pendingCardDeposits.length > 0,
     // Long staleTime since SSE should handle real-time updates

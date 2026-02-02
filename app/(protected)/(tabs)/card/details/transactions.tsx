@@ -14,7 +14,7 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { cardTransactionsQueryKey, useCardTransactions } from '@/hooks/useCardTransactions';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { CardTransaction } from '@/lib/types';
+import { CardTransaction, CardTransactionCategory } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   formatCardAmountWithCurrency,
@@ -62,7 +62,7 @@ export default function CardTransactions() {
   };
 
   const renderTransaction = ({ item, index }: { item: CardTransaction; index: number }) => {
-    const isPurchase = item.category === 'purchase';
+    const isPurchase = item.category === CardTransactionCategory.PURCHASE;
     const merchantName = item.merchant_name || item.description;
     const color = getColorForTransaction(merchantName);
 

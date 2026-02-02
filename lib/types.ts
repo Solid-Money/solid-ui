@@ -1013,11 +1013,20 @@ export interface CryptoTransactionDetails {
   chain: string;
 }
 
+export enum CardTransactionCategory {
+  ADJUSTMENT = 'adjustment',
+  PURCHASE = 'purchase',
+  REFUND = 'refund',
+  WITHDRAWAL = 'withdrawal',
+  CRYPTO_FUNDING = 'crypto_funding',
+  CRYPTO_WITHDRAWAL = 'crypto_withdrawal',
+}
+
 export interface CardTransaction {
   id: string;
   card_account_id: string;
   customer_id: string;
-  category: 'adjustment' | 'purchase' | 'refund' | 'withdrawal' | 'crypto_funding';
+  category: CardTransactionCategory;
   amount: string;
   currency: string;
   status: string;
