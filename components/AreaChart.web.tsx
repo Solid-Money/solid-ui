@@ -2,23 +2,21 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 
 import ChartTooltip from '@/components/ChartTooltip';
 import { ChartPayload } from '@/lib/types';
+import { formatChartAxisLabel } from '@/lib/utils/chartDate';
 import { formatNumber } from '@/lib/utils';
+
+const DEFAULT_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
 
 interface AreaChartProps {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
+  style?: React.CSSProperties;
+  margin?: Partial<typeof DEFAULT_MARGIN>;
 }
 
-const formatTimeForAxis = (time: number | string) => {
-  const date = typeof time === 'string' ? new Date(time) : new Date(time);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-};
-
-const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
+const Chart = ({ data, formatToolTip, formatYAxis, style, margin }: AreaChartProps) => {
+  const chartMargin = { ...DEFAULT_MARGIN, ...margin };
   // Transform data to include index for x-axis
   const chartData = data.map((item, index) => ({
     ...item,
@@ -40,17 +38,12 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
   })();
 
   return (
-    <ResponsiveContainer height={300}>
+    <ResponsiveContainer height={300} style={style}>
       <AreaChart
         width={500}
         height={420}
         data={chartData}
-        margin={{
-          top: 10,
-          right: -10,
-          left: 0,
-          bottom: 0,
-        }}
+        margin={chartMargin}
       >
         <defs>
           <linearGradient id="colorPv" x1="0" y1="0" x2="0" y2="1">
@@ -62,7 +55,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
         <XAxis
           dataKey="index"
           tickFormatter={index => {
-            return data[index] ? formatTimeForAxis(data[index].time) : '';
+            return data[index] ? formatChartAxisLabel(data[index].time) : '';
           }}
           ticks={xAxisTicks}
           tick={{ fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 }}
@@ -89,7 +82,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
           type="linear"
           dataKey={'value'}
           stroke="#94F27F"
-          strokeWidth={2}
+          strokeWidth={1}
           fillOpacity={1}
           fill="url(#colorPv)"
         />

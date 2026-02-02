@@ -40,16 +40,6 @@ const SavingsAnalytics = () => {
     };
   }, []);
 
-  const dampenApy = useCallback((item: ChartPayload): ChartPayload => {
-    const { value } = item;
-    if (value > -10 && value <= 10) return item;
-    const timeStr = String(item.time);
-    const hash = timeStr.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const t = (hash % 1000) / 1000;
-    if (value > 10) return { ...item, value: 9 + t * 2 };
-    return { ...item, value: -11 + t * 2 };
-  }, []);
-
   // Filter yield history data based on time filter
   const filteredYieldHistory = useMemo(() => {
     if (!yieldHistory || yieldHistory.length === 0) return [];
@@ -74,8 +64,8 @@ const SavingsAnalytics = () => {
         return itemTime >= cutoffDateString;
       });
     }
-    return data.map(dampenApy);
-  }, [yieldHistory, timeFilter, dampenApy]);
+    return data.filter((item) => item.value >= 0 && item.value <= 10);
+  }, [yieldHistory, timeFilter]);
 
   // Animate container height
   const animateHeight = useCallback(
@@ -139,6 +129,7 @@ const SavingsAnalytics = () => {
                   data={filteredYieldHistory}
                   formatToolTip={formatToolTip}
                   formatYAxis={formatYAxis}
+                  margin={{ right: -20 }}
                 />
               ) : (
                 <View className="h-[200px] items-center justify-center">

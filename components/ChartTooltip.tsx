@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { ChartPayload } from '@/lib/types';
+import { formatChartTooltipDate } from '@/lib/utils/chartDate';
 import { cn, formatNumber } from '@/lib/utils';
 import { useCoinStore } from '@/store/useCoinStore';
 
@@ -27,14 +28,6 @@ export function calculatePercentageChange(oldValue: number, newValue: number) {
   return ((newValue - oldValue) / oldValue) * 100;
 }
 
-const formatTimestamp = (timestamp: number) => {
-  return new Date(timestamp).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-  });
-};
-
 const ChartTooltip = ({
   active,
   payload,
@@ -51,7 +44,7 @@ const ChartTooltip = ({
         setSelectedPrice: state.setSelectedPrice,
       })),
     );
-  const [currentTimestamp, setCurrentTimestamp] = useState<number>(0);
+  const [currentTimestamp, setCurrentTimestamp] = useState<number | string>(0);
   const prevPayloadRef = useRef<any>(null);
 
   useEffect(() => {
@@ -72,12 +65,12 @@ const ChartTooltip = ({
 
     prevPayloadRef.current = chartPayload;
 
-    setCurrentTimestamp(Number(currentTimestamp));
+    setCurrentTimestamp(currentTimestamp);
     setSelectedPrice(currentPrice);
 
     let previousPrice;
     for (let i = 1; i < data.length; i++) {
-      if (Number(data[i].time) === Number(currentTimestamp)) {
+      if (String(data[i].time) === String(currentTimestamp)) {
         previousPrice = data[i - 1]?.value;
       }
     }
@@ -118,7 +111,7 @@ const ChartTooltip = ({
               {formatNumber(selectedPriceChange, 2)}%
             </Text>
           )}
-          <Text className="text-sm text-muted-foreground">{formatTimestamp(currentTimestamp)}</Text>
+          <Text className="text-sm text-muted-foreground">{formatChartTooltipDate(currentTimestamp)}</Text>
         </View>
       </View>
     </View>
