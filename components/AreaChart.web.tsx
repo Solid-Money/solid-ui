@@ -5,13 +5,18 @@ import { ChartPayload } from '@/lib/types';
 import { formatChartAxisLabel } from '@/lib/utils/chartDate';
 import { formatNumber } from '@/lib/utils';
 
+const DEFAULT_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
+
 interface AreaChartProps {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
+  style?: React.CSSProperties;
+  margin?: Partial<typeof DEFAULT_MARGIN>;
 }
 
-const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
+const Chart = ({ data, formatToolTip, formatYAxis, style, margin }: AreaChartProps) => {
+  const chartMargin = { ...DEFAULT_MARGIN, ...margin };
   // Transform data to include index for x-axis
   const chartData = data.map((item, index) => ({
     ...item,
@@ -33,17 +38,12 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
   })();
 
   return (
-    <ResponsiveContainer height={300}>
+    <ResponsiveContainer height={300} style={style}>
       <AreaChart
         width={500}
         height={420}
         data={chartData}
-        margin={{
-          top: 10,
-          right: -10,
-          left: 0,
-          bottom: 0,
-        }}
+        margin={chartMargin}
       >
         <defs>
           <linearGradient id="colorPv" x1="0" y1="0" x2="0" y2="1">

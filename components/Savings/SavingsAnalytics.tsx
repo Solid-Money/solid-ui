@@ -129,6 +129,7 @@ const SavingsAnalytics = () => {
                   data={filteredYieldHistory}
                   formatToolTip={formatToolTip}
                   formatYAxis={formatYAxis}
+                  margin={{ right: -20 }}
                 />
               ) : (
                 <View className="h-[200px] items-center justify-center">

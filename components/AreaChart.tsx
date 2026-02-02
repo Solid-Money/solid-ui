@@ -10,11 +10,14 @@ import { ChartPayload } from '@/lib/types';
 import { formatChartAxisLabel, formatChartTooltipDate } from '@/lib/utils/chartDate';
 import { formatNumber } from '@/lib/utils';
 import { useCoinStore } from '@/store/useCoinStore';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 interface AreaChartProps {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
+  style?: StyleProp<ViewStyle>;
+  margin?: { top?: number; right?: number; left?: number; bottom?: number };
 }
 
 const CHART_HEIGHT = 300;
@@ -23,7 +26,7 @@ const CHART_PADDING = { top: 10, bottom: 60, left: 0, right: 70 };
 // Throttle interval for touch events (~30fps for smooth performance on Android)
 const TOUCH_THROTTLE_MS = 32;
 
-const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
+const Chart = ({ data, formatToolTip, formatYAxis, style }: AreaChartProps) => {
   const { setSelectedPrice, setSelectedPriceChange } = useCoinStore(
     useShallow(state => ({
       setSelectedPrice: state.setSelectedPrice,
@@ -176,7 +179,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
     touchX + 20 + TOOLTIP_WIDTH > screenWidth ? touchX - TOOLTIP_WIDTH - 10 : touchX + 20;
 
   return (
-    <View style={{ height: CHART_HEIGHT }}>
+    <View style={[{ height: CHART_HEIGHT }, style]}>
       <View
         onStartShouldSetResponder={() => true}
         onMoveShouldSetResponder={() => true}
