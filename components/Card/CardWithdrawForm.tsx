@@ -49,7 +49,7 @@ export default function CardWithdrawForm() {
             message: `Amount exceeds spendable balance (${formattedBalance} available)`,
           }),
       }),
-    [spendableAmount],
+    [spendableAmount, formattedBalance],
   );
 
   const isValid = useMemo(() => {

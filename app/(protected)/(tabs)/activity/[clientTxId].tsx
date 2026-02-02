@@ -372,8 +372,17 @@ export default function ActivityDetail() {
 
   const description = useMemo(() => {
     if (isDeposit && isPending) return 'Deposit in progress';
+    if (finalActivity?.type === TransactionType.CARD_WITHDRAWAL) {
+      return `${toTitleCase(finalActivity?.metadata?.destination || 'savings')} account`;
+    }
     return transactionDetails?.category ?? 'Unknown';
-  }, [isDeposit, isPending, transactionDetails?.category]);
+  }, [
+    isDeposit,
+    isPending,
+    finalActivity?.type,
+    finalActivity?.metadata?.destination,
+    transactionDetails?.category,
+  ]);
 
   const tokenIcon = useMemo(
     () => (finalActivity ? getTokenIcon({ tokenSymbol: finalActivity.symbol, size: 75 }) : null),
