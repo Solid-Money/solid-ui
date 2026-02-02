@@ -67,8 +67,8 @@ export default function CardWithdrawForm() {
       schema.parse({ amount: watchedAmount });
       return null;
     } catch (error: unknown) {
-      const err = error as { errors?: { message?: string }[] };
-      return err.errors?.[0]?.message ?? null;
+      const err = error as { issues?: { message?: string }[] };
+      return err.issues?.[0]?.message ?? null;
     }
   }, [watchedAmount, schema]);
 
@@ -210,13 +210,9 @@ export default function CardWithdrawForm() {
         />
       </View>
 
-      <View className="flex-1" />
-
-      {validationError ? (
-        <View className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
-          <Text className="text-sm text-red-500">{validationError}</Text>
-        </View>
-      ) : null}
+      <View className="flex-1">
+        {validationError ? <Text className="text-sm text-red-500">{validationError}</Text> : null}
+      </View>
 
       <Button
         variant="brand"
