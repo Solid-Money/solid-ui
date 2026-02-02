@@ -1312,9 +1312,29 @@ export interface SSEActivityData {
   timestamp: number;
 }
 
+export type BalanceChangeType =
+  | 'deposit'
+  | 'withdrawal'
+  | 'transfer_in'
+  | 'transfer_out'
+  | 'swap'
+  | 'bonus';
+
+export interface SSEBalanceUpdateData {
+  event: 'balance_update';
+  userId: string;
+  balance: {
+    shouldRefetch: true;
+    changeType: BalanceChangeType;
+    triggerActivityId?: string;
+  };
+  timestamp: number;
+}
+
 export type SSEEventData =
   | { type: 'ping'; data: SSEPingData }
-  | { type: 'activity'; data: SSEActivityData };
+  | { type: 'activity'; data: SSEActivityData }
+  | { type: 'balance_update'; data: SSEBalanceUpdateData };
 
 // SSE Connection States
 export type SSEConnectionState =

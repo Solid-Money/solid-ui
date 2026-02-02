@@ -407,8 +407,12 @@ export const useBalances = (): BalanceData => {
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
-    // Refetch every 30 seconds when data becomes stale
-    refetchInterval: 30 * 1000,
+    // SSE handles real-time updates; this is just a fallback for missed events
+    refetchInterval: (query) => {
+      const hasBalance = query.state.data?.tokens?.some(t => Number(t.balance) > 0);
+      // Use 5-minute fallback when balance exists; disable when no balance
+      return hasBalance ? 5 * 60 * 1000 : false;
+    },
     refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });
 
