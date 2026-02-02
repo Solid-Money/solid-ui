@@ -18,6 +18,7 @@ import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
 import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
+import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { useWebhookStatus } from '@/hooks/useWebhookStatus';
 import FuseVault from '@/lib/abis/FuseVault';
 import { trackIdentity } from '@/lib/analytics';
@@ -72,6 +73,9 @@ export default function ProtectedLayout() {
   // Ensure webhook subscription for real-time activity updates
   // This auto-subscribes when user has a safe address but isn't registered yet
   useWebhookStatus({ autoSubscribe: true });
+
+  // Enable real-time activity updates globally for logged-in users
+  useActivitySSE({ enabled: !!user, subscribe: false });
 
   useEffect(() => {
     if (!user) return;
