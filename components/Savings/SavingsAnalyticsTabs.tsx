@@ -96,7 +96,7 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
   );
 
   return (
-    <View className="relative flex-row gap-2 self-start rounded-full bg-foreground/10 p-1">
+    <View className="relative flex-row gap-2 self-start rounded-full bg-foreground/10 p-[5px]">
       <Pressable
         onLayout={e => handleTabLayout(e, Tab.SAVINGS_RATE)}
         onPress={() => handleTabChange(Tab.SAVINGS_RATE)}
@@ -129,9 +129,9 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
           tabBackgroundStyle,
           {
             position: 'absolute',
-            top: '5%',
+            top: '8%',
             left: 0,
-            height: '90%',
+            height: '86%',
             backgroundColor: 'rgba(17, 17, 17, 1)',
             borderRadius: 100,
             zIndex: 0,
