@@ -13,13 +13,13 @@ export default {
     ios: {
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? './GoogleService-Info.plist',
       supportsTablet: true,
-      bundleIdentifier: 'xyz.solid.ios',
+      bundleIdentifier: 'app.solid.xyz',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'Solid needs camera access to scan QR codes for wallet addresses',
       },
       associatedDomains: ['webcredentials:solid.xyz', 'applinks:solid.xyz'],
-      appleTeamId: 'QC9255BHMY',
+      appleTeamId: '67UG7X46Z8',
       splash: {
         image: './assets/splash/splash-icon.png',
         resizeMode: 'contain',
