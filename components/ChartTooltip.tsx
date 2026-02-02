@@ -4,8 +4,8 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { ChartPayload } from '@/lib/types';
-import { formatChartTooltipDate } from '@/lib/utils/chartDate';
 import { cn, formatNumber } from '@/lib/utils';
+import { formatChartTooltipDate } from '@/lib/utils/chartDate';
 import { useCoinStore } from '@/store/useCoinStore';
 
 interface TooltipPayload {
@@ -111,7 +111,9 @@ const ChartTooltip = ({
               {formatNumber(selectedPriceChange, 2)}%
             </Text>
           )}
-          <Text className="text-sm text-muted-foreground">{formatChartTooltipDate(currentTimestamp)}</Text>
+          <Text className="text-sm text-muted-foreground">
+            {formatChartTooltipDate(currentTimestamp)}
+          </Text>
         </View>
       </View>
     </View>
