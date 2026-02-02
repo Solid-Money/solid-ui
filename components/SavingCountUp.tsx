@@ -90,6 +90,13 @@ const SavingCountUp = memo(
     }, [mode, queryClient, user?.safeAddress, tokenAddress, decimalPlaces]);
 
     useEffect(() => {
+      // calculateYield returns 0 immediately when balance <= 0 (financial.ts:325)
+      // Skip the interval entirely to avoid unnecessary re-renders
+      if (balanceRef.current <= 0) {
+        setLiveYield(0);
+        return;
+      }
+
       updateYield();
       const interval = setInterval(updateYield, 1000);
       return () => clearInterval(interval);

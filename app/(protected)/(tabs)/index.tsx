@@ -51,12 +51,16 @@ export default function Home() {
   // Controlled timestamp state - updates every 30 seconds instead of every render
   const [currentTime, setCurrentTime] = useState(() => Math.floor(Date.now() / 1000));
 
+  // Only update currentTime when there's a balance to calculate yield on
   useEffect(() => {
+    // Skip interval when no balance - yield calculation would return 0 anyway
+    if (!balance || balance <= 0) return;
+
     const interval = setInterval(() => {
       setCurrentTime(Math.floor(Date.now() / 1000));
     }, 30000); // Update every 30 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [balance]);
 
   const { data: apys, isLoading: isAPYsLoading } = useAPYs();
   const {
@@ -125,13 +129,18 @@ export default function Home() {
 
   const cardBalance = Number(cardDetails?.balances.available?.amount || '0');
 
+  // SSE handles real-time updates; polling is fallback for SSE failure
   useEffect(() => {
+    // 5-minute interval when balance exists; 10-minute fallback when no balance
+    // (ensures new deposits are detected even if SSE is down)
+    const intervalMs = balance && balance > 0 ? 5 * 60 * 1000 : 10 * 60 * 1000;
+
     const interval = setInterval(() => {
       refetchBalance();
       refetchTransactions();
-    }, 60000); // 60 seconds
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [refetchBalance, refetchTransactions]);
+  }, [balance, refetchBalance, refetchTransactions]);
 
   useEffect(() => {
     if (!user) return;
