@@ -1,3 +1,4 @@
+import React from 'react';
 import { TextStyle, View } from 'react-native';
 import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
 
@@ -22,7 +23,7 @@ interface CountUpProps {
   classNames?: ClassNames;
   styles?: Styles;
   isTrailingZero?: boolean;
-  prefix?: string;
+  prefix?: string | React.ReactNode;
   suffix?: string;
 }
 
@@ -46,7 +47,13 @@ const CountUp = ({
 
   return (
     <View className={cn('flex-row items-baseline', classNames?.wrapper)}>
-      {prefix ? <Text style={styles?.wholeText}>{prefix}</Text> : null}
+      {prefix ? (
+        typeof prefix === 'string' ? (
+          <Text style={styles?.wholeText}>{prefix}</Text>
+        ) : (
+          prefix
+        )
+      ) : null}
       <AnimatedRollingNumber
         value={wholeNumber}
         textStyle={styles?.wholeText}
