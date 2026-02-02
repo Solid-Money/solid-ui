@@ -407,11 +407,12 @@ export const useBalances = (): BalanceData => {
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
-    // SSE handles real-time updates; this is just a fallback for missed events
+    // SSE handles real-time updates; polling is fallback for missed events or SSE failure
     refetchInterval: (query) => {
       const hasBalance = query.state.data?.tokens?.some(t => Number(t.balance) > 0);
-      // Use 5-minute fallback when balance exists; disable when no balance
-      return hasBalance ? 5 * 60 * 1000 : false;
+      // 5-minute interval when balance exists; 10-minute fallback when no balance
+      // (ensures new deposits are detected even if SSE is down)
+      return hasBalance ? 5 * 60 * 1000 : 10 * 60 * 1000;
     },
     refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });

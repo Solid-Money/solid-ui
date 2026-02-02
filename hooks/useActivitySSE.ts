@@ -89,7 +89,7 @@ class SSEConnectionManager {
 
   /**
    * Set up user store subscription to track user changes
-   * Called when first subscriber is added
+   * Called when first subscriber is added or when enable() is called
    */
   private setupUserStoreSubscription(): void {
     if (this.userStoreUnsubscribe) return; // Already set up
@@ -101,8 +101,12 @@ class SSEConnectionManager {
       // User changed - update connection
       if (newUserId !== this.currentUserId) {
         this.currentUserId = newUserId;
-        // Only connect/disconnect if we have active subscribers
-        if (this.subscribers.size > 0) {
+        // Connect/disconnect if we have active subscribers OR an active connection
+        // (supports subscribe: false where enable() was called directly)
+        const hasActiveConnection =
+          this.state.connectionState === 'connected' ||
+          this.state.connectionState === 'connecting';
+        if (this.subscribers.size > 0 || hasActiveConnection) {
           if (newUserId) {
             this.connect();
           } else {
@@ -214,6 +218,8 @@ class SSEConnectionManager {
     }
 
     this.currentUserId = userId;
+    // Set up user store subscription to handle user switching (even when subscribe: false)
+    this.setupUserStoreSubscription();
     this.setupAppStateListener();
     this.connect();
   }

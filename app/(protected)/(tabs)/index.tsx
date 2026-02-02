@@ -129,14 +129,16 @@ export default function Home() {
 
   const cardBalance = Number(cardDetails?.balances.available?.amount || '0');
 
-  // Skip polling when no balance - SSE will notify of new deposits
+  // SSE handles real-time updates; polling is fallback for SSE failure
   useEffect(() => {
-    if (!balance || balance <= 0) return;
+    // 5-minute interval when balance exists; 10-minute fallback when no balance
+    // (ensures new deposits are detected even if SSE is down)
+    const intervalMs = balance && balance > 0 ? 5 * 60 * 1000 : 10 * 60 * 1000;
 
     const interval = setInterval(() => {
       refetchBalance();
       refetchTransactions();
-    }, 60000); // 60 seconds
+    }, intervalMs);
     return () => clearInterval(interval);
   }, [balance, refetchBalance, refetchTransactions]);
 
