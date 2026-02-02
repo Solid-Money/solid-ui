@@ -30,7 +30,7 @@ import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import useUser from '@/hooks/useUser';
-import { useVaultBalance } from '@/hooks/useVault';
+import { useTotalVaultBalance, useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES, isProduction } from '@/lib/config';
@@ -57,6 +57,12 @@ export default function Savings() {
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
   } = useVaultBalance(user?.safeAddress as Address, currentVault);
+
+  const {
+    data: totalBalanceAllVaults,
+    isLoading: isTotalBalanceLoading,
+    refetch: refetchTotalBalance,
+  } = useTotalVaultBalance(user?.safeAddress as Address);
 
   const { maxAPY, maxAPYDays, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
   const { data: apys, isLoading: isAPYsLoading } = useAPYs();
@@ -98,16 +104,18 @@ export default function Savings() {
   useEffect(() => {
     const interval = setInterval(() => {
       refetchBalance();
+      refetchTotalBalance();
       refetchTransactions();
     }, 60000); // 60 seconds
     return () => clearInterval(interval);
-  }, [refetchBalance, refetchTransactions]);
+  }, [refetchBalance, refetchTotalBalance, refetchTransactions]);
 
   useEffect(() => {
     resetDepositFlow();
   }, [selectedVault, resetDepositFlow]);
 
   const isLoading = isBalanceLoading || isTransactionsLoading;
+  const isEmptyStateLoading = isTotalBalanceLoading || isTransactionsLoading;
 
   const displayPrefix = useMemo(() => {
     if (VAULTS[selectedVault].name === 'USDC') {
@@ -123,7 +131,11 @@ export default function Savings() {
     return null;
   }, [selectedVault]);
 
-  if (!balance && !userDepositTransactions?.deposits?.length && !isLoading) {
+  if (
+    !totalBalanceAllVaults &&
+    !userDepositTransactions?.deposits?.length &&
+    !isEmptyStateLoading
+  ) {
     return <SavingsEmptyState />;
   }
 
