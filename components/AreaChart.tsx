@@ -7,38 +7,26 @@ import { useShallow } from 'zustand/react/shallow';
 import { calculatePercentageChange } from '@/components/ChartTooltip';
 import { Text } from '@/components/ui/text';
 import { ChartPayload } from '@/lib/types';
+import { formatChartAxisLabel, formatChartTooltipDate } from '@/lib/utils/chartDate';
 import { formatNumber } from '@/lib/utils';
 import { useCoinStore } from '@/store/useCoinStore';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 interface AreaChartProps {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
+  style?: StyleProp<ViewStyle>;
+  margin?: { top?: number; right?: number; left?: number; bottom?: number };
 }
 
 const CHART_HEIGHT = 300;
 const CHART_PADDING = { top: 10, bottom: 60, left: 0, right: 70 };
 
-const formatTimestamp = (time: number | string) => {
-  const date = typeof time === 'string' ? new Date(time) : new Date(time);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-};
-
-const formatTimeForAxis = (time: number | string) => {
-  const date = typeof time === 'string' ? new Date(time) : new Date(time);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-};
-
 // Throttle interval for touch events (~30fps for smooth performance on Android)
 const TOUCH_THROTTLE_MS = 32;
 
-const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
+const Chart = ({ data, formatToolTip, formatYAxis, style }: AreaChartProps) => {
   const { setSelectedPrice, setSelectedPriceChange } = useCoinStore(
     useShallow(state => ({
       setSelectedPrice: state.setSelectedPrice,
@@ -72,7 +60,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
     const labels: string[] = [];
     for (let i = 0; i < maxIndex; i += step) {
       ticks.push(i);
-      labels.push(formatTimeForAxis(data[i].time));
+      labels.push(formatChartAxisLabel(data[i].time));
     }
     return { ticks, labels };
   }, [data]);
@@ -191,7 +179,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
     touchX + 20 + TOOLTIP_WIDTH > screenWidth ? touchX - TOOLTIP_WIDTH - 10 : touchX + 20;
 
   return (
-    <View style={{ height: CHART_HEIGHT }}>
+    <View style={[{ height: CHART_HEIGHT }, style]}>
       <View
         onStartShouldSetResponder={() => true}
         onMoveShouldSetResponder={() => true}
@@ -247,7 +235,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
               data: {
                 fill: 'url(#areaGradient)',
                 stroke: '#94F27F',
-                strokeWidth: 2,
+                strokeWidth: 1,
               },
             }}
           />
@@ -311,7 +299,7 @@ const Chart = ({ data, formatToolTip, formatYAxis }: AreaChartProps) => {
               </Text>
             )}
             <Text style={{ fontSize: 14, color: '#9CA3AF' }}>
-              {formatTimestamp(activeData.time)}
+              {formatChartTooltipDate(activeData.time)}
             </Text>
           </View>
         </View>
