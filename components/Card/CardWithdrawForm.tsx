@@ -46,7 +46,7 @@ export default function CardWithdrawForm() {
           .refine(val => val !== '' && !isNaN(Number(val)), { message: 'Enter a valid amount' })
           .refine(val => Number(val) >= 1, { message: 'Minimum withdrawal is $1' })
           .refine(val => Number(val) <= spendableAmount, {
-            message: `Amount exceeds spendable balance (${formatNumber(spendableAmount)} available)`,
+            message: `Amount exceeds spendable balance (${formattedBalance} available)`,
           }),
       }),
     [spendableAmount],
