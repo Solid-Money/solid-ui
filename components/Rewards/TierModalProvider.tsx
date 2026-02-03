@@ -8,10 +8,11 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
 import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
-import { TierBenefits } from '@/lib/types';
+import { RewardsTier, TierBenefits } from '@/lib/types';
 import { useRewards } from '@/store/useRewardsStore';
 
 import RewardBenefit from './RewardBenefit';
+import RewardComingSoon from './RewardComingSoon';
 
 const MODAL_STATE: ModalState = { name: 'tier-benefits', number: 1 };
 const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
@@ -136,6 +137,13 @@ const TierModalProvider = () => {
                   iconText={benefit.iconText}
                   title={benefit.title}
                   description={benefit.description}
+                  descriptionNode={
+                    index === 0 &&
+                    selectedTierModalId &&
+                    selectedTierModalId !== RewardsTier.CORE ? (
+                      <RewardComingSoon />
+                    ) : undefined
+                  }
                   iconSize={48}
                 />
               ))}

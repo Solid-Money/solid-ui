@@ -14,21 +14,21 @@ const EarnPointsSection = () => {
       // Fallback values while loading
       return [
         {
-          icon: 'images/dollar-yellow.png',
+          icon: 'images/save-yellow.png',
           title: 'Save',
           description: 'Earn points for deposits',
         },
         {
-          icon: 'images/dollar-yellow.png',
+          icon: 'images/spend-yellow.png',
           title: 'Spend',
           description: 'Earn points for spending',
         },
         {
-          icon: 'images/dollar-yellow.png',
+          icon: 'images/invite-yellow.png',
           title: 'Invite friends',
           description: 'Earn referral rewards',
         },
-        { icon: 'images/dollar-yellow.png', title: 'Swap', description: 'Earn points for swaps' },
+        { icon: 'images/swap-yellow.png', title: 'Swap', description: 'Earn points for swaps' },
       ];
     }
 
@@ -50,10 +50,10 @@ const EarnPointsSection = () => {
     const swapDesc = `${swapPoints.toLocaleString()} points per $1 swapped`;
 
     return [
-      { icon: 'images/dollar-yellow.png', title: 'Save', description: holdingDesc },
-      { icon: 'images/dollar-yellow.png', title: 'Spend', description: spendDesc },
-      { icon: 'images/dollar-yellow.png', title: 'Invite friends', description: referralDesc },
-      { icon: 'images/dollar-yellow.png', title: 'Swap', description: swapDesc },
+      { icon: 'images/save-yellow.png', title: 'Save', description: holdingDesc },
+      { icon: 'images/spend-yellow.png', title: 'Spend', description: spendDesc },
+      { icon: 'images/invite-yellow.png', title: 'Invite friends', description: referralDesc },
+      { icon: 'images/swap-yellow.png', title: 'Swap', description: swapDesc },
     ];
   };
 

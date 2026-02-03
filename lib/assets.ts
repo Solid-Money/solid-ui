@@ -279,6 +279,10 @@ export const ASSETS = {
   'images/home-send.tsx': { module: require('@/assets/images/home-send.tsx'), hash: '7a61497d' },
   'images/home-swap.tsx': { module: require('@/assets/images/home-swap.tsx'), hash: '5ea4a65b' },
   'images/info-error.tsx': { module: require('@/assets/images/info-error.tsx'), hash: '75c1c092' },
+  'images/invite-yellow.png': {
+    module: require('@/assets/images/invite-yellow.png'),
+    hash: '0175f2e5',
+  },
   'images/ipor-fusion.png': {
     module: require('@/assets/images/ipor-fusion.png'),
     hash: '5605920f',
@@ -396,6 +400,10 @@ export const ASSETS = {
     module: require('@/assets/images/rocket-yellow.png'),
     hash: 'eff1d47a',
   },
+  'images/save-yellow.png': {
+    module: require('@/assets/images/save-yellow.png'),
+    hash: '6b97a369',
+  },
   'images/savings-nav-bar-icon.tsx': {
     module: require('@/assets/images/savings-nav-bar-icon.tsx'),
     hash: 'd9241a35',
@@ -483,6 +491,10 @@ export const ASSETS = {
     hash: '13207041',
   },
   'images/sousd-4x.png': { module: require('@/assets/images/sousd-4x.png'), hash: 'bf43c3e5' },
+  'images/spend-yellow.png': {
+    module: require('@/assets/images/spend-yellow.png'),
+    hash: '98629c6c',
+  },
   'images/splash-icon.png': {
     module: require('@/assets/images/splash-icon.png'),
     hash: 'efd642e5',
@@ -518,6 +530,10 @@ export const ASSETS = {
     hash: 'ecd74b24',
   },
   'images/support.tsx': { module: require('@/assets/images/support.tsx'), hash: '1462bd11' },
+  'images/swap-yellow.png': {
+    module: require('@/assets/images/swap-yellow.png'),
+    hash: '7776c134',
+  },
   'images/swap_circle.png': {
     module: require('@/assets/images/swap_circle.png'),
     hash: '5d84c53c',
