@@ -2,17 +2,13 @@ import { View } from 'react-native';
 
 import DepositOption from '@/components/DepositOption/DepositOption';
 import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 
 const DepositBuyCryptoOptions = () => {
   const { buyCryptoOptions } = useDepositBuyCryptoOptions();
-  const { depositConfig } = useVaultDepositConfig();
 
   return (
     <View className="gap-y-2.5">
-      {buyCryptoOptions
-        .filter(option => !option.method || depositConfig.methods.includes(option.method))
-        .map(option => (
+      {buyCryptoOptions.map(option => (
         <DepositOption
           key={option.text}
           text={option.text}

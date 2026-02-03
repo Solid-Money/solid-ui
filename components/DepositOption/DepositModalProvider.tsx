@@ -1,12 +1,8 @@
-import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
-import { DEPOSIT_MODAL } from '@/constants/modals';
-import { VAULTS } from '@/constants/vaults';
 import useDepositOption from '@/hooks/useDepositOption';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useSavingStore } from '@/store/useSavingStore';
 
 /**
  * Global deposit modal provider that renders a single ResponsiveModal instance.
@@ -32,25 +28,12 @@ const DepositModalProvider = () => {
     handleBackPress,
   } = useDepositOption();
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { currentModal, previousModal, resetDepositFlow, setModal } = useDepositStore(
+  const { currentModal, previousModal } = useDepositStore(
     useShallow(state => ({
       currentModal: state.currentModal,
       previousModal: state.previousModal,
-      resetDepositFlow: state.resetDepositFlow,
-      setModal: state.setModal,
     })),
   );
-  const selectedVault = useSavingStore(state => state.selectedVault);
-  const previousVaultNameRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const nextVaultName = VAULTS[selectedVault]?.name;
-    if (!nextVaultName) return;
-    if (previousVaultNameRef.current && previousVaultNameRef.current !== nextVaultName) {
-      resetDepositFlow();
-    }
-    previousVaultNameRef.current = nextVaultName;
-  }, [resetDepositFlow, selectedVault, setModal]);
 
   return (
     <ResponsiveModal

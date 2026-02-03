@@ -1,6 +1,3 @@
-import { Reward } from '@merkl/api';
-import { Address, Hex } from 'viem';
-
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import {
   DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
@@ -11,7 +8,8 @@ import {
   UNSTAKE_MODAL,
   WITHDRAW_MODAL,
 } from '@/constants/modals';
-
+import { Reward } from '@merkl/api';
+import { Address, Hex } from 'viem';
 import { AssetPath } from './assets';
 
 export interface CountryFromIp {
@@ -620,7 +618,6 @@ export type Deposit = {
     deadline: number;
   };
   trackingId?: string;
-  vault?: VaultType;
 };
 
 export enum DepositTransactionStatus {
@@ -1349,30 +1346,7 @@ export interface EnsureWebhookResponse {
   message: string;
 }
 
-export type DepositMethod = 'wallet' | 'deposit_directly' | 'credit_card' | 'bank_transfer';
-
-export interface VaultDepositConfig {
-  methods: DepositMethod[];
-  supportedChains: number[];
-  supportedTokens: string[];
-}
-
 export interface Vault {
   name: string;
-  type: VaultType;
-  vaultToken: string;
   icon: AssetPath;
-  decimals: number;
-  vaults: {
-    address: Address;
-    chainId: number;
-  }[];
-  depositConfig?: VaultDepositConfig;
-  isComingSoon?: boolean;
-}
-
-export enum VaultType {
-  FUSE = 'fuse',
-  USDC = 'usdc',
-  ETH = 'eth',
 }

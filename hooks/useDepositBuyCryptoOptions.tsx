@@ -7,7 +7,6 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const useDepositBuyCryptoOptions = () => {
@@ -48,7 +47,6 @@ const useDepositBuyCryptoOptions = () => {
           />
         ),
         onPress: handleCreditCardPress,
-        method: 'credit_card' as DepositMethod,
       },
       {
         text: 'Bank Deposit',
@@ -63,7 +61,6 @@ const useDepositBuyCryptoOptions = () => {
           />
         ),
         onPress: handleBankDepositPress,
-        method: 'bank_transfer' as DepositMethod,
       },
     ],
     [handleCreditCardPress, handleBankDepositPress, bonusBannerText],

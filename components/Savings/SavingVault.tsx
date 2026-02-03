@@ -7,16 +7,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Address } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
-import { useMaxAPY } from '@/hooks/useAnalytics';
+import { useMaxAPY, useTVL } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
-import useUser from '@/hooks/useUser';
-import { useVaultBalance } from '@/hooks/useVault';
-import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { getAsset } from '@/lib/assets';
 import { Vault } from '@/lib/types';
 import { compactNumberFormat } from '@/lib/utils';
@@ -42,19 +38,13 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
       setSelectedVault: state.setSelectedVault,
     })),
   );
-  const { user } = useUser();
+  const { data: tvl } = useTVL();
   const { maxAPY } = useMaxAPY();
   const { isScreenMedium } = useDimension();
   const vaultIndex = VAULTS.findIndex(v => v.name === vault.name);
   const isSelected = selectedVault === vaultIndex;
-  const isComingSoon = !!vault.isComingSoon;
-  const gapHeight = isScreenMedium ? 12 : 0;
+  const gapHeight = isScreenMedium ? 40 : 16;
   const iconSizeSelected = isScreenMedium ? 53 : 28;
-
-  const { data: vaultTokenBalance } = useVaultBalance(user?.safeAddress as Address, vault);
-  const { data: exchangeRate } = useVaultExchangeRate(vault.name);
-  const vaultBalance =
-    vaultTokenBalance !== undefined ? vaultTokenBalance * (exchangeRate ?? 1) : undefined;
 
   const progress = useSharedValue(isSelected ? 1 : 0);
 
@@ -92,14 +82,11 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
   }));
 
   const handlePress = () => {
-    if (isComingSoon) {
-      return;
-    }
     setSelectedVault(vaultIndex);
   };
 
   return (
-    <Pressable onPress={handlePress} disabled={isComingSoon}>
+    <Pressable onPress={handlePress}>
       <Animated.View
         style={[
           animatedBorderStyle,
@@ -107,12 +94,10 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
             overflow: 'hidden',
             borderRadius: 20,
             borderWidth: 1,
-            width: isScreenMedium ? 192 : 152,
-            height: isScreenMedium ? undefined : 123,
+            width: isScreenMedium ? 192 : 144,
             position: 'relative',
-            paddingHorizontal: isScreenMedium ? 24 : 14,
-            paddingVertical: isScreenMedium ? 20 : 12,
-            opacity: isComingSoon ? 0.5 : 1,
+            paddingHorizontal: 16,
+            paddingVertical: isScreenMedium ? 20 : 16,
           },
         ]}
       >
@@ -150,7 +135,7 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
           />
         </Animated.View>
 
-        <View style={{ flex: 1, justifyContent: 'space-between' }}>
+        <View>
           <Animated.Image
             source={getAsset(vault.icon)}
             style={animatedIconStyle}
@@ -159,27 +144,18 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
 
           <Animated.View style={animatedGapStyle} />
 
-          <View className="mt-2 flex-row items-end justify-between">
+          <View className="flex-row items-end justify-between">
             <View>
               <Text className="text-lg font-bold">{vault.name}</Text>
-              {vaultBalance !== undefined ? (
+              {tvl ? (
                 <Animated.View style={animatedBalanceStyle}>
                   <Text className="text-base font-semibold opacity-70">
-                    {vault.name === 'USDC' ? (
-                      `$${compactNumberFormat(vaultBalance)}`
-                    ) : (
-                      <>
-                        {compactNumberFormat(vaultBalance)}{' '}
-                        <Text className="text-sm font-semibold">{vault.name}</Text>
-                      </>
-                    )}
+                    ${compactNumberFormat(tvl)}
                   </Text>
                 </Animated.View>
               ) : null}
             </View>
-            {isComingSoon ? (
-              <Text className="text-end text-sm font-semibold opacity-70">Coming soon</Text>
-            ) : maxAPY ? (
+            {maxAPY ? (
               <Text className="text-base font-semibold opacity-70">{maxAPY.toFixed(2)}%</Text>
             ) : null}
           </View>

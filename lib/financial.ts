@@ -2,12 +2,9 @@ import { QueryClient } from '@tanstack/react-query';
 import { formatUnits, zeroAddress } from 'viem';
 
 import { getInfoClient } from '@/graphql/clients';
-import {
-  GetExchangeRateUpdatesDocument,
-  GetExchangeRateUpdatesQuery,
-} from '@/graphql/generated/user-info';
+import { GetExchangeRateUpdatesDocument, GetExchangeRateUpdatesQuery } from '@/graphql/generated/user-info';
+import { fetchExchangeRate } from '@/hooks/usePreviewDeposit';
 import { useBalanceStore } from '@/store/useBalanceStore';
-
 import { ADDRESSES } from './config';
 import { SavingMode } from './types';
 
@@ -15,7 +12,7 @@ export const SECONDS_PER_YEAR = 31_557_600;
 
 // Cache for API responses to prevent repeated calls
 const exchangeRateCache = new Map<string, { data: Map<number, number>; timestamp: number }>();
-const vaultTransfersCache = new Map<string, { data: FuseTransferData[]; timestamp: number }>();
+const fuseTransfersCache = new Map<string, { data: FuseTransferData[]; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Clear cache functions
@@ -23,16 +20,11 @@ export const clearExchangeRateCache = () => {
   exchangeRateCache.clear();
 };
 
-export const clearVaultTransfersCache = (safeAddress?: string, tokenAddress?: string) => {
+export const clearFuseTransfersCache = (safeAddress?: string) => {
   if (safeAddress) {
-    const key = tokenAddress
-      ? `${safeAddress.toLowerCase()}-${tokenAddress.toLowerCase()}`
-      : safeAddress.toLowerCase();
-    vaultTransfersCache.forEach((_, k) => {
-      if (k.startsWith(key)) vaultTransfersCache.delete(k);
-    });
+    fuseTransfersCache.delete(safeAddress.toLowerCase());
   } else {
-    vaultTransfersCache.clear();
+    fuseTransfersCache.clear();
   }
 };
 
@@ -139,17 +131,13 @@ export const getExchangeRateAtTimestamp = (
   return closestRate;
 };
 
-// Fetch vault token transfers from Fuse API with caching
-export const fetchVaultTransfers = async (
-  safeAddress: string,
-  tokenAddress: string,
-  decimals: number,
-): Promise<FuseTransferData[]> => {
+// Fetch soUSD transfers from Fuse API with caching
+export const fetchSoUSDTransfers = async (safeAddress: string): Promise<FuseTransferData[]> => {
   const now = Date.now();
-  const cacheKey = `${safeAddress.toLowerCase()}-${tokenAddress.toLowerCase()}`;
+  const cacheKey = safeAddress.toLowerCase();
 
   // Check cache first
-  const cached = vaultTransfersCache.get(cacheKey);
+  const cached = fuseTransfersCache.get(cacheKey);
   if (cached && now - cached.timestamp < CACHE_DURATION) {
     return cached.data;
   }
@@ -158,10 +146,10 @@ export const fetchVaultTransfers = async (
     // Fetch both incoming and outgoing transfers
     const [fromResponse, toResponse] = await Promise.all([
       fetch(
-        `https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-transfers?type=ERC-20&filter=from&token=${tokenAddress}`,
+        `https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-transfers?type=ERC-20&filter=from&token=${ADDRESSES.fuse.vault}`,
       ),
       fetch(
-        `https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-transfers?type=ERC-20&filter=to&token=${tokenAddress}`,
+        `https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-transfers?type=ERC-20&filter=to&token=${ADDRESSES.fuse.vault}`,
       ),
     ]);
 
@@ -181,16 +169,16 @@ export const fetchVaultTransfers = async (
       token: {
         address: item.token?.address_hash || '',
         symbol: item.token?.symbol || '',
-        decimals: parseInt(item.token?.decimals || decimals.toString()),
+        decimals: parseInt(item.token?.decimals || '6'),
       },
     }));
 
     // Cache the result
-    vaultTransfersCache.set(cacheKey, { data: transfers, timestamp: now });
+    fuseTransfersCache.set(cacheKey, { data: transfers, timestamp: now });
 
     return transfers;
   } catch (error) {
-    console.warn('Error fetching vault transfers:', error);
+    console.warn('Error fetching Fuse transfers:', error);
     return [];
   }
 };
@@ -202,8 +190,6 @@ export const calculateActualDepositedAmount = async (
   safeAddress: string,
   currentBalance: number,
   exchangeRate: number,
-  tokenAddress: string = ADDRESSES.fuse.vault,
-  decimals: number = 6,
 ): Promise<{ actualDeposited: number; timeWeightedBalances: TimeWeightedBalance[] }> => {
   const timeWeightedBalances: TimeWeightedBalance[] = [];
   const allTimestamps: number[] = [];
@@ -225,34 +211,29 @@ export const calculateActualDepositedAmount = async (
     }
   });
 
-  // Fetch Vault transfers and collect their timestamps
-  const vaultTransfers = await fetchVaultTransfers(safeAddress, tokenAddress, decimals);
-  const filteredVaultTransfers = vaultTransfers.filter(
+  // Fetch Fuse transfers and collect their timestamps
+  const fuseTransfers = await fetchSoUSDTransfers(safeAddress);
+  const filteredFuseTransfers = fuseTransfers.filter(
     transfer =>
       transfer.from !== zeroAddress &&
       transfer.to !== zeroAddress &&
       transfer.to !== ADDRESSES.fuse.bridgePaymasterAddress,
   );
 
-  // Collect Vault transfer timestamps
-  filteredVaultTransfers.forEach(transfer => {
+  // Collect Fuse transfer timestamps
+  filteredFuseTransfers.forEach(transfer => {
     const timestamp = Math.floor(new Date(transfer.timestamp).getTime() / 1000);
     allTimestamps.push(timestamp);
   });
 
   // Fetch historical exchange rates once for all timestamps
-  // Only for USDC vault for now as we don't have historical rates for others readily available
-  // For others, we assume exchangeRate is constant (or provided current rate)
-  const isUsdcVault = tokenAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase();
-  const historicalRates = isUsdcVault
-    ? await fetchHistoricalExchangeRates(allTimestamps)
-    : new Map<number, number>();
+  const historicalRates = await fetchHistoricalExchangeRates(allTimestamps);
 
-  // Process deposits
+  // Process deposits - convert soUSD to USD using historical exchange rate
   deposits.forEach(deposit => {
     if (deposit.depositAmount && deposit.depositAmount !== '0') {
       try {
-        const amount = Number(formatUnits(BigInt(deposit.depositAmount), decimals));
+        const amount = Number(formatUnits(BigInt(deposit.depositAmount), 6));
         if (isFinite(amount) && amount > 0) {
           timeWeightedBalances.push({
             amount: amount,
@@ -266,7 +247,7 @@ export const calculateActualDepositedAmount = async (
     }
   });
 
-  // Process withdrawals
+  // Process withdrawals - convert soUSD to USD using historical exchange rate
   withdrawals.forEach(withdrawal => {
     if (
       withdrawal.amountOfAssets &&
@@ -274,7 +255,7 @@ export const calculateActualDepositedAmount = async (
       withdrawal.requestStatus === 'SOLVED'
     ) {
       try {
-        const amount = Number(formatUnits(BigInt(withdrawal.amountOfAssets), decimals));
+        const amount = Number(formatUnits(BigInt(withdrawal.amountOfAssets), 6));
         if (isFinite(amount) && amount > 0) {
           const timestamp = Number(withdrawal.creationTime);
 
@@ -290,20 +271,14 @@ export const calculateActualDepositedAmount = async (
     }
   });
 
-  // Process Vault transfers
-  filteredVaultTransfers.forEach(transfer => {
+  // Process Fuse transfers - convert soUSD to USD using historical exchange rate
+  filteredFuseTransfers.forEach(transfer => {
     try {
-      const tokenAmount = Number(formatUnits(BigInt(transfer.value), transfer.token.decimals));
-      if (isFinite(tokenAmount) && tokenAmount > 0) {
+      const soUSDAmount = Number(formatUnits(BigInt(transfer.value), transfer.token.decimals));
+      if (isFinite(soUSDAmount) && soUSDAmount > 0) {
         const timestamp = Math.floor(new Date(transfer.timestamp).getTime() / 1000);
-
-        // For USDC, we use historical rates to get USD value at that time
-        // For others, we use current exchange rate as fallback (best effort)
-        const rateAtTime = isUsdcVault
-          ? getExchangeRateAtTimestamp(timestamp, historicalRates, exchangeRate)
-          : exchangeRate;
-
-        const usdAmount = tokenAmount * rateAtTime;
+        const rateAtTime = getExchangeRateAtTimestamp(timestamp, historicalRates, exchangeRate);
+        const usdAmount = soUSDAmount * rateAtTime;
 
         if (transfer.from.toLowerCase() === safeAddress.toLowerCase()) {
           // Transfer out (reduces balance)
@@ -322,14 +297,14 @@ export const calculateActualDepositedAmount = async (
         }
       }
     } catch (error) {
-      console.warn('Error processing Vault transfer:', error);
+      console.warn('Error processing Fuse transfer:', error);
     }
   });
 
   // Sort by timestamp
   timeWeightedBalances.sort((a, b) => a.timestamp - b.timestamp);
 
-  // Calculate actual deposited amount by summing all positive changes (now in USD/Base Currency)
+  // Calculate actual deposited amount by summing all positive changes (now in USD)
   const actualDeposited = timeWeightedBalances.reduce((total, balance) => {
     return total + balance.amount;
   }, 0);
@@ -346,9 +321,6 @@ export const calculateYield = async (
   queryClient: QueryClient,
   userDepositTransactions?: any,
   safeAddress?: string,
-  exchangeRate: number = 1,
-  tokenAddress: string = ADDRESSES.fuse.vault,
-  decimals: number = 6,
 ): Promise<number> => {
   if (balance <= 0 || !isFinite(balance)) return 0;
   if (mode === SavingMode.BALANCE_ONLY) return balance;
@@ -356,12 +328,11 @@ export const calculateYield = async (
   if (!lastTimestamp || lastTimestamp <= 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
   if (!currentTime || currentTime <= 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
 
+  const exchangeRate = await fetchExchangeRate(queryClient);
   const { earnedUSD, setEarnedUSD } = useBalanceStore.getState();
-  // console.log('earnedUSD', earnedUSD);
-  // console.log('balance', balance);
 
-  // balance is in tokens. exchangeRate converts token to USD/Display Currency
-  const balanceUSD = balance * exchangeRate;
+  const formattedExchangeRate = Number(formatUnits(BigInt(exchangeRate), 6));
+  const balanceUSD = balance * formattedExchangeRate;
 
   // If we have deposit transaction data and safe address, use the new calculation
   if (
@@ -376,9 +347,7 @@ export const calculateYield = async (
         userDepositTransactions.withdraws,
         safeAddress,
         balance,
-        exchangeRate,
-        tokenAddress,
-        decimals,
+        formattedExchangeRate,
       );
 
       if (timeWeightedBalances.length > 0) {
@@ -455,10 +424,7 @@ export const calculateYield = async (
   return balanceUSD + interestEarnedUSD;
 };
 
-export const calculateOriginalDepositAmount = (
-  userDepositTransactions: any,
-  decimals: number = 6,
-): number => {
+export const calculateOriginalDepositAmount = (userDepositTransactions: any): number => {
   if (!userDepositTransactions?.deposits?.length) {
     return 0;
   }
@@ -469,7 +435,7 @@ export const calculateOriginalDepositAmount = (
     }
 
     try {
-      const depositAmount = Number(formatUnits(BigInt(deposit.depositAmount), decimals));
+      const depositAmount = Number(formatUnits(BigInt(deposit.depositAmount), 6));
 
       return isFinite(depositAmount) && depositAmount > 0 ? total + depositAmount : total;
     } catch {

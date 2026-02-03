@@ -11,9 +11,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
-import { getAllowedTokensForChain } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositDirectlyNetworks = () => {
@@ -24,7 +22,6 @@ const DepositDirectlyNetworks = () => {
     })),
   );
   const { user } = useUser();
-  const { vault, depositConfig } = useVaultDepositConfig();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const [selectedChainId, setSelectedChainId] = useState<number | null>(null);
 
@@ -32,7 +29,6 @@ const DepositDirectlyNetworks = () => {
     try {
       setSelectedChainId(id);
       const network = BRIDGE_TOKENS[id];
-      const allowedTokens = getAllowedTokensForChain(id, vault);
 
       // Track network selection
       track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -42,14 +38,13 @@ const DepositDirectlyNetworks = () => {
         network_name: network?.name,
         deposit_type: 'direct_deposit',
         deposit_method: 'external_wallet_direct',
-        vault: vault.name,
       });
 
       // Store chainId in session
       setDirectDepositSession({ chainId: id });
 
       // Check if this chain has multiple tokens
-      const hasMultipleTokens = allowedTokens.length > 1;
+      const hasMultipleTokens = network?.tokens?.USDC && network?.tokens?.USDT;
 
       if (hasMultipleTokens) {
         // Navigate to token selection
@@ -57,7 +52,11 @@ const DepositDirectlyNetworks = () => {
         setSelectedChainId(null);
       } else {
         // Single token available - get the first available token
-        const availableToken = allowedTokens[0] || 'USDC';
+        const availableToken = network?.tokens?.USDC
+          ? 'USDC'
+          : network?.tokens?.USDT
+            ? 'USDT'
+            : 'USDC';
         setDirectDepositSession({ selectedToken: availableToken });
 
         const session = await createDirectDepositSession(id, availableToken);
@@ -70,7 +69,6 @@ const DepositDirectlyNetworks = () => {
           wallet_address: session.walletAddress,
           chain_id: id,
           token_symbol: availableToken,
-          vault: vault.name,
         });
 
         // Navigate to address display screen
@@ -111,8 +109,6 @@ const DepositDirectlyNetworks = () => {
       <View className="gap-y-1.5">
         {Object.entries(BRIDGE_TOKENS)
           .sort((a, b) => a[1].sort - b[1].sort)
-          .filter(([id]) => depositConfig.supportedChains.includes(Number(id)))
-          .filter(([id]) => getAllowedTokensForChain(Number(id), vault).length > 0)
           .map(([id, network]) => {
             const chainId = Number(id);
             const isSelected = selectedChainId === chainId;
