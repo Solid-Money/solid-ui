@@ -35,7 +35,7 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
-import { fontSize, formatNumber, isUserAllowedToUseTestFeature } from '@/lib/utils';
+import { fontSize, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
@@ -496,7 +496,7 @@ export default function Savings() {
             </View>
           </>
         )}
-        {isUserAllowedToUseTestFeature(user?.username ?? '') && <SavingsAnalytics />}
+        <SavingsAnalytics />
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
       </View>
