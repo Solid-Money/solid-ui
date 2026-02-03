@@ -37,8 +37,8 @@ const EarnPointsSection = () => {
     // Format holding funds description
     const holdingDesc = `${points.holdingFundsMultiplier} point/hour for every $1 deposited`;
 
-    // Format card spend description (points per dollar * 1000 for every $1 spent)
-    const spendPoints = points.cardSpendPointsPerDollar * 1000;
+    // Format card spend description (points per dollar for every $1 spent)
+    const spendPoints = points.cardSpendPointsPerDollar;
     const spendDesc = `${spendPoints.toLocaleString()} points per $1 spent`;
 
     // Format referral description
@@ -46,7 +46,7 @@ const EarnPointsSection = () => {
     const referralDesc = `Earn ${referralPercent}% of their daily points`;
 
     // Format swap description (points per dollar for typical swap)
-    const swapPoints = points.swapPointsPerDollar * 1000;
+    const swapPoints = points.swapPointsPerDollar;
     const swapDesc = `${swapPoints.toLocaleString()} points per $1 swapped`;
 
     return [
