@@ -4,7 +4,6 @@ import { Image } from 'expo-image';
 
 import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { getAsset } from '@/lib/assets';
 import { DepositMethod } from '@/lib/types';
@@ -12,7 +11,6 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositBuyCryptoOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
-  const { isEnabled: isDepositBonusEnabled, percentage } = useCardDepositBonusConfig();
   const { depositConfig } = useVaultDepositConfig();
 
   const handleBankDepositPress = useCallback(() => {
@@ -23,16 +21,11 @@ const DepositBuyCryptoOptions = () => {
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
   }, [setModal]);
 
-  const bonusBannerText = isDepositBonusEnabled
-    ? `${Math.round(percentage * 100)}% bonus on deposits`
-    : undefined;
-
   const buyCryptoOptions = useMemo(
     () => [
       {
         text: 'Debit/Credit Card',
         subtitle: 'Google Pay, card or bank account',
-        bannerText: bonusBannerText,
         icon: (
           <Image
             source={getAsset('images/buy_crypto.png')}
@@ -46,7 +39,6 @@ const DepositBuyCryptoOptions = () => {
       {
         text: 'Bank Deposit',
         subtitle: 'Make a transfer from your bank.',
-        bannerText: bonusBannerText,
         icon: (
           <Image
             source={getAsset('images/bank_deposit.png')}
@@ -59,7 +51,7 @@ const DepositBuyCryptoOptions = () => {
         method: 'bank_transfer' as DepositMethod,
       },
     ],
-    [handleCreditCardPress, handleBankDepositPress, bonusBannerText],
+    [handleCreditCardPress, handleBankDepositPress],
   );
 
   return (
@@ -74,7 +66,6 @@ const DepositBuyCryptoOptions = () => {
             icon={option.icon}
             onPress={option.onPress}
             isComingSoon={option.isComingSoon}
-            bannerText={option.bannerText}
           />
         ))}
     </View>
