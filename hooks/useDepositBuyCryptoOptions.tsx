@@ -1,10 +1,8 @@
 import { Image } from 'expo-image';
 import { useCallback, useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { DepositMethod } from '@/lib/types';
@@ -12,34 +10,26 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 const useDepositBuyCryptoOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
-  const { isEnabled: isDepositBonusEnabled, percentage } = useCardDepositBonusConfig();
 
   const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'bank_transfer',
-      bonus_banner_visible: isDepositBonusEnabled,
     });
     setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
-  }, [setModal, isDepositBonusEnabled]);
+  }, [setModal]);
 
   const handleCreditCardPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'credit_card',
-      bonus_banner_visible: isDepositBonusEnabled,
     });
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO);
-  }, [setModal, isDepositBonusEnabled]);
-
-  const bonusBannerText = isDepositBonusEnabled
-    ? `${Math.round(percentage * 100)}% bonus on deposits`
-    : undefined;
+  }, [setModal]);
 
   const buyCryptoOptions = useMemo(
     () => [
       {
         text: 'Debit/Credit Card',
         subtitle: 'Apple pay, Google Pay, or your\ncredit card',
-        bannerText: bonusBannerText,
         icon: (
           <Image
             source={getAsset('images/buy_crypto.png')}
@@ -54,7 +44,6 @@ const useDepositBuyCryptoOptions = () => {
         text: 'Bank Deposit',
         subtitle: 'Make a transfer from your bank',
         chipText: 'Cheapest',
-        bannerText: bonusBannerText,
         icon: (
           <Image
             source={getAsset('images/bank_deposit.png')}
@@ -66,7 +55,7 @@ const useDepositBuyCryptoOptions = () => {
         method: 'bank_transfer' as DepositMethod,
       },
     ],
-    [handleCreditCardPress, handleBankDepositPress, bonusBannerText],
+    [handleCreditCardPress, handleBankDepositPress],
   );
 
   return { buyCryptoOptions };
