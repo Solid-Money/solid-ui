@@ -94,7 +94,7 @@ const RewardTable = ({
               >
                 <Text className="text-base font-semibold leading-5">{row.label}</Text>
                 {row.subtitle && !row.isSubtitleHidden && (
-                  <Text className="text-xs font-medium opacity-70">{row.subtitle}</Text>
+                  <Text className="text-xs opacity-70">{row.subtitle}</Text>
                 )}
                 {row.isComingSoon && (
                   <View className="mr-auto mt-1 rounded-full bg-foreground/10 px-2 py-1">
