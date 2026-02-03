@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 
@@ -9,6 +10,7 @@ interface RewardBenefitProps {
   iconText?: string;
   title: string;
   description: string;
+  descriptionNode?: ReactNode;
   iconSize?: number;
 }
 
@@ -17,6 +19,7 @@ const RewardBenefit = ({
   iconText,
   title,
   description,
+  descriptionNode,
   iconSize = 50,
 }: RewardBenefitProps) => {
   return (
@@ -35,9 +38,11 @@ const RewardBenefit = ({
           style={{ width: iconSize, height: iconSize }}
         />
       ) : null}
-      <View>
+      <View className="min-w-0 flex-1">
         <Text className="text-lg font-semibold leading-5">{title}</Text>
-        <Text className="text-base opacity-70">{description}</Text>
+        <View className="mt-0.5">
+          {descriptionNode ?? <Text className="text-base opacity-70">{description}</Text>}
+        </View>
       </View>
     </View>
   );
