@@ -30,10 +30,11 @@ export default function CardWithdrawForm() {
   const spendableAmount = Number(cardDetails?.balances?.available?.amount ?? 0);
   const formattedBalance = formatNumber(spendableAmount, 2, 2);
 
-  const { control, handleSubmit, formState, watch, setValue, trigger } = useForm<FormData>({
-    mode: 'onChange',
-    defaultValues: { amount: '', to: CardDepositSource.SAVINGS },
-  });
+  const { control, handleSubmit, formState, watch, setValue, setError, clearErrors, trigger } =
+    useForm<FormData>({
+      mode: 'onChange',
+      defaultValues: { amount: '', to: CardDepositSource.SAVINGS },
+    });
 
   const watchedAmount = watch('amount');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,15 +53,6 @@ export default function CardWithdrawForm() {
     [spendableAmount, formattedBalance],
   );
 
-  const isValid = useMemo(() => {
-    try {
-      schema.parse({ amount: watchedAmount });
-      return true;
-    } catch {
-      return false;
-    }
-  }, [watchedAmount, schema]);
-
   const validationError = useMemo(() => {
     if (!watchedAmount) return null;
     try {
@@ -74,6 +66,13 @@ export default function CardWithdrawForm() {
 
   const onSubmit = useCallback(
     async (data: FormData) => {
+      const parsed = schema.safeParse({ amount: data.amount });
+      if (!parsed.success) {
+        const message = parsed.error.issues[0]?.message ?? 'Enter a valid amount';
+        setError('amount', { message });
+        return;
+      }
+
       const toSavings = data.to === CardDepositSource.SAVINGS;
 
       if (!toSavings && !user?.safeAddress) {
@@ -146,10 +145,10 @@ export default function CardWithdrawForm() {
         setIsSubmitting(false);
       }
     },
-    [user, setModal, setTransaction, refetch],
+    [user, setModal, setTransaction, refetch, schema, setError],
   );
 
-  const disabled = !isValid || !watchedAmount || isSubmitting;
+  const disabled = isSubmitting;
 
   return (
     <View className="flex-1 gap-3">
@@ -189,7 +188,10 @@ export default function CardWithdrawForm() {
                   value={value}
                   placeholder="1.00"
                   placeholderTextColor="#666"
-                  onChangeText={onChange}
+                  onChangeText={v => {
+                    clearErrors('amount');
+                    onChange(v);
+                  }}
                   onBlur={onBlur}
                 />
               )}
@@ -211,7 +213,11 @@ export default function CardWithdrawForm() {
       </View>
 
       <View className="flex-1">
-        {validationError ? <Text className="text-sm text-red-500">{validationError}</Text> : null}
+        {(validationError ?? formState.errors.amount?.message) ? (
+          <Text className="text-sm text-red-500">
+            {validationError ?? formState.errors.amount?.message}
+          </Text>
+        ) : null}
       </View>
 
       <Button
