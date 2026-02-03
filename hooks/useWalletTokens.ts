@@ -1,5 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useBalances } from './useBalances';
 import useUser from './useUser';
@@ -17,6 +17,7 @@ export const useWalletTokens = () => {
     ethereumTokens,
     fuseTokens,
     baseTokens,
+    arbitrumTokens,
     tokens,
     unifiedTokens,
     isLoading,
@@ -27,8 +28,12 @@ export const useWalletTokens = () => {
   } = useBalances();
 
   const hasTokens = useMemo(
-    () => ethereumTokens.length > 0 || fuseTokens.length > 0 || baseTokens.length > 0,
-    [ethereumTokens.length, fuseTokens.length, baseTokens.length],
+    () =>
+      ethereumTokens.length > 0 ||
+      fuseTokens.length > 0 ||
+      baseTokens.length > 0 ||
+      arbitrumTokens.length > 0,
+    [ethereumTokens.length, fuseTokens.length, baseTokens.length, arbitrumTokens.length],
   );
 
   const uniqueTokens = useMemo(
@@ -60,6 +65,7 @@ export const useWalletTokens = () => {
     ethereumTokens,
     fuseTokens,
     baseTokens,
+    arbitrumTokens,
     tokens,
     unifiedTokens,
     uniqueTokens,

@@ -41,11 +41,11 @@ const RegularWithdrawForm = () => {
     })),
   );
 
-  const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, baseTokens, arbitrumTokens } = useWalletTokens();
 
   // Filter for soUSD tokens only (vault tokens) and sort by USD value
   const sortedTokens = useMemo(() => {
-    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
+    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
     const vaultTokens = allTokens.filter(
       token => token.contractTickerSymbol?.toLowerCase() === 'sousd',
     );
@@ -58,7 +58,7 @@ const RegularWithdrawForm = () => {
 
       return balanceUSD_B - balanceUSD_A; // Descending order
     });
-  }, [ethereumTokens, fuseTokens, baseTokens]);
+  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens]);
 
   // Auto-select the first token if no token is selected
   useEffect(() => {
