@@ -1,6 +1,7 @@
 import { Href } from 'expo-router';
 
 import { path } from '@/constants/path';
+import { isProduction } from '@/lib/config';
 
 type MenuItem = {
   label: string;
@@ -22,19 +23,17 @@ const activity: MenuItem = {
   href: path.ACTIVITY,
 };
 
-const points: MenuItem = {
-  label: 'Points',
-  href: path.POINTS,
-};
-
 const card: MenuItem = {
   label: 'Card',
   href: path.CARD,
 };
 
-const menuItems: MenuItem[] = [home, savings, card, points, activity];
-
 const useNav = () => {
+  const points: MenuItem = {
+    label: isProduction ? 'Points' : 'Rewards',
+    href: isProduction ? path.POINTS : path.REWARDS,
+  };
+  const menuItems: MenuItem[] = [home, savings, card, points, activity];
   return {
     menuItems,
   };

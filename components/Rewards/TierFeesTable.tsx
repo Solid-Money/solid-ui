@@ -20,7 +20,7 @@ const TierFeesTable = ({ tierBenefits }: TierFeesTableProps) => {
     },
     {
       label: 'Subscription discounts',
-      subtitle: 'For select monthly\nservices',
+      subtitle: 'For select monthly services',
       values: sortedTiers.map(tier => tier.subscriptionDiscountCap),
     },
     {

@@ -37,17 +37,17 @@ const EarnPointsSection = () => {
     // Format holding funds description
     const holdingDesc = `${points.holdingFundsMultiplier} point/hour for every $1 deposited`;
 
-    // Format card spend description (points per dollar * 1000 for every $1000 spent)
-    const spendPoints = points.cardSpendPointsPerDollar * 1000;
-    const spendDesc = `${spendPoints.toLocaleString()} points for every $1000 spent`;
+    // Format card spend description (points per dollar for every $1 spent)
+    const spendPoints = points.cardSpendPointsPerDollar;
+    const spendDesc = `${spendPoints.toLocaleString()} points per $1 spent`;
 
     // Format referral description
     const referralPercent = referral.recurringPercentage * 100;
     const referralDesc = `Earn ${referralPercent}% of their daily points`;
 
     // Format swap description (points per dollar for typical swap)
-    const swapPoints = points.swapPointsPerDollar * 1000;
-    const swapDesc = `${swapPoints.toLocaleString()} points for each swap`;
+    const swapPoints = points.swapPointsPerDollar;
+    const swapDesc = `${swapPoints.toLocaleString()} points per $1 swapped`;
 
     return [
       { icon: 'images/dollar-yellow.png', title: 'Save', description: holdingDesc },
@@ -64,8 +64,7 @@ const EarnPointsSection = () => {
       <View className="gap-2">
         <Text className="text-2xl font-semibold text-rewards">How do you earn points?</Text>
         <Text className="text-base opacity-70">
-          Earn points for every action you take with Solid and unlock rewards.{'\n'}
-          Turn your deposits and referrals into points that unlock future rewards.
+          Earn points for every action you take with Solid and unlock rewards
         </Text>
       </View>
       {isLoading ? (

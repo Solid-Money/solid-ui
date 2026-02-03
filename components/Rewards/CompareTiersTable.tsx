@@ -14,19 +14,22 @@ const CompareTiersTable = ({ tierBenefits }: CompareTiersTableProps) => {
 
   const rows: RewardTableRow[] = [
     {
-      label: 'Deposit boosts',
-      subtitle: 'Campaign-based\ndeposit boosts',
-      values: sortedTiers.map(tier => tier.depositBoost),
-    },
-    {
       label: 'Card cashback',
       subtitle: 'On every purchase',
       values: sortedTiers.map(tier => tier.cardCashback),
     },
     {
+      label: 'Deposit boosts',
+      subtitle: 'Campaign-based\ndeposit boosts',
+      values: sortedTiers.map(tier => tier.depositBoost),
+      isComingSoon: true,
+      isSubtitleHidden: true,
+    },
+    {
       label: 'Subscription discounts',
-      subtitle: 'For select monthly\nservices',
+      subtitle: 'For select monthly services',
       values: sortedTiers.map(tier => tier.subscriptionDiscount),
+      isComingSoon: true,
     },
   ];
 

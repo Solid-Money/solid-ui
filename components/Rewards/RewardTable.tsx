@@ -12,6 +12,8 @@ export interface RewardTableRow {
   label: string;
   subtitle?: string;
   values: (TierBenefit | null)[];
+  isComingSoon?: boolean;
+  isSubtitleHidden?: boolean;
 }
 
 interface RewardTableProps {
@@ -91,8 +93,13 @@ const RewardTable = ({
                 className="p-4"
               >
                 <Text className="text-base font-semibold leading-5">{row.label}</Text>
-                {row.subtitle && (
+                {row.subtitle && !row.isSubtitleHidden && (
                   <Text className="text-xs font-medium opacity-70">{row.subtitle}</Text>
+                )}
+                {row.isComingSoon && (
+                  <View className="mr-auto mt-1 rounded-full bg-foreground/10 px-2 py-1">
+                    <Text className="text-xs font-medium opacity-70">Coming soon</Text>
+                  </View>
                 )}
               </View>
             ))}

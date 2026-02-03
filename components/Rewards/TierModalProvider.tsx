@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
-import { useTierBenefits } from '@/hooks/useRewards';
+import { useRewardsUserData, useTierBenefits } from '@/hooks/useRewards';
 import { TierBenefits } from '@/lib/types';
 import { useRewards } from '@/store/useRewardsStore';
 
@@ -72,9 +72,15 @@ const transformTierBenefitsToItems = (
  */
 const TierModalProvider = () => {
   const { selectedTierModalId, setSelectedTierModalId } = useRewards();
+  const { data: rewardsData } = useRewardsUserData();
   const { data: allTierBenefits, isLoading: isLoadingBenefits } = useTierBenefits();
 
   const isOpen = selectedTierModalId !== null;
+  const currentTier = rewardsData?.currentTier;
+  const modalTitle =
+    selectedTierModalId && currentTier && selectedTierModalId === currentTier
+      ? 'Your Tier'
+      : 'Next Tier';
 
   // Find the selected tier's benefits from the API data
   const selectedTierBenefits = allTierBenefits?.find(tb => tb.tier === selectedTierModalId);
@@ -95,7 +101,7 @@ const TierModalProvider = () => {
       isOpen={isOpen}
       onOpenChange={handleOpenChange}
       trigger={null}
-      title="Your Tier"
+      title={modalTitle}
       contentKey="tier-benefits"
       contentClassName="md:max-w-xl"
     >

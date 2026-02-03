@@ -14,8 +14,8 @@ const SkipLineSection = () => {
     if (!config) {
       // Fallback values while loading
       return [
-        { icon: 'images/dollar-yellow.png', title: 'Unlock Builder', description: 'Loading...' },
-        { icon: 'images/dollar-yellow.png', title: 'Unlock Operator', description: 'Loading...' },
+        { icon: 'images/dollar-yellow.png', title: 'Unlock Prime', description: 'Loading...' },
+        { icon: 'images/dollar-yellow.png', title: 'Unlock Ultra', description: 'Loading...' },
       ];
     }
 
@@ -24,12 +24,12 @@ const SkipLineSection = () => {
     return [
       {
         icon: 'images/dollar-yellow.png',
-        title: 'Unlock Builder',
+        title: 'Unlock Prime',
         description: `${fuseStaking.tier2Amount.toLocaleString()} FUSE`,
       },
       {
         icon: 'images/dollar-yellow.png',
-        title: 'Unlock Operator',
+        title: 'Unlock Ultra',
         description: `${fuseStaking.tier3Amount.toLocaleString()} FUSE`,
       },
     ];
