@@ -28,7 +28,7 @@ import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { getAsset } from '@/lib/assets';
-import { ADDRESSES, isProduction } from '@/lib/config';
+import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
 
@@ -236,7 +236,7 @@ export default function Savings() {
           </View>
         </View>
 
-        {!isProduction && <SavingsAnalytics />}
+        <SavingsAnalytics />
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
       </View>
