@@ -92,26 +92,3 @@ export const useUsdcVaultBalance = (safeAddress: Address) => {
     gcTime: VAULT_GC_TIME,
   });
 };
-
-/** Total balance across all vaults (USDC + FUSE + ETH). Use for empty-state checks. */
-export const useTotalVaultBalance = (safeAddress: Address) => {
-  const queryClient = useQueryClient();
-  return useQuery({
-    queryKey: [VAULT, 'balanceTotal', safeAddress],
-    queryFn: async () => {
-      let total = 0;
-      for (const vault of VAULTS) {
-        const balances = await Promise.all(
-          (vault.vaults ?? []).map(v =>
-            fetchVaultBalance(queryClient, safeAddress, v.chainId, v.address, vault.decimals),
-          ),
-        );
-        total += balances.reduce((acc, curr) => acc + curr, 0);
-      }
-      return total;
-    },
-    enabled: !!safeAddress,
-    staleTime: VAULT_STALE_TIME,
-    gcTime: VAULT_GC_TIME,
-  });
-};
