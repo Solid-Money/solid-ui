@@ -1,13 +1,12 @@
-import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
-import { parseUnits } from 'viem';
-import { fuse, mainnet } from 'viem/chains';
-import { readContractQueryOptions } from 'wagmi/query';
-
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import Accountant from '@/lib/abis/Accountant';
 import { getLifiQuote } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { config } from '@/lib/wagmi';
+import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
+import { parseUnits } from 'viem';
+import { mainnet } from 'viem/chains';
+import { readContractQueryOptions } from 'wagmi/query';
 
 export const usePreviewDeposit = (amount: string, tokenAddress?: string, chainId?: number) => {
   const queryClient = useQueryClient();
@@ -84,20 +83,6 @@ export const fetchExchangeRate = async (queryClient: QueryClient) => {
       address: ADDRESSES.ethereum.accountant,
       functionName: 'getRate',
       chainId: 1,
-    }),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-  return exchangeRate;
-};
-
-export const fetchExchangeRatesoFuse = async (queryClient: QueryClient) => {
-  const exchangeRate = await queryClient.fetchQuery({
-    ...readContractQueryOptions(config, {
-      abi: Accountant,
-      address: ADDRESSES.fuse.fuseAccountant,
-      functionName: 'getRate',
-      chainId: fuse.id,
     }),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,

@@ -5,7 +5,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import CountUp from '@/components/CountUp';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import useUser from '@/hooks/useUser';
-import { ADDRESSES } from '@/lib/config';
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 
@@ -18,7 +17,6 @@ type Styles = {
   wholeText?: TextStyle;
   decimalText?: TextStyle;
   decimalSeparator?: TextStyle;
-  suffixText?: TextStyle;
 };
 
 interface SavingCountUpProps {
@@ -29,11 +27,9 @@ interface SavingCountUpProps {
   decimalPlaces?: number;
   classNames?: ClassNames;
   styles?: Styles;
-  prefix?: string | React.ReactNode;
+  prefix?: string;
   suffix?: string;
   userDepositTransactions?: GetUserTransactionsQuery;
-  exchangeRate?: number;
-  tokenAddress?: string;
 }
 
 const SavingCountUp = memo(
@@ -48,8 +44,6 @@ const SavingCountUp = memo(
     prefix,
     suffix,
     userDepositTransactions,
-    exchangeRate = 1,
-    tokenAddress = ADDRESSES.fuse.vault,
   }: SavingCountUpProps) => {
     const [liveYield, setLiveYield] = useState<number>(0);
     const queryClient = useQueryClient();
@@ -60,7 +54,6 @@ const SavingCountUp = memo(
     const apyRef = useRef(apy);
     const lastTimestampRef = useRef(lastTimestamp);
     const transactionsRef = useRef(userDepositTransactions);
-    const exchangeRateRef = useRef(exchangeRate);
 
     // Update refs when props change
     useEffect(() => {
@@ -68,8 +61,7 @@ const SavingCountUp = memo(
       apyRef.current = apy;
       lastTimestampRef.current = lastTimestamp;
       transactionsRef.current = userDepositTransactions;
-      exchangeRateRef.current = exchangeRate;
-    }, [balance, apy, lastTimestamp, userDepositTransactions, exchangeRate]);
+    }, [balance, apy, lastTimestamp, userDepositTransactions]);
 
     const updateYield = useCallback(async () => {
       const now = Math.floor(Date.now() / 1000);
@@ -82,12 +74,9 @@ const SavingCountUp = memo(
         queryClient,
         transactionsRef.current,
         user?.safeAddress,
-        exchangeRateRef.current,
-        tokenAddress,
-        decimalPlaces,
       );
       setLiveYield(calculatedYield);
-    }, [mode, queryClient, user?.safeAddress, tokenAddress, decimalPlaces]);
+    }, [mode, queryClient, user?.safeAddress]);
 
     useEffect(() => {
       updateYield();

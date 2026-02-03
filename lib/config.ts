@@ -62,9 +62,6 @@ type Addresses = {
   fuse: {
     vault: Address;
     teller: Address;
-    fuseVault: Address;
-    fuseTeller: Address;
-    fuseAccountant: Address;
     nativeFeeToken: Address;
     bridgePaymasterAddress: Address;
     merklDistributor: Address;
@@ -108,15 +105,6 @@ export const ADDRESSES: Addresses = {
     teller: isProduction
       ? '0x220d4667AA06E0Aa39f62c601690848f2e48BC15'
       : '0xcBA3D8DC1DdE5fbD4c04cBbD5624Dc79D300963d',
-    fuseVault: isProduction
-      ? '0xDA737B0C12a08D85C973F10f25459F07F2BB2882'
-      : '0xDA737B0C12a08D85C973F10f25459F07F2BB2882',
-    fuseTeller: isProduction
-      ? '0x1f8D6492F324916465B1E216a3061B69aa631C94'
-      : '0x1f8D6492F324916465B1E216a3061B69aa631C94',
-    fuseAccountant: isProduction
-      ? '0xc864e169a1d40b957170E6c848BbcE49f28b361B'
-      : '0xc864e169a1d40b957170E6c848BbcE49f28b361B',
     nativeFeeToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     bridgePaymasterAddress: '0xE046FC894Ec020501BA32fcA814a69B49c9Dac10',
     merklDistributor: '0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae',

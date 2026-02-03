@@ -1,8 +1,5 @@
 import { ImageSourcePropType } from 'react-native';
-import { NATIVE_TOKEN_ADDRESS } from 'thirdweb';
 import { arbitrum, base, fuse, mainnet, polygon } from 'viem/chains';
-
-import { WRAPPED_FUSE } from '@/constants/addresses';
 
 type BridgeToken = {
   name?: string;
@@ -15,7 +12,10 @@ type BridgeToken = {
 
 type BridgeTokens = {
   [key in number]: {
-    tokens?: Record<string, BridgeToken>;
+    tokens?: {
+      USDC: BridgeToken;
+      USDT?: BridgeToken;
+    };
     name: string;
     icon: ImageSourcePropType;
     sort: number;
@@ -106,12 +106,6 @@ export const BRIDGE_TOKENS: BridgeTokens = {
   },
   [fuse.id]: {
     tokens: {
-      FUSE: {
-        name: 'FUSE',
-        fullName: 'FUSE',
-        address: NATIVE_TOKEN_ADDRESS,
-        icon: require('@/assets/images/fuse-4x.png'),
-      },
       USDC: {
         name: 'USDC',
         fullName: 'Stargate USDC.e',
@@ -125,12 +119,6 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         icon: require('@/assets/images/usdt.png'),
         version: '1',
         isPermit: false,
-      },
-      WFUSE: {
-        name: 'WFUSE',
-        fullName: 'Wrapped FUSE',
-        address: WRAPPED_FUSE,
-        icon: require('@/assets/images/fuse-4x.png'),
       },
     },
     name: 'Fuse',

@@ -7,7 +7,6 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
-import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useDimension } from './useDimension';
 
@@ -83,14 +82,12 @@ const useDepositExternalWalletOptions = () => {
         onPress: openWallet,
         isLoading: isWalletOpen,
         isEnabled: isScreenMedium,
-        method: 'wallet' as DepositMethod,
       },
       {
         text: 'Share your deposit address',
         subtitle: 'Send USDC to your solid deposit\naddress from any supported network',
         icon: <HomeQR />,
         onPress: handleDepositDirectly,
-        method: 'deposit_directly' as DepositMethod,
       },
     ],
     [openWallet, isWalletOpen, isScreenMedium, handleDepositDirectly],

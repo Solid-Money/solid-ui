@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
-import { useDepositStore } from '@/store/useDepositStore';
 
 interface SavingState {
   selectedVault: number;
@@ -16,12 +14,10 @@ export const useSavingStore = create<SavingState>()(
     (set) => ({
       selectedVault: 0,
 
-      setSelectedVault: vault => {
-        const { setModal, resetDepositFlow } = useDepositStore.getState();
-        setModal(DEPOSIT_MODAL.CLOSE);
-        resetDepositFlow();
-        set({ selectedVault: vault });
-      },
+      setSelectedVault: vault =>
+        set({
+          selectedVault: vault,
+        }),
     }),
     {
       name: USER.savingStorageKey,

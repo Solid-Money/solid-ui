@@ -78,10 +78,7 @@ const DepositDirectlyAddress = () => {
   );
   const chainId = directDepositSession.chainId || mainnet.id;
   const selectedToken = directDepositSession.selectedToken || 'USDC';
-  const tokenIcon =
-    BRIDGE_TOKENS[chainId]?.tokens?.[selectedToken]?.icon ||
-    TOKEN_ICONS[selectedToken] ||
-    USDC_ICON;
+  const tokenIcon = TOKEN_ICONS[selectedToken] || USDC_ICON;
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareError, setShareError] = useState(false);
   const { maxAPY, isAPYsLoading } = useMaxAPY();

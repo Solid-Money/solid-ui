@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, PressableProps, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, PressableProps, View } from 'react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
-import { useShallow } from 'zustand/react/shallow';
 
-import Trash from '@/assets/images/trash';
 import { BankTransferModalContent } from '@/components/BankTransfer/BankTransferModalContent';
 import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
@@ -22,19 +20,20 @@ import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositTo
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
-import { getAllowedTokensForChain, getDefaultDepositSelection } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
-
+import { useShallow } from 'zustand/react/shallow';
 import useResponsiveModal from './useResponsiveModal';
+
+import Trash from '@/assets/images/trash';
 
 export interface DepositOptionProps {
   buttonText?: string;
@@ -48,7 +47,6 @@ const useDepositOption = ({
   modal = DEPOSIT_MODAL.OPEN_OPTIONS,
 }: DepositOptionProps = {}) => {
   const { user } = useUser();
-  const { vault, depositConfig } = useVaultDepositConfig();
   const {
     currentModal,
     previousModal,
@@ -61,10 +59,6 @@ const useDepositOption = ({
     sessionStartTime,
     setSessionStartTime,
     clearSessionStartTime,
-    setSrcChainId,
-    setOutputToken,
-    setDirectDepositSession,
-    resetDepositFlow,
   } = useDepositStore(
     useShallow(state => ({
       currentModal: state.currentModal,
@@ -78,10 +72,6 @@ const useDepositOption = ({
       sessionStartTime: state.sessionStartTime,
       setSessionStartTime: state.setSessionStartTime,
       clearSessionStartTime: state.clearSessionStartTime,
-      setSrcChainId: state.setSrcChainId,
-      setOutputToken: state.setOutputToken,
-      setDirectDepositSession: state.setDirectDepositSession,
-      resetDepositFlow: state.resetDepositFlow,
     })),
   );
   const activeAccount = useActiveAccount();
@@ -91,7 +81,6 @@ const useDepositOption = ({
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const { triggerElement } = useResponsiveModal();
-  const previousVaultNameRef = useRef<string | null>(null);
 
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(isForm && address);
@@ -151,27 +140,30 @@ const useDepositOption = ({
     );
   };
 
-  const getTrigger = (props?: PressableProps) => {
-    if (trigger) {
-      return <Trigger {...props}>{trigger}</Trigger>;
-    }
+  const getTrigger = useCallback(
+    (props?: PressableProps) => {
+      if (trigger) {
+        return <Trigger {...props}>{trigger}</Trigger>;
+      }
 
-    return (
-      <Trigger {...props}>
-        <View
-          className={buttonVariants({
-            variant: 'brand',
-            className: 'h-12 rounded-xl pr-6',
-          })}
-        >
-          <View className="flex-row items-center gap-1">
-            <Plus color="black" />
-            <Text className="text-base font-bold text-primary-foreground">{buttonText}</Text>
+      return (
+        <Trigger {...props}>
+          <View
+            className={buttonVariants({
+              variant: 'brand',
+              className: 'h-12 rounded-xl pr-6',
+            })}
+          >
+            <View className="flex-row items-center gap-1">
+              <Plus color="black" />
+              <Text className="text-base font-bold text-primary-foreground">{buttonText}</Text>
+            </View>
           </View>
-        </View>
-      </Trigger>
-    );
-  };
+        </Trigger>
+      );
+    },
+    [trigger, buttonText],
+  );
 
   const getContent = () => {
     if (isTransactionStatus) {
@@ -389,51 +381,21 @@ const useDepositOption = ({
     }
 
     if (value) {
-      const { chainId: defaultChainId, outputToken: defaultToken } =
-        getDefaultDepositSelection(vault);
-      const supportedChains = depositConfig.supportedChains;
-      // When srcChainId is 0 (unset), don't auto-sync so user sees options/networks to pick
-      const nextChainId =
-        srcChainId && supportedChains.includes(srcChainId) ? srcChainId : defaultChainId;
-      const allowedTokens = getAllowedTokensForChain(nextChainId, vault);
-      const nextToken = allowedTokens.includes(outputToken) ? outputToken : defaultToken;
-
-      if (srcChainId && nextChainId !== srcChainId) {
-        setSrcChainId(nextChainId);
-      }
-      if (nextToken !== outputToken) {
-        setOutputToken(nextToken);
-      }
-
-      const directChainId =
-        directDepositSession.chainId && supportedChains.includes(directDepositSession.chainId)
-          ? directDepositSession.chainId
-          : defaultChainId;
-      const directAllowedTokens = getAllowedTokensForChain(directChainId, vault);
-      const directToken =
-        directDepositSession.selectedToken &&
-        directAllowedTokens.includes(directDepositSession.selectedToken)
-          ? directDepositSession.selectedToken
-          : directAllowedTokens[0];
-
-      if (directChainId !== directDepositSession.chainId) {
-        setDirectDepositSession({ chainId: directChainId });
-      }
-      if (directToken && directToken !== directDepositSession.selectedToken) {
-        setDirectDepositSession({ selectedToken: directToken });
-      }
-
       // Set session start time when modal opens (if not already set)
       if (!sessionStartTime) {
         setSessionStartTime(Date.now());
       }
 
-      // When srcChainId is 0 (unset), keep OPEN_OPTIONS so user picks method then chain
+      // Check if user has email when opening deposit modal
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
-      } else if (address && srcChainId) {
-        setModal(DEPOSIT_MODAL.OPEN_FORM);
-      } else if (!address) {
+      } else if (address) {
+        if (srcChainId) {
+          setModal(DEPOSIT_MODAL.OPEN_FORM);
+        } else {
+          setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
+        }
+      } else {
         setModal(modal);
       }
     } else {
@@ -456,7 +418,6 @@ const useDepositOption = ({
       });
 
       setModal(DEPOSIT_MODAL.CLOSE);
-      resetDepositFlow();
       clearSessionStartTime();
     }
   };
@@ -495,8 +456,8 @@ const useDepositOption = ({
       // Go back to token selection if multiple tokens available, otherwise to network selection
       const { directDepositSession } = useDepositStore.getState();
       const chainId = directDepositSession.chainId;
-      const allowedTokens = chainId ? getAllowedTokensForChain(chainId, vault) : [];
-      const hasMultipleTokens = allowedTokens.length > 1;
+      const network = chainId ? BRIDGE_TOKENS[chainId] : null;
+      const hasMultipleTokens = network?.tokens?.USDC && network?.tokens?.USDT;
 
       if (hasMultipleTokens) {
         setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS);
@@ -533,7 +494,7 @@ const useDepositOption = ({
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteDirectDepositSession, setModal]);
+  }, [directDepositSession.sessionId, deleteDirectDepositSession, setModal]);
 
   const actionButton = useMemo(() => {
     if (
@@ -578,21 +539,6 @@ const useDepositOption = ({
     isBuyCryptoOptions,
     currentModal.name,
   ]);
-
-  useEffect(() => {
-    return () => {
-      setModal(DEPOSIT_MODAL.CLOSE);
-    };
-  }, [setModal]);
-
-  useEffect(() => {
-    if (!vault?.name) return;
-    if (previousVaultNameRef.current && previousVaultNameRef.current !== vault.name) {
-      setModal(DEPOSIT_MODAL.CLOSE);
-      resetDepositFlow();
-    }
-    previousVaultNameRef.current = vault.name;
-  }, [vault?.name, resetDepositFlow, setModal]);
 
   // Open the modal for all states except when explicitly closed
   const shouldOpen = !isClose;
