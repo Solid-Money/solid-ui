@@ -22,13 +22,13 @@ const UnstakeTokenSelector: React.FC = () => {
       setModal: state.setModal,
     })),
   );
-  const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, baseTokens, arbitrumTokens } = useWalletTokens();
 
   // Filter for soUSD tokens only (vault tokens)
   const vaultTokens = useMemo(() => {
-    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
+    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
     return allTokens.filter(token => token.contractTickerSymbol?.toLowerCase() === 'sousd');
-  }, [ethereumTokens, fuseTokens, baseTokens]);
+  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens]);
 
   // Sort tokens by USD value (descending)
   const sortedTokens = useMemo(() => {
