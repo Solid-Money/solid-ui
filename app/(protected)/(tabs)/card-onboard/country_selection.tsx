@@ -122,8 +122,9 @@ export default function CountrySelection() {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          // If the cached country is unavailable, show the unavailable view directly
-          setShowCountrySelector(cachedInfo.isAvailable);
+          // TODO: Temporarily always show country selector to allow manual selection.
+          // This will be removed later - originally: setShowCountrySelector(cachedInfo.isAvailable)
+          setShowCountrySelector(true);
           setLoading(false);
           return;
         }
@@ -150,8 +151,9 @@ export default function CountrySelection() {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          // Skip selector when the detected country is unavailable so we show the "not ready" state
-          setShowCountrySelector(countryInfo.isAvailable);
+          // TODO: Temporarily always show country selector to allow manual selection.
+          // This will be removed later - originally: setShowCountrySelector(countryInfo.isAvailable)
+          setShowCountrySelector(true);
         } else {
           // If country detection fails, show country selector instead of error
           setShowCountrySelector(true);
