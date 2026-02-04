@@ -249,34 +249,37 @@ export default function CountrySelection() {
     if (selectedCountry) {
       setProcessingWaitlist(true);
       try {
+        // TODO: Temporarily disabled Fingerprint verification for testing.
+        // This allows testing the card activation flow from unsupported countries.
+        // REMOVE THIS BEFORE PRODUCTION - re-enable the block below.
         // Step 1: Verify location with Fingerprint (if available)
         // This ensures the user's actual location matches their claimed country
-        if (isFingerprintAvailable) {
-          const visitorData = await getVisitorData();
+        if (false && isFingerprintAvailable) {
+          // const visitorData = await getVisitorData();
 
-          if (visitorData) {
-            const verification = await withRefreshToken(() =>
-              verifyCountryWithFingerprint({
-                visitorId: visitorData.visitorId,
-                requestId: visitorData.requestId,
-                claimedCountry: selectedCountry.code,
-              }),
-            );
+          // if (visitorData) {
+          //   const verification = await withRefreshToken(() =>
+          //     verifyCountryWithFingerprint({
+          //       visitorId: visitorData.visitorId,
+          //       requestId: visitorData.requestId,
+          //       claimedCountry: selectedCountry.code,
+          //     }),
+          //   );
 
-            // If location mismatch detected, redirect to verification required screen
-            if (verification?.requiresVerification) {
-              // Note: TypeScript type assertion needed because Expo Router types are generated at dev server start
-              router.push({
-                pathname: path.CARD_COUNTRY_VERIFICATION_REQUIRED,
-                params: {
-                  claimedCountry: selectedCountry.code,
-                  detectedCountry: verification.detectedCountry || 'unknown',
-                  blockingReason: verification.blockingReason || '',
-                },
-              } as any);
-              return;
-            }
-          }
+          //   // If location mismatch detected, redirect to verification required screen
+          //   if (verification?.requiresVerification) {
+          //     // Note: TypeScript type assertion needed because Expo Router types are generated at dev server start
+          //     router.push({
+          //       pathname: path.CARD_COUNTRY_VERIFICATION_REQUIRED,
+          //       params: {
+          //         claimedCountry: selectedCountry.code,
+          //         detectedCountry: verification.detectedCountry || 'unknown',
+          //         blockingReason: verification.blockingReason || '',
+          //       },
+          //     } as any);
+          //     return;
+          //   }
+          // }
           // If visitor data is null (SDK not configured/error), continue without blocking
         }
 
