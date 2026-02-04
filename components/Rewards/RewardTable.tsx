@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import RewardComingSoon from '@/components/Rewards/RewardComingSoon';
 import { Text } from '@/components/ui/text';
@@ -35,6 +36,7 @@ const RewardTable = ({
 }: RewardTableProps) => {
   const { isScreenMedium } = useDimension();
   const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [scrollX, setScrollX] = useState(0);
 
   const sortedTiers = tierBenefits.sort((a, b) => {
     const order = [RewardsTier.CORE, RewardsTier.PRIME, RewardsTier.ULTRA];
@@ -49,11 +51,16 @@ const RewardTable = ({
     : 150;
   const dataColumnWidth = isScreenMedium ? (containerWidth > 0 ? containerWidth * 0.25 : 200) : 150;
 
+  const contentWidth = labelColumnWidth + sortedTiers.length * dataColumnWidth;
+  const maxScrollX = Math.max(0, contentWidth - containerWidth);
+  const showLeftBlur = scrollX > 10;
+  const showRightBlur = containerWidth > 0 && scrollX < maxScrollX - 10;
+
   return (
     <View className="gap-6 rounded-twice bg-card p-6 md:gap-10 md:p-10">
       <Text className="text-2xl font-semibold text-rewards">{title}</Text>
       <View
-        className="overflow-hidden rounded-lg"
+        className="relative overflow-hidden rounded-lg"
         onLayout={e => {
           const width = e.nativeEvent.layout.width;
           if (width > 0 && containerWidth !== width) {
@@ -61,7 +68,12 @@ const RewardTable = ({
           }
         }}
       >
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          onScroll={e => setScrollX(e.nativeEvent.contentOffset.x)}
+          scrollEventThrottle={16}
+        >
           <View>
             {/* Header row */}
             <View style={{ minHeight: rowMinHeight }} className="flex-row">
@@ -139,6 +151,36 @@ const RewardTable = ({
             ))}
           </View>
         </ScrollView>
+        {showLeftBlur && (
+          <LinearGradient
+            colors={['rgba(28,28,28,0.8)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 40,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+        {showRightBlur && (
+          <LinearGradient
+            colors={['transparent', 'rgba(28,28,28,0.8)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 40,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
       </View>
     </View>
   );
