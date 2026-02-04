@@ -1,7 +1,10 @@
+import { useMemo } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 
+import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
+import RewardReferBanner from '@/components/Points/RewardReferBanner';
 import CashbackCard from '@/components/Rewards/CashbackCard';
 import GetCardRewardsBanner from '@/components/Rewards/GetCardRewardsBanner';
 import RewardsDashboard from '@/components/Rewards/RewardsDashboard';
@@ -20,19 +23,25 @@ export default function Rewards() {
   const { data: rewardsData, isLoading } = useRewardsUserData();
   const { setSelectedTierModalId } = useRewards();
 
+  const bannerData = useMemo(() => {
+    if (!rewardsData) return [];
+    const { cashbackThisMonth, cashbackRate, maxCashbackMonthly } = rewardsData;
+    return [
+      <CashbackCard
+        key="cashback"
+        cashbackThisMonth={cashbackThisMonth}
+        cashbackRate={cashbackRate}
+        maxCashbackMonthly={maxCashbackMonthly}
+      />,
+      <RewardReferBanner key="refer" title="Refer a Friend" buttonText="Start earning" />,
+    ];
+  }, [rewardsData]);
+
   if (isLoading || !rewardsData) {
     return <PageLayout isLoading={true}>{null}</PageLayout>;
   }
 
-  const {
-    currentTier,
-    totalPoints,
-    nextTier,
-    nextTierPoints,
-    cashbackThisMonth,
-    cashbackRate,
-    maxCashbackMonthly,
-  } = rewardsData;
+  const { currentTier, totalPoints, nextTier, nextTierPoints } = rewardsData;
 
   return (
     <PageLayout isLoading={isLoading}>
@@ -60,11 +69,7 @@ export default function Rewards() {
           onNextTierPress={() => setSelectedTierModalId(nextTier)}
         />
 
-        <CashbackCard
-          cashbackThisMonth={cashbackThisMonth}
-          cashbackRate={cashbackRate}
-          maxCashbackMonthly={maxCashbackMonthly}
-        />
+        <HomeBanners data={bannerData} />
         <CardBanner />
       </View>
     </PageLayout>
