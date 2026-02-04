@@ -80,9 +80,9 @@ const RewardsDashboard = ({
   const currentTierBenefits = allTierBenefits?.find(tb => tb.tier === currentTier);
   const coreDepositTitle =
     currentTier === RewardsTier.CORE
-      ? maxAPY != null
-        ? `${formatNumber(maxAPY, 2)}% yield`
-        : 'Max APY'
+      ? maxAPY !== null
+        ? `${formatNumber(maxAPY, 2, 0)}% yield`
+        : undefined
       : undefined;
   const dashboardBenefits = transformTierBenefitsForDashboard(
     currentTierBenefits,

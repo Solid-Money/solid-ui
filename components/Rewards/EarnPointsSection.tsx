@@ -1,12 +1,14 @@
 import { ActivityIndicator, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+import { useDimension } from '@/hooks/useDimension';
 import { useRewardsConfig } from '@/hooks/useRewards';
 
 import RewardBenefit from './RewardBenefit';
 
 const EarnPointsSection = () => {
   const { data: config, isLoading } = useRewardsConfig();
+  const { isScreenMedium } = useDimension();
 
   // Format earning methods based on config
   const getEarningMethods = () => {
@@ -74,7 +76,7 @@ const EarnPointsSection = () => {
       ) : (
         <View className="flex-row flex-wrap gap-6">
           {earningMethods.map((method, index) => (
-            <View key={index} style={{ width: '48%' }}>
+            <View key={index} style={{ width: isScreenMedium ? '48%' : '100%' }}>
               <RewardBenefit
                 icon={method.icon}
                 title={method.title}
