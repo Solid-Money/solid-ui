@@ -122,8 +122,9 @@ export default function CountrySelection() {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          // If the cached country is unavailable, show the unavailable view directly
-          setShowCountrySelector(cachedInfo.isAvailable);
+          // TODO: Temporarily always show country selector to allow manual selection.
+          // This will be removed later - originally: setShowCountrySelector(cachedInfo.isAvailable)
+          setShowCountrySelector(true);
           setLoading(false);
           return;
         }
@@ -150,8 +151,9 @@ export default function CountrySelection() {
             setSelectedCountry(country);
             setSearchQuery(country.name);
           }
-          // Skip selector when the detected country is unavailable so we show the "not ready" state
-          setShowCountrySelector(countryInfo.isAvailable);
+          // TODO: Temporarily always show country selector to allow manual selection.
+          // This will be removed later - originally: setShowCountrySelector(countryInfo.isAvailable)
+          setShowCountrySelector(true);
         } else {
           // If country detection fails, show country selector instead of error
           setShowCountrySelector(true);
@@ -247,34 +249,37 @@ export default function CountrySelection() {
     if (selectedCountry) {
       setProcessingWaitlist(true);
       try {
+        // TODO: Temporarily disabled Fingerprint verification for testing.
+        // This allows testing the card activation flow from unsupported countries.
+        // REMOVE THIS BEFORE PRODUCTION - re-enable the block below.
         // Step 1: Verify location with Fingerprint (if available)
         // This ensures the user's actual location matches their claimed country
-        if (isFingerprintAvailable) {
-          const visitorData = await getVisitorData();
+        if (false && isFingerprintAvailable) {
+          // const visitorData = await getVisitorData();
 
-          if (visitorData) {
-            const verification = await withRefreshToken(() =>
-              verifyCountryWithFingerprint({
-                visitorId: visitorData.visitorId,
-                requestId: visitorData.requestId,
-                claimedCountry: selectedCountry.code,
-              }),
-            );
+          // if (visitorData) {
+          //   const verification = await withRefreshToken(() =>
+          //     verifyCountryWithFingerprint({
+          //       visitorId: visitorData.visitorId,
+          //       requestId: visitorData.requestId,
+          //       claimedCountry: selectedCountry.code,
+          //     }),
+          //   );
 
-            // If location mismatch detected, redirect to verification required screen
-            if (verification?.requiresVerification) {
-              // Note: TypeScript type assertion needed because Expo Router types are generated at dev server start
-              router.push({
-                pathname: path.CARD_COUNTRY_VERIFICATION_REQUIRED,
-                params: {
-                  claimedCountry: selectedCountry.code,
-                  detectedCountry: verification.detectedCountry || 'unknown',
-                  blockingReason: verification.blockingReason || '',
-                },
-              } as any);
-              return;
-            }
-          }
+          //   // If location mismatch detected, redirect to verification required screen
+          //   if (verification?.requiresVerification) {
+          //     // Note: TypeScript type assertion needed because Expo Router types are generated at dev server start
+          //     router.push({
+          //       pathname: path.CARD_COUNTRY_VERIFICATION_REQUIRED,
+          //       params: {
+          //         claimedCountry: selectedCountry.code,
+          //         detectedCountry: verification.detectedCountry || 'unknown',
+          //         blockingReason: verification.blockingReason || '',
+          //       },
+          //     } as any);
+          //     return;
+          //   }
+          // }
           // If visitor data is null (SDK not configured/error), continue without blocking
         }
 
