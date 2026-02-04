@@ -115,7 +115,7 @@ const RewardTable = ({
             {/* Body rows */}
             {rows.map((row, rowIndex) => (
               <View key={rowIndex} style={{ minHeight: rowMinHeight }} className="flex-row">
-                <View style={{ width: labelColumnWidth }} className="p-4 pl-0">
+                <View style={{ width: labelColumnWidth }} className="p-4 pl-0 gap-1">
                   <Text className="text-base font-semibold leading-5">{row.label}</Text>
                   {row.subtitle && !row.isSubtitleHidden && (
                     <Text className="text-xs opacity-70">{row.subtitle}</Text>
