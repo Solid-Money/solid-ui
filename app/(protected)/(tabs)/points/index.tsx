@@ -1,11 +1,11 @@
 import React from 'react';
 import { ImageBackground, Platform, View } from 'react-native';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
 import PageLayout from '@/components/PageLayout';
 import PointsTitle from '@/components/Points/PointsTitle';
+import RewardReferBanner from '@/components/Points/RewardReferBanner';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
@@ -171,32 +171,7 @@ export default function Points() {
               </View>
             </Button>
           </View>
-          <View className="h-full w-full flex-1 flex-col justify-between rounded-twice bg-card p-6">
-            <View className="flex-row items-center gap-2">
-              <Image
-                source={getAsset('images/refer_friend.png')}
-                style={{ width: isScreenMedium ? 90 : 70, height: isScreenMedium ? 90 : 70 }}
-                contentFit="contain"
-              />
-              <View className="ml-2 flex-1 flex-col md:ml-5">
-                <Text className="text-xl font-semibold md:text-2xl">Share your referral code</Text>
-                <Text className="text-base text-white/70 md:text-lg">
-                  Earn 10% of their daily points.
-                </Text>
-              </View>
-            </View>
-            <Button
-              variant="secondary"
-              className="mt-7 h-10 rounded-xl border-0 bg-[#303030] px-6 md:h-12"
-              onPress={() => {
-                router.push(path.REFERRAL);
-              }}
-            >
-              <View className="flex-row items-center gap-4">
-                <Text className="font-bold">Refer a friend</Text>
-              </View>
-            </Button>
-          </View>
+          <RewardReferBanner />
         </View>
       </View>
     </PageLayout>
