@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 import { ChevronDown, ChevronUp, Fuel, Info } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -282,19 +283,33 @@ const BankTransferPreviewModal = () => {
     value,
     withDivider = false,
     copyable = false,
+    children,
   }: {
     label: string;
-    value: string;
+    value?: string;
     withDivider?: boolean;
     copyable?: boolean;
+    children?: React.ReactNode;
   }) => (
     <View>
-      <View className="flex-row items-center justify-between px-4 py-4">
-        <Text className="text-base text-gray-400">{label}</Text>
-        <View className="flex-row items-center gap-2">
-          <Text className="text-base font-medium text-white">{value}</Text>
-          {copyable && <CopyToClipboard text={value} />}
-        </View>
+      <View className="flex-row items-center justify-between gap-4 px-4 py-4">
+        <Text className="text-base text-gray-400" numberOfLines={1}>
+          {label}
+        </Text>
+        {children ? (
+          children
+        ) : (
+          <View className="flex-1 flex-row items-center justify-end gap-2 overflow-hidden">
+            <Text
+              className="flex-1 text-right text-base font-medium text-white"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {value}
+            </Text>
+            {copyable && value && <CopyToClipboard text={value} />}
+          </View>
+        )}
       </View>
       {withDivider && <View className="mx-4 h-[1px] bg-[#2C2C2C]" />}
     </View>
@@ -311,23 +326,26 @@ const BankTransferPreviewModal = () => {
 
   const isSepa = data?.payment_rail === 'sepa';
   const isSpei = data?.payment_rail === 'spei';
+  const isPix = data?.payment_rail === 'pix';
 
   const getAccountNumber = () => {
     if (isSepa) return data?.iban;
     if (isSpei) return data?.clabe;
+    if (isPix) return data?.br_code;
     return data?.bank_account_number;
   };
 
   const getAccountLabel = () => {
     if (isSepa) return 'IBAN';
     if (isSpei) return 'CLABE';
+    if (isPix) return 'Deposit code';
     return 'Account number';
   };
 
   const accountNumber = getAccountNumber();
   const routingCode = isSepa ? data?.bic : data?.bank_routing_number;
   const beneficiaryName =
-    isSepa || isSpei ? data?.account_holder_name : data?.bank_beneficiary_name;
+    isSepa || isSpei || isPix ? data?.account_holder_name : data?.bank_beneficiary_name;
 
   return (
     <View className="flex-1 gap-4">
@@ -340,7 +358,22 @@ const BankTransferPreviewModal = () => {
           withDivider
         />
         <Row label="Bank Name" value={data?.bank_name ?? ''} withDivider />
-        <Row label={getAccountLabel()} value={accountNumber ?? ''} withDivider />
+
+        {isPix && data?.qr_code && (
+          <Row label="QR Code" withDivider>
+            <View className="h-32 w-32 items-center justify-center overflow-hidden rounded-lg bg-white p-1">
+              <Image
+                source={{ uri: `data:image/png;base64,${data.qr_code}` }}
+                className="h-full w-full"
+                resizeMode="contain"
+              />
+            </View>
+          </Row>
+        )}
+
+        {accountNumber && (
+          <Row label={getAccountLabel()} value={accountNumber ?? ''} withDivider copyable={isPix} />
+        )}
         {routingCode && (
           <Row label={isSepa ? 'BIC' : 'Routing / SWIFT / BIC'} value={routingCode} withDivider />
         )}
