@@ -8,6 +8,7 @@ import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { RewardsTier, TierBenefit, TierBenefits } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 export interface RewardTableRow {
   label: string;
@@ -64,11 +65,18 @@ const RewardTable = ({
           <View>
             {/* Header row */}
             <View style={{ minHeight: rowMinHeight }} className="flex-row">
-              <View style={{ width: labelColumnWidth }} className="justify-center bg-card/50 p-4">
+              <View
+                style={{ width: labelColumnWidth }}
+                className="justify-center bg-card/50 p-4 pl-0"
+              >
                 {headerLabel && <Text className="font-semibold">{headerLabel}</Text>}
               </View>
-              {sortedTiers.map(tier => (
-                <View key={tier.tier} style={{ width: dataColumnWidth }} className="p-4">
+              {sortedTiers.map((tier, tierIndex) => (
+                <View
+                  key={tier.tier}
+                  style={{ width: dataColumnWidth }}
+                  className={cn('p-4', tierIndex === sortedTiers.length - 1 && 'pr-0')}
+                >
                   <View className="gap-1">
                     <View className="flex-row items-center gap-2">
                       <Text className="text-2xl font-semibold text-rewards">
@@ -95,7 +103,7 @@ const RewardTable = ({
             {/* Body rows */}
             {rows.map((row, rowIndex) => (
               <View key={rowIndex} style={{ minHeight: rowMinHeight }} className="flex-row">
-                <View style={{ width: labelColumnWidth }} className="p-4">
+                <View style={{ width: labelColumnWidth }} className="p-4 pl-0">
                   <Text className="text-base font-semibold leading-5">{row.label}</Text>
                   {row.subtitle && !row.isSubtitleHidden && (
                     <Text className="text-xs opacity-70">{row.subtitle}</Text>
@@ -103,7 +111,11 @@ const RewardTable = ({
                   {row.isComingSoon && <RewardComingSoon />}
                 </View>
                 {row.values.map((value, colIndex) => (
-                  <View key={colIndex} style={{ width: dataColumnWidth }} className="p-4">
+                  <View
+                    key={colIndex}
+                    style={{ width: dataColumnWidth }}
+                    className={cn('p-4', colIndex === row.values.length - 1 && 'pr-0')}
+                  >
                     {value ? (
                       <View className="gap-1">
                         {value.image && (
