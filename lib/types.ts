@@ -757,6 +757,11 @@ export interface SourceDepositInstructions {
 
   // SPEI fields
   clabe?: string;
+
+  // PIX fields
+  qr_code?: string;
+  br_code?: string;
+  expires_at?: string;
 }
 
 export enum TokenType {
