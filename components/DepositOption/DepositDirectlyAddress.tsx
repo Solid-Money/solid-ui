@@ -169,7 +169,12 @@ const DepositDirectlyAddress = () => {
     }
   }, [walletAddress, chainId, selectedToken, directDepositSession.sessionId]);
 
-  const estimatedTime = chainId === 1 ? '5 minutes' : '30 minutes';
+  const estimatedTime =
+    chainId === 1
+      ? '5 minutes'
+      : chainId === 122 && (selectedToken === 'WFUSE' || selectedToken === 'soFUSE')
+        ? '2 minutes'
+        : '30 minutes';
   const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
 
   const minDeposit =

@@ -118,11 +118,11 @@ const DepositDirectlyNetworks = () => {
             const isSelected = selectedChainId === chainId;
             const isComingSoon = network.isComingSoon;
 
-            // Get estimated time based on chain
+            // Get estimated time: 5 min for Ethereum; 2 min for soFUSE on Fuse; else 30 min
             let estimatedTime = 'Estimated speed: 30 min';
-            if (chainId === 1) {
-              estimatedTime = 'Estimated speed: 5 min';
-            }
+            if (chainId === 1) estimatedTime = 'Estimated speed: 5 min';
+            else if (chainId === 122 && vault.vaultToken === 'soFUSE')
+              estimatedTime = 'Estimated speed: 2 min';
 
             return (
               <DepositNetwork
