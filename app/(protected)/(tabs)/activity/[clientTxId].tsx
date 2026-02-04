@@ -312,20 +312,28 @@ export default function ActivityDetail() {
     isActivitiesLoading || isBackendLoading || isCardTransactionLoading || isBackendQueryPending;
 
   const isDeposit = finalActivity?.type === TransactionType.DEPOSIT;
-  const isEthereum = finalActivity?.chainId === mainnet.id;
+  const chainId = finalActivity?.chainId;
+  const isEthereum = chainId === mainnet.id;
+  const isSoFuseOnFuse =
+    chainId === 122 && (finalActivity?.symbol === 'WFUSE' || finalActivity?.symbol === 'soFUSE');
 
   const createdAt = useMemo(
     () => (finalActivity?.timestamp ? new Date(Number(finalActivity.timestamp) * 1000) : null),
     [finalActivity?.timestamp],
   );
 
+  const estimatedDurationSeconds = useMemo(() => {
+    if (isEthereum) return minutesToSeconds(5);
+    if (isSoFuseOnFuse) return minutesToSeconds(2);
+    return minutesToSeconds(20);
+  }, [isEthereum, isSoFuseOnFuse]);
+
   useEffect(() => {
     if (!finalActivity || !isDeposit || !createdAt) return;
 
-    const estimatedDuration = isEthereum ? minutesToSeconds(5) : minutesToSeconds(20);
     const elapsedSeconds = Math.floor((Date.now() - createdAt.getTime()) / 1000);
-    setCurrentTime(Math.max(0, estimatedDuration - elapsedSeconds));
-  }, [finalActivity, isDeposit, isEthereum, createdAt]);
+    setCurrentTime(Math.max(0, estimatedDurationSeconds - elapsedSeconds));
+  }, [finalActivity, isDeposit, createdAt, estimatedDurationSeconds]);
 
   const transactionDetails = finalActivity ? TRANSACTION_DETAILS[finalActivity.type] : null;
 

@@ -177,6 +177,8 @@ const useDepositOption = ({
     if (isTransactionStatus) {
       return (
         <TransactionStatus
+          title="Deposit initiated"
+          description="Your deposit is being processed. This may take a few minutes."
           amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
           icon={getTokenIcon({ tokenSymbol: outputToken })}

@@ -56,12 +56,15 @@ const DepositNetworks = () => {
       vault: vault.name,
     });
 
+    const estimatedTime =
+      id === 1 ? '5 min' : id === 122 && vault.vaultToken === 'soFUSE' ? '2 min' : '20 min';
+
     // Track wallet network selection specifically
     track(TRACKING_EVENTS.DEPOSIT_WALLET_NETWORK_SELECTED, {
       deposit_method: 'wallet',
       chain_id: id,
       network_name: network?.name,
-      estimated_time: id === 1 ? '5 min' : '20 min',
+      estimated_time: estimatedTime,
       vault: vault.name,
     });
 
@@ -80,14 +83,20 @@ const DepositNetworks = () => {
           .filter(([id]) => supportedChains.includes(Number(id)))
           .filter(([id]) => getAllowedTokensForChain(Number(id), vault).length > 0)
           .map(([id, network]) => {
-            const isEthereum = Number(id) === 1;
+            const chainId = Number(id);
             const isComingSoon = network.isComingSoon;
+            const estimatedDesc =
+              chainId === 1
+                ? 'Estimated speed: 5 min'
+                : chainId === 122 && vault.vaultToken === 'soFUSE'
+                  ? 'Estimated speed: 2 min'
+                  : 'Estimated speed: 20 min';
 
             return (
               <DepositNetwork
                 key={network.name}
                 name={network.name}
-                description={isEthereum ? 'Estimated speed: 5 min' : 'Estimated speed: 20 min'}
+                description={estimatedDesc}
                 icon={network.icon}
                 isComingSoon={isComingSoon}
                 onPress={() => handlePress(Number(id))}
