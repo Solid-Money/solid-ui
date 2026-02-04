@@ -19,7 +19,6 @@ import {
   checkAndBlockForCountryAccess,
   redirectToCollectUserInfo,
   redirectToExistingCustomerKycLink,
-  redirectToExistingKycLink,
   showAccountOffboardedToast,
   showKycUnderReviewToast,
 } from './kycFlowHelpers';
@@ -183,13 +182,12 @@ export function useCardSteps(
       track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, { action: 'status_check_failed', kycLinkId });
     }
 
-    // Try existing KYC link or fall back to user info collection
-    if (kycLink?.kyc_link && redirectToExistingKycLink(router, kycLink.kyc_link, kycLinkId)) return;
+    // Try to get a fresh KYC URL with redirect_uri, or fall back to user info collection
+    if (await redirectToExistingCustomerKycLink(router, kycLinkId)) return;
     redirectToCollectUserInfo(router);
   }, [
     router,
     kycLinkId,
-    kycLink?.kyc_link,
     uiKycStatus,
     processingUntil,
     countryStore,

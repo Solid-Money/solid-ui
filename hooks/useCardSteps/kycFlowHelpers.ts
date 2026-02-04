@@ -1,3 +1,6 @@
+import Toast from 'react-native-toast-message';
+import { Router } from 'expo-router';
+
 import { Endorsements } from '@/components/BankTransfer/enums';
 import { KycMode } from '@/components/UserKyc';
 import { path } from '@/constants/path';
@@ -7,8 +10,6 @@ import { getKycLinkForExistingCustomer } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { checkCountryAccessForKyc, startKycFlow } from '@/lib/utils/kyc';
-import { Router } from 'expo-router';
-import Toast from 'react-native-toast-message';
 
 /**
  * Build the redirect URI for KYC completion
@@ -147,38 +148,6 @@ export async function redirectToExistingCustomerKycLink(
       action: 'existing_customer_link_failed',
       kycLinkId,
     });
-    return false;
-  }
-}
-
-/**
- * Redirect using an existing KYC link
- * @returns true if redirect succeeded
- */
-export function redirectToExistingKycLink(
-  router: Router,
-  kycLink: string,
-  kycLinkId: string | null,
-): boolean {
-  const redirectUri = buildKycRedirectUri();
-
-  try {
-    const urlObj = new URL(kycLink);
-
-    if (!urlObj.searchParams.has('redirect-uri') && !urlObj.searchParams.has('redirect_uri')) {
-      urlObj.searchParams.set('redirect-uri', redirectUri);
-    }
-
-    track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-      action: 'redirect',
-      method: 'existing_link',
-      kycLinkId,
-      kycUrl: urlObj.toString(),
-    });
-
-    startKycFlow({ router, kycLink: urlObj.toString() });
-    return true;
-  } catch {
     return false;
   }
 }
