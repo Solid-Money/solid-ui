@@ -317,8 +317,7 @@ export default function ActivityDetail() {
   const symbolLower = finalActivity?.symbol?.toLowerCase();
   const metaInput = finalActivity?.metadata?.inputToken?.toLowerCase();
   const metaOutput = finalActivity?.metadata?.outputToken?.toLowerCase();
-  const isFuseWfuseOrSofuse = (s?: string) =>
-    s === 'wfuse' || s === 'sofuse';
+  const isFuseWfuseOrSofuse = (s?: string) => s === 'wfuse' || s === 'sofuse';
   const isFuseChain = Number(chainId) === 122;
   const isSoFuseOnFuse =
     isFuseChain &&
