@@ -61,7 +61,7 @@ const QRScannerPermission: React.FC<QRScannerPermissionProps> = ({
       {/* Permission content */}
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Camera size={64} color="#94F27F" strokeWidth={1.5} />
+          <Camera size={64} color="#94F27F" strokeWidth={1} />
         </View>
 
         <Text className="mb-4 text-center text-2xl font-bold text-white">
