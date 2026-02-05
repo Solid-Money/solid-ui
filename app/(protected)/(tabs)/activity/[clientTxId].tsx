@@ -314,8 +314,17 @@ export default function ActivityDetail() {
   const isDeposit = finalActivity?.type === TransactionType.DEPOSIT;
   const chainId = finalActivity?.chainId;
   const isEthereum = chainId === mainnet.id;
+  const symbolLower = finalActivity?.symbol?.toLowerCase();
+  const metaInput = finalActivity?.metadata?.inputToken?.toLowerCase();
+  const metaOutput = finalActivity?.metadata?.outputToken?.toLowerCase();
+  const isFuseWfuseOrSofuse = (s?: string) =>
+    s === 'wfuse' || s === 'sofuse';
+  const isFuseChain = Number(chainId) === 122;
   const isSoFuseOnFuse =
-    chainId === 122 && (finalActivity?.symbol === 'WFUSE' || finalActivity?.symbol === 'soFUSE');
+    isFuseChain &&
+    (isFuseWfuseOrSofuse(symbolLower) ||
+      isFuseWfuseOrSofuse(metaInput) ||
+      isFuseWfuseOrSofuse(metaOutput));
 
   const createdAt = useMemo(
     () => (finalActivity?.timestamp ? new Date(Number(finalActivity.timestamp) * 1000) : null),
