@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { Address } from 'viem';
 
@@ -15,17 +15,15 @@ import DesktopCards from '@/components/Wallet/DesktopCards';
 import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
 import MobileCards from '@/components/Wallet/MobileCards';
 import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
-import { useAPYs, useLatestTokenTransfer, useUserTransactions } from '@/hooks/useAnalytics';
+import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
-import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
-import { useCalculateSavings } from '@/hooks/useFinancial';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
+import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { ADDRESSES } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { fontSize, hasCard } from '@/lib/utils';
@@ -48,21 +46,6 @@ export default function Home() {
 
   const userHasCard = hasCard(cardStatus);
 
-  // Controlled timestamp state - updates every 30 seconds instead of every render
-  const [currentTime, setCurrentTime] = useState(() => Math.floor(Date.now() / 1000));
-
-  // Only update currentTime when there's a balance to calculate yield on
-  useEffect(() => {
-    // Skip interval when no balance - yield calculation would return 0 anyway
-    if (!balance || balance <= 0) return;
-
-    const interval = setInterval(() => {
-      setCurrentTime(Math.floor(Date.now() / 1000));
-    }, 30000); // Update every 30 seconds
-    return () => clearInterval(interval);
-  }, [balance]);
-
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
   const {
     isLoading: isLoadingTokens,
     hasTokens,
@@ -72,10 +55,6 @@ export default function Home() {
     retry: retryTokens,
     refresh: refreshTokens,
   } = useWalletTokens();
-  const { data: lastTimestamp } = useLatestTokenTransfer(
-    user?.safeAddress ?? '',
-    ADDRESSES.fuse.vault,
-  );
 
   // IMPORTANT: Guard to prevent infinite re-render loop
   // ─────────────────────────────────────────────────────────────────────────
@@ -108,21 +87,7 @@ export default function Home() {
     refetch: refetchTransactions,
   } = useUserTransactions(user?.safeAddress);
 
-  const { firstDepositTimestamp } = useDepositCalculations(
-    userDepositTransactions,
-    balance,
-    lastTimestamp,
-  );
-
-  const { savings } = useCalculateSavings(
-    balance ?? 0,
-    apys?.allTime ?? 0,
-    firstDepositTimestamp ?? 0,
-    currentTime,
-    SavingMode.TOTAL_USD,
-    userDepositTransactions,
-    user?.safeAddress,
-  );
+  const { totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
 
   const topThreeTokens = uniqueTokens.slice(0, 3);
   const isDeposited = !!userDepositTransactions?.deposits?.length;
@@ -173,17 +138,16 @@ export default function Home() {
         {isScreenMedium ? (
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
-              <View className="flex-row items-center">
+              <View className="flex-row items-center gap-2">
                 {isLoadingTokens ||
                 isBalanceLoading ||
-                isAPYsLoading ||
-                firstDepositTimestamp === undefined ||
-                savings === undefined ? (
+                isTotalSavingsLoading ||
+                totalSavingsUSD === undefined ? (
                   <Skeleton className="h-[4.5rem] w-56 rounded-xl" />
                 ) : (
                   <CountUp
                     prefix="$"
-                    count={totalUSDExcludingSoUSD + savings + cardBalance}
+                    count={totalUSDExcludingSoUSD + totalSavingsUSD + cardBalance}
                     isTrailingZero={false}
                     decimalPlaces={2}
                     classNames={{
@@ -213,7 +177,7 @@ export default function Home() {
           </View>
         ) : (
           <DashboardHeaderMobile
-            balance={totalUSDExcludingSoUSD + (savings ?? 0) + cardBalance}
+            balance={totalUSDExcludingSoUSD + (totalSavingsUSD ?? 0) + cardBalance}
             mode={SavingMode.BALANCE_ONLY}
           />
         )}
@@ -224,10 +188,6 @@ export default function Home() {
             isLoadingTokens={isLoadingTokens}
             userHasCard={userHasCard}
             cardBalance={cardBalance}
-            balance={balance}
-            isBalanceLoading={isBalanceLoading}
-            firstDepositTimestamp={firstDepositTimestamp}
-            userDepositTransactions={userDepositTransactions}
           />
         ) : (
           <MobileCards
@@ -236,10 +196,6 @@ export default function Home() {
             isLoadingTokens={isLoadingTokens}
             userHasCard={userHasCard}
             cardBalance={cardBalance}
-            balance={balance}
-            isBalanceLoading={isBalanceLoading}
-            firstDepositTimestamp={firstDepositTimestamp}
-            userDepositTransactions={userDepositTransactions}
           />
         )}
 
