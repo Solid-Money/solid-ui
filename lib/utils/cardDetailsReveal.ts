@@ -1,8 +1,14 @@
+import { Platform } from 'react-native';
+
 import { ClientNonceData } from '@/lib/types';
 
 /**
- * Generate client nonce from secret and timestamp
- * This follows the Bridge API specification for secure card details reveal
+ * Generate client nonce from secret and timestamp using HMAC-SHA256.
+ * This follows the Bridge API specification for secure card details reveal.
+ *
+ * Uses platform-appropriate HMAC implementation:
+ * - Native (iOS/Android): react-native-quick-crypto's createHmac (subtle.sign is not implemented)
+ * - Web: Web Crypto API (subtle.sign)
  */
 export const generateClientNonce = async (
   clientSecret: string,
@@ -10,7 +16,22 @@ export const generateClientNonce = async (
 ): Promise<string> => {
   const message = `nonce:${clientTimestamp}`;
 
-  // Convert secret and message to ArrayBuffer
+  // On native platforms, use react-native-quick-crypto's createHmac
+  // because subtle.sign('HMAC', ...) is not implemented in the polyfill
+  if (Platform.OS !== 'web') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const nodeCrypto = require('crypto'); // Aliased to react-native-quick-crypto via metro.config.js
+    const hmac = nodeCrypto.createHmac('sha256', clientSecret);
+    hmac.update(message);
+    const digestBuffer = hmac.digest();
+
+    // Use same base64 encoding approach as web for consistency
+    const bytes = new Uint8Array(digestBuffer);
+    const result = btoa(String.fromCharCode(...bytes));
+    return result;
+  }
+
+  // On web, use the standard Web Crypto API
   const encoder = new TextEncoder();
   const keyData = encoder.encode(clientSecret);
   const messageData = encoder.encode(message);

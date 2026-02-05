@@ -13,15 +13,15 @@ const DepositBuyCryptoOptions = () => {
       {buyCryptoOptions
         .filter(option => !option.method || depositConfig.methods.includes(option.method))
         .map(option => (
-        <DepositOption
-          key={option.text}
-          text={option.text}
-          subtitle={option.subtitle}
-          icon={option.icon}
-          onPress={option.onPress}
-          bannerText={option.bannerText}
-        />
-      ))}
+          <DepositOption
+            key={option.text}
+            text={option.text}
+            subtitle={option.subtitle}
+            icon={option.icon}
+            onPress={option.onPress}
+            bannerText={option.bannerText}
+          />
+        ))}
     </View>
   );
 };
