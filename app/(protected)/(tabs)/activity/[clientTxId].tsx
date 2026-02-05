@@ -162,7 +162,13 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const { data: cashbacks } = useCashbacks();
 
   const txHash = transaction.crypto_transaction_details?.tx_hash;
-  const postedDate = useMemo(() => new Date(transaction.posted_at), [transaction.posted_at]);
+  const isApproved = transaction.status === 'approved';
+  const postedDate = useMemo(() => {
+    const dateStr = isApproved
+      ? transaction.authorized_at || transaction.posted_at
+      : transaction.posted_at || transaction.authorized_at;
+    return dateStr ? new Date(dateStr) : new Date();
+  }, [isApproved, transaction.authorized_at, transaction.posted_at]);
 
   const initials = useMemo(() => getInitials(merchantName), [merchantName]);
   const color = useMemo(() => getColorForTransaction(merchantName), [merchantName]);
@@ -180,7 +186,15 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   const rows = useMemo(() => {
     const allRows = [
       { key: 'from', label: <Label>Sent from</Label>, value: <Value>Card</Value> },
-      { key: 'status', label: <Label>Status</Label>, value: <Value>Confirmed</Value> },
+      {
+        key: 'status',
+        label: <Label>Status</Label>,
+        value: (
+          <Value className={isApproved ? 'text-yellow-500' : ''}>
+            {isApproved ? 'Pending' : 'Confirmed'}
+          </Value>
+        ),
+      },
       {
         key: 'cashback',
         label: (
@@ -212,7 +226,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
 
     return allRows;
-  }, [transaction.id, cashbacks, txHash, handleExplorerPress]);
+  }, [transaction.id, cashbacks, txHash, handleExplorerPress, isApproved]);
 
   const tokenIcon = useMemo(
     () => getTokenIcon({ tokenSymbol: transaction.currency?.toUpperCase(), size: 75 }),
