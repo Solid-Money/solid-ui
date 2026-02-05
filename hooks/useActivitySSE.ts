@@ -104,8 +104,7 @@ class SSEConnectionManager {
         // Connect/disconnect if we have active subscribers OR an active connection
         // (supports subscribe: false where enable() was called directly)
         const hasActiveConnection =
-          this.state.connectionState === 'connected' ||
-          this.state.connectionState === 'connecting';
+          this.state.connectionState === 'connected' || this.state.connectionState === 'connecting';
         if (this.subscribers.size > 0 || hasActiveConnection) {
           if (newUserId) {
             this.connect();
@@ -687,7 +686,11 @@ class SSEConnectionManager {
                 } else if ('event' in rawData && 'activity' in rawData) {
                   // Old activity format: { event: ..., activity: ..., timestamp: ... }
                   this.handleActivityEvent(rawData as SSEActivityData);
-                } else if ('event' in rawData && rawData.event === 'balance_update' && 'balance' in rawData) {
+                } else if (
+                  'event' in rawData &&
+                  rawData.event === 'balance_update' &&
+                  'balance' in rawData
+                ) {
                   // Old balance_update format: { event: 'balance_update', balance: {...}, ... }
                   this.handleBalanceUpdateEvent(rawData as SSEBalanceUpdateData);
                 } else {

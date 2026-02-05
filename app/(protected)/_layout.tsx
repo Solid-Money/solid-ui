@@ -13,12 +13,12 @@ import {
 } from '@/components/BankTransfer/enums';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { apysQueryOptions } from '@/hooks/useAnalytics';
 import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
 import { detectPasskeySupported } from '@/hooks/usePasskey';
 import { usePostSignupInit } from '@/hooks/usePostSignupInit';
 import useUser from '@/hooks/useUser';
-import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { useWebhookStatus } from '@/hooks/useWebhookStatus';
 import FuseVault from '@/lib/abis/FuseVault';
 import { trackIdentity } from '@/lib/analytics';

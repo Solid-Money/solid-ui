@@ -80,7 +80,7 @@ const WhatsNewModal = ({ whatsNew, isOpen, onClose }: WhatsNewModalProps) => {
                 <Button
                   onPress={handleBack}
                   variant="secondary"
-                  className="h-10 rounded-[12px] border-none bg-white/10 px-4 active:bg-white/20 web:hover:bg-white/20"
+                  className="h-10 rounded-[12px] border-0 bg-white/10 px-4 active:bg-white/20 web:hover:bg-white/20"
                 >
                   <Text className="text-base font-bold text-white/50">Back</Text>
                 </Button>

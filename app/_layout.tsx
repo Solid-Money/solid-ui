@@ -7,7 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Font from 'expo-font';
 import * as Notifications from 'expo-notifications';
-import { router, Stack, useGlobalSearchParams, usePathname } from 'expo-router';
+import { Stack, useGlobalSearchParams, usePathname } from 'expo-router';
 import Head from 'expo-router/head';
 import * as SplashScreen from 'expo-splash-screen';
 import { ApolloProvider } from '@apollo/client/react';
@@ -27,7 +27,6 @@ import { PortalHost } from '@rn-primitives/portal';
 import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injectSpeedInsights } from '@vercel/speed-insights';
-import { ChevronLeft } from 'lucide-react-native';
 import { WagmiProvider } from 'wagmi';
 
 import DeferredModalProviders from '@/components/DeferredModalProviders';
@@ -38,7 +37,6 @@ import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
 import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
-import { Button } from '@/components/ui/button';
 import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
@@ -313,27 +311,8 @@ export default Sentry.wrap(function RootLayout() {
                           <Stack.Screen
                             name="notifications"
                             options={{
+                              headerShown: false,
                               animation: 'none',
-                              title: 'Turn on notifications',
-                              headerStyle: {
-                                backgroundColor: '#000',
-                              },
-                              headerTintColor: '#fff',
-                              headerTitleStyle: {
-                                fontSize: 20,
-                                fontWeight: 'bold',
-                              },
-                              headerLeft: () => (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onPress={() => router.back()}
-                                  className="mr-4"
-                                >
-                                  <ChevronLeft size={28} color="white" />
-                                </Button>
-                              ),
-                              headerTitleAlign: 'center',
                             }}
                           />
                           <Stack.Screen

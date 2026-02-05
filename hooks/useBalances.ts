@@ -408,7 +408,7 @@ export const useBalances = (): BalanceData => {
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
     // SSE handles real-time updates; polling is fallback for missed events or SSE failure
-    refetchInterval: (query) => {
+    refetchInterval: query => {
       const hasBalance = query.state.data?.tokens?.some(t => Number(t.balance) > 0);
       // 5-minute interval when balance exists; 10-minute fallback when no balance
       // (ensures new deposits are detected even if SSE is down)

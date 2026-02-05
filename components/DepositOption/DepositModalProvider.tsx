@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import { VAULTS } from '@/constants/vaults';
 import useDepositOption from '@/hooks/useDepositOption';
 import { useDepositStore } from '@/store/useDepositStore';

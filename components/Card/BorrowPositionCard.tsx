@@ -236,7 +236,7 @@ export function BorrowPositionCard({
       </View>
 
       {/* Divider */}
-      <View className="mb-5 h-px w-full bg-white/10" />
+      <View className="-mx-6 mb-5 h-px bg-white/10" />
 
       {/* Breakdown Trigger */}
       <View className="mb-6 items-center">
@@ -264,7 +264,7 @@ export function BorrowPositionCard({
               <View className="flex-row items-center gap-2">
                 <Image
                   source={getAsset('images/repay.png')}
-                  style={{ width: 18, height: 18 }}
+                  style={{ width: 12, height: 12 }}
                   contentFit="contain"
                 />
                 <Text className="text-base font-bold text-white">Repay</Text>

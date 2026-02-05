@@ -424,7 +424,7 @@ function SubmitButton({ disabled, bridgeStatus, swapAndBridgeStatus, onPress }: 
       {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
         <ActivityIndicator color="black" />
       ) : (
-        <Text className="text-base font-bold text-black">Deposit to Card</Text>
+        <Text className="native:text-lg text-base font-bold text-black">Deposit to Card</Text>
       )}
     </Button>
   );
@@ -441,7 +441,7 @@ function BorrowAndDepositButton({
       {bridgeStatus === Status.PENDING || swapAndBridgeStatus === Status.PENDING ? (
         <ActivityIndicator color="black" />
       ) : (
-        <Text className="text-base font-bold text-black">Deposit</Text>
+        <Text className="native:text-lg text-base font-bold text-black">Deposit</Text>
       )}
     </Button>
   );
@@ -1036,43 +1036,46 @@ export default function CardDepositInternalForm() {
       {watchedFrom === CardDepositSource.BORROW && (
         <TokenDetails className="mt-3">
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <Text className="text-base text-muted-foreground">Borrow rate</Text>
+            <Text className="native:text-lg text-base text-muted-foreground">Borrow rate</Text>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               {isBorrowAPYLoading ? (
                 <Skeleton className="h-5 w-16 rounded-md" />
               ) : (
-                <Text className="text-base font-semibold">{formatNumber(borrowAPY, 2)}%</Text>
+                <Text className="native:text-lg text-base font-semibold">
+                  {formatNumber(borrowAPY, 2)}%
+                </Text>
               )}
             </View>
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <View className="flex-row items-center gap-2">
-              <Text className="text-base text-muted-foreground">Collateral Required</Text>
+              <Text className="native:text-lg text-base text-muted-foreground">
+                Collateral Required
+              </Text>
             </View>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               {isRateLoading || !watchedAmount ? (
                 <Skeleton className="h-5 w-20 rounded-md" />
               ) : (
-                <Text className="text-base font-semibold">
+                <Text className="native:text-lg text-base font-semibold">
                   {formatNumber(collateralRequired)} soUSD
                 </Text>
               )}
             </View>
           </View>
           <View className="px-5 py-6 md:p-5">
-            <Text className="text-sm leading-5 text-muted-foreground">
+            <Text className="native:text-base text-sm text-muted-foreground">
               Use your soUSD as collateral to borrow USDC and spend while earning yield.{' '}
-              <Pressable
+              <Text
                 onPress={() => {
                   Linking.openURL(
                     'https://support.solid.xyz/en/articles/13545322-borrow-against-your-savings',
                   );
                 }}
+                className="text-base font-medium leading-5 text-[#94F27F] web:hover:opacity-70"
               >
-                <Text className="text-sm font-medium leading-5 text-[#94F27F] web:hover:opacity-70">
-                  Learn more.
-                </Text>
-              </Pressable>
+                Learn more.
+              </Text>
             </Text>
           </View>
         </TokenDetails>

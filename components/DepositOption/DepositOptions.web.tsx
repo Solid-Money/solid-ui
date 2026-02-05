@@ -4,8 +4,8 @@ import { View } from 'react-native';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
 import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import useUser from '@/hooks/useUser';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
 import { DepositMethod } from '@/lib/types';
 
@@ -44,19 +44,23 @@ const DepositOptions = () => {
   return (
     <View className="gap-y-2.5">
       {depositOptions
-        .filter(option => (option.isEnabled ?? true) && (!option.method || depositConfig.methods.includes(option.method)))
+        .filter(
+          option =>
+            (option.isEnabled ?? true) &&
+            (!option.method || depositConfig.methods.includes(option.method)),
+        )
         .map(option => (
-        <DepositOption
-          key={option.text}
-          text={option.text}
-          subtitle={option.subtitle}
-          icon={option.icon}
-          onPress={option.onPress}
-          isLoading={option.isLoading}
-          bannerText={option.bannerText}
-          chipText={option.chipText}
-        />
-      ))}
+          <DepositOption
+            key={option.text}
+            text={option.text}
+            subtitle={option.subtitle}
+            icon={option.icon}
+            onPress={option.onPress}
+            isLoading={option.isLoading}
+            bannerText={option.bannerText}
+            chipText={option.chipText}
+          />
+        ))}
     </View>
   );
 };

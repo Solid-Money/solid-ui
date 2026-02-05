@@ -186,7 +186,6 @@ function DepositToVaultForm() {
   const {
     amountOut: previewAmountOut,
     isLoading: isPreviewDepositLoading,
-    exchangeRate: previewExchangeRate,
     routingFee,
   } = usePreviewDeposit(watchedAmount || '0', selectedTokenInfo?.address, srcChainId);
 
