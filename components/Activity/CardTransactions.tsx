@@ -60,11 +60,18 @@ export default function CardTransactions() {
   const mergedItems = useMemo(() => {
     const cardItems: CardTransactionWithTimestamp[] = transactions
       .filter(tx => tx.category !== CardTransactionCategory.CRYPTO_WITHDRAWAL)
-      .map(tx => ({
-        ...tx,
-        timestamp: new Date(tx.posted_at).getTime() / 1000,
-        source: 'card' as const,
-      }));
+      .map(tx => {
+        const dateStr =
+          tx.status === 'approved'
+            ? tx.authorized_at || tx.posted_at
+            : tx.posted_at || tx.authorized_at;
+        const timestamp = dateStr ? new Date(dateStr).getTime() / 1000 : Date.now() / 1000;
+        return {
+          ...tx,
+          timestamp,
+          source: 'card' as const,
+        };
+      });
     const all: CardListItem[] = [...cardItems, ...cardWithdrawals];
     all.sort((a, b) => b.timestamp - a.timestamp);
     return all;
