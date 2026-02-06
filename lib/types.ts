@@ -725,6 +725,8 @@ export interface Cashback {
   status: CashbackStatus;
   fuseAmount?: string;
   fuseUsdPrice?: string;
+  fiatAmount?: string;
+  fiatCurrency?: string;
   createdAt: string;
 }
 
