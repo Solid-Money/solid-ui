@@ -201,7 +201,7 @@ export default function CardTransactions() {
           <Text className="text-xl font-semibold text-white">
             {formatCardAmount(transaction.amount)}
           </Text>
-          {cashbackInfo && (
+          {cashbackInfo && cashbackInfo.amount !== 'Pending' && (
             <Text className="mt-0.5 text-sm font-medium text-[#34C759]">{cashbackInfo.amount}</Text>
           )}
         </View>

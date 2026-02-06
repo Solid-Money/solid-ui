@@ -183,6 +183,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     if (txHash) Linking.openURL(`https://arbiscan.io/tx/${txHash}`);
   }, [txHash]);
 
+  const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
+
   const rows = useMemo(() => {
     const allRows = [
       { key: 'from', label: <Label>Sent from</Label>, value: <Value>Card</Value> },
@@ -195,7 +197,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </Value>
         ),
       },
-      {
+      cashbackInfo && {
         key: 'cashback',
         label: (
           <View className="flex-row items-center gap-1.5">
@@ -204,8 +206,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           </View>
         ),
         value: (
-          <Value className="text-[#34C759]">
-            {getCashbackAmount(transaction.id, cashbacks)?.amount}
+          <Value
+            className={cashbackInfo.amount === 'Pending' ? 'text-yellow-500' : 'text-[#34C759]'}
+          >
+            {cashbackInfo.isPending && cashbackInfo.amount !== 'Pending'
+              ? `${cashbackInfo.amount} (Pending)`
+              : cashbackInfo.amount}
           </Value>
         ),
       },
@@ -226,7 +232,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
     ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
 
     return allRows;
-  }, [transaction.id, cashbacks, txHash, handleExplorerPress, isApproved]);
+  }, [cashbackInfo, txHash, handleExplorerPress, isApproved]);
 
   const tokenIcon = useMemo(
     () => getTokenIcon({ tokenSymbol: transaction.currency?.toUpperCase(), size: 75 }),

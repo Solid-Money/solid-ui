@@ -92,7 +92,7 @@ export const getCashbackAmount = (
 
   const cashback = cashbacks.find(cb => cb.transactionId === transactionId);
 
-  if (!cashback || !cashback.fuseAmount) {
+  if (!cashback) {
     return null;
   }
 
@@ -101,7 +101,19 @@ export const getCashbackAmount = (
     return null;
   }
 
-  const amount = parseFloat(cashback.fuseAmount);
+  const isPending = PENDING_CASHBACK_STATUSES.includes(cashback.status);
+
+  // For pending cashbacks without fuseAmount yet, show pending indicator without amount
+  if (!cashback.fuseAmount) {
+    return {
+      amount: 'Pending',
+      isPending: true,
+    };
+  }
+
+  const fuseAmountAsNum = parseFloat(cashback.fuseAmount);
+  const fuseUsdPriceAsNum = parseFloat(cashback.fuseUsdPrice || '0');
+  const amount = fuseAmountAsNum * fuseUsdPriceAsNum;
 
   if (isNaN(amount) || amount <= 0) {
     return null;
@@ -109,6 +121,6 @@ export const getCashbackAmount = (
 
   return {
     amount: `+$${amount.toFixed(2)}`,
-    isPending: PENDING_CASHBACK_STATUSES.includes(cashback.status),
+    isPending,
   };
 };
