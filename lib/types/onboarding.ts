@@ -48,7 +48,7 @@ export const ONBOARDING_DATA: OnboardingPageData[] = [
   {
     id: '1',
     title: 'Grow your savings',
-    subtitle: 'Earn 10%+ yield on\nyour stablecoins',
+    subtitle: 'Earn 6%+ yield on\nyour stablecoins',
     animation: require('@/assets/animations/rocket.json'),
   },
   {
