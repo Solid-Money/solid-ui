@@ -9,6 +9,8 @@ import { track } from '@/lib/analytics';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
+import useUser from '@/hooks/useUser';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { useDimension } from './useDimension';
 
 import HomeQR from '@/assets/images/home-qr';
@@ -17,7 +19,10 @@ const useDepositExternalWalletOptions = () => {
   const activeAccount = useActiveAccount();
   const { connect } = useConnectModal();
   const setModal = useDepositStore(state => state.setModal);
+  const setDepositFromSolid = useDepositStore(state => state.setDepositFromSolid);
   const { isScreenMedium } = useDimension();
+  const { user } = useUser();
+  const { vault } = useVaultDepositConfig();
   const address = activeAccount?.address;
 
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -74,8 +79,17 @@ const useDepositExternalWalletOptions = () => {
     }
   }, [isWalletOpen, connect, address, setModal]);
 
-  const externalWalletOptions = useMemo(
-    () => [
+  const handleSolidWallet = useCallback(() => {
+    track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
+      deposit_method: 'wallet',
+      deposit_type: 'solid_wallet',
+    });
+    setDepositFromSolid(true);
+    setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
+  }, [setDepositFromSolid, setModal]);
+
+  const externalWalletOptions = useMemo(() => {
+    const base = [
       {
         text: 'Send from your crypto wallet',
         subtitle: 'Add supported assets from supported\nnetworks directly to your account',
@@ -92,9 +106,31 @@ const useDepositExternalWalletOptions = () => {
         onPress: handleDepositDirectly,
         method: 'deposit_directly' as DepositMethod,
       },
-    ],
-    [openWallet, isWalletOpen, isScreenMedium, handleDepositDirectly],
-  );
+    ];
+    if (vault?.name === 'FUSE') {
+      return [
+        {
+          text: 'Send from your Solid wallet',
+          subtitle: 'Use supported assets from your\nSolid account on Fuse',
+          icon: <Wallet color="white" size={24} strokeWidth={1} />,
+          onPress: handleSolidWallet,
+          isLoading: false,
+          isEnabled: !!user?.safeAddress,
+          method: 'wallet' as DepositMethod,
+        },
+        ...base,
+      ];
+    }
+    return base;
+  }, [
+    openWallet,
+    isWalletOpen,
+    isScreenMedium,
+    handleDepositDirectly,
+    handleSolidWallet,
+    vault?.name,
+    user?.safeAddress,
+  ]);
 
   return { externalWalletOptions };
 };
