@@ -21,6 +21,7 @@ import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import { isStablecoinSymbol } from '@/constants/stablecoins';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
@@ -38,6 +39,18 @@ import { Status } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
+
+function getGaslessText(
+  minAmount: string,
+  tokenSymbol: string | undefined,
+  isSponsor: boolean,
+): string {
+  if (isSponsor) return 'Gasless deposit';
+  const amountLabel = isStablecoinSymbol(tokenSymbol)
+    ? `$${minAmount}`
+    : `${minAmount} ${tokenSymbol ?? 'token'}`;
+  return `Gasless deposit - Please deposit above ${amountLabel} so we can cover your fees`;
+}
 
 function DepositToVaultForm() {
   const { setModal, setTransaction, srcChainId, outputToken, depositFromSolid } = useDepositStore(
@@ -307,9 +320,7 @@ function DepositToVaultForm() {
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground">
-            {useSolidForFuse ? '' : 'From wallet'}
-          </Text>
+          <Text className="text-muted-foreground">{useSolidForFuse ? '' : 'From wallet'}</Text>
           {!useSolidForFuse && <ConnectedWalletDropdown />}
         </View>
         <View className="gap-2">
@@ -436,10 +447,11 @@ function DepositToVaultForm() {
           <View className="align-items: start flex-row items-center gap-2">
             <Fuel color="#A1A1A1" size={16} className="mt-1" />
             <Text className="max-w-xs text-base text-muted-foreground">
-              Gasless deposit
-              {isSponsor
-                ? ''
-                : ` - Please deposit above $${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} so we can cover your fees`}
+              {getGaslessText(
+                EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+                selectedTokenInfo?.name,
+                isSponsor,
+              )}
             </Text>
           </View>
         </View>
