@@ -112,12 +112,13 @@ const useWithdrawOption = ({
 
   const getContent = () => {
     if (isTransactionStatus) {
+      const tokenSymbol = transaction.symbol ?? 'SoUSD';
       return (
         <TransactionStatus
           amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
-          token={'SoUSD'}
-          icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
+          token={tokenSymbol}
+          icon={getTokenIcon({ tokenSymbol })}
         />
       );
     }
