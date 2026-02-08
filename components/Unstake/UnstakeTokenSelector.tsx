@@ -13,6 +13,8 @@ import { TokenBalance } from '@/lib/types';
 import { cn, formatNumber } from '@/lib/utils';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
 
+const SolidTokenSymbols = ['sousd', 'sofuse', 'fusdc'];
+
 const UnstakeTokenSelector: React.FC = () => {
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { selectedToken, setSelectedToken, setModal } = useUnstakeStore(
@@ -27,7 +29,9 @@ const UnstakeTokenSelector: React.FC = () => {
   // Filter for soUSD tokens only (vault tokens)
   const vaultTokens = useMemo(() => {
     const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
-    return allTokens.filter(token => token.contractTickerSymbol?.toLowerCase() === 'sousd');
+    return allTokens.filter(token =>
+      SolidTokenSymbols.includes(token.contractTickerSymbol?.toLowerCase()),
+    );
   }, [ethereumTokens, fuseTokens, baseTokens]);
 
   // Sort tokens by USD value (descending)
