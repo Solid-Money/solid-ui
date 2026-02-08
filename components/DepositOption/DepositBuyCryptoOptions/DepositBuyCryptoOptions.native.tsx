@@ -51,17 +51,16 @@ const DepositBuyCryptoOptions = () => {
 
   return (
     <View className="gap-y-2.5">
-      {buyCryptoOptions
-        .map(option => (
-          <DepositOption
-            key={option.text}
-            text={option.text}
-            subtitle={option.subtitle}
-            icon={option.icon}
-            onPress={option.onPress}
-            isComingSoon={option.isComingSoon}
-          />
-        ))}
+      {buyCryptoOptions.map(option => (
+        <DepositOption
+          key={option.text}
+          text={option.text}
+          subtitle={option.subtitle}
+          icon={option.icon}
+          onPress={option.onPress}
+          isComingSoon={option.isComingSoon}
+        />
+      ))}
     </View>
   );
 };

@@ -13,7 +13,6 @@ import {
 } from '@/components/BankTransfer/enums';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
-import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { apysQueryOptions } from '@/hooks/useAnalytics';
 import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
 import { detectPasskeySupported } from '@/hooks/usePasskey';
