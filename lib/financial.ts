@@ -372,6 +372,10 @@ export const calculateYield = async (
           return Math.max(0, interestEarnedUSD);
         }
 
+        if (mode === SavingMode.TOTAL_USD) {
+          return balanceUSD + amountGained;
+        }
+
         if (mode === SavingMode.TOTAL) {
           // Convert current balance to USD and add interest
           return balanceUSD + interestEarnedUSD;
@@ -419,6 +423,14 @@ export const calculateYield = async (
     const totalReturn = balanceUSD - estimatedOriginalDeposit;
     const totalReturnPercentage = (totalReturn / estimatedOriginalDeposit) * 100;
     return totalReturnPercentage;
+  }
+
+  if (mode === SavingMode.CURRENT) {
+    return Math.max(0, interestEarnedUSD);
+  }
+
+  if (mode === SavingMode.TOTAL_USD) {
+    return balanceUSD + interestEarnedUSD;
   }
 
   return balanceUSD + interestEarnedUSD;
