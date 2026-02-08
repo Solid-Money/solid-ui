@@ -11,6 +11,7 @@ export default {
     userInterfaceStyle: 'automatic',
     owner: 'fuseio',
     ios: {
+      icon: './assets/images/ios-icon.png',
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? './GoogleService-Info.plist',
       supportsTablet: true,
       bundleIdentifier: 'app.solid.xyz',

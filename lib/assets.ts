@@ -38,10 +38,6 @@ export const ASSETS = {
     module: require('@/assets/images/activity-nav-bar-icon.tsx'),
     hash: '53f2f412',
   },
-  'images/adaptive-icon-backup1.png': {
-    module: require('@/assets/images/adaptive-icon-backup1.png'),
-    hash: '9750723d',
-  },
   'images/adaptive-icon-before-resize.png': {
     module: require('@/assets/images/adaptive-icon-before-resize.png'),
     hash: '13aeb9b5',
@@ -279,6 +275,11 @@ export const ASSETS = {
   'images/home-send.tsx': { module: require('@/assets/images/home-send.tsx'), hash: '7a61497d' },
   'images/home-swap.tsx': { module: require('@/assets/images/home-swap.tsx'), hash: '5ea4a65b' },
   'images/info-error.tsx': { module: require('@/assets/images/info-error.tsx'), hash: '75c1c092' },
+  'images/invite-yellow.png': {
+    module: require('@/assets/images/invite-yellow.png'),
+    hash: '0175f2e5',
+  },
+  'images/ios-icon.png': { module: require('@/assets/images/ios-icon.png'), hash: '9750723d' },
   'images/ipor-fusion.png': {
     module: require('@/assets/images/ipor-fusion.png'),
     hash: '5605920f',
@@ -502,11 +503,11 @@ export const ASSETS = {
   },
   'images/star-yellow-core.png': {
     module: require('@/assets/images/star-yellow-core.png'),
-    hash: '45e90e75',
+    hash: '16e1660e',
   },
   'images/star-yellow-prime.png': {
     module: require('@/assets/images/star-yellow-prime.png'),
-    hash: 'e193b004',
+    hash: '93079d16',
   },
   'images/star-yellow-ultra.png': {
     module: require('@/assets/images/star-yellow-ultra.png'),

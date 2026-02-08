@@ -221,10 +221,10 @@ export function BorrowSlider({ value, onValueChange, min, max }: SliderProps) {
           />
         </View>
         <View className="mt-2 w-full flex-row justify-between">
-          <Text className="text-sm text-muted-foreground">
+          <Text className="native:text-base text-sm text-muted-foreground">
             ${formatNumber(min, decimalPlaces, decimalPlaces)}
           </Text>
-          <Text className="text-sm text-muted-foreground">
+          <Text className="native:text-base text-sm text-muted-foreground">
             ${formatNumber(safeMax, decimalPlaces, decimalPlaces)}
           </Text>
         </View>

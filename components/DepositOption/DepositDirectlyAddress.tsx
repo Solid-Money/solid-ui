@@ -349,7 +349,7 @@ const DepositDirectlyAddress = () => {
                     row.valueContent
                   ) : (
                     <Text
-                      className={`font-medium text-foreground ${row.valueClassName ? row.valueClassName : ''}`}
+                      className={`font-medium text-muted-foreground ${row.valueClassName ? row.valueClassName : ''}`}
                     >
                       {row.value}
                     </Text>

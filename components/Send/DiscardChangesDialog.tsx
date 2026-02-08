@@ -40,10 +40,10 @@ const DiscardChangesDialog: React.FC<DiscardChangesDialogProps> = ({
         </DialogDescription>
 
         <DialogFooter className="mt-4 flex-row gap-3">
-          <Button variant="secondary" className="flex-1 rounded-xl" onPress={onCancel}>
+          <Button variant="secondary" className="flex-1 rounded-xl border-0" onPress={onCancel}>
             <Text className="font-semibold">Keep editing</Text>
           </Button>
-          <Button variant="destructive" className="flex-1 rounded-xl" onPress={onDiscard}>
+          <Button variant="destructive" className="flex-1 rounded-xl border-0" onPress={onDiscard}>
             <Text className="font-semibold text-white">Discard</Text>
           </Button>
         </DialogFooter>

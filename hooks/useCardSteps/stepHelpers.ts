@@ -1,3 +1,8 @@
+import { useCallback, useEffect, useState } from 'react';
+import Toast from 'react-native-toast-message';
+import { Router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -7,10 +12,7 @@ import { track } from '@/lib/analytics';
 import { createCard, observeFingerprint } from '@/lib/api';
 import { BridgeCustomerEndorsement, BridgeRejectionReason, CardStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { useQueryClient } from '@tanstack/react-query';
-import { Router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import Toast from 'react-native-toast-message';
+
 import { extractCardActivationErrorMessage } from './cardActivationHelpers';
 import { getStepButtonText, getStepDescription, isStepButtonDisabled } from './kycDisplayHelpers';
 import { Step } from './types';

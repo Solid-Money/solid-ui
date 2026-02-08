@@ -6,10 +6,12 @@ import { getActivityStreamUrl, refreshToken } from '@/lib/api';
 import {
   ActivityEvent,
   SSEActivityData,
+  SSEBalanceUpdateData,
   SSEConnectionState,
   SSEEventData,
   SSEPingData,
 } from '@/lib/types';
+import { queryClient } from '@/app/_layout';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -99,8 +101,11 @@ class SSEConnectionManager {
       // User changed - update connection
       if (newUserId !== this.currentUserId) {
         this.currentUserId = newUserId;
-        // Only connect/disconnect if we have active subscribers
-        if (this.subscribers.size > 0) {
+        // Connect/disconnect if we have active subscribers OR an active connection
+        // (supports subscribe: false where enable() was called directly)
+        const hasActiveConnection =
+          this.state.connectionState === 'connected' || this.state.connectionState === 'connecting';
+        if (this.subscribers.size > 0 || hasActiveConnection) {
           if (newUserId) {
             this.connect();
           } else {
@@ -475,6 +480,55 @@ class SSEConnectionManager {
   }
 
   /**
+   * Handle incoming balance update event
+   * Invalidates balance-related queries to trigger refetch
+   */
+  private handleBalanceUpdateEvent(data: SSEBalanceUpdateData): void {
+    if (!this.currentUserId) return;
+
+    // Validate required fields before processing
+    if (!data || typeof data !== 'object') {
+      console.warn('Received malformed SSE balance update data:', data);
+      Sentry.captureMessage('Received malformed SSE balance update data', {
+        level: 'warning',
+        tags: { type: 'sse_malformed_balance_update' },
+        extra: { data },
+      });
+      return;
+    }
+
+    if (!data.balance || typeof data.balance !== 'object') {
+      console.warn('Received SSE balance update with invalid balance payload:', data);
+      Sentry.captureMessage('Invalid SSE balance update payload', {
+        level: 'warning',
+        tags: { type: 'sse_invalid_balance_update' },
+        extra: { data },
+      });
+      return;
+    }
+
+    try {
+      // Invalidate token balance queries to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
+
+      // Invalidate vault balance queries to trigger refetch
+      // Using partial match to invalidate all vault balance variants
+      queryClient.invalidateQueries({ queryKey: ['vault'] });
+
+      // Log for debugging
+      console.debug(`[SSE] Balance update received: ${data.balance.changeType}`);
+    } catch (err) {
+      Sentry.captureException(err, {
+        tags: { type: 'sse_balance_update_error' },
+        extra: { data, userId: this.currentUserId },
+      });
+    }
+
+    // Update internal state
+    this.setInternalState({ lastEventTime: data.timestamp });
+  }
+
+  /**
    * Connect to SSE stream
    */
   private async connect(): Promise<void> {
@@ -609,6 +663,10 @@ class SSEConnectionManager {
                     this.handleActivityEvent(eventData.data);
                     break;
 
+                  case 'balance_update':
+                    this.handleBalanceUpdateEvent(eventData.data);
+                    break;
+
                   default:
                     console.warn('Unknown SSE event type:', eventData);
                     Sentry.captureMessage('Unknown SSE event type', {
@@ -626,6 +684,13 @@ class SSEConnectionManager {
                 } else if ('event' in rawData && 'activity' in rawData) {
                   // Old activity format: { event: ..., activity: ..., timestamp: ... }
                   this.handleActivityEvent(rawData as SSEActivityData);
+                } else if (
+                  'event' in rawData &&
+                  rawData.event === 'balance_update' &&
+                  'balance' in rawData
+                ) {
+                  // Old balance_update format: { event: 'balance_update', balance: {...}, ... }
+                  this.handleBalanceUpdateEvent(rawData as SSEBalanceUpdateData);
                 } else {
                   console.warn('Unknown SSE event format:', rawData);
                 }

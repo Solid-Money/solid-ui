@@ -35,22 +35,24 @@ const DepositOptions = () => {
     });
   }, [user?.userId, user?.safeAddress, user?.isDeposited]);
 
-  const DEPOSIT_OPTIONS: DepositOptionProps[] = [...externalWalletOptions, ...buyCryptoOptions];
+  const depositOptions: DepositOptionProps[] = [...externalWalletOptions, ...buyCryptoOptions];
 
   return (
     <View className="gap-y-2.5">
-      {DEPOSIT_OPTIONS.filter(option => option.isEnabled ?? true).map(option => (
-        <DepositOption
-          key={option.text}
-          text={option.text}
-          subtitle={option.subtitle}
-          icon={option.icon}
-          onPress={option.onPress}
-          isLoading={option.isLoading}
-          bannerText={option.bannerText}
-          chipText={option.chipText}
-        />
-      ))}
+      {depositOptions
+        .filter(option => option.isEnabled ?? true)
+        .map(option => (
+          <DepositOption
+            key={option.text}
+            text={option.text}
+            subtitle={option.subtitle}
+            icon={option.icon}
+            onPress={option.onPress}
+            isLoading={option.isLoading}
+            bannerText={option.bannerText}
+            chipText={option.chipText}
+          />
+        ))}
     </View>
   );
 };
