@@ -562,6 +562,7 @@ export type TransactionStatusModal = {
   amount?: number;
   address?: Address;
   trackingId?: string;
+  symbol?: string;
 };
 
 export type TokenIcon = {
