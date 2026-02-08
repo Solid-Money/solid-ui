@@ -404,7 +404,7 @@ export const calculateYield = async (
         }
 
         if (mode === SavingMode.TOTAL_USD) {
-          return balanceUSD;
+          return balanceUSD + amountGained;
         }
 
         if (mode === SavingMode.TOTAL) {
@@ -465,7 +465,7 @@ export const calculateYield = async (
   }
 
   if (mode === SavingMode.TOTAL_USD) {
-    return balanceUSD;
+    return balanceUSD + interestEarnedUSD;
   }
 
   return balanceUSD + interestEarnedUSD;
