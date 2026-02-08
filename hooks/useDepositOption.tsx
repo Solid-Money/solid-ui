@@ -65,6 +65,8 @@ const useDepositOption = ({
     setOutputToken,
     setDirectDepositSession,
     resetDepositFlow,
+    depositFromSolid,
+    setDepositFromSolid,
   } = useDepositStore(
     useShallow(state => ({
       currentModal: state.currentModal,
@@ -82,6 +84,8 @@ const useDepositOption = ({
       setOutputToken: state.setOutputToken,
       setDirectDepositSession: state.setDirectDepositSession,
       resetDepositFlow: state.resetDepositFlow,
+      depositFromSolid: state.depositFromSolid,
+      setDepositFromSolid: state.setDepositFromSolid,
     })),
   );
   const activeAccount = useActiveAccount();
@@ -94,7 +98,9 @@ const useDepositOption = ({
   const previousVaultNameRef = useRef<string | null>(null);
 
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
-  const isFormAndAddress = Boolean(isForm && address);
+  const isFormAndAddress = Boolean(
+    isForm && (address || (depositFromSolid && !!user?.safeAddress)),
+  );
   const isBuyCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
   const isTransactionStatus = currentModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
   const isNetworks = currentModal.name === DEPOSIT_MODAL.OPEN_NETWORKS.name;
@@ -433,9 +439,9 @@ const useDepositOption = ({
       // When srcChainId is 0 (unset), keep OPEN_OPTIONS so user picks method then chain
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
-      } else if (address && srcChainId) {
+      } else if ((address || (depositFromSolid && user?.safeAddress)) && srcChainId) {
         setModal(DEPOSIT_MODAL.OPEN_FORM);
-      } else if (!address) {
+      } else {
         setModal(modal);
       }
     } else {
@@ -512,6 +518,7 @@ const useDepositOption = ({
     } else if (isBuyCrypto) {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else if (isNetworks) {
+      setDepositFromSolid(false);
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     } else {
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
@@ -560,6 +567,7 @@ const useDepositOption = ({
   useEffect(() => {
     if (
       status === 'disconnected' &&
+      !depositFromSolid &&
       !isClose &&
       !isDepositDirectly &&
       !isDepositDirectlyAddress &&
@@ -572,6 +580,7 @@ const useDepositOption = ({
   }, [
     status,
     setModal,
+    depositFromSolid,
     isClose,
     isDepositDirectly,
     isDepositDirectlyAddress,

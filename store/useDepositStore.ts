@@ -67,6 +67,8 @@ interface DepositState {
   kyc: KycData;
   directDepositSession: DirectDepositSession;
   sessionStartTime?: number;
+  depositFromSolid: boolean;
+  setDepositFromSolid: (v: boolean) => void;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
@@ -94,6 +96,8 @@ export const useDepositStore = create<DepositState>()(
       kyc: {},
       directDepositSession: {},
       sessionStartTime: undefined,
+      depositFromSolid: false,
+      setDepositFromSolid: (v: boolean) => set({ depositFromSolid: v }),
 
       setModal: modal => {
         const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
@@ -125,6 +129,7 @@ export const useDepositStore = create<DepositState>()(
           kyc: {},
           directDepositSession: {},
           sessionStartTime: undefined,
+          depositFromSolid: false,
         }),
     }),
     {

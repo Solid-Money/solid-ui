@@ -25,6 +25,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
+import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
@@ -39,12 +40,13 @@ import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
 function DepositToVaultForm() {
-  const { setModal, setTransaction, srcChainId, outputToken } = useDepositStore(
+  const { setModal, setTransaction, srcChainId, outputToken, depositFromSolid } = useDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
       setTransaction: state.setTransaction,
       srcChainId: state.srcChainId,
       outputToken: state.outputToken,
+      depositFromSolid: state.depositFromSolid,
     })),
   );
   const { isScreenMedium } = useDimension();
@@ -85,13 +87,33 @@ function DepositToVaultForm() {
     selectedTokenInfo?.name || '',
   );
 
+  const {
+    balance: balanceSolidFuse,
+    deposit: depositSolidFuse,
+    depositStatus: depositStatusSolidFuse,
+    hash: hashSolidFuse,
+    error: errorSolidFuse,
+  } = useDepositFromSolidFuse(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+  );
+
   const isFuseVault = vault.name === 'FUSE';
-  const balanceForVault = isFuseVault ? balanceFuse : balance;
+  const useSolidForFuse = isFuseVault && depositFromSolid;
+  const balanceForVault = isFuseVault
+    ? useSolidForFuse
+      ? balanceSolidFuse
+      : balanceFuse
+    : balance;
   const balanceDecimals = isFuseVault ? 18 : 6;
-  const depositFn = isFuseVault ? depositFuse : deposit;
-  const depositStatusForVault = isFuseVault ? depositStatusFuse : depositStatus;
-  const hashForVault = isFuseVault ? hashFuse : hash;
-  const errorForVault = isFuseVault ? errorFuse : error;
+  const depositFn = isFuseVault ? (useSolidForFuse ? depositSolidFuse : depositFuse) : deposit;
+  const depositStatusForVault = isFuseVault
+    ? useSolidForFuse
+      ? depositStatusSolidFuse
+      : depositStatusFuse
+    : depositStatus;
+  const hashForVault = isFuseVault ? (useSolidForFuse ? hashSolidFuse : hashFuse) : hash;
+  const errorForVault = isFuseVault ? (useSolidForFuse ? errorSolidFuse : errorFuse) : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY } = useMaxAPY();
@@ -285,8 +307,10 @@ function DepositToVaultForm() {
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground">From wallet</Text>
-          <ConnectedWalletDropdown />
+          <Text className="text-muted-foreground">
+            {useSolidForFuse ? '' : 'From wallet'}
+          </Text>
+          {!useSolidForFuse && <ConnectedWalletDropdown />}
         </View>
         <View className="gap-2">
           <Text className="text-muted-foreground">Deposit amount</Text>
