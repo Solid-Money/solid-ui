@@ -91,14 +91,19 @@ const initAmplitude = async (isTrackingAllowed = false) => {
 
     if (Platform.OS !== 'web') {
       // Native: add plugin AFTER init
-      const { SessionReplayPlugin } = await import('@amplitude/plugin-session-replay-react-native');
-      await add(
-        new SessionReplayPlugin({
-          sampleRate,
-          enableRemoteConfig: true,
-          autoStart: true,
-        }),
-      ).promise;
+      try {
+        const { SessionReplayPlugin } =
+          await import('@amplitude/plugin-session-replay-react-native');
+        await add(
+          new SessionReplayPlugin({
+            sampleRate,
+            enableRemoteConfig: true,
+            autoStart: true,
+          }),
+        ).promise;
+      } catch (error) {
+        console.warn('Session Replay init failed (non-critical):', error);
+      }
     }
   } catch (error) {
     console.error('Error initializing Amplitude:', error);

@@ -18,6 +18,7 @@ export default {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'Solid needs camera access to scan QR codes for wallet addresses',
+        NSUserTrackingUsageDescription: 'Solid uses this identifier to deliver personalized content and measure campaign effectiveness. You can change this anytime in Settings.',
       },
       privacyManifests: {
         NSPrivacyTracking: true,
