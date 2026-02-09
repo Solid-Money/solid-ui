@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/react-native';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import { type Address, erc20Abi, parseUnits } from 'viem';
 import { fuse } from 'viem/chains';
-import { useBlockNumber, useChainId, useReadContract } from 'wagmi';
+import { useBalance, useBlockNumber, useChainId, useReadContract } from 'wagmi';
 
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -18,7 +18,11 @@ import {
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { checkAndSetAllowanceToken, getTransactionReceipt } from '@/lib/utils/contract';
+import {
+  checkAndSetAllowanceToken,
+  getTransactionReceipt,
+  sendTransaction,
+} from '@/lib/utils/contract';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -47,6 +51,7 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
   const { createActivity } = useActivity();
 
   const isFuseChain = srcChainId === fuse.id;
+  const isNativeFuse = token === 'FUSE';
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -56,16 +61,26 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
     },
   });
 
-  const { data: balance, refetch: refetchBalance } = useReadContract({
+  const { data: erc20Balance, refetch: refetchErc20Balance } = useReadContract({
     abi: erc20Abi,
     address: tokenAddress,
     functionName: 'balanceOf',
     args: [eoaAddress as Address],
     chainId: fuse.id,
     query: {
-      enabled: !!eoaAddress && isFuseChain,
+      enabled: !!eoaAddress && isFuseChain && !isNativeFuse,
     },
   });
+
+  const { data: nativeBalanceData, refetch: refetchNativeBalance } = useBalance({
+    address: eoaAddress as `0x${string}` | undefined,
+    chainId: fuse.id,
+    query: {
+      enabled: !!eoaAddress && isFuseChain && isNativeFuse,
+    },
+  });
+
+  const balance = isNativeFuse ? nativeBalanceData?.value : erc20Balance;
 
   const switchChain = async (chainId: number) => {
     try {
@@ -278,6 +293,86 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
         setDepositStatus({ status: Status.SUCCESS });
         return trackingId;
       }
+
+      if (token === 'FUSE') {
+        track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
+          user_id: user?.userId,
+          safe_address: user?.safeAddress,
+          eoa_address: eoaAddress,
+          amount,
+          is_sponsor: isSponsor,
+          chain_id: srcChainId,
+          deposit_type: 'connected_wallet',
+          deposit_method: 'fuse_direct',
+        });
+
+        await switchChain(srcChainId);
+
+        txHash = await sendTransaction(fuse.id, {
+          to: spender,
+          value: amountWei,
+        });
+
+        if (isSponsor) {
+          trackingId = await createEvent(amount, spender, token);
+          withRefreshToken(() =>
+            createDeposit({
+              eoaAddress,
+              amount,
+              trackingId,
+              vault: VaultType.FUSE,
+            }),
+          );
+        }
+
+        setHash(txHash);
+        updateUser({
+          ...user,
+          isDeposited: true,
+        });
+
+        Sentry.addBreadcrumb({
+          message: 'Deposit from EOA (native FUSE) completed successfully',
+          category: 'deposit',
+          data: {
+            amount,
+            transactionHash: txHash,
+            eoaAddress,
+            userId: user.userId,
+            safeAddress: user.safeAddress,
+            srcChainId,
+            isSponsor,
+          },
+        });
+
+        track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
+          user_id: user?.userId,
+          safe_address: user?.safeAddress,
+          eoa_address: eoaAddress,
+          amount,
+          transaction_hash: txHash,
+          deposit_type: 'connected_wallet',
+          deposit_method: 'fuse_direct',
+          chain_id: srcChainId,
+          chain_name: 'fuse',
+          is_sponsor: isSponsor,
+          is_first_deposit: !user?.isDeposited,
+          ...attributionData,
+          attribution_channel: attributionChannel,
+        });
+
+        trackIdentity(user?.userId, {
+          last_deposit_amount: parseFloat(amount),
+          last_deposit_date: new Date().toISOString(),
+          last_deposit_method: 'fuse_direct',
+          last_deposit_chain: 'fuse',
+          ...attributionData,
+          attribution_channel: attributionChannel,
+        });
+
+        setDepositStatus({ status: Status.SUCCESS });
+        return trackingId;
+      }
     } catch (error: any) {
       console.error(error);
       const errorMessage = error?.message || 'Unknown error';
@@ -337,8 +432,12 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
   };
 
   useEffect(() => {
-    refetchBalance();
-  }, [blockNumber]);
+    if (isNativeFuse) {
+      refetchNativeBalance();
+    } else {
+      refetchErc20Balance();
+    }
+  }, [blockNumber, isNativeFuse, refetchNativeBalance, refetchErc20Balance]);
 
   return {
     balance,

@@ -34,7 +34,7 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
-import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
+import { EXPO_PUBLIC_FUSE_GAS_RESERVE, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { Status } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -112,6 +112,7 @@ function DepositToVaultForm() {
   );
 
   const isFuseVault = vault.name === 'FUSE';
+  const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
   const balanceForVault = isFuseVault
     ? useSolidForFuse
@@ -139,21 +140,27 @@ function DepositToVaultForm() {
       ? Number(formatUnits(balanceForVault, balanceDecimals))
       : 0;
     const tokenLabel = isFuseVault ? (selectedTokenInfo?.name ?? 'WFUSE') : 'USDC';
+    const maxAmount = balanceAmount;
 
     return z.object({
       amount: z
         .string()
-        .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Please enter a valid amount' })
+        .refine(val => val !== '' && !isNaN(Number(val)), {
+          error: 'Please enter a valid amount',
+        })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
         .refine(val => Number(val) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT), {
           error: `Minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} ${tokenLabel}`,
         })
-        .refine(val => Number(val) <= balanceAmount, {
-          error: `Available balance is ${formatNumber(balanceAmount)} ${tokenLabel}`,
+        .refine(val => !isNativeFuse || Number(val) >= Number(EXPO_PUBLIC_FUSE_GAS_RESERVE), {
+          error: 'Amount too low',
+        })
+        .refine(val => Number(val) <= maxAmount, {
+          error: `Available balance is ${formatNumber(maxAmount)} ${tokenLabel}`,
         })
         .transform(val => Number(val)),
     });
-  }, [balanceForVault, balanceDecimals, isFuseVault, selectedTokenInfo?.name]);
+  }, [balanceForVault, balanceDecimals, isFuseVault, isNativeFuse, selectedTokenInfo?.name]);
 
   type DepositFormData = { amount: string };
 
@@ -293,7 +300,10 @@ function DepositToVaultForm() {
         attribution_channel: attributionChannel,
       });
 
-      const trackingId = await depositFn(data.amount.toString());
+      const depositAmount = isNativeFuse
+        ? Number(data.amount) - Number(EXPO_PUBLIC_FUSE_GAS_RESERVE)
+        : Number(data.amount);
+      const trackingId = await depositFn(depositAmount.toString());
       setTransaction({
         amount: Number(data.amount),
         trackingId,
