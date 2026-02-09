@@ -1,29 +1,30 @@
 import { useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
-import { type Address, erc20Abi, encodeFunctionData, parseUnits } from 'viem';
+import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import { fuse } from 'viem/chains';
 import { useBalance, useBlockNumber, useReadContract } from 'wagmi';
 
+import { WRAPPED_FUSE } from '@/constants/addresses';
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
+import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
 import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import {
+  ADDRESSES,
   EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
-  EXPO_PUBLIC_FUSE_GAS_RESERVE,
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, StatusInfo, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { getTokenAllowance } from '@/lib/utils/contract';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import useUser from './useUser';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 
 type DepositResult = {
   balance: bigint | undefined;
@@ -112,7 +113,11 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
       if (!safeAddress) {
         const err = new Error('Solid wallet (Safe) address not found');
         Sentry.captureException(err, {
-          tags: { operation: 'deposit_from_solid_fuse', step: 'validation', reason: 'no_safe_address' },
+          tags: {
+            operation: 'deposit_from_solid_fuse',
+            step: 'validation',
+            reason: 'no_safe_address',
+          },
           extra: { amount, srcChainId, hasUser: !!user },
         });
         throw err;
@@ -144,38 +149,39 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
       let transactions: { to: Address; data?: `0x${string}`; value?: bigint }[];
 
       if (token === 'FUSE') {
-        const depositValueWei = parseUnits(
-          (Number(amount) - Number(EXPO_PUBLIC_FUSE_GAS_RESERVE)).toString(),
-          18,
-        );
+        const callData = encodeFunctionData({
+          abi: ETHEREUM_TELLER_ABI,
+          functionName: 'deposit',
+          args: [ADDRESSES.fuse.nativeFeeToken, amountWei, BigInt(0)],
+        });
         transactions = [
           {
-            to: spender,
-            value: depositValueWei,
-            data: '0x' as `0x${string}`,
+            to: ADDRESSES.fuse.fuseTeller,
+            data: callData,
+            value: amountWei,
           },
         ];
       } else {
-        const allowance = await getTokenAllowance(
-          tokenAddress,
-          safeAddress,
-          spender,
-          fuse.id,
-        );
-        transactions =
-          allowance >= amountWei
-            ? []
-            : [
-                {
-                  to: tokenAddress,
-                  data: encodeFunctionData({
-                    abi: erc20Abi,
-                    functionName: 'approve',
-                    args: [spender, amountWei],
-                  }),
-                  value: 0n,
-                },
-              ];
+        const callData = encodeFunctionData({
+          abi: ETHEREUM_TELLER_ABI,
+          functionName: 'deposit',
+          args: [WRAPPED_FUSE, amountWei, BigInt(0)],
+        });
+        transactions = [
+          {
+            to: WRAPPED_FUSE,
+            data: encodeFunctionData({
+              abi: erc20Abi,
+              functionName: 'approve',
+              args: [ADDRESSES.fuse.fuseVault, amountWei],
+            }),
+          },
+          {
+            to: ADDRESSES.fuse.fuseTeller,
+            data: callData,
+            value: 0n,
+          },
+        ];
       }
 
       let txHash: `0x${string}` | undefined;
@@ -196,14 +202,14 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
               description:
                 token === 'FUSE'
                   ? 'Deposit native FUSE from Solid wallet'
-                  : 'Approve WFUSE for deposit from Solid wallet',
+                  : 'Deposit WFUSE from Solid wallet',
             },
           },
           onUserOpHash =>
             executeTransactions(
               smartAccountClient,
               transactions,
-              token === 'FUSE' ? 'Deposit failed' : 'Approve failed',
+              'Deposit failed',
               fuse,
               onUserOpHash,
             ),

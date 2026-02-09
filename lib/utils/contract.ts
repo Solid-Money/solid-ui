@@ -1,9 +1,8 @@
-import { Address, Hex, TransactionRequest } from 'viem';
+import { Address, erc20Abi, Hex, TransactionRequest } from 'viem';
 import { readContract, writeContract } from 'wagmi/actions';
 
 import { getUsdcAddress } from '@/constants/bridge';
 import { config, getWallet, publicClient } from '@/lib/wagmi';
-import { erc20Abi } from 'viem';
 
 export const getTransactionReceipt = async (chainId: number, hash: Hex) => {
   return publicClient(chainId).waitForTransactionReceipt({
@@ -120,20 +119,10 @@ export const checkAndSetAllowanceToken = async (
   amount: bigint,
   chainId: number,
 ): Promise<string | undefined> => {
-  const allowance = await getTokenAllowance(
-    tokenAddress,
-    ownerAddress,
-    spenderAddress,
-    chainId,
-  );
+  const allowance = await getTokenAllowance(tokenAddress, ownerAddress, spenderAddress, chainId);
   if (allowance >= amount) return;
 
-  const hash = await approveToken(
-    tokenAddress,
-    spenderAddress,
-    amount,
-    chainId,
-  );
+  const hash = await approveToken(tokenAddress, spenderAddress, amount, chainId);
   return hash;
 };
 
