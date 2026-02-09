@@ -2,7 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Address } from 'viem';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { useAPYs, useLatestTokenTransfer, useUserTransactions, useVaultBreakdown } from '@/hooks/useAnalytics';
+import {
+  useAPYsByAsset,
+  useLatestTokenTransfer,
+  useUserTransactions,
+} from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
@@ -23,8 +27,7 @@ export const useTotalSavingsUSD = () => {
   const [totalSavingsUSD, setTotalSavingsUSD] = useState<number | undefined>(undefined);
 
   const { data: userDepositTransactions } = useUserTransactions(address);
-  const { data: apys } = useAPYs();
-  const { data: vaultBreakdown } = useVaultBreakdown();
+  const { data: apys } = useAPYsByAsset();
 
   const transactionsRef = useRef(userDepositTransactions);
   const transactionsKey = useMemo(
@@ -59,12 +62,8 @@ export const useTotalSavingsUSD = () => {
     (fuseVault ?? usdcVault).decimals,
   );
 
-  const apyUsdc = apys?.allTime ?? 0;
-  const apyFuse = useMemo(() => {
-    if (!fuseVault) return 0;
-    const vaultData = vaultBreakdown?.find(v => v.name === fuseVault.name);
-    return vaultData?.effectivePositionAPY ?? 0;
-  }, [vaultBreakdown, fuseVault]);
+  const apyUsdc = apys?.usdc?.allTime ?? 0;
+  const apyFuse = fuseVault ? (apys?.fuse?.allTime ?? 0) : 0;
 
   const hasAnyBalance = (balanceUsdc ?? 0) > 0 || (balanceFuse ?? 0) > 0;
   useEffect(() => {

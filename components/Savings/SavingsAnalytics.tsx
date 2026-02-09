@@ -14,9 +14,11 @@ import LazyAreaChart, { ChartFallback } from '@/components/LazyAreaChart';
 import SavingsAnalyticsTabs, { Tab } from '@/components/Savings/SavingsAnalyticsTabs';
 import SavingsRateTabs, { TimeFilter } from '@/components/Savings/SavingsRateTabs';
 import { Text } from '@/components/ui/text';
+import { VAULTS } from '@/constants/vaults';
 import { useHistoricalAPY, useVaultBreakdown } from '@/hooks/useAnalytics';
 import { ChartPayload } from '@/lib/types';
 import { formatNumber } from '@/lib/utils';
+import { useSavingStore } from '@/store/useSavingStore';
 
 const ANIMATION_DURATION = 350;
 
@@ -25,12 +27,17 @@ const SavingsAnalytics = () => {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(TimeFilter.ONE_MONTH);
   const [selectedBreakdown, setSelectedBreakdown] = useState(-1);
   const [contentHeight, setContentHeight] = useState(0);
+  const selectedVault = useSavingStore(state => state.selectedVault);
+  const historicalVault = VAULTS[selectedVault]?.type;
 
   const containerHeight = useSharedValue(0);
   const isMountedRef = useRef(true);
 
-  // Fetch all historical data
-  const { data: yieldHistory, isLoading: isYieldHistoryLoading } = useHistoricalAPY('-1');
+  // Fetch historical data for the selected vault
+  const { data: yieldHistory, isLoading: isYieldHistoryLoading } = useHistoricalAPY(
+    '-1',
+    historicalVault,
+  );
   const { data: vaultBreakdown } = useVaultBreakdown();
 
   useEffect(() => {

@@ -130,7 +130,7 @@ function DepositToVaultForm() {
   const errorForVault = isFuseVault ? (useSolidForFuse ? errorSolidFuse : errorFuse) : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
-  const { maxAPY } = useMaxAPY();
+  const { maxAPY } = useMaxAPY(vault.type);
 
   const formattedBalance = balanceForVault ? formatUnits(balanceForVault, balanceDecimals) : '0';
 

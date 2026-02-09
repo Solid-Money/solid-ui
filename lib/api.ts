@@ -23,8 +23,10 @@ import {
   ActivityEvents,
   AddressBookRequest,
   AddressBookResponse,
-  APYs,
+  APYsByAsset,
   BlockscoutTransactions,
+  HistoricalAPYPoint,
+  TotalAPYResponse,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
   BridgeDeposit,
@@ -80,6 +82,7 @@ import {
   UpdateActivityEvent,
   User,
   VaultBreakdown,
+  VaultType,
   VerifyCountryRequest,
   VerifyCountryResponse,
   WebhookStatus,
@@ -297,8 +300,8 @@ export const updateExternalWalletAddress = async (externalWalletAddress: string)
   return response.json();
 };
 
-export const fetchTotalAPY = async () => {
-  const response = await axios.get<number>(
+export const fetchTotalAPY = async (): Promise<TotalAPYResponse> => {
+  const response = await axios.get<TotalAPYResponse>(
     `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/yields/total-apy`,
   );
   return response.data;
@@ -1815,8 +1818,8 @@ export const getStargateQuote = async (
   return response.json();
 };
 
-export const fetchAPYs = async () => {
-  const response = await axios.get<APYs>(
+export const fetchAPYs = async (): Promise<APYsByAsset> => {
+  const response = await axios.get<APYsByAsset>(
     `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/apys`,
   );
   return response.data;
@@ -1951,9 +1954,14 @@ export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1
   return response.data;
 };
 
-export const fetchHistoricalAPY = async (days: string = '30') => {
-  const response = await axios.get<ChartPayload[]>(
-    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/historical-apy?days=${days}`,
+export const fetchHistoricalAPY = async (
+  days: string = '30',
+  vault?: VaultType,
+): Promise<HistoricalAPYPoint[]> => {
+  const params = new URLSearchParams({ days });
+  if (vault === VaultType.FUSE) params.set('vault', VaultType.FUSE);
+  const response = await axios.get<HistoricalAPYPoint[]>(
+    `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/historical-apy?${params.toString()}`,
   );
   return response.data;
 };
