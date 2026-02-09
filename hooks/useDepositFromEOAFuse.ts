@@ -13,6 +13,7 @@ import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import {
   EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
+  EXPO_PUBLIC_FUSE_GAS_RESERVE,
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
 import { getChain } from '@/lib/thirdweb';
@@ -308,9 +309,13 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
 
         await switchChain(srcChainId);
 
+        const depositValueWei = parseUnits(
+          (Number(amount) - Number(EXPO_PUBLIC_FUSE_GAS_RESERVE)).toString(),
+          18,
+        );
         txHash = await sendTransaction(fuse.id, {
           to: spender,
-          value: amountWei,
+          value: depositValueWei,
         });
 
         if (isSponsor) {

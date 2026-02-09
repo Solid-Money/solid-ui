@@ -300,10 +300,7 @@ function DepositToVaultForm() {
         attribution_channel: attributionChannel,
       });
 
-      const depositAmount = isNativeFuse
-        ? Number(data.amount) - Number(EXPO_PUBLIC_FUSE_GAS_RESERVE)
-        : Number(data.amount);
-      const trackingId = await depositFn(depositAmount.toString());
+      const trackingId = await depositFn(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
         trackingId,
