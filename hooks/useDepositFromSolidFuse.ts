@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 import { type Address, erc20Abi, encodeFunctionData, parseUnits } from 'viem';
 import { fuse } from 'viem/chains';
-import { useBlockNumber, useReadContract } from 'wagmi';
+import { useBalance, useBlockNumber, useReadContract } from 'wagmi';
 
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -42,6 +42,7 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
   const { createActivity, trackTransaction } = useActivity();
 
   const isFuseChain = srcChainId === fuse.id;
+  const isNativeFuse = token === 'FUSE';
   const safeAddress = user?.safeAddress as Address | undefined;
 
   const { data: blockNumber } = useBlockNumber({
@@ -52,16 +53,26 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
     },
   });
 
-  const { data: balance, refetch: refetchBalance } = useReadContract({
+  const { data: erc20Balance, refetch: refetchErc20Balance } = useReadContract({
     abi: erc20Abi,
     address: tokenAddress,
     functionName: 'balanceOf',
     args: [safeAddress as Address],
     chainId: fuse.id,
     query: {
-      enabled: !!safeAddress && isFuseChain,
+      enabled: !!safeAddress && isFuseChain && !isNativeFuse,
     },
   });
+
+  const { data: nativeBalanceData, refetch: refetchNativeBalance } = useBalance({
+    address: safeAddress as `0x${string}` | undefined,
+    chainId: fuse.id,
+    query: {
+      enabled: !!safeAddress && isFuseChain && isNativeFuse,
+    },
+  });
+
+  const balance = isNativeFuse ? nativeBalanceData?.value : erc20Balance;
 
   const createEvent = async (amount: string, spender: Address, tokenSymbol: string) => {
     const clientTxId = await createActivity({
@@ -77,7 +88,7 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
   };
 
   const deposit = async (amount: string) => {
-    if (!isFuseChain || token !== 'WFUSE') return undefined;
+    if (!isFuseChain || (token !== 'WFUSE' && token !== 'FUSE')) return undefined;
 
     const attributionData = useAttributionStore.getState().getAttributionForEvent();
     const attributionChannel = getAttributionChannel(attributionData);
@@ -128,27 +139,39 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
       });
 
       const amountWei = parseUnits(amount, 18);
-      const allowance = await getTokenAllowance(
-        tokenAddress,
-        safeAddress,
-        spender,
-        fuse.id,
-      );
 
-      const transactions =
-        allowance >= amountWei
-          ? []
-          : [
-              {
-                to: tokenAddress,
-                data: encodeFunctionData({
-                  abi: erc20Abi,
-                  functionName: 'approve',
-                  args: [spender, amountWei],
-                }),
-                value: 0n,
-              },
-            ];
+      let transactions: { to: Address; data?: `0x${string}`; value?: bigint }[];
+
+      if (token === 'FUSE') {
+        transactions = [
+          {
+            to: spender,
+            value: amountWei,
+            data: '0x' as `0x${string}`,
+          },
+        ];
+      } else {
+        const allowance = await getTokenAllowance(
+          tokenAddress,
+          safeAddress,
+          spender,
+          fuse.id,
+        );
+        transactions =
+          allowance >= amountWei
+            ? []
+            : [
+                {
+                  to: tokenAddress,
+                  data: encodeFunctionData({
+                    abi: erc20Abi,
+                    functionName: 'approve',
+                    args: [spender, amountWei],
+                  }),
+                  value: 0n,
+                },
+              ];
+      }
 
       let txHash: `0x${string}` | undefined;
 
@@ -157,20 +180,25 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
         const result = await trackTransaction(
           {
             type: TransactionType.DEPOSIT,
-            title: `Deposit ${amount} WFUSE`,
+            title: `Deposit ${amount} ${token}`,
             shortTitle: `Deposit ${amount}`,
             amount,
-            symbol: 'WFUSE',
+            symbol: token,
             chainId: fuse.id,
             fromAddress: safeAddress,
             toAddress: spender,
-            metadata: { description: `Approve WFUSE for deposit from Solid wallet` },
+            metadata: {
+              description:
+                token === 'FUSE'
+                  ? 'Deposit native FUSE from Solid wallet'
+                  : 'Approve WFUSE for deposit from Solid wallet',
+            },
           },
           onUserOpHash =>
             executeTransactions(
               smartAccountClient,
               transactions,
-              'Approve failed',
+              token === 'FUSE' ? 'Deposit failed' : 'Approve failed',
               fuse,
               onUserOpHash,
             ),
@@ -280,8 +308,12 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
   };
 
   useEffect(() => {
-    refetchBalance();
-  }, [blockNumber]);
+    if (isNativeFuse) {
+      refetchNativeBalance();
+    } else {
+      refetchErc20Balance();
+    }
+  }, [blockNumber, isNativeFuse, refetchNativeBalance, refetchErc20Balance]);
 
   return {
     balance,
