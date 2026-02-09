@@ -1,3 +1,11 @@
+import { useState } from 'react';
+import * as Sentry from '@sentry/react-native';
+import { Address } from 'abitype';
+import { erc20Abi, maxUint256, TransactionReceipt } from 'viem';
+import { mainnet } from 'viem/chains';
+import { encodeFunctionData, parseUnits } from 'viem/utils';
+import { useReadContract } from 'wagmi';
+
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
@@ -5,13 +13,7 @@ import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, TransactionType } from '@/lib/types';
-import * as Sentry from '@sentry/react-native';
-import { Address } from 'abitype';
-import { useState } from 'react';
-import { erc20Abi, maxUint256, TransactionReceipt } from 'viem';
-import { mainnet } from 'viem/chains';
-import { encodeFunctionData, parseUnits } from 'viem/utils';
-import { useReadContract } from 'wagmi';
+
 import useUser from './useUser';
 
 type WithdrawResult = {

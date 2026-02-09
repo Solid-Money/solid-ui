@@ -73,6 +73,7 @@ type Addresses = {
     fastWithdrawManager: Address;
     stargateOftUSDC: Address;
     aaveV3Pool: Address;
+    soFuseBoringQueue: Address;
   };
   base: {
     vault: Address;
@@ -125,6 +126,9 @@ export const ADDRESSES: Addresses = {
     fastWithdrawManager: '0x0bA17eab7B6B2353eA4731c37A2cBA2a5AA4Ea1b',
     stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',
     aaveV3Pool: '0xe3eda4b12ae4ACC031E4CF9Eae08ACe6250CED3E',
+    soFuseBoringQueue: isProduction
+      ? '0x5FD429278E39342920CD6629574f9E0c4766c675'
+      : '0x5FD429278E39342920CD6629574f9E0c4766c675',
   },
   base: {
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
