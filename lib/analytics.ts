@@ -60,7 +60,7 @@ export const formatAmplitudeEvent = (str: string) => {
 };
 
 // Initialize Amplitude
-const initAmplitude = async () => {
+const initAmplitude = async (isTrackingAllowed = false) => {
   try {
     const sampleRate = 0.2;
 
@@ -75,11 +75,19 @@ const initAmplitude = async () => {
     }
 
     // Use proxy URL if configured (bypasses ad blockers in production)
-    const amplitudeConfig = EXPO_PUBLIC_AMPLITUDE_PROXY_URL
+    const amplitudeConfig: Record<string, any> = EXPO_PUBLIC_AMPLITUDE_PROXY_URL
       ? { serverUrl: EXPO_PUBLIC_AMPLITUDE_PROXY_URL }
-      : undefined;
+      : {};
 
-    await initAmplitudeSDK(EXPO_PUBLIC_AMPLITUDE_API_KEY, undefined, amplitudeConfig).promise;
+    // On iOS, disable IDFA collection unless user granted ATT permission.
+    // This prevents App Store rejection under Guideline 5.1.2.
+    if (Platform.OS === 'ios' && !isTrackingAllowed) {
+      amplitudeConfig.trackingOptions = { adid: false };
+    }
+
+    const config = Object.keys(amplitudeConfig).length > 0 ? amplitudeConfig : undefined;
+
+    await initAmplitudeSDK(EXPO_PUBLIC_AMPLITUDE_API_KEY, undefined, config).promise;
 
     if (Platform.OS !== 'web') {
       // Native: add plugin AFTER init
@@ -121,14 +129,14 @@ const initFirebase = async () => {
 };
 
 // Initialize all analytics providers
-export const initAnalytics = async () => {
+export const initAnalytics = async (isTrackingAllowed = false) => {
   // Don't initialize analytics locally
   if (__DEV__) {
     return;
   }
 
   try {
-    await initAmplitude();
+    await initAmplitude(isTrackingAllowed);
     await initFirebase();
   } catch (error) {
     console.error('Failed to initialize analytics:', error);
