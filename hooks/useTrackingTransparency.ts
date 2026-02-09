@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import {
-  getTrackingPermissionsAsync,
-  PermissionStatus,
-  requestTrackingPermissionsAsync,
-} from 'expo-tracking-transparency';
+
+// Local enum mirroring expo-tracking-transparency's PermissionStatus.
+// We can't statically import from expo-tracking-transparency because it calls
+// requireNativeModule('ExpoTrackingTransparency') at the module level, which
+// throws on Web and Android where the native module doesn't exist.
+enum PermissionStatus {
+  UNDETERMINED = 'undetermined',
+  GRANTED = 'granted',
+  DENIED = 'denied',
+}
 
 type TrackingStatus = PermissionStatus | 'unavailable';
 
@@ -30,7 +35,8 @@ export function useTrackingTransparency() {
 
     let mounted = true;
 
-    getTrackingPermissionsAsync()
+    import('expo-tracking-transparency')
+      .then(({ getTrackingPermissionsAsync }) => getTrackingPermissionsAsync())
       .then(({ status: currentStatus }) => {
         if (mounted) {
           setStatus(currentStatus);
@@ -60,6 +66,7 @@ export function useTrackingTransparency() {
     }
 
     try {
+      const { requestTrackingPermissionsAsync } = await import('expo-tracking-transparency');
       const { status: newStatus } = await requestTrackingPermissionsAsync();
       setStatus(newStatus);
       setIsReady(true);
