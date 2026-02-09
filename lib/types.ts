@@ -1245,6 +1245,21 @@ export interface APYs {
   thirtyDay: number;
 }
 
+export interface TotalAPYResponse {
+  usdc: number;
+  fuse: number;
+}
+
+export interface APYsByAsset {
+  usdc: APYs;
+  fuse: APYs;
+}
+
+export interface HistoricalAPYPoint {
+  time: string;
+  value: number;
+}
+
 export interface Coin {
   id: string;
   name: string;

@@ -7,7 +7,7 @@ import { useSavingStore } from '@/store/useSavingStore';
 
 const SavingDepositTitle = () => {
   const selectedVault = useSavingStore(state => state.selectedVault);
-  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
+  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY(VAULTS[selectedVault]?.type);
 
   return (
     <Text className="mx-auto max-w-sm text-center text-2xl font-semibold md:mx-0 md:max-w-lg md:text-start md:text-4.5xl md:leading-[3rem]">

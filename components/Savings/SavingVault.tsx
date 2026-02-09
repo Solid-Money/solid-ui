@@ -43,7 +43,7 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
     })),
   );
   const { user } = useUser();
-  const { maxAPY } = useMaxAPY();
+  const { maxAPY } = useMaxAPY(vault.type);
   const { isScreenMedium } = useDimension();
   const vaultIndex = VAULTS.findIndex(v => v.name === vault.name);
   const isSelected = selectedVault === vaultIndex;

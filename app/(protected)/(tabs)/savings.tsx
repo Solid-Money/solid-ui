@@ -24,7 +24,6 @@ import {
   useLatestTokenTransfer,
   useMaxAPY,
   useUserTransactions,
-  useVaultBreakdown,
 } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
@@ -64,22 +63,12 @@ export default function Savings() {
     refetch: refetchTotalBalance,
   } = useTotalVaultBalance(user?.safeAddress as Address);
 
-  const { maxAPY, maxAPYDays, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
-  const { data: vaultBreakdown } = useVaultBreakdown();
+  const { maxAPY, maxAPYDays, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY(currentVault.type);
+  const { data: apys, isLoading: isAPYsLoading } = useAPYs(currentVault.type);
 
   const { data: exchangeRate } = useVaultExchangeRate(currentVault.name);
 
-  // Get APY for the selected vault
-  const vaultAPY = useMemo(() => {
-    if (currentVault.name === 'USDC') {
-      return apys?.allTime ?? 0;
-    }
-
-    // Find in breakdown
-    const vaultData = vaultBreakdown?.find(v => v.name === currentVault.name);
-    return vaultData?.effectivePositionAPY ?? 0;
-  }, [currentVault.name, apys, vaultBreakdown]);
+  const vaultAPY = apys?.allTime ?? 0;
 
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
