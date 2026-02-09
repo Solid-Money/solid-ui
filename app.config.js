@@ -13,11 +13,45 @@ export default {
     ios: {
       icon: './assets/images/ios-icon.png',
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? './GoogleService-Info.plist',
-      supportsTablet: true,
+      supportsTablet: false,
       bundleIdentifier: 'app.solid.xyz',
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'Solid needs camera access to scan QR codes for wallet addresses',
+      },
+      privacyManifests: {
+        NSPrivacyTracking: true,
+        NSPrivacyTrackingDomains: ['api2.amplitude.com'],
+        NSPrivacyCollectedDataTypes: [
+          {
+            // Device ID (IDFA) - collected by Amplitude, gated by ATT
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeDeviceID',
+            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeTracking: true,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAnalytics'],
+          },
+          {
+            // Crash Data - collected by Sentry
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCrashData',
+            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // Performance Data - collected by Sentry and Amplitude
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePerformanceData',
+            NSPrivacyCollectedDataTypeLinked: false,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+          {
+            // User ID - used for account functionality
+            NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeUserID',
+            NSPrivacyCollectedDataTypeLinked: true,
+            NSPrivacyCollectedDataTypeTracking: false,
+            NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+          },
+        ],
       },
       associatedDomains: ['webcredentials:solid.xyz', 'applinks:solid.xyz'],
       appleTeamId: '67UG7X46Z8',
@@ -143,6 +177,13 @@ export default {
         {
           cameraPermission: 'Allow Solid to access your camera to scan QR codes',
         },
+      ],
+      [
+        'expo-tracking-transparency',
+        {
+          userTrackingPermission:
+            'Solid uses this identifier to deliver personalized content and measure campaign effectiveness. You can change this anytime in Settings.',
+        }
       ],
     ],
     experiments: {
