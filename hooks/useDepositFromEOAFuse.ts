@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
-import { type Address, erc20Abi, parseUnits } from 'viem';
+import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import { fuse } from 'viem/chains';
 import { useBalance, useBlockNumber, useChainId, useReadContract } from 'wagmi';
 
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivity } from '@/hooks/useActivity';
+import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
 import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import {
+  ADDRESSES,
   EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
   EXPO_PUBLIC_FUSE_GAS_RESERVE,
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
@@ -19,11 +21,7 @@ import {
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import {
-  checkAndSetAllowanceToken,
-  getTransactionReceipt,
-  sendTransaction,
-} from '@/lib/utils/contract';
+import { checkAndSetAllowanceToken, getTransactionReceipt } from '@/lib/utils/contract';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -313,22 +311,32 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
           (Number(amount) - Number(EXPO_PUBLIC_FUSE_GAS_RESERVE)).toString(),
           18,
         );
-        txHash = await sendTransaction(fuse.id, {
-          to: spender,
+
+        const callData = encodeFunctionData({
+          abi: ETHEREUM_TELLER_ABI,
+          functionName: 'deposit',
+          args: [ADDRESSES.fuse.nativeFeeToken, depositValueWei, BigInt(0)],
+        });
+
+        const transaction = await account?.sendTransaction({
+          chainId: fuse.id,
+          to: ADDRESSES.fuse.fuseTeller,
+          data: callData,
           value: depositValueWei,
         });
 
-        if (isSponsor) {
-          trackingId = await createEvent(amount, spender, token);
-          withRefreshToken(() =>
-            createDeposit({
-              eoaAddress,
-              amount,
-              trackingId,
-              vault: VaultType.FUSE,
-            }),
-          );
+        const receipt = await getTransactionReceipt(
+          fuse.id,
+          transaction?.transactionHash as `0x${string}`,
+        );
+
+        if (!receipt) {
+          throw new Error('Failed to get transaction receipt');
         }
+        if (receipt.status !== 'success') {
+          throw new Error('Transaction failed');
+        }
+        txHash = receipt.transactionHash;
 
         setHash(txHash);
         updateUser({

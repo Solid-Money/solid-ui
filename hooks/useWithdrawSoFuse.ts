@@ -1,16 +1,16 @@
-import { useActivity } from '@/hooks/useActivity';
-import FuseVault from '@/lib/abis/FuseVault';
-import { ADDRESSES } from '@/lib/config';
-import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status, TransactionType } from '@/lib/types';
-import * as Sentry from '@sentry/react-native';
-import { Address } from 'abitype';
 import { useCallback, useState } from 'react';
-import { TransactionReceipt } from 'viem';
+import * as Sentry from '@sentry/react-native';
+import { erc20Abi, TransactionReceipt } from 'viem';
 import { fuse } from 'viem/chains';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
+import { useActivity } from '@/hooks/useActivity';
+import BoringQueue_ABI from '@/lib/abis/BoringQueue';
+import { ADDRESSES } from '@/lib/config';
+import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { Status, TransactionType } from '@/lib/types';
+
 import useUser from './useUser';
 
 type WithdrawSoFuseResult = {
@@ -27,6 +27,7 @@ const useWithdrawSoFuse = (): WithdrawSoFuseResult => {
 
   const withdrawSoFuse = useCallback(
     async (amount: string) => {
+      const amountWei = parseUnits(amount, 18);
       try {
         if (!user) {
           throw new Error('User not found');
@@ -35,23 +36,22 @@ const useWithdrawSoFuse = (): WithdrawSoFuseResult => {
         setWithdrawSoFuseStatus(Status.PENDING);
         setError(null);
 
-        const shareAmount = parseUnits(amount, 18);
-        const userAddress = user.safeAddress as Address;
-        const minAssetAmount = 0n;
-
         const transactions = [
           {
             to: ADDRESSES.fuse.fuseVault,
             data: encodeFunctionData({
-              abi: FuseVault,
-              functionName: 'exit',
-              args: [
-                userAddress,
-                WRAPPED_FUSE,
-                minAssetAmount,
-                userAddress,
-                shareAmount,
-              ],
+              abi: erc20Abi,
+              functionName: 'approve',
+              args: [ADDRESSES.fuse.soFuseBoringQueue, amountWei],
+            }),
+            value: 0n,
+          },
+          {
+            to: ADDRESSES.fuse.soFuseBoringQueue,
+            data: encodeFunctionData({
+              abi: BoringQueue_ABI,
+              functionName: 'requestOnChainWithdraw',
+              args: [WRAPPED_FUSE, amountWei, 1, 260000],
             }),
             value: 0n,
           },
@@ -70,7 +70,7 @@ const useWithdrawSoFuse = (): WithdrawSoFuseResult => {
             fromAddress: user.safeAddress,
             toAddress: ADDRESSES.fuse.fuseVault,
             metadata: {
-              description: `Withdraw ${amount} soFUSE to FUSE on Fuse`,
+              description: `Withdraw ${amount} soFUSE to WFUSE on Fuse`,
               tokenAddress: ADDRESSES.fuse.fuseVault,
             },
           },

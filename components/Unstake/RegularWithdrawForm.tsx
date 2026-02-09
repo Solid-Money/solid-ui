@@ -235,7 +235,7 @@ const RegularWithdrawForm = () => {
       Toast.show({
         type: 'success',
         text1: 'Withdraw submitted',
-        text2: `${data.amount} soFUSE → FUSE on Fuse`,
+        text2: `${data.amount} soFUSE → WFUSE on Fuse`,
         props: {
           link: `https://explorer.fuse.io/tx/${transaction.transactionHash}`,
           linkText: eclipseAddress(transaction.transactionHash),
@@ -357,7 +357,7 @@ const RegularWithdrawForm = () => {
                 size={28}
               />
               <View className="flex-col">
-                <Text className="text-base">{isSoFuse ? 'FUSE on Fuse' : 'USDC on Ethereum'}</Text>
+                <Text className="text-base">{isSoFuse ? 'WFUSE on Fuse' : 'USDC on Ethereum'}</Text>
               </View>
             </View>
           </View>
