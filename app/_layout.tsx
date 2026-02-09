@@ -39,8 +39,9 @@ import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
+import { useTrackingTransparency } from '@/hooks/useTrackingTransparency';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
-import { initAnalytics, trackScreen } from '@/lib/analytics';
+import { initAnalytics, track, trackScreen } from '@/lib/analytics';
 import { EXPO_PUBLIC_ENVIRONMENT, isProduction } from '@/lib/config';
 import { config } from '@/lib/wagmi';
 import { useUserStore } from '@/store/useUserStore';
@@ -172,6 +173,40 @@ export default Sentry.wrap(function RootLayout() {
   // Initialize attribution tracking automatically (handles web and mobile)
   useAttributionInitialization();
 
+  // App Tracking Transparency (iOS only)
+  const {
+    isReady: attReady,
+    isTrackingAllowed,
+    status: attStatus,
+    requestPermission,
+  } = useTrackingTransparency();
+
+  // After splash screen hides: show ATT dialog (iOS, first launch) then init analytics
+  useEffect(() => {
+    if (!splashScreenHidden) return;
+
+    async function initAfterSplash() {
+      let trackingAllowed = isTrackingAllowed;
+
+      // On iOS, if ATT status is undetermined, show the permission dialog
+      if (Platform.OS === 'ios' && attStatus === 'undetermined') {
+        trackingAllowed = await requestPermission();
+      }
+
+      // Initialize analytics with the ATT result
+      initAnalytics(trackingAllowed).catch(e => console.warn('Analytics init error:', e));
+
+      // Track ATT response for analytics (after SDK init)
+      if (Platform.OS === 'ios') {
+        track('ATT_Response', { status: trackingAllowed ? 'granted' : 'denied' });
+      }
+    }
+
+    if (attReady || Platform.OS !== 'ios') {
+      initAfterSplash();
+    }
+  }, [splashScreenHidden, attReady, attStatus, isTrackingAllowed, requestPermission]);
+
   // Load only critical font weights to speed up FCP
   // Regular (400) and SemiBold (600) cover most UI text
   const [criticalFontsLoaded, fontError] = useFonts({
@@ -208,10 +243,6 @@ export default Sentry.wrap(function RootLayout() {
       try {
         // Pre-load fonts, make any API calls you need to do here
         // await Font.loadAsync(Entypo.font);
-
-        // Fire analytics without awaiting - don't block first paint
-        // Events fired before SDK ready will be buffered
-        initAnalytics().catch(e => console.warn('Analytics init error:', e));
 
         if (Platform.OS !== 'web') {
           Appearance.setColorScheme('dark');
