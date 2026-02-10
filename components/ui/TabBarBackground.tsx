@@ -1,2 +1,4 @@
-// This is a shim for web and Android where the tab bar is generally opaque.
-export default undefined;
+// Web shim — blur is handled via CSS backdropFilter on the tab bar container.
+export default function TabBarBackground() {
+  return null;
+}
