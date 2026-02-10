@@ -25,6 +25,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
+        animation: Platform.OS !== 'web' ? 'fade' : undefined,
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
