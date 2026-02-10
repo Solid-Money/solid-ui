@@ -3,12 +3,13 @@ import { Platform } from 'react-native';
 import { Tabs, usePathname } from 'expo-router';
 import { Leaf, Star } from 'lucide-react-native';
 
-import ActivityNavBarIcon from '@/assets/images/activity-nav-bar-icon';
-import AssetsNavBarIcon from '@/assets/images/assets-nav-bar-icon';
-import CardNavBarIcon from '@/assets/images/card-nav-bar-icon';
-import SavingsNavBarIcon from '@/assets/images/savings-nav-bar-icon';
+import bellAnimation from '@/assets/tabs-icons/bell.json';
+import cardAnimation from '@/assets/tabs-icons/card.json';
+import homeAnimation from '@/assets/tabs-icons/home.json';
+import lightningAnimation from '@/assets/tabs-icons/lightning.json';
 import { CustomTabBar } from '@/components/CustomTabBar';
 import { HapticTab } from '@/components/HapticTab';
+import { LottieTabIcon } from '@/components/LottieTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
@@ -48,9 +49,7 @@ export default function TabLayout() {
           position: 'absolute',
         },
       }}
-      tabBar={
-        Platform.OS === 'web' && !isDesktop ? props => <CustomTabBar {...props} /> : undefined
-      }
+      tabBar={!isDesktop ? props => <CustomTabBar {...props} /> : undefined}
       backBehavior="history"
     >
       <Tabs.Screen
@@ -58,7 +57,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           headerShown: false,
-          tabBarIcon: ({ color }) => <AssetsNavBarIcon color={color} />,
+          tabBarIcon: ({ focused }) => <LottieTabIcon source={homeAnimation} focused={focused} />,
           href: path.HOME,
         }}
       />
@@ -68,7 +67,9 @@ export default function TabLayout() {
         options={{
           title: 'Savings',
           headerShown: false,
-          tabBarIcon: ({ color }) => <SavingsNavBarIcon color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <LottieTabIcon source={lightningAnimation} focused={focused} />
+          ),
           href: path.SAVINGS,
         }}
       />
@@ -78,7 +79,9 @@ export default function TabLayout() {
         options={{
           title: 'Card',
           headerShown: false,
-          tabBarIcon: ({ color }) => <CardNavBarIcon color={color} isActive={isCardRouteActive} />,
+          tabBarIcon: ({ focused }) => (
+            <LottieTabIcon source={cardAnimation} focused={focused || isCardRouteActive} />
+          ),
           href: path.CARD,
         }}
       />
@@ -97,7 +100,7 @@ export default function TabLayout() {
         options={{
           title: 'Activity',
           headerShown: false,
-          tabBarIcon: ({ color }) => <ActivityNavBarIcon color={color} />,
+          tabBarIcon: ({ focused }) => <LottieTabIcon source={bellAnimation} focused={focused} />,
           href: path.ACTIVITY,
           // Removed lazy: false - let Activity load on-demand to avoid pre-fetching all pages
         }}
