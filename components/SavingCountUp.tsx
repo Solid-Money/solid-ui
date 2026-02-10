@@ -26,7 +26,10 @@ interface SavingCountUpProps {
   apy: number;
   lastTimestamp: number;
   mode?: SavingMode;
+  /** Display decimal places for the count-up number */
   decimalPlaces?: number;
+  /** Vault token decimals (e.g. 6 for USDC, 18 for FUSE). Used by calculateYield for deposit-history math. Defaults to 6. */
+  decimals?: number;
   classNames?: ClassNames;
   styles?: Styles;
   prefix?: string | React.ReactNode;
@@ -43,6 +46,7 @@ const SavingCountUp = memo(
     lastTimestamp,
     mode = SavingMode.TOTAL_USD,
     decimalPlaces = 6,
+    decimals: vaultDecimals = 6,
     classNames,
     styles,
     prefix,
@@ -84,10 +88,10 @@ const SavingCountUp = memo(
         user?.safeAddress,
         exchangeRateRef.current,
         tokenAddress,
-        decimalPlaces,
+        vaultDecimals,
       );
       setLiveYield(calculatedYield);
-    }, [mode, queryClient, user?.safeAddress, tokenAddress, decimalPlaces]);
+    }, [mode, queryClient, user?.safeAddress, tokenAddress, vaultDecimals]);
 
     useEffect(() => {
       // calculateYield returns 0 immediately when balance <= 0 (financial.ts:325)
