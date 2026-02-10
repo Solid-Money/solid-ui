@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
@@ -34,7 +34,6 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
           transition: 'all 100ms cubic-bezier(0.4, 0, 0.2, 1)',
           transform: pressed ? 'scale(0.9)' : 'scale(1)',
           opacity: pressed ? 0.8 : 1,
-          //filter: pressed ? 'brightness(1)' : 'brightness(1)',
         }
       : {
           opacity: pressed ? 0.4 : 1,
@@ -55,10 +54,14 @@ function TabButton({ label, icon, isFocused, onPress, onLongPress }: TabButtonPr
       onPressOut={handlePressOut}
       style={styles.tabButton}
     >
-      {/* @ts-ignore - web CSS properties */}
-      <View style={[styles.tabContent, animationStyle]}>
-        {/* @ts-ignore - web CSS properties */}
-        <View style={[styles.iconWrapper, activeTransitionStyle, { opacity: isFocused ? 1 : 0.5 }]}>
+      <View style={[styles.tabContent, animationStyle as ViewStyle]}>
+        <View
+          style={[
+            styles.iconWrapper,
+            (Platform.OS === 'web' ? { transition: 'opacity 150ms ease-in-out' } : {}) as ViewStyle,
+            Platform.OS === 'web' ? { opacity: isFocused ? 1 : 0.5 } : {},
+          ]}
+        >
           {icon}
         </View>
         <Text

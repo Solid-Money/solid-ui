@@ -209,7 +209,7 @@ const ResponsiveModal = ({
             ) : (
               <View className="relative">
                 <ScrollView
-                  className="max-h-[80vh]"
+                  className="web:max-h-[80vh]"
                   contentContainerClassName="pb-4 md:pb-8"
                   showsVerticalScrollIndicator={false}
                   onLayout={e => {
