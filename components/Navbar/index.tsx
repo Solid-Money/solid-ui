@@ -3,8 +3,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 
-import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown';
-import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
+import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown.web';
+import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown.web';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
