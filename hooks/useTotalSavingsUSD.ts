@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
+import { fuse } from 'viem/chains';
 
+import { NATIVE_TOKENS } from '@/constants/tokens';
 import { VAULTS } from '@/constants/vaults';
 import { useAPYsByAsset, useLatestTokenTransfer, useUserTransactions } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
@@ -9,6 +11,7 @@ import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { ADDRESSES } from '@/lib/config';
+import { fetchTokenPriceUsd } from '@/lib/api';
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
 
@@ -41,6 +44,11 @@ export const useTotalSavingsUSD = () => {
   const { data: balanceFuse } = useVaultBalance(safeAddress, fuseVault ?? usdcVault);
   const { data: exchangeRateUsdc } = useVaultExchangeRate(usdcVault.name);
   const { data: exchangeRateFuse } = useVaultExchangeRate(fuseVault?.name ?? '');
+  const { data: fusePriceUsd } = useQuery({
+    queryKey: ['fusePriceUsd'],
+    queryFn: () => fetchTokenPriceUsd(NATIVE_TOKENS[fuse.id]),
+    staleTime: 60 * 1000,
+  });
   const { data: lastTsUsdc } = useLatestTokenTransfer(address ?? '', ADDRESSES.fuse.vault);
   const { data: lastTsFuse } = useLatestTokenTransfer(address ?? '', ADDRESSES.fuse.fuseVault);
 
@@ -92,7 +100,8 @@ export const useTotalSavingsUSD = () => {
         usdcVault.decimals,
       );
 
-      const usdFuse = fuseVault
+      // FUSE vault yield is in FUSE (exchangeRateFuse is soFUSE→FUSE); convert to USD for total
+      const fuseYieldInFuse = fuseVault
         ? await calculateYield(
             balanceFuse ?? 0,
             apyFuse,
@@ -107,6 +116,8 @@ export const useTotalSavingsUSD = () => {
             fuseVault.decimals,
           )
         : 0;
+      const fusePrice = Number(fusePriceUsd) || 0;
+      const usdFuse = fuseYieldInFuse * fusePrice;
 
       if (!cancelled) setTotalSavingsUSD(usdUsdc + usdFuse);
     };
@@ -126,6 +137,7 @@ export const useTotalSavingsUSD = () => {
     currentTime,
     exchangeRateUsdc,
     exchangeRateFuse,
+    fusePriceUsd,
     queryClient,
     transactionsKey,
     fuseVault,
