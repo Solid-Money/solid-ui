@@ -1,8 +1,8 @@
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 
-import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown';
-import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown';
+import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown.native';
+import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown.native';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 
