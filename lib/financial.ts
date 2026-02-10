@@ -388,8 +388,9 @@ export const calculateYield = async (
           setEarnedUSD(interestEarnedUSD);
         }
 
+        // Don't fall back to global earnedUSD (other vault's value); clamp to 0
         if (interestEarnedUSD < 0) {
-          interestEarnedUSD = earnedUSD;
+          interestEarnedUSD = 0;
         }
 
         const amountGained =
