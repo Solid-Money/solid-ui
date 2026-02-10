@@ -489,7 +489,7 @@ export default function Savings() {
             </View>
           </>
         )}
-        <SavingsAnalytics />
+        {currentVault?.name === 'USDC' && <SavingsAnalytics />}
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
       </View>
