@@ -190,7 +190,8 @@ export default function Savings() {
                         prefix={displayPrefix}
                         suffix={displaySuffix ?? ''}
                         balance={balance ?? 0}
-                        decimalPlaces={2} // Show 2 decimals for USD value
+                        decimalPlaces={2}
+                        decimals={currentVault.decimals}
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         userDepositTransactions={userDepositTransactions}
@@ -228,6 +229,7 @@ export default function Savings() {
                         prefix={displayPrefix}
                         suffix={displaySuffix ?? ''}
                         balance={balance ?? 0}
+                        decimals={currentVault.decimals}
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         mode={SavingMode.CURRENT}
@@ -364,6 +366,7 @@ export default function Savings() {
                         suffix={displaySuffix ?? ''}
                         balance={balance ?? 0}
                         decimalPlaces={2}
+                        decimals={currentVault.decimals}
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         userDepositTransactions={userDepositTransactions}
@@ -401,6 +404,7 @@ export default function Savings() {
                         prefix={displayPrefix}
                         suffix={displaySuffix ?? ''}
                         balance={balance ?? 0}
+                        decimals={currentVault.decimals}
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         mode={SavingMode.CURRENT}
