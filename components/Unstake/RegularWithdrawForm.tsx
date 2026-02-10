@@ -19,11 +19,13 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
 import { UNSTAKE_MODAL } from '@/constants/modals';
+import { isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
 import useUser from '@/hooks/useUser';
-import { useFuseVaultBalance } from '@/hooks/useVault';
+import { useFuseVaultBalance, useSoFuseVaultBalance } from '@/hooks/useVault';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import useWithdraw from '@/hooks/useWithdraw';
+import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
 import { cn, eclipseAddress, formatNumber } from '@/lib/utils';
@@ -41,14 +43,12 @@ const RegularWithdrawForm = () => {
     })),
   );
 
-  const { ethereumTokens, fuseTokens, baseTokens, arbitrumTokens } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
-  // Filter for soUSD tokens only (vault tokens) and sort by USD value
+  // Filter for withdraw vault tokens (soUSD, soFUSE, fusdc) and sort by USD value
   const sortedTokens = useMemo(() => {
-    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
-    const vaultTokens = allTokens.filter(
-      token => token.contractTickerSymbol?.toLowerCase() === 'sousd',
-    );
+    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
+    const vaultTokens = allTokens.filter(token => isSolidTokenSymbol(token.contractTickerSymbol));
     return vaultTokens.sort((a, b) => {
       const balanceA = Number(formatUnits(BigInt(a.balance || '0'), a.contractDecimals));
       const balanceUSD_A = balanceA * (a.quoteRate || 0);
@@ -58,7 +58,7 @@ const RegularWithdrawForm = () => {
 
       return balanceUSD_B - balanceUSD_A; // Descending order
     });
-  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens]);
+  }, [ethereumTokens, fuseTokens, baseTokens]);
 
   // Auto-select the first token if no token is selected
   useEffect(() => {
@@ -71,7 +71,11 @@ const RegularWithdrawForm = () => {
   const { data: formattedBalance, isLoading: isLoadingFuseBalance } = useFuseVaultBalance(
     user?.safeAddress as Address,
   );
+  const { data: soFuseFormattedBalance, isLoading: isLoadingSoFuseBalance } = useSoFuseVaultBalance(
+    user?.safeAddress as Address,
+  );
 
+  const isSoFuse = selectedToken?.contractTickerSymbol?.toLowerCase() === 'sofuse';
   const tokenType = selectedToken?.type || TokenType.ERC20;
   const isNative = tokenType === TokenType.NATIVE;
 
@@ -99,6 +103,9 @@ const RegularWithdrawForm = () => {
   const isLoading = isNative ? isBalanceNativeLoading : isBalanceERC20Loading;
 
   const balanceAmount = useMemo(() => {
+    if (isSoFuse) {
+      return soFuseFormattedBalance ? Number(soFuseFormattedBalance) : 0;
+    }
     if (!selectedToken) {
       return formattedBalance ? Number(formattedBalance) : 0;
     }
@@ -108,7 +115,7 @@ const RegularWithdrawForm = () => {
     return Number(
       formatUnits(BigInt(selectedToken.balance || '0'), selectedToken.contractDecimals),
     );
-  }, [selectedToken, balance, formattedBalance]);
+  }, [isSoFuse, selectedToken, balance, formattedBalance, soFuseFormattedBalance]);
 
   const bridgeSchema = useMemo(() => {
     return z.object({
@@ -144,13 +151,15 @@ const RegularWithdrawForm = () => {
   const watchedAmount = watch('amount');
   const { bridge, bridgeStatus } = useBridgeToMainnet();
   const { withdraw, withdrawStatus } = useWithdraw();
+  const { withdrawSoFuse, withdrawSoFuseStatus } = useWithdrawSoFuse();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
   const isWithdrawLoading = withdrawStatus === Status.PENDING;
+  const isWithdrawSoFuseLoading = withdrawSoFuseStatus === Status.PENDING;
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
 
   // Determine if soUSD is on Fuse (chainId 122) or Ethereum (chainId 1)
-  const isSoUSDOnFuse = selectedToken?.chainId === 122;
-  const isSoUSDOnEthereum = selectedToken?.chainId === 1;
+  const isSoUSDOnFuse = !isSoFuse && selectedToken?.chainId === 122;
+  const isSoUSDOnEthereum = !isSoFuse && selectedToken?.chainId === 1;
 
   const balanceUSD = useMemo(() => {
     if (!selectedToken) return 0;
@@ -174,6 +183,7 @@ const RegularWithdrawForm = () => {
       await bridge(data.amount.toString());
       setTransaction({
         amount: Number(data.amount),
+        symbol: 'soUSD',
       });
       setActiveStep(2);
     } catch (_error) {
@@ -189,6 +199,7 @@ const RegularWithdrawForm = () => {
       const transaction = await withdraw(data.amount.toString());
       setTransaction({
         amount: Number(watchedAmount),
+        symbol: 'soUSD',
       });
       reset(); // Reset form after successful transaction
       setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
@@ -212,9 +223,42 @@ const RegularWithdrawForm = () => {
     }
   };
 
+  const onSoFuseSubmit = async (data: WithdrawFormData) => {
+    try {
+      const transaction = await withdrawSoFuse(data.amount.toString());
+      setTransaction({
+        amount: Number(data.amount),
+        symbol: 'FUSE',
+      });
+      reset();
+      setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
+      Toast.show({
+        type: 'success',
+        text1: 'Withdraw submitted',
+        text2: `${data.amount} soFUSE → WFUSE on Fuse`,
+        props: {
+          link: `https://explorer.fuse.io/tx/${transaction.transactionHash}`,
+          linkText: eclipseAddress(transaction.transactionHash),
+          image: getTokenIcon({ tokenSymbol: 'FUSE' }),
+        },
+      });
+    } catch (_error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error while withdrawing',
+      });
+    }
+  };
+
   const isWithdrawFormDisabled = () => {
+    const balanceLoading = isSoFuse ? isLoadingSoFuseBalance : isLoadingFuseBalance;
     return (
-      isLoadingFuseBalance || !isBridgeValid || !watchedAmount || isBridgeLoading || !selectedToken
+      balanceLoading ||
+      !isBridgeValid ||
+      !watchedAmount ||
+      isBridgeLoading ||
+      (isSoFuse ? isWithdrawSoFuseLoading : isWithdrawLoading) ||
+      !selectedToken
     );
   };
 
@@ -228,7 +272,7 @@ const RegularWithdrawForm = () => {
               <View className="flex-row items-center gap-2">
                 <Wallet size={16} color="#ffffff80" />
                 <Text className="text-base opacity-50">
-                  {isLoading || isLoadingFuseBalance
+                  {isLoading || (isSoFuse ? isLoadingSoFuseBalance : isLoadingFuseBalance)
                     ? '...'
                     : `${formatNumber(balanceAmount, 2)} ${selectedToken.contractTickerSymbol}`}
                 </Text>
@@ -307,13 +351,13 @@ const RegularWithdrawForm = () => {
             <View className="flex-row items-center gap-1.5">
               <RenderTokenIcon
                 tokenIcon={getTokenIcon({
-                  tokenSymbol: 'USDC',
+                  tokenSymbol: isSoFuse ? 'FUSE' : 'USDC',
                   size: 28,
                 })}
                 size={28}
               />
               <View className="flex-col">
-                <Text className="text-base">USDC on Ethereum</Text>
+                <Text className="text-base">{isSoFuse ? 'WFUSE on Fuse' : 'USDC on Ethereum'}</Text>
               </View>
             </View>
           </View>
@@ -331,13 +375,44 @@ const RegularWithdrawForm = () => {
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Fee</Text>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
-              <Text className="text-base font-semibold">0 USDC</Text>
+              <Text className="text-base font-semibold">{isSoFuse ? '0 FUSE' : '0 USDC'}</Text>
             </View>
           </View>
         </TokenDetails>
         <Text className="text-base font-medium opacity-70">Actions</Text>
         <TokenDetails>
-          {isSoUSDOnFuse ? (
+          {isSoFuse ? (
+            <View className="px-5 py-6 md:p-5">
+              <View className="mb-4 flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <RenderTokenIcon
+                    tokenIcon={getTokenIcon({ tokenSymbol: 'soFUSE', size: 22 })}
+                    size={22}
+                  />
+                  <Text className="text-base font-bold text-white">Withdraw to FUSE</Text>
+                </View>
+              </View>
+              <Button
+                variant="brand"
+                className="h-[48px] rounded-[12px] web:disabled:hover:bg-brand"
+                onPress={handleSubmit(onSoFuseSubmit)}
+                disabled={isWithdrawFormDisabled() || isWithdrawSoFuseLoading}
+              >
+                {isWithdrawSoFuseLoading ? (
+                  <ActivityIndicator color="gray" />
+                ) : (
+                  <View className="flex-row items-center gap-2">
+                    <Image
+                      source={require('@/assets/images/key.png')}
+                      className="h-6 w-6"
+                      contentFit="contain"
+                    />
+                    <Text className="text-base font-bold text-primary-foreground">Withdraw</Text>
+                  </View>
+                )}
+              </Button>
+            </View>
+          ) : isSoUSDOnFuse ? (
             <>
               {/* Step 1: Bridge to Ethereum */}
               <View className="px-5 py-6 md:p-5">

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { getTierDisplayName, getTierIcon } from '@/constants/rewards';
+import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { useTierBenefits } from '@/hooks/useRewards';
 import { getAsset } from '@/lib/assets';
@@ -26,15 +27,22 @@ interface DashboardBenefitItem {
 
 const transformTierBenefitsForDashboard = (
   tierBenefits: TierBenefits | undefined,
+  currentTier: RewardsTier,
+  coreDepositTitle: string | undefined,
 ): DashboardBenefitItem[] => {
   if (!tierBenefits) {
     return [];
   }
 
+  const depositTitle =
+    currentTier === RewardsTier.CORE && coreDepositTitle != null
+      ? coreDepositTitle
+      : tierBenefits.depositBoost.title;
+
   return [
     {
       icon: 'images/dollar-yellow.png',
-      title: tierBenefits.depositBoost.title,
+      title: depositTitle,
       description: 'On your savings',
     },
     {
@@ -63,14 +71,24 @@ const RewardsDashboard = ({
   totalPoints,
   nextTier,
   nextTierPoints,
-  onTierPress,
 }: RewardsDashboardProps) => {
   const { isScreenMedium } = useDimension();
   const { data: allTierBenefits } = useTierBenefits();
+  const { maxAPY } = useMaxAPY();
 
   // Get benefits for the current tier from API data
   const currentTierBenefits = allTierBenefits?.find(tb => tb.tier === currentTier);
-  const dashboardBenefits = transformTierBenefitsForDashboard(currentTierBenefits);
+  const coreDepositTitle =
+    currentTier === RewardsTier.CORE
+      ? maxAPY !== null
+        ? `${formatNumber(maxAPY, 2, 0)}% yield`
+        : undefined
+      : undefined;
+  const dashboardBenefits = transformTierBenefitsForDashboard(
+    currentTierBenefits,
+    currentTier,
+    coreDepositTitle,
+  );
 
   return (
     <View

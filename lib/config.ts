@@ -18,6 +18,7 @@ export const EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT =
   process.env.EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ?? '100';
+export const EXPO_PUBLIC_FUSE_GAS_RESERVE = process.env.EXPO_PUBLIC_FUSE_GAS_RESERVE ?? '0.01';
 export const EXPO_PUBLIC_LIFI_API_URL = process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
 export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_ID ?? '';
 export const EXPO_PUBLIC_FIREBASE_API_KEY = process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? '';
@@ -62,6 +63,9 @@ type Addresses = {
   fuse: {
     vault: Address;
     teller: Address;
+    fuseVault: Address;
+    fuseTeller: Address;
+    fuseAccountant: Address;
     nativeFeeToken: Address;
     bridgePaymasterAddress: Address;
     merklDistributor: Address;
@@ -69,6 +73,7 @@ type Addresses = {
     fastWithdrawManager: Address;
     stargateOftUSDC: Address;
     aaveV3Pool: Address;
+    soFuseBoringQueue: Address;
   };
   base: {
     vault: Address;
@@ -105,6 +110,15 @@ export const ADDRESSES: Addresses = {
     teller: isProduction
       ? '0x220d4667AA06E0Aa39f62c601690848f2e48BC15'
       : '0xcBA3D8DC1DdE5fbD4c04cBbD5624Dc79D300963d',
+    fuseVault: isProduction
+      ? '0xb33c8F0b0816fd147FCF896C594a3ef408845e2C'
+      : '0xDA737B0C12a08D85C973F10f25459F07F2BB2882',
+    fuseTeller: isProduction
+      ? '0x4Aa13c96d45FDF14731acEF8F6a2DBf17D6BD53c'
+      : '0x1f8D6492F324916465B1E216a3061B69aa631C94',
+    fuseAccountant: isProduction
+      ? '0xb29B5F760d38587f7F4C896C458B9EEB5CAd9C0C'
+      : '0xc864e169a1d40b957170E6c848BbcE49f28b361B',
     nativeFeeToken: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
     bridgePaymasterAddress: '0xE046FC894Ec020501BA32fcA814a69B49c9Dac10',
     merklDistributor: '0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae',
@@ -112,6 +126,9 @@ export const ADDRESSES: Addresses = {
     fastWithdrawManager: '0x0bA17eab7B6B2353eA4731c37A2cBA2a5AA4Ea1b',
     stargateOftUSDC: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',
     aaveV3Pool: '0xe3eda4b12ae4ACC031E4CF9Eae08ACe6250CED3E',
+    soFuseBoringQueue: isProduction
+      ? '0x8a6612ff8bA43C4c8A1e7DD5c0eE2d7CBEDF0E66'
+      : '0x5FD429278E39342920CD6629574f9E0c4766c675',
   },
   base: {
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',

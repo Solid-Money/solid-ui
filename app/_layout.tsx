@@ -153,7 +153,7 @@ function WhatsNewWrapper() {
   return <LazyWhatsNewModal whatsNew={whatsNew} isOpen={isVisible} onClose={closeWhatsNew} />;
 }
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,

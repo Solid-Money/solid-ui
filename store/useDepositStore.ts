@@ -44,7 +44,7 @@ interface DirectDepositSession {
   sessionId?: string;
   walletAddress?: string;
   chainId?: number;
-  selectedToken?: 'USDC' | 'USDT';
+  selectedToken?: string;
   status?: 'pending' | 'detected' | 'processing' | 'completed' | 'failed' | 'expired';
   expiresAt?: number;
   minDeposit?: string;
@@ -67,6 +67,8 @@ interface DepositState {
   kyc: KycData;
   directDepositSession: DirectDepositSession;
   sessionStartTime?: number;
+  depositFromSolid: boolean;
+  setDepositFromSolid: (v: boolean) => void;
   setModal: (modal: DepositModal) => void;
   setTransaction: (transaction: TransactionStatusModal) => void;
   setBankTransferData: (data: Partial<BankTransferData>) => void;
@@ -79,6 +81,7 @@ interface DepositState {
   clearDirectDepositSession: () => void;
   setSessionStartTime: (time: number) => void;
   clearSessionStartTime: () => void;
+  resetDepositFlow: () => void;
 }
 
 export const useDepositStore = create<DepositState>()(
@@ -93,10 +96,13 @@ export const useDepositStore = create<DepositState>()(
       kyc: {},
       directDepositSession: {},
       sessionStartTime: undefined,
+      depositFromSolid: false,
+      setDepositFromSolid: (v: boolean) => set({ depositFromSolid: v }),
 
       setModal: modal => {
+        const isClose = modal.name === DEPOSIT_MODAL.CLOSE.name;
         set({
-          previousModal: get().currentModal,
+          previousModal: isClose ? DEPOSIT_MODAL.CLOSE : get().currentModal,
           currentModal: modal,
         });
       },
@@ -112,6 +118,19 @@ export const useDepositStore = create<DepositState>()(
       clearDirectDepositSession: () => set({ directDepositSession: {} }),
       setSessionStartTime: time => set({ sessionStartTime: time }),
       clearSessionStartTime: () => set({ sessionStartTime: undefined }),
+      resetDepositFlow: () =>
+        set({
+          currentModal: DEPOSIT_MODAL.CLOSE,
+          previousModal: DEPOSIT_MODAL.CLOSE,
+          transaction: {},
+          srcChainId: 0, // unset so next open shows options
+          outputToken: 'soUSD',
+          bankTransfer: {},
+          kyc: {},
+          directDepositSession: {},
+          sessionStartTime: undefined,
+          depositFromSolid: false,
+        }),
     }),
     {
       name: USER.depositStorageKey,

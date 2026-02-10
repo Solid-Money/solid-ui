@@ -1,9 +1,10 @@
-import { getInfoClient } from '@/graphql/clients';
 import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
+import { secondsToMilliseconds } from 'date-fns';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
 import { explorerUrls, layerzero } from '@/constants/explorers';
+import { getInfoClient } from '@/graphql/clients';
 import {
   GetUserTransactionsDocument,
   GetUserTransactionsQuery,
@@ -24,6 +25,7 @@ import {
 } from '@/lib/api';
 import { ADDRESSES, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import {
+  APYs,
   BankTransferActivityItem,
   BankTransferStatus,
   BlockscoutTransaction,
@@ -37,10 +39,10 @@ import {
   TransactionStatus,
   TransactionType,
   VaultBreakdown,
+  VaultType,
 } from '@/lib/types';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
-import { secondsToMilliseconds } from 'date-fns';
 
 const ANALYTICS = 'analytics';
 const ApyToDays = {
@@ -48,6 +50,9 @@ const ApyToDays = {
   fifteenDay: 15,
   thirtyDay: 30,
 };
+
+const getAnalyticsVaultKey = (vault?: VaultType): VaultType.USDC | VaultType.FUSE =>
+  vault === VaultType.FUSE ? VaultType.FUSE : VaultType.USDC;
 
 const safeFormatUnits = (
   value: string | number | bigint | null | undefined,
@@ -83,10 +88,12 @@ const mapToTransactionStatus = (
   return TransactionStatus.FAILED;
 };
 
-export const useTotalAPY = () => {
+export const useTotalAPY = (vault?: VaultType) => {
+  const vaultKey = getAnalyticsVaultKey(vault);
   return useQuery({
     queryKey: [ANALYTICS, 'totalAPY'],
     queryFn: fetchTotalAPY,
+    select: data => data[vaultKey],
   });
 };
 
@@ -546,12 +553,20 @@ export const apysQueryOptions = () => ({
   queryFn: fetchAPYs,
 });
 
-export const useAPYs = () => {
+export const useAPYsByAsset = () => {
   return useQuery(apysQueryOptions());
 };
 
-export const useMaxAPY = () => {
-  const { data: apys, isLoading: isAPYsLoading } = useAPYs();
+export const useAPYs = (vault?: VaultType) => {
+  const vaultKey = getAnalyticsVaultKey(vault);
+  return useQuery({
+    ...apysQueryOptions(),
+    select: (data): APYs | undefined => data[vaultKey],
+  });
+};
+
+export const useMaxAPY = (vault?: VaultType) => {
+  const { data: apys, isLoading: isAPYsLoading } = useAPYs(vault);
   const thirtyDay = apys?.thirtyDay ?? 0;
   const fifteenDay = apys?.fifteenDay ?? 0;
   const sevenDay = apys?.sevenDay ?? 0;
@@ -602,11 +617,10 @@ export const useSearchCoinHistoricalChart = (query: string, days: string = '1') 
   });
 };
 
-export const useHistoricalAPY = (days: string = '30') => {
+export const useHistoricalAPY = (days: string = '30', vault?: VaultType) => {
+  const vaultKey = getAnalyticsVaultKey(vault);
   return useQuery({
-    queryKey: [ANALYTICS, 'historicalAPY', days],
-    queryFn: async () => {
-      return fetchHistoricalAPY(days);
-    },
+    queryKey: [ANALYTICS, 'historicalAPY', days, vaultKey],
+    queryFn: async () => fetchHistoricalAPY(days, vault),
   });
 };

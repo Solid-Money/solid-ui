@@ -1,12 +1,14 @@
 import { ActivityIndicator, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
+import { useDimension } from '@/hooks/useDimension';
 import { useRewardsConfig } from '@/hooks/useRewards';
 
 import RewardBenefit from './RewardBenefit';
 
 const EarnPointsSection = () => {
   const { data: config, isLoading } = useRewardsConfig();
+  const { isScreenMedium } = useDimension();
 
   // Format earning methods based on config
   const getEarningMethods = () => {
@@ -14,21 +16,21 @@ const EarnPointsSection = () => {
       // Fallback values while loading
       return [
         {
-          icon: 'images/dollar-yellow.png',
+          icon: 'images/save-yellow.png',
           title: 'Save',
           description: 'Earn points for deposits',
         },
         {
-          icon: 'images/dollar-yellow.png',
+          icon: 'images/spend-yellow.png',
           title: 'Spend',
           description: 'Earn points for spending',
         },
         {
-          icon: 'images/dollar-yellow.png',
+          icon: 'images/invite-yellow.png',
           title: 'Invite friends',
           description: 'Earn referral rewards',
         },
-        { icon: 'images/dollar-yellow.png', title: 'Swap', description: 'Earn points for swaps' },
+        { icon: 'images/swap-yellow.png', title: 'Swap', description: 'Earn points for swaps' },
       ];
     }
 
@@ -37,23 +39,23 @@ const EarnPointsSection = () => {
     // Format holding funds description
     const holdingDesc = `${points.holdingFundsMultiplier} point/hour for every $1 deposited`;
 
-    // Format card spend description (points per dollar * 1000 for every $1000 spent)
-    const spendPoints = points.cardSpendPointsPerDollar * 1000;
-    const spendDesc = `${spendPoints.toLocaleString()} points for every $1000 spent`;
+    // Format card spend description (points per dollar for every $1 spent)
+    const spendPoints = points.cardSpendPointsPerDollar;
+    const spendDesc = `${spendPoints.toLocaleString()} points per $1 spent`;
 
     // Format referral description
     const referralPercent = referral.recurringPercentage * 100;
     const referralDesc = `Earn ${referralPercent}% of their daily points`;
 
     // Format swap description (points per dollar for typical swap)
-    const swapPoints = points.swapPointsPerDollar * 1000;
-    const swapDesc = `${swapPoints.toLocaleString()} points for each swap`;
+    const swapPoints = points.swapPointsPerDollar;
+    const swapDesc = `${swapPoints.toLocaleString()} points per $1 swapped`;
 
     return [
-      { icon: 'images/dollar-yellow.png', title: 'Save', description: holdingDesc },
-      { icon: 'images/dollar-yellow.png', title: 'Spend', description: spendDesc },
-      { icon: 'images/dollar-yellow.png', title: 'Invite friends', description: referralDesc },
-      { icon: 'images/dollar-yellow.png', title: 'Swap', description: swapDesc },
+      { icon: 'images/save-yellow.png', title: 'Save', description: holdingDesc },
+      { icon: 'images/spend-yellow.png', title: 'Spend', description: spendDesc },
+      { icon: 'images/invite-yellow.png', title: 'Invite friends', description: referralDesc },
+      { icon: 'images/swap-yellow.png', title: 'Swap', description: swapDesc },
     ];
   };
 
@@ -64,8 +66,7 @@ const EarnPointsSection = () => {
       <View className="gap-2">
         <Text className="text-2xl font-semibold text-rewards">How do you earn points?</Text>
         <Text className="text-base opacity-70">
-          Earn points for every action you take with Solid and unlock rewards.{'\n'}
-          Turn your deposits and referrals into points that unlock future rewards.
+          Earn points for every action you take with Solid and unlock rewards
         </Text>
       </View>
       {isLoading ? (
@@ -75,7 +76,7 @@ const EarnPointsSection = () => {
       ) : (
         <View className="flex-row flex-wrap gap-6">
           {earningMethods.map((method, index) => (
-            <View key={index} style={{ width: '48%' }}>
+            <View key={index} style={{ width: isScreenMedium ? '48%' : '100%' }}>
               <RewardBenefit
                 icon={method.icon}
                 title={method.title}

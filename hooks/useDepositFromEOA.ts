@@ -1,5 +1,5 @@
-import * as Sentry from '@sentry/react-native';
 import { useEffect, useState } from 'react';
+import * as Sentry from '@sentry/react-native';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import {
   type Address,
@@ -45,8 +45,8 @@ import { config, publicClient } from '@/lib/wagmi';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
+
 import useUser from './useUser';
-import { useShallow } from 'zustand/react/shallow';
 
 type DepositResult = {
   balance: bigint | undefined;

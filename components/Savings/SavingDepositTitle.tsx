@@ -9,7 +9,7 @@ import { useSavingStore } from '@/store/useSavingStore';
 
 const SavingDepositTitle = () => {
   const selectedVault = useSavingStore(state => state.selectedVault);
-  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
+  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY(VAULTS[selectedVault]?.type);
 
   if (Platform.OS === 'web') {
     return (

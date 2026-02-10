@@ -13,6 +13,7 @@ import {
 } from '@/components/BankTransfer/enums';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
+import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { apysQueryOptions } from '@/hooks/useAnalytics';
 import { tokenBalancesQueryOptions } from '@/hooks/useBalances';
 import { detectPasskeySupported } from '@/hooks/usePasskey';
@@ -72,6 +73,9 @@ export default function ProtectedLayout() {
   // Ensure webhook subscription for real-time activity updates
   // This auto-subscribes when user has a safe address but isn't registered yet
   useWebhookStatus({ autoSubscribe: true });
+
+  // Enable real-time activity updates globally for logged-in users
+  useActivitySSE({ enabled: !!user, subscribe: false });
 
   useEffect(() => {
     if (!user) return;

@@ -1,3 +1,6 @@
+import { Reward } from '@merkl/api';
+import { Address, Hex } from 'viem';
+
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import {
   DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
@@ -8,8 +11,7 @@ import {
   UNSTAKE_MODAL,
   WITHDRAW_MODAL,
 } from '@/constants/modals';
-import { Reward } from '@merkl/api';
-import { Address, Hex } from 'viem';
+
 import { AssetPath } from './assets';
 
 export interface CountryFromIp {
@@ -560,6 +562,7 @@ export type TransactionStatusModal = {
   amount?: number;
   address?: Address;
   trackingId?: string;
+  symbol?: string;
 };
 
 export type TokenIcon = {
@@ -618,6 +621,7 @@ export type Deposit = {
     deadline: number;
   };
   trackingId?: string;
+  vault?: VaultType;
 };
 
 export enum DepositTransactionStatus {
@@ -1241,6 +1245,21 @@ export interface APYs {
   thirtyDay: number;
 }
 
+export interface TotalAPYResponse {
+  usdc: number;
+  fuse: number;
+}
+
+export interface APYsByAsset {
+  usdc: APYs;
+  fuse: APYs;
+}
+
+export interface HistoricalAPYPoint {
+  time: string;
+  value: number;
+}
+
 export interface Coin {
   id: string;
   name: string;
@@ -1325,9 +1344,29 @@ export interface SSEActivityData {
   timestamp: number;
 }
 
+export type BalanceChangeType =
+  | 'deposit'
+  | 'withdrawal'
+  | 'transfer_in'
+  | 'transfer_out'
+  | 'swap'
+  | 'bonus';
+
+export interface SSEBalanceUpdateData {
+  event: 'balance_update';
+  userId: string;
+  balance: {
+    shouldRefetch: true;
+    changeType: BalanceChangeType;
+    triggerActivityId?: string;
+  };
+  timestamp: number;
+}
+
 export type SSEEventData =
   | { type: 'ping'; data: SSEPingData }
-  | { type: 'activity'; data: SSEActivityData };
+  | { type: 'activity'; data: SSEActivityData }
+  | { type: 'balance_update'; data: SSEBalanceUpdateData };
 
 // SSE Connection States
 export type SSEConnectionState =
@@ -1353,7 +1392,30 @@ export interface EnsureWebhookResponse {
   message: string;
 }
 
+export type DepositMethod = 'wallet' | 'deposit_directly' | 'credit_card' | 'bank_transfer';
+
+export interface VaultDepositConfig {
+  methods: DepositMethod[];
+  supportedChains: number[];
+  supportedTokens: string[];
+}
+
 export interface Vault {
   name: string;
+  type: VaultType;
+  vaultToken: string;
   icon: AssetPath;
+  decimals: number;
+  vaults: {
+    address: Address;
+    chainId: number;
+  }[];
+  depositConfig?: VaultDepositConfig;
+  isComingSoon?: boolean;
+}
+
+export enum VaultType {
+  FUSE = 'fuse',
+  USDC = 'usdc',
+  ETH = 'eth',
 }

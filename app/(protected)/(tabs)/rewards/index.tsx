@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
-import ReferBanner from '@/components/Points/ReferBanner';
+import RewardReferBanner from '@/components/Points/RewardReferBanner';
 import CashbackCard from '@/components/Rewards/CashbackCard';
 import GetCardRewardsBanner from '@/components/Rewards/GetCardRewardsBanner';
 import RewardsDashboard from '@/components/Rewards/RewardsDashboard';
@@ -33,7 +33,7 @@ export default function Rewards() {
         cashbackRate={cashbackRate}
         maxCashbackMonthly={maxCashbackMonthly}
       />,
-      <ReferBanner key="refer" />,
+      <RewardReferBanner key="refer" title="Refer a Friend" buttonText="Start earning" />,
     ];
   }, [rewardsData]);
 

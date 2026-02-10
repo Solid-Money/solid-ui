@@ -7,6 +7,7 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { getBridgeChain } from '@/constants/bridge';
 import { UNSTAKE_MODAL } from '@/constants/modals';
+import { isSolidTokenSymbol } from '@/constants/withdraw';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
@@ -22,13 +23,13 @@ const UnstakeTokenSelector: React.FC = () => {
       setModal: state.setModal,
     })),
   );
-  const { ethereumTokens, fuseTokens, baseTokens, arbitrumTokens } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, baseTokens } = useWalletTokens();
 
   // Filter for soUSD tokens only (vault tokens)
   const vaultTokens = useMemo(() => {
-    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
-    return allTokens.filter(token => token.contractTickerSymbol?.toLowerCase() === 'sousd');
-  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens]);
+    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
+    return allTokens.filter(token => isSolidTokenSymbol(token.contractTickerSymbol));
+  }, [ethereumTokens, fuseTokens, baseTokens]);
 
   // Sort tokens by USD value (descending)
   const sortedTokens = useMemo(() => {

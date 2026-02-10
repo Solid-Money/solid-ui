@@ -89,7 +89,7 @@ class SSEConnectionManager {
 
   /**
    * Set up user store subscription to track user changes
-   * Called when first subscriber is added
+   * Called when first subscriber is added or when enable() is called
    */
   private setupUserStoreSubscription(): void {
     if (this.userStoreUnsubscribe) return; // Already set up
@@ -217,6 +217,8 @@ class SSEConnectionManager {
     }
 
     this.currentUserId = userId;
+    // Set up user store subscription to handle user switching (even when subscribe: false)
+    this.setupUserStoreSubscription();
     this.setupAppStateListener();
     this.connect();
   }

@@ -7,7 +7,9 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
+import { getAllowedTokensForChain } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import DepositNetwork from './DepositNetwork';
@@ -21,22 +23,27 @@ const DepositNetworks = () => {
     })),
   );
   const { user } = useUser();
+  const { vault, depositConfig } = useVaultDepositConfig();
   const hasTrackedNetworkView = useRef(false);
+  const supportedChains = depositConfig.supportedChains;
 
   // Track when wallet network selection screen is viewed
   useEffect(() => {
     if (!hasTrackedNetworkView.current) {
-      const networksCount = Object.keys(BRIDGE_TOKENS).length;
+      const networksCount = supportedChains.length;
       track(TRACKING_EVENTS.DEPOSIT_WALLET_NETWORK_VIEWED, {
         deposit_method: 'wallet',
         available_networks: networksCount,
+        vault: vault.name,
       });
       hasTrackedNetworkView.current = true;
     }
-  }, []);
+  }, [supportedChains.length, vault.name]);
 
   const handlePress = (id: number) => {
     const network = BRIDGE_TOKENS[id];
+    const allowedTokens = getAllowedTokensForChain(id, vault);
+    const selectedToken = allowedTokens[0] || 'USDC';
 
     // Track network selection
     track(TRACKING_EVENTS.NETWORK_SELECTED, {
@@ -46,37 +53,50 @@ const DepositNetworks = () => {
       network_name: network?.name,
       deposit_type: 'connected_wallet',
       deposit_method: 'cross_chain_bridge',
+      vault: vault.name,
     });
+
+    const estimatedTime =
+      id === 1 ? '5 min' : id === 122 && vault.vaultToken === 'soFUSE' ? '2 min' : '20 min';
 
     // Track wallet network selection specifically
     track(TRACKING_EVENTS.DEPOSIT_WALLET_NETWORK_SELECTED, {
       deposit_method: 'wallet',
       chain_id: id,
       network_name: network?.name,
-      estimated_time: id === 1 ? '5 min' : '20 min',
+      estimated_time: estimatedTime,
+      vault: vault.name,
     });
 
     setSrcChainId(id);
-    setOutputToken('USDC');
+    setOutputToken(selectedToken);
     setModal(DEPOSIT_MODAL.OPEN_FORM);
   };
 
   return (
-    <View className="gap-y-2">
+    <View className="min-h-[33rem] gap-y-2">
       <Text className="text-[1rem] font-medium text-muted-foreground">Choose a network</Text>
 
       <View className="gap-y-1.5">
         {Object.entries(BRIDGE_TOKENS)
           .sort((a, b) => a[1].sort - b[1].sort)
+          .filter(([id]) => supportedChains.includes(Number(id)))
+          .filter(([id]) => getAllowedTokensForChain(Number(id), vault).length > 0)
           .map(([id, network]) => {
-            const isEthereum = Number(id) === 1;
+            const chainId = Number(id);
             const isComingSoon = network.isComingSoon;
+            const estimatedDesc =
+              chainId === 1
+                ? 'Estimated speed: 5 min'
+                : chainId === 122 && vault.vaultToken === 'soFUSE'
+                  ? 'Estimated speed: 2 min'
+                  : 'Estimated speed: 20 min';
 
             return (
               <DepositNetwork
                 key={network.name}
                 name={network.name}
-                description={isEthereum ? 'Estimated speed: 5 min' : 'Estimated speed: 20 min'}
+                description={estimatedDesc}
                 icon={network.icon}
                 isComingSoon={isComingSoon}
                 onPress={() => handlePress(Number(id))}

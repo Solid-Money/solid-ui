@@ -33,33 +33,27 @@ const DepositTrigger = ({
   source = 'unknown',
 }: DepositTriggerProps) => {
   const { user } = useUser();
-  const { setModal, srcChainId } = useDepositStore(
+  const { setModal, setSrcChainId } = useDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
-      srcChainId: state.srcChainId,
+      setSrcChainId: state.setSrcChainId,
     })),
   );
 
   const handlePress = () => {
-    // Track deposit trigger click with source context
+    setSrcChainId(0); // reset chain so modal always opens to options
+    const modalToOpen = user && !user.email ? DEPOSIT_MODAL.OPEN_EMAIL_GATE : modal;
+
     track(TRACKING_EVENTS.DEPOSIT_TRIGGER_CLICKED, {
       source,
       button_text: buttonText,
       has_email: !!user?.email,
-      has_src_chain: !!srcChainId,
-      modal_to_open:
-        user && !user.email
-          ? DEPOSIT_MODAL.OPEN_EMAIL_GATE
-          : srcChainId
-            ? DEPOSIT_MODAL.OPEN_FORM
-            : modal,
+      has_src_chain: false,
+      modal_to_open: modalToOpen,
     });
 
-    // Check if user has email when opening deposit modal
     if (user && !user.email) {
       setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
-    } else if (srcChainId) {
-      setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else {
       setModal(modal);
     }

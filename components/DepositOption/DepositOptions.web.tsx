@@ -5,7 +5,9 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
 import useDepositExternalWalletOptions from '@/hooks/useDepositExternalWalletOptions';
 import useUser from '@/hooks/useUser';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
+import { DepositMethod } from '@/lib/types';
 
 import DepositOption from './DepositOption';
 
@@ -19,12 +21,14 @@ type DepositOptionProps = {
   isEnabled?: boolean;
   bannerText?: string;
   chipText?: string;
+  method?: DepositMethod;
 };
 
 const DepositOptions = () => {
   const { user } = useUser();
   const { externalWalletOptions } = useDepositExternalWalletOptions();
   const { buyCryptoOptions } = useDepositBuyCryptoOptions();
+  const { depositConfig } = useVaultDepositConfig();
 
   // Track when deposit options are viewed
   useEffect(() => {
@@ -40,7 +44,11 @@ const DepositOptions = () => {
   return (
     <View className="gap-y-2.5">
       {depositOptions
-        .filter(option => option.isEnabled ?? true)
+        .filter(
+          option =>
+            (option.isEnabled ?? true) &&
+            (!option.method || depositConfig.methods.includes(option.method)),
+        )
         .map(option => (
           <DepositOption
             key={option.text}

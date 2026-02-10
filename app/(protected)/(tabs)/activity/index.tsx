@@ -6,7 +6,6 @@ import LazyDepositOptionModal from '@/components/DepositOption/LazyDepositOption
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { useActivityRefresh } from '@/hooks/useActivityRefresh';
-import { useActivitySSE } from '@/hooks/useActivitySSE';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { ActivityTab } from '@/lib/types';
@@ -19,10 +18,6 @@ export default function Activity() {
   // Use lightweight hook to avoid re-renders from activity data changes
   const { refetchAll, isSyncing } = useActivityRefresh();
   const isWeb = Platform.OS === 'web';
-
-  // Enable real-time activity updates via SSE only when viewing this tab
-  // Connection automatically closes when navigating away (singleton reference counting)
-  useActivitySSE();
   const userHasCard = hasCard(cardStatus);
 
   return (

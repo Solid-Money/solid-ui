@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { Card, SavingCard, WalletCard } from '@/components/Wallet';
 import { USDC_TOKEN_BALANCE } from '@/constants/tokens';
-import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { TokenBalance } from '@/lib/types';
 
 type MobileCardsProps = {
@@ -13,10 +12,6 @@ type MobileCardsProps = {
   isLoadingTokens: boolean;
   userHasCard: boolean;
   cardBalance: number;
-  balance?: number;
-  isBalanceLoading?: boolean;
-  firstDepositTimestamp?: number;
-  userDepositTransactions?: GetUserTransactionsQuery;
 };
 
 export default function MobileCards({
@@ -25,10 +20,6 @@ export default function MobileCards({
   isLoadingTokens,
   userHasCard,
   cardBalance,
-  balance,
-  isBalanceLoading,
-  firstDepositTimestamp,
-  userDepositTransactions,
 }: MobileCardsProps) {
   const { width: screenWidth } = useWindowDimensions();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -60,27 +51,9 @@ export default function MobileCards({
             decimalPlaces={2}
           />
         ) : null,
-        <SavingCard
-          key="saving"
-          className="h-full w-full"
-          decimalPlaces={2}
-          balance={balance}
-          isBalanceLoading={isBalanceLoading}
-          firstDepositTimestamp={firstDepositTimestamp}
-          userDepositTransactions={userDepositTransactions}
-        />,
+        <SavingCard key="saving" className="h-full w-full" decimalPlaces={2} />,
       ].filter(Boolean),
-    [
-      totalUSDExcludingSoUSD,
-      topThreeTokens,
-      isLoadingTokens,
-      userHasCard,
-      cardBalance,
-      balance,
-      isBalanceLoading,
-      firstDepositTimestamp,
-      userDepositTransactions,
-    ],
+    [totalUSDExcludingSoUSD, topThreeTokens, isLoadingTokens, userHasCard, cardBalance],
   );
 
   const totalCards = cards.length;
