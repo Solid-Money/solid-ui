@@ -306,7 +306,7 @@ export default function Savings() {
                     {isBalanceLoading ? (
                       <Skeleton className="h-8 w-24 rounded-twice bg-purple/50" />
                     ) : (
-                      `$${formatNumber(projectedEarnings, 2)}`
+                      `${displayPrefix ?? ''}${formatNumber(projectedEarnings, 2)}${displaySuffix ? ` ${displaySuffix}` : ''}`
                     )}
                   </Text>
                 </View>
@@ -481,7 +481,7 @@ export default function Savings() {
                     {isBalanceLoading ? (
                       <Skeleton className="h-8 w-24 rounded-twice bg-purple/50" />
                     ) : (
-                      `$${formatNumber(projectedEarnings, 2)}`
+                      `${displayPrefix ?? ''}${formatNumber(projectedEarnings, 2)}${displaySuffix ? ` ${displaySuffix}` : ''}`
                     )}
                   </Text>
                 </View>
@@ -489,7 +489,7 @@ export default function Savings() {
             </View>
           </>
         )}
-        <SavingsAnalytics />
+        {currentVault?.name === 'USDC' && <SavingsAnalytics />}
 
         {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
       </View>

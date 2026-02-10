@@ -225,8 +225,19 @@ export const calculateActualDepositedAmount = async (
     }
   });
 
-  // Fetch Vault transfers and collect their timestamps
-  const vaultTransfers = await fetchVaultTransfers(safeAddress, tokenAddress, decimals);
+  // USDC vault spans two chains; we need transfers from both to match summed balance
+  const isUsdcVault =
+    tokenAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase() ||
+    tokenAddress.toLowerCase() === ADDRESSES.ethereum.vault.toLowerCase();
+
+  const vaultTransferAddresses = isUsdcVault
+    ? [ADDRESSES.ethereum.vault, ADDRESSES.fuse.vault]
+    : [tokenAddress];
+
+  const vaultTransfersArrays = await Promise.all(
+    vaultTransferAddresses.map(addr => fetchVaultTransfers(safeAddress, addr, decimals)),
+  );
+  const vaultTransfers = vaultTransfersArrays.flat();
   const filteredVaultTransfers = vaultTransfers.filter(
     transfer =>
       transfer.from !== zeroAddress &&
@@ -240,23 +251,29 @@ export const calculateActualDepositedAmount = async (
     allTimestamps.push(timestamp);
   });
 
-  // Fetch historical exchange rates once for all timestamps
-  // Only for USDC vault for now as we don't have historical rates for others readily available
-  // For others, we assume exchangeRate is constant (or provided current rate)
-  const isUsdcVault = tokenAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase();
+  // Fetch historical exchange rates for USDC (soUSD) vaults on both chains
   const historicalRates = isUsdcVault
     ? await fetchHistoricalExchangeRates(allTimestamps)
     : new Map<number, number>();
 
-  // Process deposits
+  // Helper: same unit as balanceUSD (USD for USDC, token for others)
+  const toDisplayAmount = (tokenAmount: number, timestamp: number): number => {
+    const rateAtTime = isUsdcVault
+      ? getExchangeRateAtTimestamp(timestamp, historicalRates, exchangeRate)
+      : exchangeRate;
+    return tokenAmount * rateAtTime;
+  };
+
+  // Process deposits (convert to display unit so actualDeposited matches balanceUSD)
   deposits.forEach(deposit => {
     if (deposit.depositAmount && deposit.depositAmount !== '0') {
       try {
-        const amount = Number(formatUnits(BigInt(deposit.depositAmount), decimals));
-        if (isFinite(amount) && amount > 0) {
+        const tokenAmount = Number(formatUnits(BigInt(deposit.depositAmount), decimals));
+        if (isFinite(tokenAmount) && tokenAmount > 0) {
+          const timestamp = Number(deposit.depositTimestamp);
           timeWeightedBalances.push({
-            amount: amount,
-            timestamp: Number(deposit.depositTimestamp),
+            amount: toDisplayAmount(tokenAmount, timestamp),
+            timestamp,
             type: 'deposit',
           });
         }
@@ -266,7 +283,7 @@ export const calculateActualDepositedAmount = async (
     }
   });
 
-  // Process withdrawals
+  // Process withdrawals (convert to display unit)
   withdrawals.forEach(withdrawal => {
     if (
       withdrawal.amountOfAssets &&
@@ -274,12 +291,11 @@ export const calculateActualDepositedAmount = async (
       withdrawal.requestStatus === 'SOLVED'
     ) {
       try {
-        const amount = Number(formatUnits(BigInt(withdrawal.amountOfAssets), decimals));
-        if (isFinite(amount) && amount > 0) {
+        const tokenAmount = Number(formatUnits(BigInt(withdrawal.amountOfAssets), decimals));
+        if (isFinite(tokenAmount) && tokenAmount > 0) {
           const timestamp = Number(withdrawal.creationTime);
-
           timeWeightedBalances.push({
-            amount: -amount, // Negative for withdrawals
+            amount: -toDisplayAmount(tokenAmount, timestamp),
             timestamp,
             type: 'withdrawal',
           });
@@ -388,8 +404,9 @@ export const calculateYield = async (
           setEarnedUSD(interestEarnedUSD);
         }
 
+        // Don't fall back to global earnedUSD (other vault's value); clamp to 0
         if (interestEarnedUSD < 0) {
-          interestEarnedUSD = earnedUSD;
+          interestEarnedUSD = 0;
         }
 
         const amountGained =
