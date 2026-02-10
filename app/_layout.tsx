@@ -181,31 +181,24 @@ export default Sentry.wrap(function RootLayout() {
     requestPermission,
   } = useTrackingTransparency();
 
-  // After splash screen hides: show ATT dialog (iOS, first launch) then init analytics
   useEffect(() => {
     if (!splashScreenHidden) return;
+    if (Platform.OS === 'ios' && !attReady) return;
 
-    async function initAfterSplash() {
-      let trackingAllowed = isTrackingAllowed;
+    initAnalytics(isTrackingAllowed).catch(e => console.warn('Analytics init error:', e));
+  }, [splashScreenHidden, attReady, isTrackingAllowed]);
 
-      // On iOS, if ATT status is undetermined, show the permission dialog
-      if (Platform.OS === 'ios' && attStatus === 'undetermined') {
-        trackingAllowed = await requestPermission();
-      }
+  useEffect(() => {
+    if (!splashScreenHidden || !attReady) return;
+    if (Platform.OS !== 'ios' || attStatus !== 'undetermined') return;
 
-      // Initialize analytics with the ATT result
-      initAnalytics(trackingAllowed).catch(e => console.warn('Analytics init error:', e));
+    const timer = setTimeout(async () => {
+      const granted = await requestPermission();
+      track('ATT_Response', { status: granted ? 'granted' : 'denied' });
+    }, 5000);
 
-      // Track ATT response for analytics (after SDK init)
-      if (Platform.OS === 'ios') {
-        track('ATT_Response', { status: trackingAllowed ? 'granted' : 'denied' });
-      }
-    }
-
-    if (attReady || Platform.OS !== 'ios') {
-      initAfterSplash();
-    }
-  }, [splashScreenHidden, attReady, attStatus, isTrackingAllowed, requestPermission]);
+    return () => clearTimeout(timer);
+  }, [splashScreenHidden, attReady, attStatus, requestPermission]);
 
   // Load only critical font weights to speed up FCP
   // Regular (400) and SemiBold (600) cover most UI text
