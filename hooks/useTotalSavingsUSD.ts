@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Address } from 'viem';
 import { useQueryClient } from '@tanstack/react-query';
+import { Address } from 'viem';
 
-import {
-  useAPYsByAsset,
-  useLatestTokenTransfer,
-  useUserTransactions,
-} from '@/hooks/useAnalytics';
+import { VAULTS } from '@/constants/vaults';
+import { useAPYsByAsset, useLatestTokenTransfer, useUserTransactions } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
@@ -14,8 +11,6 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { ADDRESSES } from '@/lib/config';
 import { calculateYield } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
-
-import { VAULTS } from '@/constants/vaults';
 
 const ACTIVE_VAULTS = VAULTS.filter(v => !('isComingSoon' in v && v.isComingSoon));
 
@@ -97,9 +92,8 @@ export const useTotalSavingsUSD = () => {
         usdcVault.decimals,
       );
 
-      const usdFuse =
-        fuseVault ?
-          await calculateYield(
+      const usdFuse = fuseVault
+        ? await calculateYield(
             balanceFuse ?? 0,
             apyFuse,
             firstDepositFuse ?? 0,
@@ -134,11 +128,14 @@ export const useTotalSavingsUSD = () => {
     exchangeRateFuse,
     queryClient,
     transactionsKey,
+    fuseVault,
+    usdcVault.decimals,
+    usdcVault.vaults,
   ]);
 
   const isLoading =
-    firstDepositUsdc === undefined && (balanceUsdc ?? 0) > 0 ||
-    firstDepositFuse === undefined && (balanceFuse ?? 0) > 0;
+    (firstDepositUsdc === undefined && (balanceUsdc ?? 0) > 0) ||
+    (firstDepositFuse === undefined && (balanceFuse ?? 0) > 0);
 
   return { totalSavingsUSD, isLoading };
 };

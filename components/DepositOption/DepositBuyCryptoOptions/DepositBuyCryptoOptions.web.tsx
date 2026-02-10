@@ -19,7 +19,7 @@ const DepositBuyCryptoOptions = () => {
             subtitle={option.subtitle}
             icon={option.icon}
             onPress={option.onPress}
-            bannerText={option.bannerText}
+            chipText={option.chipText}
           />
         ))}
     </View>

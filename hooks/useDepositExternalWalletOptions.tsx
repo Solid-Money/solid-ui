@@ -1,19 +1,18 @@
-import { Wallet } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
+import { Wallet } from 'lucide-react-native';
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
-import { useShallow } from 'zustand/react/shallow';
 
+import HomeQR from '@/assets/images/home-qr';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useUser from '@/hooks/useUser';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
 import { cleanupThirdwebStyles, client, thirdwebTheme, thirdwebWallets } from '@/lib/thirdweb';
 import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
-import useUser from '@/hooks/useUser';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
-import { useDimension } from './useDimension';
 
-import HomeQR from '@/assets/images/home-qr';
+import { useDimension } from './useDimension';
 
 const useDepositExternalWalletOptions = () => {
   const activeAccount = useActiveAccount();

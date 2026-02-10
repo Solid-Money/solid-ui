@@ -1,13 +1,15 @@
+import { useQuery } from '@tanstack/react-query';
+import { formatUnits, parseUnits, zeroAddress } from 'viem';
+import { getBalance, readContract } from 'viem/actions';
+import { base, fuse, mainnet } from 'viem/chains';
+
 import { NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import { isSoUSDToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
-import { useQuery } from '@tanstack/react-query';
-import { formatUnits, parseUnits, zeroAddress } from 'viem';
-import { getBalance, readContract } from 'viem/actions';
-import { base, fuse, mainnet } from 'viem/chains';
+
 import useUser from './useUser';
 
 // Blockscout response structure for both Ethereum and Fuse
@@ -57,6 +59,7 @@ interface BalanceData {
   ethereumTokens: TokenBalance[];
   fuseTokens: TokenBalance[];
   baseTokens: TokenBalance[];
+  arbitrumTokens: TokenBalance[];
   tokens: TokenBalance[];
   unifiedTokens: UnifiedTokenBalance[];
   isLoading: boolean;
@@ -70,6 +73,7 @@ interface BalanceData {
 const ETHEREUM_CHAIN_ID = 1;
 const FUSE_CHAIN_ID = 122;
 const BASE_CHAIN_ID = 8453;
+const ARBITRUM_CHAIN_ID = 42161;
 
 // ABI for AccountantWithRateProviders getRate function
 const ACCOUNTANT_ABI = [
@@ -99,6 +103,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     baseResponse,
     ethereumResponse,
     fuseResponse,
+    arbitrumResponse,
     soUSDRate,
     ethBalance,
     fuseBalance,
@@ -115,6 +120,9 @@ const fetchTokenBalances = async (safeAddress: string) => {
       headers: { accept: 'application/json' },
     }),
     fetch(`https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-balances`, {
+      headers: { accept: 'application/json' },
+    }),
+    fetch(`https://arbitrum.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
       headers: { accept: 'application/json' },
     }),
     readContract(publicClient(mainnet.id), {
@@ -142,6 +150,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   let ethereumTokens: TokenBalance[] = [];
   let fuseTokens: TokenBalance[] = [];
   let baseTokens: TokenBalance[] = [];
+  let arbitrumTokens: TokenBalance[] = [];
   let rate = 0;
 
   // Process soUSD rate
@@ -237,6 +246,21 @@ const fetchTokenBalances = async (safeAddress: string) => {
     console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
   }
 
+  // Process Arbitrum response (Blockscout)
+  if (arbitrumResponse.status === PromiseStatus.FULFILLED && arbitrumResponse.value.ok) {
+    const arbitrumData: BlockscoutResponse = await arbitrumResponse.value.json();
+    // Filter out NFTs and only include ERC-20 tokens
+    arbitrumTokens = arbitrumData
+      .filter(
+        item =>
+          item.token.type === TokenType.ERC20 &&
+          filterTokenList(tokenListData, ARBITRUM_CHAIN_ID, getAddress(item)),
+      )
+      .map(item => convertBlockscoutToTokenBalance(item, ARBITRUM_CHAIN_ID));
+  } else if (arbitrumResponse.status === PromiseStatus.REJECTED) {
+    console.warn('Failed to fetch Arbitrum balances:', arbitrumResponse.reason);
+  }
+
   // Process native token balances
   if (ethBalance.status === PromiseStatus.FULFILLED && Number(ethBalance.value)) {
     const ethPriceValue = ethPrice.status === PromiseStatus.FULFILLED ? Number(ethPrice.value) : 0;
@@ -297,7 +321,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     });
   }
 
-  const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens];
+  const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
 
   // Helper function to calculate token value
   const calculateTokenValue = (token: TokenBalance): CalculatedTokenValue => {
@@ -333,6 +357,8 @@ const fetchTokenBalances = async (safeAddress: string) => {
         acc.soUSDFuse += tokenValue.soUSDValue;
       } else if (token.chainId === BASE_CHAIN_ID && tokenValue.soUSDValue > 0) {
         acc.soUSDBase += tokenValue.soUSDValue;
+      } else if (token.chainId === ARBITRUM_CHAIN_ID && tokenValue.soUSDValue > 0) {
+        acc.soUSDArbitrum += tokenValue.soUSDValue;
       }
 
       return acc;
@@ -344,6 +370,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       soUSDEthereum: 0,
       soUSDFuse: 0,
       soUSDBase: 0,
+      soUSDArbitrum: 0,
     },
   );
 
@@ -388,6 +415,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     ethereumTokens,
     fuseTokens,
     baseTokens,
+    arbitrumTokens,
     tokens: allTokens,
     unifiedTokens,
   };
@@ -427,6 +455,7 @@ export const useBalances = (): BalanceData => {
     ethereumTokens: [],
     fuseTokens: [],
     baseTokens: [],
+    arbitrumTokens: [],
     tokens: [],
     unifiedTokens: [],
   };

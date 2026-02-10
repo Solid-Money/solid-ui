@@ -1,9 +1,10 @@
-import { getInfoClient } from '@/graphql/clients';
 import { keepPreviousData, QueryClient, useQuery } from '@tanstack/react-query';
+import { secondsToMilliseconds } from 'date-fns';
 import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
 import { explorerUrls, layerzero } from '@/constants/explorers';
+import { getInfoClient } from '@/graphql/clients';
 import {
   GetUserTransactionsDocument,
   GetUserTransactionsQuery,
@@ -42,7 +43,6 @@ import {
 } from '@/lib/types';
 import { BridgeApiTransfer } from '@/lib/types/bank-transfer';
 import { withRefreshToken } from '@/lib/utils';
-import { secondsToMilliseconds } from 'date-fns';
 
 const ANALYTICS = 'analytics';
 const ApyToDays = {
@@ -93,7 +93,7 @@ export const useTotalAPY = (vault?: VaultType) => {
   return useQuery({
     queryKey: [ANALYTICS, 'totalAPY'],
     queryFn: fetchTotalAPY,
-    select: (data) => data[vaultKey],
+    select: data => data[vaultKey],
   });
 };
 

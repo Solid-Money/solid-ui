@@ -54,13 +54,7 @@ export const useSoFuseVaultBalance = (safeAddress: Address) => {
   return useQuery({
     queryKey: [VAULT, 'balanceSoFuse', safeAddress],
     queryFn: () =>
-      fetchVaultBalance(
-        queryClient,
-        safeAddress,
-        fuse.id,
-        ADDRESSES.fuse.fuseVault,
-        18,
-      ),
+      fetchVaultBalance(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.fuseVault, 18),
     enabled: !!safeAddress,
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,

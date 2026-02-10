@@ -1,5 +1,5 @@
-import { Image } from 'expo-image';
 import { useCallback, useMemo } from 'react';
+import { Image } from 'expo-image';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
