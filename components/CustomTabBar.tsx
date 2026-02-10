@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-nat
 import * as Haptics from 'expo-haptics';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
+import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Text } from '@/components/ui/text';
 
 type TabButtonProps = {
@@ -89,6 +90,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
   return (
     <View style={styles.tabBar}>
+      {TabBarBackground && <TabBarBackground />}
       {visibleRoutes.map(route => {
         const { options } = descriptors[route.key];
         const originalIndex = state.routes.findIndex(r => r.key === route.key);
@@ -143,7 +145,7 @@ const styles = StyleSheet.create({
     height: 80,
     paddingTop: 4,
     paddingBottom: 10,
-    backgroundColor: 'rgba(18, 18, 18, 0.7)',
+    backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
     borderTopWidth: 0,
     position: 'absolute',
     bottom: 0,
