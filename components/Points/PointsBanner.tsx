@@ -44,7 +44,7 @@ const PointsBanner = () => {
         <View className="flex-1 flex-row justify-between pl-5 md:px-10">
           <View className="flex-1 items-start justify-between py-5 md:gap-2 md:py-8">
             <View className="inline max-w-40 md:max-w-64">
-              <Text className="text-xl font-semibold md:text-3xl">
+              <Text className="native:text-lg text-xl font-semibold md:text-3xl">
                 Earn <Text className="text-rewards">{multiplier}X</Text> points on your deposits
               </Text>
             </View>
