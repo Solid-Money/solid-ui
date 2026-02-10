@@ -18,7 +18,7 @@ import {
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status, StatusInfo, TransactionType, VaultType } from '@/lib/types';
+import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -41,7 +41,7 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
   const [hash, setHash] = useState<Address | undefined>();
   const updateUser = useUserStore(state => state.updateUser);
   const srcChainId = useDepositStore(state => state.srcChainId);
-  const { createActivity, trackTransaction } = useActivity();
+  const { createActivity, updateActivity, trackTransaction } = useActivity();
 
   const isFuseChain = srcChainId === fuse.id;
   const isNativeFuse = token === 'FUSE';
@@ -233,6 +233,22 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
             trackingId,
             vault: VaultType.FUSE,
           }),
+        ).then((result) => {
+          if (result?.transactionHash) {
+            updateActivity(trackingId!, {
+              status: TransactionStatus.PROCESSING,
+              hash: result.transactionHash,
+            });
+          }
+        }).catch((err) => {
+          console.error('Sponsored Solid Fuse deposit failed:', err);
+          updateActivity(trackingId!, {
+            status: TransactionStatus.FAILED,
+          });
+        });
+      } else {
+        throw new Error(
+          `Minimum deposit amount is ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} for Fuse deposits`,
         );
       }
 
