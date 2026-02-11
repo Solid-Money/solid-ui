@@ -2,6 +2,7 @@ import { SvgProps } from 'react-native-svg';
 
 import BrlFlag from '@/assets/images/brl-fiat-currency';
 import EurFlag from '@/assets/images/eur-fiat-currency';
+import GbpFlag from '@/assets/images/gbp-fiat-currency';
 import MxnFlag from '@/assets/images/mxn-fiat-currency';
 import UsdFlag from '@/assets/images/usd-fiat-currency';
 import UsdcIcon from '@/assets/images/usdc-cryptocurrency';
@@ -15,6 +16,7 @@ export type SvgIcon = ComponentType<SvgProps>;
 export const FIAT_ICON_MAP: Partial<Record<BridgeTransferFiatCurrency, SvgIcon>> = {
   [BridgeTransferFiatCurrency.USD]: UsdFlag,
   [BridgeTransferFiatCurrency.EUR]: EurFlag,
+  [BridgeTransferFiatCurrency.GBP]: GbpFlag,
   [BridgeTransferFiatCurrency.MXN]: MxnFlag,
   [BridgeTransferFiatCurrency.BRL]: BrlFlag,
 };

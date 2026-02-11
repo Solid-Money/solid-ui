@@ -21,6 +21,7 @@ export default function FiatDropdown({ value, onChange }: FiatDropdownProps) {
     () => [
       BridgeTransferFiatCurrency.USD,
       BridgeTransferFiatCurrency.EUR,
+      BridgeTransferFiatCurrency.GBP,
       BridgeTransferFiatCurrency.MXN,
       BridgeTransferFiatCurrency.BRL,
     ],
