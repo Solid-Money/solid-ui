@@ -1,6 +1,7 @@
 import React from 'react';
-import { Platform } from 'react-native';
-import { Tabs, usePathname } from 'expo-router';
+import { Easing, Platform } from 'react-native';
+import { Tabs } from 'expo-router';
+import { SceneStyleInterpolators } from '@react-navigation/bottom-tabs';
 import { Leaf, Star } from 'lucide-react-native';
 
 import bellAnimation from '@/assets/tabs-icons/bell.json';
@@ -15,17 +16,19 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 
 export default function TabLayout() {
-  const pathname = usePathname();
-
   const { isDesktop } = useDimension();
-
-  // Check if current route is any card-related route (card/ or card-onboard/)
-  const isCardRouteActive = pathname.startsWith('/card') || pathname.startsWith('/card-onboard');
 
   return (
     <Tabs
       screenOptions={{
-        animation: Platform.OS !== 'web' ? 'fade' : undefined,
+        sceneStyleInterpolator: SceneStyleInterpolators.forFade,
+        sceneStyle: { backgroundColor: '#121212' },
+        transitionSpec: {
+          animation: 'timing',
+          config: {
+            easing: Easing.in(Easing.linear),
+          },
+        },
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
@@ -80,9 +83,7 @@ export default function TabLayout() {
         options={{
           title: 'Card',
           headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <LottieTabIcon source={cardAnimation} focused={focused || isCardRouteActive} />
-          ),
+          tabBarIcon: ({ focused }) => <LottieTabIcon source={cardAnimation} focused={focused} />,
           href: path.CARD,
         }}
       />
