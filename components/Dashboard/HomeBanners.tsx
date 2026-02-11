@@ -5,17 +5,22 @@ import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import PointsBanner from '@/components/Points/PointsBanner';
+import { DEPOSIT_MODAL } from '@/constants/modals';
+import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { fetchPromotionsBanner } from '@/lib/api';
+import { useDepositStore } from '@/store/useDepositStore';
 
 import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';
 import { BannersFallback } from './LazyHomeBanners';
 import { PanGestureProvider, usePanGesture } from './PanGestureContext';
+import SwipeableBanner from './SwipeableBanner';
 
 import type { PanGesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
@@ -69,10 +74,26 @@ interface HomeBannersContentProps {
   data?: React.ReactElement[];
 }
 
-const PromoImageBanner = ({ imageURL }: { imageURL: string }) => (
-  <View className="flex-1 overflow-hidden rounded-twice" style={styles.promoImageWrap}>
-    <Image source={{ uri: imageURL }} className="h-full w-full" contentFit="cover" />
-  </View>
+function getPromoBannerOnPress(
+  slug: string,
+  setModal: (m: (typeof DEPOSIT_MODAL)[keyof typeof DEPOSIT_MODAL]) => void,
+): () => void {
+  switch (slug) {
+    case 'earn-4X-points-on-your-deposits':
+      return () => router.push(path.POINTS);
+    case 'deposit-from-your-bank-or-debit-card':
+      return () => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+    default:
+      return () => {};
+  }
+}
+
+const PromoImageBanner = ({ imageURL, onPress }: { imageURL: string; onPress: () => void }) => (
+  <SwipeableBanner onPress={onPress}>
+    <View className="flex-1 overflow-hidden rounded-twice" style={styles.promoImageWrap}>
+      <Image source={{ uri: imageURL }} className="h-full w-full" contentFit="cover" />
+    </View>
+  </SwipeableBanner>
 );
 
 const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
@@ -82,6 +103,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const [containerWidth, setContainerWidth] = useState(0);
   const gapPadding = useSharedValue(0);
   const isPanning = usePanGesture();
+  const setModal = useDepositStore(s => s.setModal);
   const { data: cardStatus, isLoading } = useCardStatus();
   const { data: promotionsBanner, isLoading: isPromotionsBannerLoading } = useQuery({
     queryKey: ['promotions-banner'],
@@ -92,8 +114,13 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
 
   const defaultData = useMemo(() => {
     if (promotionsBanner?.length) {
-      return promotionsBanner.map((item, i) => (
-        <PromoImageBanner key={`promo-${i}`} imageURL={item.imageURL} />
+      const sorted = [...promotionsBanner].sort((a, b) => a.sort - b.sort);
+      return sorted.map((item, i) => (
+        <PromoImageBanner
+          key={`promo-${item.slug}-${i}`}
+          imageURL={item.imageURL}
+          onPress={getPromoBannerOnPress(item.slug, setModal)}
+        />
       ));
     }
     const fallback: React.ReactElement[] = [
@@ -104,7 +131,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
       fallback.unshift(<CardBanner key="card" />);
     }
     return fallback;
-  }, [cardStatus, isLoading, promotionsBanner]);
+  }, [cardStatus, isLoading, promotionsBanner, setModal]);
 
   const data = propData ?? defaultData;
 
