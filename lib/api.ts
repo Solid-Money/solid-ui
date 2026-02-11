@@ -85,6 +85,7 @@ import {
   VaultType,
   VerifyCountryRequest,
   VerifyCountryResponse,
+  PromotionsBannerResponse,
   WebhookStatus,
   WhatsNew,
   WithdrawFromCardToSavingsResponse,
@@ -1840,6 +1841,22 @@ export const fetchLatestWhatsNew = async (): Promise<WhatsNew | null> => {
   if (!text) return null;
 
   return JSON.parse(text);
+};
+
+export const fetchPromotionsBanner = async (): Promise<PromotionsBannerResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/promotions-banner`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
 };
 
 export const fetchActivityEvent = async (clientTxId: string): Promise<ActivityEvent> => {

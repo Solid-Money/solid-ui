@@ -4,13 +4,17 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
 import { scheduleOnRN } from 'react-native-worklets';
+import { Image } from 'expo-image';
+import { useQuery } from '@tanstack/react-query';
 
 import PointsBanner from '@/components/Points/PointsBanner';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
+import { fetchPromotionsBanner } from '@/lib/api';
 
 import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';
+import { BannersFallback } from './LazyHomeBanners';
 import { PanGestureProvider, usePanGesture } from './PanGestureContext';
 
 import type { PanGesture } from 'react-native-gesture-handler';
@@ -65,6 +69,12 @@ interface HomeBannersContentProps {
   data?: React.ReactElement[];
 }
 
+const PromoImageBanner = ({ imageURL }: { imageURL: string }) => (
+  <View className="flex-1 overflow-hidden rounded-twice" style={styles.promoImageWrap}>
+    <Image source={{ uri: imageURL }} className="h-full w-full" contentFit="cover" />
+  </View>
+);
+
 const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const ref = useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);
@@ -73,16 +83,30 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
   const gapPadding = useSharedValue(0);
   const isPanning = usePanGesture();
   const { data: cardStatus, isLoading } = useCardStatus();
+  const { data: promotionsBanner, isLoading: isPromotionsBannerLoading } = useQuery({
+    queryKey: ['promotions-banner'],
+    queryFn: fetchPromotionsBanner,
+    staleTime: 5 * 60 * 1000,
+    enabled: !propData,
+  });
 
   const defaultData = useMemo(() => {
-    const data = [<PointsBanner key="points" />, <DepositBanner key="deposit" />];
-    if (!isLoading && !cardStatus?.status) {
-      data.unshift(<CardBanner key="card" />);
+    if (promotionsBanner?.length) {
+      return promotionsBanner.map((item, i) => (
+        <PromoImageBanner key={`promo-${i}`} imageURL={item.imageURL} />
+      ));
     }
-    return data;
-  }, [cardStatus, isLoading]);
+    const fallback: React.ReactElement[] = [
+      <PointsBanner key="points" />,
+      <DepositBanner key="deposit" />,
+    ];
+    if (!isLoading && !cardStatus?.status) {
+      fallback.unshift(<CardBanner key="card" />);
+    }
+    return fallback;
+  }, [cardStatus, isLoading, promotionsBanner]);
 
-  const data = propData || defaultData;
+  const data = propData ?? defaultData;
 
   const GAP = isScreenMedium ? 30 : 8;
   const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
@@ -102,6 +126,10 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
     // immediate update to avoid mount/responsive flicker
     gapPadding.value = withTiming(target, { duration: 0 });
   }, [HAS_MULTIPLE_VIEWS, GAP, gapPadding]);
+
+  if (!propData && isPromotionsBannerLoading) {
+    return <BannersFallback />;
+  }
 
   const onPressPagination = (index: number) => {
     const targetIndex = Math.min(index, MAX_INDEX);
@@ -229,6 +257,9 @@ export const HomeBanners = ({ data }: HomeBannersProps = {}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  promoImageWrap: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   paginationContainer: {
     gap: 4,
