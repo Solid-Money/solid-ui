@@ -40,8 +40,8 @@ export const useTotalSavingsUSD = () => {
   const fuseVault = ACTIVE_VAULTS[1]; // undefined when only one active vault
 
   const safeAddress = address ?? ('' as Address);
-  const { data: balanceUsdc } = useVaultBalance(safeAddress, usdcVault);
-  const { data: balanceFuse } = useVaultBalance(safeAddress, fuseVault ?? usdcVault);
+  const { data: balanceUsdc, isLoading: isLoadingBalanceUsdc } = useVaultBalance(safeAddress, usdcVault);
+  const { data: balanceFuse, isLoading: isLoadingBalanceFuse } = useVaultBalance(safeAddress, fuseVault ?? usdcVault);
   const { data: exchangeRateUsdc } = useVaultExchangeRate(usdcVault.name);
   const { data: exchangeRateFuse } = useVaultExchangeRate(fuseVault?.name ?? '');
   const { data: fusePriceUsd } = useQuery({
@@ -77,6 +77,12 @@ export const useTotalSavingsUSD = () => {
 
   useEffect(() => {
     if (!address) {
+      setTotalSavingsUSD(undefined);
+      return;
+    }
+    // Don't compute until vault balances have resolved; otherwise we set 0 on native
+    // when the effect runs before React Query has returned (balanceUsdc/Fuse undefined).
+    if (isLoadingBalanceUsdc || isLoadingBalanceFuse) {
       setTotalSavingsUSD(undefined);
       return;
     }
@@ -143,9 +149,13 @@ export const useTotalSavingsUSD = () => {
     fuseVault,
     usdcVault.decimals,
     usdcVault.vaults,
+    isLoadingBalanceUsdc,
+    isLoadingBalanceFuse,
   ]);
 
   const isLoading =
+    isLoadingBalanceUsdc ||
+    isLoadingBalanceFuse ||
     (firstDepositUsdc === undefined && (balanceUsdc ?? 0) > 0) ||
     (firstDepositFuse === undefined && (balanceFuse ?? 0) > 0);
 
