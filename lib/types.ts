@@ -1332,6 +1332,12 @@ export interface WhatsNew {
   createdAt: string;
 }
 
+export interface PromotionsBannerItem {
+  imageURL: string;
+}
+
+export type PromotionsBannerResponse = PromotionsBannerItem[];
+
 // SSE Activity Stream Types
 export interface SSEPingData {
   timestamp: number;
