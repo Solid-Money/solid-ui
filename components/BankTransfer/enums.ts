@@ -1,6 +1,7 @@
 export enum BridgeTransferFiatCurrency {
   USD = 'usd',
   EUR = 'eur',
+  GBP = 'gbp',
   MXN = 'mxn',
   BRL = 'brl',
 }
@@ -16,11 +17,13 @@ export enum BridgeTransferMethod {
   SEPA = 'sepa',
   SPEI = 'spei',
   PIX = 'pix',
+  FPS = 'fps',
 }
 
 export const FIAT_LABEL: Record<BridgeTransferFiatCurrency, string> = {
   [BridgeTransferFiatCurrency.USD]: 'USD',
   [BridgeTransferFiatCurrency.EUR]: 'EUR',
+  [BridgeTransferFiatCurrency.GBP]: 'GBP',
   [BridgeTransferFiatCurrency.MXN]: 'MXN',
   [BridgeTransferFiatCurrency.BRL]: 'BRL',
 };
@@ -36,6 +39,7 @@ export const METHOD_LABEL: Record<BridgeTransferMethod, string> = {
   [BridgeTransferMethod.SEPA]: 'SEPA',
   [BridgeTransferMethod.SPEI]: 'SPEI',
   [BridgeTransferMethod.PIX]: 'Pix (Beta)',
+  [BridgeTransferMethod.FPS]: 'Faster Payments',
 };
 
 export const METHOD_SUBTITLE: Partial<Record<BridgeTransferMethod, string>> = {
@@ -49,6 +53,7 @@ export enum Endorsements {
   SPEI = 'spei',
   CARDS = 'cards',
   PIX = 'pix',
+  FASTER_PAYMENTS = 'faster_payments',
 }
 
 export enum EndorsementStatus {
