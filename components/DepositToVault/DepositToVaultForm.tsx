@@ -53,15 +53,17 @@ function getGaslessText(
 }
 
 function DepositToVaultForm() {
-  const { setModal, setTransaction, srcChainId, outputToken, depositFromSolid } = useDepositStore(
-    useShallow(state => ({
-      setModal: state.setModal,
-      setTransaction: state.setTransaction,
-      srcChainId: state.srcChainId,
-      outputToken: state.outputToken,
-      depositFromSolid: state.depositFromSolid,
-    })),
-  );
+  const { setModal, setTransaction, srcChainId, outputToken, depositFromSolid, setOutputToken } =
+    useDepositStore(
+      useShallow(state => ({
+        setModal: state.setModal,
+        setTransaction: state.setTransaction,
+        srcChainId: state.srcChainId,
+        outputToken: state.outputToken,
+        depositFromSolid: state.depositFromSolid,
+        setOutputToken: state.setOutputToken,
+      })),
+    );
   const { isScreenMedium } = useDimension();
   const { vault } = useVaultDepositConfig();
   const { data: vaultExchangeRate } = useVaultExchangeRate(vault.name);
@@ -114,6 +116,14 @@ function DepositToVaultForm() {
   const isFuseVault = vault.name === 'FUSE';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
+
+  // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
+  useEffect(() => {
+    if (isNativeFuse && !useSolidForFuse) {
+      setOutputToken('WFUSE');
+    }
+  }, [isNativeFuse, useSolidForFuse, setOutputToken]);
+
   const balanceForVault = isFuseVault
     ? useSolidForFuse
       ? balanceSolidFuse
