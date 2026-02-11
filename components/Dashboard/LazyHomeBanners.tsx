@@ -51,7 +51,7 @@ const SkeletonBox = ({ style }: { style?: object }) => {
  * Skeleton fallback for HomeBanners while it loads
  * Matches the approximate dimensions of the banner cards
  */
-const BannersFallback = () => (
+export const BannersFallback = () => (
   <View className="w-full flex-row gap-4">
     <SkeletonBox />
     <SkeletonBox />
