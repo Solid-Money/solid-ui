@@ -12,11 +12,9 @@ export function LottieTabIcon({ source, focused }: LottieTabIconProps) {
 
   useEffect(() => {
     if (focused) {
-      // Play the full animation (gray outline → green accent → white fill)
       lottieRef.current?.play();
       hasPlayedInitial.current = true;
     } else if (hasPlayedInitial.current) {
-      // Reset to frame 0 (gray outline state) when deselected
       lottieRef.current?.reset();
     }
   }, [focused]);
@@ -27,7 +25,7 @@ export function LottieTabIcon({ source, focused }: LottieTabIconProps) {
       source={source}
       autoPlay={focused}
       loop={false}
-      style={{ width: 36, height: 36 }}
+      style={{ width: 40, height: 40 }}
       resizeMode="contain"
     />
   );

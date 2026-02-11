@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     // @ts-ignore - web CSS
-    backdropFilter: 'blur(10px)',
+    backdropFilter: Platform.OS === 'web' ? 'blur(10px)' : undefined,
   },
   tabButton: {
     flex: 1,
