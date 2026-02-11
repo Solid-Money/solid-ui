@@ -34,7 +34,7 @@ import {
 } from '@/lib/config';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { getChain } from '@/lib/thirdweb';
-import { Status, StatusInfo, TransactionType, User } from '@/lib/types';
+import { Status, StatusInfo, TransactionStatus, TransactionType, User } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import {
   checkAndSetAllowanceToken,
@@ -73,7 +73,7 @@ const useDepositFromEOA = (
   const updateUser = useUserStore(state => state.updateUser);
   const srcChainId = useDepositStore(state => state.srcChainId);
   const isEthereum = srcChainId === mainnet.id;
-  const { createActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivity();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -481,8 +481,22 @@ const useDepositFromEOA = (
               amount,
               trackingId,
             }),
-          );
+          ).then((result) => {
+            if (result?.transactionHash) {
+              updateActivity(trackingId!, {
+                status: TransactionStatus.PROCESSING,
+                hash: result.transactionHash,
+              });
+            }
+          }).catch((err) => {
+            console.error('Sponsored deposit failed:', err);
+            updateActivity(trackingId!, {
+              status: TransactionStatus.FAILED,
+            });
+          });
         } else {
+          trackingId = await createEvent(amount, spender, token);
+
           const nonce = await getNonce(srcChainId, tokenAddress);
           const tokenName = await getTokenName(srcChainId, tokenAddress);
           const result = await signPermit(
@@ -506,6 +520,13 @@ const useDepositFromEOA = (
             user,
             fee,
           );
+
+          if (transaction?.transactionHash) {
+            updateActivity(trackingId, {
+              status: TransactionStatus.PROCESSING,
+              hash: transaction.transactionHash,
+            });
+          }
         }
       } else {
         await switchChain(srcChainId);
@@ -595,7 +616,19 @@ const useDepositFromEOA = (
                   : undefined,
               trackingId,
             }),
-          );
+          ).then((result) => {
+            if (result?.transactionHash) {
+              updateActivity(trackingId!, {
+                status: TransactionStatus.PROCESSING,
+                hash: result.transactionHash,
+              });
+            }
+          }).catch((err) => {
+            console.error('Sponsored bridge deposit failed:', err);
+            updateActivity(trackingId!, {
+              status: TransactionStatus.FAILED,
+            });
+          });
         } else {
           Sentry.addBreadcrumb({
             message: 'Getting LiFi quote for bridge transaction',
@@ -604,6 +637,8 @@ const useDepositFromEOA = (
           });
 
           await switchChain(srcChainId);
+
+          trackingId = await createEvent(amount, spender, token);
 
           const quote = await getLifiQuote({
             fromAddress: eoaAddress,
@@ -701,6 +736,13 @@ const useDepositFromEOA = (
             user,
             fee,
           );
+
+          if (transaction?.transactionHash) {
+            updateActivity(trackingId!, {
+              status: TransactionStatus.PROCESSING,
+              hash: transaction.transactionHash,
+            });
+          }
         }
       }
 

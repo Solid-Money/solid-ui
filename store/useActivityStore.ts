@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
-import { ActivityEvent } from '@/lib/types';
+import { ActivityEvent, TransactionStatus } from '@/lib/types';
 
 /**
  * Validates that an activity has all required fields with correct types.
@@ -20,6 +20,26 @@ function isValidActivity(activity: unknown): activity is ActivityEvent {
     typeof a.type === 'string' &&
     typeof a.status === 'string'
   );
+}
+
+/**
+ * Status priority for downgrade protection.
+ * Terminal states (SUCCESS, FAILED, etc.) must never be overwritten by
+ * non-terminal states (PENDING, PROCESSING).
+ */
+const STATUS_PRIORITY: Record<string, number> = {
+  [TransactionStatus.PENDING]: 0,
+  [TransactionStatus.PROCESSING]: 1,
+  [TransactionStatus.SUCCESS]: 2,
+  [TransactionStatus.FAILED]: 2,
+  [TransactionStatus.REFUNDED]: 2,
+};
+
+function isStatusDowngrade(
+  existingStatus: string,
+  incomingStatus: string,
+): boolean {
+  return (STATUS_PRIORITY[incomingStatus] ?? 0) < (STATUS_PRIORITY[existingStatus] ?? 0);
 }
 
 interface ActivityState {
@@ -48,9 +68,13 @@ function isSameEvent(a: ActivityEvent, b: ActivityEvent): boolean {
 
 // Helper to check if event data has actually changed
 function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): boolean {
-  // Compare key fields that would indicate a meaningful change
+  // A status downgrade is not a real change — it's a stale update
+  const statusActuallyChanged =
+    existing.status !== incoming.status &&
+    !isStatusDowngrade(existing.status, incoming.status);
+
   return (
-    existing.status !== incoming.status ||
+    statusActuallyChanged ||
     existing.hash !== incoming.hash ||
     existing.deleted !== incoming.deleted ||
     existing.failureReason !== incoming.failureReason
@@ -99,9 +123,16 @@ export const useActivityStore = create<ActivityState>()(
             if (idx === -1) {
               state.events[userId].push(event);
             } else {
+              const existing = state.events[userId][idx];
+              const mergedStatus =
+                event.status && isStatusDowngrade(existing.status, event.status)
+                  ? existing.status
+                  : event.status ?? existing.status;
+
               state.events[userId][idx] = {
-                ...state.events[userId][idx],
+                ...existing,
                 ...event,
+                status: mergedStatus,
               };
             }
           }),
@@ -137,9 +168,16 @@ export const useActivityStore = create<ActivityState>()(
               if (existingIndex === -1) {
                 state.events[userId].push(event);
               } else {
+                const existing = state.events[userId][existingIndex];
+                const mergedStatus =
+                  event.status && isStatusDowngrade(existing.status, event.status)
+                    ? existing.status
+                    : event.status ?? existing.status;
+
                 state.events[userId][existingIndex] = {
-                  ...state.events[userId][existingIndex],
+                  ...existing,
                   ...event,
+                  status: mergedStatus,
                 };
               }
             }
