@@ -1334,6 +1334,8 @@ export interface WhatsNew {
 
 export interface PromotionsBannerItem {
   imageURL: string;
+  slug: string;
+  sort: number;
 }
 
 export type PromotionsBannerResponse = PromotionsBannerItem[];
