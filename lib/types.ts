@@ -664,7 +664,7 @@ export enum BankTransferStatus {
   PAYMENT_PROCESSED = 'payment_processed',
 }
 
-export type BankTransferPaymentRail = 'ach_push' | 'wire' | 'sepa' | 'spei';
+export type BankTransferPaymentRail = 'ach_push' | 'wire' | 'sepa' | 'spei' | 'fps';
 
 export interface BankTransferListItemDto {
   id: string;
@@ -799,6 +799,7 @@ export enum FromCurrency {
   USD = 'usd',
   BRL = 'brl',
   MXN = 'mxn',
+  GBP = 'gbp',
 }
 
 export enum ToCurrency {
