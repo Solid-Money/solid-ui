@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { CarouselRenderItemInfo } from 'react-native-reanimated-carousel/lib/typescript/types';
@@ -20,7 +21,6 @@ import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';
 import { BannersFallback } from './LazyHomeBanners';
 import { PanGestureProvider, usePanGesture } from './PanGestureContext';
-import SwipeableBanner from './SwipeableBanner';
 
 import type { PanGesture } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
@@ -88,12 +88,18 @@ function getPromoBannerOnPress(
   }
 }
 
-const PromoImageBanner = ({ imageURL, onPress }: { imageURL: string; onPress: () => void }) => (
-  <SwipeableBanner onPress={onPress}>
-    <View className="flex-1 overflow-hidden rounded-twice" style={styles.promoImageWrap}>
-      <Image source={{ uri: imageURL }} className="h-full w-full" contentFit="cover" />
-    </View>
-  </SwipeableBanner>
+const PromoImageBanner = ({
+  imageURL,
+  onPress,
+  height,
+}: {
+  imageURL: string;
+  onPress: () => void;
+  height: number;
+}) => (
+  <Pressable onPress={onPress} style={[styles.promoImageWrap, { height }]}>
+    <Image source={{ uri: imageURL }} style={styles.promoImage} contentFit="contain" />
+  </Pressable>
 );
 
 const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
@@ -112,6 +118,12 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
     enabled: !propData,
   });
 
+  const GAP = isScreenMedium ? 30 : 8;
+  const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
+  const VIEW_COUNT = isScreenMedium ? 2 : 1;
+  const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
+  const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
+
   const defaultData = useMemo(() => {
     if (promotionsBanner?.length) {
       const sorted = [...promotionsBanner].sort((a, b) => a.sort - b.sort);
@@ -120,6 +132,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
           key={`promo-${item.slug}-${i}`}
           imageURL={item.imageURL}
           onPress={getPromoBannerOnPress(item.slug, setModal)}
+          height={BANNER_HEIGHT}
         />
       ));
     }
@@ -131,15 +144,9 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
       fallback.unshift(<CardBanner key="card" />);
     }
     return fallback;
-  }, [cardStatus, isLoading, promotionsBanner, setModal]);
+  }, [cardStatus, isLoading, promotionsBanner, setModal, BANNER_HEIGHT]);
 
   const data = propData ?? defaultData;
-
-  const GAP = isScreenMedium ? 30 : 8;
-  const ITEM_WIDTH = isScreenMedium ? containerWidth / 2 : containerWidth;
-  const VIEW_COUNT = isScreenMedium ? 2 : 1;
-  const BANNER_HEIGHT = isScreenMedium ? 220 : 170;
-  const HAS_MULTIPLE_VIEWS = VIEW_COUNT > 1;
   const IS_PAGINATION = data.length > VIEW_COUNT;
   const MAX_INDEX = data.length - VIEW_COUNT;
 
@@ -286,7 +293,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   promoImageWrap: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+    flex: 1,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  promoImage: {
+    width: '100%',
+    height: '100%',
   },
   paginationContainer: {
     gap: 4,
