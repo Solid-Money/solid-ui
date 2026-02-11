@@ -44,10 +44,7 @@ export const VAULTS: Vault[] = [
     depositConfig: {
       methods: ['wallet'],
       supportedChains: [fuse.id],
-      supportedTokens: [
-        'WFUSE',
-        // ,'FUSE'
-      ],
+      supportedTokens: ['WFUSE', 'FUSE'],
     },
   },
   {
