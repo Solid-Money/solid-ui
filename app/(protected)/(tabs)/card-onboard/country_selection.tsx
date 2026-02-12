@@ -249,70 +249,8 @@ export default function CountrySelection() {
     if (selectedCountry) {
       setProcessingWaitlist(true);
       try {
-        // TODO: Temporarily disabled Fingerprint verification for testing.
-        // This allows testing the card activation flow from unsupported countries.
-        // REMOVE THIS BEFORE PRODUCTION - re-enable the block below.
-        // Step 1: Verify location with Fingerprint (if available)
-        // This ensures the user's actual location matches their claimed country
-        // if (false && isFingerprintAvailable) {
-        // const visitorData = await getVisitorData();
-        // if (visitorData) {
-        //   const verification = await withRefreshToken(() =>
-        //     verifyCountryWithFingerprint({
-        //       visitorId: visitorData.visitorId,
-        //       requestId: visitorData.requestId,
-        //       claimedCountry: selectedCountry.code,
-        //     }),
-        //   );
-        //   // If location mismatch detected, redirect to verification required screen
-        //   if (verification?.requiresVerification) {
-        //     // Note: TypeScript type assertion needed because Expo Router types are generated at dev server start
-        //     router.push({
-        //       pathname: path.CARD_COUNTRY_VERIFICATION_REQUIRED,
-        //       params: {
-        //         claimedCountry: selectedCountry.code,
-        //         detectedCountry: verification.detectedCountry || 'unknown',
-        //         blockingReason: verification.blockingReason || '',
-        //       },
-        //     } as any);
-        //     return;
-        //   }
-        // }
-        // If visitor data is null (SDK not configured/error), continue without blocking
-        // }
-
-        // Step 2: Check card access via backend API
-        const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
-
-        if (!accessCheck) throw new Error('Failed to check card access');
-
-        // Create the updated country info
-        const updatedCountryInfo = {
-          countryCode: selectedCountry.code,
-          countryName: selectedCountry.name,
-          isAvailable: accessCheck.hasAccess,
-          source: 'manual' as const,
-        };
-
-        // Update store and clear failure flag
-        setCountryInfo(updatedCountryInfo);
-        setCountryDetectionFailed(false);
-
-        // If selected country is available, navigate to card activation
-        // Pass countryConfirmed param to skip the country check on activate page
-        if (accessCheck.hasAccess) {
-          router.push({
-            pathname: '/card/activate',
-            params: { countryConfirmed: 'true' },
-          });
-          return;
-        }
-
-        setShowCountrySelector(false);
-        setNotifyClicked(false);
-      } catch (error) {
-        console.error('Error checking card access:', error);
-        // On error, show as unavailable
+        // Always show country as unavailable - no matter which country is selected
+        // This ensures users see the "country not available" message
         const unavailableCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
@@ -320,7 +258,11 @@ export default function CountrySelection() {
           source: 'manual' as const,
         };
 
+        // Update store with unavailable status
         setCountryInfo(unavailableCountryInfo);
+        setCountryDetectionFailed(false);
+
+        // Show the unavailable message
         setShowCountrySelector(false);
         setNotifyClicked(false);
       } finally {
