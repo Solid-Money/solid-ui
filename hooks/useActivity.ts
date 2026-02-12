@@ -360,11 +360,7 @@ export function useActivity() {
   // Terminal statuses that must not be overwritten by lower-priority statuses
   const TERMINAL_STATUSES = useMemo(
     () =>
-      new Set([
-        TransactionStatus.SUCCESS,
-        TransactionStatus.FAILED,
-        TransactionStatus.REFUNDED,
-      ]),
+      new Set([TransactionStatus.SUCCESS, TransactionStatus.FAILED, TransactionStatus.REFUNDED]),
     [],
   );
 
@@ -465,15 +461,11 @@ export function useActivity() {
             const currentActivity = userEvents.find(a => a.clientTxId === clientTxId);
             const currentStatus = currentActivity?.status;
 
-            const isTerminal = currentStatus
-              ? TERMINAL_STATUSES.has(currentStatus)
-              : false;
+            const isTerminal = currentStatus ? TERMINAL_STATUSES.has(currentStatus) : false;
 
             updateActivity(clientTxId, {
               // Preserve terminal status if SSE already delivered it
-              status: isTerminal
-                ? currentStatus!
-                : (params.status || TransactionStatus.PROCESSING),
+              status: isTerminal ? currentStatus! : params.status || TransactionStatus.PROCESSING,
               hash: txHash,
               url: getExplorerUrl(params.chainId, txHash),
               metadata: {
