@@ -87,7 +87,7 @@ export default function Home() {
     refetch: refetchTransactions,
   } = useUserTransactions(user?.safeAddress);
 
-  const { totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
+  const { data: totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
 
   const topThreeTokens = uniqueTokens.slice(0, 3);
   const isDeposited = !!userDepositTransactions?.deposits?.length;
@@ -147,7 +147,7 @@ export default function Home() {
                 ) : (
                   <CountUp
                     prefix="$"
-                    count={totalUSDExcludingSoUSD + totalSavingsUSD + cardBalance}
+                    count={totalUSDExcludingSoUSD + (totalSavingsUSD ?? 0) + cardBalance}
                     isTrailingZero={false}
                     decimalPlaces={2}
                     classNames={{

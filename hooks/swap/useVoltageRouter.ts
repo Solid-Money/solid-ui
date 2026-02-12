@@ -1,10 +1,10 @@
+import { useEffect, useMemo, useState } from 'react';
+import { ExtendedNative } from '@cryptoalgebra/fuse-sdk';
 import * as Sentry from '@sentry/react-native';
 import { Currency, CurrencyAmount, Percent, TradeType } from '@voltage-finance/sdk-core';
-import { useEffect, useMemo, useState } from 'react';
 
 import { VOLTAGE_FINANCE_API_ROUTER } from '@/constants/routing';
 import { WFUSE_TOKEN } from '@/constants/tokens';
-import { ExtendedNative } from '@cryptoalgebra/fuse-sdk';
 
 interface Source {
   name: string;
