@@ -256,6 +256,10 @@ export const ASSETS = {
   },
   'images/fuse-4x.png': { module: require('@/assets/images/fuse-4x.png'), hash: '280845e7' },
   'images/fuse.png': { module: require('@/assets/images/fuse.png'), hash: '573a1a32' },
+  'images/gbp-fiat-currency.tsx': {
+    module: require('@/assets/images/gbp-fiat-currency.tsx'),
+    hash: '9315a113',
+  },
   'images/google_pay.png': { module: require('@/assets/images/google_pay.png'), hash: '78c91f8f' },
   'images/gray_onboarding_bg.png': {
     module: require('@/assets/images/gray_onboarding_bg.png'),
@@ -279,7 +283,7 @@ export const ASSETS = {
     module: require('@/assets/images/invite-yellow.png'),
     hash: '0175f2e5',
   },
-  'images/ios-icon.png': { module: require('@/assets/images/ios-icon.png'), hash: '9750723d' },
+  'images/ios-icon.png': { module: require('@/assets/images/ios-icon.png'), hash: '0ac16275' },
   'images/ipor-fusion.png': {
     module: require('@/assets/images/ipor-fusion.png'),
     hash: '5605920f',
@@ -589,6 +593,13 @@ export const ASSETS = {
   'splash/splash-icon.png': {
     module: require('@/assets/splash/splash-icon.png'),
     hash: '15315f99',
+  },
+  'tabs-icons/bell.json': { module: require('@/assets/tabs-icons/bell.json'), hash: 'b98b68a5' },
+  'tabs-icons/card.json': { module: require('@/assets/tabs-icons/card.json'), hash: '30b0115a' },
+  'tabs-icons/home.json': { module: require('@/assets/tabs-icons/home.json'), hash: '86c7e98d' },
+  'tabs-icons/lightning.json': {
+    module: require('@/assets/tabs-icons/lightning.json'),
+    hash: '6538ba06',
   },
   // @assets-registry-end
 } as const;
