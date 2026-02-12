@@ -28,6 +28,7 @@ export function useTrackingTransparency() {
     Platform.OS === 'ios' ? PermissionStatus.UNDETERMINED : PermissionStatus.GRANTED,
   );
   const [isReady, setIsReady] = useState(Platform.OS !== 'ios');
+  const [hasChecked, setHasChecked] = useState(Platform.OS !== 'ios');
 
   // Check current ATT status on mount (iOS only)
   useEffect(() => {
@@ -40,6 +41,7 @@ export function useTrackingTransparency() {
       .then(({ status: currentStatus }) => {
         if (mounted) {
           setStatus(currentStatus);
+          setHasChecked(true);
           // If already determined (granted or denied), no dialog needed
           if (currentStatus !== PermissionStatus.UNDETERMINED) {
             setIsReady(true);
@@ -50,6 +52,7 @@ export function useTrackingTransparency() {
         // Fail open: if we can't check, mark as ready with tracking disabled
         if (mounted) {
           setStatus('unavailable');
+          setHasChecked(true);
           setIsReady(true);
         }
       });
@@ -84,6 +87,8 @@ export function useTrackingTransparency() {
   return {
     /** Whether the ATT check is complete and analytics can be initialized */
     isReady,
+    /** Whether the initial ATT status check has completed (true even when status is undetermined) */
+    hasChecked,
     /** Whether the user granted tracking permission (always true on Android/Web) */
     isTrackingAllowed,
     /** Current ATT permission status */
