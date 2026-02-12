@@ -1,6 +1,6 @@
-import * as Sentry from '@sentry/react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 
 import {
   type AttributionChannel,

@@ -1,5 +1,5 @@
-import * as Sentry from '@sentry/react-native';
 import { Platform } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
