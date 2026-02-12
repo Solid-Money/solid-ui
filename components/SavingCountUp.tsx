@@ -6,8 +6,32 @@ import CountUp from '@/components/CountUp';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import useUser from '@/hooks/useUser';
 import { ADDRESSES } from '@/lib/config';
-import { calculateYield } from '@/lib/financial';
+import { calculateYield, SECONDS_PER_YEAR } from '@/lib/financial';
 import { SavingMode } from '@/lib/types';
+
+/** amountGained since lastTs at time now - no fetch. */
+function amountGained(
+  balance: number,
+  exchangeRate: number,
+  apy: number,
+  lastTs: number,
+  now: number,
+): number {
+  const balanceUSD = balance * exchangeRate;
+  return (((apy / 100) * (now - lastTs)) / SECONDS_PER_YEAR) * balanceUSD;
+}
+
+/** TOTAL_USD without fetchVaultTransfers - use for 1s tick to avoid explorer requests. */
+function totalUsdLive(
+  balance: number,
+  exchangeRate: number,
+  apy: number,
+  lastTs: number,
+  now: number,
+): number {
+  const balanceUSD = balance * exchangeRate;
+  return balanceUSD + amountGained(balance, exchangeRate, apy, lastTs, now);
+}
 
 type ClassNames = {
   wrapper?: string;
@@ -65,8 +89,8 @@ const SavingCountUp = memo(
     const lastTimestampRef = useRef(lastTimestamp);
     const transactionsRef = useRef(userDepositTransactions);
     const exchangeRateRef = useRef(exchangeRate);
+    const lastYieldRef = useRef<{ value: number; time: number } | null>(null);
 
-    // Update refs when props change
     useEffect(() => {
       balanceRef.current = balance;
       apyRef.current = apy;
@@ -90,21 +114,38 @@ const SavingCountUp = memo(
         tokenAddress,
         vaultDecimals,
       );
+      lastYieldRef.current = { value: calculatedYield, time: now };
       setLiveYield(calculatedYield);
     }, [mode, queryClient, user?.safeAddress, tokenAddress, vaultDecimals]);
 
+    const tickYield = useCallback(() => {
+      const now = Math.floor(Date.now() / 1000);
+      const bal = balanceRef.current;
+      const rate = exchangeRateRef.current;
+      const apyVal = apyRef.current;
+      const lastTs = lastTimestampRef.current;
+      if (mode === SavingMode.TOTAL_USD) {
+        setLiveYield(totalUsdLive(bal, rate, apyVal, lastTs, now));
+      } else {
+        const last = lastYieldRef.current;
+        if (last) {
+          const delta =
+            amountGained(bal, rate, apyVal, lastTs, now) -
+            amountGained(bal, rate, apyVal, lastTs, last.time);
+          setLiveYield(last.value + delta);
+        }
+      }
+    }, [mode]);
+
     useEffect(() => {
-      // calculateYield returns 0 immediately when balance <= 0 (financial.ts:325)
-      // Skip the interval entirely to avoid unnecessary re-renders
       if (balanceRef.current <= 0) {
         setLiveYield(0);
         return;
       }
-
       updateYield();
-      const interval = setInterval(updateYield, 1000);
+      const interval = setInterval(tickYield, 1000);
       return () => clearInterval(interval);
-    }, [updateYield]);
+    }, [updateYield, tickYield]);
 
     return (
       <CountUp
