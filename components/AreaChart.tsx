@@ -17,17 +17,22 @@ interface AreaChartProps {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
+  isLabel?: boolean;
   style?: StyleProp<ViewStyle>;
   margin?: { top?: number; right?: number; left?: number; bottom?: number };
 }
 
 const CHART_HEIGHT = 300;
 const CHART_PADDING = { top: 10, bottom: 60, left: 0, right: 70 };
-
-// Throttle interval for touch events (~30fps for smooth performance on Android)
 const TOUCH_THROTTLE_MS = 32;
 
-const Chart = ({ data, formatToolTip, formatYAxis, style }: AreaChartProps) => {
+const tickLabelStyle = (isLabel: boolean) => ({
+  fill: 'rgba(255, 255, 255, 0.5)' as const,
+  fontSize: 14,
+  ...(isLabel ? {} : { opacity: 0 }),
+});
+
+const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: AreaChartProps) => {
   const { setSelectedPrice, setSelectedPriceChange } = useCoinStore(
     useShallow(state => ({
       setSelectedPrice: state.setSelectedPrice,
@@ -210,7 +215,7 @@ const Chart = ({ data, formatToolTip, formatYAxis, style }: AreaChartProps) => {
             style={{
               axis: { stroke: 'transparent' },
               ticks: { stroke: 'transparent' },
-              tickLabels: { fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 },
+              tickLabels: tickLabelStyle(isLabel),
               grid: { stroke: 'transparent' },
             }}
           />
@@ -225,7 +230,7 @@ const Chart = ({ data, formatToolTip, formatYAxis, style }: AreaChartProps) => {
             style={{
               axis: { stroke: 'transparent' },
               ticks: { stroke: 'transparent' },
-              tickLabels: { fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 },
+              tickLabels: tickLabelStyle(isLabel),
               grid: { stroke: 'transparent' },
             }}
           />

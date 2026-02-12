@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Text } from '@/components/ui/text';
+import { useDimension } from '@/hooks/useDimension';
 
 export enum Tab {
   SAVINGS_RATE = 'savings-rate',
@@ -21,7 +22,10 @@ interface SavingsAnalyticsTabsProps {
   onTabChange: (tab: Tab) => void;
 }
 
+const TABS_MAX_WIDTH = 400;
+
 const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabsProps) => {
+  const { isScreenMedium } = useDimension();
   const [tabLayouts, setTabLayouts] = useState<Record<Tab, { x: number; width: number }>>({
     [Tab.SAVINGS_RATE]: { x: 0, width: 0 },
     [Tab.VAULT_BREAKDOWN]: { x: 0, width: 0 },
@@ -38,7 +42,6 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
     };
   }, []);
 
-  // Animate tab background
   const animateTabBackground = useCallback(
     (tab: Tab) => {
       if (!isMountedRef.current) return;
@@ -57,7 +60,6 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
     [tabLayouts, tabBackgroundX, tabBackgroundWidth],
   );
 
-  // Handle tab layout
   const handleTabLayout = useCallback((event: LayoutChangeEvent, tab: Tab) => {
     if (!isMountedRef.current) return;
     const { x, width } = event.nativeEvent.layout;
@@ -71,7 +73,6 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
     });
   }, []);
 
-  // Handle tab change
   const handleTabChange = useCallback(
     (tab: Tab) => {
       onTabChange(tab);
@@ -80,13 +81,11 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
     [onTabChange, animateTabBackground],
   );
 
-  // Animate tab background when tab changes or layouts update
   useEffect(() => {
     if (!isMountedRef.current) return;
     animateTabBackground(selectedTab);
   }, [selectedTab, tabLayouts, animateTabBackground]);
 
-  // Animated styles
   const tabBackgroundStyle = useAnimatedStyle(
     () => ({
       transform: [{ translateX: tabBackgroundX.value }],
@@ -96,11 +95,17 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
   );
 
   return (
-    <View className="relative flex-row gap-2 self-start rounded-full bg-foreground/10 p-[5px]">
+    <View
+      className="relative flex-row gap-2 rounded-full bg-foreground/10 p-[5px]"
+      style={{
+        width: isScreenMedium ? undefined : '100%',
+        maxWidth: isScreenMedium ? TABS_MAX_WIDTH : undefined,
+      }}
+    >
       <Pressable
         onLayout={e => handleTabLayout(e, Tab.SAVINGS_RATE)}
         onPress={() => handleTabChange(Tab.SAVINGS_RATE)}
-        className="relative z-10 shrink-0 px-4 py-2 md:px-6"
+        className="relative z-10 flex-1 shrink-0 px-4 py-2 md:flex-none md:px-6"
       >
         <Text
           className="text-center text-base font-semibold text-foreground"
@@ -113,7 +118,7 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
       <Pressable
         onLayout={e => handleTabLayout(e, Tab.VAULT_BREAKDOWN)}
         onPress={() => handleTabChange(Tab.VAULT_BREAKDOWN)}
-        className="relative z-10 shrink-0 px-4 py-2 md:px-6"
+        className="relative z-10 flex-1 shrink-0 px-4 py-2 md:flex-none md:px-6"
       >
         <Text
           className="text-center text-base font-semibold text-foreground"
@@ -123,15 +128,14 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
           Vault breakdown
         </Text>
       </Pressable>
-      {/* Animated tab background */}
       <Animated.View
         style={[
           tabBackgroundStyle,
           {
             position: 'absolute',
-            top: '8%',
+            top: 4,
             left: 0,
-            height: '86%',
+            bottom: 4,
             backgroundColor: 'rgba(17, 17, 17, 1)',
             borderRadius: 100,
             zIndex: 0,
