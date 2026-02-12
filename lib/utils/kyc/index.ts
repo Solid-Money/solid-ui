@@ -1,11 +1,12 @@
+import { Platform } from 'react-native';
+import { Router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { Router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
 
 type StartKycFlowParams = {
   router: Router;

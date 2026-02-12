@@ -1,13 +1,12 @@
-polyfill();
-
 import { Platform } from 'react-native';
 import { Chain, createPublicClient } from 'viem';
 import { createConfig, http } from 'wagmi';
-import { arbitrum, base, fuse, mainnet, polygon } from 'wagmi/chains';
 import { getWalletClient } from 'wagmi/actions';
+import { arbitrum, base, fuse, mainnet, polygon } from 'wagmi/chains';
 
 import { EXPO_PUBLIC_ALCHEMY_API_KEY } from './config';
 
+polyfill();
 
 const chains: [Chain, ...Chain[]] = [fuse, mainnet, polygon, base, arbitrum];
 
@@ -58,7 +57,7 @@ export const fuseConfig = createConfig({
 function polyfill() {
   if (Platform.OS === 'web') return;
 
-  const noop = (() => { }) as any;
+  const noop = (() => {}) as any;
 
   window.addEventListener = noop;
   window.dispatchEvent = noop;

@@ -1,7 +1,7 @@
-import * as Linking from 'expo-linking';
-import * as Sentry from '@sentry/react-native';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import * as Linking from 'expo-linking';
+import * as Sentry from '@sentry/react-native';
 
 import { formatAttributionForLogging, getCurrentURL, getReferrer } from '@/lib/attribution';
 import { useAttributionStore } from '@/store/useAttributionStore';

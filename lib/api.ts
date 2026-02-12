@@ -25,8 +25,6 @@ import {
   AddressBookResponse,
   APYsByAsset,
   BlockscoutTransactions,
-  HistoricalAPYPoint,
-  TotalAPYResponse,
   BridgeCustomerEndorsement,
   BridgeCustomerResponse,
   BridgeDeposit,
@@ -44,7 +42,6 @@ import {
   CardWithdrawal,
   CardWithdrawalResponse,
   Cashback,
-  ChartPayload,
   CoinHistoricalChart,
   CountryFromIp,
   CustomerFromBridgeResponse,
@@ -57,6 +54,7 @@ import {
   FromCurrency,
   FullRewardsConfig,
   GetLifiQuoteParams,
+  HistoricalAPYPoint,
   HoldingFundsPointsMultiplierConfig,
   KycLink,
   KycLinkForExistingCustomer,
@@ -67,6 +65,7 @@ import {
   LifiQuoteResponse,
   LifiStatusResponse,
   Points,
+  PromotionsBannerResponse,
   RewardsUserData,
   SearchCoin,
   SourceDepositInstructions,
@@ -79,13 +78,13 @@ import {
   TierBenefits,
   ToCurrency,
   TokenPriceUsd,
+  TotalAPYResponse,
   UpdateActivityEvent,
   User,
   VaultBreakdown,
   VaultType,
   VerifyCountryRequest,
   VerifyCountryResponse,
-  PromotionsBannerResponse,
   WebhookStatus,
   WhatsNew,
   WithdrawFromCardToSavingsResponse,
@@ -1392,20 +1391,6 @@ export const fetchTVL = async () => {
   return response.data;
 };
 
-export const usernameExists = async (username: string) => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/username/${username}`,
-    {
-      method: 'HEAD',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-      },
-    },
-  );
-  return response;
-};
-
 // ============================================
 // Email-First Signup Flow API Functions
 // ============================================
@@ -1844,15 +1829,12 @@ export const fetchLatestWhatsNew = async (): Promise<WhatsNew | null> => {
 };
 
 export const fetchPromotionsBanner = async (): Promise<PromotionsBannerResponse> => {
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/promotions-banner`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-      },
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/promotions-banner`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
     },
-  );
+  });
 
   if (!response.ok) throw response;
 
