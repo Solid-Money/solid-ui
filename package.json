@@ -43,6 +43,7 @@
     "@fingerprintjs/fingerprintjs-pro-react-native": "^3.10.0",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
+    "@intercom/intercom-react-native": "^9.6.1",
     "@lottiefiles/dotlottie-react": "^0.13.5",
     "@merkl/api": "file:./packages/merkl-api-1.4.15-patched.tgz",
     "@number-flow/react": "^0.5.10",
