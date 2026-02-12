@@ -3,11 +3,12 @@ import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Copy, Fuel, Info, MessageCircle, Share2 } from 'lucide-react-native';
+import { Copy, Fuel, Info, Share2 } from 'lucide-react-native';
 import { formatUnits } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
+import NeedHelp from '@/components/NeedHelp';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,6 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { useIntercom } from '@/lib/intercom';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -77,7 +77,6 @@ const DepositDirectlyAddress = () => {
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<'copied' | 'error' | null>(null);
   const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
-  const intercom = useIntercom();
 
   // Get token address for exchange rate calculation
   const tokenAddress =
@@ -355,16 +354,8 @@ const DepositDirectlyAddress = () => {
         <Text className="text-base font-bold text-black">Done</Text>
       </Button>
 
-      {/* Need help? */}
       <View className="flex items-center justify-center pb-4">
-        <Button
-          variant="ghost"
-          className="flex flex-row items-center gap-2 hover:bg-transparent"
-          onPress={() => intercom?.show()}
-        >
-          <MessageCircle size={18} color="#A1A1AA" />
-          <Text className="font-medium text-[#A1A1AA]">Need help?</Text>
-        </Button>
+        <NeedHelp />
       </View>
 
       <ResponsiveDialog

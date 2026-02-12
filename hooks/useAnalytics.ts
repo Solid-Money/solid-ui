@@ -102,17 +102,20 @@ export const useLatestTokenTransfer = (address: string, token: string) => {
     queryKey: [ANALYTICS, 'latestTokenTransfer', address, token],
     queryFn: async () => {
       const response = await fetchTokenTransfer({ address, token });
-      const latest = response.items.reduce((prev, curr) =>
+      const items = response?.items ?? [];
+      if (items.length === 0) return 0;
+      const latest = items.reduce((prev, curr) =>
         new Date(curr.timestamp) > new Date(prev.timestamp) ? curr : prev,
       );
       return new Date(latest.timestamp).getTime();
     },
     enabled: !!address,
+    staleTime: secondsToMilliseconds(60),
   });
 };
 
 const filterTransfers = (transfers: BlockscoutTransactions) => {
-  return transfers.items.filter(transfer => {
+  return (transfers?.items ?? []).filter(transfer => {
     const name = transfer.to.name;
     const isSafe = name?.toLowerCase().includes('safe');
     const isTokenTransfer = transfer.type === 'token_transfer';
