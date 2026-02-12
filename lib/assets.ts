@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { Platform } from 'react-native';
+
 import { EXPO_PUBLIC_BASE_URL } from './config';
 
 /**

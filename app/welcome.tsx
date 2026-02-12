@@ -9,7 +9,6 @@ import { useShallow } from 'zustand/react/shallow';
 import LoginKeyIcon from '@/assets/images/login_key_icon';
 import { DesktopCarousel } from '@/components/Onboarding';
 import { Button } from '@/components/ui/button';
-import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
@@ -20,11 +19,23 @@ import { useUserStore } from '@/store/useUserStore';
 
 export default function Welcome() {
   const { handleRemoveUsers, handleSelectUserById } = useUser();
-  const users = useUserStore(useShallow(state => state.users));
+  const { users, _hasHydrated } = useUserStore(
+    useShallow(state => ({
+      users: state.users,
+      _hasHydrated: state._hasHydrated,
+    })),
+  );
   const router = useRouter();
   const { isDesktop } = useDimension();
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
   const { session } = useLocalSearchParams<{ session: string }>();
+
+  // Redirect to onboarding if no users exist (e.g., after session expired with empty user list)
+  useEffect(() => {
+    if (_hasHydrated && users.length === 0) {
+      router.replace(path.ONBOARDING);
+    }
+  }, [_hasHydrated, users.length, router]);
 
   useEffect(() => {
     if (session === 'expired') {
@@ -81,9 +92,7 @@ export default function Welcome() {
       </Text>
 
       {/* User List */}
-      {!users.length ? (
-        <Skeleton className="mb-4 h-14 w-full rounded-xl bg-primary/10" />
-      ) : (
+      {!users.length ? null : (
         <View className="mb-4 w-full gap-3">
           {users.map(user => (
             <Button
