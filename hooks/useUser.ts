@@ -12,17 +12,16 @@ import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
 
-import { ERRORS } from '@/constants/errors';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { getAmplitudeDeviceId, track, trackIdentity } from '@/lib/analytics';
-import { deleteAccount, login, updateSafeAddress, usernameExists } from '@/lib/api';
+import { deleteAccount, login, updateSafeAddress } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
-import { getNonce, isHTTPError, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
+import { getNonce, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -35,7 +34,6 @@ import { fetchIsDeposited } from './useAnalytics';
 
 interface UseUserReturn {
   user: User | undefined;
-  handleSignupStarted: (username: string, inviteCode: string) => Promise<void>;
   handleLogin: () => Promise<void>;
   handleDummyLogin: () => Promise<void>;
   handleSelectUserById: (userId: string) => Promise<void>;
@@ -55,7 +53,7 @@ const useUser = (): UseUserReturn => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const intercom = useIntercom();
-  const { httpClient, createHttpClient, createPasskey } = useTurnkey();
+  const { httpClient, createHttpClient } = useTurnkey();
 
   const {
     user,
@@ -65,9 +63,7 @@ const useUser = (): UseUserReturn => {
     selectUserById,
     unselectUser,
     removeUsers,
-    setSignupInfo,
     setLoginInfo,
-    setSignupUser,
     markSafeAddressSynced,
   } = useUserStore(
     useShallow(state => ({
@@ -199,51 +195,6 @@ const useUser = (): UseUserReturn => {
       }
     },
     [queryClient, updateUser],
-  );
-
-  const handleSignupStarted = useCallback(
-    async (username: string, inviteCode: string) => {
-      try {
-        setSignupInfo({ status: Status.PENDING });
-        track(TRACKING_EVENTS.SIGNUP_STARTED, {
-          username,
-        });
-
-        const response = await usernameExists(username);
-        if (!isHTTPError(response, 404)) {
-          throw response;
-        }
-
-        setSignupUser({ username, inviteCode });
-        // router.push(path.INVITE);
-      } catch (error: any) {
-        let message = 'Error checking username exists';
-
-        if (isHTTPError(error, 200)) {
-          message = ERRORS.USERNAME_ALREADY_EXISTS;
-          Sentry.captureMessage(message, {
-            level: 'warning',
-            extra: {
-              username,
-              inviteCode,
-              error,
-            },
-          });
-        } else {
-          Sentry.captureException(new Error(message), {
-            extra: {
-              username,
-              inviteCode,
-              error,
-            },
-          });
-        }
-
-        setSignupInfo({ status: Status.ERROR, message });
-        console.error(message, error);
-      }
-    },
-    [setSignupInfo, setSignupUser, router],
   );
 
   const handleLogin = useCallback(async () => {
@@ -421,7 +372,7 @@ const useUser = (): UseUserReturn => {
     safeAA,
     markSafeAddressSynced,
     httpClient,
-    login,
+    user?.username,
   ]);
 
   const handleDummyLogin = useCallback(async () => {
@@ -463,7 +414,7 @@ const useUser = (): UseUserReturn => {
     } else {
       router.replace(path.ONBOARDING);
     }
-  }, [unselectUser, clearKycLinkId, router, user]);
+  }, [clearBalance, unselectUser, clearKycLinkId, router, user, intercom]);
 
   // New: select user by userId (preferred for email-first users)
   const handleSelectUserById = useCallback(
@@ -508,7 +459,7 @@ const useUser = (): UseUserReturn => {
         }
 
         router.replace(path.HOME);
-      } catch (error) {
+      } catch (_) {
         // Revert to previous user or clear selection on auth failure
         if (previousUserId) {
           selectUserById(previousUserId);
@@ -518,7 +469,7 @@ const useUser = (): UseUserReturn => {
         // Don't navigate on error - stay on welcome screen
       }
     },
-    [selectUserById, clearKycLinkId, router, user, unselectUser, users, httpClient, login],
+    [selectUserById, clearKycLinkId, router, user, unselectUser, users, httpClient],
   );
 
   const handleRemoveUsers = useCallback(() => {
@@ -529,12 +480,21 @@ const useUser = (): UseUserReturn => {
     clearKycLinkId(); // Clear KYC data when removing all users
     removeEvents();
     router.replace(path.ONBOARDING);
-  }, [removeUsers, clearKycLinkId, router]);
+  }, [users, removeUsers, clearKycLinkId, removeEvents, router]);
 
   const handleSessionExpired = useCallback(() => {
-    clearKycLinkId(); // Clear KYC data when session expires
-    router.replace({ pathname: '/welcome', params: { session: 'expired' } });
-  }, [clearKycLinkId, router]);
+    clearBalance();
+    unselectUser();
+    clearKycLinkId();
+    intercom?.shutdown();
+    intercom?.boot();
+
+    if (users.length > 0) {
+      router.replace({ pathname: '/welcome', params: { session: 'expired' } });
+    } else {
+      router.replace(path.ONBOARDING);
+    }
+  }, [clearBalance, unselectUser, clearKycLinkId, intercom, users.length, router]);
 
   const handleDeleteAccount = useCallback(async () => {
     try {
@@ -549,13 +509,13 @@ const useUser = (): UseUserReturn => {
       clearKycLinkId();
       queryClient.clear();
 
-      // Navigate to welcome screen
-      router.replace(path.WELCOME);
+      // Navigate to onboarding (no users left after deletion)
+      router.replace(path.ONBOARDING);
     } catch (error) {
       console.error('Error deleting account:', error);
       throw error;
     }
-  }, [removeUsers, clearKycLinkId, queryClient, router, user]);
+  }, [users, removeUsers, clearKycLinkId, queryClient, router]);
 
   useEffect(() => {
     setGlobalLogoutHandler(handleSessionExpired);
@@ -563,7 +523,6 @@ const useUser = (): UseUserReturn => {
 
   return {
     user,
-    handleSignupStarted,
     handleLogin,
     handleDummyLogin,
     handleSelectUserById,

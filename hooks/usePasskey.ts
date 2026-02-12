@@ -1,6 +1,6 @@
-import * as browserDetection from '@braintree/browser-detection';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import * as browserDetection from '@braintree/browser-detection';
 
 import { getRuntimeRpId } from '@/components/TurnkeyProvider';
 

@@ -481,19 +481,21 @@ const useDepositFromEOA = (
               amount,
               trackingId,
             }),
-          ).then((result) => {
-            if (result?.transactionHash) {
+          )
+            .then(result => {
+              if (result?.transactionHash) {
+                updateActivity(trackingId!, {
+                  status: TransactionStatus.PROCESSING,
+                  hash: result.transactionHash,
+                });
+              }
+            })
+            .catch(err => {
+              console.error('Sponsored deposit failed:', err);
               updateActivity(trackingId!, {
-                status: TransactionStatus.PROCESSING,
-                hash: result.transactionHash,
+                status: TransactionStatus.FAILED,
               });
-            }
-          }).catch((err) => {
-            console.error('Sponsored deposit failed:', err);
-            updateActivity(trackingId!, {
-              status: TransactionStatus.FAILED,
             });
-          });
         } else {
           trackingId = await createEvent(amount, spender, token);
 
@@ -616,19 +618,21 @@ const useDepositFromEOA = (
                   : undefined,
               trackingId,
             }),
-          ).then((result) => {
-            if (result?.transactionHash) {
+          )
+            .then(result => {
+              if (result?.transactionHash) {
+                updateActivity(trackingId!, {
+                  status: TransactionStatus.PROCESSING,
+                  hash: result.transactionHash,
+                });
+              }
+            })
+            .catch(err => {
+              console.error('Sponsored bridge deposit failed:', err);
               updateActivity(trackingId!, {
-                status: TransactionStatus.PROCESSING,
-                hash: result.transactionHash,
+                status: TransactionStatus.FAILED,
               });
-            }
-          }).catch((err) => {
-            console.error('Sponsored bridge deposit failed:', err);
-            updateActivity(trackingId!, {
-              status: TransactionStatus.FAILED,
             });
-          });
         } else {
           Sentry.addBreadcrumb({
             message: 'Getting LiFi quote for bridge transaction',

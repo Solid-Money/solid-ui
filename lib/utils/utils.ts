@@ -1,6 +1,7 @@
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type ClassValue, clsx } from 'clsx';
 import { formatDistanceToNow, isBefore, subDays } from 'date-fns';
-import { Platform } from 'react-native';
 import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
 
@@ -8,7 +9,6 @@ import { refreshToken } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { AuthTokens, CardResponse, CardStatus, CardStatusResponse, User } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const IS_SERVER = typeof window === 'undefined';
 
@@ -139,6 +139,7 @@ export const withRefreshToken = async <T>(
       } else if (isAnyHTTPError(refreshTokenError, [401, 403, 404, 500])) {
         globalLogoutHandler?.();
       }
+      return undefined;
     }
 
     // Retry original request with new access token
@@ -274,13 +275,12 @@ export const base64urlToUint8Array = (base64url: string): Uint8Array => {
   return bytes;
 };
 
-
 export const parseStampHeaderValueCredentialId = (stampHeaderValue: string) => {
   return JSON.parse(stampHeaderValue).credentialId;
 };
 
 export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
-  const ARBITRUM_CHAIN = "arbitrum"
+  const ARBITRUM_CHAIN = 'arbitrum';
 
   if (cardDetails?.funding_instructions?.chain === ARBITRUM_CHAIN) {
     return cardDetails?.funding_instructions?.address;

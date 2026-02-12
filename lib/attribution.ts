@@ -1,5 +1,5 @@
-import * as Sentry from '@sentry/react-native';
 import { Platform } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 
 import type { AttributionData } from '@/store/useAttributionStore';
 

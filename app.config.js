@@ -19,6 +19,7 @@ export default {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'Solid needs camera access to scan QR codes for wallet addresses',
         NSUserTrackingUsageDescription: 'Solid uses this identifier to deliver personalized content and measure campaign effectiveness. You can change this anytime in Settings.',
+        NSMicrophoneUsageDescription: "Access your microphone to transcribe voice messages in conversations",
       },
       privacyManifests: {
         NSPrivacyTracking: true,
@@ -185,6 +186,14 @@ export default {
           userTrackingPermission:
             'Solid uses this identifier to deliver personalized content and measure campaign effectiveness. You can change this anytime in Settings.',
         }
+      ],
+      [
+        '@intercom/intercom-react-native',
+        {
+          appId: process.env.EXPO_PUBLIC_INTERCOM_APP_ID,
+          iosApiKey: process.env.EXPO_PUBLIC_INTERCOM_IOS_API_KEY,
+          androidApiKey: process.env.EXPO_PUBLIC_INTERCOM_ANDROID_API_KEY,
+        },
       ],
     ],
     experiments: {

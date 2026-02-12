@@ -1,6 +1,5 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { TextStyle } from 'react-native';
-import { useQueryClient } from '@tanstack/react-query';
 
 import CountUp from '@/components/CountUp';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
@@ -80,7 +79,6 @@ const SavingCountUp = memo(
     tokenAddress = ADDRESSES.fuse.vault,
   }: SavingCountUpProps) => {
     const [liveYield, setLiveYield] = useState<number>(0);
-    const queryClient = useQueryClient();
     const { user } = useUser();
 
     // Use refs to avoid recreating the interval callback
@@ -107,7 +105,6 @@ const SavingCountUp = memo(
         lastTimestampRef.current,
         now,
         mode,
-        queryClient,
         transactionsRef.current,
         user?.safeAddress,
         exchangeRateRef.current,
@@ -116,7 +113,11 @@ const SavingCountUp = memo(
       );
       lastYieldRef.current = { value: calculatedYield, time: now };
       setLiveYield(calculatedYield);
-    }, [mode, queryClient, user?.safeAddress, tokenAddress, vaultDecimals]);
+    }, [mode, user?.safeAddress, tokenAddress, vaultDecimals]);
+
+    // Derive a boolean so the effect re-runs when balance transitions to/from positive,
+    // without recreating the interval on every minor balance tick.
+    const hasPositiveBalance = balance > 0;
 
     const tickYield = useCallback(() => {
       const now = Math.floor(Date.now() / 1000);
@@ -145,7 +146,7 @@ const SavingCountUp = memo(
       updateYield();
       const interval = setInterval(tickYield, 1000);
       return () => clearInterval(interval);
-    }, [updateYield, tickYield]);
+    }, [updateYield, tickYield, hasPositiveBalance]);
 
     return (
       <CountUp

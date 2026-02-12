@@ -1,10 +1,11 @@
-import * as Sentry from '@sentry/react-native';
 import { Platform } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
+
 import { useReferralStore } from './useReferralStore';
 
 /**

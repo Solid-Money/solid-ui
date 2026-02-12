@@ -233,19 +233,21 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
             trackingId,
             vault: VaultType.FUSE,
           }),
-        ).then((result) => {
-          if (result?.transactionHash) {
+        )
+          .then(result => {
+            if (result?.transactionHash) {
+              updateActivity(trackingId!, {
+                status: TransactionStatus.PROCESSING,
+                hash: result.transactionHash,
+              });
+            }
+          })
+          .catch(err => {
+            console.error('Sponsored Solid Fuse deposit failed:', err);
             updateActivity(trackingId!, {
-              status: TransactionStatus.PROCESSING,
-              hash: result.transactionHash,
+              status: TransactionStatus.FAILED,
             });
-          }
-        }).catch((err) => {
-          console.error('Sponsored Solid Fuse deposit failed:', err);
-          updateActivity(trackingId!, {
-            status: TransactionStatus.FAILED,
           });
-        });
       } else {
         throw new Error(
           `Minimum deposit amount is ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} for Fuse deposits`,

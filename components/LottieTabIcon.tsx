@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import LottieView, { type LottieViewProps } from 'lottie-react-native';
 
 interface LottieTabIconProps {
@@ -19,13 +20,15 @@ export function LottieTabIcon({ source, focused }: LottieTabIconProps) {
     }
   }, [focused]);
 
+  const size = Platform.OS === 'web' ? 36 : 40;
+
   return (
     <LottieView
       ref={lottieRef}
       source={source}
       autoPlay={focused}
       loop={false}
-      style={{ width: 40, height: 40 }}
+      style={{ width: size, height: size }}
       resizeMode="contain"
     />
   );

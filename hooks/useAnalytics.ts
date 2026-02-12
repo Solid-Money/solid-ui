@@ -101,7 +101,6 @@ export const useLatestTokenTransfer = (address: string, token: string) => {
   return useQuery({
     queryKey: [ANALYTICS, 'latestTokenTransfer', address, token],
     queryFn: async () => {
-      if (!address) return 0;
       const response = await fetchTokenTransfer({ address, token });
       const items = response?.items ?? [];
       if (items.length === 0) return 0;

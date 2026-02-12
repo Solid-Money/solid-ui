@@ -359,7 +359,6 @@ export const calculateYield = async (
   lastTimestamp: number,
   currentTime: number,
   mode: SavingMode = SavingMode.TOTAL_USD,
-  queryClient: QueryClient,
   userDepositTransactions?: any,
   safeAddress?: string,
   exchangeRate: number = 1,
@@ -372,9 +371,7 @@ export const calculateYield = async (
   if (!lastTimestamp || lastTimestamp <= 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
   if (!currentTime || currentTime <= 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
 
-  const { earnedUSD, setEarnedUSD } = useBalanceStore.getState();
-  // console.log('earnedUSD', earnedUSD);
-  // console.log('balance', balance);
+  const { setEarnedUSD } = useBalanceStore.getState();
 
   // balance is in tokens. exchangeRate converts token to USD/Display Currency
   const balanceUSD = balance * exchangeRate;
