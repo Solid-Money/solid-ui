@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
 import { IntercomProvider, useIntercom } from 'react-use-intercom';
 
 import { EXPO_PUBLIC_INTERCOM_APP_ID } from '@/lib/config';
@@ -32,10 +31,6 @@ const DeferredIntercomBoot = () => {
 };
 
 const Intercom = ({ children }: IntercomProps) => {
-  if (Platform.OS !== 'web') {
-    return children;
-  }
-
   return (
     <IntercomProvider
       appId={EXPO_PUBLIC_INTERCOM_APP_ID}
