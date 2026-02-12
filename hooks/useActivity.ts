@@ -357,6 +357,13 @@ export function useActivity() {
     [user?.userId, upsertEvent],
   );
 
+  // Terminal statuses that must not be overwritten by lower-priority statuses
+  const TERMINAL_STATUSES = useMemo(
+    () =>
+      new Set([TransactionStatus.SUCCESS, TransactionStatus.FAILED, TransactionStatus.REFUNDED]),
+    [],
+  );
+
   // Update activity
   const updateActivity = useCallback(
     async (clientTxId: string, updates: UpdateActivityParams) => {
@@ -368,20 +375,29 @@ export function useActivity() {
 
       if (!existing) return;
 
-      const updatedActivity: ActivityEvent = {
-        ...existing,
-        ...updates,
-        metadata: {
-          ...existing.metadata,
-          ...updates.metadata,
-          updatedAt: new Date().toISOString(),
-        },
-      };
+      // Guard: do not optimistically downgrade a terminal status.
+      // SSE may have already delivered SUCCESS/FAILED/REFUNDED.
+      const isDowngrade =
+        TERMINAL_STATUSES.has(existing.status) &&
+        updates.status !== undefined &&
+        !TERMINAL_STATUSES.has(updates.status);
 
-      // Update local state immediately
-      upsertEvent(user.userId, updatedActivity);
+      if (!isDowngrade) {
+        const updatedActivity: ActivityEvent = {
+          ...existing,
+          ...updates,
+          metadata: {
+            ...existing.metadata,
+            ...updates.metadata,
+            updatedAt: new Date().toISOString(),
+          },
+        };
 
-      // Send to backend for caching (non-blocking)
+        // Update local state immediately
+        upsertEvent(user.userId, updatedActivity);
+      }
+
+      // Always send to backend — the backend has its own guards
       withRefreshToken(() =>
         updateActivityEvent(clientTxId, {
           status: updates.status,
@@ -393,7 +409,7 @@ export function useActivity() {
         console.error('Failed to update activity on server:', error);
       });
     },
-    [user?.userId, upsertEvent],
+    [user?.userId, upsertEvent, TERMINAL_STATUSES],
   );
 
   // Wrapper function to track transactions
@@ -436,23 +452,26 @@ export function useActivity() {
 
         // Update with transaction hash when available
         if (transaction && typeof transaction === 'object') {
-          const updateData: {
-            status: TransactionStatus;
-            hash?: string;
-            url?: string;
-            metadata: Record<string, any>;
-          } = {
-            status: params.status || TransactionStatus.PROCESSING,
-            metadata: {
-              submittedAt: new Date().toISOString(),
-            },
-          };
+          const txHash = getTransactionHash(transaction);
 
-          updateData.hash = getTransactionHash(transaction);
+          if (txHash && params.chainId) {
+            // Check current status — SSE may have already delivered a terminal state
+            const currentState = useActivityStore.getState();
+            const userEvents = currentState.events[user?.userId ?? ''] || [];
+            const currentActivity = userEvents.find(a => a.clientTxId === clientTxId);
+            const currentStatus = currentActivity?.status;
 
-          if (updateData.hash && params.chainId) {
-            updateData.url = getExplorerUrl(params.chainId, updateData.hash);
-            updateActivity(clientTxId, updateData);
+            const isTerminal = currentStatus ? TERMINAL_STATUSES.has(currentStatus) : false;
+
+            updateActivity(clientTxId, {
+              // Preserve terminal status if SSE already delivered it
+              status: isTerminal ? currentStatus! : params.status || TransactionStatus.PROCESSING,
+              hash: txHash,
+              url: getExplorerUrl(params.chainId, txHash),
+              metadata: {
+                submittedAt: new Date().toISOString(),
+              },
+            });
           }
         }
 
@@ -487,7 +506,7 @@ export function useActivity() {
         throw error; // Re-throw to maintain existing error handling
       }
     },
-    [createActivity, updateActivity],
+    [createActivity, updateActivity, user?.userId, TERMINAL_STATUSES],
   );
 
   return {

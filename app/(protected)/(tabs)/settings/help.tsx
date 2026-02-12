@@ -5,23 +5,32 @@ import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import EmailIcon from '@/assets/images/email';
 import LegalIcon from '@/assets/images/legal';
 import LifebuoyIcon from '@/assets/images/lifebuoy';
+import MessageCircle from '@/assets/images/messages';
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
+import { openIntercom } from '@/lib/intercom';
 import { cn } from '@/lib/utils';
 
 interface SupportOption {
   title: string;
   description?: string;
   icon: React.ReactNode;
-  link: string;
+  link?: string;
+  onPress?: () => void;
 }
 
 export default function Help() {
   const { isDesktop } = useDimension();
 
   const supportOptions: SupportOption[] = [
+    {
+      title: 'Chat with us',
+      description: 'Live chat support',
+      icon: <MessageCircle color="#ffffff" />,
+      onPress: openIntercom,
+    },
     {
       title: 'FAQ',
       description: 'Quick answers',
@@ -87,6 +96,7 @@ export default function Help() {
                 description={option.description}
                 icon={option.icon}
                 link={option.link as any}
+                onPress={option.onPress}
                 isDesktop={isDesktop}
               />
               {index < supportOptions.length - 1 && <View className="border-t border-[#2a2a2a]" />}

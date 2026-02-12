@@ -26,7 +26,7 @@ const SavingCard = memo(({ className, decimalPlaces = 2 }: SavingCardProps) => {
   const router = useRouter();
   const { isScreenMedium } = useDimension();
   const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
-  const { totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
+  const { data: totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
   const [isHovered, setIsHovered] = useState(false);
 
   return (

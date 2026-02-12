@@ -21,14 +21,17 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        sceneStyleInterpolator: SceneStyleInterpolators.forFade,
+        sceneStyleInterpolator: Platform.OS !== 'web' ? SceneStyleInterpolators.forFade : undefined,
         sceneStyle: { backgroundColor: '#121212' },
-        transitionSpec: {
-          animation: 'timing',
-          config: {
-            easing: Easing.in(Easing.linear),
-          },
-        },
+        transitionSpec:
+          Platform.OS !== 'web'
+            ? {
+                animation: 'timing',
+                config: {
+                  easing: Easing.in(Easing.linear),
+                },
+              }
+            : undefined,
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,

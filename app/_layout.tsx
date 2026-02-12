@@ -32,7 +32,7 @@ import { WagmiProvider } from 'wagmi';
 import DeferredModalProviders from '@/components/DeferredModalProviders';
 import AppErrorBoundary from '@/components/ErrorBoundary';
 import { FingerprintProvider } from '@/components/FingerprintProvider';
-import Intercom from '@/components/Intercom';
+import Intercom from '@/components/Intercom/index';
 import { LazyThirdwebProvider } from '@/components/LazyThirdwebProvider';
 import LazyWhatsNewModal from '@/components/LazyWhatsNewModal';
 import { toastProps } from '@/components/Toast';

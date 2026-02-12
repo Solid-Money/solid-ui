@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useCallback } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { usePanGesture } from './PanGestureContext';
@@ -16,13 +16,12 @@ const SwipeableBanner = ({
 }: SwipeableBannerProps) => {
   const isPanning = usePanGesture();
 
-  const handlePress = () => {
-    // Prevent press if carousel pan gesture was active
+  const handlePress = useCallback(() => {
     const wasPanning = isPanning?.current ?? false;
     if (!wasPanning) {
       onPress();
     }
-  };
+  }, [isPanning, onPress]);
 
   return (
     <View className={className}>

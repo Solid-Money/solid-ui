@@ -19,7 +19,7 @@ import {
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
 import { getChain } from '@/lib/thirdweb';
-import { Status, StatusInfo, TransactionType, VaultType } from '@/lib/types';
+import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { checkAndSetAllowanceToken, getTransactionReceipt } from '@/lib/utils/contract';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -47,7 +47,7 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
   const eoaAddress = account?.address as Address;
   const updateUser = useUserStore(state => state.updateUser);
   const srcChainId = useDepositStore(state => state.srcChainId);
-  const { createActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivity();
 
   const isFuseChain = srcChainId === fuse.id;
   const isNativeFuse = token === 'FUSE';
@@ -239,6 +239,24 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
               trackingId,
               vault: VaultType.FUSE,
             }),
+          )
+            .then(result => {
+              if (result?.transactionHash) {
+                updateActivity(trackingId!, {
+                  status: TransactionStatus.PROCESSING,
+                  hash: result.transactionHash,
+                });
+              }
+            })
+            .catch(err => {
+              console.error('Sponsored Fuse deposit failed:', err);
+              updateActivity(trackingId!, {
+                status: TransactionStatus.FAILED,
+              });
+            });
+        } else {
+          throw new Error(
+            `Minimum deposit amount is ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} for Fuse deposits`,
           );
         }
 
