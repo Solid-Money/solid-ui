@@ -176,6 +176,7 @@ export default Sentry.wrap(function RootLayout() {
   // App Tracking Transparency (iOS only)
   const {
     isReady: attReady,
+    hasChecked: attChecked,
     isTrackingAllowed,
     status: attStatus,
     requestPermission,
@@ -189,7 +190,7 @@ export default Sentry.wrap(function RootLayout() {
   }, [splashScreenHidden, attReady, isTrackingAllowed]);
 
   useEffect(() => {
-    if (!splashScreenHidden || !attReady) return;
+    if (!splashScreenHidden || !attChecked) return;
     if (Platform.OS !== 'ios' || attStatus !== 'undetermined') return;
 
     const timer = setTimeout(async () => {
@@ -198,7 +199,7 @@ export default Sentry.wrap(function RootLayout() {
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [splashScreenHidden, attReady, attStatus, requestPermission]);
+  }, [splashScreenHidden, attChecked, attStatus, requestPermission]);
 
   // Load only critical font weights to speed up FCP
   // Regular (400) and SemiBold (600) cover most UI text
