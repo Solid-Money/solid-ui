@@ -68,7 +68,9 @@ export default function Savings() {
 
   const { data: exchangeRate } = useVaultExchangeRate(currentVault.name);
 
-  const vaultAPY = apys?.allTime ?? 0;
+  const rawAllTime = apys?.allTime;
+  const vaultAPY =
+    rawAllTime != null && Number.isFinite(Number(rawAllTime)) ? Number(rawAllTime) : 0;
 
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',

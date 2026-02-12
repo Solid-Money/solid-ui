@@ -1,21 +1,19 @@
 import React, { useCallback, useMemo } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MessageCircle } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
+import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import SwapButton from '@/components/Swap/SwapButton';
 import SwapPair from '@/components/Swap/SwapPair';
 import SwapParams from '@/components/Swap/SwapParams';
 import TransactionStatus from '@/components/TransactionStatus';
-import { Text } from '@/components/ui/text';
 import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
-import { useIntercom } from '@/lib/intercom';
 import { useSwapState } from '@/store/swapStore';
 
 /**
@@ -28,7 +26,6 @@ import { useSwapState } from '@/store/swapStore';
  */
 const SwapModalProvider = () => {
   const router = useRouter();
-  const intercom = useIntercom();
 
   const { currentModal, previousModal, transaction, setModal } = useSwapState(
     useShallow(state => ({
@@ -101,16 +98,12 @@ const SwapModalProvider = () => {
         <View className="mt-2">
           <SwapButton />
         </View>
-        <Pressable
-          className="flex-row items-center justify-center gap-2 pt-2 opacity-80"
-          onPress={() => intercom?.show()}
-        >
-          <MessageCircle size={18} color="white" />
-          <Text className="text-base font-medium text-white">Need help?</Text>
-        </Pressable>
+        <View className="items-center pt-2">
+          <NeedHelp />
+        </View>
       </View>
     );
-  }, [isTransactionStatus, transaction, handleTransactionStatusPress, intercom]);
+  }, [isTransactionStatus, transaction, handleTransactionStatusPress]);
 
   return (
     <ResponsiveModal
