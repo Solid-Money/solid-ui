@@ -149,7 +149,6 @@ export default function Home() {
                     prefix="$"
                     count={totalUSDExcludingSoUSD + (totalSavingsUSD ?? 0) + cardBalance}
                     isTrailingZero={false}
-                    decimalPlaces={2}
                     classNames={{
                       wrapper: 'text-foreground',
                       decimalSeparator: 'text-2xl',
