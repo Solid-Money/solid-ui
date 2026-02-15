@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -26,6 +27,7 @@ export const useComplianceStore = create<ComplianceState>()(
       },
 
       hasAcceptedDisclaimer: (feature: string) => {
+        if (Platform.OS !== 'ios') return true;
         return get().acceptedDisclaimers[feature] === true;
       },
     }),
