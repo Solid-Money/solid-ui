@@ -87,7 +87,7 @@ export default function HomeEmptyState() {
                   ) : (
                     <>
                       Get{' '}
-                      <Text className="text-3xl font-semibold leading-[1.1] text-brand">
+                      <Text className="text-2xl font-semibold leading-[1.1] text-brand md:text-3xl">
                         {formatNumber(maxAPY ?? 0, 1)}%
                       </Text>{' '}
                       yield on your USDC
@@ -101,7 +101,7 @@ export default function HomeEmptyState() {
                 headline="Spend while you earn"
                 description={BENEFIT_DESCRIPTION}
                 classNames={{
-                  headline: 'max-w-56',
+                  headline: 'max-w-40 md:max-w-56',
                 }}
               />
               <SolidBenefitCard
@@ -141,7 +141,7 @@ function SolidBenefitCard({
       <Image source={icon} style={{ width: 40, height: 40 }} contentFit="contain" />
       <Text
         className={cn(
-          'max-w-64 text-3xl font-semibold leading-[1.1] text-foreground',
+          'max-w-52 text-2xl font-semibold leading-[1.1] text-foreground md:max-w-64 md:text-3xl',
           classNames?.headline,
         )}
       >
