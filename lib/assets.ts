@@ -184,6 +184,10 @@ export const ASSETS = {
   'images/diamond.png': { module: require('@/assets/images/diamond.png'), hash: '9875c4f5' },
   'images/diamond.tsx': { module: require('@/assets/images/diamond.tsx'), hash: '6654209f' },
   'images/docs.tsx': { module: require('@/assets/images/docs.tsx'), hash: '458b69fc' },
+  'images/dollar-lavender.png': {
+    module: require('@/assets/images/dollar-lavender.png'),
+    hash: '23534784',
+  },
   'images/dollar-yellow.png': {
     module: require('@/assets/images/dollar-yellow.png'),
     hash: '59cf014d',
@@ -237,6 +241,10 @@ export const ASSETS = {
   'images/fingetprint.tsx': {
     module: require('@/assets/images/fingetprint.tsx'),
     hash: '0b09bf2a',
+  },
+  'images/flash-lavender.png': {
+    module: require('@/assets/images/flash-lavender.png'),
+    hash: '12ae990c',
   },
   'images/freeze_button_icon.png': {
     module: require('@/assets/images/freeze_button_icon.png'),
@@ -398,6 +406,10 @@ export const ASSETS = {
     module: require('@/assets/images/reveal_card_details_icon.png'),
     hash: 'd1c558ce',
   },
+  'images/rocket-lavender.png': {
+    module: require('@/assets/images/rocket-lavender.png'),
+    hash: 'fbcfcb9b',
+  },
   'images/rocket-yellow.png': {
     module: require('@/assets/images/rocket-yellow.png'),
     hash: 'eff1d47a',
@@ -482,6 +494,10 @@ export const ASSETS = {
   'images/solid-purple-large.png': {
     module: require('@/assets/images/solid-purple-large.png'),
     hash: 'ff520374',
+  },
+  'images/solid-tokens.png': {
+    module: require('@/assets/images/solid-tokens.png'),
+    hash: 'ea2832f8',
   },
   'images/solid-wordmark.png': {
     module: require('@/assets/images/solid-wordmark.png'),

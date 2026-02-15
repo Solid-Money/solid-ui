@@ -8,10 +8,10 @@ import { Text } from '@/components/ui/text';
 const DepositButton = () => {
   const getTrigger = () => {
     return (
-      <Button variant="indigo" className="h-[3.375rem] rounded-xl pr-6 md:w-72">
+      <Button variant="brand" className="h-[3.375rem] rounded-xl pr-6 md:w-72">
         <View className="flex-row items-center gap-2">
-          <Plus color="white" />
-          <Text className="text-base font-bold text-foreground">Make your first deposit</Text>
+          <Plus color="black" />
+          <Text className="text-base font-bold">Make your first deposit</Text>
         </View>
       </Button>
     );
