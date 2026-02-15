@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { WITHDRAW_MODAL } from '@/constants/modals';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { TransactionStatusModal, WithdrawModal } from '@/lib/types';
-import { WITHDRAW_MODAL } from '@/constants/modals';
 
 interface WithdrawState {
   currentModal: WithdrawModal;

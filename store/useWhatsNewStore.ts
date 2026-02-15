@@ -1,5 +1,6 @@
-import { WhatsNew } from '@/lib/types';
 import { create } from 'zustand';
+
+import { WhatsNew } from '@/lib/types';
 
 interface WhatsNewState {
   whatsNew: WhatsNew | null;

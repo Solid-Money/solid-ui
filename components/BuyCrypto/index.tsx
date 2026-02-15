@@ -1,15 +1,29 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
 
+import ExchangeDisclaimer from '@/components/Compliance/ExchangeDisclaimer';
+import GeoRestrictionNotice from '@/components/Compliance/GeoRestrictionNotice';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useGeoCompliance from '@/hooks/useGeoCompliance';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { createMercuryoTransaction, getClientIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
+import { useComplianceStore } from '@/store/useComplianceStore';
 
 const BuyCrypto = () => {
+  const { isBuyCryptoAvailable } = useGeoCompliance();
+  const hasAcceptedBuyCryptoDisclaimer = useComplianceStore(
+    state => state.acceptedDisclaimers['buyCrypto'] === true,
+  );
+  const acceptDisclaimer = useComplianceStore(state => state.acceptDisclaimer);
+
+  const handleAcceptBuyCryptoDisclaimer = useCallback(() => {
+    acceptDisclaimer('buyCrypto');
+  }, [acceptDisclaimer]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finalUrl, setFinalUrl] = useState<string>('');
@@ -97,6 +111,12 @@ const BuyCrypto = () => {
 
     buildUrl();
   }, [user]);
+
+  if (!isBuyCryptoAvailable) return <GeoRestrictionNotice feature="buyCrypto" />;
+
+  if (!hasAcceptedBuyCryptoDisclaimer) {
+    return <ExchangeDisclaimer feature="buyCrypto" onAccept={handleAcceptBuyCryptoDisclaimer} />;
+  }
 
   return (
     <View className="flex-1 overflow-y-auto md:max-h-[65vh] lg:max-h-[70vh] 2xl:max-h-[75vh]">

@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { times } from '@/constants/coins';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
-import { times } from '@/constants/coins';
 
 interface CoinState {
   selectedTime: string;

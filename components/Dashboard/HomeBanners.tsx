@@ -11,7 +11,6 @@ import { useQuery } from '@tanstack/react-query';
 
 import PointsBanner from '@/components/Points/PointsBanner';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { fetchPromotionsBanner } from '@/lib/api';

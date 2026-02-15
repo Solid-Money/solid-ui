@@ -1,12 +1,13 @@
+import * as Sentry from '@sentry/react-native';
+import { produce } from 'immer';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+
 import { fetchPoints } from '@/lib/api';
 import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { Points } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import * as Sentry from '@sentry/react-native';
-import { produce } from 'immer';
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 
 interface PointsState {
   points: Points;

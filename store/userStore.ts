@@ -1,6 +1,6 @@
+import { useMemo } from 'react';
 import { Percent } from '@cryptoalgebra/fuse-sdk';
 import deepMerge from 'lodash.merge';
-import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 

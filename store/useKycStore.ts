@@ -1,6 +1,7 @@
-import mmkvStorage from '@/lib/mmvkStorage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import mmkvStorage from '@/lib/mmvkStorage';
 
 interface KycState {
   kycLinkId: string | null;

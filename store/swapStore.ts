@@ -1,14 +1,4 @@
-import { SWAP_MODAL } from '@/constants/modals';
-import { soUSDC_TOKEN, USDC_STARGATE_TOKEN } from '@/constants/tokens';
-import { useReadAlgebraPoolGlobalState, useReadAlgebraPoolTickSpacing } from '@/generated/wagmi';
-import { useBestTradeExactIn, useBestTradeExactOut } from '@/hooks/swap/useBestTrade';
-import useSwapSlippageTolerance from '@/hooks/swap/useSwapSlippageTolerance';
-import { useVoltageRouter, VoltageTrade } from '@/hooks/swap/useVoltageRouter';
-import { useCurrency } from '@/hooks/tokens/useCurrency';
-import useUser from '@/hooks/useUser';
-import { SwapModal, TransactionStatusModal } from '@/lib/types';
-import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
-import { TradeState, TradeStateType } from '@/lib/types/trade-state';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ADDRESS_ZERO,
   computePoolAddress,
@@ -21,12 +11,23 @@ import {
   tryParseAmount,
 } from '@cryptoalgebra/fuse-sdk';
 import JSBI from 'jsbi';
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Address } from 'viem';
 import { fuse } from 'viem/chains';
 import { useBalance } from 'wagmi';
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
+
+import { SWAP_MODAL } from '@/constants/modals';
+import { soUSDC_TOKEN, USDC_STARGATE_TOKEN } from '@/constants/tokens';
+import { useReadAlgebraPoolGlobalState, useReadAlgebraPoolTickSpacing } from '@/generated/wagmi';
+import { useBestTradeExactIn, useBestTradeExactOut } from '@/hooks/swap/useBestTrade';
+import useSwapSlippageTolerance from '@/hooks/swap/useSwapSlippageTolerance';
+import { useVoltageRouter, VoltageTrade } from '@/hooks/swap/useVoltageRouter';
+import { useCurrency } from '@/hooks/tokens/useCurrency';
+import useUser from '@/hooks/useUser';
+import { SwapModal, TransactionStatusModal } from '@/lib/types';
+import { SwapField, SwapFieldType } from '@/lib/types/swap-field';
+import { TradeState, TradeStateType } from '@/lib/types/trade-state';
 
 interface SwapState {
   readonly independentField: SwapFieldType;
@@ -150,9 +151,12 @@ export function useSwapActionHandlers(): {
     switchCurrencies();
   }, [switchCurrencies]);
 
-  const onUserInput = useCallback((field: SwapFieldType, typedValue: string) => {
-    typeInput(field, typedValue);
-  }, [typeInput]);
+  const onUserInput = useCallback(
+    (field: SwapFieldType, typedValue: string) => {
+      typeInput(field, typedValue);
+    },
+    [typeInput],
+  );
 
   return {
     onSwitchTokens,
