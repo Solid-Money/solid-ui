@@ -15,8 +15,8 @@ import { useComplianceStore } from '@/store/useComplianceStore';
 
 const BuyCrypto = () => {
   const { isBuyCryptoAvailable } = useGeoCompliance();
-  const hasAcceptedBuyCryptoDisclaimer = useComplianceStore(
-    state => state.acceptedDisclaimers['buyCrypto'] === true,
+  const hasAcceptedBuyCryptoDisclaimer = useComplianceStore(state =>
+    state.hasAcceptedDisclaimer('buyCrypto'),
   );
   const acceptDisclaimer = useComplianceStore(state => state.acceptDisclaimer);
 
