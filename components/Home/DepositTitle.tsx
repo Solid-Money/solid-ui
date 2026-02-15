@@ -17,7 +17,7 @@ const DepositTitle = () => {
       ) : (
         <Underline
           inline
-          textClassName="text-2xl font-semibold text-brand md:text-4.5xl"
+          textClassName="text-2xl font-bold text-brand md:text-4.5xl"
           borderColor="rgba(148, 242, 127, 1)"
         >
           ${formatNumber(earnings, 2)}
