@@ -38,9 +38,9 @@ export default function ExchangeDisclaimer({ feature, onAccept }: ExchangeDiscla
           <Text className="text-center text-sm text-muted-foreground">{PARTNER_INFO[feature]}</Text>
         </View>
 
-        <View className="mt-4 w-full">
-          <Button onPress={onAccept} size="lg" className="w-full rounded-xl">
-            <Text>I Understand</Text>
+        <View className="mt-4 self-stretch">
+          <Button onPress={onAccept} size="lg" variant="brand" className="rounded-xl">
+            <Text className="text-base font-bold">I Understand</Text>
           </Button>
         </View>
       </View>
