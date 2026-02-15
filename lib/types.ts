@@ -1337,6 +1337,7 @@ export interface PromotionsBannerItem {
   imageURL: string;
   slug: string;
   sort: number;
+  link?: string;
 }
 
 export type PromotionsBannerResponse = PromotionsBannerItem[];
