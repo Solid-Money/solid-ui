@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, Platform, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, Linking, Platform, StyleSheet, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
@@ -75,12 +75,17 @@ interface HomeBannersContentProps {
 }
 
 function getPromoBannerOnPress(
-  slug: string,
+  item: { link?: string; slug: string },
   setModal: (m: (typeof DEPOSIT_MODAL)[keyof typeof DEPOSIT_MODAL]) => void,
 ): () => void {
-  switch (slug) {
-    case 'earn-4X-points-on-your-deposits':
-      return () => router.push(path.POINTS);
+  if (item.link?.trim()) {
+    const link = item.link.trim();
+    if (link.startsWith('http://') || link.startsWith('https://')) {
+      return () => Linking.openURL(link);
+    }
+    return () => router.push(link as any);
+  }
+  switch (item.slug) {
     case 'deposit-from-your-bank-or-debit-card':
       return () => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
     default:
@@ -131,7 +136,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
         <PromoImageBanner
           key={`promo-${item.slug}-${i}`}
           imageURL={item.imageURL}
-          onPress={getPromoBannerOnPress(item.slug, setModal)}
+          onPress={getPromoBannerOnPress(item, setModal)}
           height={BANNER_HEIGHT}
         />
       ));
