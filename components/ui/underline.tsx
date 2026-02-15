@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 
@@ -22,24 +22,46 @@ export function Underline({
   borderWidth = 0.5,
   inline = false,
 }: UnderlineProps) {
-  // For inline mode (nested in Text), use textDecorationLine
   if (inline) {
-    const textContent = (
+    if (Platform.OS === 'web') {
+      return (
+        <Text
+          className={textClassName}
+          style={{
+            textDecorationLine: 'underline',
+            textDecorationColor: borderColor,
+          }}
+          onPress={onPress}
+        >
+          {children}
+        </Text>
+      );
+    }
+
+    // Native: use textDecorationLine with explicit style and color
+    return (
       <Text
         className={textClassName}
-        style={{ textDecorationLine: 'underline', textDecorationColor: borderColor }}
+        style={{
+          textDecorationLine: 'underline',
+          textDecorationStyle: 'solid',
+          textDecorationColor: borderColor,
+        }}
         onPress={onPress}
       >
         {children}
       </Text>
     );
-    return textContent;
   }
 
-  // For block mode, use View with border
+  // Block mode: View with border bottom (works on all platforms)
   const content = (
     <View
-      style={{ borderBottomWidth: borderWidth, borderBottomColor: borderColor }}
+      style={{
+        borderBottomWidth: borderWidth,
+        borderBottomColor: borderColor,
+        alignSelf: 'baseline',
+      }}
       className={className}
     >
       <Text className={textClassName}>{children}</Text>
