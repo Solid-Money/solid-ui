@@ -22,6 +22,10 @@ type DashboardHeaderButtonsProps = {
   };
   hideWithdraw?: boolean;
   hideSend?: boolean;
+  hideSwap?: boolean;
+  disableWithdraw?: boolean;
+  disableSend?: boolean;
+  disableSwap?: boolean;
 };
 
 const DashboardHeaderButtons = ({
@@ -29,11 +33,16 @@ const DashboardHeaderButtons = ({
   withdraw,
   hideWithdraw,
   hideSend,
+  hideSwap,
+  disableWithdraw,
+  disableSend,
+  disableSwap,
 }: DashboardHeaderButtonsProps) => {
   const withdrawTrigger = (
     <Button
       variant="secondary"
       className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+      disabled={disableWithdraw}
       onPress={() => {
         track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
           button_name: 'withdraw',
@@ -60,25 +69,28 @@ const DashboardHeaderButtons = ({
         </>
       )}
 
-      <SwapModal
-        trigger={
-          <Button
-            variant="secondary"
-            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
-            onPress={() => {
-              track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
-                button_name: 'swap',
-                source: 'dashboard_header',
-              });
-            }}
-          >
-            <View className="flex-row items-center gap-2">
-              <HomeSwap />
-              <Text className="text-base font-bold text-white">Swap</Text>
-            </View>
-          </Button>
-        }
-      />
+      {!hideSwap && (
+        <SwapModal
+          trigger={
+            <Button
+              variant="secondary"
+              className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+              disabled={disableSwap}
+              onPress={() => {
+                track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
+                  button_name: 'swap',
+                  source: 'dashboard_header',
+                });
+              }}
+            >
+              <View className="flex-row items-center gap-2">
+                <HomeSwap />
+                <Text className="text-base font-bold text-white">Swap</Text>
+              </View>
+            </Button>
+          }
+        />
+      )}
 
       {!hideSend && (
         <SendModal
@@ -86,6 +98,7 @@ const DashboardHeaderButtons = ({
             <Button
               variant="secondary"
               className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+              disabled={disableSend}
               onPress={() => {
                 track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
                   button_name: 'send',
