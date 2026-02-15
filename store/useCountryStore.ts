@@ -1,7 +1,8 @@
-import mmkvStorage from '@/lib/mmvkStorage';
-import { CountryInfo } from '@/lib/types';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import mmkvStorage from '@/lib/mmvkStorage';
+import { CountryInfo } from '@/lib/types';
 
 interface IpCountryCache {
   info: CountryInfo;

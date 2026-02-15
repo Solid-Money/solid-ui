@@ -1,8 +1,9 @@
-import { USER } from '@/lib/config';
-import mmkvStorage from '@/lib/mmvkStorage';
 import { Address } from 'viem';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+
+import { USER } from '@/lib/config';
+import mmkvStorage from '@/lib/mmvkStorage';
 
 interface PoolPlugins {
   dynamicFeePlugin: boolean;

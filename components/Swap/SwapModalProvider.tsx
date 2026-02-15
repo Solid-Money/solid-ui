@@ -3,6 +3,8 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
+import ExchangeDisclaimer from '@/components/Compliance/ExchangeDisclaimer';
+import GeoRestrictionNotice from '@/components/Compliance/GeoRestrictionNotice';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import SwapButton from '@/components/Swap/SwapButton';
@@ -12,9 +14,11 @@ import TransactionStatus from '@/components/TransactionStatus';
 import { SWAP_MODAL } from '@/constants/modals';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import useGeoCompliance from '@/hooks/useGeoCompliance';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useSwapState } from '@/store/swapStore';
+import { useComplianceStore } from '@/store/useComplianceStore';
 
 /**
  * Global swap modal provider that renders a single ResponsiveModal instance.
@@ -26,6 +30,14 @@ import { useSwapState } from '@/store/swapStore';
  */
 const SwapModalProvider = () => {
   const router = useRouter();
+  const { isSwapAvailable } = useGeoCompliance();
+
+  const { hasAcceptedSwapDisclaimer, acceptDisclaimer } = useComplianceStore(
+    useShallow(state => ({
+      hasAcceptedSwapDisclaimer: state.acceptedDisclaimers['swap'] === true,
+      acceptDisclaimer: state.acceptDisclaimer,
+    })),
+  );
 
   const { currentModal, previousModal, transaction, setModal } = useSwapState(
     useShallow(state => ({
@@ -72,7 +84,19 @@ const SwapModalProvider = () => {
     return 'swap-form';
   }, [isTransactionStatus]);
 
+  const handleAcceptSwapDisclaimer = useCallback(() => {
+    acceptDisclaimer('swap');
+  }, [acceptDisclaimer]);
+
   const content = useMemo(() => {
+    if (!isSwapAvailable) {
+      return <GeoRestrictionNotice feature="swap" />;
+    }
+
+    if (!hasAcceptedSwapDisclaimer) {
+      return <ExchangeDisclaimer feature="swap" onAccept={handleAcceptSwapDisclaimer} />;
+    }
+
     if (isTransactionStatus) {
       return (
         <TransactionStatus
@@ -103,7 +127,14 @@ const SwapModalProvider = () => {
         </View>
       </View>
     );
-  }, [isTransactionStatus, transaction, handleTransactionStatusPress]);
+  }, [
+    isSwapAvailable,
+    hasAcceptedSwapDisclaimer,
+    handleAcceptSwapDisclaimer,
+    isTransactionStatus,
+    transaction,
+    handleTransactionStatusPress,
+  ]);
 
   return (
     <ResponsiveModal

@@ -35,10 +35,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   [TransactionStatus.REFUNDED]: 2,
 };
 
-function isStatusDowngrade(
-  existingStatus: string,
-  incomingStatus: string,
-): boolean {
+function isStatusDowngrade(existingStatus: string, incomingStatus: string): boolean {
   return (STATUS_PRIORITY[incomingStatus] ?? 0) < (STATUS_PRIORITY[existingStatus] ?? 0);
 }
 
@@ -70,8 +67,7 @@ function isSameEvent(a: ActivityEvent, b: ActivityEvent): boolean {
 function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): boolean {
   // A status downgrade is not a real change — it's a stale update
   const statusActuallyChanged =
-    existing.status !== incoming.status &&
-    !isStatusDowngrade(existing.status, incoming.status);
+    existing.status !== incoming.status && !isStatusDowngrade(existing.status, incoming.status);
 
   return (
     statusActuallyChanged ||
@@ -116,9 +112,7 @@ export const useActivityStore = create<ActivityState>()(
         set(
           produce(state => {
             state.events[userId] = state.events[userId] || [];
-            const idx = state.events[userId].findIndex((e: ActivityEvent) =>
-              isSameEvent(e, event),
-            );
+            const idx = state.events[userId].findIndex((e: ActivityEvent) => isSameEvent(e, event));
 
             if (idx === -1) {
               state.events[userId].push(event);
@@ -127,7 +121,7 @@ export const useActivityStore = create<ActivityState>()(
               const mergedStatus =
                 event.status && isStatusDowngrade(existing.status, event.status)
                   ? existing.status
-                  : event.status ?? existing.status;
+                  : (event.status ?? existing.status);
 
               state.events[userId][idx] = {
                 ...existing,
@@ -172,7 +166,7 @@ export const useActivityStore = create<ActivityState>()(
                 const mergedStatus =
                   event.status && isStatusDowngrade(existing.status, event.status)
                     ? existing.status
-                    : event.status ?? existing.status;
+                    : (event.status ?? existing.status);
 
                 state.events[userId][existingIndex] = {
                   ...existing,
