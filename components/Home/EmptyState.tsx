@@ -149,7 +149,7 @@ function SolidBenefitCard({
       </Text>
       <Text
         className={cn(
-          'max-w-xs text-lg font-medium leading-tight text-muted-foreground',
+          'max-w-xs text-lg leading-tight text-muted-foreground',
           classNames?.description,
         )}
       >
