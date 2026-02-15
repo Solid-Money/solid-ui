@@ -15,16 +15,25 @@ import { track } from '@/lib/analytics';
 type SavingsHeaderButtonsMobileProps = {
   hideWithdraw?: boolean;
   hideSend?: boolean;
+  hideSwap?: boolean;
+  disableWithdraw?: boolean;
+  disableSend?: boolean;
+  disableSwap?: boolean;
 };
 
 const SavingsHeaderButtonsMobile = ({
   hideWithdraw,
   hideSend,
+  hideSwap,
+  disableWithdraw,
+  disableSend,
+  disableSwap,
 }: SavingsHeaderButtonsMobileProps = {}) => {
   const withdrawTrigger = (
     <CircleButton
       icon={HomeWithdraw}
       label="Withdraw"
+      disabled={disableWithdraw}
       onPress={() => {
         track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
           button_name: 'withdraw',
@@ -51,13 +60,31 @@ const SavingsHeaderButtonsMobile = ({
 
       {!hideWithdraw && <UnstakeModal trigger={withdrawTrigger} />}
 
-      <SwapModal
-        trigger={<CircleButton icon={HomeSwap} label="Swap" scale={1} viewBox="0 0 29 28" />}
-      />
+      {!hideSwap && (
+        <SwapModal
+          trigger={
+            <CircleButton
+              icon={HomeSwap}
+              label="Swap"
+              scale={1}
+              viewBox="0 0 29 28"
+              disabled={disableSwap}
+            />
+          }
+        />
+      )}
 
       {!hideSend && (
         <SendModal
-          trigger={<CircleButton icon={HomeSend} label="Send" scale={0.9} viewBox="0 0 25 24" />}
+          trigger={
+            <CircleButton
+              icon={HomeSend}
+              label="Send"
+              scale={0.9}
+              viewBox="0 0 25 24"
+              disabled={disableSend}
+            />
+          }
         />
       )}
     </View>
