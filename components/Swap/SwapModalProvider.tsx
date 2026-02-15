@@ -34,7 +34,7 @@ const SwapModalProvider = () => {
 
   const { hasAcceptedSwapDisclaimer, acceptDisclaimer } = useComplianceStore(
     useShallow(state => ({
-      hasAcceptedSwapDisclaimer: state.acceptedDisclaimers['swap'] === true,
+      hasAcceptedSwapDisclaimer: state.hasAcceptedDisclaimer('swap'),
       acceptDisclaimer: state.acceptDisclaimer,
     })),
   );
