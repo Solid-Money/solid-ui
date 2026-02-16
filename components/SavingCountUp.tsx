@@ -118,6 +118,7 @@ const SavingCountUp = memo(
     // Derive a boolean so the effect re-runs when balance transitions to/from positive,
     // without recreating the interval on every minor balance tick.
     const hasPositiveBalance = balance > 0;
+    const balanceBucket = Math.floor(balance);
 
     const tickYield = useCallback(() => {
       const now = Math.floor(Date.now() / 1000);
@@ -146,7 +147,7 @@ const SavingCountUp = memo(
       updateYield();
       const interval = setInterval(tickYield, 1000);
       return () => clearInterval(interval);
-    }, [updateYield, tickYield, hasPositiveBalance]);
+    }, [updateYield, tickYield, hasPositiveBalance, balanceBucket]);
 
     return (
       <CountUp
