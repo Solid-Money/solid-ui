@@ -23,7 +23,7 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
 
   return (
     <View className={cn('h-full w-full justify-between rounded-twice bg-card', className)}>
-      <View className="h-full justify-between p-5 pb-4 md:p-[30px] md:pb-[21px]">
+      <View className="h-full justify-between p-6 pb-5 pt-5 md:p-[30px] md:pb-[21px]">
         <View className="flex-row items-center gap-2 opacity-50">
           <WalletIcon rotate={180} />
           <Text className="text-lg font-medium">Wallet</Text>
@@ -48,14 +48,14 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
                     wholeText: {
                       fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
                       fontWeight: '500',
-                      //fontFamily: 'MonaSans_600SemiBold',
+                      fontFamily: 'MonaSans_600SemiBold',
                       color: '#ffffff',
                       marginRight: -1,
                     },
                     decimalText: {
                       fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
                       fontWeight: '500',
-                      //fontFamily: 'MonaSans_600SemiBold',
+                      fontFamily: 'MonaSans_600SemiBold',
                       color: '#ffffff',
                     },
                   }}

@@ -3,10 +3,11 @@ import { BlurView } from 'expo-blur';
 
 export default function TabBarBackground() {
   return (
-    <View style={StyleSheet.absoluteFill}>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* Android blur with dimezisBlurView - lower intensity looks better on Android */}
       <BlurView
-        intensity={40}
+        intensity={25}
+        tint="dark"
         experimentalBlurMethod="dimezisBlurView"
         style={StyleSheet.absoluteFill}
       />
@@ -19,6 +20,6 @@ export default function TabBarBackground() {
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.50)',
+    backgroundColor: 'rgba(17, 17, 17, 0.5)',
   },
 });

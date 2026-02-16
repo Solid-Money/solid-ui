@@ -66,4 +66,5 @@ config.transformer.minifierConfig = {
   },
 };
 
-module.exports = withNativeWind(config, { input: './global.css' });
+// inlineRem: NativeWind defaults to 14px on native. Set to 16 to match web rem sizing.
+module.exports = withNativeWind(config, { input: './global.css', inlineRem: 16 });
