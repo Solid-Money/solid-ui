@@ -1,0 +1,49 @@
+diff --git a/node_modules/react-native-animated-rolling-numbers/src/components/AnimatedDigit.tsx b/node_modules/react-native-animated-rolling-numbers/src/components/AnimatedDigit.tsx
+index de112d4..9ba45b0 100644
+--- a/node_modules/react-native-animated-rolling-numbers/src/components/AnimatedDigit.tsx
++++ b/node_modules/react-native-animated-rolling-numbers/src/components/AnimatedDigit.tsx
+@@ -163,23 +163,32 @@ export const AnimatedDigit: React.FC<AnimatedDigitProps> = ({
+       >
+         <Animated.View style={[styles.digitContainer, animatedStyle]}>
+           {isNumeric ? (
+-            NUMBER_ARRAY.map((_, index) => (
++            <>
+               <Text
+-                key={index}
+-                style={[
+-                  textStyle,
+-                  numberStyle,
+-                  {
+-                    position: index === 0 ? "relative" : "absolute",
+-                    top: height * index,
+-                  },
+-                ]}
++                style={[textStyle, numberStyle, { opacity: 0 }]}
+                 {...textProps}
+                 {...numberTextProps}
+               >
+-                {index}
++                {value}
+               </Text>
+-            ))
++              {NUMBER_ARRAY.map((_, index) => (
++                <Text
++                  key={index}
++                  style={[
++                    textStyle,
++                    numberStyle,
++                    {
++                      position: "absolute",
++                      top: height * index,
++                    },
++                  ]}
++                  {...textProps}
++                  {...numberTextProps}
++                >
++                  {index}
++                </Text>
++              ))}
++            </>
+           ) : COMPACT_NOTATIONS.includes(value.toUpperCase()) ? (
+             COMPACT_NOTATIONS.map((char, index) => (
+               <Text

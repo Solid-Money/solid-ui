@@ -143,8 +143,8 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     height: 80,
-    paddingTop: 4,
-    paddingBottom: 10,
+    paddingTop: 10,
+    paddingBottom: 35,
     backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',
     borderTopWidth: 0,
     position: 'absolute',
@@ -169,6 +169,6 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 12,
-    marginTop: 5,
+    marginTop: -2,
   },
 });

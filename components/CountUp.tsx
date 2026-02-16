@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { TextStyle, View } from 'react-native';
 import { AnimatedRollingNumber } from 'react-native-animated-rolling-numbers';
 
@@ -38,12 +38,19 @@ const CountUp = ({
   prefix,
   suffix,
 }: CountUpProps) => {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const safeCount = isFinite(count) && count >= 0 ? count : 0;
   const wholeNumber = Math.floor(safeCount);
   const decimalString = safeCount.toFixed(decimalPlaces);
   const maxFractions = formatNumber(safeCount, decimalPlaces);
   const trailingZero = isTrailingZero ? decimalString.split('.')[1] : maxFractions.split('.')[1];
   const formattedText = isNaN(Number(trailingZero)) ? '0' : trailingZero;
+
+  const formattedWhole = wholeNumber.toLocaleString('en-US');
 
   return (
     <View className={cn('flex-row items-baseline', classNames?.wrapper)}>
@@ -54,23 +61,31 @@ const CountUp = ({
           prefix
         )
       ) : null}
-      <AnimatedRollingNumber
-        value={wholeNumber}
-        textStyle={styles?.wholeText}
-        spinningAnimationConfig={{ duration: DURATION }}
-        useGrouping
-      />
+      {isMounted ? (
+        <AnimatedRollingNumber
+          value={wholeNumber}
+          textStyle={styles?.wholeText}
+          spinningAnimationConfig={{ duration: DURATION }}
+          useGrouping
+        />
+      ) : (
+        <Text style={styles?.wholeText}>{formattedWhole}</Text>
+      )}
       {decimalPlaces > 0 ? (
         <>
           <Text className={classNames?.decimalSeparator} style={styles?.decimalSeparator}>
             .
           </Text>
-          <AnimatedRollingNumber
-            value={Number(formattedText)}
-            formattedText={formattedText}
-            textStyle={styles?.decimalText}
-            spinningAnimationConfig={{ duration: DURATION }}
-          />
+          {isMounted ? (
+            <AnimatedRollingNumber
+              value={Number(formattedText)}
+              formattedText={formattedText}
+              textStyle={styles?.decimalText}
+              spinningAnimationConfig={{ duration: DURATION }}
+            />
+          ) : (
+            <Text style={styles?.decimalText}>{formattedText}</Text>
+          )}
         </>
       ) : null}
       {suffix ? (
