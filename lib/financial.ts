@@ -407,7 +407,7 @@ export const calculateYield = async (
         }
 
         const amountGained =
-          (((apy / 100) * (currentTime - lastTimestamp)) / 1000 / SECONDS_PER_YEAR) * balanceUSD;
+          (balanceUSD * (apy / 100) * (currentTime - lastTimestamp)) / SECONDS_PER_YEAR;
 
         if (mode === SavingMode.CURRENT) {
           return Math.max(0, interestEarnedUSD + amountGained);

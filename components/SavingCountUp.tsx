@@ -119,6 +119,8 @@ const SavingCountUp = memo(
     // without recreating the interval on every minor balance tick.
     const hasPositiveBalance = balance > 0;
     const balanceBucket = Math.floor(balance);
+    // Re-run when timestamp/transactions load (e.g. after refresh) so interest recalculates
+    const lastTsBucket = lastTimestamp > 0 ? Math.floor(lastTimestamp / 86400) : 0;
 
     const tickYield = useCallback(() => {
       const now = Math.floor(Date.now() / 1000);
@@ -147,7 +149,7 @@ const SavingCountUp = memo(
       updateYield();
       const interval = setInterval(tickYield, 1000);
       return () => clearInterval(interval);
-    }, [updateYield, tickYield, hasPositiveBalance, balanceBucket]);
+    }, [updateYield, tickYield, hasPositiveBalance, balanceBucket, lastTsBucket]);
 
     return (
       <CountUp

@@ -107,7 +107,7 @@ export const useLatestTokenTransfer = (address: string, token: string) => {
       const latest = items.reduce((prev, curr) =>
         new Date(curr.timestamp) > new Date(prev.timestamp) ? curr : prev,
       );
-      return new Date(latest.timestamp).getTime();
+      return Math.floor(new Date(latest.timestamp).getTime() / 1000);
     },
     enabled: !!address,
     staleTime: secondsToMilliseconds(60),
