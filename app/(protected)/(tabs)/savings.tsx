@@ -207,14 +207,14 @@ export default function Savings() {
                           wholeText: {
                             fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
                             fontWeight: 'medium',
-                            //fontFamily: 'MonaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                             marginRight: -2,
                           },
                           decimalText: {
                             fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
                             fontWeight: '300',
-                            //fontFamily: 'MonaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                           },
                           suffixText: {
@@ -245,13 +245,13 @@ export default function Savings() {
                           wholeText: {
                             fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
                             fontWeight: 'medium',
-                            //fontFamily: 'MonaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                           },
                           decimalText: {
                             fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
                             fontWeight: '300',
-                            //fontFamily: 'MonaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                           },
                           suffixText: {
@@ -382,14 +382,14 @@ export default function Savings() {
                           wholeText: {
                             fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
                             fontWeight: 'medium',
-                            //fontFamily: 'MonaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                             marginRight: -2,
                           },
                           decimalText: {
                             fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
                             fontWeight: '300',
-                            //fontFamily: 'MonaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                           },
                           suffixText: {
@@ -420,13 +420,13 @@ export default function Savings() {
                           wholeText: {
                             fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
                             fontWeight: 'medium',
-                            //fontFamily: 'MonaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                           },
                           decimalText: {
                             fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
                             fontWeight: '300',
-                            //fontFamily: 'MonaSans_500Medium',
+                            fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                           },
                           suffixText: {

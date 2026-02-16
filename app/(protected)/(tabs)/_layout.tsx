@@ -1,7 +1,6 @@
 import React from 'react';
-import { Easing, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
-import { SceneStyleInterpolators } from '@react-navigation/bottom-tabs';
 import { Leaf, Star } from 'lucide-react-native';
 
 import bellAnimation from '@/assets/tabs-icons/bell.json';
@@ -21,17 +20,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        sceneStyleInterpolator: Platform.OS !== 'web' ? SceneStyleInterpolators.forFade : undefined,
         sceneStyle: { backgroundColor: '#121212' },
-        transitionSpec:
-          Platform.OS !== 'web'
-            ? {
-                animation: 'timing',
-                config: {
-                  easing: Easing.in(Easing.linear),
-                },
-              }
-            : undefined,
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
         headerShown: false,
@@ -45,7 +34,7 @@ export default function TabLayout() {
           display: isDesktop ? 'none' : 'flex',
           height: 80,
           paddingTop: 4,
-          paddingBottom: 10,
+          paddingBottom: 20,
           borderTopWidth: 0,
           // Native uses TabBarBackground (BlurView + overlay), web uses CSS backdropFilter
           backgroundColor: Platform.OS === 'web' ? 'rgba(18, 18, 18, 0.7)' : 'transparent',

@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   },
   paginationContainer: {
     gap: 4,
-    marginTop: 20,
+    marginTop: 0,
   },
   dotStyle: {
     backgroundColor: '#616161',
