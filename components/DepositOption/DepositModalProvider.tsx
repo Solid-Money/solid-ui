@@ -25,7 +25,7 @@ const DepositModalProvider = () => {
     getContent,
     getContentKey,
     getTitle,
-    getContentClassName,
+    // getContentClassName,
     getContainerClassName,
     handleOpenChange,
     handleBackPress,
@@ -59,7 +59,7 @@ const DepositModalProvider = () => {
       onOpenChange={handleOpenChange}
       trigger={null}
       title={getTitle()}
-      contentClassName={getContentClassName()}
+      // contentClassName={getContentClassName()}
       containerClassName={getContainerClassName()}
       showBackButton={showBackButton}
       onBackPress={handleBackPress}
