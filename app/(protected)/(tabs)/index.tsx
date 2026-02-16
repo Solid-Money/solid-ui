@@ -234,7 +234,7 @@ export default function Home() {
         </View>
 
         <View className="gap-0 px-4 md:mt-10 md:px-0">
-          <Text className="text-lg font-semibold text-muted-foreground">For You</Text>
+          <Text className="mb-5 text-lg font-semibold text-muted-foreground">For You</Text>
           <LazyHomeBanners />
         </View>
       </View>
