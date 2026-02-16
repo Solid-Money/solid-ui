@@ -99,7 +99,7 @@ export default function MobileCards({
           <View
             key={index}
             style={[
-              { width: cardWidth, height: 160 },
+              { width: cardWidth, height: 130 },
               Platform.OS === 'web'
                 ? ({ scrollSnapAlign: 'start', scrollSnapStop: 'always' } as any)
                 : undefined,
@@ -111,7 +111,7 @@ export default function MobileCards({
       </ScrollView>
       {showLeftBlur && (
         <LinearGradient
-          colors={['rgba(28,28,28,0.8)', 'transparent']}
+          colors={['rgba(17,17,17,1)', 'transparent']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{
@@ -126,7 +126,7 @@ export default function MobileCards({
       )}
       {showRightBlur && (
         <LinearGradient
-          colors={['transparent', 'rgba(28,28,28,0.8)']}
+          colors={['transparent', 'rgba(17,17,17,1)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{

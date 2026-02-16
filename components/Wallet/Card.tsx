@@ -51,12 +51,14 @@ const Card = ({ balance, className, tokens, isLoading, decimalPlaces }: CardProp
                   wholeText: {
                     fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
                     fontWeight: '500',
+                    fontFamily: 'MonaSans_600SemiBold',
                     color: '#ffffff',
                     marginRight: -1,
                   },
                   decimalText: {
                     fontSize: isScreenMedium ? fontSize(1.875) : fontSize(1.5),
                     fontWeight: '500',
+                    fontFamily: 'MonaSans_600SemiBold',
                     color: '#ffffff',
                   },
                 }}

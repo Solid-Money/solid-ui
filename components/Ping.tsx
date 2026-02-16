@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, View } from 'react-native';
+import { Animated, Platform, View } from 'react-native';
 
 const Ping = () => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -44,7 +44,10 @@ const Ping = () => {
           opacity: opacityAnim,
         }}
       />
-      <View className="relative h-3.5 w-3.5 rounded-full bg-gradient-to-br from-green-200 to-green-500" />
+      <View
+        className="relative h-3.5 w-3.5 rounded-full bg-gradient-to-br from-green-200 to-green-500"
+        style={Platform.OS !== 'web' ? { backgroundColor: '#94F27F' } : undefined}
+      />
     </View>
   );
 };
