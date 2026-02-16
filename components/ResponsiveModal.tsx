@@ -58,7 +58,7 @@ export interface ResponsiveModalProps {
   contentKey: string;
 
   // Layout
-  /** Disable ScrollView wrapper for fullscreen content like camera views */
+  /** Disable ScrollView wrapper when children manage their own scrolling (e.g. FlatList, camera views) */
   disableScroll?: boolean;
 }
 
@@ -100,10 +100,6 @@ const ResponsiveModal = ({
   const contentExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(250);
 
   const dialogAnimatedStyle = useAnimatedStyle(() => {
-    // Skip height constraints for fullscreen content (e.g., camera)
-    if (disableScroll) {
-      return {};
-    }
     // on native, let the content determine its own height initially
     if (dialogHeight.value === 0) {
       return {};
@@ -119,7 +115,7 @@ const ResponsiveModal = ({
         easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       }),
     };
-  }, [shouldAnimate, disableScroll]);
+  }, [shouldAnimate]);
 
   // Prevent page scroll when modal closes by stopping focus restoration to trigger
   const handleCloseAutoFocus = useCallback((event: Event) => {
@@ -142,27 +138,14 @@ const ResponsiveModal = ({
         onCloseAutoFocus={handleCloseAutoFocus}
         showCloseButton={false}
       >
-        <Animated.View
-          style={dialogAnimatedStyle}
-          className={cn({
-            'overflow-hidden': !disableScroll,
-          })}
-        >
+        <Animated.View style={dialogAnimatedStyle} className="overflow-hidden">
           <View
-            className={cn(
-              {
-                'gap-8': !disableScroll,
-              },
-              containerClassName,
-            )}
+            className={cn('gap-8', containerClassName)}
             onLayout={event => {
-              if (!disableScroll) {
-                dialogHeight.value = event.nativeEvent.layout.height;
-              }
+              dialogHeight.value = event.nativeEvent.layout.height;
             }}
           >
-            {/* Render header only for non-fullscreen content */}
-            {disableScroll ? null : hasHeader ? (
+            {hasHeader ? (
               <DialogHeader
                 className={cn('flex-row items-center justify-between gap-2', titleClassName)}
               >
@@ -198,12 +181,7 @@ const ResponsiveModal = ({
               </View>
             )}
             {disableScroll ? (
-              <Animated.View
-                entering={contentEntering}
-                exiting={contentExiting}
-                key={contentKey}
-                className="flex-1"
-              >
+              <Animated.View entering={contentEntering} exiting={contentExiting} key={contentKey}>
                 {children}
               </Animated.View>
             ) : (

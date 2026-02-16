@@ -72,6 +72,7 @@ const SwapTokenSelectorModal = ({
       title="Select Token"
       contentClassName="md:gap-8 md:max-w-md"
       contentKey="token-selector"
+      disableScroll
       trigger={
         <Button
           className={cn(
