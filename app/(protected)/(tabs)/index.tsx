@@ -175,6 +175,18 @@ export default function Home() {
             </View>
             <DashboardHeaderButtons hideWithdraw />
           </View>
+        ) : isLoadingTokens ||
+          isBalanceLoading ||
+          isTotalSavingsLoading ||
+          totalSavingsUSD === undefined ? (
+          <View className="items-center pt-6">
+            <Skeleton className="h-16 w-48 rounded-xl" />
+            <View className="mt-8 flex-row justify-center gap-6">
+              <Skeleton className="h-14 w-14 rounded-full" />
+              <Skeleton className="h-14 w-14 rounded-full" />
+              <Skeleton className="h-14 w-14 rounded-full" />
+            </View>
+          </View>
         ) : (
           <DashboardHeaderMobile
             balance={totalUSDExcludingSoUSD + (totalSavingsUSD ?? 0) + cardBalance}
