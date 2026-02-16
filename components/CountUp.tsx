@@ -81,7 +81,7 @@ const CountUp = ({
               value={Number(formattedText)}
               formattedText={formattedText}
               textStyle={styles?.decimalText}
-                  spinningAnimationConfig={{ duration: DURATION }}
+              spinningAnimationConfig={{ duration: DURATION }}
             />
           ) : (
             <Text style={styles?.decimalText}>{formattedText}</Text>

@@ -2,7 +2,6 @@ import '@/global.css';
 
 import { useCallback, useEffect, useState } from 'react';
 import { Appearance, Platform } from 'react-native';
-
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
