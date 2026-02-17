@@ -587,6 +587,10 @@ export const ASSETS = {
   },
   'images/withdraw.png': { module: require('@/assets/images/withdraw.png'), hash: '972fd805' },
   'images/withdraw.tsx': { module: require('@/assets/images/withdraw.tsx'), hash: '2d99cf78' },
+  'images/withdraw_card_funds_with_shadow.png': {
+    module: require('@/assets/images/withdraw_card_funds_with_shadow.png'),
+    hash: '0930b6c1',
+  },
   'images/yellow_onboarding_bg.png': {
     module: require('@/assets/images/yellow_onboarding_bg.png'),
     hash: '6ed53629',

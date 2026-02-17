@@ -81,6 +81,13 @@ export function formatNumber(number: number, maximumFractionDigits = 6, minimumF
   }).format(num);
 }
 
+export function formatUSD(number: number) {
+  return new Intl.NumberFormat('en-us', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(number);
+}
+
 export function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text);
 }
