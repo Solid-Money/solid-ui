@@ -5,7 +5,7 @@ import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { CardProvider } from '@/lib/types';
 import { hasCard, withRefreshToken } from '@/lib/utils';
 
-import { cardDetailsQueryOptions } from './cardDetailsQueryOptions';
+import { useCardDetails } from './useCardDetails';
 import { useCardStatus } from './useCardStatus';
 
 const CARD_PROVIDER_PROBE_KEY = 'cardProviderProbe';
@@ -20,12 +20,12 @@ export function useCardProvider(): {
   provider: CardProvider | null;
   isLoading: boolean;
 } {
-  const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
+  const { data: cardDetails } = useCardDetails();
   const { data: cardStatus } = useCardStatus();
-  const hasCardData =
-    hasCard(cardStatus) || (!!cardDetails?.id && cardDetails?.provider !== CardProvider.BRIDGE);
+  const hasCardData = hasCard(cardStatus) || !!cardDetails?.id;
 
-  const providerFromResponse = cardDetails?.provider ?? cardStatus?.provider ?? undefined;
+  const providerFromResponse =
+    cardDetails?.provider ?? cardStatus?.provider ?? undefined;
 
   const probeQuery = useQuery({
     queryKey: [CARD_PROVIDER_PROBE_KEY],

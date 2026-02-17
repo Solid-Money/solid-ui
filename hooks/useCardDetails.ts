@@ -1,22 +1,20 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { getCardBalance } from '@/lib/api';
+import { getCardBalance, getCardDetails } from '@/lib/api';
 import { CardDetailsResponseDto, CardProvider } from '@/lib/types';
 import { formatCentsToDollars, withRefreshToken } from '@/lib/utils';
 
-import { cardDetailsQueryOptions } from './cardDetailsQueryOptions';
 import { useCardProvider } from './useCardProvider';
 
+const CARD_DETAILS = 'cardDetails';
 const CARD_BALANCE = 'cardBalance';
 
 // Query options for prefetching card details
-// export const cardDetailsQueryOptions = () => ({
-//   queryKey: [CARD_DETAILS],
-//   queryFn: () => withRefreshToken(() => getCardDetails()),
-//   staleTime: 5_000,
-//   refetchInterval: 5_000,
-// });
+export const cardDetailsQueryOptions = () => ({
+  queryKey: [CARD_DETAILS],
+  queryFn: () => withRefreshToken(() => getCardDetails()),
+});
 
 export const useCardDetails = () => {
   const detailsQuery = useQuery(cardDetailsQueryOptions());
@@ -26,7 +24,6 @@ export const useCardDetails = () => {
     queryFn: () => withRefreshToken(() => getCardBalance()),
     enabled: provider === CardProvider.RAIN && !!detailsQuery.data,
     retry: false,
-    refetchInterval: 5000,
   });
 
   const mergedData = useMemo((): CardDetailsResponseDto | undefined => {
@@ -49,8 +46,13 @@ export const useCardDetails = () => {
     () => ({
       ...detailsQuery,
       data: mergedData,
-      isLoading: detailsQuery.isLoading,
+      isLoading: detailsQuery.isLoading || (provider === CardProvider.RAIN && balanceQuery.isLoading),
     }),
-    [detailsQuery, mergedData],
+    [
+      detailsQuery,
+      mergedData,
+      provider,
+      balanceQuery.isLoading,
+    ],
   );
 };

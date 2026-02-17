@@ -5,23 +5,9 @@ import { formatDistanceToNow, isBefore, subDays } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
 
-import { getUsdcAddress } from '@/constants/bridge';
 import { refreshToken } from '@/lib/api';
-import {
-  ADDRESSES,
-  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
-  EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
-  EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL,
-} from '@/lib/config';
-import {
-  AuthTokens,
-  CardProvider,
-  CardResponse,
-  CardStatus,
-  CardStatusResponse,
-  RainContractResponseDto,
-  User,
-} from '@/lib/types';
+import { ADDRESSES } from '@/lib/config';
+import { AuthTokens, CardResponse, CardStatus, CardStatusResponse, User } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 
 export const IS_SERVER = typeof window === 'undefined';
@@ -100,35 +86,13 @@ export function formatCentsToDollars(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-/** Format USD balance; show "<$0.01" when amount is positive but less than 0.01 */
-export function formatBalanceUSD(value: number, decimals = 2): string {
-  const num = Number(value);
-  if (!Number.isFinite(num) || num <= 0) return `$0.00`;
-  if (num < 0.01) return '<$0.01';
-  return `$${formatNumber(num, decimals)}`;
-}
-
-export function formatUSD(number: number) {
-  return new Intl.NumberFormat('en-us', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(number);
-}
-
 export function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text);
 }
 
 let globalLogoutHandler: (() => void) | null = null;
 
-let refreshTokenPromise: Promise<AuthTokens | null> | null = null;
-
-// Flag to suppress session-expired handler during intentional logout
-let isLoggingOut = false;
-
-export const setIsLoggingOut = (value: boolean) => {
-  isLoggingOut = value;
-};
+let refreshTokenPromise: Promise<Response> | null = null;
 
 export const setGlobalLogoutHandler = (handler: () => void) => {
   globalLogoutHandler = handler;
@@ -148,7 +112,7 @@ export const isAnyHTTPError = (error: any, statuses: number[]) => {
 export const withRefreshToken = async <T>(
   apiCall: () => Promise<T>,
   { onError }: { onError?: () => void } = {},
-): Promise<T> => {
+): Promise<T | undefined> => {
   try {
     return await apiCall();
   } catch (error: any) {
@@ -159,35 +123,28 @@ export const withRefreshToken = async <T>(
 
     try {
       // Use existing refresh token promise if one is in progress
-      const isNewRefresh = !refreshTokenPromise;
-      if (isNewRefresh) {
-        refreshTokenPromise = refreshToken()
-          .then(async response => {
-            const data: { tokens: AuthTokens } = await response.json();
-            return data.tokens;
-          })
-          .finally(() => {
-            refreshTokenPromise = null;
-          });
-      } else {
-        console.warn('[TokenRefresh] Reusing in-flight token refresh');
+      if (!refreshTokenPromise) {
+        refreshTokenPromise = refreshToken().finally(() => {
+          refreshTokenPromise = null;
+        });
       }
 
-      const tokens = await refreshTokenPromise;
+      const refreshResponse = await refreshTokenPromise;
 
       // Only save new tokens on mobile platforms
       // On web, we don't need to save new tokens
       // because the browser will handle it
-      if ((Platform.OS === 'ios' || Platform.OS === 'android') && tokens) {
-        saveNewTokens(tokens);
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        await saveNewTokens(refreshResponse);
       }
     } catch (refreshTokenError) {
+      console.error(refreshTokenError);
       if (onError) {
         onError();
-      } else if (!isLoggingOut && isAnyHTTPError(refreshTokenError, [401, 403, 500])) {
+      } else if (isAnyHTTPError(refreshTokenError, [401, 403, 404, 500])) {
         globalLogoutHandler?.();
       }
-      throw refreshTokenError;
+      return undefined;
     }
 
     // Retry original request with new access token
@@ -195,20 +152,27 @@ export const withRefreshToken = async <T>(
   }
 };
 
-function saveNewTokens(tokens: AuthTokens) {
-  const { users, updateUser } = useUserStore.getState();
-  const currentUser = users.find((user: User) => user.selected);
+async function saveNewTokens(refreshResponse: Response) {
+  const refreshTokenResponse: { tokens: AuthTokens } = await refreshResponse.json();
 
-  if (!currentUser) throw new Error('No current user found');
+  const newTokens = refreshTokenResponse.tokens;
 
-  if (tokens.accessToken) {
-    updateUser({
-      ...currentUser,
-      tokens: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      },
-    });
+  // Update stored tokens
+  if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    const { users, updateUser } = useUserStore.getState();
+    const currentUser = users.find((user: User) => user.selected);
+
+    if (!currentUser) throw new Error('No current user found');
+
+    if (newTokens.accessToken) {
+      updateUser({
+        ...currentUser,
+        tokens: {
+          accessToken: newTokens.accessToken,
+          refreshToken: newTokens.refreshToken,
+        },
+      });
+    }
   }
 }
 
@@ -229,19 +193,9 @@ export const isSoUSDFuse = (contractAddress: string): boolean => {
   return contractAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase();
 };
 
-export const isSoFUSEToken = (contractAddress: string): boolean => {
-  if (!contractAddress) return false;
-  return contractAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
-};
-
 export const isSoUSDToken = (contractAddress: string): boolean => {
   if (!contractAddress) return false;
   return isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress);
-};
-
-/** Vault tokens excluded from home WalletCard total (soUSD + soFUSE) to avoid double count with savings. */
-export const isWalletCardExcludedToken = (contractAddress: string): boolean => {
-  return isSoUSDToken(contractAddress) || isSoFUSEToken(contractAddress);
 };
 
 export const isUSDCEthereum = (contractAddress: string): boolean => {
@@ -342,50 +296,6 @@ export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
   )?.address;
 };
 
-/** Card deposit token address on the funding chain: use override (e.g. rUSD) when set for funding chain, else USDC. */
-export function getCardDepositTokenAddress(chainId: number): string {
-  if (
-    chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID &&
-    EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS
-  ) {
-    return EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS;
-  }
-  return getUsdcAddress(chainId);
-}
-
-/** Display symbol for card deposit token (e.g. 'rUSD' in Rain sandbox, 'USDC' otherwise). */
-export function getCardDepositTokenSymbol(provider: CardProvider | null | undefined): string {
-  if (provider === CardProvider.RAIN && EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS) {
-    return EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL;
-  }
-  return 'USDC';
-}
-
-/** Decimals for card deposit/withdraw token (e.g. rUSD, USDC). */
-export const CARD_DEPOSIT_TOKEN_DECIMALS = 6;
-
-/** Resolve card funding address: Rain from contracts API (EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID), Bridge from card details. */
-export function getCardFundingAddress(
-  cardDetails: CardResponse | null | undefined,
-  provider: CardProvider | null | undefined,
-  contracts: RainContractResponseDto[] | null | undefined,
-): string | undefined {
-  if (provider === CardProvider.RAIN && contracts?.length) {
-    const rainContract = contracts.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID);
-    if (rainContract?.depositAddress) return rainContract.depositAddress;
-  }
-  return cardDetails ? getArbitrumFundingAddress(cardDetails) : undefined;
-}
-
-/** Rain-first: only Rain cards count as "has card". Bridge-only users are treated as no card. */
 export const hasCard = (cardStatus: CardStatusResponse | null | undefined): boolean => {
-  if (!cardStatus?.status) return false;
-  const isActiveOrFrozen =
-    cardStatus.status === CardStatus.ACTIVE || cardStatus.status === CardStatus.FROZEN;
-  if (!isActiveOrFrozen) return false;
-  return cardStatus.provider !== CardProvider.BRIDGE;
+  return cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN;
 };
-
-export const hasCardStatusWithRainApplication = (
-  cardStatus: CardStatusResponse | null | undefined,
-): boolean => Boolean(cardStatus?.rainApplicationStatus);
