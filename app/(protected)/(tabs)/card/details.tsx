@@ -18,7 +18,7 @@ import { ChevronRight, Copy, Plus } from 'lucide-react-native';
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
-import DepositToCardModal from '@/components/Card/DepositToCardModal';
+import WithdrawCardFundsModal from '@/components/Card/WithdrawCardFundsModal';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -294,7 +294,7 @@ function DesktopHeader({
             }
           />
         )}
-        <DepositToCardModal
+        <WithdrawCardFundsModal
           trigger={
             <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
               <View className="flex-row items-center gap-2">
@@ -702,7 +702,7 @@ function CardActions({
 }: CardActionsProps) {
   return (
     <View className="native:gap-8 mb-8 flex-row items-center justify-center web:space-x-8">
-      <DepositToCardModal
+      <WithdrawCardFundsModal
         trigger={
           <CircularActionButton
             icon={getAsset('images/card_actions_fund.png')}
