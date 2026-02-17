@@ -17,6 +17,7 @@ import {
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL,
   EXPO_PUBLIC_LIFI_API_URL,
+  EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
 } from './config';
 import {
   ActivityEvent,
@@ -32,12 +33,16 @@ import {
   BridgeTransactionRequest,
   CardAccessResponse,
   CardDepositBonusConfig,
+  CardBalanceResponseDto,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
   CardResponse,
+  CardSecretsResponseDto,
   CardStatusResponse,
   CardTransaction,
   CardTransactionsResponse,
+  RainContractResponseDto,
+  SubmitPersonaKycResponse,
   CardWaitlistResponse,
   CardWithdrawal,
   CardWithdrawalResponse,
@@ -90,6 +95,7 @@ import {
   WithdrawFromCardToSavingsResponse,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
+import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 
 // Helper function to get platform-specific headers
 const getPlatformHeaders = () => {
@@ -409,6 +415,31 @@ export const getKycLinkFromBridge = async (
   return response.json();
 };
 
+/** Rain KYC: submit Persona inquiry ID after user completes Persona flow. Returns consumerId and kycStatus; only allow card creation when kycStatus === 'approved'. */
+export const submitPersonaKyc = async (
+  personaInquiryId: string,
+): Promise<SubmitPersonaKycResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/persona`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ personaInquiryId }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 // The backend retrieves the customer by querying the database
 export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
   const jwt = getJWTToken();
@@ -544,6 +575,46 @@ export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
   });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain only: GET card balance (all amounts in cents). Returns 400 "Balance is only available for Rain cards." for Bridge. */
+export const getCardBalance = async (): Promise<CardBalanceResponseDto> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/balance`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain only: GET funding contracts (depositAddress, onramp). Returns 400 for Bridge. */
+export const getCardContracts = async (): Promise<RainContractResponseDto[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/contracts`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
 
   if (!response.ok) throw response;
 
@@ -1716,6 +1787,30 @@ export const fetchVaultBreakdown = async () => {
 
 // Card Details Reveal Functions
 
+/** Rain only: POST card secrets with SessionId header (base64). Returns 400 for Bridge. */
+export const requestCardSecrets = async (
+  sessionIdBase64: string,
+): Promise<CardSecretsResponseDto> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/secrets`,
+    {
+      method: 'POST',
+      headers: {
+        ...getPlatformHeaders(),
+        SessionId: sessionIdBase64,
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 /**
  * Request ephemeral key from backend
  * Your backend will relay this nonce to Bridge and return the ephemeral key
@@ -1769,25 +1864,63 @@ export const revealCardDetails = async (
 };
 
 /**
- * Complete card details reveal flow
- * This combines all operations into a single function for convenience
+ * Rain card reveal: SessionId + decrypt PAN/CVC. Use when provider is Rain.
+ */
+export const revealCardDetailsCompleteRain = async (): Promise<CardDetailsRevealResponse> => {
+  if (!EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) {
+    throw new Error('Rain card public key not configured');
+  }
+  const details = await getCardDetails();
+  const { secretKey, sessionId } = await generateSessionId(
+    EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
+  );
+  const secrets = await requestCardSecrets(sessionId);
+  const pan = await decryptSecret(
+    secrets.encryptedPan.data,
+    secrets.encryptedPan.iv,
+    secretKey,
+  );
+  const cvc = await decryptSecret(
+    secrets.encryptedCvc.data,
+    secrets.encryptedCvc.iv,
+    secretKey,
+  );
+  const expiry = details?.card_details?.expiry ?? '';
+  return {
+    card_number: pan,
+    card_security_code: cvc,
+    expiry_date: expiry,
+  };
+};
+
+/**
+ * Complete card details reveal flow. Tries Rain (secrets) first; on 400 falls back to Bridge (ephemeral key).
  */
 export const revealCardDetailsComplete = async (): Promise<CardDetailsRevealResponse> => {
-  // Generate client nonce data
-  const nonceData = await generateClientNonceData();
-
-  // Request ephemeral key from your backend
-  const ephemeralKeyResponse = await requestEphemeralKey(nonceData.nonce);
-
-  // Directly call Bridge to reveal card details
-  const cardDetails = await revealCardDetails(
-    ephemeralKeyResponse.ephemeral_key,
-    nonceData.clientSecret,
-    nonceData.clientTimestamp,
-  );
-
-  return cardDetails;
+  if (EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) {
+    try {
+      return await revealCardDetailsCompleteRain();
+    } catch (e: unknown) {
+      if (e instanceof Response && e.status === 400) {
+        return revealCardDetailsCompleteBridge();
+      }
+      throw e;
+    }
+  }
+  return revealCardDetailsCompleteBridge();
 };
+
+function revealCardDetailsCompleteBridge(): Promise<CardDetailsRevealResponse> {
+  return (async () => {
+    const nonceData = await generateClientNonceData();
+    const ephemeralKeyResponse = await requestEphemeralKey(nonceData.nonce);
+    return revealCardDetails(
+      ephemeralKeyResponse.ephemeral_key,
+      nonceData.clientSecret,
+      nonceData.clientTimestamp,
+    );
+  })();
+}
 
 // Stargate API for bridging
 export const getStargateQuote = async (

@@ -7,8 +7,12 @@ import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { submitPersonaKyc } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
+import { KycStatus } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
+import { useKycStore } from '@/store/useKycStore';
 
 import type { ClientOptions } from 'persona';
 
@@ -18,11 +22,23 @@ export type KycParams = {
 
 export default function Kyc({ onSuccess }: KycParams = {}) {
   const router = useRouter();
-  const { url } = useLocalSearchParams<{ url: string }>();
+  const {
+    url,
+    mode,
+    templateId: paramTemplateId,
+    redirectUri: paramRedirectUri,
+  } = useLocalSearchParams<{
+    url?: string;
+    mode?: string;
+    templateId?: string;
+    redirectUri?: string;
+  }>();
+  const setRainKycStatus = useKycStore(state => state.setRainKycStatus);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const isRainMode = mode === 'rain' && paramTemplateId; // route param string, not CardProvider
 
   // Parse the provided KYC link into Persona Client options
   const parseKycUrlToOptions = (
@@ -78,21 +94,34 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
     track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, {
       hasUrl: !!url,
       urlLength: url?.length,
+      mode,
+      isRainMode,
     });
 
-    if (!url) {
+    if (!url && !isRainMode) {
       track(TRACKING_EVENTS.KYC_LINK_ERROR, {
-        error: 'No URL provided',
+        error: 'No URL or Rain template provided',
         stage: 'url_validation',
       });
-      setError('No URL provided');
+      setError('No URL or Rain template provided');
       setLoading(false);
       return;
     }
 
     const run = async () => {
       try {
-        const { options, redirectUri } = parseKycUrlToOptions(url);
+        const { options, redirectUri } = isRainMode
+          ? {
+              options: {
+                templateId: paramTemplateId,
+                inquiryId: undefined,
+                environmentId: undefined,
+                referenceId: undefined,
+                fields: {},
+              } as ClientOptions,
+              redirectUri: paramRedirectUri ?? undefined,
+            }
+          : parseKycUrlToOptions(url!);
 
         // Track parsed URL details for debugging
         track(TRACKING_EVENTS.KYC_LINK_PARSED, {
@@ -125,6 +154,8 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           });
           throw new Error('Missing templateId or inquiryId');
         }
+
+        const rainMode = isRainMode;
 
         const { setupIframe, setupEvents } = await import('persona');
 
@@ -159,8 +190,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
             });
             setLoading(false);
           },
-          onComplete: ({ inquiryId: completedInquiryId, status }) => {
-            // Capture attribution for KYC conversion tracking
+          onComplete: async ({ inquiryId: completedInquiryId, status }) => {
             const attributionData = useAttributionStore.getState().getAttributionForEvent();
             const attributionChannel = getAttributionChannel(attributionData);
 
@@ -170,16 +200,29 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
               hasRedirectUri: !!redirectUri,
               redirectUri: redirectUri,
               kycUrl: url,
+              isRainMode: rainMode,
               ...attributionData,
               attribution_channel: attributionChannel,
             });
             onSuccess?.();
 
-            if (redirectUri) {
+            if (rainMode && completedInquiryId) {
               try {
-                window.location.replace(redirectUri);
+                const res = await withRefreshToken(() => submitPersonaKyc(completedInquiryId));
+                if (res?.kycStatus) {
+                  setRainKycStatus(res.kycStatus as KycStatus);
+                }
+              } catch (e) {
+                console.error('Rain KYC submit failed:', e);
+              }
+            }
+
+            const targetUri = redirectUri ?? (rainMode ? paramRedirectUri : undefined);
+            if (targetUri) {
+              try {
+                window.location.replace(targetUri);
               } catch (_e) {
-                router.replace(redirectUri as any);
+                router.replace(targetUri as any);
               }
             }
           },
@@ -235,7 +278,16 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
         unsubscribeRef.current = null;
       }
     };
-  }, [onSuccess, router, url]);
+  }, [
+    isRainMode,
+    mode,
+    onSuccess,
+    paramRedirectUri,
+    paramTemplateId,
+    router,
+    setRainKycStatus,
+    url,
+  ]);
 
   return (
     <PageLayout desktopOnly>

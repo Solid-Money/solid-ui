@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { useFingerprint } from '@/hooks/useFingerprint';
 import { track } from '@/lib/analytics';
+import { EXPO_PUBLIC_CARD_ISSUER, EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID } from '@/lib/config';
 import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
-import { CardStatusResponse, KycStatus } from '@/lib/types';
+import { CardProvider, CardStatusResponse, KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -37,14 +39,22 @@ export function useCardSteps(
   cardStatusResponse?: CardStatusResponse | null,
 ) {
   const router = useRouter();
-  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore(
+  const {
+    kycLinkId,
+    processingUntil,
+    setProcessingUntil,
+    clearProcessingUntil,
+    rainKycStatus,
+  } = useKycStore(
     useShallow(state => ({
       kycLinkId: state.kycLinkId,
       processingUntil: state.processingUntil,
       setProcessingUntil: state.setProcessingUntil,
       clearProcessingUntil: state.clearProcessingUntil,
+      rainKycStatus: state.rainKycStatus,
     })),
   );
+  const cardIssuer = EXPO_PUBLIC_CARD_ISSUER ?? null;
   const countryStore = useCountryStore(
     useShallow(state => ({
       countryInfo: state.countryInfo,
@@ -113,9 +123,25 @@ export function useCardSteps(
       kycLinkId,
       hasProcessingWindow: Boolean(processingUntil),
       endorsementStatus: cardsEndorsement?.status,
+      cardIssuer,
     });
 
-    // Check country access
+    // Rain: redirect to Rain KYC screen (Persona with Rain template → submitPersonaKyc)
+    if (cardIssuer === CardProvider.RAIN && EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID) {
+      const baseUrl = process.env.EXPO_PUBLIC_BASE_URL ?? '';
+      const redirectUri = `${baseUrl}${path.CARD_ACTIVATE}`;
+      router.push({
+        pathname: '/kyc',
+        params: {
+          mode: CardProvider.RAIN,
+          templateId: EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID,
+          redirectUri,
+        },
+      });
+      return;
+    }
+
+    // Check country access (Bridge flow)
     const isBlocked = await checkAndBlockForCountryAccess(countryStore, kycLinkId);
     if (isBlocked) return;
 
@@ -130,7 +156,7 @@ export function useCardSteps(
       return;
     }
 
-    // Check latest KYC status
+    // Check latest KYC status (Bridge)
     try {
       if (kycLinkId) {
         const latest = await withRefreshToken(() => getKycLinkFromBridge(kycLinkId));
@@ -195,7 +221,7 @@ export function useCardSteps(
     getVisitorData,
   ]);
 
-  // Build steps based on endorsement status
+  // Build steps based on endorsement status (Bridge) or Rain KYC status
   const steps = useMemo(
     () =>
       buildCardSteps(
@@ -207,6 +233,7 @@ export function useCardSteps(
         handleProceedToKyc,
         handleActivateCard,
         pushCardDetails,
+        { cardIssuer, rainKycStatus },
       ),
     [
       cardsEndorsement,
@@ -217,6 +244,8 @@ export function useCardSteps(
       handleProceedToKyc,
       handleActivateCard,
       pushCardDetails,
+      cardIssuer,
+      rainKycStatus,
     ],
   );
 

@@ -81,6 +81,11 @@ export function formatNumber(number: number, maximumFractionDigits = 6, minimumF
   }).format(num);
 }
 
+/** Format cents to dollars string (e.g. for Rain card balance) */
+export function formatCentsToDollars(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
 export function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text);
 }

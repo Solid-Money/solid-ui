@@ -423,8 +423,23 @@ export interface CashbackData {
   percentage: number;
 }
 
+/** Card issuance provider; backend may add to details/status */
+export enum CardProvider {
+  BRIDGE = 'bridge',
+  RAIN = 'rain',
+}
+
+/** Card deposit activity metadata processing status */
+export enum CardDepositProcessingStatus {
+  SENDING = 'sending',
+  AWAITING_BRIDGE = 'awaiting_bridge',
+  AWAITING_RAIN = 'awaiting_rain',
+}
+
 export interface CardDetailsResponseDto extends CardResponse {
   cashback: CashbackData;
+  /** Set by backend when available */
+  provider?: CardProvider;
 }
 
 export interface CardStatusResponse {
@@ -432,6 +447,73 @@ export interface CardStatusResponse {
   activationBlocked?: boolean;
   activationBlockedReason?: string;
   activationFailedAt?: string;
+  /** Set by backend when available; used to branch Bridge vs Rain flows */
+  provider?: CardProvider;
+}
+
+// --- Rain KYC (Persona) ---
+export interface SubmitPersonaKycRequest {
+  personaInquiryId: string;
+}
+
+export interface SubmitPersonaKycResponse {
+  consumerId: string;
+  kycStatus: KycStatus;
+}
+
+// --- Rain balance (cents) ---
+export interface CardBalanceResponseDto {
+  creditLimit?: number;
+  pendingCharges?: number;
+  postedCharges?: number;
+  balanceDue?: number;
+  spendingPower?: number;
+}
+
+// --- Rain card secrets (reveal PAN/CVC) ---
+export interface CardSecretsEncryptedField {
+  iv: string;
+  data: string;
+}
+
+export interface CardSecretsResponseDto {
+  encryptedPan: CardSecretsEncryptedField;
+  encryptedCvc: CardSecretsEncryptedField;
+}
+
+// --- Rain contracts (funding) ---
+export interface RainContractTokenDto {
+  address: string;
+  balance?: string;
+  exchangeRate?: number;
+  advanceRate?: number;
+}
+
+export interface RainOnrampBankDetailsDto {
+  beneficiaryName: string;
+  beneficiaryAddress: string;
+  accountNumber: string;
+  routingNumber: string;
+  beneficiaryBankName?: string;
+  beneficiaryBankAddress?: string;
+}
+
+export interface RainContractOnrampDto {
+  ach?: RainOnrampBankDetailsDto;
+  rtp?: RainOnrampBankDetailsDto;
+  wire?: RainOnrampBankDetailsDto;
+}
+
+export interface RainContractResponseDto {
+  id: string;
+  chainId: number;
+  controllerAddress: string;
+  proxyAddress: string;
+  tokens: RainContractTokenDto[];
+  contractVersion: number;
+  programAddress: string | null;
+  depositAddress?: string;
+  onramp?: RainContractOnrampDto;
 }
 
 export enum LayerZeroTransactionStatus {

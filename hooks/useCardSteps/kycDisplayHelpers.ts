@@ -3,6 +3,8 @@ import {
   BridgeCustomerEndorsement,
   BridgeEndorsementIssue,
   BridgeRejectionReason,
+  CardProvider,
+  KycStatus,
 } from '@/lib/types';
 
 // ============================================================================
@@ -50,12 +52,23 @@ function hasEndorsementPendingReview(cardsEndorsement: BridgeCustomerEndorsement
 // ============================================================================
 
 /**
- * Get the description text for the KYC step based on endorsement status
+ * Get the description text for the KYC step based on endorsement status or Rain KYC status
  */
 export function getStepDescription(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
   customerRejectionReasons?: BridgeRejectionReason[],
+  options?: { cardIssuer?: CardProvider | null; rainKycStatus?: KycStatus | null },
 ): string {
+  if (options?.cardIssuer === CardProvider.RAIN && options?.rainKycStatus) {
+    const s = options.rainKycStatus;
+    if (s === KycStatus.APPROVED) return 'Identity verification complete. You can now order your card.';
+    if (s === KycStatus.UNDER_REVIEW) return 'Your information is being reviewed. This usually takes a few minutes.';
+    if (s === KycStatus.REJECTED) return 'We couldn\'t verify your identity. Please contact support or try again.';
+    if (s === KycStatus.OFFBOARDED) return 'Account offboarded. Please contact support.';
+    if (s === KycStatus.INCOMPLETE || s === KycStatus.NOT_STARTED) return 'Identity verification required for us to issue your card.';
+    return 'Identity verification required for us to issue your card';
+  }
+
   // No endorsement yet - default message
   if (!cardsEndorsement) {
     return 'Identity verification required for us to issue your card';
@@ -123,11 +136,20 @@ export function getStepDescription(
 }
 
 /**
- * Get the button text for the KYC step based on endorsement status
+ * Get the button text for the KYC step based on endorsement status or Rain KYC status
  */
 export function getStepButtonText(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
+  options?: { cardIssuer?: CardProvider | null; rainKycStatus?: KycStatus | null },
 ): string | undefined {
+  if (options?.cardIssuer === CardProvider.RAIN && options?.rainKycStatus) {
+    const s = options.rainKycStatus;
+    if (s === KycStatus.APPROVED) return undefined;
+    if (s === KycStatus.UNDER_REVIEW) return 'Under Review';
+    if (s === KycStatus.REJECTED || s === KycStatus.OFFBOARDED) return 'Contact support';
+    return 'Complete KYC';
+  }
+
   // No endorsement - start KYC
   if (!cardsEndorsement) {
     return 'Complete KYC';
@@ -156,11 +178,16 @@ export function getStepButtonText(
 }
 
 /**
- * Check if the button should be disabled (for pending review)
+ * Check if the button should be disabled (for pending review or Rain under_review)
  */
 export function isStepButtonDisabled(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
+  options?: { cardIssuer?: CardProvider | null; rainKycStatus?: KycStatus | null },
 ): boolean {
+  if (options?.cardIssuer === CardProvider.RAIN) {
+    const s = options.rainKycStatus;
+    return s === KycStatus.APPROVED || s === KycStatus.UNDER_REVIEW || false;
+  }
   if (!cardsEndorsement) {
     return false;
   }
