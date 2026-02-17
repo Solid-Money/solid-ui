@@ -1300,6 +1300,31 @@ export const withdrawFromCard = async (body: CardWithdrawal): Promise<CardWithdr
   return response.json();
 };
 
+export const withdrawCardToSafeAddress = async (body: {
+  amount: string;
+  clientNote?: string;
+}): Promise<CardWithdrawalResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/withdraw-to-safe`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const withdrawFromCardToSavings = async (body: {
   amount: string;
 }): Promise<WithdrawFromCardToSavingsResponse> => {
