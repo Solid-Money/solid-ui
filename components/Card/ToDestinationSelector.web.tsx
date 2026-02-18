@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { ChevronDown, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
+import { ChevronDown, Landmark, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
 
 import {
   DropdownMenu,
@@ -13,11 +13,26 @@ import { CardDepositSource } from '@/store/useCardDepositStore';
 export type ToDestinationProps = {
   value: CardDepositSource;
   onChange: (value: CardDepositSource) => void;
+  showCollateralOption?: boolean;
 };
 
-export default function ToDestinationSelector({ value, onChange }: ToDestinationProps) {
-  const displayText = value === CardDepositSource.WALLET ? 'Wallet' : 'Savings';
-  const tokenLabel = value === CardDepositSource.WALLET ? 'USDC' : 'soUSD';
+export default function ToDestinationSelector({
+  value,
+  onChange,
+  showCollateralOption,
+}: ToDestinationProps) {
+  const displayText =
+    value === CardDepositSource.WALLET
+      ? 'Wallet'
+      : value === CardDepositSource.COLLATERAL
+        ? 'Funding account'
+        : 'Savings';
+  const tokenLabel =
+    value === CardDepositSource.WALLET
+      ? 'USDC'
+      : value === CardDepositSource.COLLATERAL
+        ? 'USDC'
+        : 'soUSD';
 
   return (
     <DropdownMenu>
@@ -26,6 +41,8 @@ export default function ToDestinationSelector({ value, onChange }: ToDestination
           <View className="flex-row items-center gap-2">
             {value === CardDepositSource.WALLET ? (
               <WalletIcon color="#A1A1A1" size={24} />
+            ) : value === CardDepositSource.COLLATERAL ? (
+              <Landmark color="#A1A1A1" size={24} />
             ) : (
               <Leaf color="#A1A1A1" size={24} />
             )}
@@ -54,6 +71,16 @@ export default function ToDestinationSelector({ value, onChange }: ToDestination
           <Text className="text-lg">Wallet</Text>
           <Text className="text-sm text-muted-foreground">USDC</Text>
         </DropdownMenuItem>
+        {showCollateralOption && (
+          <DropdownMenuItem
+            onPress={() => onChange(CardDepositSource.COLLATERAL)}
+            className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+          >
+            <Landmark color="#A1A1A1" size={20} />
+            <Text className="text-lg">Funding account</Text>
+            <Text className="text-sm text-muted-foreground">USDC</Text>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

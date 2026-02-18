@@ -7,6 +7,9 @@ export interface CardWithdrawTransactionState {
   amount?: number;
   clientTxId?: string;
   to?: CardDepositSource;
+  /** Rain collateral withdrawal: tx hash and chain for explorer link */
+  transactionHash?: string;
+  chainId?: number;
 }
 
 interface CardWithdrawState {
