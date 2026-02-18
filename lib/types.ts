@@ -135,6 +135,19 @@ export interface WithdrawFromCardToSavingsResponse {
   amount: string;
 }
 
+/** Rain: withdraw collateral from funding account. amount = token smallest units (e.g. USDC 6 decimals). */
+export interface WithdrawCollateralRequest {
+  amount: string;
+  recipientAddress: string;
+  chainId?: number;
+  token?: string;
+}
+
+export interface WithdrawCollateralResponse {
+  transactionHash: string;
+  status?: 'pending';
+}
+
 export interface HoldingFundsPointsMultiplierConfig {
   holdingFundsPointsMultiplier: number;
 }
