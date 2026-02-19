@@ -235,6 +235,9 @@ export default function Savings() {
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         mode={SavingMode.CURRENT}
+                        inputsReady={
+                          !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
+                        }
                         userDepositTransactions={userDepositTransactions}
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}
@@ -410,6 +413,9 @@ export default function Savings() {
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         mode={SavingMode.CURRENT}
+                        inputsReady={
+                          !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
+                        }
                         userDepositTransactions={userDepositTransactions}
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}

@@ -229,6 +229,9 @@ export const calculateActualDepositedAmount = async (
   const isUsdcVault =
     tokenAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase() ||
     tokenAddress.toLowerCase() === ADDRESSES.ethereum.vault.toLowerCase();
+  // Subgraph deposits/withdrawals are USDC-vault only; for FUSE vault use only chain vault transfers
+  const isFuseVault =
+    tokenAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
 
   const vaultTransferAddresses = isUsdcVault
     ? [ADDRESSES.ethereum.vault, ADDRESSES.fuse.vault]
@@ -265,46 +268,49 @@ export const calculateActualDepositedAmount = async (
   };
 
   // Process deposits (convert to display unit so actualDeposited matches balanceUSD)
-  deposits.forEach(deposit => {
-    if (deposit.depositAmount && deposit.depositAmount !== '0') {
-      try {
-        const tokenAmount = Number(formatUnits(BigInt(deposit.depositAmount), decimals));
-        if (isFinite(tokenAmount) && tokenAmount > 0) {
-          const timestamp = Number(deposit.depositTimestamp);
-          timeWeightedBalances.push({
-            amount: toDisplayAmount(tokenAmount, timestamp),
-            timestamp,
-            type: 'deposit',
-          });
+  // Skip for FUSE vault: subgraph data is USDC-vault only; using it would mix units and produce wrong actualDeposited
+  if (!isFuseVault) {
+    deposits.forEach(deposit => {
+      if (deposit.depositAmount && deposit.depositAmount !== '0') {
+        try {
+          const tokenAmount = Number(formatUnits(BigInt(deposit.depositAmount), decimals));
+          if (isFinite(tokenAmount) && tokenAmount > 0) {
+            const timestamp = Number(deposit.depositTimestamp);
+            timeWeightedBalances.push({
+              amount: toDisplayAmount(tokenAmount, timestamp),
+              timestamp,
+              type: 'deposit',
+            });
+          }
+        } catch (error) {
+          console.warn('Error processing deposit:', error);
         }
-      } catch (error) {
-        console.warn('Error processing deposit:', error);
       }
-    }
-  });
+    });
 
-  // Process withdrawals (convert to display unit)
-  withdrawals.forEach(withdrawal => {
-    if (
-      withdrawal.amountOfAssets &&
-      withdrawal.amountOfAssets !== '0' &&
-      withdrawal.requestStatus === 'SOLVED'
-    ) {
-      try {
-        const tokenAmount = Number(formatUnits(BigInt(withdrawal.amountOfAssets), decimals));
-        if (isFinite(tokenAmount) && tokenAmount > 0) {
-          const timestamp = Number(withdrawal.creationTime);
-          timeWeightedBalances.push({
-            amount: -toDisplayAmount(tokenAmount, timestamp),
-            timestamp,
-            type: 'withdrawal',
-          });
+    // Process withdrawals (convert to display unit)
+    withdrawals.forEach(withdrawal => {
+      if (
+        withdrawal.amountOfAssets &&
+        withdrawal.amountOfAssets !== '0' &&
+        withdrawal.requestStatus === 'SOLVED'
+      ) {
+        try {
+          const tokenAmount = Number(formatUnits(BigInt(withdrawal.amountOfAssets), decimals));
+          if (isFinite(tokenAmount) && tokenAmount > 0) {
+            const timestamp = Number(withdrawal.creationTime);
+            timeWeightedBalances.push({
+              amount: -toDisplayAmount(tokenAmount, timestamp),
+              timestamp,
+              type: 'withdrawal',
+            });
+          }
+        } catch (error) {
+          console.warn('Error processing withdrawal:', error);
         }
-      } catch (error) {
-        console.warn('Error processing withdrawal:', error);
       }
-    }
-  });
+    });
+  }
 
   // Process Vault transfers
   filteredVaultTransfers.forEach(transfer => {
@@ -368,8 +374,11 @@ export const calculateYield = async (
   if (balance <= 0 || !isFinite(balance)) return 0;
   if (mode === SavingMode.BALANCE_ONLY) return balance;
   if (!isFinite(apy) || apy < 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
-  if (!lastTimestamp || lastTimestamp <= 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
-  if (!currentTime || currentTime <= 0) return mode === SavingMode.INTEREST_ONLY ? 0 : balance;
+  // Without a valid start time we can't compute interest; return 0 for interest modes
+  if (!lastTimestamp || lastTimestamp <= 0)
+    return mode === SavingMode.INTEREST_ONLY || mode === SavingMode.CURRENT ? 0 : balance;
+  if (!currentTime || currentTime <= 0)
+    return mode === SavingMode.INTEREST_ONLY || mode === SavingMode.CURRENT ? 0 : balance;
 
   const { setEarnedUSD } = useBalanceStore.getState();
 
@@ -394,7 +403,8 @@ export const calculateYield = async (
         decimals,
       );
 
-      if (timeWeightedBalances.length > 0) {
+      // Use deposit path only when we have a valid positive actualDeposited (e.g. FUSE with only transfer-out yields negative, use fallback)
+      if (timeWeightedBalances.length > 0 && actualDeposited > 0) {
         let interestEarnedUSD = balanceUSD - actualDeposited;
 
         if (interestEarnedUSD > 0) {
@@ -408,9 +418,9 @@ export const calculateYield = async (
 
         const amountGained =
           (balanceUSD * (apy / 100) * (currentTime - lastTimestamp)) / SECONDS_PER_YEAR;
-
+        const currentInterest = Math.max(0, interestEarnedUSD + amountGained);
         if (mode === SavingMode.CURRENT) {
-          return Math.max(0, interestEarnedUSD + amountGained);
+          return currentInterest;
         }
 
         if (mode === SavingMode.INTEREST_ONLY) {
@@ -446,16 +456,14 @@ export const calculateYield = async (
 
   // Fallback to original calculation
   const deltaTime = Math.max(0, currentTime - lastTimestamp);
+  const timeInYears = deltaTime / SECONDS_PER_YEAR;
+  const interestEarned = balance * (apy / 100) * timeInYears;
+  const interestEarnedUSD = balanceUSD * (apy / 100) * timeInYears;
   if (deltaTime === 0) {
     if (mode === SavingMode.INTEREST_ONLY || mode === SavingMode.CURRENT) return 0;
     if (mode === SavingMode.TOTAL_USD) return balanceUSD;
     return balance;
   }
-
-  const timeInYears = deltaTime / SECONDS_PER_YEAR;
-
-  const interestEarned = balance * (apy / 100) * timeInYears;
-  const interestEarnedUSD = balanceUSD * (apy / 100) * timeInYears;
 
   if (mode === SavingMode.INTEREST_ONLY) {
     return Math.max(0, interestEarnedUSD);
