@@ -1,5 +1,5 @@
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
@@ -19,7 +19,7 @@ type CancelOnChainWithdrawResult = {
 
 const useCancelOnchainWithdraw = (): CancelOnChainWithdrawResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const [cancelOnchainWithdrawStatus, setCancelOnchainWithdrawStatus] = useState<Status>(
     Status.IDLE,
   );

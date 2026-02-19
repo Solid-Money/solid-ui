@@ -1,3 +1,4 @@
+import React from 'react';
 import { View } from 'react-native';
 
 import TooltipPopover from '@/components/Tooltip';
@@ -27,7 +28,7 @@ const Header = ({ title }: HeaderProps) => {
   );
 };
 
-export default function TimeGroupHeader({
+export default React.memo(function TimeGroupHeader({
   title,
   isPending,
   hasActivePendingTransactions,
@@ -46,4 +47,4 @@ export default function TimeGroupHeader({
       <Header title={title} />
     </View>
   ) : null;
-}
+});

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
@@ -38,6 +38,11 @@ type RenderItemProps = {
   item: TimeGroup<CardListItem>;
   index: number;
 };
+
+// Static null separator - extracted outside component to prevent recreation on each render
+function NullSeparator() {
+  return null;
+}
 
 export default function CardTransactions() {
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -96,7 +101,7 @@ export default function CardTransactions() {
     return groupByTime(mergedItems);
   }, [mergedItems]);
 
-  const renderItem = ({ item, index }: RenderItemProps) => {
+  const renderItem = useCallback(({ item, index }: RenderItemProps) => {
     if (item.type === ActivityGroup.HEADER) {
       return (
         <View className="py-3">
@@ -207,9 +212,9 @@ export default function CardTransactions() {
         </View>
       </Pressable>
     );
-  };
+  }, [groupedTransactions, cashbacks]);
 
-  const renderEmpty = () => {
+  const renderEmpty = useCallback(() => {
     if (isLoading) {
       return (
         <View className="items-center px-4 py-16">
@@ -239,39 +244,41 @@ export default function CardTransactions() {
         </Text>
       </View>
     );
-  };
+  }, [isLoading, error]);
 
-  const renderFooter = () => {
+  const renderFooter = useCallback(() => {
     if (!isFetchingNextPage) return null;
     return (
       <View className="items-center py-4">
         <ActivityIndicator size="small" color="#fff" />
       </View>
     );
-  };
+  }, [isFetchingNextPage]);
 
-  const handleEndReached = () => {
+  const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const keyExtractor = useCallback((item: TimeGroup<CardListItem>, index: number) => {
+    if (item.type === ActivityGroup.HEADER) {
+      return item.data.key;
+    }
+    const row = item.data as CardListItem;
+    if (row.source === 'activity') return row.clientTxId;
+    return row.id || `${index}`;
+  }, []);
 
   return (
     <View className="flex-1">
       <FlashList
         data={groupedTransactions}
         renderItem={renderItem}
-        keyExtractor={(item, index) => {
-          if (item.type === ActivityGroup.HEADER) {
-            return item.data.key;
-          }
-          const row = item.data as CardListItem;
-          if (row.source === 'activity') return row.clientTxId;
-          return row.id || `${index}`;
-        }}
+        keyExtractor={keyExtractor}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
-        ItemSeparatorComponent={() => null}
+        ItemSeparatorComponent={NullSeparator}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         onEndReached={handleEndReached}

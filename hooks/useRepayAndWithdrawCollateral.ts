@@ -1,6 +1,6 @@
 import { USDC_STARGATE } from '@/constants/addresses';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { AaveV3Pool_ABI } from '@/lib/abis/AaveV3Pool';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import { CardDepositManager_ABI } from '@/lib/abis/CardDepositManager';
@@ -51,7 +51,7 @@ const TARGET_HEALTH_FACTOR_BPS = 10_200n; // 1.02x
 
 const useRepayAndWithdrawCollateral = (): RepayAndWithdrawCollateralResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const { data: cardDetails } = useCardDetails();
   const { totalBorrowed, totalSupplied } = useAaveBorrowPosition();
   const [repayAndWithdrawCollateralStatus, setRepayAndWithdrawCollateralStatus] = useState<Status>(

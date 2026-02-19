@@ -1,4 +1,4 @@
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { ADDRESSES } from '@/lib/config';
@@ -26,7 +26,7 @@ type BridgeResult = {
 
 const useBridgeToFuse = (): BridgeResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const [bridgeStatus, setBridgeStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 

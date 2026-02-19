@@ -20,7 +20,7 @@ import { USDC_STARGATE } from '@/constants/addresses';
 import { getBridgeChain } from '@/constants/bridge';
 import { CARD_REPAY_MODAL } from '@/constants/modals';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import useRepayAndWithdrawCollateral from '@/hooks/useRepayAndWithdrawCollateral';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
@@ -37,7 +37,7 @@ const FEE_AMOUNT = 0; // 0 USDC from design
 export default function CardRepayForm() {
   const account = useActiveAccount();
   const { user } = useUser();
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivityActions();
   const { setTransaction, setModal, selectedToken } = useCardRepayStore(
     useShallow(state => ({
       setTransaction: state.setTransaction,

@@ -5,7 +5,7 @@ import { fuse } from 'viem/chains';
 import { encodeFunctionData, parseUnits } from 'viem/utils';
 
 import { WRAPPED_FUSE } from '@/constants/addresses';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -21,7 +21,7 @@ type WithdrawSoFuseResult = {
 
 const useWithdrawSoFuse = (): WithdrawSoFuseResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const [withdrawSoFuseStatus, setWithdrawSoFuseStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 

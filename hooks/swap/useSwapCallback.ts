@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { algebraRouterConfig } from '@/generated/wagmi';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
 
@@ -39,7 +39,7 @@ export function useSwapCallback(
   successInfo?: TransactionSuccessInfo,
 ) {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const queryClient = useQueryClient();
   const account = user?.safeAddress;
 
