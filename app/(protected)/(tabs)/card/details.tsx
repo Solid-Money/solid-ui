@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   Linking,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -15,7 +16,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Copy, Plus } from 'lucide-react-native';
 
+import AddToAppleWalletWeb from '@/components/Card/AddToAppleWalletWeb';
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
+import AddToWalletRain from '@/components/Card/AddToWalletRain';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
@@ -27,17 +30,19 @@ import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardWithdrawAllowed } from '@/hooks/useCardWithdrawAllowed';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
-import { CardHolderName, CardStatus } from '@/lib/types';
+import { CardHolderName, CardProvider, CardStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
+  const { provider } = useCardProvider();
   const { isScreenMedium } = useDimension();
   const isWithdrawAllowed = useCardWithdrawAllowed();
   const [isFreezing, setIsFreezing] = useState(false);
@@ -142,6 +147,11 @@ export default function CardDetails() {
             </View>
             <View className="flex-[2]">
               <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
+              {Platform.OS === 'web' && provider === CardProvider.RAIN && (
+                <View className="mt-4">
+                  <AddToAppleWalletWeb />
+                </View>
+              )}
             </View>
           </View>
 
@@ -156,11 +166,19 @@ export default function CardDetails() {
           </View>
         </View>
 
-        <AddToWalletModal
-          isOpen={isAddToWalletModalOpen}
-          onOpenChange={setIsAddToWalletModalOpen}
-          trigger={null}
-        />
+        {provider === CardProvider.RAIN ? (
+          <AddToWalletRain
+            isOpen={isAddToWalletModalOpen}
+            onOpenChange={setIsAddToWalletModalOpen}
+            trigger={null}
+          />
+        ) : (
+          <AddToWalletModal
+            isOpen={isAddToWalletModalOpen}
+            onOpenChange={setIsAddToWalletModalOpen}
+            trigger={null}
+          />
+        )}
       </PageLayout>
     );
   }
@@ -196,15 +214,28 @@ export default function CardDetails() {
           <CashbackDisplay cashback={cardDetails?.cashback} />
           <ViewCardTransactionsButton />
           <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
+          {Platform.OS === 'web' && provider === CardProvider.RAIN && (
+            <View className="mt-4">
+              <AddToAppleWalletWeb />
+            </View>
+          )}
           <View className="h-32"></View>
         </View>
       </View>
 
-      <AddToWalletModal
-        isOpen={isAddToWalletModalOpen}
-        onOpenChange={setIsAddToWalletModalOpen}
-        trigger={null}
-      />
+      {provider === CardProvider.RAIN ? (
+        <AddToWalletRain
+          isOpen={isAddToWalletModalOpen}
+          onOpenChange={setIsAddToWalletModalOpen}
+          trigger={null}
+        />
+      ) : (
+        <AddToWalletModal
+          isOpen={isAddToWalletModalOpen}
+          onOpenChange={setIsAddToWalletModalOpen}
+          trigger={null}
+        />
+      )}
     </PageLayout>
   );
 }

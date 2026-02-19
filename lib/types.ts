@@ -2,6 +2,7 @@ import { Reward } from '@merkl/api';
 import { Address, Hex } from 'viem';
 
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
+import { DigitalWalletType } from '@/constants/digital-wallet';
 import {
   DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
   DEPOSIT_MODAL,
@@ -481,6 +482,44 @@ export interface CardBalanceResponseDto {
   postedCharges?: number;
   balanceDue?: number;
   spendingPower?: number;
+}
+
+export interface WalletEligibilityResponse {
+  eligible: boolean;
+  alreadyInAppleWallet?: boolean;
+  alreadyInGoogleWallet?: boolean;
+  reason?: string;
+}
+
+export interface ProvisioningSessionRequest {
+  wallet?: DigitalWalletType;
+}
+
+export interface ProvisioningSessionResponse {
+  sessionId: string;
+  expiresAt: string;
+}
+
+export interface MppCredentialsResponse {
+  cardId: string;
+  cardSecret: string;
+}
+
+export interface WebProvisioningTokenResponse {
+  token?: string;
+  [key: string]: unknown;
+}
+
+export interface ExtensionCardEntry {
+  cardId: string;
+  cardSecret: string;
+  cardholderName: string;
+  lastFour: string;
+  artUrl?: string;
+}
+
+export interface ExtensionCardsResponse {
+  cards: ExtensionCardEntry[];
 }
 
 // --- Rain card secrets (reveal PAN/CVC) ---

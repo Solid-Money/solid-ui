@@ -45,6 +45,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# MeaWallet MPP config
+meawallet/mea_config
+
 # local env files
 .env*.local
 .env

@@ -195,6 +195,9 @@ export default {
           androidApiKey: process.env.EXPO_PUBLIC_INTERCOM_ANDROID_API_KEY,
         },
       ],
+      // MeaWallet MPP: bundle mea_config (add meawallet/mea_config from MeaWallet for MPP)
+      ['./meawallet/configAndroid.js', { meaConfig: 'meawallet/mea_config' }],
+      ['./meawallet/configIos.js', { meaConfig: 'meawallet/mea_config' }],
     ],
     experiments: {
       typedRoutes: true,
@@ -204,6 +207,17 @@ export default {
       router: {},
       eas: {
         projectId: 'a788e592-4267-44da-8afc-a667075c20d4',
+        build: {
+          experimental: {
+            ios: {
+              // Wallet Extensions: so EAS generates provisioning profiles for extension targets
+              appExtensions: [
+                { targetName: 'IssuerNonUIExtension', bundleIdentifier: 'app.solid.xyz.IssuerNonUIExtension' },
+                { targetName: 'IssuerUIExtension', bundleIdentifier: 'app.solid.xyz.IssuerUIExtension' },
+              ],
+            },
+          },
+        },
       },
     },
     runtimeVersion: {
