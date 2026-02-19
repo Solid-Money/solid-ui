@@ -101,28 +101,68 @@ export default function CardTransactions() {
     return groupByTime(mergedItems);
   }, [mergedItems]);
 
-  const renderItem = useCallback(({ item, index }: RenderItemProps) => {
-    if (item.type === ActivityGroup.HEADER) {
-      return (
-        <View className="py-3">
-          <Text className="font-semibold text-muted-foreground">{item.data.title}</Text>
-        </View>
-      );
-    }
+  const renderItem = useCallback(
+    ({ item, index }: RenderItemProps) => {
+      if (item.type === ActivityGroup.HEADER) {
+        return (
+          <View className="py-3">
+            <Text className="font-semibold text-muted-foreground">{item.data.title}</Text>
+          </View>
+        );
+      }
 
-    const row = item.data;
-    const isFirst = isFirstInGroup(groupedTransactions, index);
-    const isLast = isLastInGroup(groupedTransactions, index);
+      const row = item.data;
+      const isFirst = isFirstInGroup(groupedTransactions, index);
+      const isLast = isLastInGroup(groupedTransactions, index);
 
-    if (row.source === 'activity') {
-      const activity = row as CardWithdrawalActivity;
-      const amount = parseFloat(activity.amount);
-      const formattedAmount =
-        amount >= 0 ? `-$${Math.abs(amount).toFixed(2)}` : `$${Math.abs(amount).toFixed(2)}`;
+      if (row.source === 'activity') {
+        const activity = row as CardWithdrawalActivity;
+        const amount = parseFloat(activity.amount);
+        const formattedAmount =
+          amount >= 0 ? `-$${Math.abs(amount).toFixed(2)}` : `$${Math.abs(amount).toFixed(2)}`;
+        return (
+          <Pressable
+            key={`${activity.clientTxId}-${index}`}
+            onPress={() => router.push(`/activity/${activity.clientTxId}?tab=${ActivityTab.CARD}`)}
+            className={cn(
+              'flex-row items-center justify-between bg-[#1C1C1E] px-4 py-4',
+              !isLast && 'border-b border-[#2C2C2E]',
+              isFirst && 'rounded-t-[20px]',
+              isLast && 'rounded-b-[20px]',
+            )}
+          >
+            <View className="mr-4 flex-1 flex-row items-center gap-3">
+              <RenderTokenIcon
+                tokenIcon={getTokenIcon({
+                  tokenSymbol: activity.symbol,
+                  size: 44,
+                })}
+                size={44}
+              />
+              <View className="flex-1">
+                <Text className="text-lg font-medium text-white" numberOfLines={1}>
+                  {activity.title}
+                </Text>
+              </View>
+            </View>
+            <View className="items-end">
+              <Text className="text-xl font-semibold text-white">{formattedAmount}</Text>
+            </View>
+          </Pressable>
+        );
+      }
+
+      const transaction = row as CardTransactionWithTimestamp;
+      const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
+      const initials = getInitials(merchantName);
+      const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
+      const color = getColorForTransaction(merchantName);
+      const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
+
       return (
         <Pressable
-          key={`${activity.clientTxId}-${index}`}
-          onPress={() => router.push(`/activity/${activity.clientTxId}?tab=${ActivityTab.CARD}`)}
+          key={`${transaction.id}-${index}`}
+          onPress={() => router.push(`/activity/card-${transaction.id}?tab=${ActivityTab.CARD}`)}
           className={cn(
             'flex-row items-center justify-between bg-[#1C1C1E] px-4 py-4',
             !isLast && 'border-b border-[#2C2C2E]',
@@ -131,88 +171,53 @@ export default function CardTransactions() {
           )}
         >
           <View className="mr-4 flex-1 flex-row items-center gap-3">
-            <RenderTokenIcon
-              tokenIcon={getTokenIcon({
-                tokenSymbol: activity.symbol,
-                size: 44,
-              })}
-              size={44}
-            />
+            {isPurchase ? (
+              <View
+                className="h-[44px] w-[44px] items-center justify-center rounded-full"
+                style={{ backgroundColor: color.bg }}
+              >
+                <Text className="text-lg font-semibold" style={{ color: color.text }}>
+                  {initials}
+                </Text>
+              </View>
+            ) : (
+              <RenderTokenIcon
+                tokenIcon={getTokenIcon({
+                  tokenSymbol: transaction.currency?.toUpperCase(),
+                  size: 44,
+                })}
+                size={44}
+              />
+            )}
             <View className="flex-1">
               <Text className="text-lg font-medium text-white" numberOfLines={1}>
-                {activity.title}
+                {merchantName}
               </Text>
+              {cashbackInfo && (
+                <View className="mt-0.5 flex-row items-center gap-1">
+                  <Diamond />
+                  <Text className="text-sm text-[#8E8E93]">
+                    {cashbackInfo.isPending ? 'Cashback (Pending)' : 'Cashback'}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
           <View className="items-end">
-            <Text className="text-xl font-semibold text-white">{formattedAmount}</Text>
+            <Text className="text-xl font-semibold text-white">
+              {formatCardAmount(transaction.amount)}
+            </Text>
+            {cashbackInfo && cashbackInfo.amount !== 'Pending' && (
+              <Text className="mt-0.5 text-sm font-medium text-[#34C759]">
+                {cashbackInfo.amount}
+              </Text>
+            )}
           </View>
         </Pressable>
       );
-    }
-
-    const transaction = row as CardTransactionWithTimestamp;
-    const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
-    const initials = getInitials(merchantName);
-    const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
-    const color = getColorForTransaction(merchantName);
-    const cashbackInfo = getCashbackAmount(transaction.id, cashbacks);
-
-    return (
-      <Pressable
-        key={`${transaction.id}-${index}`}
-        onPress={() => router.push(`/activity/card-${transaction.id}?tab=${ActivityTab.CARD}`)}
-        className={cn(
-          'flex-row items-center justify-between bg-[#1C1C1E] px-4 py-4',
-          !isLast && 'border-b border-[#2C2C2E]',
-          isFirst && 'rounded-t-[20px]',
-          isLast && 'rounded-b-[20px]',
-        )}
-      >
-        <View className="mr-4 flex-1 flex-row items-center gap-3">
-          {isPurchase ? (
-            <View
-              className="h-[44px] w-[44px] items-center justify-center rounded-full"
-              style={{ backgroundColor: color.bg }}
-            >
-              <Text className="text-lg font-semibold" style={{ color: color.text }}>
-                {initials}
-              </Text>
-            </View>
-          ) : (
-            <RenderTokenIcon
-              tokenIcon={getTokenIcon({
-                tokenSymbol: transaction.currency?.toUpperCase(),
-                size: 44,
-              })}
-              size={44}
-            />
-          )}
-          <View className="flex-1">
-            <Text className="text-lg font-medium text-white" numberOfLines={1}>
-              {merchantName}
-            </Text>
-            {cashbackInfo && (
-              <View className="mt-0.5 flex-row items-center gap-1">
-                <Diamond />
-                <Text className="text-sm text-[#8E8E93]">
-                  {cashbackInfo.isPending ? 'Cashback (Pending)' : 'Cashback'}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-        <View className="items-end">
-          <Text className="text-xl font-semibold text-white">
-            {formatCardAmount(transaction.amount)}
-          </Text>
-          {cashbackInfo && cashbackInfo.amount !== 'Pending' && (
-            <Text className="mt-0.5 text-sm font-medium text-[#34C759]">{cashbackInfo.amount}</Text>
-          )}
-        </View>
-      </Pressable>
-    );
-  }, [groupedTransactions, cashbacks]);
+    },
+    [groupedTransactions, cashbacks],
+  );
 
   const renderEmpty = useCallback(() => {
     if (isLoading) {

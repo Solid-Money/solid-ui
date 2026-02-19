@@ -343,7 +343,10 @@ const Transaction = ({
 // Custom comparator: returns true if props are EQUAL (should NOT re-render).
 // onPress is intentionally excluded: inline closures in renderItem create new references
 // per-item, but the closure captures transaction data that IS compared via other props.
-function areTransactionPropsEqual(prevProps: TransactionProps, nextProps: TransactionProps): boolean {
+function areTransactionPropsEqual(
+  prevProps: TransactionProps,
+  nextProps: TransactionProps,
+): boolean {
   return (
     prevProps.clientTxId === nextProps.clientTxId &&
     prevProps.status === nextProps.status &&
