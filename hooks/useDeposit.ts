@@ -13,7 +13,7 @@ import { mainnet } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
@@ -32,7 +32,7 @@ type DepositResult = {
 
 const useDeposit = (): DepositResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const [depositStatus, setDepositStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 

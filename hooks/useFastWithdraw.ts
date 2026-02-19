@@ -1,5 +1,5 @@
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { FastWithdrawManager_ABI } from '@/lib/abis/FastWithdrawManager';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
@@ -21,7 +21,7 @@ type FastWithdrawResult = {
 
 const useFastWithdraw = (): FastWithdrawResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const [fastWithdrawStatus, setFastWithdrawStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 

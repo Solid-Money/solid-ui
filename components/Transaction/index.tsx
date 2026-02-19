@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Sentry from '@sentry/react-native';
@@ -340,4 +340,27 @@ const Transaction = ({
   );
 };
 
-export default Transaction;
+// Custom comparator: returns true if props are EQUAL (should NOT re-render).
+// onPress is intentionally excluded: inline closures in renderItem create new references
+// per-item, but the closure captures transaction data that IS compared via other props.
+function areTransactionPropsEqual(
+  prevProps: TransactionProps,
+  nextProps: TransactionProps,
+): boolean {
+  return (
+    prevProps.clientTxId === nextProps.clientTxId &&
+    prevProps.status === nextProps.status &&
+    prevProps.hash === nextProps.hash &&
+    prevProps.timestamp === nextProps.timestamp &&
+    prevProps.amount === nextProps.amount &&
+    prevProps.title === nextProps.title &&
+    prevProps.type === nextProps.type &&
+    prevProps.symbol === nextProps.symbol &&
+    prevProps.logoUrl === nextProps.logoUrl &&
+    prevProps.showTimestamp === nextProps.showTimestamp &&
+    prevProps.isFirst === nextProps.isFirst &&
+    prevProps.isLast === nextProps.isLast
+  );
+}
+
+export default React.memo(Transaction, areTransactionPropsEqual);

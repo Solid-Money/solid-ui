@@ -5,36 +5,14 @@ import { useShallow } from 'zustand/react/shallow';
 
 import useDebounce from '@/hooks/useDebounce';
 import useUser from '@/hooks/useUser';
-import { createActivityEvent, fetchActivityEvents, updateActivityEvent } from '@/lib/api';
-import { USER_CANCELLED_TRANSACTION } from '@/lib/execute';
+import { fetchActivityEvents } from '@/lib/api';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { generateId } from '@/lib/utils/generate-id';
-import { getChain } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
 
+import { useActivityActions } from './useActivityActions';
 import { useUserTransactions } from './useAnalytics';
 import { useSyncActivities, useSyncStore } from './useSyncActivities';
-
-// Get explorer URL for a transaction hash based on chain ID
-function getExplorerUrl(chainId: number, txHash: string): string {
-  const chain = getChain(chainId);
-  if (chain?.blockExplorers?.default?.url) {
-    return `${chain.blockExplorers.default.url}/tx/${txHash}`;
-  }
-  // Fallback to Fuse Explorer if chain not found
-  return `https://explorer.fuse.io/tx/${txHash}`;
-}
-
-function getTransactionHash(transaction: any): string {
-  if (!transaction || typeof transaction !== 'object') return '';
-
-  if ('transactionHash' in transaction || 'hash' in transaction) {
-    return (transaction as any).transactionHash || (transaction as any).hash;
-  }
-
-  return '';
-}
 
 function constructActivity(tx: ActivityEvent, safeAddress: string): ActivityEvent {
   let clientTxId = `${tx.type}-${tx.timestamp}`;
@@ -99,7 +77,6 @@ export function useActivity() {
 
   // Select only functions (stable references) and current user's events
   const bulkUpsertEvent = useActivityStore(state => state.bulkUpsertEvent);
-  const upsertEvent = useActivityStore(state => state.upsertEvent);
   // Select only current user's events array to minimize re-renders
   // Using useShallow for array comparison
   const userEventsFromStore = useActivityStore(
@@ -143,11 +120,6 @@ export function useActivity() {
     transactionsRef.current = userTransactions;
   }, [withdrawsKey, userTransactions]);
 
-  // Helper to get unique key for event
-  const getKey = useCallback((event: ActivityEvent): string => {
-    return event.hash || event.userOpHash || event.clientTxId;
-  }, []);
-
   // Fetch from backend (single source of truth for all activities)
   const activityEvents = useInfiniteQuery({
     queryKey: ['activity-events', user?.userId],
@@ -164,15 +136,11 @@ export function useActivity() {
     enabled: !!user?.userId && !isSyncingLock,
     // Prevent excessive refetches - only refetch when explicitly triggered
     refetchOnMount: false, // Don't refetch when components mount (20+ components use this hook!)
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnReconnect: false, // Don't refetch on network reconnect
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
     gcTime: 5 * 60 * 1000, // Garbage collect after 5 minutes to free memory
     maxPages: 5, // Keep only 5 most recent pages in memory (TanStack Query v5)
-    // Query will only refetch when:
-    // 1. Explicitly invalidated (by sync success)
-    // 2. Manually triggered (pull-to-refresh)
-    // 3. Data is older than 5 minutes
   });
 
   const { data: activityData, isLoading, isRefetching } = activityEvents;
@@ -314,200 +282,9 @@ export function useActivity() {
     bulkUpsertEvent(user.userId, events);
   }, [debouncedActivityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
 
-  // Create new activity
-  const createActivity = useCallback(
-    async (params: CreateActivityParams): Promise<string> => {
-      if (!user?.userId) {
-        throw new Error('User not authenticated');
-      }
-
-      const clientTxId = params.userOpHash || generateId();
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-
-      const activityEvent: ActivityEvent = {
-        clientTxId,
-        title: params.title,
-        shortTitle: params.shortTitle,
-        timestamp,
-        type: params.type,
-        status: params.status || TransactionStatus.PENDING,
-        amount: params.amount,
-        symbol: params.symbol,
-        chainId: params.chainId,
-        fromAddress: params.fromAddress,
-        toAddress: params.toAddress,
-        userOpHash: params.userOpHash,
-        metadata: {
-          description: params.metadata?.description || params.title,
-          source: 'transaction-hook',
-          ...params.metadata,
-        },
-      };
-
-      // Update local state immediately for instant UI feedback
-      upsertEvent(user.userId, activityEvent);
-
-      // Send to backend for caching (non-blocking)
-      withRefreshToken(() => createActivityEvent(activityEvent)).catch(error => {
-        console.error('Failed to create activity on server:', error);
-      });
-
-      return clientTxId;
-    },
-    [user?.userId, upsertEvent],
-  );
-
-  // Terminal statuses that must not be overwritten by lower-priority statuses
-  const TERMINAL_STATUSES = useMemo(
-    () =>
-      new Set([TransactionStatus.SUCCESS, TransactionStatus.FAILED, TransactionStatus.REFUNDED]),
-    [],
-  );
-
-  // Update activity
-  const updateActivity = useCallback(
-    async (clientTxId: string, updates: UpdateActivityParams) => {
-      if (!user?.userId) return;
-
-      const currentState = useActivityStore.getState();
-      const existingActivities = currentState.events[user.userId] || [];
-      const existing = existingActivities.find(a => a.clientTxId === clientTxId);
-
-      if (!existing) return;
-
-      // Guard: do not optimistically downgrade a terminal status.
-      // SSE may have already delivered SUCCESS/FAILED/REFUNDED.
-      const isDowngrade =
-        TERMINAL_STATUSES.has(existing.status) &&
-        updates.status !== undefined &&
-        !TERMINAL_STATUSES.has(updates.status);
-
-      if (!isDowngrade) {
-        const updatedActivity: ActivityEvent = {
-          ...existing,
-          ...updates,
-          metadata: {
-            ...existing.metadata,
-            ...updates.metadata,
-            updatedAt: new Date().toISOString(),
-          },
-        };
-
-        // Update local state immediately
-        upsertEvent(user.userId, updatedActivity);
-      }
-
-      // Always send to backend — the backend has its own guards
-      withRefreshToken(() =>
-        updateActivityEvent(clientTxId, {
-          status: updates.status,
-          txHash: updates.hash,
-          userOpHash: updates.userOpHash,
-          metadata: updates.metadata,
-        }),
-      ).catch(error => {
-        console.error('Failed to update activity on server:', error);
-      });
-    },
-    [user?.userId, upsertEvent, TERMINAL_STATUSES],
-  );
-
-  // Wrapper function to track transactions
-  const trackTransaction = useCallback(
-    async <T>(
-      params: CreateActivityParams,
-      executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<T>,
-    ): Promise<T> => {
-      let clientTxId: string | null = null;
-      const isSuccess = params.status === TransactionStatus.SUCCESS;
-
-      try {
-        // Execute the transaction with callback for immediate userOpHash
-        const result = await executeTransaction(async userOpHash => {
-          // Create activity IMMEDIATELY when we get userOpHash (before waiting for receipt)
-          clientTxId = await createActivity({
-            ...params,
-            userOpHash,
-          });
-        });
-
-        if ((result as any) === USER_CANCELLED_TRANSACTION) {
-          return result;
-        }
-
-        // Extract transaction data
-        const transaction =
-          result && typeof result === 'object' && 'transaction' in result
-            ? (result as any).transaction
-            : result;
-
-        if (isSuccess && !getTransactionHash(transaction)) {
-          return result;
-        }
-
-        // If activity wasn't created (no userOpHash callback), create it now
-        if (!clientTxId) {
-          clientTxId = await createActivity(params);
-        }
-
-        // Update with transaction hash when available
-        if (transaction && typeof transaction === 'object') {
-          const txHash = getTransactionHash(transaction);
-
-          if (txHash && params.chainId) {
-            // Check current status — SSE may have already delivered a terminal state
-            const currentState = useActivityStore.getState();
-            const userEvents = currentState.events[user?.userId ?? ''] || [];
-            const currentActivity = userEvents.find(a => a.clientTxId === clientTxId);
-            const currentStatus = currentActivity?.status;
-
-            const isTerminal = currentStatus ? TERMINAL_STATUSES.has(currentStatus) : false;
-
-            updateActivity(clientTxId, {
-              // Preserve terminal status if SSE already delivered it
-              status: isTerminal ? currentStatus! : params.status || TransactionStatus.PROCESSING,
-              hash: txHash,
-              url: getExplorerUrl(params.chainId, txHash),
-              metadata: {
-                submittedAt: new Date().toISOString(),
-              },
-            });
-          }
-        }
-
-        return result;
-      } catch (error: any) {
-        if (isSuccess) {
-          // If status is success, don't create failed activity
-          throw error;
-        }
-
-        // If activity was created, update it as failed
-        if (clientTxId) {
-          updateActivity(clientTxId, {
-            status: TransactionStatus.FAILED,
-            metadata: {
-              error: error?.message || 'Transaction failed',
-              failedAt: new Date().toISOString(),
-            },
-          });
-        } else {
-          // Create activity to show failure
-          const failedClientTxId = await createActivity(params);
-          updateActivity(failedClientTxId, {
-            status: TransactionStatus.FAILED,
-            metadata: {
-              error: error?.message || 'Transaction failed',
-              failedAt: new Date().toISOString(),
-            },
-          });
-        }
-
-        throw error; // Re-throw to maintain existing error handling
-      }
-    },
-    [createActivity, updateActivity, user?.userId, TERMINAL_STATUSES],
-  );
+  // Delegate action functions to useActivityActions (subscription-free).
+  // Consumers that ONLY need actions should import from '@/hooks/useActivityActions' directly.
+  const { createActivity, updateActivity, trackTransaction, getKey } = useActivityActions();
 
   return {
     activities,

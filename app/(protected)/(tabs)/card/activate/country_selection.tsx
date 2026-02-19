@@ -11,20 +11,13 @@ import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useFingerprint } from '@/hooks/useFingerprint';
 import { track } from '@/lib/analytics';
-import {
-  checkCardAccess,
-  getClientIp,
-  getCountryFromIp,
-  verifyCountryWithFingerprint,
-} from '@/lib/api';
+import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function ActivateCountrySelection() {
   const router = useRouter();
-  const { getVisitorData, isAvailable: isFingerprintAvailable } = useFingerprint();
 
   const goBack = () => {
     if (router.canGoBack()) {
