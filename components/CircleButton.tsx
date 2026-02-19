@@ -9,6 +9,7 @@ interface CircleButtonProps {
   icon: React.ComponentType<SvgProps>;
   label: string;
   onPress?: () => void;
+  disabled?: boolean;
   backgroundColor?: string;
   iconColor?: string;
   scale?: number;
@@ -19,6 +20,7 @@ const CircleButton = ({
   icon: Icon,
   label,
   onPress,
+  disabled,
   backgroundColor = 'bg-[#2C2C2C]',
   iconColor = '#ffffff',
   scale = 1,
@@ -34,7 +36,11 @@ const CircleButton = ({
   const { width, height } = getDimensions();
 
   return (
-    <Pressable className="items-center gap-2" onPress={onPress}>
+    <Pressable
+      className={cn('items-center gap-2', disabled && 'opacity-50')}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+    >
       <View className={cn('h-14 w-14 items-center justify-center rounded-full', backgroundColor)}>
         <Icon
           width={width}
