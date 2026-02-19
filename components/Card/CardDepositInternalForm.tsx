@@ -32,7 +32,7 @@ import { USDC_STARGATE } from '@/constants/addresses';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useAaveBorrowPosition } from '@/hooks/useAaveBorrowPosition';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { useBalances } from '@/hooks/useBalances';
 import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
@@ -449,7 +449,7 @@ function BorrowAndDepositButton({
 
 export default function CardDepositInternalForm() {
   const { user } = useUser();
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivityActions();
   const { setTransaction, setModal, source } = useCardDepositStore(
     useShallow(state => ({
       setTransaction: state.setTransaction,

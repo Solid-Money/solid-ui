@@ -10,7 +10,7 @@ import {
 } from '@/generated/wagmi';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { Address, encodeFunctionData } from 'viem';
 import { fuse } from 'viem/chains';
 import { useTransactionAwait } from '../useTransactionAwait';
@@ -37,7 +37,7 @@ export default function useWrapCallback(
 } {
   const chainId = fuse.id;
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const account = user?.safeAddress;
   const [wrapData, setWrapData] = useState<any>(null);
   const [unwrapData, setUnwrapData] = useState<any>(null);

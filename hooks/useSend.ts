@@ -6,7 +6,7 @@ import { encodeFunctionData, parseUnits } from 'viem/utils';
 
 import { TotpVerificationModal } from '@/components/TotpVerificationModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { track } from '@/lib/analytics';
 import { getTotpStatus, verifyTotp } from '@/lib/api';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
@@ -38,7 +38,7 @@ const useSend = ({
   tokenType,
 }: SendProps): SendResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
   const [showTotpModal, setShowTotpModal] = useState(false);

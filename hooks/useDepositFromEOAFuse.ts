@@ -7,7 +7,7 @@ import { useBalance, useBlockNumber, useChainId, useReadContract } from 'wagmi';
 
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
 import { createDeposit } from '@/lib/api';
@@ -47,7 +47,7 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
   const eoaAddress = account?.address as Address;
   const updateUser = useUserStore(state => state.updateUser);
   const srcChainId = useDepositStore(state => state.srcChainId);
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivityActions();
 
   const isFuseChain = srcChainId === fuse.id;
   const isNativeFuse = token === 'FUSE';
@@ -188,9 +188,6 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
       const amountWei = parseUnits(amount, 18);
 
       let txHash: `0x${string}` | undefined;
-      let transaction: { transactionHash: `0x${string}` } | undefined = {
-        transactionHash: '' as `0x${string}`,
-      };
       if (token === 'WFUSE') {
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
@@ -232,82 +229,88 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
 
           trackingId = await createEvent(amount, spender, token);
 
-          withRefreshToken(() =>
-            createDeposit({
-              eoaAddress,
-              amount,
-              trackingId,
-              vault: VaultType.FUSE,
-            }),
-          )
-            .then(result => {
-              if (result?.transactionHash) {
-                updateActivity(trackingId!, {
-                  status: TransactionStatus.PROCESSING,
-                  hash: result.transactionHash,
-                });
-              }
-            })
-            .catch(err => {
-              console.error('Sponsored Fuse deposit failed:', err);
+          setDepositStatus({ status: Status.PENDING, message: 'Processing deposit...' });
+
+          try {
+            const result = await withRefreshToken(() =>
+              createDeposit({
+                eoaAddress,
+                amount,
+                trackingId,
+                vault: VaultType.FUSE,
+              }),
+            );
+
+            if (result?.transactionHash) {
+              txHash = result.transactionHash as `0x${string}`;
               updateActivity(trackingId!, {
-                status: TransactionStatus.FAILED,
+                status: TransactionStatus.PROCESSING,
+                hash: result.transactionHash,
               });
+            }
+
+            setHash(txHash);
+            updateUser({
+              ...user,
+              isDeposited: true,
             });
+
+            Sentry.addBreadcrumb({
+              message: 'Deposit from EOA completed successfully',
+              category: 'deposit',
+              data: {
+                amount,
+                transactionHash: txHash,
+                eoaAddress,
+                userId: user.userId,
+                safeAddress: user.safeAddress,
+                srcChainId,
+                isSponsor,
+              },
+            });
+
+            // Track deposit success with attribution for ROI measurement
+            track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
+              user_id: user?.userId,
+              safe_address: user?.safeAddress,
+              eoa_address: eoaAddress,
+              amount,
+              transaction_hash: txHash,
+              deposit_type: 'connected_wallet',
+              deposit_method: 'fuse_direct',
+              chain_id: srcChainId,
+              chain_name: 'fuse',
+              is_sponsor: isSponsor,
+              is_first_deposit: !user?.isDeposited,
+              ...attributionData,
+              attribution_channel: attributionChannel,
+            });
+
+            trackIdentity(user?.userId, {
+              last_deposit_amount: parseFloat(amount),
+              last_deposit_date: new Date().toISOString(),
+              last_deposit_method: 'fuse_direct',
+              last_deposit_chain: 'fuse',
+              ...attributionData,
+              attribution_channel: attributionChannel,
+            });
+
+            setDepositStatus({ status: Status.SUCCESS });
+          } catch (err) {
+            console.error('Sponsored Fuse deposit failed:', err);
+            updateActivity(trackingId!, {
+              status: TransactionStatus.FAILED,
+            });
+            setDepositStatus({ status: Status.ERROR });
+            setError('Sponsored deposit failed');
+            throw err;
+          }
         } else {
           throw new Error(
             `Minimum deposit amount is ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} for Fuse deposits`,
           );
         }
 
-        txHash = transaction?.transactionHash;
-        setHash(txHash);
-        updateUser({
-          ...user,
-          isDeposited: true,
-        });
-
-        Sentry.addBreadcrumb({
-          message: 'Deposit from EOA completed successfully',
-          category: 'deposit',
-          data: {
-            amount,
-            transactionHash: txHash,
-            eoaAddress,
-            userId: user.userId,
-            safeAddress: user.safeAddress,
-            srcChainId,
-            isSponsor,
-          },
-        });
-
-        // Track deposit success with attribution for ROI measurement
-        track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-          user_id: user?.userId,
-          safe_address: user?.safeAddress,
-          eoa_address: eoaAddress,
-          amount,
-          transaction_hash: txHash,
-          deposit_type: 'connected_wallet',
-          deposit_method: 'fuse_direct',
-          chain_id: srcChainId,
-          chain_name: 'fuse',
-          is_sponsor: isSponsor,
-          is_first_deposit: !user?.isDeposited,
-          ...attributionData,
-          attribution_channel: attributionChannel,
-        });
-
-        trackIdentity(user?.userId, {
-          last_deposit_amount: parseFloat(amount),
-          last_deposit_date: new Date().toISOString(),
-          last_deposit_method: 'fuse_direct',
-          last_deposit_chain: 'fuse',
-          ...attributionData,
-          attribution_channel: attributionChannel,
-        });
-
-        setDepositStatus({ status: Status.SUCCESS });
         return trackingId;
       }
 
@@ -324,6 +327,9 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
         });
 
         await switchChain(srcChainId);
+
+        // Create a PENDING activity before submitting the transaction
+        trackingId = await createEvent(amount, spender, token);
 
         const depositValueWei = parseUnits(
           (Number(amount) - Number(EXPO_PUBLIC_FUSE_GAS_RESERVE)).toString(),
@@ -355,6 +361,14 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
           throw new Error('Transaction failed');
         }
         txHash = receipt.transactionHash;
+
+        // Update the activity to SUCCESS with transaction hash and explorer URL
+        const explorerBaseUrl = fuse.blockExplorers?.default?.url || 'https://explorer.fuse.io';
+        updateActivity(trackingId!, {
+          status: TransactionStatus.SUCCESS,
+          hash: txHash,
+          url: `${explorerBaseUrl}/tx/${txHash}`,
+        });
 
         setHash(txHash);
         updateUser({
@@ -407,6 +421,17 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
     } catch (error: any) {
       console.error(error);
       const errorMessage = error?.message || 'Unknown error';
+
+      // Update the activity to FAILED if one was created
+      if (trackingId) {
+        updateActivity(trackingId, {
+          status: TransactionStatus.FAILED,
+          metadata: {
+            error: errorMessage,
+            failedAt: new Date().toISOString(),
+          },
+        });
+      }
 
       Sentry.captureException(error, {
         tags: {

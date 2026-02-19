@@ -18,7 +18,7 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL, UNSTAKE_MODAL } from '@/constants/modals';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import useDebounce from '@/hooks/useDebounce';
 import useFastWithdraw from '@/hooks/useFastWithdraw';
 import useFastWithdrawAndBridge from '@/hooks/useFastWithdrawAndBridge';
@@ -34,7 +34,7 @@ import { useUnstakeStore } from '@/store/useUnstakeStore';
 
 const FastWithdrawForm = () => {
   const { user } = useUser();
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivityActions();
   const { setModal, setTransaction, selectedNetwork } = useUnstakeStore(
     useShallow(state => ({
       setModal: state.setModal,

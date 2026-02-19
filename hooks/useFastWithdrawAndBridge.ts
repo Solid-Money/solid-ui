@@ -1,6 +1,6 @@
 import { USDC_STARGATE } from '@/constants/addresses';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import { FastWithdrawManager_ABI } from '@/lib/abis/FastWithdrawManager';
 import { track } from '@/lib/analytics';
@@ -30,7 +30,7 @@ type BridgeResult = {
 
 const useFastWithdrawAndBridge = (): BridgeResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const [fastWithdrawStatus, setFastWithdrawStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 

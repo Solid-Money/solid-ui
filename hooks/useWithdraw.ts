@@ -7,7 +7,7 @@ import { encodeFunctionData, parseUnits } from 'viem/utils';
 import { useReadContract } from 'wagmi';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import BoringQueue_ABI from '@/lib/abis/BoringQueue';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
@@ -24,7 +24,7 @@ type WithdrawResult = {
 
 const useWithdraw = (): WithdrawResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const [withdrawStatus, setWithdrawStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 
