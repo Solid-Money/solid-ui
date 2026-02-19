@@ -21,7 +21,7 @@ import { readContract } from 'wagmi/actions';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
@@ -73,7 +73,7 @@ const useDepositFromEOA = (
   const updateUser = useUserStore(state => state.updateUser);
   const srcChainId = useDepositStore(state => state.srcChainId);
   const isEthereum = srcChainId === mainnet.id;
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivityActions();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -492,8 +492,12 @@ const useDepositFromEOA = (
             })
             .catch(err => {
               console.error('Sponsored deposit failed:', err);
+              // Don't immediately set FAILED — the on-chain tx may have succeeded
+              // even if the backend HTTP response errored (e.g. LayerZero monitoring).
+              // Keep PROCESSING and let polling/SSE determine the real status.
               updateActivity(trackingId!, {
-                status: TransactionStatus.FAILED,
+                status: TransactionStatus.PROCESSING,
+                metadata: { depositError: err?.message || 'Backend returned error' },
               });
             });
         } else {
@@ -629,8 +633,11 @@ const useDepositFromEOA = (
             })
             .catch(err => {
               console.error('Sponsored bridge deposit failed:', err);
+              // Don't immediately set FAILED — the on-chain tx may have succeeded.
+              // Keep PROCESSING and let polling/SSE determine the real status.
               updateActivity(trackingId!, {
-                status: TransactionStatus.FAILED,
+                status: TransactionStatus.PROCESSING,
+                metadata: { depositError: err?.message || 'Backend returned error' },
               });
             });
         } else {

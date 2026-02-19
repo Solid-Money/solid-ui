@@ -26,6 +26,13 @@ const MAX_CONSECUTIVE_PARSE_ERRORS = 3; // Reconnect after 3 consecutive parse e
 const HEARTBEAT_TIMEOUT_MS = 60000; // 60 seconds - if no heartbeat, assume stale
 const HEARTBEAT_CHECK_INTERVAL_MS = 30000; // Check every 30 seconds
 
+// Balance update debounce
+const BALANCE_DEBOUNCE_MS = 500; // Debounce balance invalidation by 500ms
+
+// Recovery constants (after permanent error stop)
+const RECOVERY_DELAY_MS = 60000; // Wait 60 seconds before recovery attempt
+const MAX_RECOVERY_CYCLES = 3; // Max recovery attempts before truly giving up
+
 // =============================================================================
 // SINGLETON SSE CONNECTION MANAGER
 // =============================================================================
@@ -83,6 +90,20 @@ class SSEConnectionManager {
 
   // App state tracking
   private appStateSubscription: { remove: () => void } | null = null;
+
+  // Event batching (coalesce rapid SSE events into single store update)
+  private pendingEvents: { userId: string; activity: ActivityEvent }[] = [];
+  private batchScheduled = false;
+
+  // Balance debounce
+  private balanceDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Auto-recovery (after permanent error stop)
+  private recoveryCycles = 0;
+  private recoveryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Track whether we've connected before (to detect reconnections)
+  private hasConnectedBefore = false;
 
   // User store subscription is set up lazily when first subscriber is added
   // and cleaned up when last subscriber is removed (no constructor needed)
@@ -449,26 +470,40 @@ class SSEConnectionManager {
     }
 
     const { event, activity, timestamp } = data;
-    const { upsertEvent } = useActivityStore.getState();
 
-    // Process based on event type - wrap in try-catch to prevent SSE crashes
+    console.log(`[SSE] Activity event: ${event} | clientTxId=${activity.clientTxId} | type=${activity.type} | status=${activity.status} | title=${activity.title || 'N/A'}`);
+
+    // Prepare the activity for batching instead of calling upsertEvent directly
     try {
+      let activityToQueue: ActivityEvent;
+
       switch (event) {
         case 'created':
         case 'updated':
-          upsertEvent(this.currentUserId, activity);
+          activityToQueue = activity;
           break;
 
         case 'deleted':
           // Deleted events have minimal activity payload
           // { clientTxId, deleted: true, deletedAt: Date }
-          const deletedActivity: ActivityEvent = {
+          activityToQueue = {
             ...activity,
             deleted: true,
             deletedAt: activity.deletedAt || new Date(timestamp).toISOString(),
           };
-          upsertEvent(this.currentUserId, deletedActivity);
           break;
+
+        default:
+          return;
+      }
+
+      // Push to batch instead of calling upsertEvent directly
+      this.pendingEvents.push({ userId: this.currentUserId, activity: activityToQueue });
+
+      // Schedule a microtask flush if not already scheduled
+      if (!this.batchScheduled) {
+        this.batchScheduled = true;
+        queueMicrotask(() => this.flushEventBatch());
       }
     } catch (err) {
       Sentry.captureException(err, {
@@ -479,6 +514,43 @@ class SSEConnectionManager {
 
     // Update internal state only - activity updates go to the store, not SSE state
     this.setInternalState({ lastEventTime: timestamp });
+  }
+
+  /**
+   * Flush batched activity events as a single store update.
+   * Called via queueMicrotask to coalesce events that arrive in the same tick.
+   */
+  private flushEventBatch(): void {
+    this.batchScheduled = false;
+
+    const batch = this.pendingEvents;
+    this.pendingEvents = [];
+
+    if (batch.length === 0) return;
+
+    // Group events by userId (defensive - in practice all events are for the same user)
+    const eventsByUser = new Map<string, ActivityEvent[]>();
+    for (const { userId, activity } of batch) {
+      const existing = eventsByUser.get(userId);
+      if (existing) {
+        existing.push(activity);
+      } else {
+        eventsByUser.set(userId, [activity]);
+      }
+    }
+
+    try {
+      const { bulkUpsertEvent } = useActivityStore.getState();
+      for (const [userId, events] of eventsByUser) {
+        console.log(`[SSE] Flushing ${events.length} event(s) to store for user ${userId}`);
+        bulkUpsertEvent(userId, events);
+      }
+    } catch (err) {
+      Sentry.captureException(err, {
+        tags: { type: 'sse_batch_flush_error' },
+        extra: { batchSize: batch.length },
+      });
+    }
   }
 
   /**
@@ -509,22 +581,30 @@ class SSEConnectionManager {
       return;
     }
 
-    try {
-      // Invalidate token balance queries to trigger refetch
-      queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
+    // Log for debugging
+    console.debug(`[SSE] Balance update received: ${data.balance.changeType}`);
 
-      // Invalidate vault balance queries to trigger refetch
-      // Using partial match to invalidate all vault balance variants
-      queryClient.invalidateQueries({ queryKey: ['vault'] });
-
-      // Log for debugging
-      console.debug(`[SSE] Balance update received: ${data.balance.changeType}`);
-    } catch (err) {
-      Sentry.captureException(err, {
-        tags: { type: 'sse_balance_update_error' },
-        extra: { data, userId: this.currentUserId },
-      });
+    // Debounce balance query invalidation - rapid balance events only trigger one invalidation
+    if (this.balanceDebounceTimer) {
+      clearTimeout(this.balanceDebounceTimer);
     }
+
+    this.balanceDebounceTimer = setTimeout(() => {
+      this.balanceDebounceTimer = null;
+      try {
+        // Invalidate token balance queries to trigger refetch
+        queryClient.invalidateQueries({ queryKey: ['tokenBalances'] });
+
+        // Invalidate vault balance queries to trigger refetch
+        // Using partial match to invalidate all vault balance variants
+        queryClient.invalidateQueries({ queryKey: ['vault'] });
+      } catch (err) {
+        Sentry.captureException(err, {
+          tags: { type: 'sse_balance_update_error' },
+          extra: { data, userId: this.currentUserId },
+        });
+      }
+    }, BALANCE_DEBOUNCE_MS);
 
     // Update internal state
     this.setInternalState({ lastEventTime: data.timestamp });
@@ -539,7 +619,10 @@ class SSEConnectionManager {
       return;
     }
 
-    if (!this.currentUserId) return;
+    if (!this.currentUserId) {
+      console.warn('[SSE] No userId — skipping connect');
+      return;
+    }
 
     // Abort any existing connection
     if (this.abortController) {
@@ -548,6 +631,7 @@ class SSEConnectionManager {
 
     const jwt = this.getJWTToken();
     if (!jwt) {
+      console.error('[SSE] No JWT token available — cannot connect');
       this.setState({
         connectionState: 'error',
         error: 'No authentication token available',
@@ -563,6 +647,8 @@ class SSEConnectionManager {
 
     try {
       const url = getActivityStreamUrl();
+      console.debug(`[SSE] Connecting to ${url}`);
+
       const headers: Record<string, string> = {
         Accept: 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -580,12 +666,16 @@ class SSEConnectionManager {
         credentials: 'include',
       });
 
+      console.debug(`[SSE] Response: ${response.status} ${response.statusText}`);
+
       // Check for 401 - try token refresh before failing
       if (response.status === 401) {
+        console.warn('[SSE] 401 — attempting token refresh');
         const refreshed = await this.tryRefreshTokenAndReconnect();
         if (refreshed) {
           return; // Reconnection initiated with new token
         }
+        console.error('[SSE] Token refresh failed — giving up');
         this.setState({
           connectionState: 'error',
           error: 'Authentication failed',
@@ -599,6 +689,7 @@ class SSEConnectionManager {
 
       this.reader = response.body?.getReader() ?? null;
       if (!this.reader) {
+        console.error('[SSE] response.body is null — ReadableStream not supported?');
         throw new Error('Response body is not readable');
       }
 
@@ -607,8 +698,25 @@ class SSEConnectionManager {
       this.reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
       this.consecutiveErrors = 0;
       this.consecutiveParseErrors = 0;
+      this.recoveryCycles = 0; // Reset recovery cycles on successful connection
       this.isConnecting = false;
       this.startHeartbeatMonitor();
+
+      console.debug(
+        `[SSE] Connected${this.hasConnectedBefore ? ' (reconnect)' : ' (initial)'}`,
+      );
+
+      // On reconnection (not initial connect), invalidate the activity query
+      // to catch up on any events that were missed while disconnected.
+      if (this.hasConnectedBefore) {
+        console.debug('[SSE] Reconnection detected — invalidating activity-events query');
+        try {
+          queryClient.invalidateQueries({ queryKey: ['activity-events'] });
+        } catch (_e) {
+          // Non-critical — worst case the user pulls to refresh
+        }
+      }
+      this.hasConnectedBefore = true;
 
       const decoder = new TextDecoder();
       let buffer = '';
@@ -619,6 +727,7 @@ class SSEConnectionManager {
 
         if (done) {
           // Stream ended - schedule reconnect
+          console.debug('[SSE] Stream ended — scheduling reconnect');
           this.setState({ connectionState: 'reconnecting' });
           this.scheduleReconnect();
           return;
@@ -734,6 +843,8 @@ class SSEConnectionManager {
         return;
       }
 
+      console.error(`[SSE] Connection error (attempt ${this.consecutiveErrors + 1}):`, err.message || err);
+
       // Log connection errors to Sentry
       Sentry.captureException(err, {
         tags: {
@@ -745,16 +856,20 @@ class SSEConnectionManager {
       this.consecutiveErrors++;
 
       if (this.consecutiveErrors < MAX_CONSECUTIVE_ERRORS) {
+        console.warn(`[SSE] Will retry in ${this.reconnectDelay}ms`);
         this.setState({
           connectionState: 'reconnecting',
           error: err.message || 'Connection failed',
         });
         this.scheduleReconnect();
       } else {
+        console.error(`[SSE] Max retries (${MAX_CONSECUTIVE_ERRORS}) reached — entering error state`);
         this.setState({
           connectionState: 'error',
           error: err.message || 'Connection failed',
         });
+        // Schedule auto-recovery instead of permanent death
+        this.scheduleRecovery();
       }
     } finally {
       // Release the reader lock to allow proper cleanup
@@ -789,12 +904,70 @@ class SSEConnectionManager {
   }
 
   /**
+   * Schedule a recovery attempt after permanent error stop.
+   * Limits total recovery cycles to prevent infinite loops.
+   */
+  private scheduleRecovery(): void {
+    if (this.recoveryTimeout) {
+      clearTimeout(this.recoveryTimeout);
+      this.recoveryTimeout = null;
+    }
+
+    if (this.recoveryCycles >= MAX_RECOVERY_CYCLES) {
+      Sentry.captureMessage('SSE: Max recovery cycles exhausted, giving up', {
+        level: 'error',
+        tags: { type: 'sse_recovery_exhausted' },
+        extra: { recoveryCycles: this.recoveryCycles },
+      });
+      return;
+    }
+
+    this.recoveryCycles++;
+    this.recoveryTimeout = setTimeout(() => {
+      this.recoveryTimeout = null;
+      this.attemptRecovery();
+    }, RECOVERY_DELAY_MS);
+  }
+
+  /**
+   * Attempt to recover the SSE connection after it was permanently stopped.
+   * Resets error counters and tries to reconnect.
+   */
+  private attemptRecovery(): void {
+    if (!this.currentUserId || this.state.connectionState !== 'error') {
+      return;
+    }
+
+    this.consecutiveErrors = 0;
+    this.reconnectDelay = INITIAL_RECONNECT_DELAY_MS;
+
+    this.setState({
+      connectionState: 'reconnecting',
+      error: null,
+    });
+
+    this.connect();
+  }
+
+  /**
    * Disconnect from SSE stream
    */
   disconnect(): void {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
+    }
+
+    // Clear recovery timeout
+    if (this.recoveryTimeout) {
+      clearTimeout(this.recoveryTimeout);
+      this.recoveryTimeout = null;
+    }
+
+    // Clear balance debounce timer
+    if (this.balanceDebounceTimer) {
+      clearTimeout(this.balanceDebounceTimer);
+      this.balanceDebounceTimer = null;
     }
 
     if (this.abortController) {
@@ -810,6 +983,11 @@ class SSEConnectionManager {
         // Reader may already be released or closed, ignore
       }
       this.reader = null;
+    }
+
+    // Flush any pending batched events before disconnecting
+    if (this.pendingEvents.length > 0) {
+      this.flushEventBatch();
     }
 
     // NOTE: Don't remove appStateSubscription here - it needs to persist
@@ -858,9 +1036,12 @@ class SSEConnectionManager {
           }
         }
 
-        // App going to background - disconnect
+        // App going to background - disconnect (native only, not web)
+        // On web, switching tabs triggers 'inactive' but we want to keep SSE alive
         if (nextAppState.match(/inactive|background/) && lastAppState === 'active') {
-          this.disconnect();
+          if (Platform.OS === 'ios' || Platform.OS === 'android') {
+            this.disconnect();
+          }
         }
 
         lastAppState = nextAppState;
@@ -912,6 +1093,9 @@ interface UseActivitySSEReturn {
  * - Proper cleanup via AbortController
  * - JWT token refresh on 401 errors
  * - Heartbeat detection for stale connection monitoring
+ * - Microtask batching for activity events (single store update per tick)
+ * - Debounced balance query invalidation (500ms)
+ * - Auto-recovery after permanent error stop (60s delay, max 3 cycles)
  */
 export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivitySSEReturn {
   const { enabled = true, subscribe = true } = options;

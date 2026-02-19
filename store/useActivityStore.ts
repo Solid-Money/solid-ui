@@ -24,15 +24,19 @@ function isValidActivity(activity: unknown): activity is ActivityEvent {
 
 /**
  * Status priority for downgrade protection.
- * Terminal states (SUCCESS, FAILED, etc.) must never be overwritten by
- * non-terminal states (PENDING, PROCESSING).
+ * SUCCESS is the highest priority — once a transaction succeeds, no other
+ * status (including FAILED from a stale .catch() or backend race) can
+ * overwrite it.  Other terminal states sit at priority 2 and are protected
+ * from non-terminal (PENDING / PROCESSING) overwrites.
  */
 const STATUS_PRIORITY: Record<string, number> = {
   [TransactionStatus.PENDING]: 0,
   [TransactionStatus.PROCESSING]: 1,
-  [TransactionStatus.SUCCESS]: 2,
   [TransactionStatus.FAILED]: 2,
   [TransactionStatus.REFUNDED]: 2,
+  [TransactionStatus.CANCELLED]: 2,
+  [TransactionStatus.EXPIRED]: 2,
+  [TransactionStatus.SUCCESS]: 3,
 };
 
 function isStatusDowngrade(existingStatus: string, incomingStatus: string): boolean {

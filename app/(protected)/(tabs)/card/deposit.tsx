@@ -10,7 +10,7 @@ import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useSend from '@/hooks/useSend';
 import useUser from '@/hooks/useUser';
@@ -24,7 +24,7 @@ const DepositToCard = () => {
   const router = useRouter();
   const { ethereumTokens } = useWalletTokens();
   const { data: cardDetails } = useCardDetails();
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivityActions();
   const { user } = useUser();
   const [amount, setAmount] = useState('');
   const [selectedToken, setSelectedToken] = useState<TokenBalance | null>(null);

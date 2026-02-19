@@ -20,7 +20,7 @@ import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
@@ -36,7 +36,7 @@ export default function CardDepositExternalForm() {
   const account = useActiveAccount();
   const switchChain = useSwitchActiveWalletChain();
   const { user } = useUser();
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivityActions();
   const { setTransaction, setModal } = useCardDepositStore(
     useShallow(state => ({
       setTransaction: state.setTransaction,

@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Text } from '@/components/ui/text';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityRefresh } from '@/hooks/useActivityRefresh';
 import { ActivityTab } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -35,8 +35,7 @@ const ActivityTabs = () => {
   const translateX = useSharedValue(0);
   const width = useSharedValue(0);
   const isMountedRef = useRef(true);
-  const { refetchAll, isSyncing, activityEvents } = useActivity();
-  const { isLoading } = activityEvents;
+  const { refetchAll, isSyncing, isLoading } = useActivityRefresh();
 
   // Keep ref in sync with state
   useEffect(() => {

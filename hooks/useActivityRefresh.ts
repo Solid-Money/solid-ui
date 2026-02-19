@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 
 import { useSyncActivities } from '@/hooks/useSyncActivities';
 import useUser from '@/hooks/useUser';
+import { useActivityStore } from '@/store/useActivityStore';
 
 /**
  * Lightweight hook for activity refresh functionality.
@@ -26,6 +27,13 @@ export function useActivityRefresh() {
 
   const { sync: syncFromBackend, isSyncing, isStale: isSyncStale } = useSyncActivities(syncOptions);
 
+  // Derive isLoading: true when syncing AND no cached events (first load).
+  // Narrow selector avoids re-rendering on every event change.
+  const hasEvents = useActivityStore(
+    state => !!(user?.userId && state.events[user.userId]?.length),
+  );
+  const isLoading = isSyncing && !hasEvents;
+
   const refetchAll = useCallback(
     (force = false) => {
       if (!user?.userId || isSyncing) return;
@@ -41,5 +49,6 @@ export function useActivityRefresh() {
     refetchAll,
     isSyncing,
     isSyncStale,
+    isLoading,
   };
 }

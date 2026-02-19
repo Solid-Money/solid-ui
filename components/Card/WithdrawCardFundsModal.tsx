@@ -1,20 +1,19 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import SlotTrigger from '@/components/SlotTrigger';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { Image } from 'expo-image';
+import { useCardDetails } from '@/hooks/useCardDetails';
+import { useDimension } from '@/hooks/useDimension';
+import { useWithdrawCardToSafe } from '@/hooks/useWithdrawCardToSafe';
 import { getAsset } from '@/lib/assets';
+import { formatUSD } from '@/lib/utils';
 
 import { WithdrawCardFundsModalProps } from './WithdrawCardFundsModal.types';
-import { useDimension } from '@/hooks/useDimension';
-import { useCardDetails } from '@/hooks/useCardDetails';
-import { useWithdrawCardToSafe } from '@/hooks/useWithdrawCardToSafe';
-import { Alert } from 'react-native';
-import { formatUSD } from '@/lib/utils';
 
 export default function WithdrawCardFundsModal({
   isOpen: propsIsOpen,
@@ -118,7 +117,7 @@ export default function WithdrawCardFundsModal({
 
               {/* Upgrade Message */}
               <Text className="mb-4 text-center text-3xl font-semibold text-white">
-                We're upgrading{'\n'}our card services!
+                We&apos;re upgrading{'\n'}our card services!
               </Text>
 
               <Text

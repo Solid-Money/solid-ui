@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
 import { SwapCallbackState } from '@/lib/types/swap-state';
@@ -21,7 +21,7 @@ export function useVoltageSwapCallback(
   successInfo?: TransactionSuccessInfo,
 ) {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivity();
+  const { trackTransaction } = useActivityActions();
   const queryClient = useQueryClient();
   const { needAllowance, approvalConfig } = useApproveCallbackFromVoltageTrade(
     trade,
