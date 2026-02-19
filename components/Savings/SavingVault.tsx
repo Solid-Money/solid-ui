@@ -7,16 +7,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Address } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import { Text } from '@/components/ui/text';
 import { VAULTS } from '@/constants/vaults';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
-import useUser from '@/hooks/useUser';
-import { useVaultBalance } from '@/hooks/useVault';
-import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
+import { useVaultTotalValue } from '@/hooks/useVaultTotalValue';
 import { getAsset } from '@/lib/assets';
 import { Vault } from '@/lib/types';
 import { compactNumberFormat } from '@/lib/utils';
@@ -42,7 +39,6 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
       setSelectedVault: state.setSelectedVault,
     })),
   );
-  const { user } = useUser();
   const { maxAPY } = useMaxAPY(vault.type);
   const { isScreenMedium } = useDimension();
   const vaultIndex = VAULTS.findIndex(v => v.name === vault.name);
@@ -51,10 +47,7 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
   const gapHeight = isScreenMedium ? 12 : 0;
   const iconSizeSelected = isScreenMedium ? 53 : 28;
 
-  const { data: vaultTokenBalance } = useVaultBalance(user?.safeAddress as Address, vault);
-  const { data: exchangeRate } = useVaultExchangeRate(vault.name);
-  const vaultBalance =
-    vaultTokenBalance !== undefined ? vaultTokenBalance * (exchangeRate ?? 1) : undefined;
+  const { data: vaultBalance } = useVaultTotalValue(vault);
 
   const progress = useSharedValue(isSelected ? 1 : 0);
 
