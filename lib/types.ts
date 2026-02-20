@@ -125,6 +125,9 @@ export interface CardWithdrawalResponse {
     tx_hash?: string;
     gas_fee?: { amount: string; currency: string };
   };
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
   client_note?: string;
   type?: 'top_up_balance_withdrawal' | 'fee';
 }

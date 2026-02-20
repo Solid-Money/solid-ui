@@ -17,8 +17,9 @@ export const useWithdrawCardToSafe = () => {
       await withdrawCardToSafeAddress({ amount, clientNote });
       setStatus(Status.SUCCESS);
 
-      // Invalidate card details to refresh balance
+      // Invalidate card details to refresh balance and withdrawals list
       queryClient.invalidateQueries({ queryKey: ['cardDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['cardWithdrawals'] });
     } catch (err: any) {
       console.error('Withdrawal error:', err);
       const message = err?.message || 'Withdrawal failed';
