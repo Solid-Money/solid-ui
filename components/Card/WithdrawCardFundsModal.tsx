@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, View } from 'react-native';
+import { ActivityIndicator, Alert, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import NeedHelp from '@/components/NeedHelp';
@@ -8,6 +8,7 @@ import SlotTrigger from '@/components/SlotTrigger';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useDimension } from '@/hooks/useDimension';
 import { useWithdrawCardToSafe } from '@/hooks/useWithdrawCardToSafe';
 import { getAsset } from '@/lib/assets';
@@ -26,6 +27,16 @@ export default function WithdrawCardFundsModal({
   const onOpenChange = propsOnOpenChange !== undefined ? propsOnOpenChange : setInternalIsOpen;
 
   const [showSuccess, setShowSuccess] = React.useState(false);
+
+  const { data: withdrawalsData, isLoading: isWithdrawalsLoading } = useCardWithdrawals({
+    limit: 10,
+  });
+
+  const pendingWithdrawal = React.useMemo(() => {
+    return withdrawalsData?.data?.find(w => w.status !== 'completed' && w.status !== 'failed');
+  }, [withdrawalsData]);
+
+  const hasPendingWithdrawal = !!pendingWithdrawal;
 
   // Reset success state when modal closes
   React.useEffect(() => {
@@ -59,6 +70,8 @@ export default function WithdrawCardFundsModal({
     onOpenChange(true);
   };
 
+  const isPendingState = showSuccess || hasPendingWithdrawal;
+
   return (
     <>
       {trigger && <SlotTrigger onPress={handleTriggerPress}>{trigger}</SlotTrigger>}
@@ -72,7 +85,14 @@ export default function WithdrawCardFundsModal({
         contentKey="card-upgrade"
       >
         <View className="items-center px-4">
-          {showSuccess ? (
+          {isWithdrawalsLoading ? (
+            <View className="flex-1 items-center justify-center py-20">
+              <ActivityIndicator size="large" color="#94F27F" />
+              <Text className="mt-4 text-center text-base text-white/70">
+                Checking pending withdrawals...
+              </Text>
+            </View>
+          ) : isPendingState ? (
             <>
               {/* Success Icon/Image */}
               <View className="mb-4 mt-12 items-center justify-center">
@@ -85,7 +105,9 @@ export default function WithdrawCardFundsModal({
 
               {/* Success Message */}
               <Text className="mb-4 text-center text-3xl font-semibold text-white">
-                Withdraw request{'\n'}has been created!
+                {showSuccess
+                  ? `Withdraw request\nhas been created!`
+                  : `Withdraw request\nis pending!`}
               </Text>
 
               <Text
@@ -124,23 +146,34 @@ export default function WithdrawCardFundsModal({
                 className={`${isScreenMedium ? 'mb-32' : 'mb-48'} text-center text-base text-white/70`}
               >
                 As part of a move to a new and improved vendor we are requiring all the card users
-                to withdraw their funds from the card
+                to withdraw their funds from the card.
               </Text>
 
               {/* Withdraw Button */}
-              <Button
-                variant="brand"
-                size="lg"
-                onPress={handleWithdrawPress}
-                disabled={isWithdrawing || parseFloat(availableBalance) <= 0}
-                className="w-full rounded-xl"
-              >
-                <Text className="text-base font-bold text-black">
-                  {isWithdrawing
-                    ? 'Withdrawing...'
-                    : `Withdraw ${formatUSD(parseFloat(availableBalance))}`}
-                </Text>
-              </Button>
+              {parseFloat(availableBalance) >= 1 ? (
+                <Button
+                  variant="brand"
+                  size="lg"
+                  onPress={handleWithdrawPress}
+                  disabled={isWithdrawing}
+                  className="w-full rounded-xl"
+                >
+                  <Text className="text-base font-bold text-black">
+                    {isWithdrawing
+                      ? 'Withdrawing...'
+                      : `Withdraw ${formatUSD(parseFloat(availableBalance))}`}
+                  </Text>
+                </Button>
+              ) : (
+                <Button
+                  variant="brand"
+                  size="lg"
+                  onPress={() => onOpenChange(false)}
+                  className="w-full rounded-xl"
+                >
+                  <Text className="text-base font-bold text-black">Done</Text>
+                </Button>
+              )}
             </>
           )}
 
