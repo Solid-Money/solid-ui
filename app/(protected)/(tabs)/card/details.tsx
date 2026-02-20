@@ -28,6 +28,7 @@ import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardWithdrawAllowed } from '@/hooks/useCardWithdrawAllowed';
+import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
@@ -40,6 +41,9 @@ export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
   const { isScreenMedium } = useDimension();
   const isWithdrawAllowed = useCardWithdrawAllowed();
+
+  useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
+
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
   const [isLoadingCardDetails, setIsLoadingCardDetails] = useState(false);
