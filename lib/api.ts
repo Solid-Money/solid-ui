@@ -62,6 +62,7 @@ import {
   HistoricalAPYPoint,
   HoldingFundsPointsMultiplierConfig,
   KycLink,
+  KycLinkAgreements,
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
   LayerZeroTransaction,
@@ -71,6 +72,9 @@ import {
   LifiStatusResponse,
   Points,
   PromotionsBannerResponse,
+  ProvisioningSessionRequest,
+  ProvisioningSessionResponse,
+  RainConsumerType,
   RewardsUserData,
   SearchCoin,
   SourceDepositInstructions,
@@ -90,6 +94,10 @@ import {
   VaultType,
   VerifyCountryRequest,
   VerifyCountryResponse,
+  MppCredentialsResponse,
+  ExtensionCardsResponse,
+  WalletEligibilityResponse,
+  WebProvisioningTokenResponse,
   WebhookStatus,
   WhatsNew,
   WithdrawCollateralRequest,
@@ -353,8 +361,21 @@ export const createKycLink = async (
   email: string,
   redirectUri: string,
   endorsements: string[],
+  agreements?: KycLinkAgreements,
+  consumerType?: RainConsumerType,
 ): Promise<KycLink> => {
   const jwt = getJWTToken();
+
+  const body: Record<string, unknown> = {
+    fullName,
+    email,
+    redirectUri,
+    endorsements,
+  };
+  if (agreements != null) {
+    body.agreements = agreements;
+    if (consumerType != null) body.consumerType = consumerType;
+  }
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/link`, {
     method: 'POST',
@@ -364,12 +385,7 @@ export const createKycLink = async (
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
     credentials: 'include',
-    body: JSON.stringify({
-      fullName,
-      email,
-      redirectUri,
-      endorsements,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) throw response;
@@ -615,6 +631,112 @@ export const getCardContracts = async (): Promise<RainContractResponseDto[]> => 
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain MPP: GET wallet eligibility for push provisioning. Throw Response on non-OK. */
+export const getWalletEligibility = async (): Promise<WalletEligibilityResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/eligibility`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain MPP: GET card credentials for MppCardDataParameters. Throw Response on non-OK. */
+export const getMppCredentials = async (): Promise<MppCredentialsResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/mpp-credentials`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain Web Provisioning: POST get token for Apple Pay web provisioning (jwtResolverCallback). */
+export const getWebProvisioningToken = async (): Promise<WebProvisioningTokenResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/web-provisioning-token`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({}),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Wallet Extension: GET cards for Issuer Non-UI Extension (auth via Bearer token from App Group). */
+export const getExtensionCards = async (bearerToken: string): Promise<ExtensionCardsResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/extension-cards`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        Authorization: `Bearer ${bearerToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain MPP: POST create provisioning session (if backend/MeaWallet require it). Throw Response on non-OK. */
+export const createProvisioningSession = async (
+  body: ProvisioningSessionRequest = {},
+): Promise<ProvisioningSessionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/provisioning-session`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
     },
   );
 

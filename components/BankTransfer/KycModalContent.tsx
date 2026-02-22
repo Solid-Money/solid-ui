@@ -13,7 +13,6 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { createKycLink } from '@/lib/api';
-import { EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID, isProduction } from '@/lib/config';
 import { withRefreshToken } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -106,7 +105,12 @@ const BankTransferKycInfoModal = () => {
     const endorsements = kyc.endorsement ? [kyc.endorsement] : [];
 
     const newKycLink = await withRefreshToken(() =>
-      createKycLink(data.fullName.trim(), data.email.trim(), redirectUrl, endorsements),
+      createKycLink(
+        data.fullName.trim(),
+        data.email.trim(),
+        redirectUrl,
+        endorsements,
+      ),
     );
 
     if (!newKycLink) throw new Error('Failed to create KYC link');
@@ -226,17 +230,7 @@ const BankTransferKycFrameModal = () => {
 
     const run = async () => {
       try {
-        const { options: rawOptions, redirectUri } = parseKycUrlToOptions(url);
-
-        const sandboxEnvId =
-          !isProduction && EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID
-            ? EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID
-            : undefined;
-
-        const options = {
-          ...rawOptions,
-          environmentId: sandboxEnvId ?? rawOptions.environmentId,
-        };
+        const { options, redirectUri } = parseKycUrlToOptions(url);
 
         // Track parsed URL details for debugging
         track(TRACKING_EVENTS.DEPOSIT_BANK_KYC_PARSED, {

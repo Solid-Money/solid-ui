@@ -255,6 +255,19 @@ export type TokenPriceUsd = {
   }[];
 };
 
+export enum RainConsumerType {
+  US = 'us',
+  INTERNATIONAL = 'international',
+}
+
+export type KycLinkAgreements = {
+  agreedToEsign: boolean;
+  agreedToTerms: boolean;
+  agreedToAccountOpeningPrivacy?: boolean;
+  agreedToCertify: boolean;
+  agreedToNoSolicitation: boolean;
+};
+
 export type KycLink = {
   kycLinkId: string;
   link: string;
