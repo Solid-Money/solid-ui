@@ -33,10 +33,11 @@ export function useActivateCard() {
     cardStatusResponse?.activationBlockedReason ||
     'There was an issue activating your card. Please contact support.';
 
-  // Country check logic - always check country (activation is disabled)
-  // Never skip the country check, even if user has a card
-  const { checkingCountry } = useCountryCheck({ skip: false });
-  const isCheckingCountry = checkingCountry;
+  // Country check logic
+  const userHasCard = !!cardStatus;
+  const skipCountryCheck = countryConfirmed === 'true' || userHasCard;
+  const { checkingCountry } = useCountryCheck({ skip: skipCountryCheck });
+  const isCheckingCountry = !skipCountryCheck && checkingCountry;
 
   // Card steps
   const {

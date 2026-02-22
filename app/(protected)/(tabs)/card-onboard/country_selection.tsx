@@ -249,8 +249,33 @@ export default function CountrySelection() {
     if (selectedCountry) {
       setProcessingWaitlist(true);
       try {
-        // Always show country as unavailable - no matter which country is selected
-        // This ensures users see the "country not available" message
+        // Step 2: Check card access via backend API
+        const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
+
+        if (!accessCheck) throw new Error('Failed to check card access');
+
+        const updatedCountryInfo = {
+          countryCode: selectedCountry.code,
+          countryName: selectedCountry.name,
+          isAvailable: accessCheck.hasAccess,
+          source: 'manual' as const,
+        };
+
+        setCountryInfo(updatedCountryInfo);
+        setCountryDetectionFailed(false);
+
+        if (accessCheck.hasAccess) {
+          router.push({
+            pathname: '/card/activate',
+            params: { countryConfirmed: 'true' },
+          });
+          return;
+        }
+
+        setShowCountrySelector(false);
+        setNotifyClicked(false);
+      } catch (error) {
+        console.error('Error checking card access:', error);
         const unavailableCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
@@ -258,11 +283,7 @@ export default function CountrySelection() {
           source: 'manual' as const,
         };
 
-        // Update store with unavailable status
         setCountryInfo(unavailableCountryInfo);
-        setCountryDetectionFailed(false);
-
-        // Show the unavailable message
         setShowCountrySelector(false);
         setNotifyClicked(false);
       } finally {
