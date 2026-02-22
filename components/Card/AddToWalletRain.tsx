@@ -60,11 +60,19 @@ export default function AddToWalletRain({ trigger, isOpen, onOpenChange }: AddTo
   const alreadyGoogle = eligibility?.alreadyInGoogleWallet ?? false;
 
   const appleMppAvailable = useMemo(
-    () => Platform.OS === 'ios' && MeaPushProvisioning != null && MppCardDataParameters != null,
+    () =>
+      Platform.OS === 'ios' &&
+      MeaPushProvisioning != null &&
+      !(MeaPushProvisioning as { __stub?: boolean }).__stub &&
+      MppCardDataParameters != null,
     [],
   );
   const googleMppAvailable = useMemo(
-    () => Platform.OS === 'android' && MeaPushProvisioning != null && MppCardDataParameters != null,
+    () =>
+      Platform.OS === 'android' &&
+      MeaPushProvisioning != null &&
+      !(MeaPushProvisioning as { __stub?: boolean }).__stub &&
+      MppCardDataParameters != null,
     [],
   );
 
