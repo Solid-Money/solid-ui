@@ -14,31 +14,36 @@ import { cn, hasCard } from '@/lib/utils';
 export default function Activity() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.ACTIVITY_SCREEN });
 
-  const { data: cardStatus } = useCardStatus();
+  const { data: cardStatus, isLoading: isCardStatusLoading } = useCardStatus();
   // Use lightweight hook to avoid re-renders from activity data changes
   const { refetchAll, isSyncing } = useActivityRefresh();
   const isWeb = Platform.OS === 'web';
   const userHasCard = hasCard(cardStatus);
 
+  const stickyHeader = (
+    <View className="mx-auto w-full max-w-7xl px-4 pb-[10px] pt-6 md:pt-12">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-3xl font-semibold">Activity</Text>
+
+        {/* Web-only refresh button (pull-to-refresh doesn't work on web) */}
+        {isWeb && !userHasCard && (
+          <ActivityRefreshButton
+            onRefresh={refetchAll}
+            isSyncing={isSyncing}
+            isLoading={isSyncing}
+          />
+        )}
+      </View>
+    </View>
+  );
+
   return (
-    <PageLayout>
+    <PageLayout isLoading={isCardStatusLoading} stickyHeader={stickyHeader}>
       <View
-        className={cn('mx-auto w-full max-w-7xl px-4 pb-8 pt-6 md:py-12', {
+        className={cn('mx-auto w-full max-w-7xl px-4 pb-8 md:pb-12', {
           'flex-1': !isWeb,
         })}
       >
-        <View className="flex-row items-center justify-between">
-          <Text className="text-3xl font-semibold">Activity</Text>
-
-          {/* Web-only refresh button (pull-to-refresh doesn't work on web) */}
-          {isWeb && !userHasCard && (
-            <ActivityRefreshButton
-              onRefresh={refetchAll}
-              isSyncing={isSyncing}
-              isLoading={isSyncing}
-            />
-          )}
-        </View>
         {userHasCard ? <ActivityTabs /> : <ActivityTransactions tab={ActivityTab.WALLET} />}
       </View>
       {/* Hidden modal that responds to store state changes from activity clicks */}
