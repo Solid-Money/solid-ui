@@ -62,6 +62,7 @@ import {
   HistoricalAPYPoint,
   HoldingFundsPointsMultiplierConfig,
   KycLink,
+  KycLinkAgreements,
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
   LayerZeroTransaction,
@@ -73,6 +74,7 @@ import {
   PromotionsBannerResponse,
   ProvisioningSessionRequest,
   ProvisioningSessionResponse,
+  RainConsumerType,
   RewardsUserData,
   SearchCoin,
   SourceDepositInstructions,
@@ -359,8 +361,21 @@ export const createKycLink = async (
   email: string,
   redirectUri: string,
   endorsements: string[],
+  agreements?: KycLinkAgreements,
+  consumerType?: RainConsumerType,
 ): Promise<KycLink> => {
   const jwt = getJWTToken();
+
+  const body: Record<string, unknown> = {
+    fullName,
+    email,
+    redirectUri,
+    endorsements,
+  };
+  if (agreements != null) {
+    body.agreements = agreements;
+    if (consumerType != null) body.consumerType = consumerType;
+  }
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/link`, {
     method: 'POST',
@@ -370,12 +385,7 @@ export const createKycLink = async (
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
     credentials: 'include',
-    body: JSON.stringify({
-      fullName,
-      email,
-      redirectUri,
-      endorsements,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) throw response;

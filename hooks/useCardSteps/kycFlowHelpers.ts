@@ -2,7 +2,7 @@ import Toast from 'react-native-toast-message';
 import { Router } from 'expo-router';
 
 import { Endorsements } from '@/components/BankTransfer/enums';
-import { KycMode } from '@/components/UserKyc';
+import { KycMode, RainConsumerType } from '@/components/UserKyc';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
@@ -154,18 +154,23 @@ export async function redirectToExistingCustomerKycLink(
 
 /**
  * Redirect to collect user info for new KYC
+ * @param countryCode
  */
-export function redirectToCollectUserInfo(router: Router): void {
+export function redirectToCollectUserInfo(router: Router, countryCode?: string): void {
   const redirectUri = buildKycRedirectUri();
+  const consumerType =
+    countryCode?.toUpperCase() === 'US' ? RainConsumerType.US : RainConsumerType.INTERNATIONAL;
   const params = new URLSearchParams({
     kycMode: KycMode.CARD,
     endorsement: Endorsements.CARDS,
     redirectUri,
+    consumerType,
   }).toString();
 
   track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
     action: 'redirect',
     method: 'collect_user_info',
+    consumerType,
   });
   router.push(`/user-kyc-info?${params}`);
 }

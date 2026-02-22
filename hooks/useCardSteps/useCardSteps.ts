@@ -210,7 +210,7 @@ export function useCardSteps(
 
     // Try to get a fresh KYC URL with redirect_uri, or fall back to user info collection
     if (await redirectToExistingCustomerKycLink(router, kycLinkId)) return;
-    redirectToCollectUserInfo(router);
+    redirectToCollectUserInfo(router, countryStore.countryInfo?.countryCode);
   }, [
     router,
     kycLinkId,
