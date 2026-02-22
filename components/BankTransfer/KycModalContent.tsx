@@ -105,12 +105,7 @@ const BankTransferKycInfoModal = () => {
     const endorsements = kyc.endorsement ? [kyc.endorsement] : [];
 
     const newKycLink = await withRefreshToken(() =>
-      createKycLink(
-        data.fullName.trim(),
-        data.email.trim(),
-        redirectUrl,
-        endorsements,
-      ),
+      createKycLink(data.fullName.trim(), data.email.trim(), redirectUrl, endorsements),
     );
 
     if (!newKycLink) throw new Error('Failed to create KYC link');

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 
@@ -7,14 +7,25 @@ import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { submitPersonaKyc } from '@/lib/api';
+import { personaSimulateAction, submitPersonaKyc } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
+import { isProduction } from '@/lib/config';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useKycStore } from '@/store/useKycStore';
 
 import type { ClientOptions } from 'persona';
+
+const PERSONA_SIMULATE_ACTIONS = [
+  { value: 'approve_inquiry', label: 'Approve inquiry' },
+  { value: 'complete_inquiry', label: 'Complete inquiry' },
+  { value: 'fail_inquiry', label: 'Fail inquiry' },
+  { value: 'decline_inquiry', label: 'Decline inquiry' },
+  { value: 'mark_for_review_inquiry', label: 'Mark for review' },
+  { value: 'create_passed_verification', label: 'Create passed verification' },
+  { value: 'create_failed_verification', label: 'Create failed verification' },
+] as const;
 
 export type KycParams = {
   onSuccess?: () => void;
@@ -36,9 +47,17 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
   const setRainKycStatus = useKycStore(state => state.setRainKycStatus);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentInquiryId, setCurrentInquiryId] = useState<string | null>(null);
+  const [simulateInquiryId, setSimulateInquiryId] = useState('');
+  const [simulateAction, setSimulateAction] = useState<string>(PERSONA_SIMULATE_ACTIONS[0].value);
+  const [simulateLoading, setSimulateLoading] = useState(false);
+  const [simulateError, setSimulateError] = useState<string | null>(null);
+  const setInquiryIdRef = useRef<(id: string | null) => void>(() => {});
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const isRainMode = mode === 'rain' && paramTemplateId; // route param string, not CardProvider
+
+  setInquiryIdRef.current = setCurrentInquiryId;
 
   // Parse the provided KYC link into Persona Client options
   const parseKycUrlToOptions = (
@@ -168,7 +187,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           host: (options as any).host ?? null,
           onLoad: null,
           onEvent: (name: string, meta: any) => {
-            // Track Persona KYC step progression
+            if (meta?.inquiryId) setInquiryIdRef.current(meta.inquiryId);
             if (name === 'start') {
               track(TRACKING_EVENTS.KYC_STEP_STARTED, {
                 step_name: meta?.name || 'unknown',
@@ -191,6 +210,7 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
             setLoading(false);
           },
           onComplete: async ({ inquiryId: completedInquiryId, status }) => {
+            if (completedInquiryId) setInquiryIdRef.current(completedInquiryId);
             const attributionData = useAttributionStore.getState().getAttributionForEvent();
             const attributionChannel = getAttributionChannel(attributionData);
 
@@ -289,6 +309,26 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
     url,
   ]);
 
+  const handleSimulate = async () => {
+    const inquiryId = simulateInquiryId.trim() || currentInquiryId;
+    if (!inquiryId) {
+      setSimulateError('Enter or paste an inquiry ID');
+      return;
+    }
+    setSimulateError(null);
+    setSimulateLoading(true);
+    try {
+      await personaSimulateAction(inquiryId, simulateAction);
+      setSimulateError(null);
+    } catch (e: any) {
+      setSimulateError(e?.message ?? 'Simulate failed');
+    } finally {
+      setSimulateLoading(false);
+    }
+  };
+
+  const showSimulatePanel = !isProduction && Platform.OS === 'web';
+
   return (
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 pt-8">
@@ -304,6 +344,46 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
           </Text>
           <View style={{ width: 40 }} />
         </View>
+
+        {showSimulatePanel && (
+          <View style={styles.simulatePanel}>
+            <Text style={styles.simulatePanelTitle}>Simulate (sandbox only)</Text>
+            <Text style={styles.simulateLabel}>Inquiry ID</Text>
+            <TextInput
+              style={styles.simulateInput}
+              value={simulateInquiryId}
+              onChangeText={setSimulateInquiryId}
+              placeholder={currentInquiryId ?? 'Paste from Persona dashboard'}
+              placeholderTextColor="#888"
+            />
+            <Text style={styles.simulateLabel}>Action</Text>
+            <View style={styles.simulateSelectRow}>
+              {Platform.OS === 'web' && typeof document !== 'undefined' && (
+                <select
+                  value={simulateAction}
+                  onChange={e => setSimulateAction((e.target as HTMLSelectElement).value)}
+                  style={styles.simulateSelect as any}
+                >
+                  {PERSONA_SIMULATE_ACTIONS.map(a => (
+                    <option key={a.value} value={a.value}>
+                      {a.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <Pressable
+                onPress={handleSimulate}
+                disabled={simulateLoading}
+                style={[styles.simulateButton, simulateLoading && styles.simulateButtonDisabled]}
+              >
+                <Text style={styles.simulateButtonText} className="text-black">
+                  {simulateLoading ? 'Simulating…' : 'Simulate'}
+                </Text>
+              </Pressable>
+            </View>
+            {simulateError && <Text style={styles.simulateError}>{simulateError}</Text>}
+          </View>
+        )}
 
         <View style={styles.inlineContainer}>
           {loading && (
@@ -352,5 +432,65 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginTop: 40,
     marginBottom: 140,
+  },
+  simulatePanel: {
+    marginTop: 16,
+    marginHorizontal: 24,
+    padding: 12,
+    backgroundColor: 'rgba(68, 65, 65, 0.3)',
+    borderRadius: 8,
+  },
+  simulatePanelTitle: {
+    fontSize: 12,
+    color: '#94F27F',
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  simulateLabel: {
+    fontSize: 12,
+    color: '#ACACAC',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  simulateInput: {
+    backgroundColor: '#333',
+    color: '#fff',
+    padding: 8,
+    borderRadius: 4,
+    fontSize: 14,
+  },
+  simulateSelectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  simulateSelect: {
+    flex: 1,
+    backgroundColor: '#333',
+    color: '#fff',
+    padding: 8,
+    borderRadius: 4,
+    fontSize: 14,
+    minHeight: 40,
+  },
+  simulateButton: {
+    backgroundColor: '#94F27F',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  simulateButtonDisabled: {
+    opacity: 0.6,
+  },
+  simulateButtonText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  simulateError: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#f87171',
   },
 });

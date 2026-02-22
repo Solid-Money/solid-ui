@@ -458,6 +458,35 @@ export const submitPersonaKyc = async (
   return response.json();
 };
 
+/**
+ * Persona sandbox: perform simulate action (e.g. approve_inquiry).
+ * Backend should proxy to Persona. Only for non-production.
+ */
+export const personaSimulateAction = async (
+  inquiryId: string,
+  action: string,
+): Promise<{ ok: boolean }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/persona/simulate`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ inquiryId, action }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 // The backend retrieves the customer by querying the database
 export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
   const jwt = getJWTToken();

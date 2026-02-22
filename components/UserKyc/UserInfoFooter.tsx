@@ -79,11 +79,7 @@ export function UserInfoFooter({
   return (
     <View className="space-y-6">
       {isCard && (
-        <CheckboxRow
-          control={control}
-          name="agreedToEsign"
-          error={errors.agreedToEsign?.message}
-        >
+        <CheckboxRow control={control} name="agreedToEsign" error={errors.agreedToEsign?.message}>
           I accept the{' '}
           <Underline
             inline

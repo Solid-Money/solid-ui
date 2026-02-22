@@ -205,7 +205,9 @@ export default function UserKycInfo() {
         ? {
             agreedToEsign: data.agreedToEsign === true,
             agreedToTerms: data.agreedToTerms === true,
-            ...(isUS && { agreedToAccountOpeningPrivacy: data.agreedToAccountOpeningPrivacy === true }),
+            ...(isUS && {
+              agreedToAccountOpeningPrivacy: data.agreedToAccountOpeningPrivacy === true,
+            }),
             agreedToCertify: data.agreedToCertify === true,
             agreedToNoSolicitation: data.agreedToNoSolicitation === true,
           }
