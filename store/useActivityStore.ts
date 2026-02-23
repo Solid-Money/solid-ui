@@ -31,6 +31,7 @@ function isValidActivity(activity: unknown): activity is ActivityEvent {
  */
 const STATUS_PRIORITY: Record<string, number> = {
   [TransactionStatus.PENDING]: 0,
+  [TransactionStatus.DETECTED]: 1,
   [TransactionStatus.PROCESSING]: 1,
   [TransactionStatus.FAILED]: 2,
   [TransactionStatus.REFUNDED]: 2,

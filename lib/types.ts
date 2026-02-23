@@ -516,6 +516,7 @@ export enum TransactionCategory {
 
 export enum TransactionStatus {
   PENDING = 'pending',
+  DETECTED = 'detected',
   PROCESSING = 'processing',
   SUCCESS = 'success',
   FAILED = 'failed',
