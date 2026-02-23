@@ -524,6 +524,8 @@ export enum TransactionStatus {
   REFUNDED = 'refunded',
 }
 
+export type DepositStep = 'detected' | 'confirmed' | 'depositing' | 'minting' | 'complete';
+
 export type Transaction = {
   title: string;
   shortTitle?: string;

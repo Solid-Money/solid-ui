@@ -28,6 +28,7 @@ const HEARTBEAT_CHECK_INTERVAL_MS = 30000; // Check every 30 seconds
 
 // Balance update debounce
 const BALANCE_DEBOUNCE_MS = 500; // Debounce balance invalidation by 500ms
+const BALANCE_DEBOUNCE_DEPOSIT_MS = 200; // Shorter debounce for deposit events (faster UX)
 
 // Recovery constants (after permanent error stop)
 const RECOVERY_DELAY_MS = 60000; // Wait 60 seconds before recovery attempt
@@ -585,6 +586,10 @@ class SSEConnectionManager {
     console.debug(`[SSE] Balance update received: ${data.balance.changeType}`);
 
     // Debounce balance query invalidation - rapid balance events only trigger one invalidation
+    // Use shorter debounce for deposit events to show balance faster after deposit completion
+    const debounceMs =
+      data.balance.changeType === 'deposit' ? BALANCE_DEBOUNCE_DEPOSIT_MS : BALANCE_DEBOUNCE_MS;
+
     if (this.balanceDebounceTimer) {
       clearTimeout(this.balanceDebounceTimer);
     }
@@ -604,7 +609,7 @@ class SSEConnectionManager {
           extra: { data, userId: this.currentUserId },
         });
       }
-    }, BALANCE_DEBOUNCE_MS);
+    }, debounceMs);
 
     // Update internal state
     this.setInternalState({ lastEventTime: data.timestamp });
@@ -1094,7 +1099,7 @@ interface UseActivitySSEReturn {
  * - JWT token refresh on 401 errors
  * - Heartbeat detection for stale connection monitoring
  * - Microtask batching for activity events (single store update per tick)
- * - Debounced balance query invalidation (500ms)
+ * - Debounced balance query invalidation (200ms for deposits, 500ms for others)
  * - Auto-recovery after permanent error stop (60s delay, max 3 cycles)
  */
 export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivitySSEReturn {
