@@ -105,7 +105,7 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
       <Pressable
         onLayout={e => handleTabLayout(e, Tab.SAVINGS_RATE)}
         onPress={() => handleTabChange(Tab.SAVINGS_RATE)}
-        className="relative z-10 flex-1 shrink-0 px-4 py-2 md:flex-none md:px-6"
+        className="relative z-10 flex-1 shrink-0 px-2 py-2 md:flex-none md:px-6"
       >
         <Text
           className="text-center text-base font-semibold text-foreground"
@@ -118,12 +118,11 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
       <Pressable
         onLayout={e => handleTabLayout(e, Tab.VAULT_BREAKDOWN)}
         onPress={() => handleTabChange(Tab.VAULT_BREAKDOWN)}
-        className="relative z-10 flex-1 shrink-0 px-4 py-2 md:flex-none md:px-6"
+        className="relative z-10 flex-1 shrink-0 px-2 py-2 md:flex-none md:px-6"
       >
         <Text
           className="text-center text-base font-semibold text-foreground"
           style={{ opacity: selectedTab === Tab.VAULT_BREAKDOWN ? 1 : 0.6 }}
-          numberOfLines={1}
         >
           Vault breakdown
         </Text>

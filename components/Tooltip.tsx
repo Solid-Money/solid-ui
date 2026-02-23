@@ -54,7 +54,7 @@ const TooltipPopover = ({
         <Image
           source={getAsset('images/question-mark-gray.png')}
           alt="Tooltip"
-          style={{ width: 17, height: 17, marginTop: -4 }}
+          style={{ width: 17, height: 17, marginTop: 3 }}
           contentFit="contain"
         />
       </Pressable>
