@@ -53,17 +53,20 @@ interface ActivityState {
   removeActivity: (userId: string, clientTxId: string) => void;
 }
 
-// Helper to check if two events are the same
+// Helper to check if two events are the same.
+// Only match by primary identifiers (clientTxId, userOpHash).
+// Hash-based matching was removed because different activities can share
+// the same tx hash (e.g., "Deposited USDC" and "Deposit soUSD to Savings"
+// both reference the protocol deposit hash). Hash-based dedup is handled
+// at render time by deduplicateTransactions() instead.
 function isSameEvent(a: ActivityEvent, b: ActivityEvent): boolean {
   // Guard against undefined/null events
   if (!a || !b) return false;
 
   return (
     a.clientTxId === b.clientTxId ||
-    (a.userOpHash && a.userOpHash === b.userOpHash) ||
-    (a.hash && a.hash === b.hash) ||
-    a.clientTxId === b.userOpHash ||
-    a.clientTxId === b.hash
+    (!!a.userOpHash && a.userOpHash === b.userOpHash) ||
+    a.clientTxId === b.userOpHash
   );
 }
 
