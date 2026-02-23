@@ -105,22 +105,29 @@ export default function CardDetails() {
     }).start();
   }, [flipAnimation]);
 
+  const stickyHeader = isScreenMedium ? (
+    <View className="mx-auto w-full max-w-7xl px-4 pt-12">
+      <DesktopHeader
+        isCardFrozen={isCardFrozen}
+        isFreezing={isFreezing}
+        isCardFlipped={isCardFlipped}
+        isLoadingCardDetails={isLoadingCardDetails}
+        onCardDetails={handleCardFlip}
+        onFreezeToggle={handleFreezeToggle}
+        isWithdrawAllowed={isWithdrawAllowed}
+      />
+    </View>
+  ) : (
+    <View className="mx-auto w-full max-w-lg px-4 pb-[10px] pt-6">
+      <MobileHeader />
+    </View>
+  );
+
   // Desktop layout
   if (isScreenMedium) {
     return (
-      <PageLayout desktopOnly isLoading={isLoading}>
-        <View className="mx-auto w-full max-w-7xl px-4 py-12">
-          {/* Desktop Header */}
-          <DesktopHeader
-            isCardFrozen={isCardFrozen}
-            isFreezing={isFreezing}
-            isCardFlipped={isCardFlipped}
-            isLoadingCardDetails={isLoadingCardDetails}
-            onCardDetails={handleCardFlip}
-            onFreezeToggle={handleFreezeToggle}
-            isWithdrawAllowed={isWithdrawAllowed}
-          />
-
+      <PageLayout desktopOnly isLoading={isLoading} stickyHeader={stickyHeader}>
+        <View className="mx-auto w-full max-w-7xl px-4 pb-12">
           {/* Row 1: Spending Balance Card + Card Image */}
           <View className="mt-12 flex-row gap-6">
             <View className="flex-[3]">
@@ -171,10 +178,8 @@ export default function CardDetails() {
 
   // Mobile layout
   return (
-    <PageLayout isLoading={isLoading}>
-      <View className="mx-auto w-full max-w-lg px-4 pt-6">
-        <MobileHeader />
-
+    <PageLayout isLoading={isLoading} stickyHeader={stickyHeader}>
+      <View className="mx-auto w-full max-w-lg px-4">
         <View className="flex-1">
           <BalanceDisplay amount={availableAmount} />
           <CardImageSection
@@ -380,7 +385,7 @@ interface BalanceDisplayProps {
 function BalanceDisplay({ amount }: BalanceDisplayProps) {
   const formattedAmount = Number.parseFloat(amount).toFixed(2);
   return (
-    <View className="mt-10 items-center">
+    <View className="mt-5 items-center">
       <Text className="text-[50px] font-semibold">${formattedAmount}</Text>
       <Text className="text-base opacity-70">Spendable balance</Text>
     </View>
@@ -434,7 +439,7 @@ function CardImageSection({
 
   return (
     <View
-      className={cn('items-center', !isScreenMedium && 'mb-6 mt-12')}
+      className={cn('items-center', !isScreenMedium && 'mb-6 mt-[28px]')}
       style={{
         paddingHorizontal: isCardFrozen || !isScreenMedium ? 0 : 2,
       }}
@@ -705,7 +710,7 @@ function CardActions({
   isWithdrawAllowed,
 }: CardActionsProps) {
   return (
-    <View className="native:gap-8 mb-8 flex-row items-center justify-center web:space-x-8">
+    <View className="mb-8 flex-row items-center justify-evenly">
       <WithdrawCardFundsModal
         trigger={
           <CircularActionButton
@@ -734,6 +739,7 @@ function CardActions({
               icon={getAsset('images/card-withdraw-mobile.png')}
               label="Withdraw"
               onPress={() => {}}
+              showBackground
             />
           }
         />
