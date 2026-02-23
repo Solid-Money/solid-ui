@@ -20,7 +20,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        animation: 'shift',
+        animation: Platform.OS !== 'web' ? 'shift' : 'none',
         sceneStyle: { backgroundColor: '#121212' },
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
@@ -52,7 +52,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          lazy: false,
+          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Home',
           headerShown: false,
 
@@ -64,7 +64,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="savings"
         options={{
-          lazy: false,
+          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Savings',
           headerShown: false,
 
@@ -78,7 +78,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="card"
         options={{
-          lazy: false,
+          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Card',
           headerShown: false,
 
@@ -99,7 +99,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="activity"
         options={{
-          lazy: false,
+          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Activity',
           headerShown: false,
 
