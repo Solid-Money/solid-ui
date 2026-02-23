@@ -391,6 +391,7 @@ export default function ActivityDetail() {
   const isFailed = finalActivity?.status === TransactionStatus.FAILED;
   const isCancelled = finalActivity?.status === TransactionStatus.CANCELLED;
   const isPending = finalActivity?.status === TransactionStatus.PENDING;
+  const isDetected = finalActivity?.status === TransactionStatus.DETECTED;
   const isProcessing = finalActivity?.status === TransactionStatus.PROCESSING;
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
   const isCancelWithdraw = finalActivity?.requestId && isPending;
@@ -502,13 +503,13 @@ export default function ActivityDetail() {
           ),
         },
       (isDeposit || isBridgeDeposit) &&
-        (isPending || isProcessing) && {
+        (isPending || isDetected || isProcessing) && {
           key: 'estimated',
           label: <Label>Estimated time</Label>,
           value: <EstimatedTime currentTime={currentTime} setCurrentTime={setCurrentTime} />,
         },
     ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
-  }, [finalActivity, isDeposit, isBridgeDeposit, isPending, isProcessing, currentTime, handleExplorerPress]);
+  }, [finalActivity, isDeposit, isBridgeDeposit, isPending, isDetected, isProcessing, currentTime, handleExplorerPress]);
 
   const transactionContext = useMemo(() => {
     if (!finalActivity) return '';

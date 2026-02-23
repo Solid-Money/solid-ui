@@ -21,6 +21,7 @@ export function getDepositStep(activity: ActivityEvent): DepositStep | undefined
   // Infer from status as fallback (SSE events may have been missed)
   if (activity.status === TransactionStatus.SUCCESS) return 'complete';
   if (activity.status === TransactionStatus.PROCESSING) return 'confirmed';
+  if (activity.status === TransactionStatus.DETECTED) return 'detected';
   if (activity.status === TransactionStatus.PENDING) return 'detected';
   return undefined;
 }
