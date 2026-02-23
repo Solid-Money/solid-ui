@@ -1,14 +1,14 @@
 import React from 'react';
 import { Redirect } from 'expo-router';
 
-import PageLayout from '@/components/PageLayout';
+import Loading from '@/components/Loading';
 import { useCardStatus } from '@/hooks/useCardStatus';
 
 export default function Card() {
   const { data: cardStatus, isLoading } = useCardStatus();
 
   if (isLoading) {
-    return <PageLayout isLoading />;
+    return <Loading />;
   }
 
   if (cardStatus) {

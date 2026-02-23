@@ -134,22 +134,17 @@ export default function Savings() {
   const projectedEarnings =
     balance && vaultAPY ? balance * (exchangeRate ?? 1) * (vaultAPY / 100) : 0;
 
-  const stickyHeader = (
-    <View className="mx-auto w-full max-w-7xl px-4 pb-[40px] pt-6 md:pb-7 md:pt-12">
-      {isScreenMedium ? (
-        <View className="flex-row items-center justify-between">
-          <DashboardTitle />
-          <DashboardHeaderButtons hideSend />
-        </View>
-      ) : (
-        <Text className="text-3xl font-semibold">Savings</Text>
-      )}
-    </View>
-  );
-
   return (
-    <PageLayout isLoading={isLoading} stickyHeader={stickyHeader}>
-      <View className="mx-auto w-full max-w-7xl gap-10 px-4 pb-8 md:gap-7 md:pb-12">
+    <PageLayout isLoading={isLoading}>
+      <View className="mx-auto w-full max-w-7xl gap-10 px-4 py-8 pt-6 md:gap-7 md:py-12">
+        {isScreenMedium ? (
+          <View className="flex-row items-center justify-between">
+            <DashboardTitle />
+            <DashboardHeaderButtons hideSend />
+          </View>
+        ) : (
+          <Text className="text-3xl font-semibold">Savings</Text>
+        )}
         {isScreenMedium ? (
           <View className="flex-row gap-4">
             <View className="flex-col gap-4">
@@ -247,25 +242,23 @@ export default function Savings() {
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}
                         classNames={{
-                          wrapper: 'text-foreground',
-                          decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
+                          decimalSeparator: 'md:text-xl font-medium',
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
-                            marginRight: -2,
                           },
                           decimalText: {
-                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                            fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
                             fontWeight: '300',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                           },
                           suffixText: {
-                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                            fontSize: isScreenMedium ? fontSize(1.5) : fontSize(0.5),
                           },
                         }}
                       />
@@ -427,25 +420,23 @@ export default function Savings() {
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}
                         classNames={{
-                          wrapper: 'text-foreground',
-                          decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
+                          decimalSeparator: 'md:text-xl font-medium',
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(2.25),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
-                            marginRight: -2,
                           },
                           decimalText: {
-                            fontSize: isScreenMedium ? fontSize(2.5) : fontSize(1.5),
+                            fontSize: isScreenMedium ? fontSize(1.25) : fontSize(1.125),
                             fontWeight: '300',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
                           },
                           suffixText: {
-                            fontSize: fontSize(2),
+                            fontSize: fontSize(1.5),
                           },
                         }}
                       />
@@ -506,9 +497,9 @@ export default function Savings() {
             </View>
           </>
         )}
-        {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
-
         {currentVault?.name === 'USDC' && <SavingsAnalytics />}
+
+        {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
       </View>
       <View className="mx-auto w-full max-w-7xl px-4 pb-24">
         <FAQs faqs={faqs} className="md:mt-20" />

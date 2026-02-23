@@ -20,7 +20,6 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        animation: Platform.OS !== 'web' ? 'shift' : 'none',
         sceneStyle: { backgroundColor: '#121212' },
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
@@ -52,10 +51,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Home',
           headerShown: false,
-
           tabBarIcon: ({ focused }) => <LottieTabIcon source={homeAnimation} focused={focused} />,
           href: path.HOME,
         }}
@@ -64,10 +61,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="savings"
         options={{
-          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Savings',
           headerShown: false,
-
           tabBarIcon: ({ focused }) => (
             <LottieTabIcon source={lightningAnimation} focused={focused} />
           ),
@@ -78,10 +73,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="card"
         options={{
-          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Card',
           headerShown: false,
-
           tabBarIcon: ({ focused }) => <LottieTabIcon source={cardAnimation} focused={focused} />,
           href: path.CARD,
         }}
@@ -99,12 +92,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="activity"
         options={{
-          lazy: Platform.OS !== 'web' ? false : undefined,
           title: 'Activity',
           headerShown: false,
-
           tabBarIcon: ({ focused }) => <LottieTabIcon source={bellAnimation} focused={focused} />,
           href: path.ACTIVITY,
+          // Removed lazy: false - let Activity load on-demand to avoid pre-fetching all pages
         }}
       />
 

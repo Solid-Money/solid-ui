@@ -31,21 +31,16 @@ export default function Points() {
 
   const depositPoints = depositRewards?.totalPoints || 0;
 
-  const stickyHeader = (
-    <View className="mx-auto w-full max-w-7xl px-4 pb-[10px] pt-4 md:pb-9 md:pt-12">
-      {isScreenMedium ? (
-        <View className="flex-row items-center justify-between ">
-          <PointsTitle />
-        </View>
-      ) : (
-        <Text className="text-3xl font-semibold">Points</Text>
-      )}
-    </View>
-  );
-
   return (
-    <PageLayout isLoading={isPointsLoading} stickyHeader={stickyHeader}>
-      <View className="mx-auto w-full max-w-7xl gap-6 px-4 pb-8 md:gap-9 md:pb-12">
+    <PageLayout isLoading={isPointsLoading}>
+      <View className="mx-auto w-full max-w-7xl gap-6 px-4 pb-8 pt-4 md:gap-9 md:py-12">
+        {isScreenMedium ? (
+          <View className="flex-row items-center justify-between ">
+            <PointsTitle />
+          </View>
+        ) : (
+          <Text className="text-3xl font-semibold">Points</Text>
+        )}
         <LinearGradient
           colors={['rgba(255, 209, 81, 0.25)', 'rgba(255, 209, 81, 0.17)']}
           start={{ x: 0.1965, y: 0 }}

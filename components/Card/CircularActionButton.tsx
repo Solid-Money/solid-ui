@@ -11,7 +11,6 @@ interface CircularActionButtonProps {
   className?: string;
   size?: number;
   isLoading?: boolean;
-  showBackground?: boolean;
 }
 
 export function CircularActionButton({
@@ -21,23 +20,16 @@ export function CircularActionButton({
   className = '',
   size = 50,
   isLoading = false,
-  showBackground = false,
 }: CircularActionButtonProps) {
-  const iconSize = size;
-
   return (
-    <View className={`flex-1 items-center ${className}`}>
-      <Pressable
-        onPress={onPress}
-        className={`web:hover:opacity-70 ${showBackground ? 'items-center justify-center rounded-full bg-[#303030]' : ''}`}
-        style={showBackground ? { width: size, height: size } : undefined}
-      >
+    <View className={`items-center ${className}`}>
+      <Pressable onPress={onPress} className="web:hover:opacity-70">
         {isLoading ? (
           <View style={{ width: size, height: size }} className="items-center justify-center">
             <ActivityIndicator color="#BFBFBF" />
           </View>
         ) : (
-          <Image source={icon} style={{ width: iconSize, height: iconSize }} />
+          <Image source={icon} style={{ width: size, height: size }} />
         )}
       </Pressable>
       <Text className="mt-2 text-[#BFBFBF]">{label}</Text>

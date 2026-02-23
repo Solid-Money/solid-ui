@@ -12,12 +12,11 @@ import { VaultBreakdown } from '@/lib/types';
 import { cn, eclipseUsername, formatNumber } from '@/lib/utils';
 
 type Column = {
-  width?: DimensionValue;
+  width: DimensionValue;
   title?: string;
   tooltip?: string;
   key?: keyof VaultBreakdown;
   percent?: boolean;
-  containerClassName?: string;
   classNames?: {
     body?: {
       text?: string;
@@ -80,10 +79,10 @@ const Header = memo(function Header({ columns }: HeaderProps) {
           c.width && (
             <View
               key={`vault-th-${index}`}
-              className={cn('flex-row items-center gap-2', c.containerClassName)}
+              className="flex-row items-center gap-2"
               style={{ width: c.width }}
             >
-              <Text className="text-sm font-medium text-muted-foreground md:text-base">{c.title}</Text>
+              <Text className="font-medium text-muted-foreground">{c.title}</Text>
               {c.tooltip && <TooltipPopover text={c.tooltip} />}
             </View>
           ),
@@ -101,7 +100,7 @@ const Row = memo(function Row({ item, columns, isLast, onPress, isScreenMedium }
       {columns.map(
         (c, colIndex) =>
           c.width && (
-            <View key={`vault-tb-${colIndex}`} className={c.containerClassName} style={{ width: c.width }}>
+            <View key={`vault-tb-${colIndex}`} style={{ width: c.width }}>
               {c.key ? (
                 <View className="flex-row items-center gap-2">
                   {c.key === 'name' &&
@@ -114,7 +113,7 @@ const Row = memo(function Row({ item, columns, isLast, onPress, isScreenMedium }
                     ) : (
                       <DefaultTokenIcon size={24} symbol={(item.title ?? item.name).charAt(0)} />
                     ))}
-                  <Text className={cn('shrink text-sm font-medium md:text-lg', c.classNames?.body?.text)}>
+                  <Text className={cn('text-lg font-medium', c.classNames?.body?.text)}>
                     {c.percent
                       ? formatPercent(item[c.key] ?? 0)
                       : c.key === 'name'
@@ -164,23 +163,22 @@ const VaultBreakdownTable = memo(function VaultBreakdownTable({
 
   const columns: Column[] = useMemo(
     () => [
-      { title: 'Destinations', key: 'name', width: isScreenMedium ? '35%' : '50%' },
+      { title: 'Destinations', key: 'name', width: isScreenMedium ? '50%' : '35%' },
       {
         title: 'Allocation',
         key: 'allocation',
-        width: isScreenMedium ? '18%' : '22%',
+        width: isScreenMedium ? '15%' : '20%',
         percent: true,
       },
-      { title: 'Risk', key: 'risk', width: isScreenMedium ? '15%' : undefined },
+      { title: 'Risk', key: 'risk', width: isScreenMedium ? '15%' : '20%' },
       {
         title: 'APY',
         tooltip: 'Position APY',
         key: 'positionMaxAPY',
-        width: isScreenMedium ? '22%' : '28%',
+        width: isScreenMedium ? '15%' : '20%',
         percent: true,
-        containerClassName: isScreenMedium ? undefined : 'pl-4',
       },
-      { width: isScreenMedium ? '10%' : '8%' },
+      { width: '5%' },
     ],
     [isScreenMedium],
   );

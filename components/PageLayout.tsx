@@ -27,9 +27,6 @@ interface PageLayoutProps {
   scrollable?: boolean;
   edges?: readonly Edge[]; // SafeAreaView edges
 
-  // Sticky header (sticks to top when scrolling)
-  stickyHeader?: ReactNode;
-
   // Additional content (e.g., modals that need to be outside ScrollView)
   additionalContent?: ReactNode;
 
@@ -85,7 +82,6 @@ export default function PageLayout({
   customDesktopHeader,
   scrollable = true,
   edges = ['right', 'left', 'bottom', 'top'],
-  stickyHeader,
   additionalContent,
   className = '',
   contentClassName = '',
@@ -123,17 +119,11 @@ export default function PageLayout({
   if (scrollable) {
     return (
       <SafeAreaView className={`flex-1 bg-background text-foreground ${className}`} edges={edges}>
-        {renderNavbar()}
         <ScrollView
           className={`flex-1 ${contentClassName}`}
           contentInsetAdjustmentBehavior="automatic"
-          stickyHeaderIndices={stickyHeader ? [0] : undefined}
         >
-          {stickyHeader && (
-            <View className="z-10 bg-background">
-              {stickyHeader}
-            </View>
-          )}
+          {renderNavbar()}
           {children}
         </ScrollView>
         {additionalContent}
@@ -143,9 +133,8 @@ export default function PageLayout({
 
   return (
     <SafeAreaView className={`flex-1 bg-background text-foreground ${className}`} edges={edges}>
-      {renderNavbar()}
       <View className={`flex-1 ${contentClassName}`}>
-        {stickyHeader}
+        {renderNavbar()}
         {children}
       </View>
       {additionalContent}
