@@ -5,11 +5,12 @@ import { ArrowLeft } from 'lucide-react-native';
 
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { personaSimulateAction, submitPersonaKyc } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
-import { isProduction } from '@/lib/config';
+import { EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID, isProduction } from '@/lib/config';
 import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -129,18 +130,28 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
 
     const run = async () => {
       try {
-        const { options, redirectUri } = isRainMode
+        const sandboxEnvId =
+          !isProduction && EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID
+            ? EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID
+            : undefined;
+
+        const { options: rawOptions, redirectUri } = isRainMode
           ? {
               options: {
                 templateId: paramTemplateId,
                 inquiryId: undefined,
-                environmentId: undefined,
+                environmentId: sandboxEnvId,
                 referenceId: undefined,
                 fields: {},
               } as ClientOptions,
               redirectUri: paramRedirectUri ?? undefined,
             }
           : parseKycUrlToOptions(url!);
+
+        const options: ClientOptions = {
+          ...rawOptions,
+          environmentId: sandboxEnvId ?? rawOptions.environmentId,
+        };
 
         // Track parsed URL details for debugging
         track(TRACKING_EVENTS.KYC_LINK_PARSED, {
@@ -319,6 +330,29 @@ export default function Kyc({ onSuccess }: KycParams = {}) {
     setSimulateLoading(true);
     try {
       await personaSimulateAction(inquiryId, simulateAction);
+
+      const completesFlow =
+        simulateAction === 'approve_inquiry' || simulateAction === 'complete_inquiry';
+      if (completesFlow && isRainMode) {
+        try {
+          const res = await withRefreshToken(() => submitPersonaKyc(inquiryId));
+          if (res?.kycStatus) setRainKycStatus(res.kycStatus as KycStatus);
+        } catch (e) {
+          console.error('Submit Persona KYC after simulate failed:', e);
+          setSimulateError('Simulate ok but submit to backend failed');
+          setSimulateLoading(false);
+          return;
+        }
+        const baseUrl = process.env.EXPO_PUBLIC_BASE_URL ?? '';
+        const targetUri = paramRedirectUri ?? `${baseUrl}${path.CARD_ACTIVATE}`;
+        try {
+          window.location.replace(targetUri);
+        } catch (_e) {
+          router.replace(targetUri as any);
+        }
+        return;
+      }
+
       setSimulateError(null);
     } catch (e: any) {
       setSimulateError(e?.message ?? 'Simulate failed');
