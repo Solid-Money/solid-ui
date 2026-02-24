@@ -4,6 +4,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { withdrawCardToSafeAddress } from '@/lib/api';
 import { Status } from '@/lib/types';
 
+function truncateToTwoDecimals(value: string): string {
+  const num = parseFloat(value);
+  const truncated = Math.floor(num * 100) / 100;
+  return truncated.toFixed(2);
+}
+
 export const useWithdrawCardToSafe = () => {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<Status>(Status.IDLE);
@@ -14,7 +20,8 @@ export const useWithdrawCardToSafe = () => {
     setError(null);
 
     try {
-      await withdrawCardToSafeAddress({ amount, clientNote });
+      const truncatedAmount = truncateToTwoDecimals(amount);
+      await withdrawCardToSafeAddress({ amount: truncatedAmount, clientNote });
       setStatus(Status.SUCCESS);
 
       // Invalidate card details to refresh balance and withdrawals list
