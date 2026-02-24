@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { Platform } from 'react-native';
 import { Image } from 'expo-image';
 
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -58,7 +59,12 @@ const useDepositBuyCryptoOptions = () => {
     [handleCreditCardPress, handleBankDepositPress],
   );
 
-  return { buyCryptoOptions };
+  const filteredOptions =
+    Platform.OS === 'ios'
+      ? buyCryptoOptions.filter(option => option.method !== 'credit_card')
+      : buyCryptoOptions;
+
+  return { buyCryptoOptions: filteredOptions };
 };
 
 export default useDepositBuyCryptoOptions;

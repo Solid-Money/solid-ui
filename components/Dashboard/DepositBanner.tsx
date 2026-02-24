@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus } from 'lucide-react-native';
@@ -49,7 +49,9 @@ const DepositBanner = () => {
           <View className="flex-1 flex-row items-center justify-between px-5 py-5 md:px-10 md:py-8">
             <View className="h-full max-w-52 items-start justify-between gap-4 md:max-w-72">
               <Text className="text-xl font-semibold md:text-3xl">
-                Deposit from your bank or debit card
+                {Platform.OS === 'ios'
+                  ? 'Deposit from your bank'
+                  : 'Deposit from your bank or debit card'}
               </Text>
               {getButton()}
             </View>
