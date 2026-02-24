@@ -28,7 +28,7 @@ export default function useGeoCompliance() {
       isRestricted,
       isSwapAvailable: isLoading || !isCountryRestricted(countryCode, 'swap'),
       isBridgeAvailable: isLoading || !isCountryRestricted(countryCode, 'bridge'),
-      isBuyCryptoAvailable: isLoading || !isCountryRestricted(countryCode, 'buyCrypto'),
+      isBuyCryptoAvailable: false,
       isBankTransferAvailable: isLoading || !isCountryRestricted(countryCode, 'bankTransfer'),
       countryCode,
       isLoading,
