@@ -347,7 +347,7 @@ enum FreezeReason {
   OTHER = 'other',
 }
 
-enum FreezeInitiator {
+export enum FreezeInitiator {
   BRIDGE = 'bridge',
   DEVELOPER = 'developer',
   CUSTOMER = 'customer',

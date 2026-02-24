@@ -34,7 +34,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
-import { CardHolderName, CardStatus, KycStatus } from '@/lib/types';
+import { CardHolderName, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
@@ -56,6 +56,9 @@ export default function CardDetails() {
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
+
+  const canUnfreeze =
+    isCardFrozen && cardDetails?.freezes?.some(f => f.initiator === FreezeInitiator.CUSTOMER);
 
   const isCustomerPausedOrOffboarded =
     customer?.status === KycStatus.PAUSED || customer?.status === KycStatus.OFFBOARDED;
@@ -116,6 +119,7 @@ export default function CardDetails() {
     <View className="mx-auto w-full max-w-7xl px-4 pt-12">
       <DesktopHeader
         isCardFrozen={isCardFrozen}
+        canUnfreeze={!!canUnfreeze}
         isFreezing={isFreezing}
         isCardFlipped={isCardFlipped}
         isLoadingCardDetails={isLoadingCardDetails}
@@ -201,6 +205,7 @@ export default function CardDetails() {
           />
           <CardActions
             isCardFrozen={isCardFrozen}
+            canUnfreeze={!!canUnfreeze}
             isFreezing={isFreezing}
             isCardFlipped={isCardFlipped}
             isLoadingCardDetails={isLoadingCardDetails}
@@ -233,6 +238,7 @@ function MobileHeader() {
 
 interface DesktopHeaderProps {
   isCardFrozen: boolean;
+  canUnfreeze: boolean;
   isFreezing: boolean;
   isCardFlipped: boolean;
   isLoadingCardDetails: boolean;
@@ -244,6 +250,7 @@ interface DesktopHeaderProps {
 
 function DesktopHeader({
   isCardFrozen,
+  canUnfreeze,
   isFreezing,
   isCardFlipped,
   isLoadingCardDetails,
@@ -277,27 +284,29 @@ function DesktopHeader({
             </Text>
           </View>
         </Button>
-        <Button
-          variant="secondary"
-          className="h-12 rounded-xl border-0 bg-[#303030] px-6"
-          onPress={onFreezeToggle}
-          disabled={isFreezing}
-        >
-          <View className="flex-row items-center gap-2">
-            {isFreezing ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Image
-                source={getAsset('images/freeze_button_icon.png')}
-                style={styles.mediumIcon}
-                contentFit="contain"
-              />
-            )}
-            <Text className="text-base font-bold text-white">
-              {isCardFrozen ? 'Unfreeze' : 'Freeze'}
-            </Text>
-          </View>
-        </Button>
+        {(!isCardFrozen || canUnfreeze) && (
+          <Button
+            variant="secondary"
+            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+            onPress={onFreezeToggle}
+            disabled={isFreezing}
+          >
+            <View className="flex-row items-center gap-2">
+              {isFreezing ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Image
+                  source={getAsset('images/freeze_button_icon.png')}
+                  style={styles.mediumIcon}
+                  contentFit="contain"
+                />
+              )}
+              <Text className="text-base font-bold text-white">
+                {isCardFrozen ? 'Unfreeze' : 'Freeze'}
+              </Text>
+            </View>
+          </Button>
+        )}
         {isWithdrawAllowed && (
           <WithdrawToCardModal
             trigger={
@@ -705,6 +714,7 @@ function CardDetailsOverlay({
 
 interface CardActionsProps {
   isCardFrozen: boolean;
+  canUnfreeze: boolean;
   isFreezing: boolean;
   isCardFlipped: boolean;
   isLoadingCardDetails: boolean;
@@ -716,6 +726,7 @@ interface CardActionsProps {
 
 function CardActions({
   isCardFrozen,
+  canUnfreeze,
   isFreezing,
   isCardFlipped,
   isLoadingCardDetails,
@@ -743,12 +754,14 @@ function CardActions({
         onPress={onCardDetails}
         isLoading={isLoadingCardDetails}
       />
-      <CircularActionButton
-        icon={getAsset('images/card_actions_freeze.png')}
-        label={isCardFrozen ? 'Unfreeze' : 'Freeze'}
-        onPress={onFreezeToggle}
-        isLoading={isFreezing}
-      />
+      {(!isCardFrozen || canUnfreeze) && (
+        <CircularActionButton
+          icon={getAsset('images/card_actions_freeze.png')}
+          label={isCardFrozen ? 'Unfreeze' : 'Freeze'}
+          onPress={onFreezeToggle}
+          isLoading={isFreezing}
+        />
+      )}
       {isWithdrawAllowed && (
         <WithdrawToCardModal
           trigger={
