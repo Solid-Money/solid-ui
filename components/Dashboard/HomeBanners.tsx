@@ -16,6 +16,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { fetchPromotionsBanner } from '@/lib/api';
 import { hasCard } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useSavingStore } from '@/store/useSavingStore';
 
 import CardBanner from './CardBanner';
 import DepositBanner from './DepositBanner';
@@ -87,7 +88,10 @@ function getPromoBannerOnPress(
   }
   switch (item.slug) {
     case 'deposit-from-your-bank-or-debit-card':
-      return () => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+      return () => {
+        useSavingStore.getState().selectVaultForDeposit(0);
+        setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+      };
     default:
       return () => {};
   }
