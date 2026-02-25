@@ -7,7 +7,14 @@ import { Address, keccak256, toHex } from 'viem';
 
 import { refreshToken } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
-import { AuthTokens, CardResponse, CardStatus, CardStatusResponse, User } from '@/lib/types';
+import {
+  AuthTokens,
+  CardProvider,
+  CardResponse,
+  CardStatus,
+  CardStatusResponse,
+  User,
+} from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 
 export const IS_SERVER = typeof window === 'undefined';
@@ -79,6 +86,11 @@ export function formatNumber(number: number, maximumFractionDigits = 6, minimumF
     maximumFractionDigits: clampedMax,
     minimumFractionDigits: clampedMin,
   }).format(num);
+}
+
+/** Format cents to dollars string (e.g. for Rain card balance) */
+export function formatCentsToDollars(cents: number): string {
+  return (cents / 100).toFixed(2);
 }
 
 export function formatUSD(number: number) {
@@ -298,6 +310,11 @@ export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
   )?.address;
 };
 
+/** Rain-first: only Rain cards count as "has card". Bridge-only users are treated as no card. */
 export const hasCard = (cardStatus: CardStatusResponse | null | undefined): boolean => {
-  return cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN;
+  if (!cardStatus?.status) return false;
+  const isActiveOrFrozen =
+    cardStatus.status === CardStatus.ACTIVE || cardStatus.status === CardStatus.FROZEN;
+  if (!isActiveOrFrozen) return false;
+  return cardStatus.provider !== CardProvider.BRIDGE;
 };

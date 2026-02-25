@@ -11,9 +11,12 @@ import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
 import { KycMode, type UserInfoFormData, userInfoSchema } from '@/components/UserKyc/types';
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { track } from '@/lib/analytics';
 import { createKycLink } from '@/lib/api';
+import { CardProvider } from '@/lib/types';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -22,6 +25,7 @@ export default function UserKycInfo() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const setKycLinkId = useKycStore(state => state.setKycLinkId);
+  const { provider: cardProvider } = useCardProvider();
 
   // redirectUri tells where to resume after KYC.
   const params = useLocalSearchParams<{
@@ -31,6 +35,14 @@ export default function UserKycInfo() {
   }>();
 
   const { redirectUri, kycMode } = params;
+
+  // Rain (or default): redirect to Rain's in-house KYC page. Only Bridge uses this page.
+  useEffect(() => {
+    if ((kycMode as KycMode) === KycMode.CARD && cardProvider !== CardProvider.BRIDGE) {
+      router.replace(path.KYC as any);
+      return;
+    }
+  }, [kycMode, cardProvider, router]);
 
   // Track page view on mount
   useEffect(() => {
@@ -92,9 +104,9 @@ export default function UserKycInfo() {
         throw new Error('An error occurred while creating the KYC link');
       }
 
-      // Save KYC link ID to local storage
-      setKycLinkId(kycLink.kycLinkId);
+      if (kycLink.kycLinkId) setKycLinkId(kycLink.kycLinkId);
 
+      // Bridge: open Persona at /bridge-kyc (web) or browser (native)
       startKycFlow({ router, kycLink: kycLink.link });
     } catch (error) {
       console.error('KYC link creation failed:', error);
@@ -143,10 +155,7 @@ export default function UserKycInfo() {
     </PageLayout>
   );
 
-  async function getKycLink(
-    redirectUrl: string,
-    data: { fullName: string; email: string; agreedToTerms: boolean },
-  ) {
+  async function getKycLink(redirectUrl: string, data: UserInfoFormData) {
     const endorsements = params.endorsement ? [params.endorsement] : [];
 
     const newKycLink = await createKycLink(

@@ -16,6 +16,7 @@ type Path = {
   USER_KYC_INFO: Href;
   BANK_TRANSFER: Href;
   KYC: Href;
+  BRIDGE_KYC: Href;
   CARD_TERMS_OF_SERVICE: Route;
   CARD_DETAILS: Route;
   CARD_DEPOSIT: Route;
@@ -58,6 +59,7 @@ export const path: Path = {
   CARD: '/card',
   USER_KYC_INFO: '/user-kyc-info',
   KYC: '/kyc',
+  BRIDGE_KYC: '/bridge-kyc',
   BANK_TRANSFER: '/bank-transfer',
   CARD_TERMS_OF_SERVICE: '/card/bridge_terms_of_service',
   CARD_DETAILS: '/card/details',

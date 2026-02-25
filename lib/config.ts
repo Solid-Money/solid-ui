@@ -1,6 +1,8 @@
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 
+import { CardProvider } from '@/lib/types';
+
 export const EXPO_PUBLIC_BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? '';
 export const EXPO_PUBLIC_ALCHEMY_API_KEY = process.env.EXPO_PUBLIC_ALCHEMY_API_KEY ?? '';
 export const EXPO_PUBLIC_PIMLICO_API_KEY = process.env.EXPO_PUBLIC_PIMLICO_API_KEY ?? '';
@@ -43,6 +45,15 @@ export const EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL =
   process.env.EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL ?? '';
+export const EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM =
+  process.env.EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM ?? '';
+export const EXPO_PUBLIC_CARD_ISSUER = process.env.EXPO_PUBLIC_CARD_ISSUER as
+  | CardProvider
+  | undefined;
+export const EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID =
+  process.env.EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID ?? '';
+export const EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID =
+  process.env.EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID ?? '';
 export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
 export const EXPO_PUBLIC_FINGERPRINT_API_KEY = process.env.EXPO_PUBLIC_FINGERPRINT_API_KEY ?? '';
 export const EXPO_PUBLIC_FINGERPRINT_REGION = process.env.EXPO_PUBLIC_FINGERPRINT_REGION ?? 'us';

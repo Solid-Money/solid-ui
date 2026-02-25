@@ -10,6 +10,7 @@ export enum CardDepositSource {
   SAVINGS = 'savings',
   EXTERNAL = 'external',
   BORROW = 'borrow',
+  COLLATERAL = 'collateral',
 }
 
 export interface CardDepositTransactionState {

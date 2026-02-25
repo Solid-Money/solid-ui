@@ -20,12 +20,14 @@ import { path } from '@/constants/path';
 import { TRANSACTION_DETAILS } from '@/constants/transaction';
 import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCashbacks } from '@/hooks/useCashbacks';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useIntercom } from '@/lib/intercom';
 import {
   ActivityEvent,
+  CardProvider,
   CardTransaction,
   CardTransactionCategory,
   TransactionDirection,
@@ -152,11 +154,13 @@ const SupportSection = memo(function SupportSection({ transactionContext }: Supp
 type CardTransactionDetailProps = {
   transaction: CardTransaction;
   activity?: ActivityEvent | null;
+  cardProvider?: CardProvider | null;
 };
 
 const CardTransactionDetail = memo(function CardTransactionDetail({
   transaction,
   activity,
+  cardProvider,
 }: CardTransactionDetailProps) {
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
   const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
@@ -176,8 +180,8 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
   const transactionContext = useMemo(
     () =>
-      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}\n\nMy question: `,
-    [merchantName, transaction.amount, transaction.id, postedDate],
+      `Question about card transaction:\n\nMerchant: ${merchantName}\nAmount: ${formatCardAmount(transaction.amount, cardProvider)}\nDate: ${format(postedDate, DATE_FORMAT)}\nTransaction ID: card-${transaction.id}\n\nMy question: `,
+    [merchantName, transaction.amount, transaction.id, postedDate, cardProvider],
   );
 
   const handleExplorerPress = useCallback(() => {
@@ -262,7 +266,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
 
           <View className="items-center">
             <Text className="text-4xl font-bold text-white">
-              {formatCardAmount(transaction.amount)}
+              {formatCardAmount(transaction.amount, cardProvider)}
             </Text>
             <Text className="mt-2 font-semibold text-muted-foreground">
               {`${toTitleCase(activity?.metadata?.destination || 'savings')} account`}
@@ -297,6 +301,7 @@ export default function ActivityDetail() {
   const { cancelOnchainWithdraw } = useCancelOnchainWithdraw();
   const [currentTime, setCurrentTime] = useState(minutesToSeconds(5));
   const { cachedActivities, isLoading: isActivitiesLoading } = useActivity();
+  const { provider: cardProvider } = useCardProvider();
 
   const activity = useMemo(
     () =>
@@ -527,7 +532,13 @@ export default function ActivityDetail() {
 
   // Card transaction
   if (isCardTransaction && cardTransaction && !isAnyLoading) {
-    return <CardTransactionDetail transaction={cardTransaction} activity={finalActivity} />;
+    return (
+      <CardTransactionDetail
+        transaction={cardTransaction}
+        activity={finalActivity}
+        cardProvider={cardProvider}
+      />
+    );
   }
 
   // Loading

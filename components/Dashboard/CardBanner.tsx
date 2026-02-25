@@ -11,6 +11,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { CardStatus } from '@/lib/types';
+import { hasCard } from '@/lib/utils';
 
 import SwipeableBanner from './SwipeableBanner';
 
@@ -27,8 +28,8 @@ const CardBanner = () => {
   const { data: cardStatus, isLoading } = useCardStatus();
 
   const bannerContent: BannerContent = useMemo(() => {
-    // No card exists - show promotional content
-    if (!cardStatus?.status) {
+    // Rain-first: no Rain card (incl. Bridge-only) → show promotional content
+    if (!hasCard(cardStatus)) {
       return {
         title: 'Solid Card is live!',
         description: 'Get your card today.',
@@ -84,7 +85,7 @@ const CardBanner = () => {
           showPromo: false,
         };
     }
-  }, [cardStatus?.status]);
+  }, [cardStatus]);
 
   // Don't render while loading to avoid flash of incorrect content
   if (isLoading) {

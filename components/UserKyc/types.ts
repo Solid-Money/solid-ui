@@ -5,7 +5,6 @@ export enum KycMode {
   CARD = 'card',
 }
 
-// Zod schema for validation (base)
 export const userInfoSchema = z.object({
   fullName: z
     .string()

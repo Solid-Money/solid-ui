@@ -16,6 +16,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { useRewardsUserData } from '@/hooks/useRewards';
 import { track } from '@/lib/analytics';
+import { hasCard } from '@/lib/utils';
 import { useRewards } from '@/store/useRewardsStore';
 
 export default function Rewards() {
@@ -78,9 +79,7 @@ export default function Rewards() {
 
 function CardBanner() {
   const { data: cardStatus } = useCardStatus();
-  const hasCard = !!cardStatus;
-
-  if (hasCard) return null;
+  if (hasCard(cardStatus)) return null;
 
   return (
     <GetCardRewardsBanner

@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { useFingerprint } from '@/hooks/useFingerprint';
 import { track } from '@/lib/analytics';
+import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
-import { CardStatusResponse, KycStatus } from '@/lib/types';
+import { CardProvider, CardStatusResponse, KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -22,7 +24,12 @@ import {
   showAccountOffboardedToast,
   showKycUnderReviewToast,
 } from './kycFlowHelpers';
-import { computeKycStatus, computeUiKycStatus, useProcessingWindow } from './kycStatusHelpers';
+import {
+  computeKycStatus,
+  computeUiKycStatus,
+  rainApplicationStatusToKycStatus,
+  useProcessingWindow,
+} from './kycStatusHelpers';
 import { buildCardSteps, useCardActivation, useStepNavigation } from './stepHelpers';
 
 // Re-export types
@@ -37,14 +44,22 @@ export function useCardSteps(
   cardStatusResponse?: CardStatusResponse | null,
 ) {
   const router = useRouter();
-  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore(
+  const {
+    kycLinkId,
+    processingUntil,
+    setProcessingUntil,
+    clearProcessingUntil,
+    rainKycStatus,
+  } = useKycStore(
     useShallow(state => ({
       kycLinkId: state.kycLinkId,
       processingUntil: state.processingUntil,
       setProcessingUntil: state.setProcessingUntil,
       clearProcessingUntil: state.clearProcessingUntil,
+      rainKycStatus: state.rainKycStatus,
     })),
   );
+  const cardIssuer = EXPO_PUBLIC_CARD_ISSUER ?? null;
   const countryStore = useCountryStore(
     useShallow(state => ({
       countryInfo: state.countryInfo,
@@ -91,6 +106,15 @@ export function useCardSteps(
     [processingUntil, kycLink?.kyc_status, kycStatus],
   );
 
+  // Rain: prefer backend rainApplicationStatus from card status over store
+  const rainKycStatusResolved = useMemo(() => {
+    if (cardIssuer !== CardProvider.RAIN) return rainKycStatus;
+    const fromBackend = rainApplicationStatusToKycStatus(
+      cardStatusResponse?.rainApplicationStatus,
+    );
+    return fromBackend ?? rainKycStatus;
+  }, [cardIssuer, cardStatusResponse?.rainApplicationStatus, rainKycStatus]);
+
   // Card activation state and handlers
   const {
     cardActivated,
@@ -113,9 +137,16 @@ export function useCardSteps(
       kycLinkId,
       hasProcessingWindow: Boolean(processingUntil),
       endorsementStatus: cardsEndorsement?.status,
+      cardIssuer,
     });
 
-    // Check country access
+    // Default to Rain KYC; only Bridge goes through Bridge flow
+    if (cardIssuer !== CardProvider.BRIDGE) {
+      router.push(path.KYC as any);
+      return;
+    }
+
+    // Check country access (Bridge flow)
     const isBlocked = await checkAndBlockForCountryAccess(countryStore, kycLinkId);
     if (isBlocked) return;
 
@@ -130,7 +161,7 @@ export function useCardSteps(
       return;
     }
 
-    // Check latest KYC status
+    // Check latest KYC status (Bridge)
     try {
       if (kycLinkId) {
         const latest = await withRefreshToken(() => getKycLinkFromBridge(kycLinkId));
@@ -184,7 +215,7 @@ export function useCardSteps(
 
     // Try to get a fresh KYC URL with redirect_uri, or fall back to user info collection
     if (await redirectToExistingCustomerKycLink(router, kycLinkId)) return;
-    redirectToCollectUserInfo(router);
+    redirectToCollectUserInfo(router, countryStore.countryInfo?.countryCode);
   }, [
     router,
     kycLinkId,
@@ -195,7 +226,7 @@ export function useCardSteps(
     getVisitorData,
   ]);
 
-  // Build steps based on endorsement status
+  // Build steps based on endorsement status (Bridge) or Rain KYC status
   const steps = useMemo(
     () =>
       buildCardSteps(
@@ -207,6 +238,7 @@ export function useCardSteps(
         handleProceedToKyc,
         handleActivateCard,
         pushCardDetails,
+        { cardIssuer, rainKycStatus: rainKycStatusResolved },
       ),
     [
       cardsEndorsement,
@@ -217,6 +249,8 @@ export function useCardSteps(
       handleProceedToKyc,
       handleActivateCard,
       pushCardDetails,
+      cardIssuer,
+      rainKycStatusResolved,
     ],
   );
 

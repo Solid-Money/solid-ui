@@ -8,6 +8,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { track } from '@/lib/analytics';
+import { hasCard } from '@/lib/utils';
 import { CardStatus, KycStatus } from '@/lib/types';
 
 export function useActivateCard() {
@@ -33,10 +34,11 @@ export function useActivateCard() {
     cardStatusResponse?.activationBlockedReason ||
     'There was an issue activating your card. Please contact support.';
 
-  // Country check logic - always check country (activation is disabled)
-  // Never skip the country check, even if user has a card
-  const { checkingCountry } = useCountryCheck({ skip: false });
-  const isCheckingCountry = checkingCountry;
+  // Country check logic (Rain-first: Bridge-only = no card)
+  const userHasCard = hasCard(cardStatusResponse);
+  const skipCountryCheck = countryConfirmed === 'true' || userHasCard;
+  const { checkingCountry } = useCountryCheck({ skip: skipCountryCheck });
+  const isCheckingCountry = !skipCountryCheck && checkingCountry;
 
   // Card steps
   const {
@@ -68,8 +70,9 @@ export function useActivateCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Redirect if user already has an active card
+  // Redirect if user already has a Rain card (active/frozen/inactive)
   useEffect(() => {
+    if (!userHasCard) return;
     if (
       cardStatus === CardStatus.ACTIVE ||
       cardStatus === CardStatus.FROZEN ||
@@ -77,7 +80,7 @@ export function useActivateCard() {
     ) {
       router.replace(path.CARD_DETAILS);
     }
-  }, [cardStatus, router]);
+  }, [userHasCard, cardStatus, router]);
 
   // Navigation handler for back button
   const handleGoBack = () => {

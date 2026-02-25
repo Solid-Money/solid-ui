@@ -186,26 +186,82 @@ export default function ActivateCountrySelection() {
     if (selectedCountry) {
       setProcessing(true);
       try {
-        // Always show country as unavailable - no matter which country is selected
-        // This ensures users see the "country not available" message
+        // Step 1: Verify location with Fingerprint (if available)
+        if (isFingerprintAvailable) {
+          const visitorData = await getVisitorData();
+
+          if (visitorData) {
+            const verification = await withRefreshToken(() =>
+              verifyCountryWithFingerprint({
+                visitorId: visitorData.visitorId,
+                requestId: visitorData.requestId,
+                claimedCountry: selectedCountry.code,
+              }),
+            );
+
+            if (verification?.requiresVerification) {
+              router.push({
+                pathname: path.CARD_COUNTRY_VERIFICATION_REQUIRED,
+                params: {
+                  claimedCountry: selectedCountry.code,
+                  detectedCountry: verification.detectedCountry || 'unknown',
+                  blockingReason: verification.blockingReason || '',
+                },
+              } as any);
+              return;
+            }
+          }
+        }
+
+        // Step 2: Check card access via backend API
+        const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
+
+        if (!accessCheck) throw new Error('Failed to check card access');
+
+        const updatedCountryInfo = {
+          countryCode: selectedCountry.code,
+          countryName: selectedCountry.name,
+          isAvailable: accessCheck.hasAccess,
+        };
+
+        setCountryInfo(updatedCountryInfo);
+        setCountryDetectionFailed(false);
+
+        track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
+          countryCode: selectedCountry.code,
+          countryName: selectedCountry.name,
+          isAvailable: accessCheck.hasAccess,
+          selectionMethod: selectionMethod === 'ip_detected' ? 'ip_detected' : 'manual',
+        });
+
+        if (accessCheck.hasAccess) {
+          const ipCountry = await getCountryFromIp();
+          if (ipCountry && ipCountry.countryCode === selectedCountry.code) {
+            router.replace(path.CARD_ACTIVATE);
+          } else {
+            router.replace(path.CARD_COUNTRY_SELECTION);
+          }
+          return;
+        }
+
+        setShowCountrySelector(false);
+      } catch (error) {
+        console.error('Error checking card access:', error);
         const unavailableCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
           isAvailable: false,
         };
 
-        // Update store with unavailable status
-        setCountryInfo(unavailableCountryInfo);
-        setCountryDetectionFailed(false);
-
         track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
           isAvailable: false,
           selectionMethod: selectionMethod === 'ip_detected' ? 'ip_detected' : 'manual',
+          error: (error as Error)?.message,
         });
 
-        // Show the unavailable message
+        setCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
       } finally {
         setProcessing(false);

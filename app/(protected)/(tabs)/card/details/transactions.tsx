@@ -12,6 +12,7 @@ import TransactionDrawer from '@/components/Transaction/TransactionDrawer';
 import TransactionDropdown from '@/components/Transaction/TransactionDropdown';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { cardTransactionsQueryKey, useCardTransactions } from '@/hooks/useCardTransactions';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { CardTransaction, CardTransactionCategory } from '@/lib/types';
@@ -36,6 +37,7 @@ export default function CardTransactions() {
     refetch,
     isFetching,
   } = useCardTransactions();
+  const { provider } = useCardProvider();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -110,7 +112,7 @@ export default function CardTransactions() {
         </View>
         <View className="flex-shrink-0 flex-row items-center gap-2 md:gap-10">
           <Text className={`text-right font-bold text-white`}>
-            {formatCardAmountWithCurrency(item.amount, item.currency)}
+            {formatCardAmountWithCurrency(item.amount, item.currency, provider)}
           </Text>
           {Platform.OS === 'web' ? (
             <TransactionDropdown url={transactionUrl} />

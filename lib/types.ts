@@ -2,6 +2,7 @@ import { Reward } from '@merkl/api';
 import { Address, Hex } from 'viem';
 
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
+import { DigitalWalletType } from '@/constants/digital-wallet';
 import {
   DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
   DEPOSIT_MODAL,
@@ -138,6 +139,19 @@ export interface WithdrawFromCardToSavingsResponse {
   amount: string;
 }
 
+/** Rain: withdraw collateral from funding account. amount = token smallest units (e.g. USDC 6 decimals). */
+export interface WithdrawCollateralRequest {
+  amount: string;
+  recipientAddress: string;
+  chainId?: number;
+  token?: string;
+}
+
+export interface WithdrawCollateralResponse {
+  transactionHash: string;
+  status?: 'pending';
+}
+
 export interface HoldingFundsPointsMultiplierConfig {
   holdingFundsPointsMultiplier: number;
 }
@@ -243,6 +257,19 @@ export type TokenPriceUsd = {
       lastUpdatedAt: string;
     }[];
   }[];
+};
+
+export enum RainConsumerType {
+  US = 'us',
+  INTERNATIONAL = 'international',
+}
+
+export type KycLinkAgreements = {
+  agreedToEsign: boolean;
+  agreedToTerms: boolean;
+  agreedToAccountOpeningPrivacy?: boolean;
+  agreedToCertify: boolean;
+  agreedToNoSolicitation: boolean;
 };
 
 export type KycLink = {
@@ -426,8 +453,23 @@ export interface CashbackData {
   percentage: number;
 }
 
+/** Card issuance provider; backend may add to details/status */
+export enum CardProvider {
+  BRIDGE = 'bridge',
+  RAIN = 'rain',
+}
+
+/** Card deposit activity metadata processing status */
+export enum CardDepositProcessingStatus {
+  SENDING = 'sending',
+  AWAITING_BRIDGE = 'awaiting_bridge',
+  AWAITING_RAIN = 'awaiting_rain',
+}
+
 export interface CardDetailsResponseDto extends CardResponse {
   cashback: CashbackData;
+  /** Set by backend when available */
+  provider?: CardProvider;
 }
 
 export interface CardStatusResponse {
@@ -435,6 +477,160 @@ export interface CardStatusResponse {
   activationBlocked?: boolean;
   activationBlockedReason?: string;
   activationFailedAt?: string;
+  /** Set by backend when available; used to branch Bridge vs Rain flows */
+  provider?: CardProvider;
+  /** Rain KYC: application status from Rain; when present, prefer over useKycStore.rainKycStatus */
+  rainApplicationStatus?: RainApplicationStatus;
+  /** Rain: link for needsVerification redirect */
+  applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
+}
+
+export interface SubmitPersonaKycRequest {
+  personaInquiryId: string;
+}
+
+export interface SubmitPersonaKycResponse {
+  consumerId: string;
+  kycStatus: KycStatus;
+}
+
+// --- Rain KYC (in-house API) ---
+export interface RainKycAddress {
+  street: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  country: string;
+}
+
+/** Rain application status from API; map to KycStatus for UI */
+export type RainApplicationStatus =
+  | 'approved'
+  | 'pending'
+  | 'manualReview'
+  | 'denied'
+  | 'locked'
+  | 'canceled'
+  | 'needsVerification'
+  | 'needsInformation'
+  | 'notStarted';
+
+export interface RainKycSubmitResponse {
+  applicationStatus: RainApplicationStatus;
+  rainUserId?: string;
+  applicationExternalVerificationLink?: {
+    url: string;
+    params: { userId: string; [key: string]: string };
+  };
+}
+
+export interface RainKycStatusResponse {
+  applicationStatus: RainApplicationStatus;
+  applicationExternalVerificationLink?: {
+    url: string;
+    params: { userId: string; [key: string]: string };
+  };
+}
+
+/** Document type for Rain KYC upload */
+export type RainDocumentType =
+  | 'idCard'
+  | 'passport'
+  | 'drivers'
+  | 'residencePermit'
+  | 'selfie';
+
+// --- Rain balance (cents) ---
+export interface CardBalanceResponseDto {
+  creditLimit?: number;
+  pendingCharges?: number;
+  postedCharges?: number;
+  balanceDue?: number;
+  spendingPower?: number;
+}
+
+export interface WalletEligibilityResponse {
+  eligible: boolean;
+  alreadyInAppleWallet?: boolean;
+  alreadyInGoogleWallet?: boolean;
+  reason?: string;
+}
+
+export interface ProvisioningSessionRequest {
+  wallet?: DigitalWalletType;
+}
+
+export interface ProvisioningSessionResponse {
+  sessionId: string;
+  expiresAt: string;
+}
+
+export interface MppCredentialsResponse {
+  cardId: string;
+  cardSecret: string;
+}
+
+export interface WebProvisioningTokenResponse {
+  token?: string;
+  [key: string]: unknown;
+}
+
+export interface ExtensionCardEntry {
+  cardId: string;
+  cardSecret: string;
+  cardholderName: string;
+  lastFour: string;
+  artUrl?: string;
+}
+
+export interface ExtensionCardsResponse {
+  cards: ExtensionCardEntry[];
+}
+
+// --- Rain card secrets (reveal PAN/CVC) ---
+export interface CardSecretsEncryptedField {
+  iv: string;
+  data: string;
+}
+
+export interface CardSecretsResponseDto {
+  encryptedPan: CardSecretsEncryptedField;
+  encryptedCvc: CardSecretsEncryptedField;
+}
+
+// --- Rain contracts (funding) ---
+export interface RainContractTokenDto {
+  address: string;
+  balance?: string;
+  exchangeRate?: number;
+  advanceRate?: number;
+}
+
+export interface RainOnrampBankDetailsDto {
+  beneficiaryName: string;
+  beneficiaryAddress: string;
+  accountNumber: string;
+  routingNumber: string;
+  beneficiaryBankName?: string;
+  beneficiaryBankAddress?: string;
+}
+
+export interface RainContractOnrampDto {
+  ach?: RainOnrampBankDetailsDto;
+  rtp?: RainOnrampBankDetailsDto;
+  wire?: RainOnrampBankDetailsDto;
+}
+
+export interface RainContractResponseDto {
+  id: string;
+  chainId: number;
+  controllerAddress: string;
+  proxyAddress: string;
+  tokens: RainContractTokenDto[];
+  contractVersion: number;
+  programAddress: string | null;
+  depositAddress?: string;
+  onramp?: RainContractOnrampDto;
 }
 
 export enum LayerZeroTransactionStatus {
