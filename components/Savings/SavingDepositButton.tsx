@@ -17,7 +17,7 @@ const SavingDepositButton = () => {
     );
   };
 
-  return <DepositOptionModal trigger={getTrigger()} />;
+  return <DepositOptionModal trigger={getTrigger()} preserveSelectedVault />;
 };
 
 export default SavingDepositButton;

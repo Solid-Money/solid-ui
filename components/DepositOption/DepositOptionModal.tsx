@@ -7,6 +7,7 @@ interface DepositOptionModalProps {
   buttonText?: string;
   trigger?: React.ReactNode;
   modal?: DepositModal;
+  preserveSelectedVault?: boolean;
 }
 
 /**
@@ -22,13 +23,21 @@ const DepositOptionModal = ({
   buttonText = 'Add funds',
   trigger,
   modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  preserveSelectedVault,
 }: DepositOptionModalProps) => {
   // Headless usage - the global DepositModalProvider handles the modal
   if (trigger === null) {
     return null;
   }
 
-  return <DepositTrigger buttonText={buttonText} trigger={trigger} modal={modal} />;
+  return (
+    <DepositTrigger
+      buttonText={buttonText}
+      trigger={trigger}
+      modal={modal}
+      preserveSelectedVault={preserveSelectedVault}
+    />
+  );
 };
 
 export default DepositOptionModal;

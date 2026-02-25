@@ -250,7 +250,7 @@ const Transaction = ({
                 alt="Reward indicator"
               />
             )}
-            {isPending && <ActivityIndicator color="gray" size={14} />}
+            {(isPending || isProcessing) && <ActivityIndicator color="gray" size={14} />}
             <Text className="text-sm font-medium text-muted-foreground">{getDescription()}</Text>
           </View>
         </View>

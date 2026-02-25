@@ -63,6 +63,7 @@ export default function Earn() {
             <View className="flex-row items-center justify-center gap-10 pb-6">
               <View className="gap-2">
                 <DepositOptionModal
+                  preserveSelectedVault
                   trigger={
                     <Button className="h-12 w-12 rounded-full p-0 text-primary-foreground">
                       <Plus />
