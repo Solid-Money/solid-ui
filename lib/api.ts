@@ -42,7 +42,6 @@ import {
   CardTransaction,
   CardTransactionsResponse,
   RainContractResponseDto,
-  RainKycStatusResponse,
   RainKycSubmitResponse,
   SubmitPersonaKycResponse,
   CardWaitlistResponse,
@@ -507,28 +506,6 @@ export const submitRainKyc = async (
       body: formData,
     },
   );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-/** Rain KYC: get application status (or use card status when backend includes rainApplicationStatus). */
-export const getRainKycStatus = async (): Promise<RainKycStatusResponse | null> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/rain/status`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-    },
-  );
-
-  if (response.status === 404) return null;
 
   if (!response.ok) throw response;
 

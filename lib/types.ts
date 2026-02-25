@@ -479,7 +479,7 @@ export interface CardStatusResponse {
   /** Rain KYC: application status from Rain; when present, prefer over useKycStore.rainKycStatus */
   rainApplicationStatus?: RainApplicationStatus;
   /** Rain: link for needsVerification redirect */
-  rainVerificationLink?: { url: string; params: Record<string, string> };
+  applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
 }
 
 export interface SubmitPersonaKycRequest {

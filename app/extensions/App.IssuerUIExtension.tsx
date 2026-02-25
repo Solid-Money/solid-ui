@@ -17,8 +17,12 @@ export default function IssuerUIExtension() {
   const login = useCallback(async () => {
     setLoading(true);
     try {
-      const GroupPreference = require('react-native-default-preference').default;
-      const MeaPushProvisioning = require('@meawallet/react-native-mpp').default;
+      const [pref, mpp] = await Promise.all([
+        import('react-native-default-preference'),
+        import('@meawallet/react-native-mpp'),
+      ]);
+      const GroupPreference = pref.default;
+      const MeaPushProvisioning = mpp.default;
 
       GroupPreference.setName(APP_GROUP_NAME);
 
@@ -27,10 +31,18 @@ export default function IssuerUIExtension() {
       const session = { email, token: 'placeholder' };
       GroupPreference.set('session', JSON.stringify(session));
 
-      MeaPushProvisioning.ApplePay.IssuerUIExtension.completeAuthentication(true);
+      (
+        MeaPushProvisioning.ApplePay as unknown as {
+          IssuerUIExtension: { completeAuthentication(ok: boolean): void };
+        }
+      ).IssuerUIExtension.completeAuthentication(true);
     } catch (_err) {
-      const MeaPushProvisioning = require('@meawallet/react-native-mpp').default;
-      MeaPushProvisioning.ApplePay.IssuerUIExtension.completeAuthentication(false);
+      const mpp = await import('@meawallet/react-native-mpp');
+      (
+        mpp.default.ApplePay as unknown as {
+          IssuerUIExtension: { completeAuthentication(ok: boolean): void };
+        }
+      ).IssuerUIExtension.completeAuthentication(false);
     } finally {
       setLoading(false);
     }

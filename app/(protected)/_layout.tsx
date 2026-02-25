@@ -80,12 +80,9 @@ export default function ProtectedLayout() {
   // MeaWallet MPP: initialize once on native (required before any MPP API use)
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    try {
-      const MeaPushProvisioning = require('@meawallet/react-native-mpp').default;
-      MeaPushProvisioning.initialize().catch(() => {});
-    } catch {
-      // Module not linked (e.g. dev without native build)
-    }
+    import('@meawallet/react-native-mpp')
+      .then(m => m.default.initialize().catch(() => {}))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {

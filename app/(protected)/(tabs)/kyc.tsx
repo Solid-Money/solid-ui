@@ -18,7 +18,8 @@ import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import { getClientIp, getRainKycStatus, submitRainKyc } from '@/lib/api';
+import { getCardStatus, getClientIp, submitRainKyc } from '@/lib/api';
+import { redirectToRainVerification } from '@/lib/rainVerification';
 import { KycStatus, RainApplicationStatus, type RainDocumentType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useKycStore } from '@/store/useKycStore';
@@ -192,16 +193,7 @@ export default function Kyc() {
           res.applicationStatus === 'needsVerification' &&
           res.applicationExternalVerificationLink
         ) {
-          const { url, params } = res.applicationExternalVerificationLink;
-          const redirectBack = process.env.EXPO_PUBLIC_BASE_URL
-            ? `${process.env.EXPO_PUBLIC_BASE_URL}${path.CARD_ACTIVATE}`
-            : String(path.CARD_ACTIVATE);
-          const u = new URL(url);
-          Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
-          u.searchParams.set('redirect', redirectBack);
-          if (typeof window !== 'undefined') {
-            window.location.href = u.toString();
-          }
+          redirectToRainVerification(res.applicationExternalVerificationLink);
           return;
         }
         if (res.applicationStatus === 'pending' || res.applicationStatus === 'manualReview') {
@@ -222,26 +214,31 @@ export default function Kyc() {
     [buildFormData, documentFiles, router, setRainKycStatus],
   );
 
-  // Poll status when pending/manualReview
+  // Poll card status when pending/manualReview (rain status comes from card status)
   useEffect(() => {
     if (!polling) return;
     const t = setInterval(async () => {
       try {
-        const statusRes = await withRefreshToken(() => getRainKycStatus());
-        if (!statusRes) return;
-        const kycStatus = RAIN_STATUS_TO_KYC[statusRes.applicationStatus];
+        const cardRes = await withRefreshToken(() => getCardStatus());
+        if (!cardRes?.rainApplicationStatus) return;
+        const status = cardRes.rainApplicationStatus;
+        const kycStatus = RAIN_STATUS_TO_KYC[status];
         if (kycStatus) setRainKycStatus(kycStatus);
         setSubmitResult(prev => ({
           ...prev!,
-          status: statusRes.applicationStatus,
-          verificationLink: statusRes.applicationExternalVerificationLink,
+          status,
+          verificationLink: cardRes.applicationExternalVerificationLink,
         }));
-        if (statusRes.applicationStatus === 'approved') {
+        if (status === 'approved') {
           setPolling(false);
           router.replace(path.CARD_ACTIVATE as any);
         }
-        if (statusRes.applicationStatus === 'denied') {
+        if (status === 'denied') {
           setPolling(false);
+        }
+        if (status === 'needsVerification' && cardRes.applicationExternalVerificationLink) {
+          setPolling(false);
+          redirectToRainVerification(cardRes.applicationExternalVerificationLink);
         }
       } catch {
         // ignore poll errors

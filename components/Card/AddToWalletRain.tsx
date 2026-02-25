@@ -13,17 +13,19 @@ import { withRefreshToken } from '@/lib/utils';
 
 import type { CardDetailsResponseDto } from '@/lib/types';
 
+// Optional native module; set when dynamic import resolves
 let MeaPushProvisioning: typeof import('@meawallet/react-native-mpp').default | null = null;
 let MppCardDataParameters:
   | typeof import('@meawallet/react-native-mpp').MppCardDataParameters
   | null = null;
-try {
-  const mpp = require('@meawallet/react-native-mpp');
-  MeaPushProvisioning = mpp.default;
-  MppCardDataParameters = mpp.MppCardDataParameters;
-} catch {
-  // Module not linked (web or dev without native build)
-}
+import('@meawallet/react-native-mpp')
+  .then(mpp => {
+    MeaPushProvisioning = mpp.default;
+    MppCardDataParameters = mpp.MppCardDataParameters;
+  })
+  .catch(() => {
+    // Module not linked (web or dev without native build)
+  });
 
 function cardholderName(details: CardDetailsResponseDto | undefined): string {
   if (!details?.cardholder_name) return '';
