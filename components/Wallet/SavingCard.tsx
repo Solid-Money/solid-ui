@@ -129,7 +129,7 @@ const SavingCard = memo(({ className, decimalPlaces = 2 }: SavingCardProps) => {
                 />
               )}
             </View>
-            <TooltipPopover text="Balance + Vault yields (soUSD and soFUSE)" />
+            <TooltipPopover text="USDC vault (USD) + FUSE vault (USD)" />
           </View>
           <Image
             source={getAsset('images/sousd-4x.png')}
