@@ -21,7 +21,7 @@ interface DepositOptionModalProps {
 const DepositOptionModal = ({
   buttonText = 'Add funds',
   trigger,
-  modal = DEPOSIT_MODAL.OPEN_VAULT_SELECTOR,
+  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
 }: DepositOptionModalProps) => {
   // Headless usage - the global DepositModalProvider handles the modal
   if (trigger === null) {

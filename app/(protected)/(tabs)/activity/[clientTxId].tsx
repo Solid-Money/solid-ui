@@ -40,6 +40,7 @@ import {
   getInitials,
 } from '@/lib/utils/cardHelpers';
 
+
 type RowProps = {
   label: React.ReactNode;
   value: React.ReactNode;
@@ -415,7 +416,11 @@ export default function ActivityDetail() {
       return `${toTitleCase(finalActivity?.metadata?.destination || 'savings')} account`;
     }
     return transactionDetails?.category ?? 'Unknown';
-  }, [finalActivity?.type, finalActivity?.metadata?.destination, transactionDetails?.category]);
+  }, [
+    finalActivity?.type,
+    finalActivity?.metadata?.destination,
+    transactionDetails?.category,
+  ]);
 
   const tokenIcon = useMemo(
     () => (finalActivity ? getTokenIcon({ tokenSymbol: finalActivity.symbol, size: 75 }) : null),
@@ -504,16 +509,7 @@ export default function ActivityDetail() {
           value: <EstimatedTime currentTime={currentTime} setCurrentTime={setCurrentTime} />,
         },
     ].filter(Boolean) as { key: string; label: React.ReactNode; value: React.ReactNode }[];
-  }, [
-    finalActivity,
-    isDeposit,
-    isBridgeDeposit,
-    isPending,
-    isDetected,
-    isProcessing,
-    currentTime,
-    handleExplorerPress,
-  ]);
+  }, [finalActivity, isDeposit, isBridgeDeposit, isPending, isDetected, isProcessing, currentTime, handleExplorerPress]);
 
   const transactionContext = useMemo(() => {
     if (!finalActivity) return '';

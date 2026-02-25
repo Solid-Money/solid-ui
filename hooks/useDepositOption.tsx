@@ -18,7 +18,6 @@ import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTok
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
-import DepositVaultSelector from '@/components/DepositOption/DepositVaultSelector';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -46,7 +45,7 @@ export interface DepositOptionProps {
 const useDepositOption = ({
   buttonText = 'Add funds',
   trigger,
-  modal = DEPOSIT_MODAL.OPEN_VAULT_SELECTOR,
+  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
 }: DepositOptionProps = {}) => {
   const { user } = useUser();
   const { vault, depositConfig } = useVaultDepositConfig();
@@ -126,8 +125,6 @@ const useDepositOption = ({
   const isDepositDirectlyTokens =
     currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS.name;
   const isTokenSelector = currentModal.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
-  const isVaultSelector = currentModal.name === DEPOSIT_MODAL.OPEN_VAULT_SELECTOR.name;
-  const isOptions = currentModal.name === DEPOSIT_MODAL.OPEN_OPTIONS.name;
   const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
   const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
   const isForward = currentModal.number > previousModal.number;
@@ -248,10 +245,6 @@ const useDepositOption = ({
       return <DepositTokenSelector />;
     }
 
-    if (isVaultSelector) {
-      return <DepositVaultSelector />;
-    }
-
     return <DepositOptions />;
   };
 
@@ -273,7 +266,6 @@ const useDepositOption = ({
     if (isDepositDirectlyAddress) return 'deposit-directly-address';
     if (isDepositDirectlyTokens) return 'deposit-directly-tokens';
     if (isTokenSelector) return 'token-selector';
-    if (isVaultSelector) return 'vault-selector';
     return 'deposit-options';
   };
 
@@ -290,7 +282,6 @@ const useDepositOption = ({
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
     if (isTokenSelector) return 'Select a token';
-    if (isVaultSelector) return 'Choose vault';
     return 'Deposit';
   };
 
@@ -321,8 +312,7 @@ const useDepositOption = ({
       !isEmailGate &&
       !isNetworks &&
       !isBankTransfer &&
-      !isDepositDirectly &&
-      !isVaultSelector
+      !isDepositDirectly
     ) {
       return 'min-h-[40rem]';
     }
@@ -395,11 +385,6 @@ const useDepositOption = ({
       modalName === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_FRAME.name
     ) {
       return TRACKING_EVENTS.DEPOSIT_BANK_INSTRUCTIONS_ABANDONED;
-    }
-
-    // Vault selector abandonment
-    if (modalName === DEPOSIT_MODAL.OPEN_VAULT_SELECTOR.name) {
-      return TRACKING_EVENTS.DEPOSIT_OPTIONS_ABANDONED;
     }
 
     // Default to general abandonment
@@ -535,10 +520,8 @@ const useDepositOption = ({
     } else if (isNetworks) {
       setDepositFromSolid(false);
       setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
-    } else if (isOptions) {
-      setModal(DEPOSIT_MODAL.OPEN_VAULT_SELECTOR);
     } else {
-      setModal(DEPOSIT_MODAL.CLOSE);
+      setModal(DEPOSIT_MODAL.OPEN_OPTIONS);
     }
   };
 
@@ -586,7 +569,6 @@ const useDepositOption = ({
       status === 'disconnected' &&
       !depositFromSolid &&
       !isClose &&
-      !isVaultSelector &&
       !isDepositDirectly &&
       !isDepositDirectlyAddress &&
       !isDepositDirectlyTokens &&
@@ -600,7 +582,6 @@ const useDepositOption = ({
     setModal,
     depositFromSolid,
     isClose,
-    isVaultSelector,
     isDepositDirectly,
     isDepositDirectlyAddress,
     isDepositDirectlyTokens,
@@ -618,14 +599,11 @@ const useDepositOption = ({
   useEffect(() => {
     if (!vault?.name) return;
     if (previousVaultNameRef.current && previousVaultNameRef.current !== vault.name) {
-      // Don't reset when user is selecting vault from the vault selector step
-      if (!isVaultSelector) {
-        setModal(DEPOSIT_MODAL.CLOSE);
-        resetDepositFlow();
-      }
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
     }
     previousVaultNameRef.current = vault.name;
-  }, [vault?.name, resetDepositFlow, setModal, isVaultSelector]);
+  }, [vault?.name, resetDepositFlow, setModal]);
 
   // Open the modal for all states except when explicitly closed
   const shouldOpen = !isClose;
@@ -645,8 +623,7 @@ const useDepositOption = ({
     isDepositDirectly ||
     isDepositDirectlyAddress ||
     isDepositDirectlyTokens ||
-    isTokenSelector ||
-    isOptions;
+    isTokenSelector;
 
   return {
     shouldOpen,

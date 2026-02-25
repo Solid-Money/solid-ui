@@ -83,9 +83,7 @@ const Header = memo(function Header({ columns }: HeaderProps) {
               className={cn('flex-row items-center gap-2', c.containerClassName)}
               style={{ width: c.width }}
             >
-              <Text className="text-sm font-medium text-muted-foreground md:text-base">
-                {c.title}
-              </Text>
+              <Text className="text-sm font-medium text-muted-foreground md:text-base">{c.title}</Text>
               {c.tooltip && <TooltipPopover text={c.tooltip} />}
             </View>
           ),
@@ -103,11 +101,7 @@ const Row = memo(function Row({ item, columns, isLast, onPress, isScreenMedium }
       {columns.map(
         (c, colIndex) =>
           c.width && (
-            <View
-              key={`vault-tb-${colIndex}`}
-              className={c.containerClassName}
-              style={{ width: c.width }}
-            >
+            <View key={`vault-tb-${colIndex}`} className={c.containerClassName} style={{ width: c.width }}>
               {c.key ? (
                 <View className="flex-row items-center gap-2">
                   {c.key === 'name' &&
@@ -120,12 +114,7 @@ const Row = memo(function Row({ item, columns, isLast, onPress, isScreenMedium }
                     ) : (
                       <DefaultTokenIcon size={24} symbol={(item.title ?? item.name).charAt(0)} />
                     ))}
-                  <Text
-                    className={cn(
-                      'shrink text-sm font-medium md:text-lg',
-                      c.classNames?.body?.text,
-                    )}
-                  >
+                  <Text className={cn('shrink text-sm font-medium md:text-lg', c.classNames?.body?.text)}>
                     {c.percent
                       ? formatPercent(item[c.key] ?? 0)
                       : c.key === 'name'
