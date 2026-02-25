@@ -516,6 +516,7 @@ export enum TransactionCategory {
 
 export enum TransactionStatus {
   PENDING = 'pending',
+  DETECTED = 'detected',
   PROCESSING = 'processing',
   SUCCESS = 'success',
   FAILED = 'failed',
@@ -523,6 +524,8 @@ export enum TransactionStatus {
   EXPIRED = 'expired',
   REFUNDED = 'refunded',
 }
+
+export type DepositStep = 'detected' | 'confirmed' | 'depositing' | 'minting' | 'complete';
 
 export type Transaction = {
   title: string;

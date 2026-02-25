@@ -257,6 +257,7 @@ export function useActivity() {
     return activities.filter(
       activity =>
         activity.status === TransactionStatus.PENDING ||
+        activity.status === TransactionStatus.DETECTED ||
         activity.status === TransactionStatus.PROCESSING,
     );
   }, [activities]);
