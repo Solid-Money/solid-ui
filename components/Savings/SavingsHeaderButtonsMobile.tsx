@@ -48,6 +48,7 @@ const SavingsHeaderButtonsMobile = ({
   return (
     <View className="flex-row items-center justify-center gap-8">
       <DepositOptionModal
+        preserveSelectedVault
         trigger={
           <CircleButton
             icon={Plus}

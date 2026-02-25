@@ -10,6 +10,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useDimension } from '@/hooks/useDimension';
 import { getAsset } from '@/lib/assets';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useSavingStore } from '@/store/useSavingStore';
 
 import SwipeableBanner from './SwipeableBanner';
 
@@ -18,6 +19,7 @@ const DepositBanner = () => {
   const setModal = useDepositStore(state => state.setModal);
 
   const handleAddFundsPress = () => {
+    useSavingStore.getState().selectVaultForDeposit(0);
     setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
   };
 
@@ -36,7 +38,12 @@ const DepositBanner = () => {
 
   const getTrigger = () => {
     return (
-      <SwipeableBanner onPress={() => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS)}>
+      <SwipeableBanner
+        onPress={() => {
+          useSavingStore.getState().selectVaultForDeposit(0);
+          setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+        }}
+      >
         <LinearGradient
           colors={['rgba(126, 126, 126, 0.3)', 'rgba(126, 126, 126, 0.2)']}
           style={{
