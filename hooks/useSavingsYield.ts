@@ -65,11 +65,15 @@ export function useSavingsYield({
   const lastTsBucket = lastTimestamp > 0 ? Math.floor(lastTimestamp / 86400) : 0;
   const apyBucket = Math.floor((apy ?? 0) * 100);
 
-  // Full calc only when inputs change (no tick)
+  // Full calc only when inputs change (no tick). For TOTAL_USD use redeemable only so display matches withdraw.
   useEffect(() => {
     if (balance <= 0) {
       setLiveYield(0);
       setAnchor(null);
+      return;
+    }
+    if (mode === SavingMode.TOTAL_USD) {
+      setLiveYield(balance * exchangeRate);
       return;
     }
     let cancelled = false;
@@ -115,7 +119,8 @@ export function useSavingsYield({
     if (balance <= 0) return;
     const now = Math.floor(Date.now() / 1000);
     if (mode === SavingMode.TOTAL_USD) {
-      setLiveYield(totalUsdLive(balance, exchangeRate, apy, lastTimestamp, now));
+      const redeemableOnly = balance * exchangeRate;
+      setLiveYield(redeemableOnly);
     } else if (mode === SavingMode.CURRENT && anchor) {
       setLiveYield(anchor.value + amountGained(balance, exchangeRate, apy, anchor.time, now));
     }

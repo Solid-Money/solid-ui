@@ -191,7 +191,10 @@ export default function Savings() {
               >
                 <View className="flex-1 justify-between gap-12 border-b border-[#ffffff]/20 bg-transparent p-6 pb-10 md:gap-4 md:border-b-0 md:border-r md:px-10 md:py-8">
                   <View>
-                    <Text className="text-[1rem] text-primary/70 md:text-lg">Total value</Text>
+                    <View className="flex-row items-center gap-2 pb-1">
+                      <Text className="text-[1rem] text-primary/70 md:text-lg">Total value</Text>
+                      <TooltipPopover text="Redeemable amount: balance x exchange rate" />
+                    </View>
                     <View className="flex-row items-center">
                       <SavingCountUp
                         prefix={displayPrefix}
@@ -230,7 +233,12 @@ export default function Savings() {
                     </View>
                   </View>
                   <View className="gap-1">
-                    <Text className="text-[1rem] text-primary/70 md:text-lg">Interest earned</Text>
+                    <View className="flex-row items-center gap-2 pb-1">
+                      <Text className="text-[1rem] text-primary/70 md:text-lg">
+                        Interest earned
+                      </Text>
+                      <TooltipPopover text="Profit to date: total value - total deposited" />
+                    </View>
                     <View className="flex-row items-center">
                       <SavingCountUp
                         prefix={displayPrefix}
@@ -313,7 +321,10 @@ export default function Savings() {
                 <View className="hidden border-t border-[#ffffff]/20 md:block" />
 
                 <View className="hidden p-6 md:flex md:p-7">
-                  <Text className="pb-1 text-primary/70 md:text-lg">Projected 1Y Earnings</Text>
+                  <View className="flex-row items-center gap-2 pb-1">
+                    <Text className="text-primary/70 md:text-lg">Projected 1Y Earnings</Text>
+                    <TooltipPopover text="balance x exchange rate x (APY / 100)" />
+                  </View>
                   <Text className="text-2xl font-semibold">
                     {isBalanceLoading ? (
                       <Skeleton className="h-8 w-24 rounded-twice bg-purple/50" />
@@ -371,7 +382,10 @@ export default function Savings() {
               >
                 <View className="flex-1 justify-between gap-12 border-b border-[#ffffff]/20 bg-transparent p-6 pb-10 md:gap-4 md:border-b-0 md:border-r md:px-10 md:py-8">
                   <View>
-                    <Text className="text-[1rem] text-primary/70 md:text-lg">Total value</Text>
+                    <View className="flex-row items-center gap-2 pb-1">
+                      <Text className="text-[1rem] text-primary/70 md:text-lg">Total value</Text>
+                      <TooltipPopover text="Redeemable amount: balance x exchange rate" />
+                    </View>
                     <View className="flex-row items-center">
                       <SavingCountUp
                         prefix={displayPrefix}
@@ -410,7 +424,12 @@ export default function Savings() {
                     </View>
                   </View>
                   <View className="gap-1">
-                    <Text className="text-[1rem] text-primary/70 md:text-lg">Interest earned</Text>
+                    <View className="flex-row items-center gap-2 pb-1">
+                      <Text className="text-[1rem] text-primary/70 md:text-lg">
+                        Interest earned
+                      </Text>
+                      <TooltipPopover text="Profit to date: total value - total deposited" />
+                    </View>
                     <View className="flex-row items-center">
                       <SavingCountUp
                         prefix={displayPrefix}
@@ -493,7 +512,10 @@ export default function Savings() {
                 <View className="hidden border-t border-[#ffffff]/20 md:block" />
 
                 <View className="hidden p-6 md:flex md:p-7">
-                  <Text className="pb-1 text-primary/70 md:text-lg">Projected 1Y Earnings</Text>
+                  <View className="flex-row items-center gap-2 pb-1">
+                    <Text className="text-primary/70 md:text-lg">Projected 1Y Earnings</Text>
+                    <TooltipPopover text="balance x exchange rate x (APY / 100)" />
+                  </View>
                   <Text className="text-2xl font-semibold">
                     {isBalanceLoading ? (
                       <Skeleton className="h-8 w-24 rounded-twice bg-purple/50" />
