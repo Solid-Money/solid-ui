@@ -9,6 +9,7 @@ import { useDepositStore } from '@/store/useDepositStore';
 interface SavingState {
   selectedVault: number;
   setSelectedVault: (vault: number) => void;
+  selectVaultForDeposit: (vault: number) => void;
 }
 
 export const useSavingStore = create<SavingState>()(
@@ -20,6 +21,10 @@ export const useSavingStore = create<SavingState>()(
         const { setModal, resetDepositFlow } = useDepositStore.getState();
         setModal(DEPOSIT_MODAL.CLOSE);
         resetDepositFlow();
+        set({ selectedVault: vault });
+      },
+
+      selectVaultForDeposit: vault => {
         set({ selectedVault: vault });
       },
     }),

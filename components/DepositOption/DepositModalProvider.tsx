@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import ResponsiveModal from '@/components/ResponsiveModal';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { VAULTS } from '@/constants/vaults';
 import useDepositOption from '@/hooks/useDepositOption';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -31,12 +32,11 @@ const DepositModalProvider = () => {
     handleBackPress,
   } = useDepositOption();
   // Use useShallow for object selection to prevent unnecessary re-renders
-  const { currentModal, previousModal, resetDepositFlow, setModal } = useDepositStore(
+  const { currentModal, previousModal, resetDepositFlow } = useDepositStore(
     useShallow(state => ({
       currentModal: state.currentModal,
       previousModal: state.previousModal,
       resetDepositFlow: state.resetDepositFlow,
-      setModal: state.setModal,
     })),
   );
   const selectedVault = useSavingStore(state => state.selectedVault);
@@ -46,10 +46,18 @@ const DepositModalProvider = () => {
     const nextVaultName = VAULTS[selectedVault]?.name;
     if (!nextVaultName) return;
     if (previousVaultNameRef.current && previousVaultNameRef.current !== nextVaultName) {
-      resetDepositFlow();
+      // Don't reset when user is selecting vault from the vault selector step.
+      // Check both OPEN_VAULT_SELECTOR and OPEN_OPTIONS because React 18 batching
+      // may have already transitioned the modal to OPEN_OPTIONS by the time this effect runs.
+      const isSelectingFromModal =
+        currentModal.name === DEPOSIT_MODAL.OPEN_VAULT_SELECTOR.name ||
+        previousModal.name === DEPOSIT_MODAL.OPEN_VAULT_SELECTOR.name;
+      if (!isSelectingFromModal) {
+        resetDepositFlow();
+      }
     }
     previousVaultNameRef.current = nextVaultName;
-  }, [resetDepositFlow, selectedVault, setModal]);
+  }, [resetDepositFlow, selectedVault, currentModal.name, previousModal.name]);
 
   return (
     <ResponsiveModal
