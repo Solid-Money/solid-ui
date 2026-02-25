@@ -129,11 +129,7 @@ export default function PageLayout({
           contentInsetAdjustmentBehavior="automatic"
           stickyHeaderIndices={stickyHeader ? [0] : undefined}
         >
-          {stickyHeader && (
-            <View className="z-10 bg-background">
-              {stickyHeader}
-            </View>
-          )}
+          {stickyHeader && <View className="z-10 bg-background">{stickyHeader}</View>}
           {children}
         </ScrollView>
         {additionalContent}

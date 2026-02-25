@@ -242,7 +242,11 @@ const ExtraYield = () => {
             </View>
           </Link>
         </View>
-        {hasDeposited ? getClaimButton() : <DepositOptionModal trigger={getTrigger()} />}
+        {hasDeposited ? (
+          getClaimButton()
+        ) : (
+          <DepositOptionModal trigger={getTrigger()} preserveSelectedVault />
+        )}
       </View>
 
       {isScreenMedium ? getImage() : null}
