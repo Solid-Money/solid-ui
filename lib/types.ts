@@ -476,9 +476,12 @@ export interface CardStatusResponse {
   activationFailedAt?: string;
   /** Set by backend when available; used to branch Bridge vs Rain flows */
   provider?: CardProvider;
+  /** Rain KYC: application status from Rain; when present, prefer over useKycStore.rainKycStatus */
+  rainApplicationStatus?: RainApplicationStatus;
+  /** Rain: link for needsVerification redirect */
+  rainVerificationLink?: { url: string; params: Record<string, string> };
 }
 
-// --- Rain KYC (Persona) ---
 export interface SubmitPersonaKycRequest {
   personaInquiryId: string;
 }
@@ -487,6 +490,52 @@ export interface SubmitPersonaKycResponse {
   consumerId: string;
   kycStatus: KycStatus;
 }
+
+// --- Rain KYC (in-house API) ---
+export interface RainKycAddress {
+  street: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  country: string;
+}
+
+/** Rain application status from API; map to KycStatus for UI */
+export type RainApplicationStatus =
+  | 'approved'
+  | 'pending'
+  | 'manualReview'
+  | 'denied'
+  | 'locked'
+  | 'canceled'
+  | 'needsVerification'
+  | 'needsInformation'
+  | 'notStarted';
+
+export interface RainKycSubmitResponse {
+  applicationStatus: RainApplicationStatus;
+  rainUserId?: string;
+  applicationExternalVerificationLink?: {
+    url: string;
+    params: { userId: string; [key: string]: string };
+  };
+}
+
+export interface RainKycStatusResponse {
+  applicationStatus: RainApplicationStatus;
+  applicationExternalVerificationLink?: {
+    url: string;
+    params: { userId: string; [key: string]: string };
+  };
+}
+
+/** Document type for Rain KYC upload */
+export type RainDocumentType =
+  | 'idCard'
+  | 'passport'
+  | 'drivers'
+  | 'residencePermit'
+  | 'selfie';
 
 // --- Rain balance (cents) ---
 export interface CardBalanceResponseDto {

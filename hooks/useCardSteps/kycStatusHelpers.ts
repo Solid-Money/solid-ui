@@ -1,6 +1,29 @@
-import { KycLinkFromBridgeResponse, KycStatus } from '@/lib/types';
+import {
+  KycLinkFromBridgeResponse,
+  KycStatus,
+  RainApplicationStatus,
+} from '@/lib/types';
 import { isFinalKycStatus } from '@/lib/utils/kyc';
 import { useEffect } from 'react';
+
+/** Map Rain API application status to frontend KycStatus */
+export function rainApplicationStatusToKycStatus(
+  status: RainApplicationStatus | undefined,
+): KycStatus | null {
+  if (!status) return null;
+  const map: Record<RainApplicationStatus, KycStatus> = {
+    approved: KycStatus.APPROVED,
+    pending: KycStatus.UNDER_REVIEW,
+    manualReview: KycStatus.UNDER_REVIEW,
+    denied: KycStatus.REJECTED,
+    locked: KycStatus.UNDER_REVIEW,
+    canceled: KycStatus.REJECTED,
+    needsVerification: KycStatus.INCOMPLETE,
+    needsInformation: KycStatus.INCOMPLETE,
+    notStarted: KycStatus.NOT_STARTED,
+  };
+  return map[status] ?? null;
+}
 
 /**
  * Compute KYC status from multiple sources (prefer live link status)

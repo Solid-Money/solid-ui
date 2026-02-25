@@ -7,7 +7,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { useFingerprint } from '@/hooks/useFingerprint';
 import { track } from '@/lib/analytics';
-import { EXPO_PUBLIC_CARD_ISSUER, EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID } from '@/lib/config';
+import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { CardProvider, CardStatusResponse, KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -24,7 +24,12 @@ import {
   showAccountOffboardedToast,
   showKycUnderReviewToast,
 } from './kycFlowHelpers';
-import { computeKycStatus, computeUiKycStatus, useProcessingWindow } from './kycStatusHelpers';
+import {
+  computeKycStatus,
+  computeUiKycStatus,
+  rainApplicationStatusToKycStatus,
+  useProcessingWindow,
+} from './kycStatusHelpers';
 import { buildCardSteps, useCardActivation, useStepNavigation } from './stepHelpers';
 
 // Re-export types
@@ -101,6 +106,15 @@ export function useCardSteps(
     [processingUntil, kycLink?.kyc_status, kycStatus],
   );
 
+  // Rain: prefer backend rainApplicationStatus from card status over store
+  const rainKycStatusResolved = useMemo(() => {
+    if (cardIssuer !== CardProvider.RAIN) return rainKycStatus;
+    const fromBackend = rainApplicationStatusToKycStatus(
+      cardStatusResponse?.rainApplicationStatus,
+    );
+    return fromBackend ?? rainKycStatus;
+  }, [cardIssuer, cardStatusResponse?.rainApplicationStatus, rainKycStatus]);
+
   // Card activation state and handlers
   const {
     cardActivated,
@@ -126,18 +140,9 @@ export function useCardSteps(
       cardIssuer,
     });
 
-    // Rain: redirect to Rain KYC screen (Persona with Rain template → submitPersonaKyc)
-    if (cardIssuer === CardProvider.RAIN && EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID) {
-      const baseUrl = process.env.EXPO_PUBLIC_BASE_URL ?? '';
-      const redirectUri = `${baseUrl}${path.CARD_ACTIVATE}`;
-      router.push({
-        pathname: '/kyc',
-        params: {
-          mode: CardProvider.RAIN,
-          templateId: EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID,
-          redirectUri,
-        },
-      });
+    // Default to Rain KYC; only Bridge goes through Bridge flow
+    if (cardIssuer !== CardProvider.BRIDGE) {
+      router.push(path.KYC as any);
       return;
     }
 
@@ -233,7 +238,7 @@ export function useCardSteps(
         handleProceedToKyc,
         handleActivateCard,
         pushCardDetails,
-        { cardIssuer, rainKycStatus },
+        { cardIssuer, rainKycStatus: rainKycStatusResolved },
       ),
     [
       cardsEndorsement,
@@ -245,7 +250,7 @@ export function useCardSteps(
       handleActivateCard,
       pushCardDetails,
       cardIssuer,
-      rainKycStatus,
+      rainKycStatusResolved,
     ],
   );
 

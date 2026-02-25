@@ -2,7 +2,8 @@ import Toast from 'react-native-toast-message';
 import { Router } from 'expo-router';
 
 import { Endorsements } from '@/components/BankTransfer/enums';
-import { KycMode, RainConsumerType } from '@/components/UserKyc';
+import { KycMode } from '@/components/UserKyc';
+import { RainConsumerType } from '@/lib/types';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';

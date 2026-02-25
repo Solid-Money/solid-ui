@@ -10,18 +10,13 @@ import { z } from 'zod';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { UserInfoFooter, UserInfoForm, UserInfoHeader } from '@/components/UserKyc';
-import {
-  KycMode,
-  RainConsumerType,
-  type UserInfoFormData,
-  userInfoSchema,
-} from '@/components/UserKyc/types';
+import { KycMode, type UserInfoFormData, userInfoSchema } from '@/components/UserKyc/types';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { track } from '@/lib/analytics';
 import { createKycLink } from '@/lib/api';
-import { EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID } from '@/lib/config';
-import { withRefreshToken } from '@/lib/utils';
+import { CardProvider } from '@/lib/types';
 import { startKycFlow } from '@/lib/utils/kyc';
 import { useKycStore } from '@/store/useKycStore';
 
@@ -30,56 +25,39 @@ export default function UserKycInfo() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const setKycLinkId = useKycStore(state => state.setKycLinkId);
+  const { provider: cardProvider } = useCardProvider();
 
   // redirectUri tells where to resume after KYC.
   const params = useLocalSearchParams<{
     redirectUri?: string;
     endorsement?: string;
     kycMode?: KycMode;
-    /** Rain: 'us' = US Consumer (5 checkboxes), 'international' or absent = International (4) */
-    consumerType?: RainConsumerType;
   }>();
 
-  const { redirectUri, kycMode, consumerType } = params;
-  const isUS = consumerType === RainConsumerType.US;
+  const { redirectUri, kycMode } = params;
+
+  // Rain (or default): redirect to Rain's in-house KYC page. Only Bridge uses this page.
+  useEffect(() => {
+    if ((kycMode as KycMode) === KycMode.CARD && cardProvider !== CardProvider.BRIDGE) {
+      router.replace(path.KYC as any);
+      return;
+    }
+  }, [kycMode, cardProvider, router]);
 
   // Track page view on mount
   useEffect(() => {
     track(TRACKING_EVENTS.USER_KYC_INFO_PAGE_VIEWED, {
       kyc_mode: kycMode || 'unknown',
-      consumer_type: consumerType || RainConsumerType.INTERNATIONAL,
       has_redirect_uri: !!redirectUri,
     });
-  }, [kycMode, consumerType, redirectUri]);
+  }, [kycMode, redirectUri]);
 
   const schema = userInfoSchema.superRefine((data, ctx) => {
-    if ((kycMode as KycMode) !== KycMode.CARD) return;
-    if (data.agreedToEsign !== true) {
+    if ((kycMode as KycMode) === KycMode.CARD && data.agreedToEsign !== true) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'You must agree to the E-Sign Consent to continue',
+        message: 'You must agree to the Electronic Signature Consent to continue',
         path: ['agreedToEsign'],
-      });
-    }
-    if (isUS && data.agreedToAccountOpeningPrivacy !== true) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'You must accept the Account Opening Privacy Notice to continue',
-        path: ['agreedToAccountOpeningPrivacy'],
-      });
-    }
-    if (data.agreedToCertify !== true) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'You must certify that the information provided is accurate',
-        path: ['agreedToCertify'],
-      });
-    }
-    if (data.agreedToNoSolicitation !== true) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'You must acknowledge that applying does not constitute unauthorized solicitation',
-        path: ['agreedToNoSolicitation'],
       });
     }
   });
@@ -96,9 +74,6 @@ export default function UserKycInfo() {
       email: '',
       agreedToTerms: false,
       agreedToEsign: false,
-      agreedToAccountOpeningPrivacy: false,
-      agreedToCertify: false,
-      agreedToNoSolicitation: false,
     },
   });
 
@@ -113,14 +88,10 @@ export default function UserKycInfo() {
     // Track form submission
     track(TRACKING_EVENTS.USER_KYC_INFO_FORM_STARTED, {
       kyc_mode: kycMode || 'unknown',
-      consumer_type: consumerType || RainConsumerType.INTERNATIONAL,
       has_email: !!data.email,
       has_full_name: !!data.fullName,
       agreed_to_terms: data.agreedToTerms,
       agreed_to_esign: data.agreedToEsign,
-      agreed_to_account_opening_privacy: data.agreedToAccountOpeningPrivacy,
-      agreed_to_certify: data.agreedToCertify,
-      agreed_to_no_solicitation: data.agreedToNoSolicitation,
     });
 
     const redirectUrl = getRedirectUrl();
@@ -135,20 +106,8 @@ export default function UserKycInfo() {
 
       if (kycLink.kycLinkId) setKycLinkId(kycLink.kycLinkId);
 
-      // Rain: backend returns empty link; Persona is started via template ID only (token sharing).
-      if (!kycLink.link && EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID) {
-        const baseUrl = process.env.EXPO_PUBLIC_BASE_URL ?? '';
-        router.push({
-          pathname: '/kyc',
-          params: {
-            mode: 'rain',
-            templateId: EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID,
-            redirectUri: redirectUrl || `${baseUrl}${path.CARD_ACTIVATE}`,
-          },
-        });
-      } else {
-        startKycFlow({ router, kycLink: kycLink.link });
-      }
+      // Bridge: open Persona at /bridge-kyc (web) or browser (native)
+      startKycFlow({ router, kycLink: kycLink.link });
     } catch (error) {
       console.error('KYC link creation failed:', error);
 
@@ -190,7 +149,6 @@ export default function UserKycInfo() {
             isValid={isValid}
             isLoading={isLoading}
             kycMode={kycMode as KycMode}
-            consumerType={consumerType as RainConsumerType | undefined}
           />
         </View>
       </View>
@@ -200,31 +158,12 @@ export default function UserKycInfo() {
   async function getKycLink(redirectUrl: string, data: UserInfoFormData) {
     const endorsements = params.endorsement ? [params.endorsement] : [];
 
-    const agreements =
-      (kycMode as KycMode) === KycMode.CARD
-        ? {
-            agreedToEsign: data.agreedToEsign === true,
-            agreedToTerms: data.agreedToTerms === true,
-            ...(isUS && {
-              agreedToAccountOpeningPrivacy: data.agreedToAccountOpeningPrivacy === true,
-            }),
-            agreedToCertify: data.agreedToCertify === true,
-            agreedToNoSolicitation: data.agreedToNoSolicitation === true,
-          }
-        : undefined;
-
-    const newKycLink = await withRefreshToken(() =>
-      createKycLink(
-        data.fullName.trim(),
-        data.email.trim(),
-        redirectUrl,
-        endorsements,
-        agreements,
-        (consumerType as RainConsumerType) || undefined,
-      ),
+    const newKycLink = await createKycLink(
+      data.fullName.trim(),
+      data.email.trim(),
+      redirectUrl,
+      endorsements,
     );
-
-    if (!newKycLink) throw new Error('Failed to create KYC link');
 
     return {
       kycLinkId: newKycLink.kycLinkId,
