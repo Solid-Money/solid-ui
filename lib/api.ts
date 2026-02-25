@@ -42,6 +42,8 @@ import {
   CardTransaction,
   CardTransactionsResponse,
   RainContractResponseDto,
+  RainKycStatusResponse,
+  RainKycSubmitResponse,
   SubmitPersonaKycResponse,
   CardWaitlistResponse,
   CardWithdrawal,
@@ -452,6 +454,81 @@ export const submitPersonaKyc = async (
       body: JSON.stringify({ personaInquiryId }),
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Persona sandbox: perform simulate action (e.g. approve_inquiry).
+ * Backend should proxy to Persona. Only for non-production.
+ */
+export const personaSimulateAction = async (
+  inquiryId: string,
+  action: string,
+): Promise<{ ok: boolean }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/persona/simulate`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ inquiryId, action }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain KYC (in-house): single multipart POST with application fields + document files. Backend creates Rain application then uploads docs. */
+export const submitRainKyc = async (
+  formData: FormData,
+): Promise<RainKycSubmitResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/rain`,
+    {
+      method: 'POST',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: formData,
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain KYC: get application status (or use card status when backend includes rainApplicationStatus). */
+export const getRainKycStatus = async (): Promise<RainKycStatusResponse | null> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/rain/status`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+
+  if (response.status === 404) return null;
 
   if (!response.ok) throw response;
 
