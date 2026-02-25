@@ -86,7 +86,7 @@ function getPromoBannerOnPress(
   }
   switch (item.slug) {
     case 'deposit-from-your-bank-or-debit-card':
-      return () => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
+      return () => setModal(DEPOSIT_MODAL.OPEN_VAULT_SELECTOR);
     default:
       return () => {};
   }
