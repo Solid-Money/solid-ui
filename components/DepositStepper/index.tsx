@@ -10,8 +10,8 @@ import Animated, {
 import { Check } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
-import { DepositStep } from '@/lib/types';
 import { DEPOSIT_STEPS, getDepositStepIndex } from '@/lib/utils/deposit-steps';
+import { DepositStep } from '@/lib/types';
 
 const STEP_LABELS: Record<string, string> = {
   detected: 'Transfer Detected',
@@ -47,7 +47,10 @@ function ActiveCircle({ isFailed }: { isFailed: boolean }) {
 
   useEffect(() => {
     scale.value = withRepeat(
-      withSequence(withTiming(1.15, { duration: 600 }), withTiming(1.0, { duration: 600 })),
+      withSequence(
+        withTiming(1.15, { duration: 600 }),
+        withTiming(1.0, { duration: 600 }),
+      ),
       -1,
       false,
     );

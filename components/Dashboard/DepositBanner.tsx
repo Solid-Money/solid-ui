@@ -18,7 +18,7 @@ const DepositBanner = () => {
   const setModal = useDepositStore(state => state.setModal);
 
   const handleAddFundsPress = () => {
-    setModal(DEPOSIT_MODAL.OPEN_VAULT_SELECTOR);
+    setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS);
   };
 
   const getButton = () => {
@@ -36,7 +36,7 @@ const DepositBanner = () => {
 
   const getTrigger = () => {
     return (
-      <SwipeableBanner onPress={() => setModal(DEPOSIT_MODAL.OPEN_VAULT_SELECTOR)}>
+      <SwipeableBanner onPress={() => setModal(DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS)}>
         <LinearGradient
           colors={['rgba(126, 126, 126, 0.3)', 'rgba(126, 126, 126, 0.2)']}
           style={{
@@ -71,7 +71,7 @@ const DepositBanner = () => {
   return (
     <>
       {getTrigger()}
-      <DepositOptionModal trigger={null} modal={DEPOSIT_MODAL.OPEN_VAULT_SELECTOR} />
+      <DepositOptionModal trigger={null} modal={DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS} />
     </>
   );
 };

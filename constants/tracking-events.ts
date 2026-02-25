@@ -94,10 +94,6 @@ export const TRACKING_EVENTS = {
   DEPOSIT_WALLET_CONNECTION_SUCCESS: 'deposit_wallet_connection_success',
   DEPOSIT_WALLET_CONNECTION_FAILED: 'deposit_wallet_connection_failed',
 
-  // Deposit Vault Selector Events
-  DEPOSIT_VAULT_SELECTOR_VIEWED: 'deposit_vault_selector_viewed',
-  DEPOSIT_VAULT_SELECTED: 'deposit_vault_selected',
-
   // Payment & Deposit Method Events
   PAYMENT_METHOD_SELECTED: 'payment_method_selected',
   DEPOSIT_METHOD_SELECTED: 'deposit_method_selected',
