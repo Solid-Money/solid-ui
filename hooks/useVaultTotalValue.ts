@@ -19,7 +19,9 @@ export function useVaultTotalValue(vault: Vault) {
   const { data: exchangeRate } = useVaultExchangeRate(vault.name);
   const { data: apys } = useAPYs(vault.type);
   const tokenAddress =
-    vault.name === 'USDC' ? ADDRESSES.fuse.vault : vault.vaults?.[0]?.address ?? ADDRESSES.fuse.vault;
+    vault.name === 'USDC'
+      ? ADDRESSES.fuse.vault
+      : (vault.vaults?.[0]?.address ?? ADDRESSES.fuse.vault);
   const { data: lastTimestamp } = useLatestTokenTransfer(address ?? '', tokenAddress);
   const { data: userDepositTransactions } = useUserTransactions(address);
   const { firstDepositTimestamp } = useDepositCalculations(

@@ -472,7 +472,9 @@ class SSEConnectionManager {
 
     const { event, activity, timestamp } = data;
 
-    console.log(`[SSE] Activity event: ${event} | clientTxId=${activity.clientTxId} | type=${activity.type} | status=${activity.status} | title=${activity.title || 'N/A'}`);
+    console.log(
+      `[SSE] Activity event: ${event} | clientTxId=${activity.clientTxId} | type=${activity.type} | status=${activity.status} | title=${activity.title || 'N/A'}`,
+    );
 
     // Prepare the activity for batching instead of calling upsertEvent directly
     try {
@@ -707,9 +709,7 @@ class SSEConnectionManager {
       this.isConnecting = false;
       this.startHeartbeatMonitor();
 
-      console.debug(
-        `[SSE] Connected${this.hasConnectedBefore ? ' (reconnect)' : ' (initial)'}`,
-      );
+      console.debug(`[SSE] Connected${this.hasConnectedBefore ? ' (reconnect)' : ' (initial)'}`);
 
       // On reconnection (not initial connect), invalidate the activity query
       // to catch up on any events that were missed while disconnected.
@@ -848,7 +848,10 @@ class SSEConnectionManager {
         return;
       }
 
-      console.error(`[SSE] Connection error (attempt ${this.consecutiveErrors + 1}):`, err.message || err);
+      console.error(
+        `[SSE] Connection error (attempt ${this.consecutiveErrors + 1}):`,
+        err.message || err,
+      );
 
       // Log connection errors to Sentry
       Sentry.captureException(err, {
@@ -868,7 +871,9 @@ class SSEConnectionManager {
         });
         this.scheduleReconnect();
       } else {
-        console.error(`[SSE] Max retries (${MAX_CONSECUTIVE_ERRORS}) reached — entering error state`);
+        console.error(
+          `[SSE] Max retries (${MAX_CONSECUTIVE_ERRORS}) reached — entering error state`,
+        );
         this.setState({
           connectionState: 'error',
           error: err.message || 'Connection failed',
