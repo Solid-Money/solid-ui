@@ -21,7 +21,7 @@ import { readContract } from 'wagmi/actions';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
@@ -73,7 +73,7 @@ const useDepositFromEOA = (
   const updateUser = useUserStore(state => state.updateUser);
   const srcChainId = useDepositStore(state => state.srcChainId);
   const isEthereum = srcChainId === mainnet.id;
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivityActions();
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
@@ -484,16 +484,22 @@ const useDepositFromEOA = (
           )
             .then(result => {
               if (result?.transactionHash) {
+                // NOTE: Do NOT set hash here. The backend returns the protocol
+                // deposit hash, which is the same hash set on the "Deposit soUSD
+                // to Savings" activity. Setting it would cause dedup collisions.
                 updateActivity(trackingId!, {
                   status: TransactionStatus.PROCESSING,
-                  hash: result.transactionHash,
                 });
               }
             })
             .catch(err => {
               console.error('Sponsored deposit failed:', err);
+              // Don't immediately set FAILED — the on-chain tx may have succeeded
+              // even if the backend HTTP response errored (e.g. LayerZero monitoring).
+              // Keep PROCESSING and let polling/SSE determine the real status.
               updateActivity(trackingId!, {
-                status: TransactionStatus.FAILED,
+                status: TransactionStatus.PROCESSING,
+                metadata: { depositError: err?.message || 'Backend returned error' },
               });
             });
         } else {
@@ -524,9 +530,11 @@ const useDepositFromEOA = (
           );
 
           if (transaction?.transactionHash) {
+            // Do NOT set hash here. This tx hash will appear in Blockscout as a
+            // "Deposit soUSD to Savings" activity, and deduplicateTransactions
+            // would replace "Deposited USDC" with it.
             updateActivity(trackingId, {
               status: TransactionStatus.PROCESSING,
-              hash: transaction.transactionHash,
             });
           }
         }
@@ -621,16 +629,21 @@ const useDepositFromEOA = (
           )
             .then(result => {
               if (result?.transactionHash) {
+                // NOTE: Do NOT set hash here. The backend returns the protocol
+                // deposit hash, which is the same hash set on the "Deposit soUSD
+                // to Savings" activity. Setting it would cause dedup collisions.
                 updateActivity(trackingId!, {
                   status: TransactionStatus.PROCESSING,
-                  hash: result.transactionHash,
                 });
               }
             })
             .catch(err => {
               console.error('Sponsored bridge deposit failed:', err);
+              // Don't immediately set FAILED — the on-chain tx may have succeeded.
+              // Keep PROCESSING and let polling/SSE determine the real status.
               updateActivity(trackingId!, {
-                status: TransactionStatus.FAILED,
+                status: TransactionStatus.PROCESSING,
+                metadata: { depositError: err?.message || 'Backend returned error' },
               });
             });
         } else {
@@ -742,9 +755,11 @@ const useDepositFromEOA = (
           );
 
           if (transaction?.transactionHash) {
+            // Do NOT set hash here. This tx hash will appear in Blockscout as a
+            // "Deposit soUSD to Savings" activity, and deduplicateTransactions
+            // would replace "Deposited USDC" with it.
             updateActivity(trackingId!, {
               status: TransactionStatus.PROCESSING,
-              hash: transaction.transactionHash,
             });
           }
         }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 
-import Loading from '@/components/Loading';
+import PageLayout from '@/components/PageLayout';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { hasCard } from '@/lib/utils';
@@ -28,11 +28,11 @@ export default function Card() {
   }, [isLoading, userHasCard, needsVerification, verificationLink, verificationRedirectChecked]);
 
   if (isLoading) {
-    return <Loading />;
+    return <PageLayout isLoading />;
   }
 
   if (needsVerification && verificationLink) {
-    return <Loading />;
+    return <PageLayout isLoading />;
   }
 
   if (userHasCard) {

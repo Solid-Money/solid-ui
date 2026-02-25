@@ -126,6 +126,9 @@ export interface CardWithdrawalResponse {
     tx_hash?: string;
     gas_fee?: { amount: string; currency: string };
   };
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
   client_note?: string;
   type?: 'top_up_balance_withdrawal' | 'fee';
 }
@@ -371,7 +374,7 @@ enum FreezeReason {
   OTHER = 'other',
 }
 
-enum FreezeInitiator {
+export enum FreezeInitiator {
   BRIDGE = 'bridge',
   DEVELOPER = 'developer',
   CUSTOMER = 'customer',
@@ -709,6 +712,7 @@ export enum TransactionCategory {
 
 export enum TransactionStatus {
   PENDING = 'pending',
+  DETECTED = 'detected',
   PROCESSING = 'processing',
   SUCCESS = 'success',
   FAILED = 'failed',
@@ -716,6 +720,8 @@ export enum TransactionStatus {
   EXPIRED = 'expired',
   REFUNDED = 'refunded',
 }
+
+export type DepositStep = 'detected' | 'confirmed' | 'depositing' | 'minting' | 'complete';
 
 export type Transaction = {
   title: string;

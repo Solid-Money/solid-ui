@@ -16,9 +16,6 @@ import DepositButton from './DepositButton';
 import DepositDescription from './DepositDescription';
 import DepositImage from './DepositImage';
 
-const BENEFIT_DESCRIPTION =
-  "Solid's automation engine puts your USDC to work across institutional-grade yield strategies.";
-
 export default function HomeEmptyState() {
   const { isScreenMedium } = useDimension();
   const { maxAPY, isAPYsLoading } = useMaxAPY();
@@ -83,31 +80,34 @@ export default function HomeEmptyState() {
                 icon={getAsset('images/rocket-lavender.png')}
                 headline={
                   isAPYsLoading ? (
-                    'Get yield on your USDC'
+                    'Get yield on your stables'
                   ) : (
                     <>
                       Get{' '}
                       <Text className="text-2xl font-semibold leading-[1.1] text-brand md:text-3xl">
                         {formatNumber(maxAPY ?? 0, 1)}%
                       </Text>{' '}
-                      yield on your USDC
+                      yield on your stables
                     </>
                   )
                 }
-                description={BENEFIT_DESCRIPTION}
+                description="Automatically earn yield on your stablecoins from the moment you deposit."
               />
               <SolidBenefitCard
                 icon={getAsset('images/dollar-lavender.png')}
                 headline="Spend while you earn"
-                description={BENEFIT_DESCRIPTION}
+                description="Keep earning in the background, even when you pay with your card."
                 classNames={{
                   headline: 'max-w-40 md:max-w-56',
                 }}
               />
               <SolidBenefitCard
                 icon={getAsset('images/flash-lavender.png')}
-                headline="Your stablecoins super-app"
-                description={BENEFIT_DESCRIPTION}
+                headline="Access Your Funds Anytime"
+                classNames={{
+                  headline: 'max-w-52 md:max-w-72',
+                }}
+                description="Deposit once. Withdraw or spend whenever you need — no lockups."
               />
             </View>
           </View>
@@ -149,7 +149,7 @@ function SolidBenefitCard({
       </Text>
       <Text
         className={cn(
-          'max-w-xs text-lg leading-tight text-muted-foreground',
+          'max-w-60 text-lg leading-tight text-muted-foreground',
           classNames?.description,
         )}
       >

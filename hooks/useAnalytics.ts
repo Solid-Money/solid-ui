@@ -573,17 +573,13 @@ export const useMaxAPY = (vault?: VaultType) => {
   const fifteenDay = apys?.fifteenDay ?? 0;
   const sevenDay = apys?.sevenDay ?? 0;
 
-  const maxThirtyFifteen = Math.max(thirtyDay, fifteenDay);
-
-  // If both thirtyDay and fifteenDay are below 9% and sevenDay is greater than both, use sevenDay
-  const shouldUseSevenDay = thirtyDay < 9 && fifteenDay < 9 && sevenDay > maxThirtyFifteen;
-
-  const maxAPY = shouldUseSevenDay ? sevenDay : maxThirtyFifteen;
-  const maxAPYDays = shouldUseSevenDay
-    ? ApyToDays.sevenDay
-    : thirtyDay > fifteenDay
+  const maxAPY = Math.max(thirtyDay, fifteenDay, sevenDay);
+  const maxAPYDays =
+    maxAPY === thirtyDay
       ? ApyToDays.thirtyDay
-      : ApyToDays.fifteenDay;
+      : maxAPY === fifteenDay
+        ? ApyToDays.fifteenDay
+        : ApyToDays.sevenDay;
 
   return {
     maxAPY,

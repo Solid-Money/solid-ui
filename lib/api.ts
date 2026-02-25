@@ -1549,6 +1549,60 @@ export const withdrawFromCard = async (body: CardWithdrawal): Promise<CardWithdr
   return response.json();
 };
 
+export const withdrawCardToSafeAddress = async (body: {
+  amount: string;
+  clientNote?: string;
+}): Promise<CardWithdrawalResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/withdraw-to-safe`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getCardWithdrawals = async (params?: {
+  limit?: number;
+  starting_after?: string;
+  ending_before?: string;
+}): Promise<{ count: number; data: CardWithdrawalResponse[] }> => {
+  const jwt = getJWTToken();
+  const url = new URL('/accounts/v1/cards/withdrawals', EXPO_PUBLIC_FLASH_API_BASE_URL);
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        url.searchParams.append(key, value.toString());
+      }
+    });
+  }
+
+  const response = await fetch(url.toString(), {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const withdrawFromCardToSavings = async (body: {
   amount: string;
 }): Promise<WithdrawFromCardToSavingsResponse> => {

@@ -21,7 +21,7 @@ import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import AddToWalletRain from '@/components/Card/AddToWalletRain';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
-import DepositToCardModal from '@/components/Card/DepositToCardModal';
+import WithdrawCardFundsModal from '@/components/Card/WithdrawCardFundsModal';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -32,19 +32,25 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardWithdrawAllowed } from '@/hooks/useCardWithdrawAllowed';
+import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
+import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
-import { CardHolderName, CardProvider, CardStatus } from '@/lib/types';
+import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
 import { cn } from '@/lib/utils/utils';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 export default function CardDetails() {
   const { data: cardDetails, isLoading, refetch } = useCardDetails();
   const { provider } = useCardProvider();
+  const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
   const isWithdrawAllowed = useCardWithdrawAllowed();
+
+  useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
+
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
   const [isLoadingCardDetails, setIsLoadingCardDetails] = useState(false);
@@ -55,6 +61,14 @@ export default function CardDetails() {
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
   const isCardFrozen = cardDetails?.status === CardStatus.FROZEN;
+
+  const canUnfreeze =
+    isCardFrozen && cardDetails?.freezes?.some(f => f.initiator === FreezeInitiator.CUSTOMER);
+
+  const isCustomerPausedOrOffboarded =
+    customer?.status === KycStatus.PAUSED || customer?.status === KycStatus.OFFBOARDED;
+
+  const isWithdrawFromCardAllowed = !isCardFrozen && !isCustomerPausedOrOffboarded;
 
   const handleFreezeToggle = useCallback(async () => {
     try {
@@ -106,22 +120,31 @@ export default function CardDetails() {
     }).start();
   }, [flipAnimation]);
 
+  const stickyHeader = isScreenMedium ? (
+    <View className="mx-auto w-full max-w-7xl px-4 pt-12">
+      <DesktopHeader
+        isCardFrozen={isCardFrozen}
+        canUnfreeze={!!canUnfreeze}
+        isFreezing={isFreezing}
+        isCardFlipped={isCardFlipped}
+        isLoadingCardDetails={isLoadingCardDetails}
+        onCardDetails={handleCardFlip}
+        onFreezeToggle={handleFreezeToggle}
+        isWithdrawAllowed={isWithdrawAllowed}
+        isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
+      />
+    </View>
+  ) : (
+    <View className="mx-auto w-full max-w-lg px-4 pb-[10px] pt-6">
+      <MobileHeader />
+    </View>
+  );
+
   // Desktop layout
   if (isScreenMedium) {
     return (
-      <PageLayout desktopOnly isLoading={isLoading}>
-        <View className="mx-auto w-full max-w-7xl px-4 py-12">
-          {/* Desktop Header */}
-          <DesktopHeader
-            isCardFrozen={isCardFrozen}
-            isFreezing={isFreezing}
-            isCardFlipped={isCardFlipped}
-            isLoadingCardDetails={isLoadingCardDetails}
-            onCardDetails={handleCardFlip}
-            onFreezeToggle={handleFreezeToggle}
-            isWithdrawAllowed={isWithdrawAllowed}
-          />
-
+      <PageLayout desktopOnly isLoading={isLoading} stickyHeader={stickyHeader}>
+        <View className="mx-auto w-full max-w-7xl px-4 pb-12">
           {/* Row 1: Spending Balance Card + Card Image */}
           <View className="mt-12 flex-row gap-6">
             <View className="flex-[3]">
@@ -185,10 +208,8 @@ export default function CardDetails() {
 
   // Mobile layout
   return (
-    <PageLayout isLoading={isLoading}>
-      <View className="mx-auto w-full max-w-lg px-4 pt-6">
-        <MobileHeader />
-
+    <PageLayout isLoading={isLoading} stickyHeader={stickyHeader}>
+      <View className="mx-auto w-full max-w-lg px-4">
         <View className="flex-1">
           <BalanceDisplay amount={availableAmount} />
           <CardImageSection
@@ -202,12 +223,14 @@ export default function CardDetails() {
           />
           <CardActions
             isCardFrozen={isCardFrozen}
+            canUnfreeze={!!canUnfreeze}
             isFreezing={isFreezing}
             isCardFlipped={isCardFlipped}
             isLoadingCardDetails={isLoadingCardDetails}
             onCardDetails={handleCardFlip}
             onFreezeToggle={handleFreezeToggle}
             isWithdrawAllowed={isWithdrawAllowed}
+            isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
           />
           <BorrowPositionCard className="mb-4" />
           <DepositBonusBanner />
@@ -246,22 +269,26 @@ function MobileHeader() {
 
 interface DesktopHeaderProps {
   isCardFrozen: boolean;
+  canUnfreeze: boolean;
   isFreezing: boolean;
   isCardFlipped: boolean;
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
   isWithdrawAllowed: boolean;
+  isWithdrawFromCardAllowed: boolean;
 }
 
 function DesktopHeader({
   isCardFrozen,
+  canUnfreeze,
   isFreezing,
   isCardFlipped,
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
   isWithdrawAllowed,
+  isWithdrawFromCardAllowed,
 }: DesktopHeaderProps) {
   return (
     <View className="flex-row justify-between">
@@ -288,27 +315,29 @@ function DesktopHeader({
             </Text>
           </View>
         </Button>
-        <Button
-          variant="secondary"
-          className="h-12 rounded-xl border-0 bg-[#303030] px-6"
-          onPress={onFreezeToggle}
-          disabled={isFreezing}
-        >
-          <View className="flex-row items-center gap-2">
-            {isFreezing ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Image
-                source={getAsset('images/freeze_button_icon.png')}
-                style={styles.mediumIcon}
-                contentFit="contain"
-              />
-            )}
-            <Text className="text-base font-bold text-white">
-              {isCardFrozen ? 'Unfreeze' : 'Freeze'}
-            </Text>
-          </View>
-        </Button>
+        {(!isCardFrozen || canUnfreeze) && (
+          <Button
+            variant="secondary"
+            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+            onPress={onFreezeToggle}
+            disabled={isFreezing}
+          >
+            <View className="flex-row items-center gap-2">
+              {isFreezing ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Image
+                  source={getAsset('images/freeze_button_icon.png')}
+                  style={styles.mediumIcon}
+                  contentFit="contain"
+                />
+              )}
+              <Text className="text-base font-bold text-white">
+                {isCardFrozen ? 'Unfreeze' : 'Freeze'}
+              </Text>
+            </View>
+          </Button>
+        )}
         {isWithdrawAllowed && (
           <WithdrawToCardModal
             trigger={
@@ -325,16 +354,18 @@ function DesktopHeader({
             }
           />
         )}
-        <DepositToCardModal
-          trigger={
-            <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
-              <View className="flex-row items-center gap-2">
-                <Plus size={22} color="black" />
-                <Text className="text-base font-bold text-black">Deposit</Text>
-              </View>
-            </Button>
-          }
-        />
+        {isWithdrawFromCardAllowed && (
+          <WithdrawCardFundsModal
+            trigger={
+              <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
+                <View className="flex-row items-center gap-2">
+                  <Plus size={22} color="black" />
+                  <Text className="text-base font-bold text-black">Deposit</Text>
+                </View>
+              </Button>
+            }
+          />
+        )}
       </View>
     </View>
   );
@@ -407,7 +438,7 @@ interface BalanceDisplayProps {
 function BalanceDisplay({ amount }: BalanceDisplayProps) {
   const formattedAmount = Number.parseFloat(amount).toFixed(2);
   return (
-    <View className="mt-10 items-center">
+    <View className="mt-5 items-center">
       <Text className="text-[50px] font-semibold">${formattedAmount}</Text>
       <Text className="text-base opacity-70">Spendable balance</Text>
     </View>
@@ -461,7 +492,7 @@ function CardImageSection({
 
   return (
     <View
-      className={cn('items-center', !isScreenMedium && 'mb-6 mt-12')}
+      className={cn('items-center', !isScreenMedium && 'mb-6 mt-[28px]')}
       style={{
         paddingHorizontal: isCardFrozen || !isScreenMedium ? 0 : 2,
       }}
@@ -714,46 +745,54 @@ function CardDetailsOverlay({
 
 interface CardActionsProps {
   isCardFrozen: boolean;
+  canUnfreeze: boolean;
   isFreezing: boolean;
   isCardFlipped: boolean;
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
   isWithdrawAllowed: boolean;
+  isWithdrawFromCardAllowed: boolean;
 }
 
 function CardActions({
   isCardFrozen,
+  canUnfreeze,
   isFreezing,
   isCardFlipped,
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
   isWithdrawAllowed,
+  isWithdrawFromCardAllowed,
 }: CardActionsProps) {
   return (
-    <View className="native:gap-8 mb-8 flex-row items-center justify-center web:space-x-8">
-      <DepositToCardModal
-        trigger={
-          <CircularActionButton
-            icon={getAsset('images/card_actions_fund.png')}
-            label="Add funds"
-            onPress={() => {}}
-          />
-        }
-      />
+    <View className="mb-8 flex-row items-center justify-evenly">
+      {isWithdrawFromCardAllowed && (
+        <WithdrawCardFundsModal
+          trigger={
+            <CircularActionButton
+              icon={getAsset('images/card_actions_fund.png')}
+              label="Add funds"
+              onPress={() => {}}
+            />
+          }
+        />
+      )}
       <CircularActionButton
         icon={getAsset('images/card_actions_details.png')}
         label={isCardFlipped ? 'Hide details' : 'Card details'}
         onPress={onCardDetails}
         isLoading={isLoadingCardDetails}
       />
-      <CircularActionButton
-        icon={getAsset('images/card_actions_freeze.png')}
-        label={isCardFrozen ? 'Unfreeze' : 'Freeze'}
-        onPress={onFreezeToggle}
-        isLoading={isFreezing}
-      />
+      {(!isCardFrozen || canUnfreeze) && (
+        <CircularActionButton
+          icon={getAsset('images/card_actions_freeze.png')}
+          label={isCardFrozen ? 'Unfreeze' : 'Freeze'}
+          onPress={onFreezeToggle}
+          isLoading={isFreezing}
+        />
+      )}
       {isWithdrawAllowed && (
         <WithdrawToCardModal
           trigger={
@@ -761,6 +800,7 @@ function CardActions({
               icon={getAsset('images/card-withdraw-mobile.png')}
               label="Withdraw"
               onPress={() => {}}
+              showBackground
             />
           }
         />

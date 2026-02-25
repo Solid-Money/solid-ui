@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Sentry from '@sentry/react-native';
@@ -65,6 +65,7 @@ const Transaction = ({
   const { isScreenMedium } = useDimension();
 
   const isPending = status === TransactionStatus.PENDING;
+  const isDetected = status === TransactionStatus.DETECTED;
   const isFailed = status === TransactionStatus.FAILED;
   const isCancelled = status === TransactionStatus.CANCELLED;
   const isProcessing = status === TransactionStatus.PROCESSING;
@@ -104,19 +105,15 @@ const Transaction = ({
     if (isFailed) return 'Failed';
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
+    if (isDetected) return 'Transfer detected';
     if (isProcessing) return 'Processing deposit...';
-    // For pending, check metadata for more specific status
-    if (isPending) {
-      const depositStatus = metadata?.directDepositStatus;
-      if (depositStatus === 'detected') return 'Transfer detected';
-    }
     return null;
   };
 
   const directDepositStatusMessage = getDirectDepositStatusMessage();
 
   // Determine if we should show progress indicator (for pending/processing direct deposits)
-  const isPendingOrProcessing = isPending || isProcessing;
+  const isPendingOrProcessing = isPending || isDetected || isProcessing;
   const directDepositIsPendingOrProcessing = isDirectDeposit && isPendingOrProcessing;
 
   const handleDeleteConfirm = async () => {
@@ -197,9 +194,12 @@ const Transaction = ({
   });
 
   const getDescription = () => {
-    if (isDeposit && isPending) {
-      return 'Deposit in progress';
-    }
+    if (isPending) return 'Pending';
+    if (isProcessing) return 'Processing';
+    if (isFailed) return 'Failed';
+    if (isExpired) return 'Expired';
+    if (isRefunded) return 'Refunded';
+    if (isCancelled) return 'Cancelled';
     return transactionDetails?.category ?? 'Unknown';
   };
 
@@ -250,7 +250,7 @@ const Transaction = ({
                 alt="Reward indicator"
               />
             )}
-            {isPending && <ActivityIndicator color="gray" size={14} />}
+            {(isPending || isProcessing) && <ActivityIndicator color="gray" size={14} />}
             <Text className="text-sm font-medium text-muted-foreground">{getDescription()}</Text>
           </View>
         </View>
@@ -340,4 +340,27 @@ const Transaction = ({
   );
 };
 
-export default Transaction;
+// Custom comparator: returns true if props are EQUAL (should NOT re-render).
+// onPress is intentionally excluded: inline closures in renderItem create new references
+// per-item, but the closure captures transaction data that IS compared via other props.
+function areTransactionPropsEqual(
+  prevProps: TransactionProps,
+  nextProps: TransactionProps,
+): boolean {
+  return (
+    prevProps.clientTxId === nextProps.clientTxId &&
+    prevProps.status === nextProps.status &&
+    prevProps.hash === nextProps.hash &&
+    prevProps.timestamp === nextProps.timestamp &&
+    prevProps.amount === nextProps.amount &&
+    prevProps.title === nextProps.title &&
+    prevProps.type === nextProps.type &&
+    prevProps.symbol === nextProps.symbol &&
+    prevProps.logoUrl === nextProps.logoUrl &&
+    prevProps.showTimestamp === nextProps.showTimestamp &&
+    prevProps.isFirst === nextProps.isFirst &&
+    prevProps.isLast === nextProps.isLast
+  );
+}
+
+export default React.memo(Transaction, areTransactionPropsEqual);

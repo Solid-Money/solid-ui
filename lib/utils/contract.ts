@@ -94,7 +94,13 @@ export const getTokenAllowance = async (
 
     return allowance;
   } catch (error) {
-    console.error(error);
+    console.error('[getTokenAllowance] Failed:', {
+      tokenAddress,
+      ownerAddress,
+      spenderAddress,
+      chainId,
+      error: error instanceof Error ? error.message : error,
+    });
     throw new Error('Failed to get token allowance');
   }
 };

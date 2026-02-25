@@ -3,6 +3,8 @@
 # dependencies
 node_modules/
 
+/.a5c
+
 # Web
 public/assets/
 dist/

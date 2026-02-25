@@ -29,7 +29,7 @@ export interface DepositTriggerProps {
 const DepositTrigger = ({
   buttonText = 'Add funds',
   trigger,
-  modal = DEPOSIT_MODAL.OPEN_OPTIONS,
+  modal = DEPOSIT_MODAL.OPEN_VAULT_SELECTOR,
   source = 'unknown',
 }: DepositTriggerProps) => {
   const { user } = useUser();

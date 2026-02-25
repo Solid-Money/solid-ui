@@ -10,7 +10,7 @@ import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useActivity } from '@/hooks/useActivity';
+import { useActivityActions } from '@/hooks/useActivityActions';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
@@ -36,7 +36,7 @@ const DepositToCard = () => {
   const { data: cardDetails } = useCardDetails();
   const { provider } = useCardProvider();
   const { data: contracts, isLoading: contractsLoading } = useCardContracts();
-  const { createActivity, updateActivity } = useActivity();
+  const { createActivity, updateActivity } = useActivityActions();
   const { user } = useUser();
   const [amount, setAmount] = useState('');
   const [selectedToken, setSelectedToken] = useState<TokenBalance | null>(null);

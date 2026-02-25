@@ -22,7 +22,7 @@ export function useCardProvider(): {
 } {
   const { data: cardDetails } = useQuery(cardDetailsQueryOptions());
   const { data: cardStatus } = useCardStatus();
-  const hasCardData = hasCard(cardStatus) || !!cardDetails?.id;
+  const hasCardData = hasCard(cardStatus) || (!!cardDetails?.id && cardDetails?.provider !== CardProvider.BRIDGE);
 
   const providerFromResponse =
     cardDetails?.provider ?? cardStatus?.provider ?? undefined;
