@@ -79,12 +79,6 @@ export function RainKycForm({
     );
   }
 
-  const openFileInput = (inputRef: React.RefObject<HTMLInputElement | null>) => {
-    if (Platform.OS === 'web' && typeof document !== 'undefined' && inputRef.current) {
-      inputRef.current.click();
-    }
-  };
-
   return (
     <ScrollView className="flex-1">
       <View className="gap-4">

@@ -1,24 +1,43 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Redirect } from 'expo-router';
 
-import CardWaitlistPage from '@/components/CardWaitlist/CardWaitlistPage';
-import PageLayout from '@/components/PageLayout';
+import Loading from '@/components/Loading';
 import { useCardStatus } from '@/hooks/useCardStatus';
-import { RainApplicationStatus } from '@/lib/types';
-import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
+import { redirectToRainVerification } from '@/lib/rainVerification';
+import { hasCard } from '@/lib/utils';
 
 export default function Card() {
   const { data: cardStatus, isLoading } = useCardStatus();
+  const [verificationRedirectChecked, setVerificationRedirectChecked] = useState(false);
   const userHasCard = hasCard(cardStatus);
-  const hasCardStatus = hasCardStatusWithRainApplication(cardStatus);
+
+  const needsVerification = cardStatus?.rainApplicationStatus === 'needsVerification';
+  const verificationLink = cardStatus?.applicationExternalVerificationLink;
+
+  useEffect(() => {
+    if (
+      isLoading ||
+      userHasCard ||
+      !needsVerification ||
+      !verificationLink ||
+      verificationRedirectChecked
+    )
+      return;
+    redirectToRainVerification(verificationLink);
+    setVerificationRedirectChecked(true);
+  }, [isLoading, userHasCard, needsVerification, verificationLink, verificationRedirectChecked]);
 
   if (isLoading) {
-    return <PageLayout isLoading>{null}</PageLayout>;
+    return <Loading />;
+  }
+
+  if (needsVerification && verificationLink) {
+    return <Loading />;
   }
 
   if (userHasCard) {
     return <Redirect href="/card/details" />;
   }
 
-  return <CardWaitlistPage />;
+  return <Redirect href="/card-onboard" />;
 }
