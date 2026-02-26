@@ -189,6 +189,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       verified: true,
       chainId,
       commonId: tokenFromList?.commonId,
+      tokenId: tokenFromList?.tokenId,
     };
   };
 
@@ -278,6 +279,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       verified: true,
       chainId: ETHEREUM_CHAIN_ID,
       commonId: ethTokenFromList?.commonId,
+      tokenId: ethTokenFromList?.tokenId,
     });
   }
 
@@ -298,6 +300,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       verified: true,
       chainId: FUSE_CHAIN_ID,
       commonId: fuseTokenFromList?.commonId,
+      tokenId: fuseTokenFromList?.tokenId,
     });
   }
 
@@ -318,6 +321,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       verified: true,
       chainId: BASE_CHAIN_ID,
       commonId: baseEthTokenFromList?.commonId,
+      tokenId: baseEthTokenFromList?.tokenId,
     });
   }
 
