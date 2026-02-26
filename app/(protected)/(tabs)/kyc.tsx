@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react-native';
 
 import PageLayout from '@/components/PageLayout';
@@ -17,8 +18,9 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
+import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
-import { getCardStatus, getClientIp, submitRainKyc } from '@/lib/api';
+import { getClientIp, submitRainKyc } from '@/lib/api';
 import { redirectToRainVerification } from '@/lib/rainVerification';
 import { RainApplicationStatus, type RainDocumentType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -33,13 +35,9 @@ const defaultDocumentFiles: RainKycDocumentFiles = {
 
 export default function Kyc() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [documentFiles, setDocumentFiles] = useState<RainKycDocumentFiles>(defaultDocumentFiles);
   const [submitting, setSubmitting] = useState(false);
-  const [submitResult, setSubmitResult] = useState<{
-    status: RainApplicationStatus;
-    verificationLink?: { url: string; params: Record<string, string> };
-  } | null>(null);
-  const [polling, setPolling] = useState(false);
 
   const {
     control,
@@ -163,28 +161,22 @@ export default function Kyc() {
         const res = await withRefreshToken(() => submitRainKyc(formData));
         if (!res) return;
 
-        setSubmitResult({
-          status: res.applicationStatus,
-          verificationLink: res.applicationExternalVerificationLink,
-        });
+        const hasVerificationLink =
+          res.applicationExternalVerificationLink?.url &&
+          Object.keys(res.applicationExternalVerificationLink.params ?? {}).length > 0;
 
-        if (res.applicationStatus === RainApplicationStatus.APPROVED) {
-          router.replace(String(path.CARD_ACTIVATE) as any);
+        if (
+          (res.applicationStatus === RainApplicationStatus.NEEDS_VERIFICATION ||
+            res.applicationStatus === RainApplicationStatus.NEEDS_INFORMATION) &&
+          hasVerificationLink
+        ) {
+          queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+          redirectToRainVerification(res.applicationExternalVerificationLink!);
           return;
         }
-        if (
-          res.applicationStatus === RainApplicationStatus.NEEDS_VERIFICATION &&
-          res.applicationExternalVerificationLink
-        ) {
-          redirectToRainVerification(res.applicationExternalVerificationLink);
-          return;
-        }
-        if (
-          res.applicationStatus === RainApplicationStatus.PENDING ||
-          res.applicationStatus === RainApplicationStatus.MANUAL_REVIEW
-        ) {
-          setPolling(true);
-        }
+
+        queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+        router.replace(String(path.CARD_ACTIVATE) as any);
       } catch (e: any) {
         const message =
           e?.message || (e instanceof Response ? 'Submission failed' : 'Something went wrong');
@@ -197,42 +189,8 @@ export default function Kyc() {
         setSubmitting(false);
       }
     },
-    [buildFormData, documentFiles, router],
+    [buildFormData, documentFiles, queryClient, router],
   );
-
-  // Poll card status when pending/manualReview (rain status comes from card status)
-  useEffect(() => {
-    if (!polling) return;
-    const t = setInterval(async () => {
-      try {
-        const cardRes = await withRefreshToken(() => getCardStatus());
-        if (!cardRes?.rainApplicationStatus) return;
-        const status = cardRes.rainApplicationStatus;
-        setSubmitResult(prev => ({
-          ...prev!,
-          status,
-          verificationLink: cardRes.applicationExternalVerificationLink,
-        }));
-        if (status === RainApplicationStatus.APPROVED) {
-          setPolling(false);
-          router.replace(path.CARD_ACTIVATE as any);
-        }
-        if (status === RainApplicationStatus.DENIED) {
-          setPolling(false);
-        }
-        if (
-          status === RainApplicationStatus.NEEDS_VERIFICATION &&
-          cardRes.applicationExternalVerificationLink
-        ) {
-          setPolling(false);
-          redirectToRainVerification(cardRes.applicationExternalVerificationLink);
-        }
-      } catch {
-        // ignore poll errors
-      }
-    }, 5000);
-    return () => clearInterval(t);
-  }, [polling, router]);
 
   const handleFileSelect = useCallback(
     (key: 'idDocument' | 'idDocumentFront' | 'idDocumentBack' | 'selfie', file: File | null) => {
@@ -272,42 +230,25 @@ export default function Kyc() {
           <View style={{ width: 40 }} />
         </View>
 
-        {submitResult?.status === 'pending' || submitResult?.status === 'manualReview' ? (
-          <View className="mt-8 flex-1 items-center justify-center">
-            <Text className="text-center text-lg text-white">
-              Your information is being reviewed. This usually takes a few minutes.
+        <RainKycForm
+          control={control as any}
+          errors={errors as any}
+          documentFiles={documentFiles}
+          onIdDocumentTypeChange={handleIdDocumentTypeChange}
+          onFileSelect={handleFileSelect}
+        />
+        <View className="pb-8 pt-4">
+          <Button
+            variant="brand"
+            onPress={handleSubmit(onSubmit)}
+            disabled={submitting}
+            className="h-14 w-full rounded-xl"
+          >
+            <Text className="text-lg font-semibold text-primary-foreground">
+              {submitting ? 'Submitting...' : 'Submit'}
             </Text>
-            {polling && <Text className="mt-2 text-sm text-[#ACACAC]">Checking status...</Text>}
-          </View>
-        ) : submitResult?.status === 'denied' ? (
-          <View className="mt-8 flex-1">
-            <Text className="text-center text-lg text-red-500">
-              We couldn&apos;t verify your identity. Please contact support or try again.
-            </Text>
-          </View>
-        ) : (
-          <>
-            <RainKycForm
-              control={control as any}
-              errors={errors as any}
-              documentFiles={documentFiles}
-              onIdDocumentTypeChange={handleIdDocumentTypeChange}
-              onFileSelect={handleFileSelect}
-            />
-            <View className="pb-8 pt-4">
-              <Button
-                variant="brand"
-                onPress={handleSubmit(onSubmit)}
-                disabled={submitting}
-                className="h-14 w-full rounded-xl"
-              >
-                <Text className="text-lg font-semibold text-primary-foreground">
-                  {submitting ? 'Submitting...' : 'Submit'}
-                </Text>
-              </Button>
-            </View>
-          </>
-        )}
+          </Button>
+        </View>
       </View>
     </PageLayout>
   );
