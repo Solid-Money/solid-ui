@@ -2007,6 +2007,22 @@ export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1
   return response.data;
 };
 
+export const fetchCoinSimplePrice = async (
+  coinIds: string[],
+): Promise<Record<string, { usd?: number }>> => {
+  if (coinIds.length === 0) return {};
+  const ids = [...new Set(coinIds)].filter(Boolean).join(',');
+  const response = await axios.get<Record<string, { usd?: number }>>(
+    `https://pro-api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
+    {
+      headers: {
+        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
+      },
+    },
+  );
+  return response.data ?? {};
+};
+
 export const fetchHistoricalAPY = async (
   days: string = '30',
   vault?: VaultType,
