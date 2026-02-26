@@ -16,15 +16,15 @@ const WalletTokenTab = () => {
   // Convert unified tokens to display format and sort by USD value (descending)
   const allTokens = useMemo(() => {
     const displayTokens: TokenBalance[] = unifiedTokens.map(unified => {
-      // Use the first chain balance for navigation
       const primaryChainBalance =
         unified.chainBalances.find(b => !isSoUSDToken(b.contractAddress)) ||
         unified.chainBalances[0];
+      const quoteRate = unified.quoteRate || primaryChainBalance?.quoteRate || 0;
 
       return {
         ...unified,
         balance: unified.unifiedBalance,
-        // Use primary chain's chainId and contractAddress for navigation
+        quoteRate,
         chainId: primaryChainBalance.chainId,
         contractAddress: primaryChainBalance.contractAddress,
       };

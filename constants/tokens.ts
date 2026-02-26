@@ -37,10 +37,18 @@ export const TOKEN_MAP: TokenMap = {
   ],
 };
 
+/** Symbol for Alchemy price API */
 export const NATIVE_TOKENS: Record<number, string> = {
   [mainnet.id]: 'ETH',
   [fuse.id]: 'fuse-network-token',
   [base.id]: 'ETH',
+};
+
+/** CoinGecko API coin ids */
+export const NATIVE_COINGECKO_TOKENS: Record<number, string> = {
+  [mainnet.id]: 'ethereum',
+  [fuse.id]: 'fuse-network-token',
+  [base.id]: 'ethereum',
 };
 
 export const TOKEN_IMAGES: Record<string, ImageSourcePropType> = {

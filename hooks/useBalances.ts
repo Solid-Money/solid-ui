@@ -3,8 +3,8 @@ import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
 import { base, fuse, mainnet } from 'viem/chains';
 
-import { NATIVE_TOKENS } from '@/constants/tokens';
-import { fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
+import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
+import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
 import { isSoUSDToken } from '@/lib/utils';
@@ -174,7 +174,9 @@ const fetchTokenBalances = async (safeAddress: string) => {
       token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
     );
     return {
-      contractTickerSymbol: symbols[item.token.symbol as keyof typeof symbols] || item.token.symbol,
+      contractTickerSymbol: String(
+        symbols[item.token.symbol as keyof typeof symbols] ?? item.token.symbol,
+      ),
       contractName: item.token.name,
       contractAddress: address,
       balance: item.value,
@@ -286,6 +288,8 @@ const fetchTokenBalances = async (safeAddress: string) => {
   if (fuseBalance.status === PromiseStatus.FULFILLED && Number(fuseBalance.value)) {
     const fusePriceValue =
       fusePrice.status === PromiseStatus.FULFILLED ? Number(fusePrice.value) : 0;
+    const fuseQuoteRate =
+      typeof fusePriceValue === 'number' && !Number.isNaN(fusePriceValue) ? fusePriceValue : 0;
     const fuseTokenFromList = tokenListData.find(
       token => token.chainId === FUSE_CHAIN_ID && token.symbol === 'FUSE',
     );
@@ -294,7 +298,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       contractName: 'Fuse',
       contractAddress: zeroAddress,
       balance: fuseBalance.value.toString(),
-      quoteRate: fusePriceValue,
+      quoteRate: fuseQuoteRate,
       contractDecimals: 18,
       type: TokenType.NATIVE,
       verified: true,
@@ -325,7 +329,72 @@ const fetchTokenBalances = async (safeAddress: string) => {
     });
   }
 
-  const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
+  let allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
+
+  const isZeroRate = (r: number | null | undefined) =>
+    r == null || r === 0 || (typeof r === 'number' && Number.isNaN(r));
+
+  const parsePrice = (v: unknown): number | undefined => {
+    if (typeof v === 'number' && !Number.isNaN(v)) return v;
+    if (typeof v === 'string') {
+      const n = parseFloat(v);
+      return !Number.isNaN(n) ? n : undefined;
+    }
+    return undefined;
+  };
+
+  // Fallback 1: CoinGecko by coin id (tokenId for ERC20, NATIVE_COINGECKO_TOKENS for native)
+  const zeroRateTokens = allTokens.filter(t => isZeroRate(t.quoteRate));
+  const coinIds = [
+    ...new Set(
+      zeroRateTokens
+        .map(t =>
+          t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId,
+        )
+        .filter((id): id is string => !!id),
+    ),
+  ];
+  if (coinIds.length > 0) {
+    try {
+      const priceMap = await fetchCoinSimplePrice(coinIds);
+      allTokens = allTokens.map(t => {
+        if (!isZeroRate(t.quoteRate)) return t;
+        const id =
+          t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId;
+        const usd = id ? parsePrice(priceMap[id]?.usd) : undefined;
+        if (usd != null && usd > 0) return { ...t, quoteRate: usd };
+        return t;
+      });
+    } catch (e) {
+      console.warn('CoinGecko fallback price failed:', e);
+    }
+  }
+
+  // Fallback 2: Alchemy by symbol for tokens still at 0 (no tokenId)
+  const stillZero = allTokens.filter(t => isZeroRate(t.quoteRate) && t.contractTickerSymbol);
+  const symbolsToFetch = [...new Set(stillZero.map(t => t.contractTickerSymbol))];
+  if (symbolsToFetch.length > 0) {
+    try {
+      const results = await Promise.allSettled(symbolsToFetch.map(s => fetchTokenPriceUsd(s)));
+      const symbolToPrice: Record<string, number> = {};
+      symbolsToFetch.forEach((sym, i) => {
+        const r = results[i];
+        if (r.status === 'fulfilled') {
+          const p = parsePrice(r.value);
+          if (p != null && p > 0) symbolToPrice[sym] = p;
+        }
+      });
+      allTokens = allTokens.map(t => {
+        if (!isZeroRate(t.quoteRate)) return t;
+        const p =
+          t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];
+        if (typeof p === 'number') return { ...t, quoteRate: p };
+        return t;
+      });
+    } catch (e) {
+      console.warn('Alchemy fallback price failed:', e);
+    }
+  }
 
   // Helper function to calculate token value
   const calculateTokenValue = (token: TokenBalance): CalculatedTokenValue => {
@@ -414,12 +483,18 @@ const fetchTokenBalances = async (safeAddress: string) => {
 
   const unifiedTokens = Array.from(unifiedTokensMap.values());
 
+  // Return chain arrays from updated allTokens so quoteRates from fallbacks are included
+  const ethereumTokensFinal = allTokens.filter(t => t.chainId === ETHEREUM_CHAIN_ID);
+  const fuseTokensFinal = allTokens.filter(t => t.chainId === FUSE_CHAIN_ID);
+  const baseTokensFinal = allTokens.filter(t => t.chainId === BASE_CHAIN_ID);
+  const arbitrumTokensFinal = allTokens.filter(t => t.chainId === ARBITRUM_CHAIN_ID);
+
   return {
     ...totals,
-    ethereumTokens,
-    fuseTokens,
-    baseTokens,
-    arbitrumTokens,
+    ethereumTokens: ethereumTokensFinal,
+    fuseTokens: fuseTokensFinal,
+    baseTokens: baseTokensFinal,
+    arbitrumTokens: arbitrumTokensFinal,
     tokens: allTokens,
     unifiedTokens,
   };
@@ -475,7 +550,6 @@ export const useBalances = (): BalanceData => {
   };
 };
 
-// Query options for prefetching token balances
 export const tokenBalancesQueryOptions = (safeAddress: string | undefined) => ({
   queryKey: ['tokenBalances', safeAddress],
   queryFn: () => fetchTokenBalances(safeAddress!),

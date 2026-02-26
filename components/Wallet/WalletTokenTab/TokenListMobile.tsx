@@ -1,18 +1,22 @@
 import { useCallback } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { zeroAddress } from 'viem';
 
-import { TokenBalance } from '@/lib/types';
+import { TokenBalance, TokenType } from '@/lib/types';
 
 import TokenCard from './TokenCard';
 import { TokenListProps } from './types';
+
+const coinPageId = (token: TokenBalance) =>
+  `${token.chainId}-${token.type === TokenType.NATIVE ? zeroAddress : token.contractAddress}`;
 
 const TokenListMobile = ({ tokens }: TokenListProps) => {
   const router = useRouter();
 
   const handleTokenPress = useCallback(
     (token: TokenBalance) => {
-      router.push(`/coins/${token.chainId}-${token.contractAddress}`);
+      router.push(`/coins/${coinPageId(token)}`);
     },
     [router],
   );
@@ -21,7 +25,7 @@ const TokenListMobile = ({ tokens }: TokenListProps) => {
     <View>
       {tokens.map(token => (
         <TokenCard
-          key={`${token.chainId}-${token.contractAddress}`}
+          key={`${coinPageId(token)}-${token.quoteRate ?? 0}`}
           token={token}
           onPress={() => handleTokenPress(token)}
         />

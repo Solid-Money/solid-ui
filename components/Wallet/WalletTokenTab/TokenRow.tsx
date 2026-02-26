@@ -17,7 +17,7 @@ import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
-import { cn, formatNumber, isSoUSDEthereum, isSoUSDFuse, isUSDCEthereum } from '@/lib/utils';
+import { cn, formatBalanceUSD, formatNumber, isSoUSDEthereum, isSoUSDFuse, isUSDCEthereum } from '@/lib/utils';
 
 import { DESKTOP_COLUMNS } from './columns';
 
@@ -71,14 +71,14 @@ const TokenRow = memo(
             <Text className="text-base font-bold">
               {formatNumber(balance)} {token.contractTickerSymbol}
             </Text>
-            <Text className="text-sm text-muted-foreground">${formatNumber(balanceUSD, 2)}</Text>
+            <Text className="text-sm text-muted-foreground">{formatBalanceUSD(balanceUSD)}</Text>
           </View>
         </View>
 
         {/* Price Column */}
         <View className="p-6" style={{ width: DESKTOP_COLUMNS[2].width }}>
           <View className="items-start">
-            <Text className="text-base font-bold">${formatNumber(token.quoteRate || 0, 2)}</Text>
+            <Text className="text-base font-bold">{formatBalanceUSD(token.quoteRate || 0)}</Text>
           </View>
         </View>
 
