@@ -59,8 +59,11 @@ export function useCardSteps(
         clearProcessingUntil: state.clearProcessingUntil,
       })),
     );
+  // Consider Rain when API returns rainApplicationStatus (provider may be omitted)
   const cardIssuer =
-    cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null;
+    cardStatusResponse?.rainApplicationStatus != null
+      ? CardProvider.RAIN
+      : cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null;
   const countryStore = useCountryStore(
     useShallow(state => ({
       countryInfo: state.countryInfo,
