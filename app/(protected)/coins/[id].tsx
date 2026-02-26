@@ -17,7 +17,7 @@ import LazyAreaChart from '@/components/LazyAreaChart';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { times } from '@/constants/coins';
-import { useSearchCoinHistoricalChart } from '@/hooks/useAnalytics';
+import { useCoinHistoricalChart } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
@@ -63,7 +63,8 @@ export default function Coin() {
   }, [tokens, chainId, contractAddress]);
 
   const { data: coinHistoricalChart, isLoading: isLoadingCoinHistoricalChart } =
-    useSearchCoinHistoricalChart(
+    useCoinHistoricalChart(
+      token?.tokenId,
       token?.contractTickerSymbol || token?.contractName || token?.contractAddress || '',
       time?.value,
     );
