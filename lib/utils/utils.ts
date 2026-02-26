@@ -93,6 +93,14 @@ export function formatCentsToDollars(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+/** Format USD balance; show "<$0.01" when amount is positive but less than 0.01 */
+export function formatBalanceUSD(value: number, decimals = 2): string {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return `$0.00`;
+  if (num < 0.01) return '<$0.01';
+  return `$${formatNumber(num, decimals)}`;
+}
+
 export function formatUSD(number: number) {
   return new Intl.NumberFormat('en-us', {
     style: 'currency',

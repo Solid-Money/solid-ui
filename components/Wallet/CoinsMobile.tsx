@@ -9,7 +9,7 @@ import { Text } from '@/components/ui/text';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
-import { compactNumberFormat } from '@/lib/utils';
+import { compactNumberFormat, formatBalanceUSD } from '@/lib/utils';
 
 const Title = () => (
   <View className="py-3">
@@ -42,7 +42,7 @@ const TokenRow = memo(
         </View>
 
         <View className="flex-row items-center gap-4">
-          <Text className="text-lg font-bold">${compactNumberFormat(balanceUSD)}</Text>
+          <Text className="text-lg font-bold">{formatBalanceUSD(balanceUSD)}</Text>
         </View>
       </View>
     );
