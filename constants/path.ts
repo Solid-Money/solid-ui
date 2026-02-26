@@ -42,6 +42,11 @@ type Path = {
   ADD_REFERRER: Href;
   QUEST_WALLET: Route;
   QR_SCANNER: Route;
+  SPIN_WIN: Href;
+  SPIN_WIN_WHEEL: Href;
+  SPIN_WIN_RESULT: Href;
+  SPIN_WIN_SUMMARY: Href;
+  SPIN_WIN_GIVEAWAY: Href;
 };
 
 export const path: Path = {
@@ -88,4 +93,9 @@ export const path: Path = {
   QUEST_WALLET: '/quest-wallet',
   // Note: Type assertion needed because Expo Router types are regenerated at dev server start
   QR_SCANNER: '/qr-scanner' as Route,
+  SPIN_WIN: '/spin-win' as Href,
+  SPIN_WIN_WHEEL: '/spin-win/wheel' as Href,
+  SPIN_WIN_RESULT: '/spin-win/result' as Href,
+  SPIN_WIN_SUMMARY: '/spin-win/summary' as Href,
+  SPIN_WIN_GIVEAWAY: '/spin-win/giveaway' as Href,
 };

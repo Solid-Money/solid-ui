@@ -17,6 +17,10 @@ export const ASSETS = {
     module: require('@/assets/animations/rocket.json'),
     hash: '48d71bbc',
   },
+  'animations/spin-wheel.json': {
+    module: require('@/assets/animations/spin-wheel.json'),
+    hash: '180926fd',
+  },
   'animations/vault.json': { module: require('@/assets/animations/vault.json'), hash: '85dffdd4' },
   'fonts/SpaceMono-Regular.ttf': {
     module: require('@/assets/fonts/SpaceMono-Regular.ttf'),
@@ -97,7 +101,7 @@ export const ASSETS = {
   'images/card-safe.png': { module: require('@/assets/images/card-safe.png'), hash: '530d8970' },
   'images/card-withdraw-mobile.png': {
     module: require('@/assets/images/card-withdraw-mobile.png'),
-    hash: '7b225d3e',
+    hash: '3e7c4ee6',
   },
   'images/card-withdraw.png': {
     module: require('@/assets/images/card-withdraw.png'),
@@ -513,6 +517,14 @@ export const ASSETS = {
     module: require('@/assets/images/spend-yellow.png'),
     hash: '98629c6c',
   },
+  'images/spin-win/piggy-bank-3d.png': {
+    module: require('@/assets/images/spin-win/piggy-bank-3d.png'),
+    hash: '71fe52cb',
+  },
+  'images/spin-win/result-glow-circle.svg': {
+    module: require('@/assets/images/spin-win/result-glow-circle.svg'),
+    hash: 'c6bde890',
+  },
   'images/splash-icon.png': {
     module: require('@/assets/images/splash-icon.png'),
     hash: 'efd642e5',
@@ -615,12 +627,12 @@ export const ASSETS = {
     module: require('@/assets/splash/splash-icon.png'),
     hash: '15315f99',
   },
-  'tabs-icons/bell.json': { module: require('@/assets/tabs-icons/bell.json'), hash: 'b98b68a5' },
-  'tabs-icons/card.json': { module: require('@/assets/tabs-icons/card.json'), hash: '30b0115a' },
-  'tabs-icons/home.json': { module: require('@/assets/tabs-icons/home.json'), hash: '86c7e98d' },
+  'tabs-icons/bell.json': { module: require('@/assets/tabs-icons/bell.json'), hash: 'c04fca2a' },
+  'tabs-icons/card.json': { module: require('@/assets/tabs-icons/card.json'), hash: '50468e69' },
+  'tabs-icons/home.json': { module: require('@/assets/tabs-icons/home.json'), hash: '95521f4f' },
   'tabs-icons/lightning.json': {
     module: require('@/assets/tabs-icons/lightning.json'),
-    hash: '6538ba06',
+    hash: '5f0a954e',
   },
   // @assets-registry-end
 } as const;
