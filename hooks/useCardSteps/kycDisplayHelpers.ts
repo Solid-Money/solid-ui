@@ -120,7 +120,8 @@ export function isRainKYCButtonDisabled(
   return (
     rainApplicationStatus === RainApplicationStatus.APPROVED ||
     rainApplicationStatus === RainApplicationStatus.PENDING ||
-    rainApplicationStatus === RainApplicationStatus.MANUAL_REVIEW
+    rainApplicationStatus === RainApplicationStatus.MANUAL_REVIEW ||
+    rainApplicationStatus === RainApplicationStatus.DENIED
   );
 }
 
