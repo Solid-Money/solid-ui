@@ -76,6 +76,15 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="savings-old"
+        options={{
+          title: 'Savings (old)',
+          headerShown: false,
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
         name="card"
         options={{
           lazy: Platform.OS !== 'web' ? false : undefined,
