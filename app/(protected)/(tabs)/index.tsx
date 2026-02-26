@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { TouchableOpacity, View } from 'react-native';
+import { Platform, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 import { Address } from 'viem';
 
 import CountUp from '@/components/CountUp';
@@ -8,6 +9,7 @@ import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButton
 import LazyHomeBanners from '@/components/Dashboard/LazyHomeBanners';
 import HomeEmptyState from '@/components/Home/EmptyState';
 import PageLayout from '@/components/PageLayout';
+import SpinWinCard from '@/components/SpinAndWin/SpinWinCard';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WalletInfo } from '@/components/Wallet';
@@ -15,11 +17,13 @@ import DesktopCards from '@/components/Wallet/DesktopCards';
 import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
 import MobileCards from '@/components/Wallet/MobileCards';
 import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
+import { path } from '@/constants/path';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
+import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import useUser from '@/hooks/useUser';
 import { useVaultBalance } from '@/hooks/useVault';
@@ -43,6 +47,7 @@ export default function Home() {
   const intercom = useIntercom();
   const { data: cardStatus } = useCardStatus();
   const { data: cardDetails } = useCardDetails();
+  const { data: spinStatus } = useSpinStatus();
 
   const userHasCard = hasCard(cardStatus);
 
@@ -233,8 +238,15 @@ export default function Home() {
           )}
         </View>
 
-        <View className="gap-0 px-4 md:mt-10 md:px-0">
-          <Text className="mb-5 text-lg font-semibold text-muted-foreground">For You</Text>
+        <View className="gap-3 px-4 md:mt-10 md:px-0">
+          <Text className="mb-2 text-lg font-semibold text-muted-foreground">For You</Text>
+          {Platform.OS !== 'web' && spinStatus?.isAllowed && (
+            <SpinWinCard
+              currentStreak={spinStatus?.currentStreak ?? 0}
+              spinAvailable={spinStatus?.spinAvailableToday ?? true}
+              onPress={() => router.push(path.SPIN_WIN)}
+            />
+          )}
           <LazyHomeBanners />
         </View>
       </View>

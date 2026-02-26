@@ -184,6 +184,14 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="spin-win"
+        options={{
+          title: 'Spin & Win',
+          headerShown: false,
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
