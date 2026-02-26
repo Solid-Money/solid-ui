@@ -615,6 +615,21 @@ export const useSearchCoinHistoricalChart = (query: string, days: string = '1') 
   });
 };
 
+export const useCoinHistoricalChart = (tokenId: string | undefined, query: string, days: string = '1') => {
+  return useQuery({
+    queryKey: [ANALYTICS, 'coinHistoricalChart', tokenId || query, days],
+    queryFn: async () => {
+      if (tokenId) {
+        return fetchCoinHistoricalChart(tokenId, days);
+      }
+      const searchedCoin = await searchCoin(query);
+      const coin = searchedCoin.coins[0];
+      return fetchCoinHistoricalChart(coin.id, days);
+    },
+    enabled: !!(tokenId || query),
+  });
+};
+
 export const useHistoricalAPY = (days: string = '30', vault?: VaultType) => {
   const vaultKey = getAnalyticsVaultKey(vault);
   return useQuery({
