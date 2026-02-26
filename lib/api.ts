@@ -92,7 +92,7 @@ import {
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 
 // Helper function to get platform-specific headers
-const getPlatformHeaders = () => {
+export const getPlatformHeaders = () => {
   const headers: Record<string, string> = {};
   if (Platform.OS === 'ios' || Platform.OS === 'android') {
     headers['X-Platform'] = 'mobile';
@@ -101,7 +101,7 @@ const getPlatformHeaders = () => {
 };
 
 // Helper function to get JWT token for mobile
-const getJWTToken = (): string | null => {
+export const getJWTToken = (): string | null => {
   if (Platform.OS === 'ios' || Platform.OS === 'android') {
     const { users } = useUserStore.getState();
     const currentUser = users.find((user: User) => user.selected);

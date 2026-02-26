@@ -1,14 +1,18 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Image, ImageSource } from 'expo-image';
+import { router } from 'expo-router';
 
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { HomeBanners } from '@/components/Dashboard/HomeBanners';
 import PageLayout from '@/components/PageLayout';
 import SavingsHeaderButtonsMobile from '@/components/Savings/SavingsHeaderButtonsMobile';
+import SpinWinCard from '@/components/SpinAndWin/SpinWinCard';
 import { Text } from '@/components/ui/text';
+import { path } from '@/constants/path';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
+import { useSpinStatus } from '@/hooks/useSpinWin';
 import { getAsset } from '@/lib/assets';
 import { cn, formatNumber } from '@/lib/utils';
 
@@ -19,6 +23,7 @@ import DepositImage from './DepositImage';
 export default function HomeEmptyState() {
   const { isScreenMedium } = useDimension();
   const { maxAPY, isAPYsLoading } = useMaxAPY();
+  const { data: spinStatus } = useSpinStatus();
 
   return (
     <PageLayout>
@@ -114,6 +119,11 @@ export default function HomeEmptyState() {
 
           <View className="gap-6">
             <Text className="text-lg font-semibold text-foreground/50">For you</Text>
+            <SpinWinCard
+              currentStreak={spinStatus?.currentStreak ?? 0}
+              spinAvailable={spinStatus?.spinAvailableToday ?? true}
+              onPress={() => router.push(path.SPIN_WIN)}
+            />
             <HomeBanners />
           </View>
         </View>
