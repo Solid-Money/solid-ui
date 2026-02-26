@@ -8,7 +8,7 @@ export default function TabBarBackground() {
       <BlurView
         intensity={25}
         tint="dark"
-        experimentalBlurMethod="dimezisBlurView"
+        blurMethod="dimezisBlurView"
         style={StyleSheet.absoluteFill}
       />
       {/* Darker overlay to compensate for Android's different blur rendering */}
