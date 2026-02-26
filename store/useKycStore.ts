@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { KycStatus } from '@/lib/types';
 import mmkvStorage from '@/lib/mmvkStorage';
 
 interface KycState {
@@ -11,9 +10,6 @@ interface KycState {
   processingUntil: number | null;
   setProcessingUntil: (ts: number) => void;
   clearProcessingUntil: () => void;
-  /** Rain KYC: status from POST /cards/kyc/persona; only allow card creation when 'approved' */
-  rainKycStatus: KycStatus | null;
-  setRainKycStatus: (status: KycStatus | null) => void;
 }
 
 const KYC_STORAGE_KEY = 'kyc-store';
@@ -23,7 +19,6 @@ export const useKycStore = create<KycState>()(
     set => ({
       kycLinkId: null,
       processingUntil: null,
-      rainKycStatus: null,
 
       setKycLinkId: (kycLinkId: string) => {
         set({ kycLinkId });
@@ -39,10 +34,6 @@ export const useKycStore = create<KycState>()(
 
       clearProcessingUntil: () => {
         set({ processingUntil: null });
-      },
-
-      setRainKycStatus: (rainKycStatus: KycStatus | null) => {
-        set({ rainKycStatus });
       },
     }),
     {

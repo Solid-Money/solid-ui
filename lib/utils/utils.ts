@@ -299,3 +299,7 @@ export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
 export const hasCard = (cardStatus: CardStatusResponse | null | undefined): boolean => {
   return cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN;
 };
+
+export const hasCardStatusWithRainApplication = (
+  cardStatus: CardStatusResponse | null | undefined,
+): boolean => Boolean(cardStatus?.rainApplicationStatus);

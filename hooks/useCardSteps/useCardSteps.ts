@@ -8,8 +8,15 @@ import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { useFingerprint } from '@/hooks/useFingerprint';
 import { track } from '@/lib/analytics';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
+import { openIntercom } from '@/lib/intercom';
 import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
-import { CardProvider, CardStatusResponse, KycStatus } from '@/lib/types';
+import { redirectToRainVerification } from '@/lib/rainVerification';
+import {
+  CardProvider,
+  CardStatusResponse,
+  KycStatus,
+  RainApplicationStatus,
+} from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -27,7 +34,6 @@ import {
 import {
   computeKycStatus,
   computeUiKycStatus,
-  rainApplicationStatusToKycStatus,
   useProcessingWindow,
 } from './kycStatusHelpers';
 import { buildCardSteps, useCardActivation, useStepNavigation } from './stepHelpers';
@@ -44,22 +50,17 @@ export function useCardSteps(
   cardStatusResponse?: CardStatusResponse | null,
 ) {
   const router = useRouter();
-  const {
-    kycLinkId,
-    processingUntil,
-    setProcessingUntil,
-    clearProcessingUntil,
-    rainKycStatus,
-  } = useKycStore(
-    useShallow(state => ({
-      kycLinkId: state.kycLinkId,
-      processingUntil: state.processingUntil,
-      setProcessingUntil: state.setProcessingUntil,
-      clearProcessingUntil: state.clearProcessingUntil,
-      rainKycStatus: state.rainKycStatus,
-    })),
-  );
-  const cardIssuer = EXPO_PUBLIC_CARD_ISSUER ?? null;
+  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } =
+    useKycStore(
+      useShallow(state => ({
+        kycLinkId: state.kycLinkId,
+        processingUntil: state.processingUntil,
+        setProcessingUntil: state.setProcessingUntil,
+        clearProcessingUntil: state.clearProcessingUntil,
+      })),
+    );
+  const cardIssuer =
+    cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null;
   const countryStore = useCountryStore(
     useShallow(state => ({
       countryInfo: state.countryInfo,
@@ -105,15 +106,6 @@ export function useCardSteps(
     () => computeUiKycStatus(processingUntil, kycLink?.kyc_status as KycStatus, kycStatus),
     [processingUntil, kycLink?.kyc_status, kycStatus],
   );
-
-  // Rain: prefer backend rainApplicationStatus from card status over store
-  const rainKycStatusResolved = useMemo(() => {
-    if (cardIssuer !== CardProvider.RAIN) return rainKycStatus;
-    const fromBackend = rainApplicationStatusToKycStatus(
-      cardStatusResponse?.rainApplicationStatus,
-    );
-    return fromBackend ?? rainKycStatus;
-  }, [cardIssuer, cardStatusResponse?.rainApplicationStatus, rainKycStatus]);
 
   // Card activation state and handlers
   const {
@@ -226,6 +218,37 @@ export function useCardSteps(
     getVisitorData,
   ]);
 
+  // Rain: KYC step button handler (redirect, contact support, or proceed to KYC)
+  const handleRainKYCPress = useCallback(() => {
+    const status = cardStatusResponse?.rainApplicationStatus;
+    const link = cardStatusResponse?.applicationExternalVerificationLink;
+
+    if (
+      status === RainApplicationStatus.DENIED ||
+      status === RainApplicationStatus.LOCKED ||
+      status === RainApplicationStatus.CANCELED
+    ) {
+      openIntercom();
+      return;
+    }
+    if (
+      (status === RainApplicationStatus.NEEDS_VERIFICATION ||
+        status === RainApplicationStatus.NEEDS_INFORMATION) &&
+      link?.url &&
+      Object.keys(link.params ?? {}).length > 0
+    ) {
+      redirectToRainVerification(link);
+      return;
+    }
+    if (status === RainApplicationStatus.NOT_STARTED || !status) {
+      handleProceedToKyc();
+    }
+  }, [
+    cardStatusResponse?.rainApplicationStatus,
+    cardStatusResponse?.applicationExternalVerificationLink,
+    handleProceedToKyc,
+  ]);
+
   // Build steps based on endorsement status (Bridge) or Rain KYC status
   const steps = useMemo(
     () =>
@@ -238,7 +261,11 @@ export function useCardSteps(
         handleProceedToKyc,
         handleActivateCard,
         pushCardDetails,
-        { cardIssuer, rainKycStatus: rainKycStatusResolved },
+        {
+          cardIssuer,
+          rainApplicationStatus: cardStatusResponse?.rainApplicationStatus,
+          handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
+        },
       ),
     [
       cardsEndorsement,
@@ -246,11 +273,12 @@ export function useCardSteps(
       cardActivated,
       cardStatusResponse?.activationBlocked,
       cardStatusResponse?.activationBlockedReason,
+      cardStatusResponse?.rainApplicationStatus,
       handleProceedToKyc,
       handleActivateCard,
       pushCardDetails,
       cardIssuer,
-      rainKycStatusResolved,
+      handleRainKYCPress,
     ],
   );
 
