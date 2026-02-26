@@ -1,3 +1,8 @@
+/**
+ * Old Total value calculation: balance × rate + accrued interest (totalUsdLive).
+ * Used by /savings-old for side-by-side comparison with new redeemable-only calculation.
+ * See commit e4cba95 (before "Align savings and withdraw calculation").
+ */
 import { useEffect, useState } from 'react';
 
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
@@ -28,7 +33,7 @@ function totalUsdLive(
   return balanceUSD + amountGained(balance, exchangeRate, apy, lastTs, now);
 }
 
-export interface UseSavingsYieldParams {
+export interface UseSavingsYieldOldParams {
   balance: number;
   apy: number;
   lastTimestamp: number;
@@ -37,11 +42,10 @@ export interface UseSavingsYieldParams {
   userDepositTransactions?: GetUserTransactionsQuery;
   exchangeRate?: number;
   tokenAddress?: string;
-  /** When true, treat interest inputs as loaded. Omit to use internal buckets. */
   inputsReady?: boolean;
 }
 
-export function useSavingsYield({
+export function useSavingsYieldOld({
   balance,
   apy,
   lastTimestamp,
@@ -51,7 +55,7 @@ export function useSavingsYield({
   exchangeRate = 1,
   tokenAddress = ADDRESSES.fuse.vault,
   inputsReady,
-}: UseSavingsYieldParams): number {
+}: UseSavingsYieldOldParams): number {
   const [liveYield, setLiveYield] = useState(0);
   const [animation, setAnimation] = useState(0);
   const [anchor, setAnchor] = useState<{ value: number; time: number } | null>(null);
@@ -65,15 +69,10 @@ export function useSavingsYield({
   const lastTsBucket = lastTimestamp > 0 ? Math.floor(lastTimestamp / 86400) : 0;
   const apyBucket = Math.floor((apy ?? 0) * 100);
 
-  // Full calc only when inputs change (no animation). For TOTAL_USD use redeemable only so display matches withdraw.
   useEffect(() => {
     if (balance <= 0) {
       setLiveYield(0);
       setAnchor(null);
-      return;
-    }
-    if (mode === SavingMode.TOTAL_USD) {
-      setLiveYield(balance * exchangeRate);
       return;
     }
     let cancelled = false;
@@ -92,10 +91,7 @@ export function useSavingsYield({
     ).then(calculatedYield => {
       if (cancelled) return;
       const isSpuriousZero =
-        mode === SavingMode.CURRENT &&
-        calculatedYield === 0 &&
-        balance > 0 &&
-        lastTimestamp > 0;
+        mode === SavingMode.CURRENT && calculatedYield === 0 && balance > 0 && lastTimestamp > 0;
       if (!isSpuriousZero) {
         setLiveYield(calculatedYield);
         if (mode === SavingMode.CURRENT) setAnchor({ value: calculatedYield, time: now });
@@ -117,17 +113,13 @@ export function useSavingsYield({
     ...(inputsReady !== undefined ? [inputsReady] : [lastTsBucket, apyBucket]),
   ]);
 
-  // Every second: update display with simple formula (no network)
   useEffect(() => {
     if (balance <= 0) return;
     const now = Math.floor(Date.now() / 1000);
     if (mode === SavingMode.TOTAL_USD) {
-      const redeemableOnly = balance * exchangeRate;
-      setLiveYield(redeemableOnly);
+      setLiveYield(totalUsdLive(balance, exchangeRate, apy, lastTimestamp, now));
     } else if (mode === SavingMode.CURRENT && anchor) {
-      setLiveYield(
-        anchor.value + amountGained(balance, exchangeRate, apy, anchor.time, now),
-      );
+      setLiveYield(anchor.value + amountGained(balance, exchangeRate, apy, anchor.time, now));
     }
   }, [animation, balance, apy, lastTimestamp, exchangeRate, mode, anchor]);
 

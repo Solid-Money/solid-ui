@@ -10,6 +10,7 @@ type Path = {
   SIGNUP_CREATING: Href;
   SIGNUP_PASSKEY: Href;
   SAVINGS: Href;
+  SAVINGS_OLD: Href;
   ACTIVITY: Href;
   DEPOSIT: Href;
   CARD: Href;
@@ -53,6 +54,7 @@ export const path: Path = {
   SIGNUP_CREATING: '/signup/creating',
   SIGNUP_PASSKEY: '/signup/passkey',
   SAVINGS: '/savings',
+  SAVINGS_OLD: '/savings-old',
   ACTIVITY: '/activity',
   DEPOSIT: '/deposit',
   CARD: '/card',
