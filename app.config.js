@@ -69,7 +69,6 @@ export default {
         foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#94F27F',
       },
-      edgeToEdgeEnabled: true,
       package: 'xyz.solid.android',
       splash: {
         image: './assets/splash/splash-icon.png',
@@ -129,6 +128,8 @@ export default {
       [
         'expo-build-properties',
         {
+          buildReactNativeFromSource: true,
+          useHermesV1: true,
           ios: {
             deploymentTarget: '15.1',
             useFrameworks: 'static',
@@ -173,6 +174,8 @@ export default {
       ],
       // Fingerprint.com device intelligence - adds required Maven repo for Android
       '@fingerprintjs/fingerprintjs-pro-react-native',
+      'expo-image',
+      'expo-web-browser',
       // Camera for QR code scanning
       [
         'expo-camera',
@@ -225,6 +228,7 @@ export default {
     },
     updates: {
       url: 'https://u.expo.dev/a788e592-4267-44da-8afc-a667075c20d4',
+      enableBsdiffPatchSupport: true,
     },
   },
 };
