@@ -4,7 +4,7 @@ import {
   BridgeEndorsementIssue,
   BridgeRejectionReason,
   CardProvider,
-  KycStatus,
+  RainApplicationStatus,
 } from '@/lib/types';
 
 // ============================================================================
@@ -48,6 +48,83 @@ function hasEndorsementPendingReview(cardsEndorsement: BridgeCustomerEndorsement
 }
 
 // ============================================================================
+// Rain KYC state helpers (application status from Rain API)
+// ============================================================================
+
+const DEFAULT_KYC_DESCRIPTION = 'Identity verification required for us to issue your card.';
+
+/**
+ * User-friendly KYC description per Rain application state
+ */
+export function getKYCDescription(
+  rainApplicationStatus?: RainApplicationStatus | null,
+): string {
+  if (!rainApplicationStatus) return DEFAULT_KYC_DESCRIPTION;
+  switch (rainApplicationStatus) {
+    case RainApplicationStatus.APPROVED:
+      return 'Identity verification complete. You can now order your card.';
+    case RainApplicationStatus.PENDING:
+      return 'Your application is being processed. This usually takes a few minutes.';
+    case RainApplicationStatus.MANUAL_REVIEW:
+      return 'Your application is being reviewed by our team. We\'ll update you when a decision is reached.';
+    case RainApplicationStatus.DENIED:
+      return 'We couldn\'t verify your identity. Please contact support for more information.';
+    case RainApplicationStatus.LOCKED:
+      return 'Your application is on hold. Contact support for assistance.';
+    case RainApplicationStatus.CANCELED:
+      return 'This application was canceled. Contact support if you need to start over.';
+    case RainApplicationStatus.NEEDS_VERIFICATION:
+      return 'Verify your identity to continue. You\'ll be redirected to complete verification.';
+    case RainApplicationStatus.NEEDS_INFORMATION:
+      return 'We need a bit more information to process your application.';
+    case RainApplicationStatus.NOT_STARTED:
+    default:
+      return DEFAULT_KYC_DESCRIPTION;
+  }
+}
+
+/**
+ * KYC step button text per Rain application state
+ */
+export function getKYCButtonText(
+  rainApplicationStatus?: RainApplicationStatus | null,
+): string | undefined {
+  if (!rainApplicationStatus) return 'Complete KYC';
+  switch (rainApplicationStatus) {
+    case RainApplicationStatus.APPROVED:
+      return undefined;
+    case RainApplicationStatus.PENDING:
+    case RainApplicationStatus.MANUAL_REVIEW:
+      return 'Under Review';
+    case RainApplicationStatus.DENIED:
+    case RainApplicationStatus.LOCKED:
+    case RainApplicationStatus.CANCELED:
+      return 'Contact support';
+    case RainApplicationStatus.NEEDS_VERIFICATION:
+      return 'Complete verification';
+    case RainApplicationStatus.NEEDS_INFORMATION:
+      return 'Provide information';
+    case RainApplicationStatus.NOT_STARTED:
+    default:
+      return 'Complete KYC';
+  }
+}
+
+/**
+ * Whether the KYC button should be disabled for Rain (no action possible)
+ */
+export function isRainKYCButtonDisabled(
+  rainApplicationStatus?: RainApplicationStatus | null,
+): boolean {
+  if (!rainApplicationStatus) return false;
+  return (
+    rainApplicationStatus === RainApplicationStatus.APPROVED ||
+    rainApplicationStatus === RainApplicationStatus.PENDING ||
+    rainApplicationStatus === RainApplicationStatus.MANUAL_REVIEW
+  );
+}
+
+// ============================================================================
 // Step Description Functions
 // ============================================================================
 
@@ -57,21 +134,18 @@ function hasEndorsementPendingReview(cardsEndorsement: BridgeCustomerEndorsement
 export function getStepDescription(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
   customerRejectionReasons?: BridgeRejectionReason[],
-  options?: { cardIssuer?: CardProvider | null; rainKycStatus?: KycStatus | null },
+  options?: {
+    cardIssuer?: CardProvider | null;
+    rainApplicationStatus?: RainApplicationStatus | null;
+  },
 ): string {
-  if (options?.cardIssuer === CardProvider.RAIN && options?.rainKycStatus) {
-    const s = options.rainKycStatus;
-    if (s === KycStatus.APPROVED) return 'Identity verification complete. You can now order your card.';
-    if (s === KycStatus.UNDER_REVIEW) return 'Your information is being reviewed. This usually takes a few minutes.';
-    if (s === KycStatus.REJECTED) return 'We couldn\'t verify your identity. Please contact support or try again.';
-    if (s === KycStatus.OFFBOARDED) return 'Account offboarded. Please contact support.';
-    if (s === KycStatus.INCOMPLETE || s === KycStatus.NOT_STARTED) return 'Identity verification required for us to issue your card.';
-    return 'Identity verification required for us to issue your card';
+  if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
+    return getKYCDescription(options.rainApplicationStatus);
   }
 
   // No endorsement yet - default message
   if (!cardsEndorsement) {
-    return 'Identity verification required for us to issue your card';
+    return DEFAULT_KYC_DESCRIPTION;
   }
 
   const requirements = cardsEndorsement.requirements;
@@ -132,7 +206,7 @@ export function getStepDescription(
   }
 
   // Default fallback
-  return 'Identity verification required for us to issue your card';
+  return DEFAULT_KYC_DESCRIPTION;
 }
 
 /**
@@ -140,14 +214,13 @@ export function getStepDescription(
  */
 export function getStepButtonText(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
-  options?: { cardIssuer?: CardProvider | null; rainKycStatus?: KycStatus | null },
+  options?: {
+    cardIssuer?: CardProvider | null;
+    rainApplicationStatus?: RainApplicationStatus | null;
+  },
 ): string | undefined {
-  if (options?.cardIssuer === CardProvider.RAIN && options?.rainKycStatus) {
-    const s = options.rainKycStatus;
-    if (s === KycStatus.APPROVED) return undefined;
-    if (s === KycStatus.UNDER_REVIEW) return 'Under Review';
-    if (s === KycStatus.REJECTED || s === KycStatus.OFFBOARDED) return 'Contact support';
-    return 'Complete KYC';
+  if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
+    return getKYCButtonText(options.rainApplicationStatus);
   }
 
   // No endorsement - start KYC
@@ -182,11 +255,13 @@ export function getStepButtonText(
  */
 export function isStepButtonDisabled(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
-  options?: { cardIssuer?: CardProvider | null; rainKycStatus?: KycStatus | null },
+  options?: {
+    cardIssuer?: CardProvider | null;
+    rainApplicationStatus?: RainApplicationStatus | null;
+  },
 ): boolean {
-  if (options?.cardIssuer === CardProvider.RAIN) {
-    const s = options.rainKycStatus;
-    return s === KycStatus.APPROVED || s === KycStatus.UNDER_REVIEW || false;
+  if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
+    return isRainKYCButtonDisabled(options.rainApplicationStatus);
   }
   if (!cardsEndorsement) {
     return false;
@@ -213,10 +288,10 @@ export function isStepButtonDisabled(
 // ============================================================================
 
 /**
- * @deprecated Use getStepDescription instead
+ * @deprecated Use getStepDescription or getKYCDescription(rainApplicationStatus) instead
  */
 export function getKycDescription(): string {
-  return 'Identity verification required for us to issue your card';
+  return DEFAULT_KYC_DESCRIPTION;
 }
 
 /**

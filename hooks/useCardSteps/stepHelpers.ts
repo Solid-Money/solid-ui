@@ -15,7 +15,7 @@ import {
   BridgeRejectionReason,
   CardProvider,
   CardStatus,
-  KycStatus,
+  RainApplicationStatus,
 } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
@@ -37,12 +37,16 @@ export function buildCardSteps(
   pushCardDetails: () => void,
   options?: {
     cardIssuer?: CardProvider | null;
-    rainKycStatus?: KycStatus | null;
+    rainApplicationStatus?: RainApplicationStatus | null;
+    handleRainKYCPress?: () => void;
   },
 ): Step[] {
   const stepOptions =
     options?.cardIssuer != null
-      ? { cardIssuer: options.cardIssuer, rainKycStatus: options.rainKycStatus }
+      ? {
+          cardIssuer: options.cardIssuer,
+          rainApplicationStatus: options.rainApplicationStatus,
+        }
       : undefined;
   const description = getStepDescription(
     cardsEndorsement,
@@ -53,7 +57,8 @@ export function buildCardSteps(
   const isButtonDisabled = isStepButtonDisabled(cardsEndorsement, stepOptions);
 
   const isRainKycApproved =
-    options?.cardIssuer === CardProvider.RAIN && options?.rainKycStatus === KycStatus.APPROVED;
+    options?.cardIssuer === CardProvider.RAIN &&
+    options?.rainApplicationStatus === RainApplicationStatus.APPROVED;
   const isKycComplete =
     options?.cardIssuer === CardProvider.RAIN
       ? isRainKycApproved
@@ -62,6 +67,11 @@ export function buildCardSteps(
   const orderCardDesc = activationBlocked
     ? activationBlockedReason || 'There was an issue activating your card. Please contact support.'
     : 'All is set! now click on the "Create card" button to issue your new card';
+
+  const kycStepOnPress =
+    options?.cardIssuer === CardProvider.RAIN && options?.handleRainKYCPress
+      ? options.handleRainKYCPress
+      : handleProceedToKyc;
 
   return [
     {
@@ -72,7 +82,7 @@ export function buildCardSteps(
       status: isKycComplete || cardActivated ? 'completed' : 'pending',
       endorsementStatus: cardsEndorsement?.status,
       buttonText,
-      onPress: isButtonDisabled ? undefined : handleProceedToKyc,
+      onPress: isButtonDisabled ? undefined : kycStepOnPress,
     },
     {
       id: 2,

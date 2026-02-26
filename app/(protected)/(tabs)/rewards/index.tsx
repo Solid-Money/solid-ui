@@ -78,7 +78,8 @@ export default function Rewards() {
 }
 
 function CardBanner() {
-  const { data: cardStatus } = useCardStatus();
+  const { data: cardStatus, isLoading } = useCardStatus();
+  if (isLoading) return null;
   if (hasCard(cardStatus)) return null;
 
   return (
