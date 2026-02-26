@@ -479,7 +479,7 @@ export interface CardStatusResponse {
   activationFailedAt?: string;
   /** Set by backend when available; used to branch Bridge vs Rain flows */
   provider?: CardProvider;
-  /** Rain KYC: application status from Rain; when present, prefer over useKycStore.rainKycStatus */
+  /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
   /** Rain: link for needsVerification redirect */
   applicationExternalVerificationLink?: { url: string; params: Record<string, string> };
@@ -503,17 +503,18 @@ export interface RainKycAddress {
   country: string;
 }
 
-/** Rain application status from API; map to KycStatus for UI */
-export type RainApplicationStatus =
-  | 'approved'
-  | 'pending'
-  | 'manualReview'
-  | 'denied'
-  | 'locked'
-  | 'canceled'
-  | 'needsVerification'
-  | 'needsInformation'
-  | 'notStarted';
+/** Rain KYC application states (consumer program) */
+export enum RainApplicationStatus {
+  APPROVED = 'approved',
+  PENDING = 'pending',
+  MANUAL_REVIEW = 'manualReview',
+  DENIED = 'denied',
+  LOCKED = 'locked',
+  CANCELED = 'canceled',
+  NEEDS_VERIFICATION = 'needsVerification',
+  NEEDS_INFORMATION = 'needsInformation',
+  NOT_STARTED = 'notStarted',
+}
 
 export interface RainKycSubmitResponse {
   applicationStatus: RainApplicationStatus;

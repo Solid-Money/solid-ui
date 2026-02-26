@@ -318,3 +318,7 @@ export const hasCard = (cardStatus: CardStatusResponse | null | undefined): bool
   if (!isActiveOrFrozen) return false;
   return cardStatus.provider !== CardProvider.BRIDGE;
 };
+
+export const hasCardStatusWithRainApplication = (
+  cardStatus: CardStatusResponse | null | undefined,
+): boolean => Boolean(cardStatus?.rainApplicationStatus);

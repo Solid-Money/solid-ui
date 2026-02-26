@@ -14,6 +14,7 @@ import { useActivateCard } from '@/hooks/useActivateCard';
 
 export default function ActivateMobile() {
   const {
+    isCardStatusLoading,
     isCheckingCountry,
     isCardPending,
     isCardBlocked,
@@ -28,8 +29,10 @@ export default function ActivateMobile() {
     handleGoBack,
   } = useActivateCard();
 
-  if (isCheckingCountry) {
-    return <LoadingState message="Checking availability..." />;
+  if (isCardStatusLoading || isCheckingCountry) {
+    return (
+      <LoadingState message={isCardStatusLoading ? 'Loading...' : 'Checking availability...'} />
+    );
   }
 
   return (

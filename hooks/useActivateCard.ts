@@ -8,7 +8,7 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { track } from '@/lib/analytics';
-import { hasCard } from '@/lib/utils';
+import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
 import { CardStatus, KycStatus } from '@/lib/types';
 
 export function useActivateCard() {
@@ -26,7 +26,7 @@ export function useActivateCard() {
   }>();
 
   // Card status
-  const { data: cardStatusResponse } = useCardStatus();
+  const { data: cardStatusResponse, isLoading: isCardStatusLoading } = useCardStatus();
   const cardStatus = cardStatusResponse?.status;
   const isCardPending = cardStatus === CardStatus.PENDING;
   const isCardBlocked = Boolean(cardStatusResponse?.activationBlocked);
@@ -34,9 +34,12 @@ export function useActivateCard() {
     cardStatusResponse?.activationBlockedReason ||
     'There was an issue activating your card. Please contact support.';
 
-  // Country check logic (Rain-first: Bridge-only = no card)
+  // Country check logic (Rain-first: Bridge-only = no card). Skip when user already has card,
+  // has confirmed country, or has Rain application status (already in KYC flow).
   const userHasCard = hasCard(cardStatusResponse);
-  const skipCountryCheck = countryConfirmed === 'true' || userHasCard;
+  const hasRainApplicationStatus = hasCardStatusWithRainApplication(cardStatusResponse);
+  const skipCountryCheck =
+    countryConfirmed === 'true' || userHasCard || hasRainApplicationStatus;
   const { checkingCountry } = useCountryCheck({ skip: skipCountryCheck });
   const isCheckingCountry = !skipCountryCheck && checkingCountry;
 
@@ -93,6 +96,7 @@ export function useActivateCard() {
 
   return {
     // Loading state
+    isCardStatusLoading,
     isCheckingCountry,
     // Card status flags
     isCardPending,

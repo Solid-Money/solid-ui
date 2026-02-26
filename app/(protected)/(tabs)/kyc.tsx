@@ -20,21 +20,8 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { getCardStatus, getClientIp, submitRainKyc } from '@/lib/api';
 import { redirectToRainVerification } from '@/lib/rainVerification';
-import { KycStatus, RainApplicationStatus, type RainDocumentType } from '@/lib/types';
+import { RainApplicationStatus, type RainDocumentType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
-import { useKycStore } from '@/store/useKycStore';
-
-const RAIN_STATUS_TO_KYC: Record<RainApplicationStatus, KycStatus | null> = {
-  approved: KycStatus.APPROVED,
-  pending: KycStatus.UNDER_REVIEW,
-  manualReview: KycStatus.UNDER_REVIEW,
-  denied: KycStatus.REJECTED,
-  locked: KycStatus.UNDER_REVIEW,
-  canceled: KycStatus.REJECTED,
-  needsVerification: KycStatus.INCOMPLETE,
-  needsInformation: KycStatus.INCOMPLETE,
-  notStarted: KycStatus.NOT_STARTED,
-};
 
 const defaultDocumentFiles: RainKycDocumentFiles = {
   idDocumentType: 'passport',
@@ -46,7 +33,6 @@ const defaultDocumentFiles: RainKycDocumentFiles = {
 
 export default function Kyc() {
   const router = useRouter();
-  const setRainKycStatus = useKycStore(state => state.setRainKycStatus);
   const [documentFiles, setDocumentFiles] = useState<RainKycDocumentFiles>(defaultDocumentFiles);
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<{
@@ -182,21 +168,21 @@ export default function Kyc() {
           verificationLink: res.applicationExternalVerificationLink,
         });
 
-        const kycStatus = RAIN_STATUS_TO_KYC[res.applicationStatus];
-        if (kycStatus) setRainKycStatus(kycStatus);
-
-        if (res.applicationStatus === 'approved') {
+        if (res.applicationStatus === RainApplicationStatus.APPROVED) {
           router.replace(String(path.CARD_ACTIVATE) as any);
           return;
         }
         if (
-          res.applicationStatus === 'needsVerification' &&
+          res.applicationStatus === RainApplicationStatus.NEEDS_VERIFICATION &&
           res.applicationExternalVerificationLink
         ) {
           redirectToRainVerification(res.applicationExternalVerificationLink);
           return;
         }
-        if (res.applicationStatus === 'pending' || res.applicationStatus === 'manualReview') {
+        if (
+          res.applicationStatus === RainApplicationStatus.PENDING ||
+          res.applicationStatus === RainApplicationStatus.MANUAL_REVIEW
+        ) {
           setPolling(true);
         }
       } catch (e: any) {
@@ -211,7 +197,7 @@ export default function Kyc() {
         setSubmitting(false);
       }
     },
-    [buildFormData, documentFiles, router, setRainKycStatus],
+    [buildFormData, documentFiles, router],
   );
 
   // Poll card status when pending/manualReview (rain status comes from card status)
@@ -222,21 +208,22 @@ export default function Kyc() {
         const cardRes = await withRefreshToken(() => getCardStatus());
         if (!cardRes?.rainApplicationStatus) return;
         const status = cardRes.rainApplicationStatus;
-        const kycStatus = RAIN_STATUS_TO_KYC[status];
-        if (kycStatus) setRainKycStatus(kycStatus);
         setSubmitResult(prev => ({
           ...prev!,
           status,
           verificationLink: cardRes.applicationExternalVerificationLink,
         }));
-        if (status === 'approved') {
+        if (status === RainApplicationStatus.APPROVED) {
           setPolling(false);
           router.replace(path.CARD_ACTIVATE as any);
         }
-        if (status === 'denied') {
+        if (status === RainApplicationStatus.DENIED) {
           setPolling(false);
         }
-        if (status === 'needsVerification' && cardRes.applicationExternalVerificationLink) {
+        if (
+          status === RainApplicationStatus.NEEDS_VERIFICATION &&
+          cardRes.applicationExternalVerificationLink
+        ) {
           setPolling(false);
           redirectToRainVerification(cardRes.applicationExternalVerificationLink);
         }
@@ -245,7 +232,7 @@ export default function Kyc() {
       }
     }, 5000);
     return () => clearInterval(t);
-  }, [polling, router, setRainKycStatus]);
+  }, [polling, router]);
 
   const handleFileSelect = useCallback(
     (key: 'idDocument' | 'idDocumentFront' | 'idDocumentBack' | 'selfie', file: File | null) => {
