@@ -3,14 +3,18 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
+import { zeroAddress } from 'viem';
 
 import TooltipPopover from '@/components/Tooltip';
 import { Text } from '@/components/ui/text';
-import { TokenBalance } from '@/lib/types';
+import { TokenBalance, TokenType } from '@/lib/types';
 
 import { DESKTOP_COLUMNS } from './columns';
 import TokenRow from './TokenRow';
 import { TokenListProps } from './types';
+
+const coinPageId = (token: TokenBalance) =>
+  `${token.chainId}-${token.type === TokenType.NATIVE ? zeroAddress : token.contractAddress}`;
 
 const TokenListDesktop = ({ tokens }: TokenListProps) => {
   const insets = useSafeAreaInsets();
@@ -18,7 +22,7 @@ const TokenListDesktop = ({ tokens }: TokenListProps) => {
 
   const handleTokenPress = useCallback(
     (token: TokenBalance) => {
-      router.push(`/coins/${token.chainId}-${token.contractAddress}`);
+      router.push(`/coins/${coinPageId(token)}`);
     },
     [router],
   );
@@ -36,7 +40,7 @@ const TokenListDesktop = ({ tokens }: TokenListProps) => {
   );
 
   const keyExtractor = useCallback(
-    (item: TokenBalance) => `${item.chainId}-${item.contractAddress}`,
+    (item: TokenBalance) => `${coinPageId(item)}-${item.quoteRate ?? 0}`,
     [],
   );
 

@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
-import { Address } from 'viem';
+import { Address, zeroAddress } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
 import ActivityTransactions from '@/components/Activity/ActivityTransactions';
@@ -17,11 +17,12 @@ import LazyAreaChart from '@/components/LazyAreaChart';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { times } from '@/constants/coins';
+import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
 import { useCoinHistoricalChart } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { TokenBalance } from '@/lib/types';
-import { cn, eclipseAddress, formatNumber, isSoUSDEthereum } from '@/lib/utils';
+import { TokenBalance, TokenType } from '@/lib/types';
+import { eclipseAddress, formatNumber, isSoUSDEthereum } from '@/lib/utils';
 import { useCoinStore } from '@/store/useCoinStore';
 
 const MAX_SAMPLE_SIZE = 20;
@@ -37,9 +38,20 @@ const ResponsiveBalanceBreakdown = ({ token }: { token: TokenBalance | undefined
   );
 };
 
+function normalizeCoinAddress(contractAddress: string): string {
+  const lower = contractAddress?.toLowerCase() ?? '';
+  if (!lower || lower === 'native' || lower === '0x0') return zeroAddress;
+  if (lower === zeroAddress.toLowerCase()) return zeroAddress;
+  return contractAddress;
+}
+
 export default function Coin() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [chainId, contractAddress] = id.split('-');
+  const [chainId, rawContractAddress] = id.split('-');
+  const contractAddress = useMemo(
+    () => normalizeCoinAddress(rawContractAddress ?? ''),
+    [rawContractAddress],
+  );
   const { tokens, isLoading } = useWalletTokens();
   const { selectedTime, selectedPrice, selectedPriceChange } = useCoinStore(
     useShallow(state => ({
@@ -49,7 +61,7 @@ export default function Coin() {
     })),
   );
   const { isScreenMedium } = useDimension();
-  const isPriceIncrease = selectedPriceChange && selectedPriceChange >= 0;
+  const isPriceIncrease = selectedPriceChange != null && selectedPriceChange >= 0;
 
   const time = useMemo(() => {
     return times.find(time => time.value === selectedTime);
@@ -57,17 +69,27 @@ export default function Coin() {
 
   const token = useMemo(() => {
     return tokens.find(
-      (token: TokenBalance) =>
-        token.chainId === Number(chainId) && token.contractAddress === contractAddress,
+      (t: TokenBalance) =>
+        t.chainId === Number(chainId) &&
+        (t.contractAddress?.toLowerCase() ?? '') === (contractAddress?.toLowerCase() ?? ''),
     );
   }, [tokens, chainId, contractAddress]);
 
+  const chartCoinId = useMemo(
+    () =>
+      token?.tokenId ??
+      (token?.type === TokenType.NATIVE && token?.chainId != null
+        ? NATIVE_COINGECKO_TOKENS[token.chainId]
+        : undefined),
+    [token?.tokenId, token?.type, token?.chainId],
+  );
+  const chartQuery = token?.contractTickerSymbol || token?.contractName || token?.contractAddress || '';
+
   const { data: coinHistoricalChart, isLoading: isLoadingCoinHistoricalChart } =
-    useCoinHistoricalChart(
-      token?.tokenId,
-      token?.contractTickerSymbol || token?.contractName || token?.contractAddress || '',
-      time?.value,
-    );
+    useCoinHistoricalChart(chartCoinId, chartQuery, time?.value);
+
+  const setSelectedPrice = useCoinStore(state => state.setSelectedPrice);
+  const setSelectedPriceChange = useCoinStore(state => state.setSelectedPriceChange);
 
   const formattedChartData = useMemo(() => {
     if (!coinHistoricalChart?.prices) return [];
@@ -87,6 +109,33 @@ export default function Coin() {
       value: price,
     }));
   }, [coinHistoricalChart]);
+
+  useEffect(() => {
+    setSelectedPrice(null);
+    setSelectedPriceChange(null);
+  }, [id, setSelectedPrice, setSelectedPriceChange]);
+
+  useEffect(() => {
+    if (
+      formattedChartData.length > 0 &&
+      selectedPrice == null &&
+      !isLoadingCoinHistoricalChart
+    ) {
+      const last = formattedChartData[formattedChartData.length - 1];
+      setSelectedPrice(last.value);
+      if (formattedChartData.length >= 2) {
+        const prev = formattedChartData[formattedChartData.length - 2];
+        const change = prev.value === 0 ? null : ((last.value - prev.value) / prev.value) * 100;
+        setSelectedPriceChange(change ?? null);
+      }
+    }
+  }, [
+    formattedChartData,
+    selectedPrice,
+    isLoadingCoinHistoricalChart,
+    setSelectedPrice,
+    setSelectedPriceChange,
+  ]);
 
   return (
     <PageLayout desktopOnly isLoading={isLoading}>
@@ -138,14 +187,11 @@ export default function Coin() {
 
                   <View className="flex-row items-center gap-1">
                     <Text
-                      className={cn(
-                        'text-sm font-medium',
-                        isPriceIncrease ? 'text-brand' : 'text-red-500',
-                      )}
+                      className="text-sm font-medium"
+                      style={{ color: isPriceIncrease ? '#94F27F' : '#EF4444' }}
                     >
-                      {isPriceIncrease ? '+' : '-'}
-                      {selectedPriceChange
-                        ? `$${formatNumber(Math.abs(selectedPriceChange), 2)}%`
+                      {selectedPriceChange != null
+                        ? `${isPriceIncrease ? '+' : '-'}${formatNumber(Math.abs(selectedPriceChange), 2)}%`
                         : '0.00%'}
                     </Text>
                     {isPriceIncrease ? (

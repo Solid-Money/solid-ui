@@ -6,7 +6,7 @@ import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
-import { compactNumberFormat } from '@/lib/utils';
+import { compactNumberFormat, formatBalanceUSD } from '@/lib/utils';
 
 interface TokenCardProps {
   token: TokenBalance;
@@ -40,7 +40,7 @@ const TokenCard = memo(
           <View className="items-end">
             <Text className="text-lg font-bold md:text-base">{compactNumberFormat(balance)}</Text>
             <Text className="text-sm font-medium text-muted-foreground">
-              ${compactNumberFormat(balanceUSD)}
+              {formatBalanceUSD(balanceUSD)}
             </Text>
           </View>
         </View>

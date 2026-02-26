@@ -615,18 +615,24 @@ export const useSearchCoinHistoricalChart = (query: string, days: string = '1') 
   });
 };
 
-export const useCoinHistoricalChart = (tokenId: string | undefined, query: string, days: string = '1') => {
+/** Prefer coinId (tokenId or NATIVE_COINGECKO id); only use search when coinId not available. */
+export const useCoinHistoricalChart = (
+  coinId: string | undefined,
+  query: string,
+  days: string = '1',
+) => {
   return useQuery({
-    queryKey: [ANALYTICS, 'coinHistoricalChart', tokenId || query, days],
+    queryKey: [ANALYTICS, 'coinHistoricalChart', coinId || query, days],
     queryFn: async () => {
-      if (tokenId) {
-        return fetchCoinHistoricalChart(tokenId, days);
+      if (coinId) {
+        return fetchCoinHistoricalChart(coinId, days);
       }
+      if (!query) throw new Error('coinId and query both missing');
       const searchedCoin = await searchCoin(query);
       const coin = searchedCoin.coins[0];
       return fetchCoinHistoricalChart(coin.id, days);
     },
-    enabled: !!(tokenId || query),
+    enabled: !!(coinId || query),
   });
 };
 
