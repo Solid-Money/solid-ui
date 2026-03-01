@@ -6,13 +6,20 @@ import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
 
 import { refreshToken } from '@/lib/api';
-import { ADDRESSES } from '@/lib/config';
+import {
+  ADDRESSES,
+  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
+  EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
+  EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL,
+} from '@/lib/config';
+import { getUsdcAddress } from '@/constants/bridge';
 import {
   AuthTokens,
   CardProvider,
   CardResponse,
   CardStatus,
   CardStatusResponse,
+  RainContractResponseDto,
   User,
 } from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
@@ -317,6 +324,39 @@ export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
     instruction => instruction.chain === ARBITRUM_CHAIN,
   )?.address;
 };
+
+/** Card deposit token address on the funding chain: use override (e.g. rUSD) when set for funding chain, else USDC. */
+export function getCardDepositTokenAddress(
+  chainId: number,
+): string {
+  if (chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID && EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS) {
+    return EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS;
+  }
+  return getUsdcAddress(chainId);
+}
+
+/** Display symbol for card deposit token (e.g. 'rUSD' in Rain sandbox, 'USDC' otherwise). */
+export function getCardDepositTokenSymbol(
+  provider: CardProvider | null | undefined,
+): string {
+  if (provider === CardProvider.RAIN && EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS) {
+    return EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL;
+  }
+  return 'USDC';
+}
+
+/** Resolve card funding address: Rain from contracts API (EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID), Bridge from card details. */
+export function getCardFundingAddress(
+  cardDetails: CardResponse | null | undefined,
+  provider: CardProvider | null | undefined,
+  contracts: RainContractResponseDto[] | null | undefined,
+): string | undefined {
+  if (provider === CardProvider.RAIN && contracts?.length) {
+    const rainContract = contracts.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID);
+    if (rainContract?.depositAddress) return rainContract.depositAddress;
+  }
+  return cardDetails ? getArbitrumFundingAddress(cardDetails) : undefined;
+}
 
 /** Rain-first: only Rain cards count as "has card". Bridge-only users are treated as no card. */
 export const hasCard = (cardStatus: CardStatusResponse | null | undefined): boolean => {

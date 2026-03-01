@@ -21,7 +21,7 @@ import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import AddToWalletRain from '@/components/Card/AddToWalletRain';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
-import WithdrawCardFundsModal from '@/components/Card/WithdrawCardFundsModal';
+import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,6 @@ import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardWithdrawAllowed } from '@/hooks/useCardWithdrawAllowed';
-import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
@@ -48,8 +47,6 @@ export default function CardDetails() {
   const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
   const isWithdrawAllowed = useCardWithdrawAllowed();
-
-  useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
 
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
@@ -355,7 +352,7 @@ function DesktopHeader({
           />
         )}
         {isWithdrawFromCardAllowed && (
-          <WithdrawCardFundsModal
+          <DepositToCardModal
             trigger={
               <Button className="h-12 rounded-xl border-0 bg-[#94F27F] px-6">
                 <View className="flex-row items-center gap-2">
@@ -769,7 +766,7 @@ function CardActions({
   return (
     <View className="mb-8 flex-row items-center justify-evenly">
       {isWithdrawFromCardAllowed && (
-        <WithdrawCardFundsModal
+        <DepositToCardModal
           trigger={
             <CircularActionButton
               icon={getAsset('images/card_actions_fund.png')}
