@@ -6,8 +6,22 @@ import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
 
 import { refreshToken } from '@/lib/api';
-import { ADDRESSES } from '@/lib/config';
-import { AuthTokens, CardResponse, CardStatus, CardStatusResponse, User } from '@/lib/types';
+import {
+  ADDRESSES,
+  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
+  EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
+  EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL,
+} from '@/lib/config';
+import { getUsdcAddress } from '@/constants/bridge';
+import {
+  AuthTokens,
+  CardProvider,
+  CardResponse,
+  CardStatus,
+  CardStatusResponse,
+  RainContractResponseDto,
+  User,
+} from '@/lib/types';
 import { useUserStore } from '@/store/useUserStore';
 
 export const IS_SERVER = typeof window === 'undefined';
@@ -84,6 +98,21 @@ export function formatNumber(number: number, maximumFractionDigits = 6, minimumF
 /** Format cents to dollars string (e.g. for Rain card balance) */
 export function formatCentsToDollars(cents: number): string {
   return (cents / 100).toFixed(2);
+}
+
+/** Format USD balance; show "<$0.01" when amount is positive but less than 0.01 */
+export function formatBalanceUSD(value: number, decimals = 2): string {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return `$0.00`;
+  if (num < 0.01) return '<$0.01';
+  return `$${formatNumber(num, decimals)}`;
+}
+
+export function formatUSD(number: number) {
+  return new Intl.NumberFormat('en-us', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(number);
 }
 
 export function copyToClipboard(text: string) {
@@ -296,8 +325,46 @@ export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
   )?.address;
 };
 
+/** Card deposit token address on the funding chain: use override (e.g. rUSD) when set for funding chain, else USDC. */
+export function getCardDepositTokenAddress(
+  chainId: number,
+): string {
+  if (chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID && EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS) {
+    return EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS;
+  }
+  return getUsdcAddress(chainId);
+}
+
+/** Display symbol for card deposit token (e.g. 'rUSD' in Rain sandbox, 'USDC' otherwise). */
+export function getCardDepositTokenSymbol(
+  provider: CardProvider | null | undefined,
+): string {
+  if (provider === CardProvider.RAIN && EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS) {
+    return EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL;
+  }
+  return 'USDC';
+}
+
+/** Resolve card funding address: Rain from contracts API (EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID), Bridge from card details. */
+export function getCardFundingAddress(
+  cardDetails: CardResponse | null | undefined,
+  provider: CardProvider | null | undefined,
+  contracts: RainContractResponseDto[] | null | undefined,
+): string | undefined {
+  if (provider === CardProvider.RAIN && contracts?.length) {
+    const rainContract = contracts.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID);
+    if (rainContract?.depositAddress) return rainContract.depositAddress;
+  }
+  return cardDetails ? getArbitrumFundingAddress(cardDetails) : undefined;
+}
+
+/** Rain-first: only Rain cards count as "has card". Bridge-only users are treated as no card. */
 export const hasCard = (cardStatus: CardStatusResponse | null | undefined): boolean => {
-  return cardStatus?.status === CardStatus.ACTIVE || cardStatus?.status === CardStatus.FROZEN;
+  if (!cardStatus?.status) return false;
+  const isActiveOrFrozen =
+    cardStatus.status === CardStatus.ACTIVE || cardStatus.status === CardStatus.FROZEN;
+  if (!isActiveOrFrozen) return false;
+  return cardStatus.provider !== CardProvider.BRIDGE;
 };
 
 export const hasCardStatusWithRainApplication = (

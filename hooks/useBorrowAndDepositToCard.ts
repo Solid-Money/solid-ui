@@ -1,11 +1,3 @@
-import { useCallback, useState } from 'react';
-import * as Sentry from '@sentry/react-native';
-import { Address } from 'abitype';
-import { erc20Abi, pad, TransactionReceipt } from 'viem';
-import { readContract } from 'viem/actions';
-import { fuse, mainnet } from 'viem/chains';
-import { encodeFunctionData, parseUnits } from 'viem/utils';
-
 import { USDC_STARGATE } from '@/constants/addresses';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
@@ -14,16 +6,18 @@ import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import { CardDepositManager_ABI } from '@/lib/abis/CardDepositManager';
 import { track } from '@/lib/analytics';
 import { getStargateQuote } from '@/lib/api';
-import {
-  ADDRESSES,
-  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
-  EXPO_PUBLIC_CARD_FUNDING_CHAIN_KEY,
-} from '@/lib/config';
+import { ADDRESSES, EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID, EXPO_PUBLIC_CARD_FUNDING_CHAIN_KEY } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, Status, TransactionType } from '@/lib/types';
 import { getCardDepositTokenAddress, getCardFundingAddress } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
-
+import * as Sentry from '@sentry/react-native';
+import { Address } from 'abitype';
+import { useCallback, useState } from 'react';
+import { erc20Abi, pad, TransactionReceipt } from 'viem';
+import { readContract } from 'viem/actions';
+import { fuse, mainnet } from 'viem/chains';
+import { encodeFunctionData, parseUnits } from 'viem/utils';
 import { useCardContracts } from './useCardContracts';
 import { useCardDetails } from './useCardDetails';
 import { useCardProvider } from './useCardProvider';

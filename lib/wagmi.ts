@@ -26,7 +26,7 @@ export const rpcUrls: Record<number, string> = {
   [mainnet.id]: `https://eth-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [polygon.id]: `https://polygon-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [base.id]: `https://base-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
-  [baseSepolia.id]: `https://base-sepolia.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
+  [baseSepolia.id]: 'https://sepolia.base.org',
   [arbitrum.id]: `https://arb-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
 };
 
