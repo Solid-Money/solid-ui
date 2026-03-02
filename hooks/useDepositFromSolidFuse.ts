@@ -78,9 +78,9 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
 
   const createEvent = async (amount: string, spender: Address, tokenSymbol: string) => {
     const clientTxId = await createActivity({
-      title: `Deposited ${tokenSymbol}`,
+      title: `Deposit ${tokenSymbol}`,
       amount,
-      symbol: 'soFUSE',
+      symbol: tokenSymbol,
       chainId: srcChainId,
       fromAddress: safeAddress,
       toAddress: spender,

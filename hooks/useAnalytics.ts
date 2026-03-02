@@ -271,7 +271,7 @@ const constructDepositTransaction = (transaction: DepositTransaction) => {
     title: 'Deposit USDC',
     timestamp: Math.floor(new Date(transaction.createdAt).getTime() / 1000).toString(),
     amount: safeFormatUnits(transaction.amount, transaction.decimals),
-    symbol: 'soUsd',
+    symbol: 'USDC',
     status,
     hash,
     url,
@@ -304,7 +304,7 @@ const constructBridgeDepositTransaction = (transaction: BridgeTransaction) => {
     title: 'Deposit USDC',
     timestamp: Math.floor(new Date(transaction.createdAt).getTime() / 1000).toString(),
     amount: safeFormatUnits(transaction.toAmount, transaction.decimals),
-    symbol: 'soUsd',
+    symbol: 'USDC',
     status,
     hash,
     url,
@@ -347,7 +347,7 @@ export const formatTransactions = async (
           title: 'Deposit USDC',
           timestamp: internalTransaction.depositTimestamp,
           amount,
-          symbol: 'soUsd',
+          symbol: 'USDC',
           status,
           hash,
           url: `${explorerUrls[layerzero.id].layerzeroscan}/tx/${hash}`,
@@ -359,7 +359,7 @@ export const formatTransactions = async (
           title: 'Deposit USDC',
           timestamp: internalTransaction.depositTimestamp,
           amount,
-          symbol: 'soUsd',
+          symbol: 'USDC',
           status: mapToTransactionStatus(
             error.response.status === 404
               ? LayerZeroTransactionStatus.INFLIGHT
