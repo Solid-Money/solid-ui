@@ -6,8 +6,8 @@ import Ping from '@/components/Ping';
 import { Text } from '@/components/ui/text';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
-import { TokenBalance } from '@/lib/types';
-import { cn, formatNumber, isSoUSDToken } from '@/lib/utils';
+import { TokenBalance, VaultType } from '@/lib/types';
+import { cn, formatNumber, isSoFUSEToken, isWalletCardExcludedToken } from '@/lib/utils';
 
 interface EarningYieldProps {
   token: TokenBalance | undefined;
@@ -16,7 +16,15 @@ interface EarningYieldProps {
 
 const EarningYield = ({ token, className }: EarningYieldProps) => {
   const { tokens } = useWalletTokens();
-  const { maxAPY, isAPYsLoading } = useMaxAPY();
+
+  const vault = useMemo(() => {
+    if (!token?.contractAddress) return undefined;
+    if (isSoFUSEToken(token.contractAddress)) return VaultType.FUSE;
+    if (isWalletCardExcludedToken(token.contractAddress)) return VaultType.USDC; // soUSD
+    return undefined;
+  }, [token?.contractAddress]);
+
+  const { maxAPY, isAPYsLoading } = useMaxAPY(vault);
 
   const hasYield = useMemo(() => {
     if (!token) return false;
@@ -25,7 +33,7 @@ const EarningYield = ({ token, className }: EarningYieldProps) => {
       ? tokens.filter(t => t.commonId === token.commonId)
       : tokens.filter(t => t.contractTickerSymbol === token.contractTickerSymbol);
 
-    return relatedTokens.some(t => isSoUSDToken(t.contractAddress));
+    return relatedTokens.some(t => isWalletCardExcludedToken(t.contractAddress));
   }, [token, tokens]);
 
   if (!hasYield || isAPYsLoading || !maxAPY || maxAPY === 0) {
