@@ -83,7 +83,8 @@ export default function Coin() {
         : undefined),
     [token?.tokenId, token?.type, token?.chainId],
   );
-  const chartQuery = token?.contractTickerSymbol || token?.contractName || token?.contractAddress || '';
+  const chartQuery =
+    token?.contractTickerSymbol || token?.contractName || token?.contractAddress || '';
 
   const { data: coinHistoricalChart, isLoading: isLoadingCoinHistoricalChart } =
     useCoinHistoricalChart(chartCoinId, chartQuery, time?.value);
@@ -116,11 +117,7 @@ export default function Coin() {
   }, [id, setSelectedPrice, setSelectedPriceChange]);
 
   useEffect(() => {
-    if (
-      formattedChartData.length > 0 &&
-      selectedPrice == null &&
-      !isLoadingCoinHistoricalChart
-    ) {
+    if (formattedChartData.length > 0 && selectedPrice == null && !isLoadingCoinHistoricalChart) {
       const last = formattedChartData[formattedChartData.length - 1];
       setSelectedPrice(last.value);
       if (formattedChartData.length >= 2) {
