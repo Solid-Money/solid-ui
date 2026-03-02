@@ -7,7 +7,7 @@ import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
-import { isSoUSDToken, isWalletCardExcludedToken } from '@/lib/utils';
+import { isSoFUSEToken, isSoUSDToken, isWalletCardExcludedToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 
 import useUser from './useUser';
@@ -105,6 +105,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     fuseResponse,
     arbitrumResponse,
     soUSDRate,
+    soFUSERate,
     ethBalance,
     fuseBalance,
     baseBalance,
@@ -130,6 +131,11 @@ const fetchTokenBalances = async (safeAddress: string) => {
       abi: ACCOUNTANT_ABI,
       functionName: 'getRate',
     }),
+    readContract(publicClient(fuse.id), {
+      address: ADDRESSES.fuse.fuseAccountant,
+      abi: ACCOUNTANT_ABI,
+      functionName: 'getRate',
+    }),
     getBalance(publicClient(mainnet.id), {
       address: safeAddress as `0x${string}`,
     }),
@@ -151,13 +157,23 @@ const fetchTokenBalances = async (safeAddress: string) => {
   let fuseTokens: TokenBalance[] = [];
   let baseTokens: TokenBalance[] = [];
   let arbitrumTokens: TokenBalance[] = [];
-  let rate = 0;
+  let soUSDRateNum = 0;
+  let soFUSEQuoteRateUSD = 0;
 
-  // Process soUSD rate
+  // Process soUSD rate (soUSD → USD, 6 decimals)
   if (soUSDRate.status === PromiseStatus.FULFILLED) {
-    rate = Number(soUSDRate.value) / Math.pow(10, 6);
+    soUSDRateNum = Number(soUSDRate.value) / Math.pow(10, 6);
   } else {
     console.warn('Failed to fetch soUSD rate:', soUSDRate.reason);
+  }
+
+  // Process soFUSE rate: soFUSE→FUSE (18 decimals) × FUSE price = USD quote rate (align with savings)
+  if (soFUSERate.status === PromiseStatus.FULFILLED && fusePrice.status === PromiseStatus.FULFILLED) {
+    const soFUSEToFuse = Number(soFUSERate.value) / Math.pow(10, 18);
+    const fusePriceNum = Number(fusePrice.value);
+    soFUSEQuoteRateUSD = soFUSEToFuse * fusePriceNum;
+  } else if (soFUSERate.status === PromiseStatus.REJECTED) {
+    console.warn('Failed to fetch soFUSE rate:', soFUSERate.reason);
   }
 
   const getAddress = (item: BlockscoutTokenBalance) => {
@@ -173,6 +189,15 @@ const fetchTokenBalances = async (safeAddress: string) => {
     const tokenFromList = tokenListData.find(
       token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
     );
+    const isSoUSD = isSoUSDToken(address);
+    const isSoFUSE = isSoFUSEToken(address);
+    const quoteRate = isSoUSD
+      ? soUSDRateNum
+      : isSoFUSE
+        ? soFUSEQuoteRateUSD
+        : item.token.exchange_rate
+          ? parseFloat(item.token.exchange_rate)
+          : 0;
     return {
       contractTickerSymbol: String(
         symbols[item.token.symbol as keyof typeof symbols] ?? item.token.symbol,
@@ -180,12 +205,8 @@ const fetchTokenBalances = async (safeAddress: string) => {
       contractName: item.token.name,
       contractAddress: address,
       balance: item.value,
-      quoteRate: isSoUSDToken(address)
-        ? rate
-        : item.token.exchange_rate
-          ? parseFloat(item.token.exchange_rate)
-          : 0,
-      logoUrl: isSoUSDToken(address) ? undefined : item.token.icon_url,
+      quoteRate,
+      logoUrl: isSoUSD ? undefined : item.token.icon_url,
       contractDecimals: parseInt(item.token.decimals),
       type: item.token.type as TokenType,
       verified: true,
