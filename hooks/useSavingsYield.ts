@@ -4,7 +4,7 @@ import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import useUser from '@/hooks/useUser';
 import { ADDRESSES } from '@/lib/config';
 import { calculateYield, SECONDS_PER_YEAR } from '@/lib/financial';
-import { SavingMode } from '@/lib/types';
+import { SavingMode, SavingsSummaryResponse } from '@/lib/types';
 
 function amountGained(
   balance: number,
@@ -39,6 +39,8 @@ export interface UseSavingsYieldParams {
   tokenAddress?: string;
   /** When true, treat interest inputs as loaded. Omit to use internal buckets. */
   inputsReady?: boolean;
+  /** Backend savings summary -- when provided, anchors interest from server-computed value */
+  summary?: SavingsSummaryResponse | null;
 }
 
 export function useSavingsYield({
@@ -51,21 +53,22 @@ export function useSavingsYield({
   exchangeRate = 1,
   tokenAddress = ADDRESSES.fuse.vault,
   inputsReady,
+  summary,
 }: UseSavingsYieldParams): number {
   const [liveYield, setLiveYield] = useState(0);
-  const [animation, setAnimation] = useState(0);
+  const [tick, setTick] = useState(0);
   const [anchor, setAnchor] = useState<{ value: number; time: number } | null>(null);
   const { user } = useUser();
 
   useEffect(() => {
-    const id = setInterval(() => setAnimation(a => a + 1), 1000);
+    const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
   const lastTsBucket = lastTimestamp > 0 ? Math.floor(lastTimestamp / 86400) : 0;
   const apyBucket = Math.floor((apy ?? 0) * 100);
 
-  // Full calc only when inputs change (no animation). For TOTAL_USD use redeemable only so display matches withdraw.
+  // Full calc only when inputs change (no tick). For TOTAL_USD use redeemable only so display matches withdraw.
   useEffect(() => {
     if (balance <= 0) {
       setLiveYield(0);
@@ -76,6 +79,19 @@ export function useSavingsYield({
       setLiveYield(balance * exchangeRate);
       return;
     }
+
+    // Backend-anchored interest: use server-computed interestEarnedUSD when available
+    if (summary && mode === SavingMode.CURRENT) {
+      const backendInterest = parseFloat(summary.interestEarnedUSD);
+      const calculatedAtUnix = Math.floor(new Date(summary.calculatedAt).getTime() / 1000);
+      if (backendInterest >= 0 && calculatedAtUnix > 0) {
+        setLiveYield(backendInterest);
+        setAnchor({ value: backendInterest, time: calculatedAtUnix });
+        return;
+      }
+    }
+
+    // Fallback: existing Subgraph-based calculation
     let cancelled = false;
     const now = Math.floor(Date.now() / 1000);
     calculateYield(
@@ -92,7 +108,10 @@ export function useSavingsYield({
     ).then(calculatedYield => {
       if (cancelled) return;
       const isSpuriousZero =
-        mode === SavingMode.CURRENT && calculatedYield === 0 && balance > 0 && lastTimestamp > 0;
+        mode === SavingMode.CURRENT &&
+        calculatedYield === 0 &&
+        balance > 0 &&
+        lastTimestamp > 0;
       if (!isSpuriousZero) {
         setLiveYield(calculatedYield);
         if (mode === SavingMode.CURRENT) setAnchor({ value: calculatedYield, time: now });
@@ -111,6 +130,7 @@ export function useSavingsYield({
     exchangeRate,
     tokenAddress,
     vaultDecimals,
+    summary,
     ...(inputsReady !== undefined ? [inputsReady] : [lastTsBucket, apyBucket]),
   ]);
 
@@ -122,9 +142,11 @@ export function useSavingsYield({
       const redeemableOnly = balance * exchangeRate;
       setLiveYield(redeemableOnly);
     } else if (mode === SavingMode.CURRENT && anchor) {
-      setLiveYield(anchor.value + amountGained(balance, exchangeRate, apy, anchor.time, now));
+      setLiveYield(
+        anchor.value + amountGained(balance, exchangeRate, apy, anchor.time, now),
+      );
     }
-  }, [animation, balance, apy, lastTimestamp, exchangeRate, mode, anchor]);
+  }, [tick, balance, apy, lastTimestamp, exchangeRate, mode, anchor]);
 
   return liveYield;
 }

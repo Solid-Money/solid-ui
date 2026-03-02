@@ -87,6 +87,7 @@ import {
   VerifyCountryResponse,
   WebhookStatus,
   WhatsNew,
+  SavingsSummaryResponse,
   WithdrawFromCardToSavingsResponse,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
@@ -2227,6 +2228,27 @@ export const ensureWebhookSubscription = async (): Promise<EnsureWebhookResponse
       credentials: 'include',
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const fetchSavingsSummary = async (
+  vault: string = 'USDC',
+): Promise<SavingsSummaryResponse> => {
+  const jwt = getJWTToken();
+
+  const url = new URL('/accounts/savings/summary', EXPO_PUBLIC_FLASH_API_BASE_URL);
+  url.searchParams.append('vault', vault);
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 
