@@ -7,7 +7,7 @@ import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
 import { PromiseStatus, SwapTokenResponse, TokenBalance, TokenType } from '@/lib/types';
-import { isSoUSDToken } from '@/lib/utils';
+import { isSoUSDToken, isWalletCardExcludedToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 
 import useUser from './useUser';
@@ -401,9 +401,10 @@ const fetchTokenBalances = async (safeAddress: string) => {
     const balance = Number(token.balance) / Math.pow(10, token.contractDecimals);
     const value = balance * (token.quoteRate || 0);
 
-    if (isSoUSDToken(token.contractAddress)) {
+    if (isWalletCardExcludedToken(token.contractAddress)) {
+      const isSoUSD = token.contractTickerSymbol === 'soUSD';
       return {
-        soUSDValue: value,
+        soUSDValue: isSoUSD ? value : 0,
         regularValue: 0,
         value,
       };
