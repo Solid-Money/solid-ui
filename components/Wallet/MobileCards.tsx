@@ -7,7 +7,7 @@ import { USDC_TOKEN_BALANCE } from '@/constants/tokens';
 import { TokenBalance } from '@/lib/types';
 
 type MobileCardsProps = {
-  totalUSDExcludingSoUSD: number;
+  totalUSDExcludingVaultTokens: number;
   topThreeTokens: TokenBalance[];
   isLoadingTokens: boolean;
   userHasCard: boolean;
@@ -15,7 +15,7 @@ type MobileCardsProps = {
 };
 
 export default function MobileCards({
-  totalUSDExcludingSoUSD,
+  totalUSDExcludingVaultTokens,
   topThreeTokens,
   isLoadingTokens,
   userHasCard,
@@ -35,7 +35,7 @@ export default function MobileCards({
       [
         <WalletCard
           key="wallet"
-          balance={totalUSDExcludingSoUSD}
+          balance={totalUSDExcludingVaultTokens}
           className="h-full w-full"
           tokens={topThreeTokens}
           isLoading={isLoadingTokens}
@@ -53,7 +53,7 @@ export default function MobileCards({
         ) : null,
         <SavingCard key="saving" className="h-full w-full" decimalPlaces={2} />,
       ].filter(Boolean),
-    [totalUSDExcludingSoUSD, topThreeTokens, isLoadingTokens, userHasCard, cardBalance],
+    [totalUSDExcludingVaultTokens, topThreeTokens, isLoadingTokens, userHasCard, cardBalance],
   );
 
   const totalCards = cards.length;

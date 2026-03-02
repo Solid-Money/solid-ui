@@ -54,7 +54,7 @@ export default function Home() {
   const {
     isLoading: isLoadingTokens,
     hasTokens,
-    totalUSDExcludingSoUSD,
+    totalUSDExcludingVaultTokens,
     uniqueTokens,
     error: tokenError,
     retry: retryTokens,
@@ -152,7 +152,7 @@ export default function Home() {
                 ) : (
                   <CountUp
                     prefix="$"
-                    count={totalUSDExcludingSoUSD + (totalSavingsUSD ?? 0) + cardBalance}
+                    count={totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance}
                     isTrailingZero={false}
                     decimalPlaces={2}
                     classNames={{
@@ -194,13 +194,13 @@ export default function Home() {
           </View>
         ) : (
           <DashboardHeaderMobile
-            balance={totalUSDExcludingSoUSD + (totalSavingsUSD ?? 0) + cardBalance}
+            balance={totalUSDExcludingVaultTokens + (totalSavingsUSD ?? 0) + cardBalance}
             mode={SavingMode.BALANCE_ONLY}
           />
         )}
         {isScreenMedium ? (
           <DesktopCards
-            totalUSDExcludingSoUSD={totalUSDExcludingSoUSD}
+            totalUSDExcludingVaultTokens={totalUSDExcludingVaultTokens}
             topThreeTokens={topThreeTokens}
             isLoadingTokens={isLoadingTokens}
             userHasCard={userHasCard}
@@ -208,7 +208,7 @@ export default function Home() {
           />
         ) : (
           <MobileCards
-            totalUSDExcludingSoUSD={totalUSDExcludingSoUSD}
+            totalUSDExcludingVaultTokens={totalUSDExcludingVaultTokens}
             topThreeTokens={topThreeTokens}
             isLoadingTokens={isLoadingTokens}
             userHasCard={userHasCard}
