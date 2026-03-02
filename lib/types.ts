@@ -1634,3 +1634,24 @@ export enum VaultType {
   USDC = 'usdc',
   ETH = 'eth',
 }
+
+export interface SavingsDataQuality {
+  balanceSource: 'on-chain' | 'cached' | 'fallback';
+  rateSource: 'on-chain' | 'cached' | 'fallback';
+  depositedAccuracy: 'historical-rates' | 'current-rate-fallback';
+}
+
+export interface SavingsSummaryResponse {
+  vault: string;
+  vaultToken: string;
+  balanceShares: string;
+  exchangeRate: string;
+  totalValueUSD: string;
+  actualDepositedUSD: string;
+  interestEarnedUSD: string;
+  apyPercent: number;
+  lastDepositAt: string | null;
+  activityCount: number;
+  calculatedAt: string;
+  dataQuality: SavingsDataQuality;
+}
