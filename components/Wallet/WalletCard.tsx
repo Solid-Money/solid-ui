@@ -62,7 +62,7 @@ const WalletCard = ({ balance, className, tokens, isLoading, decimalPlaces }: Wa
                 />
               )}
             </View>
-            <TooltipPopover text="All coins balance excluding soUSD" />
+            <TooltipPopover text="All coins balance excluding soUSD and soFUSE" />
           </View>
           <TooltipPopover
             trigger={
