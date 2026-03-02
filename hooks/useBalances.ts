@@ -52,7 +52,7 @@ interface UnifiedTokenBalance extends TokenBalance {
 interface BalanceData {
   totalUSD: number;
   totalSoUSD: number;
-  totalUSDExcludingSoUSD: number;
+  totalUSDExcludingVaultTokens: number;
   soUSDEthereum: number;
   soUSDFuse: number;
   soUSDBase: number;
@@ -423,7 +423,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       const tokenValue = calculateTokenValue(token);
       acc.totalUSD += tokenValue.value;
       acc.totalSoUSD += tokenValue.soUSDValue;
-      acc.totalUSDExcludingSoUSD += tokenValue.regularValue;
+      acc.totalUSDExcludingVaultTokens += tokenValue.regularValue;
 
       if (token.chainId === ETHEREUM_CHAIN_ID && tokenValue.soUSDValue > 0) {
         acc.soUSDEthereum += tokenValue.soUSDValue;
@@ -440,7 +440,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     {
       totalUSD: 0,
       totalSoUSD: 0,
-      totalUSDExcludingSoUSD: 0,
+      totalUSDExcludingVaultTokens: 0,
       soUSDEthereum: 0,
       soUSDFuse: 0,
       soUSDBase: 0,
@@ -528,7 +528,7 @@ export const useBalances = (): BalanceData => {
   const defaultData = {
     totalUSD: 0,
     totalSoUSD: 0,
-    totalUSDExcludingSoUSD: 0,
+    totalUSDExcludingVaultTokens: 0,
     soUSDEthereum: 0,
     soUSDFuse: 0,
     soUSDBase: 0,

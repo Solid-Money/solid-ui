@@ -6,7 +6,7 @@ import { USDC_TOKEN_BALANCE } from '@/constants/tokens';
 import { TokenBalance } from '@/lib/types';
 
 type DesktopCardsProps = {
-  totalUSDExcludingSoUSD: number;
+  totalUSDExcludingVaultTokens: number;
   topThreeTokens: TokenBalance[];
   isLoadingTokens: boolean;
   userHasCard: boolean;
@@ -14,7 +14,7 @@ type DesktopCardsProps = {
 };
 
 export default function DesktopCards({
-  totalUSDExcludingSoUSD,
+  totalUSDExcludingVaultTokens,
   topThreeTokens,
   isLoadingTokens,
   userHasCard,
@@ -23,7 +23,7 @@ export default function DesktopCards({
   return (
     <View className="min-h-44 flex-row gap-6">
       <WalletCard
-        balance={totalUSDExcludingSoUSD}
+        balance={totalUSDExcludingVaultTokens}
         className="flex-1"
         tokens={topThreeTokens}
         isLoading={isLoadingTokens}
