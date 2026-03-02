@@ -17,7 +17,14 @@ import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { TokenBalance } from '@/lib/types';
-import { cn, formatBalanceUSD, formatNumber, isSoUSDEthereum, isSoUSDFuse, isUSDCEthereum } from '@/lib/utils';
+import {
+  cn,
+  formatBalanceUSD,
+  formatNumber,
+  isSoUSDEthereum,
+  isSoUSDFuse,
+  isUSDCEthereum,
+} from '@/lib/utils';
 
 import { DESKTOP_COLUMNS } from './columns';
 
