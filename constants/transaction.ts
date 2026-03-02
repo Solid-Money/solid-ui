@@ -7,7 +7,7 @@ type TransactionDetails = {
 
 export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = {
   [TransactionType.DEPOSIT]: {
-    sign: TransactionDirection.IN,
+    sign: TransactionDirection.OUT,
     category: TransactionCategory.SAVINGS_ACCOUNT,
   },
   [TransactionType.UNSTAKE]: {

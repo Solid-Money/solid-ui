@@ -281,9 +281,9 @@ const useDepositFromEOA = (
 
   const createEvent = async (amount: string, spender: Address, token: string) => {
     const clientTxId = await createActivity({
-      title: `Deposited ${token}`,
+      title: `Deposit ${token}`,
       amount,
-      symbol: 'soUsd',
+      symbol: token,
       chainId: srcChainId,
       fromAddress: eoaAddress,
       toAddress: spender,
