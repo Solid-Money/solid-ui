@@ -10,7 +10,7 @@ import { Text } from '@/components/ui/text';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { getAsset } from '@/lib/assets';
 import { TokenBalance } from '@/lib/types';
-import { cn, formatNumber, isSoUSDToken } from '@/lib/utils';
+import { cn, formatNumber, isWalletCardExcludedToken } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 
 enum HeldIn {
@@ -64,7 +64,7 @@ const BalanceBreakdown = ({ token, className }: BalanceBreakdownProps) => {
       const balanceUSD = balance * (t.quoteRate || 0);
       totalBalanceUSD += balanceUSD;
 
-      const heldIn = isSoUSDToken(t.contractAddress) ? HeldIn.SAVINGS : HeldIn.WALLET;
+      const heldIn = isWalletCardExcludedToken(t.contractAddress) ? HeldIn.SAVINGS : HeldIn.WALLET;
       const chainName = CHAIN_NAMES[t.chainId] || getChain(t.chainId)?.name || 'Unknown';
 
       items.push({
