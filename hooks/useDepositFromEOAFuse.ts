@@ -95,9 +95,9 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
 
   const createEvent = async (amount: string, spender: Address, token: string) => {
     const clientTxId = await createActivity({
-      title: `Deposited ${token}`,
+      title: `Deposit ${token}`,
       amount,
-      symbol: 'soFUSE',
+      symbol: token,
       chainId: srcChainId,
       fromAddress: eoaAddress,
       toAddress: spender,
