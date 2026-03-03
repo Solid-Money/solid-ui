@@ -26,9 +26,9 @@ import {
   useUserTransactions,
 } from '@/hooks/useAnalytics';
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
-import { useSavingsSummary } from '@/hooks/useSavingsSummary';
 import { useDimension } from '@/hooks/useDimension';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
+import { useSavingsSummary } from '@/hooks/useSavingsSummary';
 import useUser from '@/hooks/useUser';
 import { useTotalVaultBalance, useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
@@ -267,9 +267,7 @@ export default function Savings() {
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         mode={SavingMode.CURRENT}
-                        inputsReady={
-                          !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
-                        }
+                        inputsReady={!isAPYsLoading && Boolean(balance) && Boolean(savingsSummary)}
                         userDepositTransactions={userDepositTransactions}
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}
@@ -459,9 +457,7 @@ export default function Savings() {
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         mode={SavingMode.CURRENT}
-                        inputsReady={
-                          !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
-                        }
+                        inputsReady={!isAPYsLoading && Boolean(balance) && Boolean(savingsSummary)}
                         userDepositTransactions={userDepositTransactions}
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}

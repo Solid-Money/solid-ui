@@ -80,18 +80,28 @@ export function useSavingsYield({
       return;
     }
 
-    // Backend-anchored interest: use server-computed interestEarnedUSD when available
-    if (summary && mode === SavingMode.CURRENT) {
-      const backendInterest = parseFloat(summary.interestEarnedUSD);
-      const calculatedAtUnix = Math.floor(new Date(summary.calculatedAt).getTime() / 1000);
-      if (backendInterest >= 0 && calculatedAtUnix > 0) {
-        setLiveYield(backendInterest);
-        setAnchor({ value: backendInterest, time: calculatedAtUnix });
-        return;
+    // CURRENT mode (interest earned): summary from the backend is the sole source of truth.
+    // This prevents cross-vault timestamp contamination where USDC subgraph timestamps
+    // would produce incorrect interest calculations for the FUSE vault.
+    if (mode === SavingMode.CURRENT) {
+      if (summary) {
+        const backendInterest = parseFloat(summary.interestEarnedUSD);
+        const calculatedAtUnix = Math.floor(new Date(summary.calculatedAt).getTime() / 1000);
+        if (backendInterest >= 0 && calculatedAtUnix > 0) {
+          setLiveYield(backendInterest);
+          setAnchor({ value: backendInterest, time: calculatedAtUnix });
+          return;
+        }
       }
+      // Summary not yet loaded or has invalid data -- show 0 and wait.
+      // Never fall back to calculateYield for CURRENT mode; the subgraph-based
+      // firstDepositTimestamp may belong to a different vault.
+      setLiveYield(0);
+      setAnchor(null);
+      return;
     }
 
-    // Fallback: existing Subgraph-based calculation
+    // Fallback: existing Subgraph-based calculation (for non-CURRENT modes)
     let cancelled = false;
     const now = Math.floor(Date.now() / 1000);
     calculateYield(
@@ -107,15 +117,7 @@ export function useSavingsYield({
       vaultDecimals,
     ).then(calculatedYield => {
       if (cancelled) return;
-      const isSpuriousZero =
-        mode === SavingMode.CURRENT &&
-        calculatedYield === 0 &&
-        balance > 0 &&
-        lastTimestamp > 0;
-      if (!isSpuriousZero) {
-        setLiveYield(calculatedYield);
-        if (mode === SavingMode.CURRENT) setAnchor({ value: calculatedYield, time: now });
-      }
+      setLiveYield(calculatedYield);
     });
     return () => {
       cancelled = true;
