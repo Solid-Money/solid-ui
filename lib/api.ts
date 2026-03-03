@@ -2558,7 +2558,7 @@ export const fetchSavingsSummary = async (
 ): Promise<SavingsSummaryResponse> => {
   const jwt = getJWTToken();
 
-  const url = new URL('/accounts/savings/summary', EXPO_PUBLIC_FLASH_API_BASE_URL);
+  const url = new URL('/accounts/v1/savings/summary', EXPO_PUBLIC_FLASH_API_BASE_URL);
   url.searchParams.append('vault', vault);
 
   const response = await fetch(url.toString(), {
