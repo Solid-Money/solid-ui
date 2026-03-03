@@ -158,7 +158,7 @@ export default function Savings() {
       {isScreenMedium ? (
         <View className="flex-row items-center justify-between">
           <DashboardTitle />
-          <DashboardHeaderButtons hideSend />
+          <DashboardHeaderButtons hideSend preserveSelectedVault />
         </View>
       ) : (
         <Text className="text-3xl font-semibold">Savings</Text>
