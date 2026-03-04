@@ -12,12 +12,14 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { DepositModal } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
+import { useSavingStore } from '@/store/useSavingStore';
 
 export interface DepositTriggerProps {
   buttonText?: string;
   trigger?: React.ReactNode;
   modal?: DepositModal;
   source?: string; // Track where the deposit trigger was clicked from (e.g., 'home_banner', 'nav_button', 'activity_page')
+  preserveSelectedVault?: boolean; // When true, keeps the currently selected vault. When false (default), resets to USDC (vault 0).
 }
 
 /**
@@ -31,6 +33,7 @@ const DepositTrigger = ({
   trigger,
   modal = DEPOSIT_MODAL.OPEN_OPTIONS,
   source = 'unknown',
+  preserveSelectedVault = false,
 }: DepositTriggerProps) => {
   const { user } = useUser();
   const { setModal, setSrcChainId } = useDepositStore(
@@ -41,6 +44,9 @@ const DepositTrigger = ({
   );
 
   const handlePress = () => {
+    if (!preserveSelectedVault) {
+      useSavingStore.getState().selectVaultForDeposit(0);
+    }
     setSrcChainId(0); // reset chain so modal always opens to options
     const modalToOpen = user && !user.email ? DEPOSIT_MODAL.OPEN_EMAIL_GATE : modal;
 

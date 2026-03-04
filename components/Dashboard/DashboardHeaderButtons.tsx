@@ -26,6 +26,7 @@ type DashboardHeaderButtonsProps = {
   disableWithdraw?: boolean;
   disableSend?: boolean;
   disableSwap?: boolean;
+  preserveSelectedVault?: boolean;
 };
 
 const DashboardHeaderButtons = ({
@@ -37,6 +38,7 @@ const DashboardHeaderButtons = ({
   disableWithdraw,
   disableSend,
   disableSwap,
+  preserveSelectedVault,
 }: DashboardHeaderButtonsProps) => {
   const withdrawTrigger = (
     <Button
@@ -115,7 +117,10 @@ const DashboardHeaderButtons = ({
         />
       )}
 
-      <DepositOptionModal buttonText={deposit?.title || 'Add funds'} />
+      <DepositOptionModal
+        buttonText={deposit?.title || 'Add funds'}
+        preserveSelectedVault={preserveSelectedVault}
+      />
     </View>
   );
 };

@@ -63,50 +63,47 @@ export function useActivityActions() {
     return event.hash || event.userOpHash || event.clientTxId;
   }, []);
 
-  const createActivity = useCallback(
-    async (params: CreateActivityParams): Promise<string> => {
-      const user = getSelectedUser();
-      if (!user?.userId) {
-        throw new Error('User not authenticated');
-      }
+  const createActivity = useCallback(async (params: CreateActivityParams): Promise<string> => {
+    const user = getSelectedUser();
+    if (!user?.userId) {
+      throw new Error('User not authenticated');
+    }
 
-      const upsertEvent = useActivityStore.getState().upsertEvent;
+    const upsertEvent = useActivityStore.getState().upsertEvent;
 
-      const clientTxId = params.userOpHash || generateId();
-      const timestamp = Math.floor(Date.now() / 1000).toString();
+    const clientTxId = params.userOpHash || generateId();
+    const timestamp = Math.floor(Date.now() / 1000).toString();
 
-      const activityEvent: ActivityEvent = {
-        clientTxId,
-        title: params.title,
-        shortTitle: params.shortTitle,
-        timestamp,
-        type: params.type,
-        status: params.status || TransactionStatus.PENDING,
-        amount: params.amount,
-        symbol: params.symbol,
-        chainId: params.chainId,
-        fromAddress: params.fromAddress,
-        toAddress: params.toAddress,
-        userOpHash: params.userOpHash,
-        metadata: {
-          description: params.metadata?.description || params.title,
-          source: 'transaction-hook',
-          ...params.metadata,
-        },
-      };
+    const activityEvent: ActivityEvent = {
+      clientTxId,
+      title: params.title,
+      shortTitle: params.shortTitle,
+      timestamp,
+      type: params.type,
+      status: params.status || TransactionStatus.PENDING,
+      amount: params.amount,
+      symbol: params.symbol,
+      chainId: params.chainId,
+      fromAddress: params.fromAddress,
+      toAddress: params.toAddress,
+      userOpHash: params.userOpHash,
+      metadata: {
+        description: params.metadata?.description || params.title,
+        source: 'transaction-hook',
+        ...params.metadata,
+      },
+    };
 
-      // Update local state immediately for instant UI feedback
-      upsertEvent(user.userId, activityEvent);
+    // Update local state immediately for instant UI feedback
+    upsertEvent(user.userId, activityEvent);
 
-      // Send to backend for caching (non-blocking)
-      withRefreshToken(() => createActivityEvent(activityEvent)).catch(error => {
-        console.error('Failed to create activity on server:', error);
-      });
+    // Send to backend for caching (non-blocking)
+    withRefreshToken(() => createActivityEvent(activityEvent)).catch(error => {
+      console.error('Failed to create activity on server:', error);
+    });
 
-      return clientTxId;
-    },
-    [],
-  );
+    return clientTxId;
+  }, []);
 
   const updateActivity = useCallback(
     async (clientTxId: string, updates: UpdateActivityParams) => {
