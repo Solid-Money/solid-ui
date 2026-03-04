@@ -37,6 +37,8 @@ interface SavingCountUpProps {
   inputsReady?: boolean;
   /** Backend savings summary for interest calculation */
   summary?: SavingsSummaryResponse | null;
+  /** Vault identifier ('USDC' | 'FUSE') — controls fallback strategy in useSavingsYield */
+  vault?: string;
 }
 
 const SavingCountUp = memo(
@@ -56,6 +58,7 @@ const SavingCountUp = memo(
     tokenAddress = ADDRESSES.fuse.vault,
     inputsReady,
     summary,
+    vault,
   }: SavingCountUpProps) => {
     const liveYield = useSavingsYield({
       balance,
@@ -68,6 +71,7 @@ const SavingCountUp = memo(
       tokenAddress,
       inputsReady,
       summary,
+      vault,
     });
 
     return (

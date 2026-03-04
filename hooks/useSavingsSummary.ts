@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { fetchSavingsSummary } from '@/lib/api';
 import { SavingsSummaryResponse } from '@/lib/types';
@@ -10,5 +10,6 @@ export function useSavingsSummary(vault: string = 'USDC', enabled: boolean = tru
     enabled,
     staleTime: 30_000,
     refetchInterval: 30_000,
+    placeholderData: keepPreviousData,
   });
 }
