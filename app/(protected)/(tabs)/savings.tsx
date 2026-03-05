@@ -146,7 +146,7 @@ export default function Savings() {
       {isScreenMedium ? (
         <View className="flex-row items-center justify-between">
           <DashboardTitle />
-          <DashboardHeaderButtons hideSend preserveSelectedVault />
+          <DashboardHeaderButtons hideSend hideSwap preserveSelectedVault />
         </View>
       ) : (
         <Text className="text-3xl font-semibold">Savings</Text>
@@ -543,7 +543,7 @@ export default function Savings() {
             </View>
           </>
         )}
-        {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend />}
+        {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend hideSwap />}
 
         {currentVault?.name === 'USDC' && <SavingsAnalytics />}
       </View>

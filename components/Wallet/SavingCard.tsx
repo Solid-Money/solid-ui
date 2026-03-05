@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,10 @@ import { useDimension } from '@/hooks/useDimension';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
 import { getAsset } from '@/lib/assets';
 import { cn, fontSize, formatNumber } from '@/lib/utils';
+
+// Native doesn't resolve bg-purple/50 from CSS vars → dark opaque bar. Use bright transparent overlay to match web.
+const nativeSkeletonBg =
+  Platform.OS !== 'web' ? ({ backgroundColor: 'rgba(255,255,255,0.28)' } as const) : undefined;
 
 type SavingCardProps = {
   className?: string;
@@ -83,7 +87,7 @@ const SavingCard = memo(({ className, decimalPlaces = 2 }: SavingCardProps) => {
 
           <View className="flex-row items-center gap-2 pr-[5px]">
             {isMaxAPYsLoading ? (
-              <Skeleton className="h-6 w-24 rounded-xl bg-purple/50" />
+              <Skeleton className="h-6 w-24 rounded-xl bg-purple/50" style={nativeSkeletonBg} />
             ) : isScreenMedium ? (
               <Text className="text-sm font-semibold text-brand md:text-base">
                 Earning {maxAPY ? `${formatNumber(maxAPY, 2)}%` : '0%'} yield
@@ -101,7 +105,7 @@ const SavingCard = memo(({ className, decimalPlaces = 2 }: SavingCardProps) => {
           <View className="flex-row items-center gap-2">
             <View className="flex-row items-center">
               {isTotalSavingsLoading || isMaxAPYsLoading || totalSavingsUSD === undefined ? (
-                <Skeleton className="h-11 w-36 rounded-xl bg-purple/50" />
+                <Skeleton className="h-11 w-36 rounded-xl bg-purple/50" style={nativeSkeletonBg} />
               ) : (
                 <CountUp
                   prefix="$"
