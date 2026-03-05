@@ -35,9 +35,9 @@ interface SavingCountUpProps {
   tokenAddress?: string;
   /** When true, interest inputs are loaded (avoids stale 0). Pass for CURRENT mode when APY/ts are ready. */
   inputsReady?: boolean;
-  /** Backend savings summary for interest calculation */
+  /** Backend savings summary — used for soFUSE interest */
   summary?: SavingsSummaryResponse | null;
-  /** Vault identifier ('USDC' | 'FUSE') — controls fallback strategy in useSavingsYield */
+  /** Vault identifier ('USDC' | 'FUSE') */
   vault?: string;
 }
 
