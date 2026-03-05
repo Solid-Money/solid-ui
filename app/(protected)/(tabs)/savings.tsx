@@ -28,6 +28,7 @@ import {
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
+import { useSavingsSummary } from '@/hooks/useSavingsSummary';
 import useUser from '@/hooks/useUser';
 import { useTotalVaultBalance, useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
@@ -35,6 +36,7 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
+import { useBalanceStore } from '@/store/useBalanceStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
@@ -90,6 +92,20 @@ export default function Savings() {
     lastTimestamp,
     currentVault.decimals,
   );
+
+  // Backend savings summary for accurate interest calculation
+  const { data: savingsSummary } = useSavingsSummary(currentVault.name, Boolean(user?.safeAddress));
+
+  // Sync backend interest earned to global store (overrides less-accurate Subgraph value)
+  const { setEarnedUSD } = useBalanceStore();
+  useEffect(() => {
+    if (savingsSummary) {
+      const backendInterest = parseFloat(savingsSummary.interestEarnedUSD);
+      if (backendInterest > 0) {
+        setEarnedUSD(backendInterest);
+      }
+    }
+  }, [savingsSummary, setEarnedUSD]);
 
   // Controlled polling for balance/transaction updates - every 60 seconds instead of every block (~12s)
   useEffect(() => {
@@ -207,6 +223,7 @@ export default function Savings() {
                         userDepositTransactions={userDepositTransactions}
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}
+                        vault={currentVault.name}
                         classNames={{
                           wrapper: 'text-foreground',
                           decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
@@ -248,12 +265,12 @@ export default function Savings() {
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         mode={SavingMode.CURRENT}
-                        inputsReady={
-                          !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
-                        }
+                        inputsReady={!isAPYsLoading && Boolean(balance) && Boolean(savingsSummary)}
                         userDepositTransactions={userDepositTransactions}
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}
+                        summary={savingsSummary}
+                        vault={currentVault.name}
                         classNames={{
                           wrapper: 'text-foreground',
                           decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
@@ -398,6 +415,7 @@ export default function Savings() {
                         userDepositTransactions={userDepositTransactions}
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}
+                        vault={currentVault.name}
                         classNames={{
                           wrapper: 'text-foreground',
                           decimalSeparator: 'text-2xl md:text-4.5xl font-medium',
@@ -439,12 +457,12 @@ export default function Savings() {
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
                         mode={SavingMode.CURRENT}
-                        inputsReady={
-                          !isAPYsLoading && Boolean(balance && (firstDepositTimestamp ?? 0) > 0)
-                        }
+                        inputsReady={!isAPYsLoading && Boolean(balance) && Boolean(savingsSummary)}
                         userDepositTransactions={userDepositTransactions}
                         exchangeRate={exchangeRate}
                         tokenAddress={currentVault.vaults[0].address}
+                        summary={savingsSummary}
+                        vault={currentVault.name}
                         classNames={{
                           wrapper: 'text-foreground',
                           decimalSeparator: 'text-2xl md:text-4.5xl font-medium',

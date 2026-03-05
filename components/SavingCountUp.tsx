@@ -5,7 +5,7 @@ import CountUp from '@/components/CountUp';
 import { GetUserTransactionsQuery } from '@/graphql/generated/user-info';
 import { useSavingsYield } from '@/hooks/useSavingsYield';
 import { ADDRESSES } from '@/lib/config';
-import { SavingMode } from '@/lib/types';
+import { SavingMode, SavingsSummaryResponse } from '@/lib/types';
 
 type ClassNames = {
   wrapper?: string;
@@ -35,6 +35,10 @@ interface SavingCountUpProps {
   tokenAddress?: string;
   /** When true, interest inputs are loaded (avoids stale 0). Pass for CURRENT mode when APY/ts are ready. */
   inputsReady?: boolean;
+  /** Backend savings summary for interest calculation */
+  summary?: SavingsSummaryResponse | null;
+  /** Vault identifier ('USDC' | 'FUSE') — controls fallback strategy in useSavingsYield */
+  vault?: string;
 }
 
 const SavingCountUp = memo(
@@ -53,6 +57,8 @@ const SavingCountUp = memo(
     exchangeRate = 1,
     tokenAddress = ADDRESSES.fuse.vault,
     inputsReady,
+    summary,
+    vault,
   }: SavingCountUpProps) => {
     const liveYield = useSavingsYield({
       balance,
@@ -64,6 +70,8 @@ const SavingCountUp = memo(
       exchangeRate,
       tokenAddress,
       inputsReady,
+      summary,
+      vault,
     });
 
     return (
