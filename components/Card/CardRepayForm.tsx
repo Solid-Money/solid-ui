@@ -5,7 +5,6 @@ import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, Fuel, Wallet as WalletIcon } from 'lucide-react-native';
-import { useActiveAccount } from 'thirdweb/react';
 import { Address, formatUnits, zeroAddress } from 'viem';
 import { fuse } from 'viem/chains';
 import { useBalance } from 'wagmi';
@@ -35,7 +34,6 @@ type FormData = { amount: string };
 const FEE_AMOUNT = 0; // 0 USDC from design
 
 export default function CardRepayForm() {
-  const account = useActiveAccount();
   const { user } = useUser();
   const { createActivity, updateActivity } = useActivityActions();
   const { setTransaction, setModal, selectedToken } = useCardRepayStore(
@@ -49,21 +47,21 @@ export default function CardRepayForm() {
   const { repayAndWithdrawCollateral } = useRepayAndWithdrawCollateral();
   const [repayStatus, setRepayStatus] = useState<Status>(Status.IDLE);
 
-  const eoaAddress = account?.address as Address | undefined;
+  const safeAddress = user?.safeAddress as Address | undefined;
   const tokenType = selectedToken?.type || TokenType.ERC20;
   const isNative = tokenType === TokenType.NATIVE;
 
   // Get balance for selected token
   const { data: balanceNative, isLoading: isBalanceNativeLoading } = useBalance({
-    address: eoaAddress as `0x${string}` | undefined,
+    address: safeAddress as `0x${string}` | undefined,
     chainId: selectedToken?.chainId || fuse.id,
     query: {
-      enabled: !!eoaAddress && !!selectedToken && isNative,
+      enabled: !!safeAddress && !!selectedToken && isNative,
     },
   });
 
   const { data: balanceERC20, isLoading: isBalanceERC20Loading } = useBalance({
-    address: eoaAddress as `0x${string}` | undefined,
+    address: safeAddress as `0x${string}` | undefined,
     token:
       selectedToken && !isNative && selectedToken.contractAddress !== zeroAddress
         ? (selectedToken.contractAddress as `0x${string}`)
@@ -73,7 +71,7 @@ export default function CardRepayForm() {
     chainId: selectedToken?.chainId || fuse.id,
     query: {
       enabled:
-        !!eoaAddress &&
+        !!safeAddress &&
         (!selectedToken || (!isNative && selectedToken.contractAddress !== zeroAddress)),
     },
   });
