@@ -200,6 +200,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // MeaWallet MPP: bundle mea_config (add meawallet/mea_config from MeaWallet for MPP)
     ['./meawallet/configAndroid.js', { meaConfig: 'meawallet/mea_config' }],
     ['./meawallet/configIos.js', { meaConfig: 'meawallet/mea_config' }],
+    './plugins/withJitpackContentFilter.js',
   ],
   experiments: {
     typedRoutes: true,
