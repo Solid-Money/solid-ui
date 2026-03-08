@@ -39,8 +39,6 @@
     "@cryptoalgebra/fuse-sdk": "npm:@cryptoalgebra/fuse-sdk@latest",
     "@expo-google-fonts/mona-sans": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
-    "@fingerprintjs/fingerprintjs-pro-react": "^2.7.1",
-    "@fingerprintjs/fingerprintjs-pro-react-native": "^3.10.0",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@intercom/intercom-react-native": "^9.6.1",

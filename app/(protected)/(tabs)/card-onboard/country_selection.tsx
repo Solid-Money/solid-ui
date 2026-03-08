@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { COUNTRIES, Country } from '@/constants/countries';
 import { path } from '@/constants/path';
-// import { useFingerprint } from '@/hooks/useFingerprint';
 import useUser from '@/hooks/useUser';
 import {
   addToCardWaitlist,
@@ -20,7 +19,6 @@ import {
   checkCardWaitlistToNotifyStatus,
   getClientIp,
   getCountryFromIp,
-  // verifyCountryWithFingerprint,
 } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
@@ -28,7 +26,6 @@ import { useCountryStore } from '@/store/useCountryStore';
 export default function CountrySelection() {
   const router = useRouter();
   const { user } = useUser();
-  // const { getVisitorData, isAvailable: isFingerprintAvailable } = useFingerprint();
 
   const goBack = () => {
     if (router.canGoBack()) {
