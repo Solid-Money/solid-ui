@@ -33,7 +33,10 @@ export function useDiditSession() {
       track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'didit' });
       const res = await withRefreshToken(() => createDiditSession());
       if (!res) {
-        setSession({ phase: 'error', message: 'Failed to create verification session' });
+        setSession({
+          phase: 'error',
+          message: 'Failed to create verification session',
+        });
         return;
       }
       setSession({
@@ -52,7 +55,30 @@ export function useDiditSession() {
     setSession({ phase: 'started' });
   }, []);
 
-  // Poll for verification status after SDK started
+  const onVerificationComplete = useCallback(() => {
+    setSession({ phase: 'completed' });
+    queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+    Toast.show({
+      type: 'success',
+      text1: 'Verification complete',
+      text2: 'Your identity has been verified.',
+    });
+    router.replace(String(path.CARD_ACTIVATE) as any);
+  }, [queryClient, router]);
+
+  const onVerificationError = useCallback(
+    (message: string) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Verification failed',
+        text2: message,
+      });
+      setSession({ phase: 'error', message });
+    },
+    [],
+  );
+
+  // Poll for verification status while SDK is active
   useEffect(() => {
     if (session.phase !== 'started') return;
 
@@ -68,31 +94,15 @@ export function useDiditSession() {
           status.kycStatus === 'approved'
         ) {
           clearInterval(interval);
-          setSession({ phase: 'completed' });
-          queryClient.invalidateQueries({
-            queryKey: [CARD_STATUS_QUERY_KEY],
-          });
-          Toast.show({
-            type: 'success',
-            text1: 'Verification complete',
-            text2: 'Your identity has been verified.',
-          });
-          router.replace(String(path.CARD_ACTIVATE) as any);
+          onVerificationComplete();
         } else if (
           status.status === 'Declined' ||
           status.kycStatus === 'rejected'
         ) {
           clearInterval(interval);
-          Toast.show({
-            type: 'error',
-            text1: 'Verification failed',
-            text2:
-              'Your identity verification was declined. Please try again.',
-          });
-          setSession({
-            phase: 'error',
-            message: 'Verification declined',
-          });
+          onVerificationError(
+            'Your identity verification was declined. Please try again.',
+          );
         }
       } catch {
         // silently retry on network errors
@@ -100,7 +110,7 @@ export function useDiditSession() {
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [session.phase, queryClient, router]);
+  }, [session.phase, onVerificationComplete, onVerificationError]);
 
   // Auto-init on mount
   useEffect(() => {
@@ -112,5 +122,7 @@ export function useDiditSession() {
     sdkInitializedRef,
     initSession,
     markStarted,
+    onVerificationComplete,
+    onVerificationError,
   };
 }
