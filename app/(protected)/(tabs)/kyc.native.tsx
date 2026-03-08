@@ -2,7 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
+import { DiditSdk } from '@didit-protocol/sdk-react-native';
 
 import { KycStatus } from '@/lib/types';
 import {
@@ -16,6 +16,8 @@ import {
 export default function KycNative() {
   const router = useRouter();
   const { session, initSession, markStarted } = useDiditSession();
+
+  const sessionToken = session.phase === 'ready' ? session.sessionToken : null;
 
   const handleDeepLink = useCallback(
     (event: { url: string }) => {
@@ -34,54 +36,19 @@ export default function KycNative() {
     [router],
   );
 
-  // Open Didit verification when session is ready
   useEffect(() => {
-    if (session.phase !== 'ready') return;
+    if (!sessionToken) return;
 
-    let subscription: ReturnType<typeof Linking.addEventListener> | undefined;
+    const subscription = Linking.addEventListener('url', handleDeepLink);
 
-    async function startNativeVerification() {
-      if (session.phase !== 'ready') return;
-
-      subscription = Linking.addEventListener('url', handleDeepLink);
-
-      // Try native SDK first
-      try {
-        const DiditSdk = await import('@didit-protocol/sdk-react-native');
-        const sdk = DiditSdk.DiditSdk ?? DiditSdk.default ?? DiditSdk;
-        if (sdk?.startVerification) {
-          await sdk.startVerification({ token: session.sessionToken });
-          markStarted();
-          return;
-        }
-      } catch {
-        // Native SDK not available, fall back to browser
-      }
-
-      // Fallback: open verification URL in browser
-      const result = await WebBrowser.openBrowserAsync(
-        session.verificationUrl,
-        {
-          presentationStyle:
-            WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-          controlsColor: '#94F27F',
-          toolbarColor: '#000000',
-          showTitle: true,
-          enableBarCollapsing: false,
-        },
-      );
-
-      if (result.type === 'dismiss') {
-        markStarted();
-      }
-    }
-
-    startNativeVerification();
+    DiditSdk.startVerification({ token: sessionToken })
+      .then(() => markStarted())
+      .catch(() => initSession());
 
     return () => {
-      subscription?.remove();
+      subscription.remove();
     };
-  }, [session.phase, handleDeepLink, markStarted]);
+  }, [sessionToken, handleDeepLink, markStarted, initSession]);
 
   return (
     <View style={styles.container}>
