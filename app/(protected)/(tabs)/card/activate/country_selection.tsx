@@ -186,34 +186,7 @@ export default function ActivateCountrySelection() {
     if (selectedCountry) {
       setProcessing(true);
       try {
-        // Step 1: Verify location with Fingerprint (if available)
-        if (isFingerprintAvailable) {
-          const visitorData = await getVisitorData();
-
-          if (visitorData) {
-            const verification = await withRefreshToken(() =>
-              verifyCountryWithFingerprint({
-                visitorId: visitorData.visitorId,
-                requestId: visitorData.requestId,
-                claimedCountry: selectedCountry.code,
-              }),
-            );
-
-            if (verification?.requiresVerification) {
-              router.push({
-                pathname: path.CARD_COUNTRY_VERIFICATION_REQUIRED,
-                params: {
-                  claimedCountry: selectedCountry.code,
-                  detectedCountry: verification.detectedCountry || 'unknown',
-                  blockingReason: verification.blockingReason || '',
-                },
-              } as any);
-              return;
-            }
-          }
-        }
-
-        // Step 2: Check card access via backend API
+        // Check card access via backend API
         const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
 
         if (!accessCheck) throw new Error('Failed to check card access');

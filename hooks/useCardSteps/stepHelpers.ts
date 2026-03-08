@@ -7,9 +7,8 @@ import { EndorsementStatus } from '@/components/BankTransfer/enums';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
-import { useFingerprint } from '@/hooks/useFingerprint';
 import { track } from '@/lib/analytics';
-import { createCard, observeFingerprint } from '@/lib/api';
+import { createCard } from '@/lib/api';
 import {
   BridgeCustomerEndorsement,
   BridgeRejectionReason,
@@ -122,33 +121,12 @@ export function useCardActivation(router: Router) {
   const queryClient = useQueryClient();
   const [cardActivated, setCardActivated] = useState(false);
   const [activatingCard, setActivatingCard] = useState(false);
-  const { getVisitorData, isAvailable: isFingerprintAvailable } = useFingerprint();
-
   const handleActivateCard = useCallback(async () => {
     track(TRACKING_EVENTS.CARD_ACTIVATION_STARTED);
     try {
       setActivatingCard(true);
 
-      // Step 1: Observe fingerprint before card creation (for duplicate detection)
-      if (isFingerprintAvailable) {
-        const visitorData = await getVisitorData();
-        if (visitorData?.requestId) {
-          try {
-            await withRefreshToken(() =>
-              observeFingerprint({
-                requestId: visitorData.requestId,
-                context: 'create_card',
-              }),
-            );
-          } catch (fingerprintError) {
-            // Log but don't block card creation if fingerprint observation fails
-            // The backend will handle missing visitorId appropriately
-            console.warn('[Card Activation] Failed to observe fingerprint:', fingerprintError);
-          }
-        }
-      }
-
-      // Step 2: Create the card
+      // Create the card
       const card = await withRefreshToken(() => createCard());
 
       if (!card) throw new Error('Failed to create card');
@@ -176,7 +154,7 @@ export function useCardActivation(router: Router) {
     } finally {
       setActivatingCard(false);
     }
-  }, [router, queryClient, getVisitorData, isFingerprintAvailable]);
+  }, [router, queryClient]);
 
   const syncCardActivationState = useCallback((cardStatus: CardStatus | undefined) => {
     // Mark card as activated if user has a card in any state
