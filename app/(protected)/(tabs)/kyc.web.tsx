@@ -60,7 +60,7 @@ export default function KycWeb() {
     }
 
     startWebVerification();
-  }, [session, sdkInitializedRef, markStarted]);
+  }, [session.phase, sdkInitializedRef, markStarted]);
 
   return (
     <PageLayout desktopOnly>
