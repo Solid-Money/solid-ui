@@ -7,8 +7,6 @@ import { ImageBackground, Platform, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
 import { Address } from 'viem';
-import { useShallow } from 'zustand/react/shallow';
-
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { FAQs } from '@/components/FAQ';
@@ -40,17 +38,11 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
-import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
 export default function SavingsOld() {
   const { user } = useUser();
   const { selectedVault } = useSavingStore();
-  const { resetDepositFlow } = useDepositStore(
-    useShallow(state => ({
-      resetDepositFlow: state.resetDepositFlow,
-    })),
-  );
   const currentVault = VAULTS[selectedVault];
   const { isScreenMedium } = useDimension();
 
@@ -101,10 +93,6 @@ export default function SavingsOld() {
     }, 60000);
     return () => clearInterval(interval);
   }, [refetchBalance, refetchTotalBalance, refetchTransactions]);
-
-  useEffect(() => {
-    resetDepositFlow();
-  }, [selectedVault, resetDepositFlow]);
 
   const isLoading = isBalanceLoading || isTransactionsLoading;
   const isEmptyStateLoading = isTotalBalanceLoading || isTransactionsLoading;
