@@ -18,7 +18,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useFingerprint } from '@/hooks/useFingerprint';
 import useUser from '@/hooks/useUser';
 import { track, trackIdentity } from '@/lib/analytics';
 import { emailSignUp } from '@/lib/api';
@@ -106,7 +105,6 @@ function WalletLoadingIcon() {
 export default function SignupCreating() {
   const router = useRouter();
   const { safeAA } = useUser();
-  const { getVisitorData } = useFingerprint();
   const {
     hasUsers,
     storeUser,
@@ -189,19 +187,6 @@ export default function SignupCreating() {
       attribution_channel: attributionChannel,
     });
 
-    // Capture fingerprint for fraud prevention (non-blocking)
-    let fingerprintRequestId: string | undefined;
-    try {
-      const fpData = await getVisitorData();
-      fingerprintRequestId = fpData?.requestId;
-    } catch (err) {
-      // Log but don't block signup - fingerprint is for fraud detection only
-      console.warn('Fingerprint capture failed:', err);
-      Sentry.captureException(err, {
-        tags: { context: 'signup_fingerprint_capture' },
-      });
-    }
-
     try {
       // Create account via backend (creates sub-org with passkey + wallet)
       const user = await emailSignUp(
@@ -212,7 +197,6 @@ export default function SignupCreating() {
         credentialId,
         referralCode || undefined,
         marketingConsent,
-        fingerprintRequestId,
       );
 
       const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);

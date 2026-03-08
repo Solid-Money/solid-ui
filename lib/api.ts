@@ -67,6 +67,7 @@ import {
   Points,
   PromotionsBannerResponse,
   RewardsUserData,
+  SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
   StargateQuoteParams,
@@ -87,7 +88,6 @@ import {
   VerifyCountryResponse,
   WebhookStatus,
   WhatsNew,
-  SavingsSummaryResponse,
   WithdrawFromCardToSavingsResponse,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
