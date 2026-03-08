@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
+import { DiditSdk } from '@didit-protocol/sdk-web';
 
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
@@ -25,28 +26,13 @@ export default function KycWeb() {
 
     sdkInitializedRef.current = true;
 
-    async function startWebVerification() {
-      if (!verificationUrl) return;
-
-      const DiditSdk = await import('@didit-protocol/sdk-web');
-      const sdk =
-        DiditSdk.DiditSdk ?? DiditSdk.default?.DiditSdk ?? DiditSdk;
-
-      if (sdk?.shared?.startVerification) {
-        sdk.shared.startVerification({ url: verificationUrl });
-      } else if (sdk?.startVerification) {
-        sdk.startVerification({ url: verificationUrl });
-      } else if (typeof sdk === 'function') {
-        sdk({ url: verificationUrl });
-      }
-
+    try {
+      DiditSdk.startVerification({ url: verificationUrl });
       markStarted();
-    }
-
-    startWebVerification().catch(() => {
+    } catch {
       sdkInitializedRef.current = false;
       initSession();
-    });
+    }
   }, [verificationUrl, sdkInitializedRef, markStarted, initSession]);
 
   return (

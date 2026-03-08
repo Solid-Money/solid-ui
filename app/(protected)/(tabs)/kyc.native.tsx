@@ -2,6 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
+import { DiditSdk } from '@didit-protocol/sdk-react-native';
 
 import { KycStatus } from '@/lib/types';
 import {
@@ -40,21 +41,9 @@ export default function KycNative() {
 
     const subscription = Linking.addEventListener('url', handleDeepLink);
 
-    async function startNativeVerification() {
-      if (!sessionToken) return;
-
-      const DiditSdk = await import('@didit-protocol/sdk-react-native');
-      const sdk = DiditSdk.DiditSdk ?? DiditSdk.default ?? DiditSdk;
-
-      if (sdk?.startVerification) {
-        await sdk.startVerification({ token: sessionToken });
-        markStarted();
-      }
-    }
-
-    startNativeVerification().catch(() => {
-      initSession();
-    });
+    DiditSdk.startVerification({ token: sessionToken })
+      .then(() => markStarted())
+      .catch(() => initSession());
 
     return () => {
       subscription.remove();
