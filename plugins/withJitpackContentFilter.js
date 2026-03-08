@@ -1,15 +1,30 @@
-const { withProjectBuildGradle } = require('@expo/config-plugins');
+const {
+  withGradleProperties,
+  withProjectBuildGradle,
+} = require('@expo/config-plugins');
 
 /**
- * Expo config plugin: restricts JitPack repository to com.github.* groups only.
+ * Expo config plugin: disables React Native's automatic JitPack repository
+ * and restricts the Expo-generated JitPack entry to com.github.* groups only.
+ *
  * Prevents Gradle from timing out when resolving non-JitPack artifacts
  * (e.g. com.amplitude) during Android builds.
  */
 module.exports = function withJitpackContentFilter(config) {
-  return withProjectBuildGradle(config, (config) => {
+  // 1. Disable the JitPack repo that React Native's Gradle plugin adds programmatically
+  config = withGradleProperties(config, (config) => {
+    config.modResults.push({
+      type: 'property',
+      key: 'react.includeJitpackRepository',
+      value: 'false',
+    });
+    return config;
+  });
+
+  // 2. Restrict the JitPack repo in build.gradle (added by Expo) to com.github.* only
+  config = withProjectBuildGradle(config, (config) => {
     const buildGradle = config.modResults.contents;
 
-    // Check if JitPack is referenced but missing the content filter
     if (
       buildGradle.includes('jitpack.io') &&
       !buildGradle.includes('includeGroupByRegex')
@@ -27,4 +42,6 @@ module.exports = function withJitpackContentFilter(config) {
 
     return config;
   });
+
+  return config;
 };
