@@ -127,7 +127,7 @@ export default function PageLayout({
         <ScrollView
           className={`flex-1 ${contentClassName}`}
           contentInsetAdjustmentBehavior="automatic"
-          stickyHeaderIndices={stickyHeader ? [0] : undefined}
+          stickyHeaderIndices={stickyHeader && !isScreenMedium ? [0] : undefined}
         >
           {stickyHeader && <View className="z-10 bg-background">{stickyHeader}</View>}
           {children}
