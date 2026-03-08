@@ -2,7 +2,6 @@ import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 
 import { KycStatus } from '@/lib/types';
 import {
@@ -18,8 +17,6 @@ export default function KycNative() {
   const { session, initSession, markStarted } = useDiditSession();
 
   const sessionToken = session.phase === 'ready' ? session.sessionToken : null;
-  const verificationUrl =
-    session.phase === 'ready' ? session.verificationUrl : null;
 
   const handleDeepLink = useCallback(
     (event: { url: string }) => {
@@ -38,51 +35,31 @@ export default function KycNative() {
     [router],
   );
 
-  // Open Didit verification when session is ready
   useEffect(() => {
-    if (!verificationUrl || !sessionToken) return;
+    if (!sessionToken) return;
 
-    let subscription: ReturnType<typeof Linking.addEventListener> | undefined;
+    const subscription = Linking.addEventListener('url', handleDeepLink);
 
     async function startNativeVerification() {
-      if (!verificationUrl || !sessionToken) return;
+      if (!sessionToken) return;
 
-      subscription = Linking.addEventListener('url', handleDeepLink);
+      const DiditSdk = await import('@didit-protocol/sdk-react-native');
+      const sdk = DiditSdk.DiditSdk ?? DiditSdk.default ?? DiditSdk;
 
-      // Try native SDK first
-      try {
-        const DiditSdk = await import('@didit-protocol/sdk-react-native');
-        const sdk = DiditSdk.DiditSdk ?? DiditSdk.default ?? DiditSdk;
-        if (sdk?.startVerification) {
-          await sdk.startVerification({ token: sessionToken });
-          markStarted();
-          return;
-        }
-      } catch {
-        // Native SDK not available, fall back to browser
-      }
-
-      // Fallback: open verification URL in browser
-      const result = await WebBrowser.openBrowserAsync(verificationUrl, {
-        presentationStyle:
-          WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-        controlsColor: '#94F27F',
-        toolbarColor: '#000000',
-        showTitle: true,
-        enableBarCollapsing: false,
-      });
-
-      if (result.type === 'dismiss') {
+      if (sdk?.startVerification) {
+        await sdk.startVerification({ token: sessionToken });
         markStarted();
       }
     }
 
-    startNativeVerification();
+    startNativeVerification().catch(() => {
+      initSession();
+    });
 
     return () => {
-      subscription?.remove();
+      subscription.remove();
     };
-  }, [verificationUrl, sessionToken, handleDeepLink, markStarted]);
+  }, [sessionToken, handleDeepLink, markStarted, initSession]);
 
   return (
     <View style={styles.container}>

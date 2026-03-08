@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
@@ -16,12 +16,10 @@ export default function KycWeb() {
   const router = useRouter();
   const { session, sdkInitializedRef, initSession, markStarted } =
     useDiditSession();
-  const iframeContainerRef = useRef<HTMLDivElement | null>(null);
 
   const verificationUrl =
     session.phase === 'ready' ? session.verificationUrl : null;
 
-  // On web: initialize Didit SDK when session is ready
   useEffect(() => {
     if (!verificationUrl || sdkInitializedRef.current) return;
 
@@ -30,40 +28,26 @@ export default function KycWeb() {
     async function startWebVerification() {
       if (!verificationUrl) return;
 
-      try {
-        const DiditSdk = await import('@didit-protocol/sdk-web');
-        const sdk =
-          DiditSdk.DiditSdk ?? DiditSdk.default?.DiditSdk ?? DiditSdk;
+      const DiditSdk = await import('@didit-protocol/sdk-web');
+      const sdk =
+        DiditSdk.DiditSdk ?? DiditSdk.default?.DiditSdk ?? DiditSdk;
 
-        if (sdk?.shared?.startVerification) {
-          sdk.shared.startVerification({ url: verificationUrl });
-        } else if (sdk?.startVerification) {
-          sdk.startVerification({ url: verificationUrl });
-        } else if (typeof sdk === 'function') {
-          sdk({ url: verificationUrl });
-        }
-
-        markStarted();
-      } catch (err) {
-        // Fallback: open verification_url in an iframe
-        console.warn('Didit SDK import failed, falling back to iframe:', err);
-        if (iframeContainerRef.current && verificationUrl) {
-          const iframe = document.createElement('iframe');
-          iframe.src = verificationUrl;
-          iframe.style.width = '100%';
-          iframe.style.height = '700px';
-          iframe.style.border = 'none';
-          iframe.style.borderRadius = '16px';
-          iframe.allow = 'camera; microphone';
-          iframeContainerRef.current.innerHTML = '';
-          iframeContainerRef.current.appendChild(iframe);
-          markStarted();
-        }
+      if (sdk?.shared?.startVerification) {
+        sdk.shared.startVerification({ url: verificationUrl });
+      } else if (sdk?.startVerification) {
+        sdk.startVerification({ url: verificationUrl });
+      } else if (typeof sdk === 'function') {
+        sdk({ url: verificationUrl });
       }
+
+      markStarted();
     }
 
-    startWebVerification();
-  }, [verificationUrl, sdkInitializedRef, markStarted]);
+    startWebVerification().catch(() => {
+      sdkInitializedRef.current = false;
+      initSession();
+    });
+  }, [verificationUrl, sdkInitializedRef, markStarted, initSession]);
 
   return (
     <PageLayout desktopOnly>
@@ -90,18 +74,10 @@ export default function KycWeb() {
         )}
 
         {(session.phase === 'ready' || session.phase === 'started') && (
-          <View className="flex-1">
-            <div
-              ref={iframeContainerRef as any}
-              style={{ width: '100%', minHeight: 600 }}
-            />
-            {session.phase === 'started' && (
-              <Text className="mt-4 text-center text-sm text-[#ACACAC]">
-                Complete the verification in the widget above. This page will
-                update automatically when done.
-              </Text>
-            )}
-          </View>
+          <Text className="mt-4 text-center text-sm text-[#ACACAC]">
+            Complete the verification in the Didit window. This page will
+            update automatically when done.
+          </Text>
         )}
 
         {session.phase === 'completed' && <KycCompleted />}
