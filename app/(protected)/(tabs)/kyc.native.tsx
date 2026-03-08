@@ -17,6 +17,10 @@ export default function KycNative() {
   const router = useRouter();
   const { session, initSession, markStarted } = useDiditSession();
 
+  const sessionToken = session.phase === 'ready' ? session.sessionToken : null;
+  const verificationUrl =
+    session.phase === 'ready' ? session.verificationUrl : null;
+
   const handleDeepLink = useCallback(
     (event: { url: string }) => {
       try {
@@ -36,12 +40,12 @@ export default function KycNative() {
 
   // Open Didit verification when session is ready
   useEffect(() => {
-    if (session.phase !== 'ready') return;
+    if (!verificationUrl || !sessionToken) return;
 
     let subscription: ReturnType<typeof Linking.addEventListener> | undefined;
 
     async function startNativeVerification() {
-      if (session.phase !== 'ready') return;
+      if (!verificationUrl || !sessionToken) return;
 
       subscription = Linking.addEventListener('url', handleDeepLink);
 
@@ -50,7 +54,7 @@ export default function KycNative() {
         const DiditSdk = await import('@didit-protocol/sdk-react-native');
         const sdk = DiditSdk.DiditSdk ?? DiditSdk.default ?? DiditSdk;
         if (sdk?.startVerification) {
-          await sdk.startVerification({ token: session.sessionToken });
+          await sdk.startVerification({ token: sessionToken });
           markStarted();
           return;
         }
@@ -59,17 +63,14 @@ export default function KycNative() {
       }
 
       // Fallback: open verification URL in browser
-      const result = await WebBrowser.openBrowserAsync(
-        session.verificationUrl,
-        {
-          presentationStyle:
-            WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-          controlsColor: '#94F27F',
-          toolbarColor: '#000000',
-          showTitle: true,
-          enableBarCollapsing: false,
-        },
-      );
+      const result = await WebBrowser.openBrowserAsync(verificationUrl, {
+        presentationStyle:
+          WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        controlsColor: '#94F27F',
+        toolbarColor: '#000000',
+        showTitle: true,
+        enableBarCollapsing: false,
+      });
 
       if (result.type === 'dismiss') {
         markStarted();
@@ -81,7 +82,7 @@ export default function KycNative() {
     return () => {
       subscription?.remove();
     };
-  }, [session.phase, handleDeepLink, markStarted]);
+  }, [verificationUrl, sessionToken, handleDeepLink, markStarted]);
 
   return (
     <View style={styles.container}>
