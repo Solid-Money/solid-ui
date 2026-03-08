@@ -1,84 +1,97 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { startVerification, VerificationStatus } from '@didit-protocol/sdk-react-native';
+import * as Linking from 'expo-linking';
+import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 
+import { KycStatus } from '@/lib/types';
 import {
-  KycCompleted,
-  KycError,
-  KycLoading,
-  KycNativeWaiting,
   useDiditSession,
+  KycLoading,
+  KycError,
+  KycNativeWaiting,
+  KycCompleted,
 } from '@/components/kyc';
 
 export default function KycNative() {
-  const {
-    session,
-    initSession,
-    markStarted,
-    onVerificationComplete,
-    onVerificationPending,
-    onVerificationError,
-  } = useDiditSession();
+  const router = useRouter();
+  const { session, initSession, markStarted } = useDiditSession();
 
-  const sessionToken = session.phase === 'ready' ? session.sessionToken : null;
+  const handleDeepLink = useCallback(
+    (event: { url: string }) => {
+      try {
+        const urlObj = new URL(event.url);
+        if (urlObj.pathname.includes('kyc-complete')) {
+          router.replace({
+            pathname: '/card/activate',
+            params: { kycStatus: KycStatus.APPROVED },
+          });
+        }
+      } catch (err) {
+        console.error('Error parsing deep link:', err);
+      }
+    },
+    [router],
+  );
 
+  // Open Didit verification when session is ready
   useEffect(() => {
-    if (!sessionToken) return;
+    if (session.phase !== 'ready') return;
 
-    let cancelled = false;
+    let subscription: ReturnType<typeof Linking.addEventListener> | undefined;
 
-    async function verify() {
-      if (!sessionToken) return;
+    async function startNativeVerification() {
+      if (session.phase !== 'ready') return;
 
-      markStarted();
-      const result = await startVerification(sessionToken);
+      subscription = Linking.addEventListener('url', handleDeepLink);
 
-      if (cancelled) return;
+      // Try native SDK first
+      try {
+        const DiditSdk = await import('@didit-protocol/sdk-react-native');
+        const sdk = DiditSdk.DiditSdk ?? DiditSdk.default ?? DiditSdk;
+        if (sdk?.startVerification) {
+          await sdk.startVerification({ token: session.sessionToken });
+          markStarted();
+          return;
+        }
+      } catch {
+        // Native SDK not available, fall back to browser
+      }
 
-      switch (result.type) {
-        case 'completed':
-          if (result.session.status === VerificationStatus.Approved) {
-            onVerificationComplete();
-          } else if (result.session.status === VerificationStatus.Declined) {
-            onVerificationError('Your identity verification was declined.');
-          } else {
-            // 'Pending', 'In Review', etc. — redirect back to activate page
-            // so user sees "Under Review" state instead of blank page
-            onVerificationPending();
-          }
-          break;
-        case 'cancelled':
-          initSession();
-          break;
-        case 'failed':
-          onVerificationError(result.error?.message ?? 'Verification failed');
-          break;
+      // Fallback: open verification URL in browser
+      const result = await WebBrowser.openBrowserAsync(
+        session.verificationUrl,
+        {
+          presentationStyle:
+            WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+          controlsColor: '#94F27F',
+          toolbarColor: '#000000',
+          showTitle: true,
+          enableBarCollapsing: false,
+        },
+      );
+
+      if (result.type === 'dismiss') {
+        markStarted();
       }
     }
 
-    verify().catch(() => {
-      if (!cancelled) {
-        onVerificationError('Failed to start verification');
-      }
-    });
+    startNativeVerification();
 
     return () => {
-      cancelled = true;
+      subscription?.remove();
     };
-  }, [
-    sessionToken,
-    markStarted,
-    initSession,
-    onVerificationComplete,
-    onVerificationPending,
-    onVerificationError,
-  ]);
+  }, [session, handleDeepLink, markStarted]);
 
   return (
     <View style={styles.container}>
       {session.phase === 'loading' && <KycLoading />}
-      {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
-      {(session.phase === 'ready' || session.phase === 'started') && <KycNativeWaiting />}
+      {session.phase === 'error' && (
+        <KycError message={session.message} onRetry={initSession} />
+      )}
+      {(session.phase === 'ready' || session.phase === 'started') && (
+        <KycNativeWaiting />
+      )}
       {session.phase === 'completed' && <KycCompleted />}
     </View>
   );
