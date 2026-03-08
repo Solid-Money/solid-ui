@@ -197,6 +197,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         androidApiKey: process.env.EXPO_PUBLIC_INTERCOM_ANDROID_API_KEY,
       },
     ],
+    './plugins/withJitpackContentFilter.js',
   ],
   experiments: {
     typedRoutes: true,
