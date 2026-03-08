@@ -81,7 +81,7 @@ export default function KycNative() {
     return () => {
       subscription?.remove();
     };
-  }, [session, handleDeepLink, markStarted]);
+  }, [session.phase, handleDeepLink, markStarted]);
 
   return (
     <View style={styles.container}>

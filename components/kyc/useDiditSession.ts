@@ -32,7 +32,10 @@ export function useDiditSession() {
     try {
       track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'didit' });
       const res = await withRefreshToken(() => createDiditSession());
-      if (!res) return;
+      if (!res) {
+        setSession({ phase: 'error', message: 'Failed to create verification session' });
+        return;
+      }
       setSession({
         phase: 'ready',
         verificationUrl: res.verification_url,
