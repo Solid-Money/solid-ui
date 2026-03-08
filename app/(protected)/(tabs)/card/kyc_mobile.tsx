@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import * as Linking from 'expo-linking';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 
 import { Text } from '@/components/ui/text';
+import { createDiditSession, getDiditVerificationStatus } from '@/lib/api';
 import { KycStatus } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 
 export default function KycMobile() {
-  const { url } = useLocalSearchParams<{ url: string }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -17,20 +18,10 @@ export default function KycMobile() {
     (event: { url: string }) => {
       try {
         const urlObj = new URL(event.url);
-
         if (urlObj.pathname.includes('kyc-complete')) {
-          // Parse completion status from URL params if available
-          const _status = urlObj.searchParams.get('status');
-          const inquiryId = urlObj.searchParams.get('inquiry-id');
-
-          // Navigate to success regardless of specific status
-          // The backend will validate the actual status
           router.replace({
             pathname: '/card/activate',
-            params: {
-              kycStatus: KycStatus.APPROVED,
-              inquiryId: inquiryId || '',
-            },
+            params: { kycStatus: KycStatus.APPROVED },
           });
         }
       } catch (err) {
@@ -40,77 +31,76 @@ export default function KycMobile() {
     [router],
   );
 
-  const checkKycStatusFromAPI = useCallback(async () => {
+  const pollForCompletion = useCallback(async () => {
     try {
-      // Add your API call here to check KYC status
-      // const response = await api.getKycStatus();
-      // if (response.status === 'completed') {
-      //   router.replace({
-      //     pathname: path.CARD_ACTIVATE_MOBILE,
-      //     params: {
-      //       kycStatus: KycStatus.APPROVED,
-      //     },
-      //   });
-      // }
-    } catch (error) {
-      console.error('Error checking KYC status:', error);
+      const status = await withRefreshToken(() => getDiditVerificationStatus());
+      if (status?.status === 'Approved' || status?.kycStatus === 'approved') {
+        router.replace({
+          pathname: '/card/activate',
+          params: { kycStatus: KycStatus.APPROVED },
+        });
+      }
+    } catch {
+      // silently ignore
     }
-  }, []);
+  }, [router]);
 
-  const openKycWithCompletion = useCallback(async () => {
+  const openDiditVerification = useCallback(async () => {
     try {
-      // Set up deep link listener BEFORE opening browser
       const subscription = Linking.addEventListener('url', handleDeepLink);
 
-      // Process the URL to add required parameters
-      const urlObj = new URL(url);
-
-      // If URL is from Persona and contains /verify, replace with /widget
-      if (urlObj.hostname.includes('withpersona.com') && urlObj.pathname.includes('/verify')) {
-        urlObj.pathname = urlObj.pathname.replace('/verify', '/widget');
+      // Create Didit session via backend
+      const session = await withRefreshToken(() => createDiditSession());
+      if (!session) {
+        setError('Failed to create verification session');
+        setLoading(false);
+        return;
       }
 
-      // Add completion redirect URL
-      urlObj.searchParams.set('redirect_uri', 'solid://kyc-complete');
-      urlObj.searchParams.set('redirect-uri', 'solid://kyc-complete');
-      urlObj.searchParams.set('environment', 'mobile');
+      // Try native SDK first
+      try {
+        const DiditSdk = await import('@didit-protocol/sdk-react-native');
+        const sdk = DiditSdk.DiditSdk ?? DiditSdk.default ?? DiditSdk;
+        if (sdk?.startVerification) {
+          setLoading(false);
+          await sdk.startVerification({ token: session.session_token });
+          setTimeout(pollForCompletion, 1000);
+          subscription?.remove();
+          return;
+        }
+      } catch {
+        // Native SDK not available, fall back to browser
+      }
 
+      // Fallback: open verification URL in browser
       setLoading(false);
+      const result = await WebBrowser.openBrowserAsync(
+        session.verification_url,
+        {
+          presentationStyle:
+            WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+          controlsColor: '#94F27F',
+          toolbarColor: '#000000',
+          showTitle: true,
+          enableBarCollapsing: false,
+        },
+      );
 
-      const result = await WebBrowser.openBrowserAsync(urlObj.toString(), {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-        controlsColor: '#94F27F',
-        toolbarColor: '#000000',
-        showTitle: true,
-        enableBarCollapsing: false,
-      });
-
-      // Clean up listener
       subscription?.remove();
 
-      // Handle manual browser close (user cancelled)
       if (result.type === 'dismiss') {
-        // Optionally check status one more time
-        setTimeout(() => {
-          checkKycStatusFromAPI();
-        }, 1000);
+        setTimeout(pollForCompletion, 1000);
       }
-    } catch (error) {
-      console.error('Error opening KYC:', error);
-      setError('Failed to open KYC verification');
+    } catch (err) {
+      console.error('Error opening Didit verification:', err);
+      setError('Failed to open identity verification');
       setLoading(false);
     }
-  }, [url, handleDeepLink, checkKycStatusFromAPI]);
+  }, [handleDeepLink, pollForCompletion]);
 
   useEffect(() => {
-    if (!url) {
-      setError('No URL provided');
-      setLoading(false);
-      return;
-    }
-
-    openKycWithCompletion();
-  }, [url, openKycWithCompletion]);
+    openDiditVerification();
+  }, [openDiditVerification]);
 
   if (error) {
     return (
@@ -126,7 +116,10 @@ export default function KycMobile() {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Opening KYC verification...</Text>
+          <ActivityIndicator size="large" color="#94F27F" />
+          <Text style={styles.loadingText}>
+            Preparing identity verification...
+          </Text>
         </View>
       </View>
     );
@@ -135,8 +128,12 @@ export default function KycMobile() {
   return (
     <View style={styles.container}>
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>KYC verification opened in browser</Text>
-        <Text style={styles.subText}>Complete the verification and return to the app</Text>
+        <Text style={styles.loadingText}>
+          Identity verification opened
+        </Text>
+        <Text style={styles.subText}>
+          Complete the verification and return to the app
+        </Text>
       </View>
     </View>
   );
@@ -159,6 +156,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginBottom: 10,
+    marginTop: 16,
   },
   subText: {
     textAlign: 'center',

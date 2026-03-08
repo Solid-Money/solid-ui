@@ -541,6 +541,23 @@ export type RainDocumentType =
   | 'residencePermit'
   | 'selfie';
 
+// --- Didit identity verification ---
+
+/** Response from POST /accounts/v1/didit/session. */
+export interface DiditSessionResponse {
+  session_id: string;
+  session_token: string;
+  verification_url: string;
+  status: string;
+}
+
+/** Response from GET /accounts/v1/didit/status. */
+export interface DiditVerificationStatusResponse {
+  status: string;
+  kycStatus: KycStatus;
+  sessionId?: string;
+}
+
 // --- Rain balance (cents) ---
 export interface CardBalanceResponseDto {
   creditLimit?: number;

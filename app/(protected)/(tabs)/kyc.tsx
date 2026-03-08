@@ -1,225 +1,223 @@
-import React, { useCallback, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { Pressable, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react-native';
 
 import PageLayout from '@/components/PageLayout';
-import {
-  type RainKycDocumentFiles,
-  RainKycForm,
-  type RainKycFormData,
-  rainKycFormSchema,
-} from '@/components/RainKyc';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
-import { getClientIp, submitRainKyc } from '@/lib/api';
-import { redirectToRainVerification } from '@/lib/rainVerification';
-import { RainApplicationStatus, type RainDocumentType } from '@/lib/types';
+import { createDiditSession, getDiditVerificationStatus } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 
-const defaultDocumentFiles: RainKycDocumentFiles = {
-  idDocumentType: 'passport',
-  idDocument: null,
-  idDocumentFront: null,
-  idDocumentBack: null,
-  selfie: null,
-};
+type SessionState =
+  | { phase: 'loading' }
+  | { phase: 'error'; message: string }
+  | { phase: 'ready'; verificationUrl: string; sessionToken: string }
+  | { phase: 'started' }
+  | { phase: 'completed' };
 
 export default function Kyc() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [documentFiles, setDocumentFiles] = useState<RainKycDocumentFiles>(defaultDocumentFiles);
-  const [submitting, setSubmitting] = useState(false);
+  const [session, setSession] = useState<SessionState>({ phase: 'loading' });
+  const iframeContainerRef = useRef<HTMLDivElement | null>(null);
+  const sdkInitializedRef = useRef(false);
 
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<RainKycFormData>({
-    resolver: zodResolver(rainKycFormSchema),
-    mode: 'onChange',
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      birthDate: '',
-      nationalId: '',
-      countryOfIssue: '',
-      email: '',
-      street: '',
-      city: '',
-      region: '',
-      postalCode: '',
-      country: '',
-      occupation: '',
-      annualSalary: '',
-      accountPurpose: '',
-      expectedMonthlyVolume: '',
-      phoneCountryCode: '',
-      phoneNumber: '',
-      isTermsOfServiceAccepted: false,
-      agreedToEsign: false,
-      agreedToAccountOpeningPrivacy: false,
-      agreedToCertify: false,
-      agreedToNoSolicitation: false,
-      idDocumentType: 'passport',
-    },
-  });
+  // Create Didit session on mount
+  useEffect(() => {
+    let cancelled = false;
 
-  const buildFormData = useCallback(
-    async (data: RainKycFormData): Promise<FormData> => {
-      const formData = new FormData();
-      formData.append('firstName', data.firstName);
-      formData.append('lastName', data.lastName);
-      formData.append('birthDate', data.birthDate);
-      formData.append('nationalId', data.nationalId);
-      formData.append('countryOfIssue', data.countryOfIssue);
-      formData.append('email', data.email);
-      formData.append('street', data.street);
-      formData.append('city', data.city);
-      formData.append('region', data.region);
-      formData.append('postalCode', data.postalCode);
-      formData.append('country', data.country);
-      formData.append('occupation', data.occupation);
-      formData.append('annualSalary', data.annualSalary);
-      formData.append('accountPurpose', data.accountPurpose);
-      formData.append('expectedMonthlyVolume', data.expectedMonthlyVolume);
-      formData.append('isTermsOfServiceAccepted', String(data.isTermsOfServiceAccepted === true));
-      formData.append('agreedToEsign', String(data.agreedToEsign === true));
-      formData.append(
-        'agreedToAccountOpeningPrivacy',
-        String(data.agreedToAccountOpeningPrivacy === true),
-      );
-      formData.append('agreedToCertify', String(data.agreedToCertify === true));
-      formData.append('agreedToNoSolicitation', String(data.agreedToNoSolicitation === true));
-      const ip = await getClientIp();
-      if (ip) formData.append('ipAddress', ip);
-      formData.append('phoneCountryCode', data.phoneCountryCode);
-      formData.append('phoneNumber', data.phoneNumber);
-
-      formData.append('idDocumentType', data.idDocumentType);
-      if (data.idDocumentType === 'passport' && documentFiles.idDocument) {
-        formData.append('idDocument', documentFiles.idDocument);
-      } else {
-        if (documentFiles.idDocumentFront) {
-          formData.append('idDocumentFront', documentFiles.idDocumentFront);
-          formData.append('idDocumentFrontSide', 'front');
-        }
-        if (documentFiles.idDocumentBack) {
-          formData.append('idDocumentBack', documentFiles.idDocumentBack);
-          formData.append('idDocumentBackSide', 'back');
-        }
-      }
-      if (documentFiles.selfie) {
-        formData.append('selfie', documentFiles.selfie);
-      }
-      return formData;
-    },
-    [documentFiles],
-  );
-
-  const onSubmit = useCallback(
-    async (data: RainKycFormData) => {
-      const isPassport = data.idDocumentType === 'passport';
-      if (isPassport && !documentFiles.idDocument) {
-        Toast.show({
-          type: 'error',
-          text1: 'Upload required',
-          text2: 'Please upload your passport',
-        });
-        return;
-      }
-      if (!isPassport && (!documentFiles.idDocumentFront || !documentFiles.idDocumentBack)) {
-        Toast.show({
-          type: 'error',
-          text1: 'Upload required',
-          text2: 'Please upload front and back of ID document',
-        });
-        return;
-      }
-      if (!documentFiles.selfie) {
-        Toast.show({
-          type: 'error',
-          text1: 'Upload required',
-          text2: 'Please upload a selfie',
-        });
-        return;
-      }
-
-      setSubmitting(true);
-      track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'rain_submit' });
+    async function initSession() {
       try {
-        const formData = await buildFormData(data);
-        const res = await withRefreshToken(() => submitRainKyc(formData));
-        if (!res) return;
+        track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'didit' });
+        const res = await withRefreshToken(() => createDiditSession());
+        if (cancelled || !res) return;
 
-        const hasVerificationLink =
-          res.applicationExternalVerificationLink?.url &&
-          Object.keys(res.applicationExternalVerificationLink.params ?? {}).length > 0;
+        setSession({
+          phase: 'ready',
+          verificationUrl: res.verification_url,
+          sessionToken: res.session_token,
+        });
+      } catch (e: any) {
+        if (cancelled) return;
+        const message =
+          e?.message || 'Failed to create verification session';
+        setSession({ phase: 'error', message });
+        Toast.show({ type: 'error', text1: 'Error', text2: message });
+      }
+    }
+
+    initSession();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // On web: initialize Didit SDK when session is ready
+  useEffect(() => {
+    if (
+      Platform.OS !== 'web' ||
+      session.phase !== 'ready' ||
+      sdkInitializedRef.current
+    )
+      return;
+
+    sdkInitializedRef.current = true;
+
+    async function startWebVerification() {
+      if (session.phase !== 'ready') return;
+
+      try {
+        const DiditSdk = await import('@didit-protocol/sdk-web');
+        const sdk = DiditSdk.DiditSdk ?? DiditSdk.default?.DiditSdk ?? DiditSdk;
+
+        if (sdk?.shared?.startVerification) {
+          sdk.shared.startVerification({ url: session.verificationUrl });
+        } else if (sdk?.startVerification) {
+          sdk.startVerification({ url: session.verificationUrl });
+        } else if (typeof sdk === 'function') {
+          sdk({ url: session.verificationUrl });
+        }
+
+        setSession({ phase: 'started' });
+      } catch (err) {
+        // Fallback: open verification_url in an iframe or new window
+        console.warn('Didit SDK import failed, falling back to iframe:', err);
+        if (iframeContainerRef.current && session.phase === 'ready') {
+          const iframe = document.createElement('iframe');
+          iframe.src = session.verificationUrl;
+          iframe.style.width = '100%';
+          iframe.style.height = '700px';
+          iframe.style.border = 'none';
+          iframe.style.borderRadius = '16px';
+          iframe.allow = 'camera; microphone';
+          iframeContainerRef.current.innerHTML = '';
+          iframeContainerRef.current.appendChild(iframe);
+          setSession({ phase: 'started' });
+        }
+      }
+    }
+
+    startWebVerification();
+  }, [session]);
+
+  // On native: start native SDK verification
+  useEffect(() => {
+    if (Platform.OS === 'web' || session.phase !== 'ready') return;
+
+    async function startNativeVerification() {
+      if (session.phase !== 'ready') return;
+
+      try {
+        const DiditSdk = await import('@didit-protocol/sdk-react-native');
+        const sdk = DiditSdk.DiditSdk ?? DiditSdk.default ?? DiditSdk;
+
+        if (sdk?.startVerification) {
+          await sdk.startVerification({ token: session.sessionToken });
+        }
+
+        setSession({ phase: 'started' });
+      } catch (err) {
+        // Fallback: open in browser
+        console.warn('Didit native SDK failed, falling back to browser:', err);
+        const { openBrowserAsync, WebBrowserPresentationStyle } = await import(
+          'expo-web-browser'
+        );
+        if (session.phase === 'ready') {
+          await openBrowserAsync(session.verificationUrl, {
+            presentationStyle: WebBrowserPresentationStyle.FULL_SCREEN,
+            controlsColor: '#94F27F',
+            toolbarColor: '#000000',
+          });
+        }
+        setSession({ phase: 'started' });
+      }
+    }
+
+    startNativeVerification();
+  }, [session]);
+
+  // Poll for verification status after SDK started
+  useEffect(() => {
+    if (session.phase !== 'started') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const status = await withRefreshToken(() =>
+          getDiditVerificationStatus(),
+        );
+        if (!status) return;
 
         if (
-          (res.applicationStatus === RainApplicationStatus.NEEDS_VERIFICATION ||
-            res.applicationStatus === RainApplicationStatus.NEEDS_INFORMATION) &&
-          hasVerificationLink
+          status.status === 'Approved' ||
+          status.kycStatus === 'approved'
         ) {
-          queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-          redirectToRainVerification(res.applicationExternalVerificationLink!);
-          return;
+          clearInterval(interval);
+          setSession({ phase: 'completed' });
+          queryClient.invalidateQueries({
+            queryKey: [CARD_STATUS_QUERY_KEY],
+          });
+          Toast.show({
+            type: 'success',
+            text1: 'Verification complete',
+            text2: 'Your identity has been verified.',
+          });
+          router.replace(String(path.CARD_ACTIVATE) as any);
+        } else if (
+          status.status === 'Declined' ||
+          status.kycStatus === 'rejected'
+        ) {
+          clearInterval(interval);
+          Toast.show({
+            type: 'error',
+            text1: 'Verification failed',
+            text2:
+              'Your identity verification was declined. Please try again.',
+          });
+          setSession({
+            phase: 'error',
+            message: 'Verification declined',
+          });
         }
-
-        queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-        router.replace(String(path.CARD_ACTIVATE) as any);
-      } catch (e: any) {
-        const message =
-          e?.message || (e instanceof Response ? 'Submission failed' : 'Something went wrong');
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: message,
-        });
-      } finally {
-        setSubmitting(false);
+      } catch {
+        // silently retry on network errors
       }
-    },
-    [buildFormData, documentFiles, queryClient, router],
-  );
+    }, 5000);
 
-  const handleFileSelect = useCallback(
-    (key: 'idDocument' | 'idDocumentFront' | 'idDocumentBack' | 'selfie', file: File | null) => {
-      setDocumentFiles(prev => ({ ...prev, [key]: file ?? undefined }));
-    },
-    [],
-  );
+    return () => clearInterval(interval);
+  }, [session.phase, queryClient, router]);
 
-  const handleIdDocumentTypeChange = useCallback(
-    (type: RainDocumentType) => {
-      if (type === 'selfie') return;
-      setDocumentFiles(prev => ({
-        ...prev,
-        idDocumentType: type,
-        idDocument: type === 'passport' ? prev.idDocument : undefined,
-        idDocumentFront: type !== 'passport' ? prev.idDocumentFront : undefined,
-        idDocumentBack: type !== 'passport' ? prev.idDocumentBack : undefined,
-      }));
-      setValue('idDocumentType', type);
-    },
-    [setValue],
-  );
+  const handleRetry = useCallback(async () => {
+    setSession({ phase: 'loading' });
+    sdkInitializedRef.current = false;
+    try {
+      const res = await withRefreshToken(() => createDiditSession());
+      if (!res) return;
+      setSession({
+        phase: 'ready',
+        verificationUrl: res.verification_url,
+        sessionToken: res.session_token,
+      });
+    } catch (e: any) {
+      const message = e?.message || 'Failed to create verification session';
+      setSession({ phase: 'error', message });
+    }
+  }, []);
 
   return (
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 gap-8 px-4 pt-8">
         <View className="flex-row items-center justify-between">
           <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.replace('/')
+            }
             className="flex h-10 w-10 items-center justify-center rounded-full border-0 bg-popover web:transition-colors web:hover:bg-muted"
           >
             <ArrowLeft size={24} color="#FFFFFF" />
@@ -230,25 +228,64 @@ export default function Kyc() {
           <View style={{ width: 40 }} />
         </View>
 
-        <RainKycForm
-          control={control as any}
-          errors={errors as any}
-          documentFiles={documentFiles}
-          onIdDocumentTypeChange={handleIdDocumentTypeChange}
-          onFileSelect={handleFileSelect}
-        />
-        <View className="pb-8 pt-4">
-          <Button
-            variant="brand"
-            onPress={handleSubmit(onSubmit)}
-            disabled={submitting}
-            className="h-14 w-full rounded-xl"
-          >
-            <Text className="text-lg font-semibold text-primary-foreground">
-              {submitting ? 'Submitting...' : 'Submit'}
+        {session.phase === 'loading' && (
+          <View className="flex-1 items-center justify-center py-20">
+            <ActivityIndicator size="large" color="#94F27F" />
+            <Text className="mt-4 text-center text-[#ACACAC]">
+              Preparing verification...
             </Text>
-          </Button>
-        </View>
+          </View>
+        )}
+
+        {session.phase === 'error' && (
+          <View className="flex-1 items-center justify-center gap-4 py-20">
+            <Text className="text-center text-red-400">
+              {session.message}
+            </Text>
+            <Button variant="brand" onPress={handleRetry} className="h-12 rounded-xl px-8">
+              <Text className="font-semibold text-primary-foreground">
+                Try again
+              </Text>
+            </Button>
+          </View>
+        )}
+
+        {(session.phase === 'ready' || session.phase === 'started') && (
+          <View className="flex-1">
+            {Platform.OS === 'web' ? (
+              <View className="flex-1">
+                <div
+                  ref={iframeContainerRef as any}
+                  style={{ width: '100%', minHeight: 600 }}
+                />
+                {session.phase === 'started' && (
+                  <Text className="mt-4 text-center text-sm text-[#ACACAC]">
+                    Complete the verification in the widget above. This page
+                    will update automatically when done.
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <View className="flex-1 items-center justify-center py-20">
+                <ActivityIndicator size="large" color="#94F27F" />
+                <Text className="mt-4 text-center text-[#ACACAC]">
+                  Verification opened. Complete it and return here.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {session.phase === 'completed' && (
+          <View className="flex-1 items-center justify-center py-20">
+            <Text className="text-center text-lg font-semibold text-[#94F27F]">
+              Verification complete!
+            </Text>
+            <Text className="mt-2 text-center text-[#ACACAC]">
+              Redirecting...
+            </Text>
+          </View>
+        )}
       </View>
     </PageLayout>
   );
