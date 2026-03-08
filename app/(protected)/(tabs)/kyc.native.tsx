@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import * as Linking from 'expo-linking';
-import { useRouter } from 'expo-router';
-import { DiditSdk } from '@didit-protocol/sdk-react-native';
+import {
+  startVerification,
+  VerificationStatus,
+} from '@didit-protocol/sdk-react-native';
 
-import { KycStatus } from '@/lib/types';
 import {
   useDiditSession,
   KycLoading,
@@ -14,41 +14,67 @@ import {
 } from '@/components/kyc';
 
 export default function KycNative() {
-  const router = useRouter();
-  const { session, initSession, markStarted } = useDiditSession();
+  const {
+    session,
+    initSession,
+    markStarted,
+    onVerificationComplete,
+    onVerificationError,
+  } = useDiditSession();
 
   const sessionToken = session.phase === 'ready' ? session.sessionToken : null;
-
-  const handleDeepLink = useCallback(
-    (event: { url: string }) => {
-      try {
-        const urlObj = new URL(event.url);
-        if (urlObj.pathname.includes('kyc-complete')) {
-          router.replace({
-            pathname: '/card/activate',
-            params: { kycStatus: KycStatus.APPROVED },
-          });
-        }
-      } catch (err) {
-        console.error('Error parsing deep link:', err);
-      }
-    },
-    [router],
-  );
 
   useEffect(() => {
     if (!sessionToken) return;
 
-    const subscription = Linking.addEventListener('url', handleDeepLink);
+    let cancelled = false;
 
-    DiditSdk.startVerification({ token: sessionToken })
-      .then(() => markStarted())
-      .catch(() => initSession());
+    async function verify() {
+      if (!sessionToken) return;
+
+      markStarted();
+      const result = await startVerification(sessionToken);
+
+      if (cancelled) return;
+
+      switch (result.type) {
+        case 'completed':
+          if (result.session.status === VerificationStatus.Approved) {
+            onVerificationComplete();
+          } else if (result.session.status === VerificationStatus.Declined) {
+            onVerificationError(
+              'Your identity verification was declined.',
+            );
+          }
+          // Pending — polling will handle the final status
+          break;
+        case 'cancelled':
+          initSession();
+          break;
+        case 'failed':
+          onVerificationError(
+            result.error?.message ?? 'Verification failed',
+          );
+          break;
+      }
+    }
+
+    verify().catch(() => {
+      if (!cancelled) {
+        onVerificationError('Failed to start verification');
+      }
+    });
 
     return () => {
-      subscription.remove();
+      cancelled = true;
     };
-  }, [sessionToken, handleDeepLink, markStarted, initSession]);
+  }, [
+    sessionToken,
+    markStarted,
+    initSession,
+    onVerificationComplete,
+    onVerificationError,
+  ]);
 
   return (
     <View style={styles.container}>

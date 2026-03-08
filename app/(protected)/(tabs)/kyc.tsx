@@ -15,8 +15,14 @@ import {
 
 export default function KycWeb() {
   const router = useRouter();
-  const { session, sdkInitializedRef, initSession, markStarted } =
-    useDiditSession();
+  const {
+    session,
+    sdkInitializedRef,
+    initSession,
+    markStarted,
+    onVerificationComplete,
+    onVerificationError,
+  } = useDiditSession();
 
   const verificationUrl =
     session.phase === 'ready' ? session.verificationUrl : null;
@@ -26,14 +32,41 @@ export default function KycWeb() {
 
     sdkInitializedRef.current = true;
 
-    try {
-      DiditSdk.startVerification({ url: verificationUrl });
-      markStarted();
-    } catch {
-      sdkInitializedRef.current = false;
-      initSession();
-    }
-  }, [verificationUrl, sdkInitializedRef, markStarted, initSession]);
+    DiditSdk.shared.onComplete = (result) => {
+      switch (result.type) {
+        case 'completed':
+          if (result.session?.status === 'Approved') {
+            onVerificationComplete();
+          } else if (result.session?.status === 'Declined') {
+            onVerificationError('Your identity verification was declined.');
+          }
+          // 'Pending' — polling will handle the final status
+          break;
+        case 'cancelled':
+          sdkInitializedRef.current = false;
+          initSession();
+          break;
+        case 'failed':
+          sdkInitializedRef.current = false;
+          onVerificationError(result.error?.message ?? 'Verification failed');
+          break;
+      }
+    };
+
+    DiditSdk.shared.startVerification({ url: verificationUrl });
+    markStarted();
+
+    return () => {
+      DiditSdk.shared.onComplete = undefined;
+    };
+  }, [
+    verificationUrl,
+    sdkInitializedRef,
+    markStarted,
+    initSession,
+    onVerificationComplete,
+    onVerificationError,
+  ]);
 
   return (
     <PageLayout desktopOnly>
