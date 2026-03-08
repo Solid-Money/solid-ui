@@ -512,6 +512,48 @@ export const submitRainKyc = async (
   return response.json();
 };
 
+// --- Didit identity verification ---
+
+/** Create a Didit verification session. Backend creates the session and returns session_id, session_token, verification_url. */
+export const createDiditSession = async (
+  callback?: string,
+): Promise<import('./types').DiditSessionResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      body: JSON.stringify(callback ? { callback } : {}),
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Get the current user's Didit verification status. */
+export const getDiditVerificationStatus =
+  async (): Promise<import('./types').DiditVerificationStatusResponse> => {
+    const jwt = getJWTToken();
+    const response = await fetch(
+      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/status`,
+      {
+        credentials: 'include',
+        headers: {
+          ...getPlatformHeaders(),
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+        },
+      },
+    );
+    if (!response.ok) throw response;
+    return response.json();
+  };
+
 // The backend retrieves the customer by querying the database
 export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
   const jwt = getJWTToken();
