@@ -39,9 +39,17 @@ export function useDiditSession() {
         });
         return;
       }
+      const verificationUrl = res.verification_url ?? res.url;
+      if (!verificationUrl) {
+        setSession({
+          phase: 'error',
+          message: 'No verification URL in session response',
+        });
+        return;
+      }
       setSession({
         phase: 'ready',
-        verificationUrl: res.verification_url,
+        verificationUrl,
         sessionToken: res.session_token,
       });
     } catch (e: any) {

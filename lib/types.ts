@@ -539,11 +539,14 @@ export type RainDocumentType =
 
 // --- Didit identity verification ---
 
-/** Response from POST /accounts/v1/didit/session. */
+/** Response from POST /accounts/v1/didit/session. Backend may return Didit's raw `url` or our `verification_url`. */
 export interface DiditSessionResponse {
   session_id: string;
   session_token: string;
-  verification_url: string;
+  /** Preferred; if missing, use `url` (Didit API shape). */
+  verification_url?: string;
+  /** Didit API returns this; use when verification_url is absent. */
+  url?: string;
   status: string;
 }
 

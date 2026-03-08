@@ -13,6 +13,8 @@ import {
   KycCompleted,
 } from '@/components/kyc';
 
+const DIDIT_EMBED_CONTAINER_ID = 'didit-verification-container';
+
 export default function KycWeb() {
   const router = useRouter();
   const {
@@ -53,7 +55,13 @@ export default function KycWeb() {
       }
     };
 
-    DiditSdk.shared.startVerification({ url: verificationUrl });
+    DiditSdk.shared.startVerification({
+      url: verificationUrl,
+      configuration: {
+        embedded: true,
+        embeddedContainerId: DIDIT_EMBED_CONTAINER_ID,
+      },
+    });
     markStarted();
 
     return () => {
@@ -93,10 +101,11 @@ export default function KycWeb() {
         )}
 
         {(session.phase === 'ready' || session.phase === 'started') && (
-          <Text className="mt-4 text-center text-sm text-[#ACACAC]">
-            Complete the verification in the Didit window. This page will
-            update automatically when done.
-          </Text>
+          <View
+            id={DIDIT_EMBED_CONTAINER_ID}
+            className="mt-4 min-h-[600px] w-full"
+            style={{ minHeight: 600 }}
+          />
         )}
 
         {session.phase === 'completed' && <KycCompleted />}
