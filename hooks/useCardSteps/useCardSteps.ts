@@ -4,7 +4,6 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
-import { useFingerprint } from '@/hooks/useFingerprint';
 import { track } from '@/lib/analytics';
 import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { CardStatusResponse, KycStatus } from '@/lib/types';
@@ -14,7 +13,6 @@ import { useKycStore } from '@/store/useKycStore';
 
 // Import helpers
 import { shouldStopKycFlow } from './endorsementHelpers';
-import { observeFingerprintBeforeKyc } from './fingerprintHelpers';
 import {
   checkAndBlockForCountryAccess,
   redirectToCollectUserInfo,
@@ -55,9 +53,6 @@ export function useCardSteps(
       countryDetectionFailed: state.countryDetectionFailed,
     })),
   );
-
-  // Get fingerprint SDK for duplicate device detection
-  const { getVisitorData } = useFingerprint();
 
   // Get customer data with cards endorsement
   const { data: customer } = useCustomer();
@@ -119,17 +114,6 @@ export function useCardSteps(
     const isBlocked = await checkAndBlockForCountryAccess(countryStore, kycLinkId);
     if (isBlocked) return;
 
-    // Fingerprint observation + duplicate device check (fail fast before KYC)
-    const fingerprintResult = await observeFingerprintBeforeKyc(getVisitorData);
-    if (!fingerprintResult.canProceed) {
-      track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
-        action: 'blocked',
-        reason: fingerprintResult.reason,
-        kycLinkId,
-      });
-      return;
-    }
-
     // Check latest KYC status
     try {
       if (kycLinkId) {
@@ -185,15 +169,7 @@ export function useCardSteps(
     // Try to get a fresh KYC URL with redirect_uri, or fall back to user info collection
     if (await redirectToExistingCustomerKycLink(router, kycLinkId)) return;
     redirectToCollectUserInfo(router);
-  }, [
-    router,
-    kycLinkId,
-    uiKycStatus,
-    processingUntil,
-    countryStore,
-    cardsEndorsement?.status,
-    getVisitorData,
-  ]);
+  }, [router, kycLinkId, uiKycStatus, processingUntil, countryStore, cardsEndorsement?.status]);
 
   // Build steps based on endorsement status
   const steps = useMemo(
