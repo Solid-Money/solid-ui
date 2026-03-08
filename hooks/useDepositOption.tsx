@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, PressableProps, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
@@ -95,8 +95,6 @@ const useDepositOption = ({
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const { triggerElement } = useResponsiveModal();
-  const previousVaultNameRef = useRef<string | null>(null);
-
   const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(
     isForm && (address || (depositFromSolid && !!user?.safeAddress)),
@@ -595,15 +593,6 @@ const useDepositOption = ({
       setModal(DEPOSIT_MODAL.CLOSE);
     };
   }, [setModal]);
-
-  useEffect(() => {
-    if (!vault?.name) return;
-    if (previousVaultNameRef.current && previousVaultNameRef.current !== vault.name) {
-      setModal(DEPOSIT_MODAL.CLOSE);
-      resetDepositFlow();
-    }
-    previousVaultNameRef.current = vault.name;
-  }, [vault?.name, resetDepositFlow, setModal]);
 
   // Open the modal for all states except when explicitly closed
   const shouldOpen = !isClose;
