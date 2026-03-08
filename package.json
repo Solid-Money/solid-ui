@@ -36,6 +36,8 @@
     "@apollo/client": "^4.1.0",
     "@braintree/browser-detection": "^2.1.0",
     "@coinbase/wallet-mobile-sdk": "^1.1.2",
+    "@didit-protocol/sdk-react-native": "^1.0.0",
+    "@didit-protocol/sdk-web": "^1.0.0",
     "@cryptoalgebra/fuse-sdk": "npm:@cryptoalgebra/fuse-sdk@latest",
     "@expo-google-fonts/mona-sans": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
