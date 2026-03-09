@@ -132,8 +132,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-build-properties',
       {
-        buildReactNativeFromSource: true,
-        useHermesV1: true,
         ios: {
           deploymentTarget: '15.1',
           useFrameworks: 'static',
@@ -234,6 +232,5 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   updates: {
     url: 'https://u.expo.dev/a788e592-4267-44da-8afc-a667075c20d4',
-    enableBsdiffPatchSupport: true,
   },
 });
