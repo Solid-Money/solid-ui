@@ -135,6 +135,12 @@ const DialogContent = React.forwardRef<
       }
     }, [isWebBounce, open, opacityWeb, translateYWeb]);
 
+    React.useEffect(() => {
+      if (Platform.OS === 'web' && open) {
+        (document.activeElement as HTMLElement)?.blur();
+      }
+    }, [open]);
+
     const webBounceStyle = useAnimatedStyle(() => {
       if (!isWebBounce) return {};
       return {
