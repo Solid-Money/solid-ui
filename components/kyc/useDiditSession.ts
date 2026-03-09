@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import Toast from 'react-native-toast-message';
 
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
 import { createDiditSession, getDiditVerificationStatus } from '@/lib/api';
-import { path } from '@/constants/path';
 import { withRefreshToken } from '@/lib/utils';
 
 export type SessionState =
@@ -74,17 +74,14 @@ export function useDiditSession() {
     router.replace(String(path.CARD_ACTIVATE) as any);
   }, [queryClient, router]);
 
-  const onVerificationError = useCallback(
-    (message: string) => {
-      Toast.show({
-        type: 'error',
-        text1: 'Verification failed',
-        text2: message,
-      });
-      setSession({ phase: 'error', message });
-    },
-    [],
-  );
+  const onVerificationError = useCallback((message: string) => {
+    Toast.show({
+      type: 'error',
+      text1: 'Verification failed',
+      text2: message,
+    });
+    setSession({ phase: 'error', message });
+  }, []);
 
   // Poll for verification status while SDK is active
   useEffect(() => {
@@ -92,25 +89,15 @@ export function useDiditSession() {
 
     const interval = setInterval(async () => {
       try {
-        const status = await withRefreshToken(() =>
-          getDiditVerificationStatus(),
-        );
+        const status = await withRefreshToken(() => getDiditVerificationStatus());
         if (!status) return;
 
-        if (
-          status.status === 'Approved' ||
-          status.kycStatus === 'approved'
-        ) {
+        if (status.status === 'Approved' || status.kycStatus === 'approved') {
           clearInterval(interval);
           onVerificationComplete();
-        } else if (
-          status.status === 'Declined' ||
-          status.kycStatus === 'rejected'
-        ) {
+        } else if (status.status === 'Declined' || status.kycStatus === 'rejected') {
           clearInterval(interval);
-          onVerificationError(
-            'Your identity verification was declined. Please try again.',
-          );
+          onVerificationError('Your identity verification was declined. Please try again.');
         }
       } catch {
         // silently retry on network errors
@@ -127,7 +114,6 @@ export function useDiditSession() {
 
   return {
     session,
-    sdkInitializedRef,
     initSession,
     markStarted,
     onVerificationComplete,

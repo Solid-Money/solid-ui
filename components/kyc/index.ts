@@ -1,8 +1,3 @@
-export { useDiditSession } from './useDiditSession';
+export { KycCompleted, KycError, KycLoading, KycNativeWaiting } from './KycStatusViews';
 export type { SessionState } from './useDiditSession';
-export {
-  KycLoading,
-  KycError,
-  KycCompleted,
-  KycNativeWaiting,
-} from './KycStatusViews';
+export { useDiditSession } from './useDiditSession';
