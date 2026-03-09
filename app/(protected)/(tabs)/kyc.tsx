@@ -1,218 +1,62 @@
-import React, { useCallback, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
+import { DiditSdk } from '@didit-protocol/sdk-web';
 import { ArrowLeft } from 'lucide-react-native';
 
+import { KycCompleted, KycError, KycLoading, useDiditSession } from '@/components/kyc';
 import PageLayout from '@/components/PageLayout';
-import {
-  type RainKycDocumentFiles,
-  RainKycForm,
-  type RainKycFormData,
-  rainKycFormSchema,
-} from '@/components/RainKyc';
-import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
-import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
-import { track } from '@/lib/analytics';
-import { getClientIp, submitRainKyc } from '@/lib/api';
-import { redirectToRainVerification } from '@/lib/rainVerification';
-import { RainApplicationStatus, type RainDocumentType } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
 
-const defaultDocumentFiles: RainKycDocumentFiles = {
-  idDocumentType: 'passport',
-  idDocument: null,
-  idDocumentFront: null,
-  idDocumentBack: null,
-  selfie: null,
-};
+const DIDIT_EMBED_CONTAINER_ID = 'didit-verification-container';
 
-export default function Kyc() {
+export default function KycWeb() {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const [documentFiles, setDocumentFiles] = useState<RainKycDocumentFiles>(defaultDocumentFiles);
-  const [submitting, setSubmitting] = useState(false);
+  const { session, initSession, markStarted, onVerificationComplete, onVerificationError } =
+    useDiditSession();
+  const hasStartedRef = useRef(false);
 
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<RainKycFormData>({
-    resolver: zodResolver(rainKycFormSchema),
-    mode: 'onChange',
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      birthDate: '',
-      nationalId: '',
-      countryOfIssue: '',
-      email: '',
-      street: '',
-      city: '',
-      region: '',
-      postalCode: '',
-      country: '',
-      occupation: '',
-      annualSalary: '',
-      accountPurpose: '',
-      expectedMonthlyVolume: '',
-      phoneCountryCode: '',
-      phoneNumber: '',
-      isTermsOfServiceAccepted: false,
-      agreedToEsign: false,
-      agreedToAccountOpeningPrivacy: false,
-      agreedToCertify: false,
-      agreedToNoSolicitation: false,
-      idDocumentType: 'passport',
-    },
-  });
+  const verificationUrl = session.phase === 'ready' ? session.verificationUrl : null;
 
-  const buildFormData = useCallback(
-    async (data: RainKycFormData): Promise<FormData> => {
-      const formData = new FormData();
-      formData.append('firstName', data.firstName);
-      formData.append('lastName', data.lastName);
-      formData.append('birthDate', data.birthDate);
-      formData.append('nationalId', data.nationalId);
-      formData.append('countryOfIssue', data.countryOfIssue);
-      formData.append('email', data.email);
-      formData.append('street', data.street);
-      formData.append('city', data.city);
-      formData.append('region', data.region);
-      formData.append('postalCode', data.postalCode);
-      formData.append('country', data.country);
-      formData.append('occupation', data.occupation);
-      formData.append('annualSalary', data.annualSalary);
-      formData.append('accountPurpose', data.accountPurpose);
-      formData.append('expectedMonthlyVolume', data.expectedMonthlyVolume);
-      formData.append('isTermsOfServiceAccepted', String(data.isTermsOfServiceAccepted === true));
-      formData.append('agreedToEsign', String(data.agreedToEsign === true));
-      formData.append(
-        'agreedToAccountOpeningPrivacy',
-        String(data.agreedToAccountOpeningPrivacy === true),
-      );
-      formData.append('agreedToCertify', String(data.agreedToCertify === true));
-      formData.append('agreedToNoSolicitation', String(data.agreedToNoSolicitation === true));
-      const ip = await getClientIp();
-      if (ip) formData.append('ipAddress', ip);
-      formData.append('phoneCountryCode', data.phoneCountryCode);
-      formData.append('phoneNumber', data.phoneNumber);
+  useEffect(() => {
+    if (!verificationUrl || hasStartedRef.current) return;
 
-      formData.append('idDocumentType', data.idDocumentType);
-      if (data.idDocumentType === 'passport' && documentFiles.idDocument) {
-        formData.append('idDocument', documentFiles.idDocument);
-      } else {
-        if (documentFiles.idDocumentFront) {
-          formData.append('idDocumentFront', documentFiles.idDocumentFront);
-          formData.append('idDocumentFrontSide', 'front');
-        }
-        if (documentFiles.idDocumentBack) {
-          formData.append('idDocumentBack', documentFiles.idDocumentBack);
-          formData.append('idDocumentBackSide', 'back');
-        }
+    hasStartedRef.current = true;
+
+    DiditSdk.shared.onComplete = result => {
+      switch (result.type) {
+        case 'completed':
+          if (result.session?.status === 'Approved') {
+            onVerificationComplete();
+          } else if (result.session?.status === 'Declined') {
+            onVerificationError('Your identity verification was declined.');
+          }
+          // 'Pending' — polling will handle the final status
+          break;
+        case 'cancelled':
+          hasStartedRef.current = false;
+          initSession();
+          break;
+        case 'failed':
+          hasStartedRef.current = false;
+          onVerificationError(result.error?.message ?? 'Verification failed');
+          break;
       }
-      if (documentFiles.selfie) {
-        formData.append('selfie', documentFiles.selfie);
-      }
-      return formData;
-    },
-    [documentFiles],
-  );
+    };
 
-  const onSubmit = useCallback(
-    async (data: RainKycFormData) => {
-      const isPassport = data.idDocumentType === 'passport';
-      if (isPassport && !documentFiles.idDocument) {
-        Toast.show({
-          type: 'error',
-          text1: 'Upload required',
-          text2: 'Please upload your passport',
-        });
-        return;
-      }
-      if (!isPassport && (!documentFiles.idDocumentFront || !documentFiles.idDocumentBack)) {
-        Toast.show({
-          type: 'error',
-          text1: 'Upload required',
-          text2: 'Please upload front and back of ID document',
-        });
-        return;
-      }
-      if (!documentFiles.selfie) {
-        Toast.show({
-          type: 'error',
-          text1: 'Upload required',
-          text2: 'Please upload a selfie',
-        });
-        return;
-      }
+    DiditSdk.shared.startVerification({
+      url: verificationUrl,
+      configuration: {
+        embedded: true,
+        embeddedContainerId: DIDIT_EMBED_CONTAINER_ID,
+      },
+    });
+    markStarted();
 
-      setSubmitting(true);
-      track(TRACKING_EVENTS.KYC_LINK_PAGE_LOADED, { mode: 'rain_submit' });
-      try {
-        const formData = await buildFormData(data);
-        const res = await withRefreshToken(() => submitRainKyc(formData));
-        if (!res) return;
-
-        const hasVerificationLink =
-          res.applicationExternalVerificationLink?.url &&
-          Object.keys(res.applicationExternalVerificationLink.params ?? {}).length > 0;
-
-        if (
-          (res.applicationStatus === RainApplicationStatus.NEEDS_VERIFICATION ||
-            res.applicationStatus === RainApplicationStatus.NEEDS_INFORMATION) &&
-          hasVerificationLink
-        ) {
-          queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-          redirectToRainVerification(res.applicationExternalVerificationLink!);
-          return;
-        }
-
-        queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-        router.replace(String(path.CARD_ACTIVATE) as any);
-      } catch (e: any) {
-        const message =
-          e?.message || (e instanceof Response ? 'Submission failed' : 'Something went wrong');
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: message,
-        });
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [buildFormData, documentFiles, queryClient, router],
-  );
-
-  const handleFileSelect = useCallback(
-    (key: 'idDocument' | 'idDocumentFront' | 'idDocumentBack' | 'selfie', file: File | null) => {
-      setDocumentFiles(prev => ({ ...prev, [key]: file ?? undefined }));
-    },
-    [],
-  );
-
-  const handleIdDocumentTypeChange = useCallback(
-    (type: RainDocumentType) => {
-      if (type === 'selfie') return;
-      setDocumentFiles(prev => ({
-        ...prev,
-        idDocumentType: type,
-        idDocument: type === 'passport' ? prev.idDocument : undefined,
-        idDocumentFront: type !== 'passport' ? prev.idDocumentFront : undefined,
-        idDocumentBack: type !== 'passport' ? prev.idDocumentBack : undefined,
-      }));
-      setValue('idDocumentType', type);
-    },
-    [setValue],
-  );
+    return () => {
+      DiditSdk.shared.onComplete = undefined;
+    };
+  }, [verificationUrl, markStarted, initSession, onVerificationComplete, onVerificationError]);
 
   return (
     <PageLayout desktopOnly>
@@ -230,25 +74,19 @@ export default function Kyc() {
           <View style={{ width: 40 }} />
         </View>
 
-        <RainKycForm
-          control={control as any}
-          errors={errors as any}
-          documentFiles={documentFiles}
-          onIdDocumentTypeChange={handleIdDocumentTypeChange}
-          onFileSelect={handleFileSelect}
-        />
-        <View className="pb-8 pt-4">
-          <Button
-            variant="brand"
-            onPress={handleSubmit(onSubmit)}
-            disabled={submitting}
-            className="h-14 w-full rounded-xl"
-          >
-            <Text className="text-lg font-semibold text-primary-foreground">
-              {submitting ? 'Submitting...' : 'Submit'}
-            </Text>
-          </Button>
-        </View>
+        {session.phase === 'loading' && <KycLoading />}
+
+        {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
+
+        {(session.phase === 'ready' || session.phase === 'started') && (
+          <View
+            id={DIDIT_EMBED_CONTAINER_ID}
+            className="mt-4 min-h-[600px] w-full"
+            style={{ minHeight: 600 }}
+          />
+        )}
+
+        {session.phase === 'completed' && <KycCompleted />}
       </View>
     </PageLayout>
   );

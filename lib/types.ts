@@ -494,6 +494,26 @@ export type RainDocumentType =
   | 'residencePermit'
   | 'selfie';
 
+// --- Didit identity verification ---
+
+/** Response from POST /accounts/v1/didit/session. Backend may return Didit's raw `url` or our `verification_url`. */
+export interface DiditSessionResponse {
+  session_id: string;
+  session_token: string;
+  /** Preferred; if missing, use `url` (Didit API shape). */
+  verification_url?: string;
+  /** Didit API returns this; use when verification_url is absent. */
+  url?: string;
+  status: string;
+}
+
+/** Response from GET /accounts/v1/didit/status. */
+export interface DiditVerificationStatusResponse {
+  status: string;
+  kycStatus: KycStatus;
+  sessionId?: string;
+}
+
 // --- Rain balance (cents) ---
 export interface CardBalanceResponseDto {
   creditLimit?: number;

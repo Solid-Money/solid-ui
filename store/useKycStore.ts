@@ -10,6 +10,10 @@ interface KycState {
   processingUntil: number | null;
   setProcessingUntil: (ts: number) => void;
   clearProcessingUntil: () => void;
+  /** Didit verification session ID (from backend). */
+  diditSessionId: string | null;
+  setDiditSessionId: (sessionId: string) => void;
+  clearDiditSessionId: () => void;
 }
 
 const KYC_STORAGE_KEY = 'kyc-store';
@@ -19,6 +23,7 @@ export const useKycStore = create<KycState>()(
     set => ({
       kycLinkId: null,
       processingUntil: null,
+      diditSessionId: null,
 
       setKycLinkId: (kycLinkId: string) => {
         set({ kycLinkId });
@@ -34,6 +39,14 @@ export const useKycStore = create<KycState>()(
 
       clearProcessingUntil: () => {
         set({ processingUntil: null });
+      },
+
+      setDiditSessionId: (sessionId: string) => {
+        set({ diditSessionId: sessionId });
+      },
+
+      clearDiditSessionId: () => {
+        set({ diditSessionId: null });
       },
     }),
     {
