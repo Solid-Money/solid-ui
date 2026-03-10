@@ -78,7 +78,7 @@ const QRScannerOverlay: React.FC<QRScannerOverlayProps> = ({
   const horizontalOffset = (SCREEN_WIDTH - scanAreaSize) / 2;
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* Top overlay */}
       <View style={[styles.overlay, { height: verticalOffset }]} />
 

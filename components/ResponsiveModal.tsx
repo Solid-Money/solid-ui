@@ -60,6 +60,7 @@ export interface ResponsiveModalProps {
   // Layout
   /** Disable ScrollView wrapper when children manage their own scrolling (e.g. FlatList, camera views) */
   disableScroll?: boolean;
+  hideHeader?: boolean;
 }
 
 const ResponsiveModal = ({
@@ -80,6 +81,7 @@ const ResponsiveModal = ({
   isForward = currentModal.number > previousModal.number,
   contentKey,
   disableScroll = false,
+  hideHeader = false,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
   const dialogHeight = useSharedValue(0);
@@ -123,7 +125,7 @@ const ResponsiveModal = ({
   }, []);
 
   const hasBackButton = showBackButton && !!onBackPress;
-  const hasHeader = !!title || hasBackButton;
+  const hasHeader = !hideHeader && (!!title || hasBackButton);
   const hasActionButton = hasBackButton && !!actionButton;
 
   return (
@@ -145,7 +147,7 @@ const ResponsiveModal = ({
               dialogHeight.value = event.nativeEvent.layout.height;
             }}
           >
-            {hasHeader ? (
+            {hideHeader ? null : hasHeader ? (
               <DialogHeader
                 className={cn('flex-row items-center justify-between gap-2', titleClassName)}
               >
@@ -181,7 +183,12 @@ const ResponsiveModal = ({
               </View>
             )}
             {disableScroll ? (
-              <Animated.View entering={contentEntering} exiting={contentExiting} key={contentKey}>
+              <Animated.View
+                entering={contentEntering}
+                exiting={contentExiting}
+                key={contentKey}
+                style={hideHeader ? { flex: 1 } : undefined}
+              >
                 {children}
               </Animated.View>
             ) : (
