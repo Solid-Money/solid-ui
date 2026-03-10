@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Linking, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Wallet as WalletIcon } from 'lucide-react-native';
-import { isAddress } from 'viem';
 import { arbitrum } from 'viem/chains';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -11,21 +10,28 @@ import { useShallow } from 'zustand/react/shallow';
 import ToDestinationSelector from '@/components/Card/ToDestinationSelector';
 import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
+import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import { useCardDetails } from '@/hooks/useCardDetails';
-import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import { withdrawCardCollateral, withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
+import {
+  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
+  EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
+} from '@/lib/config';
 import { CardProvider } from '@/lib/types';
-import { cn, formatNumber } from '@/lib/utils';
+import {
+  CARD_DEPOSIT_TOKEN_DECIMALS,
+  cn,
+  formatNumber,
+  getCardDepositTokenSymbol,
+} from '@/lib/utils';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
-const USDC_DECIMALS = 6;
-
-type FormData = { amount: string; to: CardDepositSource; recipientAddress?: string };
+type FormData = { amount: string; to: CardDepositSource };
 
 function getExplorerTxUrl(chainId: number | undefined, txHash: string): string {
   const base = chainId === arbitrum.id ? 'https://arbiscan.io' : 'https://etherscan.io';
@@ -34,8 +40,7 @@ function getExplorerTxUrl(chainId: number | undefined, txHash: string): string {
 
 export default function CardWithdrawForm() {
   const { user } = useUser();
-  const { provider } = useCardProvider();
-  const { data: cardDetails, refetch } = useCardDetails();
+  const { data: cardDetails, refetch, isLoading: isCardDetailsLoading } = useCardDetails();
   const { data: contracts } = useCardContracts();
   const { setModal, setTransaction } = useCardWithdrawStore(
     useShallow(state => ({ setModal: state.setModal, setTransaction: state.setTransaction })),
@@ -44,36 +49,27 @@ export default function CardWithdrawForm() {
   const spendableAmount = Number(cardDetails?.balances?.available?.amount ?? 0);
   const formattedBalance = formatNumber(spendableAmount, 2, 2);
 
-  const firstContract = contracts?.[0];
-  const collateralBalanceRaw = firstContract?.tokens?.[0]?.balance;
-  const collateralBalanceSmallestUnits = collateralBalanceRaw ? BigInt(collateralBalanceRaw) : 0n;
-  const collateralAvailable = Number(collateralBalanceSmallestUnits) / 10 ** USDC_DECIMALS;
-  const collateralFormatted =
-    collateralBalanceRaw != null ? formatNumber(collateralAvailable, 2, 2) : '—';
+  const fundingContract = contracts?.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID);
+  const depositTokenSymbol = getCardDepositTokenSymbol(CardProvider.RAIN);
+
+  // Use card spending balance for withdraw (same as card details). Collateral API may differ.
+  const collateralAvailable = spendableAmount;
+  const collateralFormatted = formattedBalance;
 
   const { control, handleSubmit, formState, watch, setValue, setError, clearErrors, trigger } =
     useForm<FormData>({
       mode: 'onChange',
       defaultValues: {
         amount: '',
-        to: CardDepositSource.SAVINGS,
-        recipientAddress: '',
+        to: CardDepositSource.COLLATERAL,
       },
     });
 
   const watchedAmount = watch('amount');
   const watchedTo = watch('to');
-  const watchedRecipient = watch('recipientAddress');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isCollateral = watchedTo === CardDepositSource.COLLATERAL;
-  const showCollateralOption = provider === CardProvider.RAIN;
-
-  useEffect(() => {
-    if (isCollateral && user?.safeAddress) {
-      setValue('recipientAddress', user.safeAddress);
-    }
-  }, [isCollateral, user?.safeAddress, setValue]);
 
   const schema = useMemo(
     () =>
@@ -96,24 +92,17 @@ export default function CardWithdrawForm() {
           .string()
           .refine(val => val !== '' && !isNaN(Number(val)), { message: 'Enter a valid amount' })
           .refine(val => Number(val) >= 1, { message: 'Minimum withdrawal is $1' })
-          .refine(val => collateralBalanceRaw == null || Number(val) <= collateralAvailable, {
+          .refine(val => Number(val) <= collateralAvailable, {
             message: `Amount exceeds available (${collateralFormatted} available)`,
           }),
-        recipientAddress: z
-          .string()
-          .min(1, 'Recipient address is required')
-          .refine(addr => isAddress(addr.trim()), 'Enter a valid Ethereum address'),
       }),
-    [collateralBalanceRaw, collateralAvailable, collateralFormatted],
+    [collateralAvailable, collateralFormatted],
   );
 
   const validationError = useMemo(() => {
     if (isCollateral) {
-      if (!watchedAmount && !watchedRecipient) return null;
-      const parsed = collateralSchema.safeParse({
-        amount: watchedAmount,
-        recipientAddress: watchedRecipient ?? '',
-      });
+      if (!watchedAmount) return null;
+      const parsed = collateralSchema.safeParse({ amount: watchedAmount });
       if (parsed.success) return null;
       return parsed.error.issues[0]?.message ?? null;
     }
@@ -125,7 +114,7 @@ export default function CardWithdrawForm() {
       const err = error as { issues?: { message?: string }[] };
       return err.issues?.[0]?.message ?? null;
     }
-  }, [watchedAmount, watchedRecipient, isCollateral, schema, collateralSchema]);
+  }, [watchedAmount, isCollateral, schema, collateralSchema]);
 
   const onSubmit = useCallback(
     async (data: FormData) => {
@@ -133,16 +122,10 @@ export default function CardWithdrawForm() {
       const toCollateral = data.to === CardDepositSource.COLLATERAL;
 
       if (toCollateral) {
-        const parsed = collateralSchema.safeParse({
-          amount: data.amount,
-          recipientAddress: (data.recipientAddress ?? '').trim(),
-        });
+        const parsed = collateralSchema.safeParse({ amount: data.amount });
         if (!parsed.success) {
           const msg = parsed.error.issues[0]?.message ?? 'Invalid input';
           setError('amount', { message: msg });
-          if (parsed.error.issues[0]?.path?.includes('recipientAddress')) {
-            setError('recipientAddress', { message: msg });
-          }
           return;
         }
       } else {
@@ -180,25 +163,27 @@ export default function CardWithdrawForm() {
             text2: `$${data.amount} is being sent to your Savings.`,
           });
         } else if (toCollateral) {
-          const recipientAddress = (data.recipientAddress ?? '').trim();
           const amountInSmallestUnits = Math.round(
-            parseFloat(data.amount) * 10 ** USDC_DECIMALS,
+            parseFloat(data.amount) * 10 ** CARD_DEPOSIT_TOKEN_DECIMALS,
           ).toString();
           const res = await withdrawCardCollateral({
             amount: amountInSmallestUnits,
-            recipientAddress,
-            ...(firstContract?.chainId != null && { chainId: firstContract.chainId }),
+            recipientAddress: user!.safeAddress!,
+            ...(fundingContract?.chainId != null && { chainId: fundingContract.chainId }),
+            ...(EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS && {
+              tokenAddress: EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
+            }),
           });
           setTransaction({
             amount: Number(data.amount),
             clientTxId: res.transactionHash,
             to: data.to,
             transactionHash: res.transactionHash,
-            chainId: firstContract?.chainId,
+            chainId: fundingContract?.chainId,
           });
           setModal(CARD_WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS);
           await refetch();
-          const explorerUrl = getExplorerTxUrl(firstContract?.chainId, res.transactionHash);
+          const explorerUrl = getExplorerTxUrl(fundingContract?.chainId, res.transactionHash);
           Toast.show({
             type: 'success',
             text1: 'Withdrawal started',
@@ -254,7 +239,7 @@ export default function CardWithdrawForm() {
       schema,
       collateralSchema,
       setError,
-      firstContract?.chainId,
+      fundingContract?.chainId,
     ],
   );
 
@@ -271,18 +256,19 @@ export default function CardWithdrawForm() {
           <View className="flex-row items-center gap-2">
             <View className="flex-row items-center gap-1">
               <WalletIcon color="#A1A1A1" size={16} />
-              <Text className="font-medium opacity-50">${availableFormatted}</Text>
+              {isCardDetailsLoading ? (
+                <Skeleton className="h-5 w-14 rounded-md" />
+              ) : (
+                <Text className="font-medium opacity-50">${availableFormatted}</Text>
+              )}
             </View>
             <Max
               onPress={() => {
-                const value = isCollateral
-                  ? collateralBalanceRaw != null
-                    ? collateralFormatted
-                    : '0'
-                  : formattedBalance;
+                const value = isCollateral ? collateralFormatted : formattedBalance;
                 setValue('amount', value);
                 trigger('amount');
               }}
+              disabled={isCardDetailsLoading}
             />
           </View>
         </View>
@@ -316,7 +302,7 @@ export default function CardWithdrawForm() {
         </View>
       </View>
 
-      {/* To - destination dropdown */}
+      {/* To - destination (Wallet) */}
       <View className="gap-2">
         <Text className="font-medium opacity-50">To</Text>
         <Controller
@@ -326,48 +312,16 @@ export default function CardWithdrawForm() {
             <ToDestinationSelector
               value={value}
               onChange={onChange}
-              showCollateralOption={showCollateralOption}
+              tokenSymbol={depositTokenSymbol}
             />
           )}
         />
       </View>
 
-      {isCollateral && (
-        <View className="gap-2">
-          <Text className="font-medium opacity-50">Recipient address</Text>
-          <Controller
-            control={control}
-            name="recipientAddress"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                className={cn(
-                  'w-full rounded-2xl bg-accent px-5 py-3 text-base text-foreground',
-                  formState.errors.recipientAddress && 'border border-red-500',
-                )}
-                value={value ?? ''}
-                placeholder="0x..."
-                placeholderTextColor="#666"
-                onChangeText={v => {
-                  clearErrors('recipientAddress');
-                  onChange(v);
-                }}
-                onBlur={onBlur}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            )}
-          />
-        </View>
-      )}
-
       <View className="flex-1">
-        {(validationError ??
-        formState.errors.amount?.message ??
-        formState.errors.recipientAddress?.message) ? (
+        {(validationError ?? formState.errors.amount?.message) ? (
           <Text className="text-sm text-red-500">
-            {validationError ??
-              formState.errors.amount?.message ??
-              formState.errors.recipientAddress?.message}
+            {validationError ?? formState.errors.amount?.message}
           </Text>
         ) : null}
       </View>

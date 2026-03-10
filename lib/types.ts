@@ -98,6 +98,7 @@ export interface WithdrawCollateralRequest {
   recipientAddress: string;
   chainId?: number;
   token?: string;
+  tokenAddress?: string;
 }
 
 export interface WithdrawCollateralResponse {
