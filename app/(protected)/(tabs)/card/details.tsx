@@ -31,7 +31,6 @@ import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardWithdrawAllowed } from '@/hooks/useCardWithdrawAllowed';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
@@ -46,7 +45,6 @@ export default function CardDetails() {
   const { provider } = useCardProvider();
   const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
-  const isWithdrawAllowed = useCardWithdrawAllowed();
 
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
@@ -127,8 +125,8 @@ export default function CardDetails() {
         isLoadingCardDetails={isLoadingCardDetails}
         onCardDetails={handleCardFlip}
         onFreezeToggle={handleFreezeToggle}
-        isWithdrawAllowed={isWithdrawAllowed}
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
+        isRain={provider === CardProvider.RAIN}
       />
     </View>
   ) : (
@@ -226,8 +224,8 @@ export default function CardDetails() {
             isLoadingCardDetails={isLoadingCardDetails}
             onCardDetails={handleCardFlip}
             onFreezeToggle={handleFreezeToggle}
-            isWithdrawAllowed={isWithdrawAllowed}
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
+            isRain={provider === CardProvider.RAIN}
           />
           <BorrowPositionCard className="mb-4" />
           <DepositBonusBanner />
@@ -272,8 +270,8 @@ interface DesktopHeaderProps {
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
-  isWithdrawAllowed: boolean;
   isWithdrawFromCardAllowed: boolean;
+  isRain: boolean;
 }
 
 function DesktopHeader({
@@ -284,8 +282,8 @@ function DesktopHeader({
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
-  isWithdrawAllowed,
   isWithdrawFromCardAllowed,
+  isRain,
 }: DesktopHeaderProps) {
   return (
     <View className="flex-row justify-between">
@@ -335,7 +333,7 @@ function DesktopHeader({
             </View>
           </Button>
         )}
-        {isWithdrawAllowed && (
+        {isRain && isWithdrawFromCardAllowed && (
           <WithdrawToCardModal
             trigger={
               <Button variant="secondary" className="h-12 rounded-xl border-0 bg-[#303030] px-6">
@@ -748,8 +746,8 @@ interface CardActionsProps {
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
-  isWithdrawAllowed: boolean;
   isWithdrawFromCardAllowed: boolean;
+  isRain: boolean;
 }
 
 function CardActions({
@@ -760,8 +758,8 @@ function CardActions({
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
-  isWithdrawAllowed,
   isWithdrawFromCardAllowed,
+  isRain,
 }: CardActionsProps) {
   return (
     <View className="mb-8 flex-row items-center justify-evenly">
@@ -790,7 +788,7 @@ function CardActions({
           isLoading={isFreezing}
         />
       )}
-      {isWithdrawAllowed && (
+      {isRain && isWithdrawFromCardAllowed && (
         <WithdrawToCardModal
           trigger={
             <CircularActionButton
