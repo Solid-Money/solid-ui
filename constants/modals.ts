@@ -203,6 +203,33 @@ export const SWAP_MODAL = {
   },
 };
 
+export const SPIN_WIN_MODAL = {
+  CLOSE: {
+    name: 'close',
+    number: 0,
+  },
+  OPEN_HOME: {
+    name: 'open_home',
+    number: 1,
+  },
+  OPEN_WHEEL: {
+    name: 'open_wheel',
+    number: 2,
+  },
+  OPEN_RESULT: {
+    name: 'open_result',
+    number: 3,
+  },
+  OPEN_SUMMARY: {
+    name: 'open_summary',
+    number: 4,
+  },
+  OPEN_GIVEAWAY: {
+    name: 'open_giveaway',
+    number: 5,
+  },
+};
+
 // Card deposit modal (two-step flow)
 export const CARD_DEPOSIT_MODAL = {
   CLOSE: {

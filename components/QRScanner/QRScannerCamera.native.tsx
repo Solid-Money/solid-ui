@@ -47,7 +47,7 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
     <View style={styles.container}>
       {/* Camera */}
       <CameraView
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         facing="back"
         enableTorch={flashEnabled}
         barcodeScannerSettings={{
