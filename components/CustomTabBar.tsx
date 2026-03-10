@@ -151,6 +151,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    overflow: 'hidden',
     // @ts-ignore - web CSS
     backdropFilter: Platform.OS === 'web' ? 'blur(10px)' : undefined,
   },
