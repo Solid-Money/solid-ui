@@ -7,6 +7,7 @@ import DepositFromSafeAccountModalProvider from '@/components/Deposit/DepositFro
 import DepositModalProvider from '@/components/DepositOption/DepositModalProvider';
 import TierModalProvider from '@/components/Rewards/TierModalProvider';
 import SendModalProvider from '@/components/Send/SendModalProvider';
+import SpinWinModalProvider from '@/components/SpinAndWin/SpinWinModalProvider';
 import StakeModalProvider from '@/components/Stake/StakeModalProvider';
 import SwapModalProvider from '@/components/Swap/SwapModalProvider';
 import UnstakeModalProvider from '@/components/Unstake/UnstakeModalProvider';
@@ -43,6 +44,7 @@ const DeferredModalProviders = () => {
     <>
       <DepositModalProvider />
       <SendModalProvider />
+      <SpinWinModalProvider />
       <SwapModalProvider />
       <WithdrawModalProvider />
       <StakeModalProvider />

@@ -12,7 +12,7 @@ export default function TabBarBackground() {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(17, 17, 17, 0.5)',
   },
 });

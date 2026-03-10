@@ -3,16 +3,17 @@ import { Animated, View } from 'react-native';
 import LottieView from 'lottie-react-native';
 
 import {
+  ANIMATION_FPS,
   getTargetAngle,
   prepareLottieSource,
-  PRIZE_REVEAL_DELAY_MS,
+  TARGET_PATCH_START_FRAME,
 } from '@/components/SpinAndWin/prepareLottieSource';
 import { Text } from '@/components/ui/text';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
 
-/** Native dimensions of the spin-wheel.json animation (wheel-only asset). */
 const ANIMATION_WIDTH = 419;
-const ANIMATION_HEIGHT = 440;
+const ANIMATION_HEIGHT = 810;
+const RESULT_REVEAL_HOLD_MS = 450;
 
 interface SpinWheelCarouselProps {
   onSpinComplete: (points: number) => void;
@@ -26,90 +27,146 @@ export default function SpinWheelCarousel({
   resultPoints,
 }: SpinWheelCarouselProps) {
   const lottieRef = useRef<LottieView>(null);
-  const spinComplete = useRef(false);
-  const revealTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const spinStarted = useRef(false);
+  const handoffReached = useRef(false);
+  const pendingResultPoints = useRef<number | undefined>();
+  const handoffTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const targetedSpinStartRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Animated value for the prize text reveal (scale spring)
   const prizeScale = useRef(new Animated.Value(0)).current;
   const prizeOpacity = useRef(new Animated.Value(0)).current;
   const [showPrize, setShowPrize] = useState(false);
+  const [playbackResultPoints, setPlaybackResultPoints] = useState<number | undefined>();
 
-  // Prepare the Lottie source with the correct rotation for the result
   const lottieSource = useMemo(() => {
-    if (resultPoints == null) {
-      // Default source with reveal layers hidden but base rotation
-      return prepareLottieSource(getTargetAngle(1000));
-    }
-    const angle = getTargetAngle(resultPoints);
-    return prepareLottieSource(angle);
-  }, [resultPoints]);
+    const targetPoints = playbackResultPoints ?? 10000;
+    return prepareLottieSource(getTargetAngle(targetPoints));
+  }, [playbackResultPoints]);
 
-  // Start animation when spinning with a result
+  const resetPrizeReveal = useCallback(() => {
+    setShowPrize(false);
+    prizeScale.setValue(0);
+    prizeOpacity.setValue(0);
+  }, [prizeOpacity, prizeScale]);
+
+  const revealPrize = useCallback(() => {
+    setShowPrize(true);
+    Animated.parallel([
+      Animated.spring(prizeScale, {
+        toValue: 1,
+        friction: 6,
+        tension: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(prizeOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [prizeOpacity, prizeScale]);
+
   useEffect(() => {
-    if (isSpinning && resultPoints && !spinComplete.current) {
-      spinComplete.current = true;
-
-      // Small delay to ensure the new source is rendered before playing
-      requestAnimationFrame(() => {
-        lottieRef.current?.play();
-      });
-
-      // Schedule the prize text reveal
-      revealTimer.current = setTimeout(() => {
-        setShowPrize(true);
-        // Animate scale from 0 -> 1 with a spring effect
-        Animated.parallel([
-          Animated.spring(prizeScale, {
-            toValue: 1,
-            friction: 6,
-            tension: 100,
-            useNativeDriver: true,
-          }),
-          Animated.timing(prizeOpacity, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }, PRIZE_REVEAL_DELAY_MS);
+    if (!isSpinning || spinStarted.current) {
+      return;
     }
-  }, [isSpinning, resultPoints, prizeScale, prizeOpacity]);
 
-  // Reset when not spinning
+    spinStarted.current = true;
+    handoffReached.current = false;
+    pendingResultPoints.current = resultPoints;
+    setPlaybackResultPoints(undefined);
+    resetPrizeReveal();
+
+    lottieRef.current?.play(0, TARGET_PATCH_START_FRAME);
+
+    const handoffDelayMs = (TARGET_PATCH_START_FRAME / ANIMATION_FPS) * 1000;
+    handoffTimerRef.current = setTimeout(() => {
+      handoffReached.current = true;
+
+      if (pendingResultPoints.current != null) {
+        setPlaybackResultPoints(pendingResultPoints.current);
+      }
+    }, handoffDelayMs);
+  }, [isSpinning, resetPrizeReveal, resultPoints]);
+
+  useEffect(() => {
+    pendingResultPoints.current = resultPoints;
+
+    if (!isSpinning || resultPoints == null || !handoffReached.current) {
+      return;
+    }
+
+    setPlaybackResultPoints(resultPoints);
+  }, [isSpinning, resultPoints]);
+
+  useEffect(() => {
+    if (!isSpinning || playbackResultPoints == null) {
+      return;
+    }
+
+    targetedSpinStartRef.current = setTimeout(() => {
+      lottieRef.current?.play(TARGET_PATCH_START_FRAME);
+    }, 50);
+
+    return () => {
+      if (targetedSpinStartRef.current) {
+        clearTimeout(targetedSpinStartRef.current);
+      }
+    };
+  }, [isSpinning, playbackResultPoints]);
+
   useEffect(() => {
     if (!isSpinning) {
-      spinComplete.current = false;
-      lottieRef.current?.reset();
+      spinStarted.current = false;
+      handoffReached.current = false;
+      pendingResultPoints.current = undefined;
+      setPlaybackResultPoints(undefined);
 
-      // Clear any pending reveal timer
-      if (revealTimer.current) {
-        clearTimeout(revealTimer.current);
-        revealTimer.current = null;
+      if (handoffTimerRef.current) {
+        clearTimeout(handoffTimerRef.current);
+        handoffTimerRef.current = null;
       }
 
-      // Reset prize overlay state
-      setShowPrize(false);
-      prizeScale.setValue(0);
-      prizeOpacity.setValue(0);
-    }
-  }, [isSpinning, prizeScale, prizeOpacity]);
+      if (completionTimerRef.current) {
+        clearTimeout(completionTimerRef.current);
+        completionTimerRef.current = null;
+      }
 
-  // Cleanup on unmount
+      lottieRef.current?.reset();
+      resetPrizeReveal();
+    }
+  }, [isSpinning, resetPrizeReveal]);
+
   useEffect(() => {
     return () => {
-      if (revealTimer.current) {
-        clearTimeout(revealTimer.current);
+      if (handoffTimerRef.current) {
+        clearTimeout(handoffTimerRef.current);
+      }
+      if (targetedSpinStartRef.current) {
+        clearTimeout(targetedSpinStartRef.current);
+      }
+      if (completionTimerRef.current) {
+        clearTimeout(completionTimerRef.current);
       }
     };
   }, []);
 
   const handleAnimationFinish = useCallback(
     (isCancelled: boolean) => {
-      if (!isCancelled && resultPoints) {
-        onSpinComplete(resultPoints);
+      if (!isCancelled && playbackResultPoints != null) {
+        revealPrize();
+
+        if (completionTimerRef.current) {
+          clearTimeout(completionTimerRef.current);
+        }
+
+        completionTimerRef.current = setTimeout(() => {
+          onSpinComplete(playbackResultPoints);
+        }, RESULT_REVEAL_HOLD_MS);
       }
     },
-    [onSpinComplete, resultPoints],
+    [onSpinComplete, playbackResultPoints, revealPrize],
   );
 
   return (
@@ -121,21 +178,22 @@ export default function SpinWheelCarousel({
         overflow: 'hidden',
       }}
     >
-      {/* Lottie spin wheel animation — 120% width for zoom, aspect ratio preserved */}
       <LottieView
+        key={playbackResultPoints ?? 'idle'}
         ref={lottieRef}
         source={lottieSource}
         loop={false}
         autoPlay={false}
         style={{
-          width: '120%',
+          width: '100%',
+          maxWidth: ANIMATION_WIDTH,
           aspectRatio: ANIMATION_WIDTH / ANIMATION_HEIGHT,
+          marginBottom: 200,
         }}
         resizeMode="cover"
         onAnimationFinish={handleAnimationFinish}
       />
 
-      {/* Animated prize reveal overlay – appears after wheel settles */}
       {showPrize && resultPoints != null && (
         <Animated.View
           pointerEvents="none"

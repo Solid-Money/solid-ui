@@ -7,15 +7,16 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Text } from '@/components/ui/text';
-import { path } from '@/constants/path';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
+import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 
 interface CountdownRevealProps {
   onComplete: () => void;
+  onClose?: () => void;
 }
 
 function CountdownNumber({ number, onDone }: { number: number; onDone: () => void }) {
@@ -69,8 +70,9 @@ function CountdownNumber({ number, onDone }: { number: number; onDone: () => voi
   );
 }
 
-export default function CountdownReveal({ onComplete }: CountdownRevealProps) {
+export default function CountdownReveal({ onComplete, onClose }: CountdownRevealProps) {
   const [currentNumber, setCurrentNumber] = useState(3);
+  const resetSpinWinModal = useSpinWinModalStore(state => state.reset);
 
   const handleDone = () => {
     if (currentNumber > 1) {
@@ -94,7 +96,7 @@ export default function CountdownReveal({ onComplete }: CountdownRevealProps) {
           headerLeft: () => null,
           headerRight: () => (
             <TouchableOpacity
-              onPress={() => router.navigate(path.SPIN_WIN as never)}
+              onPress={onClose ?? resetSpinWinModal}
               style={{
                 width: 40,
                 height: 40,

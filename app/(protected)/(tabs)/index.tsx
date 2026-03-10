@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { Platform, TouchableOpacity, View } from 'react-native';
-import { router } from 'expo-router';
 import { Address } from 'viem';
 
 import CountUp from '@/components/CountUp';
@@ -17,11 +16,12 @@ import DesktopCards from '@/components/Wallet/DesktopCards';
 import LazyWalletTabs from '@/components/Wallet/LazyWalletTabs';
 import MobileCards from '@/components/Wallet/MobileCards';
 import TokenListSkeleton from '@/components/Wallet/WalletTokenTab/TokenListSkeleton';
-import { path } from '@/constants/path';
+import { SPIN_WIN_MODAL } from '@/constants/modals';
 import { useUserTransactions } from '@/hooks/useAnalytics';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
+import { useCurrentGiveaway, useGiveawayCountdown } from '@/hooks/useGiveaway';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
 import { useSpinStatus } from '@/hooks/useSpinWin';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
@@ -31,6 +31,7 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { useIntercom } from '@/lib/intercom';
 import { SavingMode } from '@/lib/types';
 import { fontSize, hasCard } from '@/lib/utils';
+import { useSpinWinModalStore } from '@/store/useSpinWinModalStore';
 import { useUserStore } from '@/store/useUserStore';
 
 export default function Home() {
@@ -44,10 +45,13 @@ export default function Home() {
     refetch: refetchBalance,
   } = useVaultBalance(user?.safeAddress as Address);
   const updateUser = useUserStore(state => state.updateUser);
+  const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const intercom = useIntercom();
   const { data: cardStatus } = useCardStatus();
   const { data: cardDetails } = useCardDetails();
   const { data: spinStatus } = useSpinStatus();
+  const { data: giveaway } = useCurrentGiveaway();
+  const countdown = useGiveawayCountdown(giveaway?.giveawayDate);
 
   const userHasCard = hasCard(cardStatus);
 
@@ -244,7 +248,11 @@ export default function Home() {
             <SpinWinCard
               currentStreak={spinStatus?.currentStreak ?? 0}
               spinAvailable={spinStatus?.spinAvailableToday ?? true}
-              onPress={() => router.push(path.SPIN_WIN)}
+              lastSpinDate={spinStatus?.lastSpinDate ?? null}
+              prizePool={giveaway?.prizePool}
+              countdown={countdown}
+              giveawayDate={giveaway?.giveawayDate}
+              onPress={() => openSpinWinModal(SPIN_WIN_MODAL.OPEN_HOME)}
             />
           )}
           <LazyHomeBanners />
