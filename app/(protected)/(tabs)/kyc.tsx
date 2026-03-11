@@ -62,13 +62,17 @@ export default function KycWeb() {
       },
     });
     markStarted();
+  }, [verificationUrl, markStarted, initSession, onVerificationComplete, onVerificationPending, onVerificationError]);
 
+  // Clean up SDK on unmount only. This is separate from the init effect above
+  // because markStarted() changes the phase to 'started', which nullifies
+  // verificationUrl and would otherwise trigger the cleanup immediately,
+  // destroying the widget right after it appears.
+  useEffect(() => {
     return () => {
-      // Fully destroy SDK instance to clean up iframe, event listeners, and DOM elements.
-      // Only unsetting onComplete leaves stale refs that can interfere with the navbar.
       DiditSdk.reset();
     };
-  }, [verificationUrl, markStarted, initSession, onVerificationComplete, onVerificationPending, onVerificationError]);
+  }, []);
 
   return (
     <PageLayout desktopOnly>
