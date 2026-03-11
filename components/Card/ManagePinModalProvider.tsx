@@ -15,8 +15,8 @@ import ManagePinForm from './ManagePinForm';
 const ManagePinModalProvider = () => {
   const { currentModal, previousModal, setModal } = useCardPinStore(
     useShallow(state => ({
-      currentModal: state.currentModal ?? CARD_PIN_MODAL.CLOSE,
-      previousModal: state.previousModal ?? CARD_PIN_MODAL.CLOSE,
+      currentModal: state.currentModal,
+      previousModal: state.previousModal,
       setModal: state.setModal,
     })),
   );

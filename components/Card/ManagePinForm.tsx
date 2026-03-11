@@ -1,137 +1,138 @@
-import React, { useCallback, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, EyeOff } from 'lucide-react-native';
-import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { getCardPin, updateCardPin } from '@/lib/api';
 import { EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM } from '@/lib/config';
-import { decryptPin, encryptPin, generateSessionId } from '@/lib/utils/rainCardSecrets';
-import { withRefreshToken } from '@/lib/utils/utils';
+import { getCardPin, updateCardPin } from '@/lib/api';
+import {
+  generateSessionId,
+  encryptPin,
+  decryptPin,
+} from '@/lib/utils/rainCardSecrets';
+
+const PIN_VALIDATION_ERRORS = {
+  LENGTH: 'PIN must be between 4 and 12 digits',
+  DIGITS_ONLY: 'PIN must contain only digits',
+  SIMPLE_SEQUENCE: 'PIN cannot be a simple sequence (e.g., 1234)',
+  REPEATED: 'PIN cannot be all repeated digits (e.g., 1111)',
+};
 
 function isSimpleSequence(pin: string): boolean {
-  let ascending = true;
-  let descending = true;
   for (let i = 1; i < pin.length; i++) {
-    if (parseInt(pin[i]) !== parseInt(pin[i - 1]) + 1) ascending = false;
-    if (parseInt(pin[i]) !== parseInt(pin[i - 1]) - 1) descending = false;
+    if (parseInt(pin[i]) !== parseInt(pin[i - 1]) + 1) return false;
   }
-  return ascending || descending;
+  return true;
 }
 
 function isRepeatedDigits(pin: string): boolean {
   return pin.split('').every(d => d === pin[0]);
 }
 
-const pinSchema = z.object({
-  pin: z
-    .string()
-    .min(4, { message: 'PIN must be between 4 and 12 digits' })
-    .max(12, { message: 'PIN must be between 4 and 12 digits' })
-    .regex(/^\d+$/, { message: 'PIN must contain only digits' })
-    .refine(val => !isSimpleSequence(val), {
-      message: 'PIN cannot be a simple sequence (e.g., 1234)',
-    })
-    .refine(val => !isRepeatedDigits(val), {
-      message: 'PIN cannot be all repeated digits (e.g., 1111)',
-    }),
-});
-
-type PinFormData = z.infer<typeof pinSchema>;
-
-const CARD_PIN_QUERY_KEY = 'cardPin';
+function validatePin(pin: string): string | null {
+  if (pin.length < 4 || pin.length > 12) return PIN_VALIDATION_ERRORS.LENGTH;
+  if (!/^\d+$/.test(pin)) return PIN_VALIDATION_ERRORS.DIGITS_ONLY;
+  if (isSimpleSequence(pin)) return PIN_VALIDATION_ERRORS.SIMPLE_SEQUENCE;
+  if (isRepeatedDigits(pin)) return PIN_VALIDATION_ERRORS.REPEATED;
+  return null;
+}
 
 export default function ManagePinForm() {
+  const [pin, setPin] = useState('');
+  const [existingPin, setExistingPin] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
-  const queryClient = useQueryClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingPin, setIsFetchingPin] = useState(true);
+  const [hasExistingPin, setHasExistingPin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const {
-    control,
-    handleSubmit,
-    setValue,
-    formState: { errors, isValid },
-    reset,
-  } = useForm<PinFormData>({
-    resolver: zodResolver(pinSchema) as any,
-    mode: 'onChange',
-    defaultValues: { pin: '' },
-  });
-
-  const { data: existingPin, isLoading: isFetchingPin } = useQuery({
-    queryKey: [CARD_PIN_QUERY_KEY],
-    queryFn: async () => {
-      if (!EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) return null;
+  const fetchExistingPin = useCallback(async () => {
+    if (!EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) {
+      setIsFetchingPin(false);
+      return;
+    }
+    try {
+      setIsFetchingPin(true);
       const { secretKey, sessionId } = await generateSessionId(
         EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
       );
-      const response = await withRefreshToken(() => getCardPin(sessionId));
-      if (!response) return null;
-      return decryptPin(response.encryptedPin.data, response.encryptedPin.iv, secretKey);
-    },
-    retry: false,
-    gcTime: 0,
-    staleTime: 0,
-  });
+      const response = await getCardPin(sessionId);
+      const decryptedPin = await decryptPin(
+        response.encryptedPin.data,
+        response.encryptedPin.iv,
+        secretKey,
+      );
+      setExistingPin(decryptedPin);
+      setHasExistingPin(true);
+    } catch {
+      // No PIN set yet or error fetching - that's OK
+      setHasExistingPin(false);
+    } finally {
+      setIsFetchingPin(false);
+    }
+  }, []);
 
-  const hasExistingPin = !!existingPin;
+  useEffect(() => {
+    fetchExistingPin();
+  }, [fetchExistingPin]);
 
-  const updatePinMutation = useMutation({
-    mutationFn: async (pin: string) => {
-      if (!EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) {
-        throw new Error('Rain card public key not configured');
-      }
+  const handleRevealPin = useCallback(() => {
+    setShowPin(prev => !prev);
+  }, []);
+
+  const handleUpdatePin = useCallback(async () => {
+    const validationError = validatePin(pin);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    if (!EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) {
+      setError('Rain card public key not configured');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
       const { secretKey, sessionId } = await generateSessionId(
         EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
       );
       const { encryptedPin: encData, encodedIv } = await encryptPin(pin, secretKey);
-      return withRefreshToken(() => updateCardPin(sessionId, { iv: encodedIv, data: encData }));
-    },
-    onSuccess: () => {
+
+      await updateCardPin(sessionId, { iv: encodedIv, data: encData });
+
       Toast.show({
         type: 'success',
         text1: 'PIN updated',
         text2: 'Your card PIN has been updated successfully.',
         visibilityTime: 4000,
-        props: {
-          badgeText: '',
-        },
       });
-      reset();
+
+      setExistingPin(pin);
+      setHasExistingPin(true);
+      setPin('');
       setShowPin(false);
-      queryClient.invalidateQueries({ queryKey: [CARD_PIN_QUERY_KEY] });
-    },
-    onError: () => {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to update PIN',
-        text2: 'Please try again.',
-        props: { badgeText: '' },
-      });
-    },
-  });
-
-  const onSubmit = useCallback(
-    (data: PinFormData) => {
-      updatePinMutation.mutate(data.pin);
-    },
-    [updatePinMutation],
-  );
-
-  const handleRevealPin = useCallback(() => {
-    if (!showPin && existingPin) {
-      setValue('pin', existingPin, { shouldValidate: true });
+    } catch {
+      setError('Failed to update PIN. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    setShowPin(prev => !prev);
-  }, [showPin, existingPin, setValue]);
+  }, [pin]);
+
+  const handlePinChange = useCallback((text: string) => {
+    // Only allow digits
+    const digitsOnly = text.replace(/[^0-9]/g, '');
+    setPin(digitsOnly);
+    setError(null);
+  }, []);
 
   if (isFetchingPin) {
     return (
-      <View className="flex-1 items-center justify-center px-1 pt-4" style={{ minHeight: 220 }}>
+      <View className="flex-1 items-center justify-center py-12">
         <ActivityIndicator size="large" color="white" />
       </View>
     );
@@ -139,52 +140,67 @@ export default function ManagePinForm() {
 
   return (
     <View className="flex-1 px-1 pt-4">
-      <View className="mb-4">
-        <Text className="mb-2 text-sm font-medium text-white/70">
-          {hasExistingPin ? 'New PIN' : 'PIN'}
-        </Text>
-        <View className="flex-row items-center rounded-xl bg-[#1E1E1E] px-4 py-3">
-          <Controller
-            control={control}
-            name="pin"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                value={value}
-                onChangeText={text => onChange(text.replace(/[^0-9]/g, ''))}
-                onBlur={onBlur}
-                placeholder={hasExistingPin ? '****' : ''}
-                placeholderTextColor="#666"
-                secureTextEntry={!showPin}
-                keyboardType="number-pad"
-                maxLength={12}
-                className="flex-1 text-lg text-white web:focus:outline-none"
-                accessibilityLabel="PIN input"
-              />
-            )}
-          />
-          {hasExistingPin && (
+      <Text className="mb-2 text-sm text-white/60">
+        {hasExistingPin ? 'Enter a new PIN to update your card PIN' : 'Set a PIN for your card'}
+      </Text>
+
+      {/* Existing PIN display */}
+      {hasExistingPin && (
+        <View className="mb-6">
+          <Text className="mb-2 text-sm font-medium text-white/70">Current PIN</Text>
+          <View className="flex-row items-center rounded-xl bg-[#1E1E1E] px-4 py-3">
+            <Text className="flex-1 text-lg tracking-[8px] text-white">
+              {showPin && existingPin ? existingPin : '****'}
+            </Text>
             <Pressable
               onPress={handleRevealPin}
               className="p-2 web:hover:opacity-70"
               accessibilityLabel={showPin ? 'Hide PIN' : 'Show PIN'}
               accessibilityRole="button"
             >
-              {showPin ? <EyeOff size={20} color="#BFBFBF" /> : <Eye size={20} color="#BFBFBF" />}
+              {showPin ? (
+                <EyeOff size={20} color="#BFBFBF" />
+              ) : (
+                <Eye size={20} color="#BFBFBF" />
+              )}
             </Pressable>
-          )}
+          </View>
         </View>
-        {errors.pin && <Text className="mt-2 text-sm text-red-400">{errors.pin.message}</Text>}
+      )}
+
+      {/* New PIN input */}
+      <View className="mb-4">
+        <Text className="mb-2 text-sm font-medium text-white/70">
+          {hasExistingPin ? 'New PIN' : 'PIN'}
+        </Text>
+        <View className="flex-row items-center rounded-xl bg-[#1E1E1E] px-4 py-3">
+          <TextInput
+            value={pin}
+            onChangeText={handlePinChange}
+            placeholder={hasExistingPin ? '****' : 'Enter PIN'}
+            placeholderTextColor="#666"
+            secureTextEntry
+            keyboardType="number-pad"
+            maxLength={12}
+            className="flex-1 text-lg text-white"
+            accessibilityLabel="PIN input"
+          />
+        </View>
+        {error && (
+          <Text className="mt-2 text-sm text-red-400">{error}</Text>
+        )}
         <Text className="mt-2 text-xs text-white/40">
           PIN must be 4-12 digits. No simple sequences or repeated digits.
         </Text>
       </View>
 
+      {/* Update button */}
       <Button
-        onPress={handleSubmit(onSubmit)}
-        disabled={updatePinMutation.isPending || !isValid}
-        className="mt-4 h-12 rounded-xl bg-[#94F27F]"
+        onPress={handleUpdatePin}
+        disabled={isLoading || pin.length < 4}
+        className="mt-4 h-14 rounded-xl bg-[#94F27F]"
       >
-        {updatePinMutation.isPending ? (
+        {isLoading ? (
           <ActivityIndicator size="small" color="black" />
         ) : (
           <Text className="text-base font-bold text-black">
