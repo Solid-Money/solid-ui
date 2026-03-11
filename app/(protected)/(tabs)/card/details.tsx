@@ -151,6 +151,7 @@ export default function CardDetails() {
                 cardholderName={cardDetails?.cardholder_name}
                 shouldRevealDetails={shouldRevealDetails}
                 onCardDetailsLoaded={handleCardDetailsLoaded}
+                provider={provider}
               />
             </View>
           </View>
@@ -199,6 +200,7 @@ export default function CardDetails() {
             cardholderName={cardDetails?.cardholder_name}
             shouldRevealDetails={shouldRevealDetails}
             onCardDetailsLoaded={handleCardDetailsLoaded}
+            provider={provider}
           />
           <CardActions
             isCardFrozen={isCardFrozen}
@@ -419,6 +421,7 @@ interface CardImageSectionProps {
   cardholderName?: CardHolderName;
   shouldRevealDetails: boolean;
   onCardDetailsLoaded: () => void;
+  provider?: CardProvider | null;
 }
 
 function CardImageSection({
@@ -429,6 +432,7 @@ function CardImageSection({
   cardholderName,
   shouldRevealDetails,
   onCardDetailsLoaded,
+  provider,
 }: CardImageSectionProps) {
   const desktopImagePath = isCardFrozen
     ? getAsset('images/card_frozen.png')
@@ -497,6 +501,7 @@ function CardImageSection({
               cardholderName={cardholderName}
               onDetailsLoaded={onCardDetailsLoaded}
               visible={isCardFlipped}
+              provider={provider}
             />
           )}
         </Animated.View>
@@ -509,14 +514,16 @@ interface CardDetailsOverlayProps {
   cardholderName?: CardHolderName;
   onDetailsLoaded: () => void;
   visible?: boolean;
+  provider?: CardProvider | null;
 }
 
 function CardDetailsOverlay({
   cardholderName,
   onDetailsLoaded,
   visible = false,
+  provider,
 }: CardDetailsOverlayProps) {
-  const { cardDetails, isLoading, error, revealDetails } = useCardDetailsReveal();
+  const { cardDetails, isLoading, error, revealDetails } = useCardDetailsReveal(provider);
   const hasRevealedRef = useRef(false);
   const hasNotifiedLoadedRef = useRef(false);
   const clipboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
