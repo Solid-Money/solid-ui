@@ -45,8 +45,9 @@ export const EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL =
   process.env.EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL ?? '';
-export const EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM =
-  process.env.EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM ?? '';
+export const EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM = (
+  process.env.EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM ?? ''
+).replace(/\\n/g, '\n');
 export const EXPO_PUBLIC_CARD_ISSUER = process.env.EXPO_PUBLIC_CARD_ISSUER as
   | CardProvider
   | undefined;
