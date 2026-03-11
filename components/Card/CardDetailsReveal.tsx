@@ -48,7 +48,8 @@ export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose })
   };
 
   const formatExpiryDate = (expiryDate: string) => {
-    // Convert YYYY-MM-DD to MM/YY format
+    // Rain returns MM/YY directly; Bridge returns YYYY-MM-DD
+    if (/^\d{2}\/\d{2}$/.test(expiryDate)) return expiryDate;
     const date = new Date(expiryDate);
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear().toString().slice(-2);

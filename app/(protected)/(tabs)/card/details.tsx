@@ -604,6 +604,8 @@ function CardDetailsOverlay({
   };
 
   const formatExpiryDate = (expiryDate: string) => {
+    // Rain returns MM/YY directly; Bridge returns YYYY-MM-DD
+    if (/^\d{2}\/\d{2}$/.test(expiryDate)) return expiryDate;
     const date = new Date(expiryDate);
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear().toString().slice(-2);
