@@ -4,7 +4,6 @@ import {
   Alert,
   Animated,
   Linking,
-  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -16,9 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Copy, Plus } from 'lucide-react-native';
 
-import AddToAppleWalletWeb from '@/components/Card/AddToAppleWalletWeb';
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
-import AddToWalletRain from '@/components/Card/AddToWalletRain';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
@@ -165,11 +162,6 @@ export default function CardDetails() {
             </View>
             <View className="flex-[2]">
               <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
-              {Platform.OS === 'web' && provider === CardProvider.RAIN && (
-                <View className="mt-4">
-                  <AddToAppleWalletWeb />
-                </View>
-              )}
             </View>
           </View>
 
@@ -184,19 +176,11 @@ export default function CardDetails() {
           </View>
         </View>
 
-        {provider === CardProvider.RAIN ? (
-          <AddToWalletRain
-            isOpen={isAddToWalletModalOpen}
-            onOpenChange={setIsAddToWalletModalOpen}
-            trigger={null}
-          />
-        ) : (
-          <AddToWalletModal
-            isOpen={isAddToWalletModalOpen}
-            onOpenChange={setIsAddToWalletModalOpen}
-            trigger={null}
-          />
-        )}
+        <AddToWalletModal
+          isOpen={isAddToWalletModalOpen}
+          onOpenChange={setIsAddToWalletModalOpen}
+          trigger={null}
+        />
       </PageLayout>
     );
   }
@@ -232,28 +216,15 @@ export default function CardDetails() {
           <CashbackDisplay cashback={cardDetails?.cashback} />
           <ViewCardTransactionsButton />
           <AddToWalletButton onPress={() => setIsAddToWalletModalOpen(true)} />
-          {Platform.OS === 'web' && provider === CardProvider.RAIN && (
-            <View className="mt-4">
-              <AddToAppleWalletWeb />
-            </View>
-          )}
           <View className="h-32"></View>
         </View>
       </View>
 
-      {provider === CardProvider.RAIN ? (
-        <AddToWalletRain
-          isOpen={isAddToWalletModalOpen}
-          onOpenChange={setIsAddToWalletModalOpen}
-          trigger={null}
-        />
-      ) : (
-        <AddToWalletModal
-          isOpen={isAddToWalletModalOpen}
-          onOpenChange={setIsAddToWalletModalOpen}
-          trigger={null}
-        />
-      )}
+      <AddToWalletModal
+        isOpen={isAddToWalletModalOpen}
+        onOpenChange={setIsAddToWalletModalOpen}
+        trigger={null}
+      />
     </PageLayout>
   );
 }
