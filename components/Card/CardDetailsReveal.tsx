@@ -20,8 +20,7 @@ interface CardDetailsRevealProps {
  */
 export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose }) => {
   const { provider } = useCardProvider();
-  const { cardDetails, isLoading, error, revealDetails, clearCardDetails } =
-    useCardDetailsReveal(provider);
+  const { cardDetails, isLoading, error, revealDetails, clearCardDetails } = useCardDetailsReveal(provider);
 
   // Auto-fetch card details when component mounts
   useEffect(() => {
@@ -49,8 +48,7 @@ export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose })
   };
 
   const formatExpiryDate = (expiryDate: string) => {
-    // Rain returns MM/YY directly; Bridge returns YYYY-MM-DD
-    if (/^\d{2}\/\d{2}$/.test(expiryDate)) return expiryDate;
+    // Convert YYYY-MM-DD to MM/YY format
     const date = new Date(expiryDate);
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear().toString().slice(-2);

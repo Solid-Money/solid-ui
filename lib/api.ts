@@ -36,6 +36,7 @@ import {
   CardBalanceResponseDto,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
+  CardProvider,
   CardResponse,
   CardSecretsResponseDto,
   CardPinResponseDto,
@@ -2189,9 +2190,22 @@ export const revealCardDetailsCompleteRain = async (): Promise<CardDetailsReveal
 };
 
 /**
- * Complete card details reveal flow. Tries Rain (secrets) first; on 400 falls back to Bridge (ephemeral key).
+ * Complete card details reveal flow.
+ * When a provider is supplied the correct path is used directly.
+ * Otherwise falls back to the previous heuristic (try Rain first when PEM is
+ * configured, then Bridge on 400).
  */
-export const revealCardDetailsComplete = async (): Promise<CardDetailsRevealResponse> => {
+export const revealCardDetailsComplete = async (
+  provider?: CardProvider,
+): Promise<CardDetailsRevealResponse> => {
+  if (provider === CardProvider.RAIN) {
+    return revealCardDetailsCompleteRain();
+  }
+  if (provider === CardProvider.BRIDGE) {
+    return revealCardDetailsCompleteBridge();
+  }
+
+  // Fallback when provider is unknown: try Rain if PEM configured, else Bridge
   if (EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) {
     try {
       return await revealCardDetailsCompleteRain();
