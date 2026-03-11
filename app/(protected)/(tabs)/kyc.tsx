@@ -12,8 +12,14 @@ const DIDIT_EMBED_CONTAINER_ID = 'didit-verification-container';
 
 export default function KycWeb() {
   const router = useRouter();
-  const { session, initSession, markStarted, onVerificationComplete, onVerificationError } =
-    useDiditSession();
+  const {
+    session,
+    initSession,
+    markStarted,
+    onVerificationComplete,
+    onVerificationPending,
+    onVerificationError,
+  } = useDiditSession();
   const hasStartedRef = useRef(false);
 
   const verificationUrl = session.phase === 'ready' ? session.verificationUrl : null;
@@ -30,8 +36,11 @@ export default function KycWeb() {
             onVerificationComplete();
           } else if (result.session?.status === 'Declined') {
             onVerificationError('Your identity verification was declined.');
+          } else {
+            // 'Pending', 'In Review', etc. — redirect back to activate page
+            // so user sees "Under Review" state instead of blank page
+            onVerificationPending();
           }
-          // 'Pending' — polling will handle the final status
           break;
         case 'cancelled':
           hasStartedRef.current = false;
@@ -56,10 +65,10 @@ export default function KycWeb() {
     return () => {
       DiditSdk.shared.onComplete = undefined;
     };
-  }, [verificationUrl, markStarted, initSession, onVerificationComplete, onVerificationError]);
+  }, [verificationUrl, markStarted, initSession, onVerificationComplete, onVerificationPending, onVerificationError]);
 
   return (
-    <PageLayout desktopOnly>
+    <PageLayout>
       <View className="mx-auto w-full max-w-lg flex-1 gap-8 px-4 pt-8">
         <View className="flex-row items-center justify-between">
           <Pressable
