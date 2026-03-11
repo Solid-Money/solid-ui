@@ -2081,7 +2081,8 @@ export const updateCardPin = async (
 
   if (!response.ok) throw response;
 
-  return response.json();
+  const text = await response.text();
+  return text ? JSON.parse(text) : {};
 };
 
 /** Rain only: GET card PIN with SessionId header (base64). Returns encrypted PIN. */
