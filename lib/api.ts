@@ -39,6 +39,7 @@ import {
   CardProvider,
   CardResponse,
   CardSecretsResponseDto,
+  CardPinResponseDto,
   CardStatusResponse,
   CardTransaction,
   CardTransactionsResponse,
@@ -2010,6 +2011,56 @@ export const requestCardSecrets = async (
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/secrets`,
     {
       method: 'POST',
+      headers: {
+        ...getPlatformHeaders(),
+        SessionId: sessionIdBase64,
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain only: PUT card PIN with SessionId header (base64) and encrypted PIN. */
+export const updateCardPin = async (
+  sessionIdBase64: string,
+  encryptedPin: { iv: string; data: string },
+): Promise<{ message?: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/pin`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        SessionId: sessionIdBase64,
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ encryptedPin }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain only: GET card PIN with SessionId header (base64). Returns encrypted PIN. */
+export const getCardPin = async (
+  sessionIdBase64: string,
+): Promise<CardPinResponseDto> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/pin`,
+    {
       headers: {
         ...getPlatformHeaders(),
         SessionId: sessionIdBase64,

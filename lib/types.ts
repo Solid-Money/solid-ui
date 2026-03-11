@@ -573,6 +573,11 @@ export interface CardSecretsResponseDto {
   encryptedCvc: CardSecretsEncryptedField;
 }
 
+// --- Rain card PIN ---
+export interface CardPinResponseDto {
+  encryptedPin: CardSecretsEncryptedField;
+}
+
 // --- Rain contracts (funding) ---
 export interface RainContractTokenDto {
   address: string;

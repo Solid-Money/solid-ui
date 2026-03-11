@@ -19,6 +19,7 @@ import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
+import ManagePinModal from '@/components/Card/ManagePinModal';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -283,6 +284,15 @@ function DesktopHeader({
             </Text>
           </View>
         </Button>
+        {isRain && (
+          <ManagePinModal
+            trigger={
+              <Button variant="secondary" className="h-12 rounded-xl border-0 bg-[#303030] px-6">
+                <Text className="text-base font-bold text-white">Manage PIN</Text>
+              </Button>
+            }
+          />
+        )}
         {(!isCardFrozen || canUnfreeze) && (
           <Button
             variant="secondary"
@@ -758,6 +768,17 @@ function CardActions({
         onPress={onCardDetails}
         isLoading={isLoadingCardDetails}
       />
+      {isRain && (
+        <ManagePinModal
+          trigger={
+            <CircularActionButton
+              icon={getAsset('images/card_actions_details.png')}
+              label="Manage PIN"
+              onPress={() => {}}
+            />
+          }
+        />
+      )}
       {(!isCardFrozen || canUnfreeze) && (
         <CircularActionButton
           icon={getAsset('images/card_actions_freeze.png')}
