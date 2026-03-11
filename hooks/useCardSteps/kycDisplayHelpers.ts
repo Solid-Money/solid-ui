@@ -117,11 +117,11 @@ export function isRainKYCButtonDisabled(
   rainApplicationStatus?: RainApplicationStatus | null,
 ): boolean {
   if (!rainApplicationStatus) return false;
+  // DENIED/LOCKED/CANCELED show "Contact support" and open Intercom — keep enabled
   return (
     rainApplicationStatus === RainApplicationStatus.APPROVED ||
     rainApplicationStatus === RainApplicationStatus.PENDING ||
-    rainApplicationStatus === RainApplicationStatus.MANUAL_REVIEW ||
-    rainApplicationStatus === RainApplicationStatus.DENIED
+    rainApplicationStatus === RainApplicationStatus.MANUAL_REVIEW
   );
 }
 
