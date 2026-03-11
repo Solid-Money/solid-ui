@@ -1,16 +1,13 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import {
-  startVerification,
-  VerificationStatus,
-} from '@didit-protocol/sdk-react-native';
+import { startVerification, VerificationStatus } from '@didit-protocol/sdk-react-native';
 
 import {
-  useDiditSession,
-  KycLoading,
-  KycError,
-  KycNativeWaiting,
   KycCompleted,
+  KycError,
+  KycLoading,
+  KycNativeWaiting,
+  useDiditSession,
 } from '@/components/kyc';
 
 export default function KycNative() {
@@ -19,6 +16,7 @@ export default function KycNative() {
     initSession,
     markStarted,
     onVerificationComplete,
+    onVerificationPending,
     onVerificationError,
   } = useDiditSession();
 
@@ -42,19 +40,18 @@ export default function KycNative() {
           if (result.session.status === VerificationStatus.Approved) {
             onVerificationComplete();
           } else if (result.session.status === VerificationStatus.Declined) {
-            onVerificationError(
-              'Your identity verification was declined.',
-            );
+            onVerificationError('Your identity verification was declined.');
+          } else {
+            // 'Pending', 'In Review', etc. — redirect back to activate page
+            // so user sees "Under Review" state instead of blank page
+            onVerificationPending();
           }
-          // Pending — polling will handle the final status
           break;
         case 'cancelled':
           initSession();
           break;
         case 'failed':
-          onVerificationError(
-            result.error?.message ?? 'Verification failed',
-          );
+          onVerificationError(result.error?.message ?? 'Verification failed');
           break;
       }
     }
@@ -68,23 +65,13 @@ export default function KycNative() {
     return () => {
       cancelled = true;
     };
-  }, [
-    sessionToken,
-    markStarted,
-    initSession,
-    onVerificationComplete,
-    onVerificationError,
-  ]);
+  }, [sessionToken, markStarted, initSession, onVerificationComplete, onVerificationPending, onVerificationError]);
 
   return (
     <View style={styles.container}>
       {session.phase === 'loading' && <KycLoading />}
-      {session.phase === 'error' && (
-        <KycError message={session.message} onRetry={initSession} />
-      )}
-      {(session.phase === 'ready' || session.phase === 'started') && (
-        <KycNativeWaiting />
-      )}
+      {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
+      {(session.phase === 'ready' || session.phase === 'started') && <KycNativeWaiting />}
       {session.phase === 'completed' && <KycCompleted />}
     </View>
   );

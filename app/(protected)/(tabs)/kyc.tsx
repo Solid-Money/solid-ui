@@ -1,17 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 import { DiditSdk } from '@didit-protocol/sdk-web';
+import { ArrowLeft } from 'lucide-react-native';
 
+import { KycCompleted, KycError, KycLoading, useDiditSession } from '@/components/kyc';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
-import {
-  useDiditSession,
-  KycLoading,
-  KycError,
-  KycCompleted,
-} from '@/components/kyc';
 
 const DIDIT_EMBED_CONTAINER_ID = 'didit-verification-container';
 
@@ -19,37 +14,40 @@ export default function KycWeb() {
   const router = useRouter();
   const {
     session,
-    sdkInitializedRef,
     initSession,
     markStarted,
     onVerificationComplete,
+    onVerificationPending,
     onVerificationError,
   } = useDiditSession();
+  const hasStartedRef = useRef(false);
 
-  const verificationUrl =
-    session.phase === 'ready' ? session.verificationUrl : null;
+  const verificationUrl = session.phase === 'ready' ? session.verificationUrl : null;
 
   useEffect(() => {
-    if (!verificationUrl || sdkInitializedRef.current) return;
+    if (!verificationUrl || hasStartedRef.current) return;
 
-    sdkInitializedRef.current = true;
+    hasStartedRef.current = true;
 
-    DiditSdk.shared.onComplete = (result) => {
+    DiditSdk.shared.onComplete = result => {
       switch (result.type) {
         case 'completed':
           if (result.session?.status === 'Approved') {
             onVerificationComplete();
           } else if (result.session?.status === 'Declined') {
             onVerificationError('Your identity verification was declined.');
+          } else {
+            // 'Pending', 'In Review', etc. — redirect back to activate page
+            // so user sees "Under Review" state instead of blank page
+            onVerificationPending();
           }
-          // 'Pending' — polling will handle the final status
           break;
         case 'cancelled':
-          sdkInitializedRef.current = false;
+          hasStartedRef.current = false;
           initSession();
           break;
         case 'failed':
-          sdkInitializedRef.current = false;
+          hasStartedRef.current = false;
           onVerificationError(result.error?.message ?? 'Verification failed');
           break;
       }
@@ -67,23 +65,14 @@ export default function KycWeb() {
     return () => {
       DiditSdk.shared.onComplete = undefined;
     };
-  }, [
-    verificationUrl,
-    sdkInitializedRef,
-    markStarted,
-    initSession,
-    onVerificationComplete,
-    onVerificationError,
-  ]);
+  }, [verificationUrl, markStarted, initSession, onVerificationComplete, onVerificationPending, onVerificationError]);
 
   return (
-    <PageLayout desktopOnly>
+    <PageLayout>
       <View className="mx-auto w-full max-w-lg flex-1 gap-8 px-4 pt-8">
         <View className="flex-row items-center justify-between">
           <Pressable
-            onPress={() =>
-              router.canGoBack() ? router.back() : router.replace('/')
-            }
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
             className="flex h-10 w-10 items-center justify-center rounded-full border-0 bg-popover web:transition-colors web:hover:bg-muted"
           >
             <ArrowLeft size={24} color="#FFFFFF" />
@@ -96,9 +85,7 @@ export default function KycWeb() {
 
         {session.phase === 'loading' && <KycLoading />}
 
-        {session.phase === 'error' && (
-          <KycError message={session.message} onRetry={initSession} />
-        )}
+        {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
 
         {(session.phase === 'ready' || session.phase === 'started') && (
           <View
