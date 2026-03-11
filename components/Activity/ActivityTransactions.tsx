@@ -65,8 +65,17 @@ export default function ActivityTransactions({
       setDirectDepositSession: state.setDirectDepositSession,
     })),
   );
-  const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
+  const {
+    activities,
+    getKey,
+    refetchAll,
+    isSyncing,
+    isSyncStale,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useActivity();
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
   // Ref-based guard to prevent rapid fetchNextPage calls from Load More button
   // React state (isFetchingNextPage) updates async, so multiple clicks could fire

@@ -2,7 +2,8 @@ import * as Sentry from '@sentry/react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
 
-import { getActivityStreamUrl, refreshToken } from '@/lib/api';
+import { fetchActivityEvents, getActivityStreamUrl, refreshToken } from '@/lib/api';
+import { withRefreshToken } from '@/lib/utils';
 import {
   ActivityEvent,
   SSEActivityData,
@@ -29,6 +30,9 @@ const HEARTBEAT_CHECK_INTERVAL_MS = 30000; // Check every 30 seconds
 // Balance update debounce
 const BALANCE_DEBOUNCE_MS = 500; // Debounce balance invalidation by 500ms
 const BALANCE_DEBOUNCE_DEPOSIT_MS = 200; // Shorter debounce for deposit events (faster UX)
+
+// Gap recovery constants
+const GAP_RECOVERY_TIMEOUT_MS = 15000; // Timeout gap recovery to prevent permanent blocking
 
 // Recovery constants (after permanent error stop)
 const RECOVERY_DELAY_MS = 60000; // Wait 60 seconds before recovery attempt
@@ -95,6 +99,10 @@ class SSEConnectionManager {
   // Event batching (coalesce rapid SSE events into single store update)
   private pendingEvents: { userId: string; activity: ActivityEvent }[] = [];
   private batchScheduled = false;
+
+  // Sequence number tracking for gap detection
+  private lastSeq: number | null = null;
+  private gapRecoveryInFlight = false;
 
   // Balance debounce
   private balanceDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -450,27 +458,58 @@ class SSEConnectionManager {
       return;
     }
 
-    // Validate type field exists (critical for rendering)
-    if (!data.activity.type || typeof data.activity.type !== 'string') {
-      Sentry.captureMessage('SSE activity missing type', {
-        level: 'warning',
-        tags: { type: 'sse_missing_activity_type' },
-        extra: { data },
-      });
-      return;
-    }
+    // Validate type and status only for created/updated events.
+    // Deleted events carry a minimal payload (clientTxId + deleted flag only).
+    if (data.event !== 'deleted') {
+      if (!data.activity.type || typeof data.activity.type !== 'string') {
+        Sentry.captureMessage('SSE activity missing type', {
+          level: 'warning',
+          tags: { type: 'sse_missing_activity_type' },
+          extra: { data },
+        });
+        return;
+      }
 
-    // Validate status field exists (critical for rendering)
-    if (!data.activity.status || typeof data.activity.status !== 'string') {
-      Sentry.captureMessage('SSE activity missing status', {
-        level: 'warning',
-        tags: { type: 'sse_missing_activity_status' },
-        extra: { data },
-      });
-      return;
+      if (!data.activity.status || typeof data.activity.status !== 'string') {
+        Sentry.captureMessage('SSE activity missing status', {
+          level: 'warning',
+          tags: { type: 'sse_missing_activity_status' },
+          extra: { data },
+        });
+        return;
+      }
     }
 
     const { event, activity, timestamp } = data;
+
+    // Sequence number gap detection
+    if (typeof (data as any).seq === 'number') {
+      const seq = (data as any).seq as number;
+      if (this.lastSeq !== null) {
+        if (seq > this.lastSeq + 1) {
+          // Forward gap — missed events
+          const gap = seq - this.lastSeq - 1;
+          console.warn(`[SSE] Gap detected: missed ${gap} event(s) (seq ${this.lastSeq} -> ${seq})`);
+          Sentry.captureMessage('SSE sequence gap detected', {
+            level: 'warning',
+            tags: { type: 'sse_sequence_gap' },
+            extra: { lastSeq: this.lastSeq, currentSeq: seq, gap },
+          });
+          this.triggerGapRecovery();
+        } else if (seq < this.lastSeq) {
+          // Seq regression — likely Redis failover reset the counter.
+          // Reset lastSeq to the new baseline and fetch latest to reconcile.
+          console.warn(`[SSE] Seq regression detected (${this.lastSeq} -> ${seq}), resetting baseline`);
+          Sentry.captureMessage('SSE sequence regression detected', {
+            level: 'warning',
+            tags: { type: 'sse_sequence_regression' },
+            extra: { lastSeq: this.lastSeq, currentSeq: seq },
+          });
+          this.triggerGapRecovery();
+        }
+      }
+      this.lastSeq = seq;
+    }
 
     console.log(
       `[SSE] Activity event: ${event} | clientTxId=${activity.clientTxId} | type=${activity.type} | status=${activity.status} | title=${activity.title || 'N/A'}`,
@@ -484,29 +523,30 @@ class SSEConnectionManager {
         case 'created':
         case 'updated':
           activityToQueue = activity;
+
+          // Push to batch instead of calling upsertEvent directly
+          this.pendingEvents.push({ userId: this.currentUserId, activity: activityToQueue });
+
+          // Schedule a microtask flush if not already scheduled
+          if (!this.batchScheduled) {
+            this.batchScheduled = true;
+            queueMicrotask(() => this.flushEventBatch());
+          }
           break;
 
-        case 'deleted':
-          // Deleted events have minimal activity payload
-          // { clientTxId, deleted: true, deletedAt: Date }
-          activityToQueue = {
-            ...activity,
-            deleted: true,
-            deletedAt: activity.deletedAt || new Date(timestamp).toISOString(),
-          };
+        case 'deleted': {
+          // Deleted events have minimal payload (clientTxId + deleted flag only, no type/status).
+          // Use markDeleted directly instead of batching, since the payload isn't a full ActivityEvent.
+          const deletedAt = activity.deletedAt
+            ? new Date(activity.deletedAt)
+            : new Date(timestamp);
+          const { markDeleted } = useActivityStore.getState();
+          markDeleted(this.currentUserId, activity.clientTxId, deletedAt);
           break;
+        }
 
         default:
           return;
-      }
-
-      // Push to batch instead of calling upsertEvent directly
-      this.pendingEvents.push({ userId: this.currentUserId, activity: activityToQueue });
-
-      // Schedule a microtask flush if not already scheduled
-      if (!this.batchScheduled) {
-        this.batchScheduled = true;
-        queueMicrotask(() => this.flushEventBatch());
       }
     } catch (err) {
       Sentry.captureException(err, {
@@ -517,6 +557,25 @@ class SSEConnectionManager {
 
     // Update internal state only - activity updates go to the store, not SSE state
     this.setInternalState({ lastEventTime: timestamp });
+  }
+
+  /**
+   * Normalize an SSE activity to match the format produced by constructActivity in useActivity.
+   * Ensures consistent field types (e.g., amount as string) between REST and SSE paths.
+   */
+  private normalizeActivity(activity: ActivityEvent): ActivityEvent {
+    const { users } = useUserStore.getState();
+    const currentUser = users.find(u => u.selected);
+    const safeAddress = currentUser?.safeAddress || '';
+
+    return {
+      ...activity,
+      title: activity.title || `${activity.type} Transaction`,
+      timestamp: activity.timestamp || Math.floor(Date.now() / 1000).toString(),
+      amount: activity.amount != null ? activity.amount.toString() : '0',
+      symbol: activity.symbol || 'USDC',
+      fromAddress: activity.fromAddress || safeAddress,
+    };
   }
 
   /**
@@ -534,11 +593,13 @@ class SSEConnectionManager {
     // Group events by userId (defensive - in practice all events are for the same user)
     const eventsByUser = new Map<string, ActivityEvent[]>();
     for (const { userId, activity } of batch) {
+      // Normalize SSE activities to match REST format (consistent field types)
+      const normalized = this.normalizeActivity(activity);
       const existing = eventsByUser.get(userId);
       if (existing) {
-        existing.push(activity);
+        existing.push(normalized);
       } else {
-        eventsByUser.set(userId, [activity]);
+        eventsByUser.set(userId, [normalized]);
       }
     }
 
@@ -553,6 +614,57 @@ class SSEConnectionManager {
         tags: { type: 'sse_batch_flush_error' },
         extra: { batchSize: batch.length },
       });
+    }
+  }
+
+  /**
+   * Trigger gap recovery with timeout protection.
+   * Prevents gapRecoveryInFlight from staying true forever if fetch hangs.
+   */
+  private triggerGapRecovery(): void {
+    if (this.gapRecoveryInFlight) return;
+
+    this.gapRecoveryInFlight = true;
+    const timeout = new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error('gap recovery timeout')), GAP_RECOVERY_TIMEOUT_MS),
+    );
+
+    Promise.race([this.fetchLatestActivities(), timeout])
+      .catch(err => {
+        console.warn('[SSE] Gap recovery failed or timed out:', err);
+      })
+      .finally(() => {
+        this.gapRecoveryInFlight = false;
+      });
+  }
+
+  /**
+   * Fetch the latest activities from the backend and push to Zustand.
+   * Called on SSE reconnection to catch up on missed events.
+   */
+  private async fetchLatestActivities(): Promise<void> {
+    try {
+      const result = await withRefreshToken(() => fetchActivityEvents(1));
+      if (!result?.docs?.length || !this.currentUserId) return;
+
+      const events = result.docs
+        .filter(
+          (tx: any): tx is ActivityEvent =>
+            tx != null &&
+            typeof tx === 'object' &&
+            typeof tx.clientTxId === 'string' &&
+            typeof tx.type === 'string' &&
+            typeof tx.status === 'string',
+        )
+        .map(tx => this.normalizeActivity(tx));
+      if (events.length) {
+        const { bulkUpsertEvent } = useActivityStore.getState();
+        bulkUpsertEvent(this.currentUserId, events);
+        console.debug(`[SSE] Reconnect catch-up: upserted ${events.length} activities`);
+      }
+    } catch (err) {
+      // Non-critical — worst case the user pulls to refresh
+      console.warn('[SSE] Failed to fetch latest activities on reconnect:', err);
     }
   }
 
@@ -711,15 +823,11 @@ class SSEConnectionManager {
 
       console.debug(`[SSE] Connected${this.hasConnectedBefore ? ' (reconnect)' : ' (initial)'}`);
 
-      // On reconnection (not initial connect), invalidate the activity query
+      // On reconnection (not initial connect), fetch page 1 directly
       // to catch up on any events that were missed while disconnected.
-      if (this.hasConnectedBefore) {
-        console.debug('[SSE] Reconnection detected — invalidating activity-events query');
-        try {
-          queryClient.invalidateQueries({ queryKey: ['activity-events'] });
-        } catch (_e) {
-          // Non-critical — worst case the user pulls to refresh
-        }
+      if (this.hasConnectedBefore && this.currentUserId) {
+        console.debug('[SSE] Reconnection detected — fetching latest activities');
+        this.fetchLatestActivities();
       }
       this.hasConnectedBefore = true;
 
@@ -1006,6 +1114,8 @@ class SSEConnectionManager {
     this.stopHeartbeatMonitor();
     this.setState({ connectionState: 'disconnected' });
     this.setInternalState({ lastHeartbeat: null });
+    this.lastSeq = null;
+    this.gapRecoveryInFlight = false;
     this.isConnecting = false;
   }
 

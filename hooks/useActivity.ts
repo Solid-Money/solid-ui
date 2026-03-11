@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Hash } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
-import useDebounce from '@/hooks/useDebounce';
 import useUser from '@/hooks/useUser';
 import { fetchActivityEvents } from '@/lib/api';
 import { ActivityEvent, TransactionStatus, TransactionType } from '@/lib/types';
@@ -12,7 +10,7 @@ import { useActivityStore } from '@/store/useActivityStore';
 
 import { useActivityActions } from './useActivityActions';
 import { useUserTransactions } from './useAnalytics';
-import { useSyncActivities, useSyncStore } from './useSyncActivities';
+import { useSyncActivities } from './useSyncActivities';
 
 function constructActivity(tx: ActivityEvent, safeAddress: string): ActivityEvent {
   let clientTxId = `${tx.type}-${tx.timestamp}`;
@@ -68,12 +66,13 @@ export type TrackTransaction = <TransactionResult>(
   executeTransaction: (onUserOpHash: (userOpHash: Hash) => void) => Promise<TransactionResult>,
 ) => Promise<TransactionResult>;
 
+// Module-level dedup: when multiple components call useActivity() simultaneously,
+// only one fetchPage(1) actually hits the network. Others wait for the same promise.
+let _initialFetchPromise: Promise<void> | null = null;
+let _initialFetchUserId: string | null = null;
+
 export function useActivity() {
   const { user } = useUser();
-  const queryClient = useQueryClient();
-  // Check sync lock SYNCHRONOUSLY to prevent query from fetching during sync
-  // This is read during render phase, before effects run
-  const isSyncingLock = useSyncStore(state => state.isSyncingLock);
 
   // Select only functions (stable references) and current user's events
   const bulkUpsertEvent = useActivityStore(state => state.bulkUpsertEvent);
@@ -83,6 +82,14 @@ export function useActivity() {
     useShallow(state => (user?.userId ? state.events[user.userId] : undefined)),
   );
   const [cachedActivities, setCachedActivities] = useState<ActivityEvent[]>([]);
+
+  // Pagination state (replaces React Query's useInfiniteQuery)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const hasFetchedInitial = useRef(false);
+  const fetchedForUserId = useRef<string | null>(null);
 
   // Memoize sync options to ensure stable reference
   // (useSyncActivities extracts primitives, but this prevents potential re-render issues)
@@ -120,61 +127,93 @@ export function useActivity() {
     transactionsRef.current = userTransactions;
   }, [withdrawsKey, userTransactions]);
 
-  // Fetch from backend (single source of truth for all activities)
-  const activityEvents = useInfiniteQuery({
-    queryKey: ['activity-events', user?.userId],
-    queryFn: ({ pageParam = 1 }) => withRefreshToken(() => fetchActivityEvents(pageParam)),
-    getNextPageParam: lastPage => {
-      if (!lastPage) return undefined;
-      if (lastPage.hasNextPage) {
-        return lastPage.page + 1;
+  // Fetch a page of activities directly from the API and push to Zustand
+  const fetchPage = useCallback(
+    async (page: number) => {
+      if (!user?.userId) return;
+      try {
+        const result = await withRefreshToken(() => fetchActivityEvents(page));
+        if (!result?.docs) return;
+
+        const events = result.docs
+          .filter((tx): tx is ActivityEvent => tx != null)
+          .map(tx => constructActivity(tx, user.safeAddress));
+
+        if (events.length) {
+          bulkUpsertEvent(user.userId, events);
+        }
+
+        setHasNextPage(!!result.hasNextPage);
+        setCurrentPage(page);
+      } catch (error) {
+        console.error('Failed to fetch activity page:', error);
       }
     },
-    initialPageParam: 1,
-    // Disable query during sync to prevent bulk refetch of cached pages
-    // The UI still shows data from Zustand store while sync is in progress
-    enabled: !!user?.userId && !isSyncingLock,
-    // Prevent excessive refetches - only refetch when explicitly triggered
-    refetchOnMount: false, // Don't refetch when components mount (20+ components use this hook!)
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    gcTime: 5 * 60 * 1000, // Garbage collect after 5 minutes to free memory
-    maxPages: 5, // Keep only 5 most recent pages in memory (TanStack Query v5)
-  });
+    [user?.userId, user?.safeAddress, bulkUpsertEvent],
+  );
 
-  const { data: activityData, isLoading, isRefetching } = activityEvents;
+  // Initial fetch on mount (page 1 only).
+  // Module-level dedup prevents 8+ parallel identical API calls when
+  // multiple components using useActivity() mount simultaneously.
+  useEffect(() => {
+    if (!user?.userId) return;
 
-  const debouncedActivityData = useDebounce(activityData, 1000);
+    // Reset when user switches so the new user gets a fresh fetch
+    if (fetchedForUserId.current && fetchedForUserId.current !== user.userId) {
+      hasFetchedInitial.current = false;
+      setCurrentPage(1);
+      setHasNextPage(false);
+    }
 
-  // Helper to reset infinite query to first page only
-  // This prevents React Query from refetching all cached pages
-  const resetToFirstPage = useCallback(() => {
-    queryClient.setQueryData(['activity-events', user?.userId], (oldData: any) => {
-      if (!oldData?.pages?.length) return oldData;
-      return {
-        pages: oldData.pages.slice(0, 1),
-        pageParams: oldData.pageParams.slice(0, 1),
-      };
+    if (hasFetchedInitial.current) return;
+    hasFetchedInitial.current = true;
+    fetchedForUserId.current = user.userId;
+    setIsLoading(true);
+
+    // If another instance is already fetching for this user, reuse its promise
+    if (_initialFetchUserId === user.userId && _initialFetchPromise) {
+      _initialFetchPromise.finally(() => setIsLoading(false));
+      return;
+    }
+
+    _initialFetchUserId = user.userId;
+    const thisPromise = fetchPage(1);
+    _initialFetchPromise = thisPromise;
+    thisPromise.finally(() => {
+      setIsLoading(false);
+      // Only clear if this is still the active promise (not replaced by a user switch)
+      if (_initialFetchPromise === thisPromise) {
+        _initialFetchPromise = null;
+      }
     });
-  }, [queryClient, user?.userId]);
+  }, [user?.userId, fetchPage]);
+
+  // Load next page
+  const fetchNextPage = useCallback(async () => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    setIsFetchingNextPage(true);
+    try {
+      await fetchPage(currentPage + 1);
+    } finally {
+      setIsFetchingNextPage(false);
+    }
+  }, [hasNextPage, isFetchingNextPage, currentPage, fetchPage]);
 
   // Refetch all data sources (backend handles all syncing now)
-  // IMPORTANT: Do NOT call refetchActivityEvents() here!
-  // syncFromBackend() resets to first page before sync starts
   const refetchAll = useCallback(
     (force = false) => {
-      if (isSyncing || isRefetching) {
-        return;
-      }
-      // Reset to first page before sync to prevent bulk refetch
-      resetToFirstPage();
+      if (isSyncing) return;
+      // Reset pagination and refetch first page
+      setCurrentPage(1);
+      fetchPage(1).catch((error: any) => {
+        console.error('Failed to refetch first page:', error);
+      });
       // Trigger backend sync
       syncFromBackend(undefined, force).catch((error: any) => {
         console.error('Background sync failed:', error);
       });
     },
-    [isSyncing, isRefetching, syncFromBackend, resetToFirstPage],
+    [isSyncing, syncFromBackend, fetchPage],
   );
 
   // Get user's activities from local storage
@@ -262,27 +301,6 @@ export function useActivity() {
     );
   }, [activities]);
 
-  // Sync backend activities to local store for offline access
-  // Uses debounced activityData to prevent render cascade from maxPages refetches
-  // When query re-enables after sync lock, multiple pages may refetch rapidly -
-  // debouncing ensures bulkUpsertEvent only fires once after all pages stabilize
-  useEffect(() => {
-    if (!user?.userId || !debouncedActivityData) return;
-
-    const events = debouncedActivityData.pages
-      .flatMap(page => {
-        // Guard against undefined/null pages or docs
-        if (!page?.docs || !Array.isArray(page.docs)) return [];
-        return page.docs
-          .filter((tx): tx is ActivityEvent => tx != null)
-          .map(tx => constructActivity(tx, user.safeAddress));
-      })
-      .filter((event): event is ActivityEvent => event != null);
-    if (!events.length) return;
-
-    bulkUpsertEvent(user.userId, events);
-  }, [debouncedActivityData, user?.userId, user?.safeAddress, bulkUpsertEvent]);
-
   // Delegate action functions to useActivityActions (subscription-free).
   // Consumers that ONLY need actions should import from '@/hooks/useActivityActions' directly.
   const { createActivity, updateActivity, trackTransaction, getKey } = useActivityActions();
@@ -292,8 +310,11 @@ export function useActivity() {
     cachedActivities,
     pendingActivities,
     pendingCount: pendingActivities.length,
-    activityEvents,
-    isLoading: isLoading || isRefetching,
+    // Pagination (direct fetch, no React Query)
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
     getKey,
     createActivity,
     updateActivity,
