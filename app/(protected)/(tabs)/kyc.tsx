@@ -58,17 +58,20 @@ export default function KycWeb() {
       configuration: {
         embedded: true,
         embeddedContainerId: DIDIT_EMBED_CONTAINER_ID,
+        closeModalOnComplete: true,
       },
     });
     markStarted();
 
     return () => {
-      DiditSdk.shared.onComplete = undefined;
+      // Fully destroy SDK instance to clean up iframe, event listeners, and DOM elements.
+      // Only unsetting onComplete leaves stale refs that can interfere with the navbar.
+      DiditSdk.reset();
     };
   }, [verificationUrl, markStarted, initSession, onVerificationComplete, onVerificationPending, onVerificationError]);
 
   return (
-    <PageLayout>
+    <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 gap-8 px-4 pt-8">
         <View className="flex-row items-center justify-between">
           <Pressable
