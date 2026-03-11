@@ -14,7 +14,7 @@ export enum CardDepositSource {
 }
 
 export interface CardDepositTransactionState {
-  amount?: number;
+  amount?: string;
 }
 
 interface CardDepositState {
