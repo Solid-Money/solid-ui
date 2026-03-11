@@ -19,10 +19,13 @@ import {
 import { withRefreshToken } from '@/lib/utils/utils';
 
 function isSimpleSequence(pin: string): boolean {
+  let ascending = true;
+  let descending = true;
   for (let i = 1; i < pin.length; i++) {
-    if (parseInt(pin[i]) !== parseInt(pin[i - 1]) + 1) return false;
+    if (parseInt(pin[i]) !== parseInt(pin[i - 1]) + 1) ascending = false;
+    if (parseInt(pin[i]) !== parseInt(pin[i - 1]) - 1) descending = false;
   }
-  return true;
+  return ascending || descending;
 }
 
 function isRepeatedDigits(pin: string): boolean {
@@ -75,6 +78,8 @@ export default function ManagePinForm() {
       );
     },
     retry: false,
+    gcTime: 0,
+    staleTime: 0,
   });
 
   const hasExistingPin = !!existingPin;
