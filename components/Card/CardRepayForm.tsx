@@ -184,7 +184,7 @@ export default function CardRepayForm() {
         });
 
         setRepayStatus(Status.SUCCESS);
-        setTransaction({ amount: Number(data.amount) });
+        setTransaction({ amount: data.amount });
         setModal(CARD_REPAY_MODAL.OPEN_TRANSACTION_STATUS);
         reset();
 

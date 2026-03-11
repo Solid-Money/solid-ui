@@ -48,11 +48,13 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES, EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID, isProduction } from '@/lib/config';
 import { CardProvider, Status, TransactionStatus, TransactionType } from '@/lib/types';
 import {
+  CARD_DEPOSIT_TOKEN_DECIMALS,
   cn,
   formatNumber,
   getCardDepositTokenAddress,
   getCardDepositTokenSymbol,
   getCardFundingAddress,
+  MAX_DECIMAL_PLACES_REGEX,
 } from '@/lib/utils';
 import { getChain } from '@/lib/wagmi';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
@@ -599,12 +601,14 @@ export default function CardDepositInternalForm() {
   // Get borrow APY from Aave
   const { borrowAPY, isLoading: isBorrowAPYLoading } = useAaveBorrowPosition();
 
-  const usdcBalanceAmount = fuseUsdcBalance ? Number(fuseUsdcBalance) / 1e6 : 0;
+  const usdcBalanceAmount = fuseUsdcBalance
+    ? Number(formatUnits(fuseUsdcBalance, 6))
+    : 0;
   const soUsdBalanceAmount = soUsdToken
-    ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
+    ? Number(formatUnits(BigInt(soUsdToken.balance), soUsdToken.contractDecimals))
     : 0;
   const testnetWalletBalanceAmount =
-    testnetDepositBalance != null ? Number(testnetDepositBalance) / 1e6 : 0;
+    testnetDepositBalance != null ? Number(formatUnits(testnetDepositBalance, 6)) : 0;
 
   const balanceAmount =
     watchedFrom === CardDepositSource.WALLET
@@ -668,6 +672,9 @@ export default function CardDepositInternalForm() {
       amount: z
         .string()
         .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Enter a valid amount' })
+        .refine(val => MAX_DECIMAL_PLACES_REGEX.test(val), {
+          error: `Maximum ${CARD_DEPOSIT_TOKEN_DECIMALS} decimal places`,
+        })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
         .refine(
           val => {
@@ -848,7 +855,7 @@ export default function CardDepositInternalForm() {
           },
         });
 
-        setTransaction({ amount: Number(data.amount) });
+        setTransaction({ amount: data.amount });
         setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
         reset();
       } catch (error) {
@@ -970,7 +977,7 @@ export default function CardDepositInternalForm() {
           },
         });
 
-        setTransaction({ amount: Number(data.amount) });
+        setTransaction({ amount: data.amount });
         setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
         reset();
       } catch (error) {

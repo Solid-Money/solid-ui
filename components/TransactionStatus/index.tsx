@@ -11,7 +11,7 @@ import { TokenIcon } from '@/lib/types';
 import { eclipseAddress, formatNumber } from '@/lib/utils';
 
 type TransactionStatusProps = {
-  amount: number;
+  amount: number | string;
   address?: Address;
   onPress: () => void;
   title?: string;

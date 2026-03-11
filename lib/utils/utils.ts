@@ -222,9 +222,19 @@ export const isSoUSDFuse = (contractAddress: string): boolean => {
   return contractAddress.toLowerCase() === ADDRESSES.fuse.vault.toLowerCase();
 };
 
+export const isSoFUSEToken = (contractAddress: string): boolean => {
+  if (!contractAddress) return false;
+  return contractAddress.toLowerCase() === ADDRESSES.fuse.fuseVault.toLowerCase();
+};
+
 export const isSoUSDToken = (contractAddress: string): boolean => {
   if (!contractAddress) return false;
   return isSoUSDEthereum(contractAddress) || isSoUSDFuse(contractAddress);
+};
+
+/** Vault tokens excluded from home WalletCard total (soUSD + soFUSE) to avoid double count with savings. */
+export const isWalletCardExcludedToken = (contractAddress: string): boolean => {
+  return isSoUSDToken(contractAddress) || isSoFUSEToken(contractAddress);
 };
 
 export const isUSDCEthereum = (contractAddress: string): boolean => {
@@ -344,6 +354,12 @@ export function getCardDepositTokenSymbol(
   }
   return 'USDC';
 }
+
+/** Decimals for card deposit/withdraw token (e.g. rUSD, USDC). */
+export const CARD_DEPOSIT_TOKEN_DECIMALS = 6;
+
+/** Regex that matches a numeric string with at most CARD_DEPOSIT_TOKEN_DECIMALS decimal places. */
+export const MAX_DECIMAL_PLACES_REGEX = /^\d+(\.\d{1,6})?$/;
 
 /** Resolve card funding address: Rain from contracts API (EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID), Bridge from card details. */
 export function getCardFundingAddress(
