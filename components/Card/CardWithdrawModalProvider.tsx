@@ -65,7 +65,7 @@ const CardWithdrawModalProvider = () => {
             : 'USDC';
       return (
         <TransactionStatus
-          amount={transaction.amount ?? '0'}
+          amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
           token={token}
           icon={getTokenIcon({ tokenSymbol: token })}

@@ -7,7 +7,7 @@ import mmkvStorage from '@/lib/mmvkStorage';
 import { TokenBalance } from '@/lib/types';
 
 export interface CardRepayTransactionState {
-  amount?: string;
+  amount?: number;
 }
 
 interface CardRepayState {

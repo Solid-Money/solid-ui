@@ -3,7 +3,6 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Linking, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Wallet as WalletIcon } from 'lucide-react-native';
-import { parseUnits } from 'viem';
 import { arbitrum } from 'viem/chains';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -28,7 +27,6 @@ import {
   cn,
   formatNumber,
   getCardDepositTokenSymbol,
-  MAX_DECIMAL_PLACES_REGEX,
 } from '@/lib/utils';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
@@ -79,9 +77,6 @@ export default function CardWithdrawForm() {
         amount: z
           .string()
           .refine(val => val !== '' && !isNaN(Number(val)), { message: 'Enter a valid amount' })
-          .refine(val => MAX_DECIMAL_PLACES_REGEX.test(val), {
-            message: `Maximum ${CARD_DEPOSIT_TOKEN_DECIMALS} decimal places`,
-          })
           .refine(val => Number(val) >= 1, { message: 'Minimum withdrawal is $1' })
           .refine(val => Number(val) <= spendableAmount, {
             message: `Amount exceeds spendable balance (${formattedBalance} available)`,
@@ -96,9 +91,6 @@ export default function CardWithdrawForm() {
         amount: z
           .string()
           .refine(val => val !== '' && !isNaN(Number(val)), { message: 'Enter a valid amount' })
-          .refine(val => MAX_DECIMAL_PLACES_REGEX.test(val), {
-            message: `Maximum ${CARD_DEPOSIT_TOKEN_DECIMALS} decimal places`,
-          })
           .refine(val => Number(val) >= 1, { message: 'Minimum withdrawal is $1' })
           .refine(val => Number(val) <= collateralAvailable, {
             message: `Amount exceeds available (${collateralFormatted} available)`,
@@ -159,7 +151,7 @@ export default function CardWithdrawForm() {
         if (toSavings) {
           const res = await withdrawFromCardToSavings({ amount: data.amount });
           setTransaction({
-            amount: data.amount,
+            amount: Number(data.amount),
             clientTxId: `card-${res.withdrawalId}`,
             to: data.to,
           });
@@ -171,9 +163,8 @@ export default function CardWithdrawForm() {
             text2: `$${data.amount} is being sent to your Savings.`,
           });
         } else if (toCollateral) {
-          const amountInSmallestUnits = parseUnits(
-            data.amount,
-            CARD_DEPOSIT_TOKEN_DECIMALS,
+          const amountInSmallestUnits = Math.round(
+            parseFloat(data.amount) * 10 ** CARD_DEPOSIT_TOKEN_DECIMALS,
           ).toString();
           const res = await withdrawCardCollateral({
             amount: amountInSmallestUnits,
@@ -184,7 +175,7 @@ export default function CardWithdrawForm() {
             }),
           });
           setTransaction({
-            amount: data.amount,
+            amount: Number(data.amount),
             clientTxId: res.transactionHash,
             to: data.to,
             transactionHash: res.transactionHash,
@@ -209,7 +200,7 @@ export default function CardWithdrawForm() {
           });
 
           setTransaction({
-            amount: data.amount,
+            amount: Number(data.amount),
             clientTxId: `card-${response.id}`,
             to: data.to,
           });

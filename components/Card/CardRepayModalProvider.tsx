@@ -60,7 +60,7 @@ const CardRepayModalProvider = () => {
     if (isTransactionStatus) {
       return (
         <TransactionStatus
-          amount={transaction.amount ?? '0'}
+          amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
           token="USDC"
           icon={getTokenIcon({ tokenSymbol: 'USDC' })}

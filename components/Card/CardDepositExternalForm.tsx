@@ -29,13 +29,11 @@ import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
 import { getChain } from '@/lib/thirdweb';
 import { CardProvider, Status, TransactionStatus, TransactionType } from '@/lib/types';
 import {
-  CARD_DEPOSIT_TOKEN_DECIMALS,
   cn,
   formatNumber,
   getCardDepositTokenAddress,
   getCardDepositTokenSymbol,
   getCardFundingAddress,
-  MAX_DECIMAL_PLACES_REGEX,
 } from '@/lib/utils';
 import { getChain as getChainWagmi } from '@/lib/wagmi';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
@@ -115,9 +113,6 @@ export default function CardDepositExternalForm() {
       amount: z
         .string()
         .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Enter a valid amount' })
-        .refine(val => MAX_DECIMAL_PLACES_REGEX.test(val), {
-          error: `Maximum ${CARD_DEPOSIT_TOKEN_DECIMALS} decimal places`,
-        })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
         .refine(val => Number(val) <= balanceAmount, {
           error: `Available balance is ${formatNumber(balanceAmount)} ${depositTokenSymbol}`,
@@ -260,7 +255,7 @@ export default function CardDepositExternalForm() {
         });
 
         setSendStatus(Status.SUCCESS);
-        setTransaction({ amount: data.amount });
+        setTransaction({ amount: Number(data.amount) });
         setModal(CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS);
         reset();
 

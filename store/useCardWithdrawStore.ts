@@ -4,7 +4,7 @@ import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 
 export interface CardWithdrawTransactionState {
-  amount?: string;
+  amount?: number;
   clientTxId?: string;
   to?: CardDepositSource;
   /** Rain collateral withdrawal: tx hash and chain for explorer link */
