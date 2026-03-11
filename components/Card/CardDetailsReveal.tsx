@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, TouchableOpacity, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
+import { useCardProvider } from '@/hooks/useCardProvider';
 
 interface CardDetailsRevealProps {
   onClose?: () => void;
@@ -18,7 +19,8 @@ interface CardDetailsRevealProps {
  * - Handles errors gracefully
  */
 export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose }) => {
-  const { cardDetails, isLoading, error, revealDetails, clearCardDetails } = useCardDetailsReveal();
+  const { provider } = useCardProvider();
+  const { cardDetails, isLoading, error, revealDetails, clearCardDetails } = useCardDetailsReveal(provider);
 
   // Auto-fetch card details when component mounts
   useEffect(() => {

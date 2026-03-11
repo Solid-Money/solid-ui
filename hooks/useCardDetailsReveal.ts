@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 
 import { revealCardDetailsComplete } from '@/lib/api';
-import { CardDetailsRevealResponse } from '@/lib/types';
+import { CardDetailsRevealResponse, CardProvider } from '@/lib/types';
 
 export interface UseCardDetailsRevealReturn {
   cardDetails: CardDetailsRevealResponse | null;
@@ -23,7 +23,7 @@ export interface UseCardDetailsRevealReturn {
  * Important: The revealed card details should NOT be stored persistently
  * and must be cleared from memory after use to comply with PCI DSS.
  */
-export const useCardDetailsReveal = (): UseCardDetailsRevealReturn => {
+export const useCardDetailsReveal = (provider?: CardProvider | null): UseCardDetailsRevealReturn => {
   // Store card details in local state (not in React Query cache for PCI compliance)
   const [cardDetails, setCardDetails] = useState<CardDetailsRevealResponse | null>(null);
 
@@ -33,7 +33,7 @@ export const useCardDetailsReveal = (): UseCardDetailsRevealReturn => {
     error: mutationError,
     reset,
   } = useMutation({
-    mutationFn: revealCardDetailsComplete,
+    mutationFn: () => revealCardDetailsComplete(provider ?? undefined),
     onSuccess: data => {
       setCardDetails(data);
     },
