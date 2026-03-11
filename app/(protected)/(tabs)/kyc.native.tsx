@@ -11,8 +11,14 @@ import {
 } from '@/components/kyc';
 
 export default function KycNative() {
-  const { session, initSession, markStarted, onVerificationComplete, onVerificationError } =
-    useDiditSession();
+  const {
+    session,
+    initSession,
+    markStarted,
+    onVerificationComplete,
+    onVerificationPending,
+    onVerificationError,
+  } = useDiditSession();
 
   const sessionToken = session.phase === 'ready' ? session.sessionToken : null;
 
@@ -35,8 +41,11 @@ export default function KycNative() {
             onVerificationComplete();
           } else if (result.session.status === VerificationStatus.Declined) {
             onVerificationError('Your identity verification was declined.');
+          } else {
+            // 'Pending', 'In Review', etc. — redirect back to activate page
+            // so user sees "Under Review" state instead of blank page
+            onVerificationPending();
           }
-          // Pending — polling will handle the final status
           break;
         case 'cancelled':
           initSession();
@@ -56,7 +65,7 @@ export default function KycNative() {
     return () => {
       cancelled = true;
     };
-  }, [sessionToken, markStarted, initSession, onVerificationComplete, onVerificationError]);
+  }, [sessionToken, markStarted, initSession, onVerificationComplete, onVerificationPending, onVerificationError]);
 
   return (
     <View style={styles.container}>

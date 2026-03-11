@@ -8,6 +8,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
 import { createDiditSession, getDiditVerificationStatus } from '@/lib/api';
+import { KycStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 export type SessionState =
@@ -63,16 +64,32 @@ export function useDiditSession() {
     setSession({ phase: 'started' });
   }, []);
 
+  const redirectToActivate = useCallback(
+    (kycStatus: KycStatus) => {
+      setSession({ phase: 'completed' });
+      queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
+      router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
+    },
+    [queryClient, router],
+  );
+
   const onVerificationComplete = useCallback(() => {
-    setSession({ phase: 'completed' });
-    queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
     Toast.show({
       type: 'success',
       text1: 'Verification complete',
       text2: 'Your identity has been verified.',
     });
-    router.replace(String(path.CARD_ACTIVATE) as any);
-  }, [queryClient, router]);
+    redirectToActivate(KycStatus.UNDER_REVIEW);
+  }, [redirectToActivate]);
+
+  const onVerificationPending = useCallback(() => {
+    Toast.show({
+      type: 'info',
+      text1: 'Verification submitted',
+      text2: 'Your verification is being processed.',
+    });
+    redirectToActivate(KycStatus.UNDER_REVIEW);
+  }, [redirectToActivate]);
 
   const onVerificationError = useCallback((message: string) => {
     Toast.show({
@@ -117,6 +134,7 @@ export function useDiditSession() {
     initSession,
     markStarted,
     onVerificationComplete,
+    onVerificationPending,
     onVerificationError,
   };
 }
