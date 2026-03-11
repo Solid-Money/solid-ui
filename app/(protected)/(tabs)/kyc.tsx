@@ -30,6 +30,8 @@ export default function KycWeb() {
     hasStartedRef.current = true;
 
     DiditSdk.shared.onComplete = result => {
+      DiditSdk.shared.destroy();
+
       switch (result.type) {
         case 'completed':
           if (result.session?.status === 'Approved') {
