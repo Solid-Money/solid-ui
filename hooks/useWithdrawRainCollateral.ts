@@ -1,5 +1,15 @@
 import { useCallback, useState } from 'react';
-import { Address, encodeFunctionData, Hex, TransactionReceipt, hashTypedData, toHex } from 'viem';
+import {
+  Address,
+  encodeFunctionData,
+  encodeAbiParameters,
+  encodePacked,
+  Hex,
+  TransactionReceipt,
+  hashTypedData,
+  keccak256,
+  toHex,
+} from 'viem';
 import { readContract } from 'viem/actions';
 import * as Sentry from '@sentry/react-native';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
@@ -42,6 +52,58 @@ const RAIN_COLLATERAL_V2_ABI = [
     type: 'function',
   },
 ] as const;
+
+// Safe v1.4.1 constants for ERC-1271 signature wrapping
+// keccak256("EIP712Domain(uint256 chainId,address verifyingContract)")
+const SAFE_DOMAIN_SEPARATOR_TYPEHASH =
+  '0x47e79534a245952e8b16893a336b85a3d9ea9fa8c573f3d803afb92a79469218' as Hex;
+// keccak256("SafeMessage(bytes message)")
+const SAFE_MSG_TYPEHASH =
+  '0x60b3cbf8b4a223d68d641b3b6ddf9a298e7f33710cf3d3a9d1146b5a6150fbca' as Hex;
+
+/**
+ * Compute the hash that Safe v1.4.1's isValidSignature expects the owner to sign.
+ *
+ * Safe's CompatibilityFallbackHandler.isValidSignature(bytes32 _dataHash, bytes _signature):
+ *   1. message = abi.encode(_dataHash)
+ *   2. safeMessageHash = keccak256(abi.encode(SAFE_MSG_TYPEHASH, keccak256(message)))
+ *   3. messageHash = keccak256(0x19 || 0x01 || domainSeparator || safeMessageHash)
+ *   4. checkSignatures(messageHash, ...) → ecrecover(messageHash, v, r, s)
+ *
+ * The owner (Turnkey EOA) must sign `messageHash` for the Safe to validate it.
+ */
+function computeSafeMessageHash(
+  safeAddress: Address,
+  chainId: number,
+  dataHash: Hex,
+): Hex {
+  // Safe domain separator: keccak256(abi.encode(DOMAIN_SEPARATOR_TYPEHASH, chainId, safeAddress))
+  const domainSeparator = keccak256(
+    encodeAbiParameters(
+      [{ type: 'bytes32' }, { type: 'uint256' }, { type: 'address' }],
+      [SAFE_DOMAIN_SEPARATOR_TYPEHASH, BigInt(chainId), safeAddress],
+    ),
+  );
+
+  // message = abi.encode(dataHash)
+  const message = encodeAbiParameters([{ type: 'bytes32' }], [dataHash]);
+
+  // safeMessageHash = keccak256(abi.encode(SAFE_MSG_TYPEHASH, keccak256(message)))
+  const safeMessageStructHash = keccak256(
+    encodeAbiParameters(
+      [{ type: 'bytes32' }, { type: 'bytes32' }],
+      [SAFE_MSG_TYPEHASH, keccak256(message)],
+    ),
+  );
+
+  // EIP-712 hash: keccak256(0x19 || 0x01 || domainSeparator || safeMessageStructHash)
+  return keccak256(
+    encodePacked(
+      ['bytes1', 'bytes1', 'bytes32', 'bytes32'],
+      ['0x19', '0x01', domainSeparator, safeMessageStructHash],
+    ),
+  );
+}
 
 type WithdrawRainCollateralResult = {
   withdrawCollateral: (params: {
@@ -109,22 +171,17 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
           signWith: user.signWith,
         });
 
-        // Apply same signTypedData workaround as in useUser
-        if (turnkeyAccount.sign) {
-          const originalSign = turnkeyAccount.sign.bind(turnkeyAccount);
-          turnkeyAccount.signTypedData = async (typedData: any) => {
-            const hash = hashTypedData(typedData);
-            return originalSign({ hash });
-          };
-        }
-
-        // Step 4: Generate admin EIP-712 signature
-        // The `user` field must be the safeAddress (the admin on the collateral contract).
-        // Rain's coordinator verifies via SignatureChecker.isValidSignatureNow(adminAddress, digest, sig)
-        // which calls Safe's isValidSignature → validates the Turnkey EOA owner's signature.
+        // Step 4: Generate admin EIP-712 signature wrapped for Safe ERC-1271
+        //
+        // Rain's coordinator calls SignatureChecker.isValidSignatureNow(safeAddress, rainDigest, sig)
+        // → Safe's isValidSignature(rainDigest, sig) wraps rainDigest in Safe's message format
+        // → checkSignatures(safeMessageHash, ...) does ecrecover(safeMessageHash, v, r, s)
+        //
+        // So the Turnkey EOA must sign the Safe-wrapped message hash, NOT the raw Rain digest.
         const adminSalt = toHex(crypto.getRandomValues(new Uint8Array(32)));
 
-        const adminSignature = await turnkeyAccount.signTypedData({
+        // 4a. Compute Rain's EIP-712 digest (the hash Rain's coordinator will pass to isValidSignature)
+        const rainDigest = hashTypedData({
           domain: {
             name: 'Collateral',
             version: '2',
@@ -150,6 +207,16 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
             nonce: nonce,
           },
         });
+
+        // 4b. Compute Safe v1.4.1's wrapped message hash (what the EOA owner actually signs)
+        const safeMessageHash = computeSafeMessageHash(
+          user.safeAddress as Address,
+          sigData.chainId,
+          rainDigest,
+        );
+
+        // 4c. Sign the Safe-wrapped hash with Turnkey EOA (raw hash signing, no EIP-712 re-wrapping)
+        const adminSignature = await turnkeyAccount.sign({ hash: safeMessageHash });
 
         // Step 5: Build the withdrawAsset call and execute via Safe smart account
         const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
