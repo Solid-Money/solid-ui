@@ -53,7 +53,7 @@ type WithdrawRainCollateralResult = {
 };
 
 const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
-  const { user, safeAA } = useUser();
+  const { user, safeAA, createTurnkeySigner } = useUser();
   const { trackTransaction } = useActivityActions();
   const [status, setStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
@@ -73,11 +73,20 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         setStatus(Status.PENDING);
         setError(null);
 
+        // Create a Turnkey EOA signer for direct EIP-712 signing.
+        // Rain's V2 coordinator verifies admin signatures using ecrecover, which requires
+        // a standard EOA signature. The Safe's signTypedData wraps hashes in a SafeMessage
+        // envelope (ERC-1271), producing signatures that ecrecover cannot resolve to the
+        // admin address. We sign directly with the Turnkey EOA and use its address as the
+        // adminAddress sent to Rain.
+        const turnkeySigner = await createTurnkeySigner(user.suborgId, user.signWith);
+        const adminAddress = turnkeySigner.address;
+
         // Step 1: Get withdrawal signature data from backend (Rain executor signature)
         const sigData: WithdrawCollateralSignatureResponse = await withdrawCardCollateral({
           amount: params.amount,
           recipientAddress: params.recipientAddress,
-          adminAddress: user.safeAddress,
+          adminAddress,
           ...(params.chainId != null && { chainId: params.chainId }),
           ...(params.tokenAddress && { tokenAddress: params.tokenAddress }),
         });
@@ -96,23 +105,13 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
           functionName: 'adminNonce',
         });
 
-        // Step 3: Create Safe smart account client (handles Turnkey passkey + Safe ERC-1271 internally)
+        // Step 3: Create Safe smart account client for transaction execution
         const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 
-        // Step 4: Generate admin EIP-712 signature via Safe smart account
-        //
-        // permissionless's toSafeSmartAccount.signTypedData:
-        //   1. Hashes the Rain typed data → rainDigest
-        //   2. Wraps in SafeMessage EIP-712: hashTypedData({SafeMessage: {message: rainDigest}})
-        //   3. Has Turnkey EOA (Safe owner) sign the SafeMessage hash
-        //   4. Returns signature with adjusted v value
-        //
-        // When Rain's coordinator calls SignatureChecker.isValidSignatureNow(safeAddress, rainDigest, sig):
-        //   → Safe's isValidSignature re-wraps rainDigest in same SafeMessage format
-        //   → checkSignatures verifies the owner's signature matches
+        // Step 4: Generate admin EIP-712 signature with Turnkey EOA
         const adminSalt = toHex(crypto.getRandomValues(new Uint8Array(32)));
 
-        const adminSignature = await smartAccountClient.account!.signTypedData({
+        const adminSignature = await turnkeySigner.signTypedData({
           domain: {
             name: 'Collateral',
             version: '2',
@@ -131,7 +130,7 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
           },
           primaryType: 'Withdraw' as const,
           message: {
-            user: user.safeAddress as Address,
+            user: adminAddress as Address,
             asset: sigData.assetAddress as Address,
             amount: BigInt(sigData.amount),
             recipient: sigData.recipient as Address,
@@ -235,7 +234,7 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         throw err;
       }
     },
-    [user, safeAA, trackTransaction],
+    [user, safeAA, createTurnkeySigner, trackTransaction],
   );
 
   return { withdrawCollateral, status, error };
