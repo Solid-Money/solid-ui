@@ -7,7 +7,7 @@ import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { createAccount } from '@turnkey/viem';
 import { createSmartAccountClient, SmartAccountClient } from 'permissionless';
 import { toSafeSmartAccount } from 'permissionless/accounts';
-import { Chain, hashTypedData, http, LocalAccount } from 'viem';
+import { Chain, hashTypedData, http } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
@@ -46,7 +46,6 @@ interface UseUserReturn {
     signWith: string,
     turnkeyClient?: any,
   ) => Promise<SmartAccountClient>;
-  createTurnkeySigner: (subOrganization: string, signWith: string) => Promise<LocalAccount>;
   checkBalance: (user: User) => Promise<boolean>;
 }
 
@@ -164,28 +163,6 @@ const useUser = (): UseUserReturn => {
       });
     },
     [createHttpClient, user?.userId, user?.safeAddress],
-  );
-
-  const createTurnkeySigner = useCallback(
-    async (subOrganization: string, signWith: string): Promise<LocalAccount> => {
-      const passkeyClient = createHttpClient({
-        defaultStamperType: StamperType.Passkey,
-      });
-      const turnkeyAccount = await createAccount({
-        client: passkeyClient,
-        organizationId: subOrganization,
-        signWith: signWith,
-      });
-      if (turnkeyAccount.sign) {
-        const originalSign = turnkeyAccount.sign.bind(turnkeyAccount);
-        turnkeyAccount.signTypedData = async (typedData: any) => {
-          const hash = hashTypedData(typedData);
-          return originalSign({ hash });
-        };
-      }
-      return turnkeyAccount as LocalAccount;
-    },
-    [createHttpClient],
   );
 
   const checkBalance = useCallback(
@@ -553,7 +530,6 @@ const useUser = (): UseUserReturn => {
     handleRemoveUsers,
     handleDeleteAccount,
     safeAA,
-    createTurnkeySigner,
     checkBalance,
   };
 };
