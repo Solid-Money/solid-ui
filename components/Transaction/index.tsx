@@ -191,13 +191,17 @@ const Transaction = ({
         ? TransactionDirection.CANCELLED
         : isSavingsDeposit
           ? TransactionDirection.IN
-          : (transactionDetails?.sign ?? '');
+          : isDeposit
+            ? ''
+            : (transactionDetails?.sign ?? '');
 
   const tokenIcon = getTokenIcon({
     logoUrl,
     tokenSymbol: symbol?.toLowerCase() === 'usdc.e' ? 'USDC' : symbol,
     size: 44,
   });
+
+  const isSuccess = status === TransactionStatus.SUCCESS;
 
   const getDescription = () => {
     if (isPending) return 'Pending';
@@ -206,6 +210,7 @@ const Transaction = ({
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
     if (isCancelled) return 'Cancelled';
+    if (isSuccess && isDeposit) return 'Complete';
     return transactionDetails?.category ?? 'Unknown';
   };
 
