@@ -2,6 +2,7 @@ import { Reward } from '@merkl/api';
 import { Address, Hex } from 'viem';
 
 import { EndorsementStatus } from '@/components/BankTransfer/enums';
+import { DigitalWalletType } from '@/constants/digital-wallet';
 import {
   DEPOSIT_FROM_SAFE_ACCOUNT_MODAL,
   DEPOSIT_MODAL,
@@ -29,53 +30,6 @@ export interface CountryInfo {
 export interface CardAccessResponse {
   hasAccess: boolean;
   countryCode: string;
-}
-
-export interface VerifyCountryRequest {
-  visitorId: string;
-  requestId: string;
-  claimedCountry: string;
-}
-
-/**
- * Fraud signals from Fingerprint.com Smart Signals API.
- * These signals help detect various fraud vectors like VPNs, location spoofing,
- * device tampering (Frida), and other suspicious behaviors.
- */
-export interface FraudSignals {
-  isVpn: boolean;
-  vpnMethods?: {
-    timezoneMismatch?: boolean;
-    publicVPN?: boolean;
-    osMismatch?: boolean;
-  };
-  vpnOriginCountry?: string;
-  isLocationSpoofed: boolean;
-  isFridaDetected: boolean;
-  suspectScore?: number;
-  isJailbroken?: boolean;
-  isRooted?: boolean;
-  isProxy?: boolean;
-  isHighActivity?: boolean;
-  factoryResetTime?: string;
-  isClonedApp?: boolean;
-  isMitmAttack?: boolean;
-}
-
-export interface VerifyCountryResponse {
-  verified: boolean;
-  detectedCountry: string | null;
-  confidence: number;
-  requiresVerification: boolean;
-  reason?: string;
-  /** Detailed fraud signals from Fingerprint.com Smart Signals */
-  fraudSignals?: FraudSignals;
-  /** Specific reason why verification was blocked */
-  blockingReason?:
-    | 'vpn_country_mismatch'
-    | 'location_spoofing'
-    | 'automation_detected'
-    | 'service_unavailable';
 }
 
 export interface CardWaitlistResponse {
@@ -125,6 +79,9 @@ export interface CardWithdrawalResponse {
     tx_hash?: string;
     gas_fee?: { amount: string; currency: string };
   };
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
   client_note?: string;
   type?: 'top_up_balance_withdrawal' | 'fee';
 }
@@ -141,7 +98,7 @@ export interface WithdrawCollateralRequest {
   recipientAddress: string;
   adminAddress: string;
   chainId?: number;
-  token?: string;
+  tokenAddress?: string;
 }
 
 /** Rain withdrawal signature data returned by backend for frontend to execute the on-chain tx. */
@@ -379,7 +336,7 @@ enum FreezeReason {
   OTHER = 'other',
 }
 
-enum FreezeInitiator {
+export enum FreezeInitiator {
   BRIDGE = 'bridge',
   DEVELOPER = 'developer',
   CUSTOMER = 'customer',
@@ -575,6 +532,44 @@ export interface CardBalanceResponseDto {
   spendingPower?: number;
 }
 
+export interface WalletEligibilityResponse {
+  eligible: boolean;
+  alreadyInAppleWallet?: boolean;
+  alreadyInGoogleWallet?: boolean;
+  reason?: string;
+}
+
+export interface ProvisioningSessionRequest {
+  wallet?: DigitalWalletType;
+}
+
+export interface ProvisioningSessionResponse {
+  sessionId: string;
+  expiresAt: string;
+}
+
+export interface MppCredentialsResponse {
+  cardId: string;
+  cardSecret: string;
+}
+
+export interface WebProvisioningTokenResponse {
+  token?: string;
+  [key: string]: unknown;
+}
+
+export interface ExtensionCardEntry {
+  cardId: string;
+  cardSecret: string;
+  cardholderName: string;
+  lastFour: string;
+  artUrl?: string;
+}
+
+export interface ExtensionCardsResponse {
+  cards: ExtensionCardEntry[];
+}
+
 // --- Rain card secrets (reveal PAN/CVC) ---
 export interface CardSecretsEncryptedField {
   iv: string;
@@ -706,6 +701,7 @@ export enum TransactionCategory {
 
 export enum TransactionStatus {
   PENDING = 'pending',
+  DETECTED = 'detected',
   PROCESSING = 'processing',
   SUCCESS = 'success',
   FAILED = 'failed',
@@ -713,6 +709,8 @@ export enum TransactionStatus {
   EXPIRED = 'expired',
   REFUNDED = 'refunded',
 }
+
+export type DepositStep = 'detected' | 'confirmed' | 'depositing' | 'minting' | 'complete';
 
 export type Transaction = {
   title: string;
@@ -978,6 +976,7 @@ export interface TokenBalance {
   chainId: number;
   tokenIcon?: TokenIcon;
   commonId?: string;
+  tokenId?: string;
 }
 
 export enum RewardsType {
@@ -1496,6 +1495,7 @@ export interface SwapTokenResponse {
   displayOrder?: number;
   isFeatured: boolean;
   commonId?: string;
+  tokenId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1621,4 +1621,25 @@ export enum VaultType {
   FUSE = 'fuse',
   USDC = 'usdc',
   ETH = 'eth',
+}
+
+export interface SavingsDataQuality {
+  balanceSource: 'on-chain' | 'cached' | 'fallback';
+  rateSource: 'on-chain' | 'cached' | 'fallback';
+  depositedAccuracy: 'historical-rates' | 'current-rate-fallback';
+}
+
+export interface SavingsSummaryResponse {
+  vault: string;
+  vaultToken: string;
+  balanceShares: string;
+  exchangeRate: string;
+  totalValueUSD: string;
+  actualDepositedUSD: string;
+  interestEarnedUSD: string;
+  apyPercent: number;
+  lastDepositAt: string | null;
+  activityCount: number;
+  calculatedAt: string;
+  dataQuality: SavingsDataQuality;
 }
