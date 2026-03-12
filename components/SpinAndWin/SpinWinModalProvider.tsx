@@ -1271,6 +1271,7 @@ const SpinWinModalProvider = () => {
       contentClassName="mt-0 h-screen w-screen max-w-full justify-start rounded-none bg-background p-0"
       containerClassName="h-full gap-0"
       disableScroll={disableScroll}
+      hideHeader
     >
       {content}
     </ResponsiveModal>
