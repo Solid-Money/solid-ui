@@ -92,18 +92,27 @@ export interface WithdrawFromCardToSavingsResponse {
   amount: string;
 }
 
-/** Rain: withdraw collateral from funding account. amount = token smallest units (e.g. USDC 6 decimals). */
+/** Rain: request withdrawal signature data. amount = token smallest units (e.g. USDC 6 decimals). */
 export interface WithdrawCollateralRequest {
   amount: string;
   recipientAddress: string;
+  adminAddress: string;
   chainId?: number;
   token?: string;
   tokenAddress?: string;
 }
 
-export interface WithdrawCollateralResponse {
-  transactionHash: string;
-  status?: 'pending';
+/** Rain withdrawal signature data returned by backend for frontend to execute the on-chain tx. */
+export interface WithdrawCollateralSignatureResponse {
+  collateralProxy: string;
+  assetAddress: string;
+  amount: string;
+  recipient: string;
+  expiresAt: number;
+  executorPublisherSalt: string;
+  executorPublisherSig: string;
+  coordinatorAddress: string;
+  chainId: number;
 }
 
 export interface HoldingFundsPointsMultiplierConfig {
@@ -662,6 +671,7 @@ export enum TransactionType {
   DEPOSIT_BONUS = 'deposit_bonus',
   FAST_WITHDRAW = 'fast_withdraw',
   REPAY_AND_WITHDRAW_COLLATERAL = 'repay_and_withdraw_collateral',
+  WITHDRAW_COLLATERAL = 'withdraw_collateral',
 }
 
 export enum TransactionDirection {

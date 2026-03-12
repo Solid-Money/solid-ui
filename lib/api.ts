@@ -102,7 +102,7 @@ import {
   WebhookStatus,
   WhatsNew,
   WithdrawCollateralRequest,
-  WithdrawCollateralResponse,
+  WithdrawCollateralSignatureResponse,
   SavingsSummaryResponse,
   WithdrawFromCardToSavingsResponse,
 } from './types';
@@ -1589,7 +1589,7 @@ export const withdrawFromCardToSavings = async (body: {
 
 export const withdrawCardCollateral = async (
   body: WithdrawCollateralRequest,
-): Promise<WithdrawCollateralResponse> => {
+): Promise<WithdrawCollateralSignatureResponse> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
