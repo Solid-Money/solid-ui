@@ -171,6 +171,13 @@ const Transaction = ({
     isDeposit &&
     (symbol?.toLowerCase() === 'sousd' || symbol?.toLowerCase() === 'sofuse');
 
+  // [DIAG] Log color-determining values for every render
+  console.log(
+    `[Tx:DIAG:color] clientTxId=${clientTxId} type=${type} symbol=${symbol} ` +
+    `isIncoming=${isIncoming} isSavingsDeposit=${isSavingsDeposit} ` +
+    `sign=${transactionDetails?.sign} status=${status} amount=${amount}`,
+  );
+
   const statusTextColor = isFailed
     ? 'text-red-400'
     : isExpired
@@ -182,6 +189,20 @@ const Transaction = ({
           : isIncoming || isSavingsDeposit
             ? 'text-brand'
             : '';
+
+  // Inline style fallback: guarantees correct color even if NativeWind class
+  // resolution fails after FlashList recycling or SSE-triggered re-renders.
+  const statusColorStyle = isFailed
+    ? { color: '#f87171' }
+    : isExpired
+      ? { color: '#fb923c' }
+      : isRefunded
+        ? { color: '#c084fc' }
+        : isCancelled
+          ? undefined
+          : isIncoming || isSavingsDeposit
+            ? { color: 'hsl(109, 82%, 72%)' }
+            : undefined;
 
   const statusSign = isFailed
     ? TransactionDirection.FAILED
@@ -299,7 +320,10 @@ const Transaction = ({
             {directDepositStatusMessage}
           </Text>
         ) : (
-          <Text className={cn('text-base font-medium web:text-lg', statusTextColor)}>
+          <Text
+            className={cn('text-base font-medium web:text-lg', statusTextColor)}
+            style={statusColorStyle}
+          >
             {statusSign}
             {formatNumber(Number(amount), 2)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
@@ -370,7 +394,8 @@ function areTransactionPropsEqual(
     prevProps.logoUrl === nextProps.logoUrl &&
     prevProps.showTimestamp === nextProps.showTimestamp &&
     prevProps.isFirst === nextProps.isFirst &&
-    prevProps.isLast === nextProps.isLast
+    prevProps.isLast === nextProps.isLast &&
+    prevProps.classNames?.container === nextProps.classNames?.container
   );
 }
 

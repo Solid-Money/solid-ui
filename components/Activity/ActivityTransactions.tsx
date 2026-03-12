@@ -466,27 +466,18 @@ export default function ActivityTransactions({
     return null;
   }, [hasNextPage, isFetchingNextPage, handleLoadMore]);
 
-  // Memoized key extractor for FlashList - stable reference improves performance
+  // Memoized key extractor for FlashList - uses stable identifiers (no index)
+  // to prevent key instability when new items are inserted via SSE.
   const keyExtractor = useCallback(
     (item: TimeGroup, index: number) => {
       if (item.type === ActivityGroup.HEADER) {
         const headerKey = (item.data as TimeGroupHeaderData).key;
-        // Ensure header keys are always prefixed and unique
-        return headerKey.startsWith('header-')
-          ? `${headerKey}-${index}`
-          : `header-${headerKey}-${index}`;
+        return headerKey.startsWith('header-') ? headerKey : `header-${headerKey}`;
       }
       const transaction = item.data as ActivityEvent;
-      // Get base key, ensuring it's never empty
-      const hashKey = getKey(transaction);
-      const baseKey =
-        (hashKey && hashKey.trim()) ||
-        transaction.clientTxId ||
-        transaction.timestamp ||
-        `unknown-${index}`;
-      // Ensure key is always unique and non-empty
-      // Prefix with 'tx-' to avoid collisions with headers, add index for uniqueness
-      return `tx-${baseKey}-${index}`;
+      // Use clientTxId as primary key (always unique per activity).
+      // Fall back to hash/userOpHash, then index as last resort.
+      return `tx-${transaction.clientTxId || getKey(transaction) || index}`;
     },
     [getKey],
   );
@@ -520,6 +511,7 @@ export default function ActivityTransactions({
         data={filteredTransactions}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        estimatedItemSize={64}
         // NOTE: onEndReached was intentionally removed to prevent bulk page fetches
         // FlashList fires onEndReached on every re-render when content doesn't fill viewport
         // This caused all pages to fetch immediately (Sentry: "10+ renders/second")
