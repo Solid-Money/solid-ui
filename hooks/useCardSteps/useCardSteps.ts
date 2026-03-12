@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -235,12 +236,26 @@ export function useCardSteps(
       return;
     }
     if (
-      (status === RainApplicationStatus.NEEDS_VERIFICATION ||
-        status === RainApplicationStatus.NEEDS_INFORMATION) &&
-      link?.url &&
-      Object.keys(link.params ?? {}).length > 0
+      status === RainApplicationStatus.NEEDS_VERIFICATION ||
+      status === RainApplicationStatus.NEEDS_INFORMATION
     ) {
-      redirectToRainVerification(link);
+      if (link?.url && Object.keys(link.params ?? {}).length > 0) {
+        redirectToRainVerification(link);
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Verification link unavailable',
+          text2: 'Unable to open verification. Please try again later or contact support.',
+          props: { badgeText: '' },
+        });
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'verification_link_missing',
+          rainApplicationStatus: status,
+          hasLink: Boolean(link),
+          hasUrl: Boolean(link?.url),
+          hasParams: Boolean(link?.params && Object.keys(link.params).length > 0),
+        });
+      }
       return;
     }
     if (status === RainApplicationStatus.NOT_STARTED || !status) {
