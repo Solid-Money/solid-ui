@@ -16,7 +16,8 @@ import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useUser from '@/hooks/useUser';
-import { withdrawCardCollateral, withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
+import useWithdrawRainCollateral from '@/hooks/useWithdrawRainCollateral';
+import { withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
 import {
   EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
@@ -49,6 +50,7 @@ export default function CardWithdrawForm() {
   const spendableAmount = Number(cardDetails?.balances?.available?.amount ?? 0);
   const formattedBalance = formatNumber(spendableAmount, 2, 2);
 
+  const { withdrawCollateral } = useWithdrawRainCollateral();
   const fundingContract = contracts?.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID);
   const depositTokenSymbol = getCardDepositTokenSymbol(CardProvider.RAIN);
 
@@ -166,7 +168,7 @@ export default function CardWithdrawForm() {
           const amountInSmallestUnits = Math.round(
             parseFloat(data.amount) * 10 ** CARD_DEPOSIT_TOKEN_DECIMALS,
           ).toString();
-          const res = await withdrawCardCollateral({
+          const res = await withdrawCollateral({
             amount: amountInSmallestUnits,
             recipientAddress: user!.safeAddress!,
             ...(fundingContract?.chainId != null && { chainId: fundingContract.chainId }),
@@ -174,16 +176,17 @@ export default function CardWithdrawForm() {
               tokenAddress: EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
             }),
           });
+          const txHash = res.transactionHash;
           setTransaction({
             amount: Number(data.amount),
-            clientTxId: res.transactionHash,
+            clientTxId: txHash,
             to: data.to,
-            transactionHash: res.transactionHash,
+            transactionHash: txHash,
             chainId: fundingContract?.chainId,
           });
           setModal(CARD_WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS);
           await refetch();
-          const explorerUrl = getExplorerTxUrl(fundingContract?.chainId, res.transactionHash);
+          const explorerUrl = getExplorerTxUrl(fundingContract?.chainId, txHash);
           Toast.show({
             type: 'success',
             text1: 'Withdrawal started',
@@ -240,6 +243,7 @@ export default function CardWithdrawForm() {
       collateralSchema,
       setError,
       fundingContract?.chainId,
+      withdrawCollateral,
     ],
   );
 
