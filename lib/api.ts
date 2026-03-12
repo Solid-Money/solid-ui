@@ -95,8 +95,6 @@ import {
   User,
   VaultBreakdown,
   VaultType,
-  VerifyCountryRequest,
-  VerifyCountryResponse,
   MppCredentialsResponse,
   ExtensionCardsResponse,
   WalletEligibilityResponse,
@@ -104,14 +102,15 @@ import {
   WebhookStatus,
   WhatsNew,
   WithdrawCollateralRequest,
-  WithdrawCollateralResponse,
+  WithdrawCollateralSignatureResponse,
+  SavingsSummaryResponse,
   WithdrawFromCardToSavingsResponse,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
 import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 
 // Helper function to get platform-specific headers
-const getPlatformHeaders = () => {
+export const getPlatformHeaders = () => {
   const headers: Record<string, string> = {};
   if (Platform.OS === 'ios' || Platform.OS === 'android') {
     headers['X-Platform'] = 'mobile';
@@ -120,7 +119,7 @@ const getPlatformHeaders = () => {
 };
 
 // Helper function to get JWT token for mobile
-const getJWTToken = (): string | null => {
+export const getJWTToken = (): string | null => {
   if (Platform.OS === 'ios' || Platform.OS === 'android') {
     const { users } = useUserStore.getState();
     const currentUser = users.find((user: User) => user.selected);
@@ -919,89 +918,6 @@ export const checkCardAccess = async (countryCode: string): Promise<CardAccessRe
   return response.json();
 };
 
-/**
- * Verify that the user's detected location matches their claimed country.
- * Uses Fingerprint.com device intelligence for fraud prevention during card onboarding.
- *
- * @param request - Contains visitorId, requestId from Fingerprint SDK, and claimedCountry
- * @returns Verification result indicating if the user can proceed or needs additional verification
- */
-export const verifyCountryWithFingerprint = async (
-  request: VerifyCountryRequest,
-): Promise<VerifyCountryResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/fingerprint/verify-country`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        'Content-Type': 'application/json',
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      body: JSON.stringify(request),
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-/**
- * Context values for fingerprint observation.
- * Matches FingerprintContext enum in backend.
- */
-export type FingerprintContext = 'create_card' | 'kyc_start';
-
-export interface ObserveFingerprintRequest {
-  requestId: string;
-  context: FingerprintContext;
-}
-
-export interface ObserveFingerprintResponse {
-  visitorId: string;
-  /** Whether this device has been used by multiple users (potential fraud indicator) */
-  isDuplicate?: boolean;
-  /** Number of distinct users associated with this device */
-  userCount?: number;
-  /** Whether this device is allowlisted (manually approved for shared device use) */
-  isAllowlisted?: boolean;
-}
-
-/**
- * Observe and link a device fingerprint to the authenticated user.
- * This must be called BEFORE card creation to enable duplicate device detection.
- *
- * @param request - Contains requestId from Fingerprint SDK and context
- * @returns The resolved visitorId that was linked to the user
- */
-export const observeFingerprint = async (
-  request: ObserveFingerprintRequest,
-): Promise<ObserveFingerprintResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/fingerprint/observe`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        'Content-Type': 'application/json',
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      body: JSON.stringify(request),
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
 export const addToCardWaitlist = async (
   email: string,
   countryCode: string,
@@ -1593,6 +1509,60 @@ export const withdrawFromCard = async (body: CardWithdrawal): Promise<CardWithdr
   return response.json();
 };
 
+export const withdrawCardToSafeAddress = async (body: {
+  amount: string;
+  clientNote?: string;
+}): Promise<CardWithdrawalResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/withdraw-to-safe`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getCardWithdrawals = async (params?: {
+  limit?: number;
+  starting_after?: string;
+  ending_before?: string;
+}): Promise<{ count: number; data: CardWithdrawalResponse[] }> => {
+  const jwt = getJWTToken();
+  const url = new URL('/accounts/v1/cards/withdrawals', EXPO_PUBLIC_FLASH_API_BASE_URL);
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        url.searchParams.append(key, value.toString());
+      }
+    });
+  }
+
+  const response = await fetch(url.toString(), {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const withdrawFromCardToSavings = async (body: {
   amount: string;
 }): Promise<WithdrawFromCardToSavingsResponse> => {
@@ -1619,7 +1589,7 @@ export const withdrawFromCardToSavings = async (body: {
 
 export const withdrawCardCollateral = async (
   body: WithdrawCollateralRequest,
-): Promise<WithdrawCollateralResponse> => {
+): Promise<WithdrawCollateralSignatureResponse> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
@@ -1777,7 +1747,6 @@ export const emailSignUp = async (
   credentialId?: string,
   referralCode?: string,
   marketingConsent?: boolean,
-  fingerprintRequestId?: string,
 ) => {
   const body: Record<string, any> = {
     email,
@@ -1788,7 +1757,6 @@ export const emailSignUp = async (
   };
   if (credentialId) body.credentialId = credentialId;
   if (referralCode) body.referralCode = referralCode;
-  if (fingerprintRequestId) body.fingerprintRequestId = fingerprintRequestId;
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email-signup`, {
     method: 'POST',
@@ -2396,6 +2364,22 @@ export const fetchCoinHistoricalChart = async (coinId: string, days: string = '1
   return response.data;
 };
 
+export const fetchCoinSimplePrice = async (
+  coinIds: string[],
+): Promise<Record<string, { usd?: number }>> => {
+  if (coinIds.length === 0) return {};
+  const ids = [...new Set(coinIds)].filter(Boolean).join(',');
+  const response = await axios.get<Record<string, { usd?: number }>>(
+    `https://pro-api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
+    {
+      headers: {
+        'x-cg-pro-api-key': EXPO_PUBLIC_COINGECKO_API_KEY,
+      },
+    },
+  );
+  return response.data ?? {};
+};
+
 export const fetchHistoricalAPY = async (
   days: string = '30',
   vault?: VaultType,
@@ -2600,6 +2584,27 @@ export const ensureWebhookSubscription = async (): Promise<EnsureWebhookResponse
       credentials: 'include',
     },
   );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const fetchSavingsSummary = async (
+  vault: string = 'USDC',
+): Promise<SavingsSummaryResponse> => {
+  const jwt = getJWTToken();
+
+  const url = new URL('/accounts/v1/savings/summary', EXPO_PUBLIC_FLASH_API_BASE_URL);
+  url.searchParams.append('vault', vault);
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 

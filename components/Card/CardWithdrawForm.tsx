@@ -3,7 +3,6 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Linking, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Wallet as WalletIcon } from 'lucide-react-native';
-import { parseUnits } from 'viem';
 import { arbitrum } from 'viem/chains';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -17,7 +16,8 @@ import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import useUser from '@/hooks/useUser';
-import { withdrawCardCollateral, withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
+import useWithdrawRainCollateral from '@/hooks/useWithdrawRainCollateral';
+import { withdrawFromCard, withdrawFromCardToSavings } from '@/lib/api';
 import {
   EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
@@ -28,7 +28,6 @@ import {
   cn,
   formatNumber,
   getCardDepositTokenSymbol,
-  MAX_DECIMAL_PLACES_REGEX,
 } from '@/lib/utils';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
@@ -51,6 +50,7 @@ export default function CardWithdrawForm() {
   const spendableAmount = Number(cardDetails?.balances?.available?.amount ?? 0);
   const formattedBalance = formatNumber(spendableAmount, 2, 2);
 
+  const { withdrawCollateral } = useWithdrawRainCollateral();
   const fundingContract = contracts?.find(c => c.chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID);
   const depositTokenSymbol = getCardDepositTokenSymbol(CardProvider.RAIN);
 
@@ -79,9 +79,6 @@ export default function CardWithdrawForm() {
         amount: z
           .string()
           .refine(val => val !== '' && !isNaN(Number(val)), { message: 'Enter a valid amount' })
-          .refine(val => MAX_DECIMAL_PLACES_REGEX.test(val), {
-            message: `Maximum ${CARD_DEPOSIT_TOKEN_DECIMALS} decimal places`,
-          })
           .refine(val => Number(val) >= 1, { message: 'Minimum withdrawal is $1' })
           .refine(val => Number(val) <= spendableAmount, {
             message: `Amount exceeds spendable balance (${formattedBalance} available)`,
@@ -96,9 +93,6 @@ export default function CardWithdrawForm() {
         amount: z
           .string()
           .refine(val => val !== '' && !isNaN(Number(val)), { message: 'Enter a valid amount' })
-          .refine(val => MAX_DECIMAL_PLACES_REGEX.test(val), {
-            message: `Maximum ${CARD_DEPOSIT_TOKEN_DECIMALS} decimal places`,
-          })
           .refine(val => Number(val) >= 1, { message: 'Minimum withdrawal is $1' })
           .refine(val => Number(val) <= collateralAvailable, {
             message: `Amount exceeds available (${collateralFormatted} available)`,
@@ -159,7 +153,7 @@ export default function CardWithdrawForm() {
         if (toSavings) {
           const res = await withdrawFromCardToSavings({ amount: data.amount });
           setTransaction({
-            amount: data.amount,
+            amount: Number(data.amount),
             clientTxId: `card-${res.withdrawalId}`,
             to: data.to,
           });
@@ -171,11 +165,10 @@ export default function CardWithdrawForm() {
             text2: `$${data.amount} is being sent to your Savings.`,
           });
         } else if (toCollateral) {
-          const amountInSmallestUnits = parseUnits(
-            data.amount,
-            CARD_DEPOSIT_TOKEN_DECIMALS,
+          const amountInSmallestUnits = Math.round(
+            parseFloat(data.amount) * 10 ** CARD_DEPOSIT_TOKEN_DECIMALS,
           ).toString();
-          const res = await withdrawCardCollateral({
+          const res = await withdrawCollateral({
             amount: amountInSmallestUnits,
             recipientAddress: user!.safeAddress!,
             ...(fundingContract?.chainId != null && { chainId: fundingContract.chainId }),
@@ -183,16 +176,17 @@ export default function CardWithdrawForm() {
               tokenAddress: EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
             }),
           });
+          const txHash = res.transactionHash;
           setTransaction({
-            amount: data.amount,
-            clientTxId: res.transactionHash,
+            amount: Number(data.amount),
+            clientTxId: txHash,
             to: data.to,
-            transactionHash: res.transactionHash,
+            transactionHash: txHash,
             chainId: fundingContract?.chainId,
           });
           setModal(CARD_WITHDRAW_MODAL.OPEN_TRANSACTION_STATUS);
           await refetch();
-          const explorerUrl = getExplorerTxUrl(fundingContract?.chainId, res.transactionHash);
+          const explorerUrl = getExplorerTxUrl(fundingContract?.chainId, txHash);
           Toast.show({
             type: 'success',
             text1: 'Withdrawal started',
@@ -209,7 +203,7 @@ export default function CardWithdrawForm() {
           });
 
           setTransaction({
-            amount: data.amount,
+            amount: Number(data.amount),
             clientTxId: `card-${response.id}`,
             to: data.to,
           });
@@ -249,6 +243,7 @@ export default function CardWithdrawForm() {
       collateralSchema,
       setError,
       fundingContract?.chainId,
+      withdrawCollateral,
     ],
   );
 

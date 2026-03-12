@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
-import { Address, encodeFunctionData, Hex, TransactionReceipt, toHex } from 'viem';
+import { Address, encodeFunctionData, Hex, TransactionReceipt, hashTypedData, toHex } from 'viem';
 import { readContract } from 'viem/actions';
 import * as Sentry from '@sentry/react-native';
+import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
+import { createAccount } from '@turnkey/viem';
 
 import { withdrawCardCollateral } from '@/lib/api';
 import { Status, TransactionType, WithdrawCollateralSignatureResponse } from '@/lib/types';
@@ -15,13 +17,13 @@ const RAIN_COORDINATOR_V2_ABI = [
     inputs: [
       { name: 'collateralProxy', type: 'address' },
       { name: 'asset', type: 'address' },
-      { name: 'amountNative', type: 'uint256' },
+      { name: 'amount', type: 'uint256' },
       { name: 'recipient', type: 'address' },
       { name: 'expiresAt', type: 'uint256' },
-      { name: 'executorPublisherSalt', type: 'bytes32' },
-      { name: 'executorPublisherSignature', type: 'bytes' },
-      { name: 'adminSalts', type: 'bytes32[]' },
-      { name: 'adminSignatures', type: 'bytes[]' },
+      { name: 'executorPublisherSalt', type: 'bytes' },
+      { name: 'executorPublisherSig', type: 'bytes' },
+      { name: 'adminSalts', type: 'bytes[]' },
+      { name: 'adminSigs', type: 'bytes[]' },
       { name: 'directTransfer', type: 'bool' },
     ],
     name: 'withdrawAsset',
@@ -54,6 +56,7 @@ type WithdrawRainCollateralResult = {
 
 const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
   const { user, safeAA } = useUser();
+  const { createHttpClient } = useTurnkey();
   const { trackTransaction } = useActivityActions();
   const [status, setStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +77,6 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         setError(null);
 
         // Step 1: Get withdrawal signature data from backend (Rain executor signature)
-        // The Safe address is the registered admin on Rain's collateral contract.
         const sigData: WithdrawCollateralSignatureResponse = await withdrawCardCollateral({
           amount: params.amount,
           recipientAddress: params.recipientAddress,
@@ -97,16 +99,30 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
           functionName: 'adminNonce',
         });
 
-        // Step 3: Create Safe smart account client for transaction execution
-        const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
+        // Step 3: Create Turnkey passkey signer for admin EIP-712 signature
+        const passkeyClient = createHttpClient({
+          defaultStamperType: StamperType.Passkey,
+        });
+        const turnkeyAccount = await createAccount({
+          client: passkeyClient,
+          organizationId: user.suborgId,
+          signWith: user.signWith,
+        });
 
-        // Step 4: Generate admin EIP-712 signature via Safe smart account
-        // The Safe address is the admin on Rain's collateral contract.
-        // Rain's coordinator verifies admin signatures using SignatureChecker (ERC-1271),
-        // so the Safe's wrapped signature is verified by calling isValidSignature on the Safe.
+        // Apply same signTypedData workaround as in useUser
+        if (turnkeyAccount.sign) {
+          const originalSign = turnkeyAccount.sign.bind(turnkeyAccount);
+          turnkeyAccount.signTypedData = async (typedData: any) => {
+            const hash = hashTypedData(typedData);
+            return originalSign({ hash });
+          };
+        }
+
+        // Step 4: Generate admin EIP-712 signature
         const adminSalt = toHex(crypto.getRandomValues(new Uint8Array(32)));
+        const signerAddress = turnkeyAccount.address;
 
-        const adminSignature = await smartAccountClient.account.signTypedData({
+        const adminSignature = await turnkeyAccount.signTypedData({
           domain: {
             name: 'Collateral',
             version: '2',
@@ -123,9 +139,9 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
               { name: 'nonce', type: 'uint256' },
             ],
           },
-          primaryType: 'Withdraw' as const,
+          primaryType: 'Withdraw',
           message: {
-            user: user.safeAddress as Address,
+            user: signerAddress,
             asset: sigData.assetAddress as Address,
             amount: BigInt(sigData.amount),
             recipient: sigData.recipient as Address,
@@ -134,6 +150,8 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         });
 
         // Step 5: Build the withdrawAsset call and execute via Safe smart account
+        const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
+
         const withdrawCalldata = encodeFunctionData({
           abi: RAIN_COORDINATOR_V2_ABI,
           functionName: 'withdrawAsset',
@@ -229,7 +247,7 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         throw err;
       }
     },
-    [user, safeAA, trackTransaction],
+    [user, safeAA, createHttpClient, trackTransaction],
   );
 
   return { withdrawCollateral, status, error };
