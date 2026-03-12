@@ -119,8 +119,10 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         }
 
         // Step 4: Generate admin EIP-712 signature
+        // The `user` field must be the safeAddress (the admin on the collateral contract).
+        // Rain's coordinator verifies via SignatureChecker.isValidSignatureNow(adminAddress, digest, sig)
+        // which calls Safe's isValidSignature → validates the Turnkey EOA owner's signature.
         const adminSalt = toHex(crypto.getRandomValues(new Uint8Array(32)));
-        const signerAddress = turnkeyAccount.address;
 
         const adminSignature = await turnkeyAccount.signTypedData({
           domain: {
@@ -141,7 +143,7 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
           },
           primaryType: 'Withdraw',
           message: {
-            user: signerAddress,
+            user: user.safeAddress as Address,
             asset: sigData.assetAddress as Address,
             amount: BigInt(sigData.amount),
             recipient: sigData.recipient as Address,
