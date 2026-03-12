@@ -168,7 +168,10 @@ const fetchTokenBalances = async (safeAddress: string) => {
   }
 
   // Process soFUSE rate: soFUSE→FUSE (18 decimals) × FUSE price = USD quote rate (align with savings)
-  if (soFUSERate.status === PromiseStatus.FULFILLED && fusePrice.status === PromiseStatus.FULFILLED) {
+  if (
+    soFUSERate.status === PromiseStatus.FULFILLED &&
+    fusePrice.status === PromiseStatus.FULFILLED
+  ) {
     const soFUSEToFuse = Number(soFUSERate.value) / Math.pow(10, 18);
     const fusePriceNum = Number(fusePrice.value);
     soFUSEQuoteRateUSD = soFUSEToFuse * fusePriceNum;
@@ -369,9 +372,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   const coinIds = [
     ...new Set(
       zeroRateTokens
-        .map(t =>
-          t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId,
-        )
+        .map(t => (t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId))
         .filter((id): id is string => !!id),
     ),
   ];
@@ -380,8 +381,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       const priceMap = await fetchCoinSimplePrice(coinIds);
       allTokens = allTokens.map(t => {
         if (!isZeroRate(t.quoteRate)) return t;
-        const id =
-          t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId;
+        const id = t.type === TokenType.NATIVE ? NATIVE_COINGECKO_TOKENS[t.chainId] : t.tokenId;
         const usd = id ? parsePrice(priceMap[id]?.usd) : undefined;
         if (usd != null && usd > 0) return { ...t, quoteRate: usd };
         return t;
@@ -407,8 +407,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
       });
       allTokens = allTokens.map(t => {
         if (!isZeroRate(t.quoteRate)) return t;
-        const p =
-          t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];
+        const p = t.contractTickerSymbol && symbolToPrice[t.contractTickerSymbol];
         if (typeof p === 'number') return { ...t, quoteRate: p };
         return t;
       });

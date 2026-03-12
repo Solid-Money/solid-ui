@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { ImageBackground, Platform, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Address } from 'viem';
+
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { FAQs } from '@/components/FAQ';
@@ -26,6 +27,7 @@ import {
 import { useDepositCalculations } from '@/hooks/useDepositCalculations';
 import { useDimension } from '@/hooks/useDimension';
 import { MONITORED_COMPONENTS, useRenderMonitor } from '@/hooks/useRenderMonitor';
+import { useSavingsSummary } from '@/hooks/useSavingsSummary';
 import useUser from '@/hooks/useUser';
 import { useTotalVaultBalance, useVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
@@ -33,7 +35,6 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
-import { useSavingsSummary } from '@/hooks/useSavingsSummary';
 import { useSavingStore } from '@/store/useSavingStore';
 
 export default function Savings() {

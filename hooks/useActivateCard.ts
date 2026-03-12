@@ -8,8 +8,8 @@ import { useCardStatus } from '@/hooks/useCardStatus';
 import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { track } from '@/lib/analytics';
-import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
 import { CardStatus, KycStatus } from '@/lib/types';
+import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
 
 export function useActivateCard() {
   const router = useRouter();
@@ -38,8 +38,7 @@ export function useActivateCard() {
   // has confirmed country, or has Rain application status (already in KYC flow).
   const userHasCard = hasCard(cardStatusResponse);
   const hasRainApplicationStatus = hasCardStatusWithRainApplication(cardStatusResponse);
-  const skipCountryCheck =
-    countryConfirmed === 'true' || userHasCard || hasRainApplicationStatus;
+  const skipCountryCheck = countryConfirmed === 'true' || userHasCard || hasRainApplicationStatus;
   const { checkingCountry } = useCountryCheck({ skip: skipCountryCheck });
   const isCheckingCountry = !skipCountryCheck && checkingCountry;
 

@@ -3,21 +3,21 @@ import Toast from 'react-native-toast-message';
 import { Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
-import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
+import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { getChain } from '@/lib/wagmi';
 import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import {
   getCardDepositTokenAddress,
   getCardDepositTokenSymbol,
   getCardFundingAddress,
 } from '@/lib/utils';
+import { getChain } from '@/lib/wagmi';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 type CardDepositResult = {
@@ -69,11 +69,7 @@ const useCardDeposit = (): CardDepositResult => {
         Toast.show({ type: 'error', text1: 'Card details not found' });
         return;
       }
-      const fundingAddress = getCardFundingAddress(
-        cardDetails,
-        provider,
-        contracts ?? undefined,
-      );
+      const fundingAddress = getCardFundingAddress(cardDetails, provider, contracts ?? undefined);
       if (!fundingAddress) {
         setError('Funding address not available');
         Toast.show({
@@ -106,11 +102,7 @@ const useCardDeposit = (): CardDepositResult => {
       const amountWei = parseUnits(amount, 6);
 
       try {
-        const smartAccountClient = await safeAA(
-          fundingChain,
-          user.suborgId,
-          user.signWith,
-        );
+        const smartAccountClient = await safeAA(fundingChain, user.suborgId, user.signWith);
 
         const transactions = [
           {

@@ -168,8 +168,7 @@ const Transaction = ({
   const isDeposit = type === TransactionType.DEPOSIT;
 
   const isSavingsDeposit =
-    isDeposit &&
-    (symbol?.toLowerCase() === 'sousd' || symbol?.toLowerCase() === 'sofuse');
+    isDeposit && (symbol?.toLowerCase() === 'sousd' || symbol?.toLowerCase() === 'sofuse');
 
   const statusTextColor = isFailed
     ? 'text-red-400'

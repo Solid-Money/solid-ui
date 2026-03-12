@@ -62,7 +62,14 @@ export default function KycWeb() {
       },
     });
     markStarted();
-  }, [verificationUrl, markStarted, initSession, onVerificationComplete, onVerificationPending, onVerificationError]);
+  }, [
+    verificationUrl,
+    markStarted,
+    initSession,
+    onVerificationComplete,
+    onVerificationPending,
+    onVerificationError,
+  ]);
 
   // Clean up SDK on unmount only. This is separate from the init effect above
   // because markStarted() changes the phase to 'started', which nullifies

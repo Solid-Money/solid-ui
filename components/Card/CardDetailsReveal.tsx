@@ -20,7 +20,8 @@ interface CardDetailsRevealProps {
  */
 export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose }) => {
   const { provider } = useCardProvider();
-  const { cardDetails, isLoading, error, revealDetails, clearCardDetails } = useCardDetailsReveal(provider);
+  const { cardDetails, isLoading, error, revealDetails, clearCardDetails } =
+    useCardDetailsReveal(provider);
 
   // Auto-fetch card details when component mounts
   useEffect(() => {

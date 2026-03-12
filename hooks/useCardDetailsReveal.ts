@@ -23,7 +23,9 @@ export interface UseCardDetailsRevealReturn {
  * Important: The revealed card details should NOT be stored persistently
  * and must be cleared from memory after use to comply with PCI DSS.
  */
-export const useCardDetailsReveal = (provider?: CardProvider | null): UseCardDetailsRevealReturn => {
+export const useCardDetailsReveal = (
+  provider?: CardProvider | null,
+): UseCardDetailsRevealReturn => {
   // Store card details in local state (not in React Query cache for PCI compliance)
   const [cardDetails, setCardDetails] = useState<CardDetailsRevealResponse | null>(null);
 

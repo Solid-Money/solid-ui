@@ -6,16 +6,11 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { track } from '@/lib/analytics';
+import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { openIntercom } from '@/lib/intercom';
-import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { redirectToRainVerification } from '@/lib/rainVerification';
-import {
-  CardProvider,
-  CardStatusResponse,
-  KycStatus,
-  RainApplicationStatus,
-} from '@/lib/types';
+import { CardProvider, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -29,11 +24,7 @@ import {
   showAccountOffboardedToast,
   showKycUnderReviewToast,
 } from './kycFlowHelpers';
-import {
-  computeKycStatus,
-  computeUiKycStatus,
-  useProcessingWindow,
-} from './kycStatusHelpers';
+import { computeKycStatus, computeUiKycStatus, useProcessingWindow } from './kycStatusHelpers';
 import { buildCardSteps, useCardActivation, useStepNavigation } from './stepHelpers';
 
 // Re-export types
@@ -48,20 +39,19 @@ export function useCardSteps(
   cardStatusResponse?: CardStatusResponse | null,
 ) {
   const router = useRouter();
-  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } =
-    useKycStore(
-      useShallow(state => ({
-        kycLinkId: state.kycLinkId,
-        processingUntil: state.processingUntil,
-        setProcessingUntil: state.setProcessingUntil,
-        clearProcessingUntil: state.clearProcessingUntil,
-      })),
-    );
+  const { kycLinkId, processingUntil, setProcessingUntil, clearProcessingUntil } = useKycStore(
+    useShallow(state => ({
+      kycLinkId: state.kycLinkId,
+      processingUntil: state.processingUntil,
+      setProcessingUntil: state.setProcessingUntil,
+      clearProcessingUntil: state.clearProcessingUntil,
+    })),
+  );
   // Consider Rain when API returns rainApplicationStatus (provider may be omitted)
   const cardIssuer =
     cardStatusResponse?.rainApplicationStatus != null
       ? CardProvider.RAIN
-      : cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null;
+      : (cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null);
   const countryStore = useCountryStore(
     useShallow(state => ({
       countryInfo: state.countryInfo,
@@ -202,6 +192,7 @@ export function useCardSteps(
     processingUntil,
     countryStore,
     cardsEndorsement?.status,
+    cardIssuer,
   ]);
 
   // Rain: KYC step button handler (redirect, contact support, or proceed to KYC)

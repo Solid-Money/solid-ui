@@ -11,8 +11,16 @@ const LATIN_NAME_MESSAGE = 'Only Latin characters are allowed (no Cyrillic, Arab
 
 export const rainKycFormSchema = z
   .object({
-    firstName: z.string().min(1, 'First name is required').max(50).regex(LATIN_NAME_REGEX, LATIN_NAME_MESSAGE),
-    lastName: z.string().min(1, 'Last name is required').max(50).regex(LATIN_NAME_REGEX, LATIN_NAME_MESSAGE),
+    firstName: z
+      .string()
+      .min(1, 'First name is required')
+      .max(50)
+      .regex(LATIN_NAME_REGEX, LATIN_NAME_MESSAGE),
+    lastName: z
+      .string()
+      .min(1, 'Last name is required')
+      .max(50)
+      .regex(LATIN_NAME_REGEX, LATIN_NAME_MESSAGE),
     birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD'),
     nationalId: z.string().min(1, 'National ID / SSN is required'),
     countryOfIssue: z.string().length(2, 'Use 2-letter country code'),

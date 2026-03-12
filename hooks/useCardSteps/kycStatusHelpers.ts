@@ -1,10 +1,7 @@
-import {
-  KycLinkFromBridgeResponse,
-  KycStatus,
-  RainApplicationStatus,
-} from '@/lib/types';
-import { isFinalKycStatus } from '@/lib/utils/kyc';
 import { useEffect } from 'react';
+
+import { KycLinkFromBridgeResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
+import { isFinalKycStatus } from '@/lib/utils/kyc';
 
 /** Map Rain API application status to frontend KycStatus */
 export function rainApplicationStatusToKycStatus(

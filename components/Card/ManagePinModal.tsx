@@ -19,11 +19,7 @@ const DefaultTrigger = () => (
  * The actual modal is rendered by ManagePinModalProvider at the app root.
  * This component only renders the trigger button to open the modal.
  */
-export default function ManagePinModal({
-  trigger,
-}: {
-  trigger?: React.ReactNode;
-}) {
+export default function ManagePinModal({ trigger }: { trigger?: React.ReactNode }) {
   const { setModal } = useCardPinStore(
     useShallow(state => ({
       setModal: state.setModal,

@@ -1,9 +1,9 @@
-import * as Sentry from '@sentry/react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 
+import { queryClient } from '@/app/_layout';
 import { fetchActivityEvents, getActivityStreamUrl, refreshToken } from '@/lib/api';
-import { withRefreshToken } from '@/lib/utils';
 import {
   ActivityEvent,
   SSEActivityData,
@@ -12,7 +12,7 @@ import {
   SSEEventData,
   SSEPingData,
 } from '@/lib/types';
-import { queryClient } from '@/app/_layout';
+import { withRefreshToken } from '@/lib/utils';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -489,7 +489,9 @@ class SSEConnectionManager {
         if (seq > this.lastSeq + 1) {
           // Forward gap — missed events
           const gap = seq - this.lastSeq - 1;
-          console.warn(`[SSE] Gap detected: missed ${gap} event(s) (seq ${this.lastSeq} -> ${seq})`);
+          console.warn(
+            `[SSE] Gap detected: missed ${gap} event(s) (seq ${this.lastSeq} -> ${seq})`,
+          );
           Sentry.captureMessage('SSE sequence gap detected', {
             level: 'warning',
             tags: { type: 'sse_sequence_gap' },
@@ -499,7 +501,9 @@ class SSEConnectionManager {
         } else if (seq < this.lastSeq) {
           // Seq regression — likely Redis failover reset the counter.
           // Reset lastSeq to the new baseline and fetch latest to reconcile.
-          console.warn(`[SSE] Seq regression detected (${this.lastSeq} -> ${seq}), resetting baseline`);
+          console.warn(
+            `[SSE] Seq regression detected (${this.lastSeq} -> ${seq}), resetting baseline`,
+          );
           Sentry.captureMessage('SSE sequence regression detected', {
             level: 'warning',
             tags: { type: 'sse_sequence_regression' },
@@ -537,9 +541,7 @@ class SSEConnectionManager {
         case 'deleted': {
           // Deleted events have minimal payload (clientTxId + deleted flag only, no type/status).
           // Use markDeleted directly instead of batching, since the payload isn't a full ActivityEvent.
-          const deletedAt = activity.deletedAt
-            ? new Date(activity.deletedAt)
-            : new Date(timestamp);
+          const deletedAt = activity.deletedAt ? new Date(activity.deletedAt) : new Date(timestamp);
           const { markDeleted } = useActivityStore.getState();
           markDeleted(this.currentUserId, activity.clientTxId, deletedAt);
           break;
@@ -1268,7 +1270,6 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
         subscriptionRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, subscribe]);
 
   // Memoized callbacks that delegate to singleton
