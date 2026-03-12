@@ -1,25 +1,20 @@
 import { StyleSheet, View } from 'react-native';
-import { BlurView } from 'expo-blur';
 
 export default function TabBarBackground() {
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {/* Android blur with dimezisBlurView - lower intensity looks better on Android */}
-      <BlurView
-        intensity={25}
-        tint="dark"
-        blurMethod="dimezisBlurView"
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Darker overlay to compensate for Android's different blur rendering */}
-      <View style={styles.overlay} />
+    <View style={styles.container} pointerEvents="none">
+      <View style={styles.topBorder} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  container: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(17, 17, 17, 0.5)',
+    backgroundColor: '#111',
+  },
+  topBorder: {
+    height: 1,
+    backgroundColor: 'rgba(61, 61, 61, 0.5)',
   },
 });
