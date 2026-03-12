@@ -98,7 +98,6 @@ export interface WithdrawCollateralRequest {
   recipientAddress: string;
   adminAddress: string;
   chainId?: number;
-  token?: string;
   tokenAddress?: string;
 }
 
