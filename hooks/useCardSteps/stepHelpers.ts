@@ -47,11 +47,7 @@ export function buildCardSteps(
           rainApplicationStatus: options.rainApplicationStatus,
         }
       : undefined;
-  const description = getStepDescription(
-    cardsEndorsement,
-    customerRejectionReasons,
-    stepOptions,
-  );
+  const description = getStepDescription(cardsEndorsement, customerRejectionReasons, stepOptions);
   const buttonText = getStepButtonText(cardsEndorsement, stepOptions);
   const isButtonDisabled = isStepButtonDisabled(cardsEndorsement, stepOptions);
 

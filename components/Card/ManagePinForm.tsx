@@ -1,21 +1,17 @@
 import React, { useCallback, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Pressable, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, EyeOff } from 'lucide-react-native';
-import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM } from '@/lib/config';
 import { getCardPin, updateCardPin } from '@/lib/api';
-import {
-  generateSessionId,
-  encryptPin,
-  decryptPin,
-} from '@/lib/utils/rainCardSecrets';
+import { EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM } from '@/lib/config';
+import { decryptPin, encryptPin, generateSessionId } from '@/lib/utils/rainCardSecrets';
 import { withRefreshToken } from '@/lib/utils/utils';
 
 function isSimpleSequence(pin: string): boolean {
@@ -51,16 +47,18 @@ export default function ManagePinForm() {
   const [showPin, setShowPin] = useState(false);
   const queryClient = useQueryClient();
 
-  const { control, handleSubmit, formState: { errors, isValid }, reset } = useForm<PinFormData>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isValid },
+    reset,
+  } = useForm<PinFormData>({
     resolver: zodResolver(pinSchema) as any,
     mode: 'onChange',
     defaultValues: { pin: '' },
   });
 
-  const {
-    data: existingPin,
-    isLoading: isFetchingPin,
-  } = useQuery({
+  const { data: existingPin, isLoading: isFetchingPin } = useQuery({
     queryKey: [CARD_PIN_QUERY_KEY],
     queryFn: async () => {
       if (!EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) return null;
@@ -68,11 +66,7 @@ export default function ManagePinForm() {
         EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
       );
       const response = await withRefreshToken(() => getCardPin(sessionId));
-      return decryptPin(
-        response.encryptedPin.data,
-        response.encryptedPin.iv,
-        secretKey,
-      );
+      return decryptPin(response.encryptedPin.data, response.encryptedPin.iv, secretKey);
     },
     retry: false,
   });
@@ -88,9 +82,7 @@ export default function ManagePinForm() {
         EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
       );
       const { encryptedPin: encData, encodedIv } = await encryptPin(pin, secretKey);
-      return withRefreshToken(() =>
-        updateCardPin(sessionId, { iv: encodedIv, data: encData }),
-      );
+      return withRefreshToken(() => updateCardPin(sessionId, { iv: encodedIv, data: encData }));
     },
     onSuccess: () => {
       Toast.show({
@@ -151,11 +143,7 @@ export default function ManagePinForm() {
               accessibilityLabel={showPin ? 'Hide PIN' : 'Show PIN'}
               accessibilityRole="button"
             >
-              {showPin ? (
-                <EyeOff size={20} color="#BFBFBF" />
-              ) : (
-                <Eye size={20} color="#BFBFBF" />
-              )}
+              {showPin ? <EyeOff size={20} color="#BFBFBF" /> : <Eye size={20} color="#BFBFBF" />}
             </Pressable>
           </View>
         </View>
@@ -186,9 +174,7 @@ export default function ManagePinForm() {
             )}
           />
         </View>
-        {errors.pin && (
-          <Text className="mt-2 text-sm text-red-400">{errors.pin.message}</Text>
-        )}
+        {errors.pin && <Text className="mt-2 text-sm text-red-400">{errors.pin.message}</Text>}
         <Text className="mt-2 text-xs text-white/40">
           PIN must be 4-12 digits. No simple sequences or repeated digits.
         </Text>

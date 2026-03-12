@@ -65,7 +65,14 @@ export default function KycNative() {
     return () => {
       cancelled = true;
     };
-  }, [sessionToken, markStarted, initSession, onVerificationComplete, onVerificationPending, onVerificationError]);
+  }, [
+    sessionToken,
+    markStarted,
+    initSession,
+    onVerificationComplete,
+    onVerificationPending,
+    onVerificationError,
+  ]);
 
   return (
     <View style={styles.container}>
