@@ -11,13 +11,11 @@ import { Text } from '@/components/ui/text';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 
 export type ToDestinationProps = {
-  value: CardDepositSource;
   onChange: (value: CardDepositSource) => void;
   tokenSymbol?: string;
 };
 
 export default function ToDestinationSelector({
-  value,
   onChange,
   tokenSymbol = 'USDC',
 }: ToDestinationProps) {

@@ -23,11 +23,7 @@ import {
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
 } from '@/lib/config';
 import { CardProvider } from '@/lib/types';
-import {
-  cn,
-  formatNumber,
-  getCardDepositTokenSymbol,
-} from '@/lib/utils';
+import { cn, formatNumber, getCardDepositTokenSymbol } from '@/lib/utils';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
