@@ -24,6 +24,7 @@ export const useCardDetails = () => {
     queryFn: () => withRefreshToken(() => getCardBalance()),
     enabled: provider === CardProvider.RAIN && !!detailsQuery.data,
     retry: false,
+    refetchInterval: 5000,
   });
 
   const mergedData = useMemo((): CardDetailsResponseDto | undefined => {
