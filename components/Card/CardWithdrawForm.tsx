@@ -24,7 +24,6 @@ import {
 } from '@/lib/config';
 import { CardProvider } from '@/lib/types';
 import {
-  CARD_DEPOSIT_TOKEN_DECIMALS,
   cn,
   formatNumber,
   getCardDepositTokenSymbol,
@@ -165,11 +164,8 @@ export default function CardWithdrawForm() {
             text2: `$${data.amount} is being sent to your Savings.`,
           });
         } else if (toCollateral) {
-          const amountInSmallestUnits = Math.round(
-            parseFloat(data.amount) * 10 ** CARD_DEPOSIT_TOKEN_DECIMALS,
-          ).toString();
           const res = await withdrawCollateral({
-            amount: amountInSmallestUnits,
+            amount: data.amount,
             recipientAddress: user!.safeAddress!,
             ...(fundingContract?.chainId != null && { chainId: fundingContract.chainId }),
             ...(EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS && {
