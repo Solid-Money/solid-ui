@@ -53,6 +53,7 @@ export default function ManagePinForm() {
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors, isValid },
     reset,
   } = useForm<PinFormData>({
@@ -69,6 +70,7 @@ export default function ManagePinForm() {
         EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
       );
       const response = await withRefreshToken(() => getCardPin(sessionId));
+      if (!response) return null;
       return decryptPin(response.encryptedPin.data, response.encryptedPin.iv, secretKey);
     },
     retry: false,
@@ -95,6 +97,9 @@ export default function ManagePinForm() {
         text1: 'PIN updated',
         text2: 'Your card PIN has been updated successfully.',
         visibilityTime: 4000,
+        props: {
+          badgeText: '',
+        },
       });
       reset();
       setShowPin(false);
@@ -105,6 +110,7 @@ export default function ManagePinForm() {
         type: 'error',
         text1: 'Failed to update PIN',
         text2: 'Please try again.',
+        props: { badgeText: '' },
       });
     },
   });
@@ -117,12 +123,15 @@ export default function ManagePinForm() {
   );
 
   const handleRevealPin = useCallback(() => {
+    if (!showPin && existingPin) {
+      setValue('pin', existingPin, { shouldValidate: true });
+    }
     setShowPin(prev => !prev);
-  }, []);
+  }, [showPin, existingPin, setValue]);
 
   if (isFetchingPin) {
     return (
-      <View className="flex-1 items-center justify-center py-12">
+      <View className="flex-1 items-center justify-center px-1 pt-4" style={{ minHeight: 220 }}>
         <ActivityIndicator size="large" color="white" />
       </View>
     );
@@ -130,31 +139,6 @@ export default function ManagePinForm() {
 
   return (
     <View className="flex-1 px-1 pt-4">
-      <Text className="mb-2 text-sm text-white/60">
-        {hasExistingPin ? 'Enter a new PIN to update your card PIN' : 'Set a PIN for your card'}
-      </Text>
-
-      {/* Existing PIN display */}
-      {hasExistingPin && (
-        <View className="mb-6">
-          <Text className="mb-2 text-sm font-medium text-white/70">Current PIN</Text>
-          <View className="flex-row items-center rounded-xl bg-[#1E1E1E] px-4 py-3">
-            <Text className="flex-1 text-lg tracking-[8px] text-white">
-              {showPin && existingPin ? existingPin : '****'}
-            </Text>
-            <Pressable
-              onPress={handleRevealPin}
-              className="p-2 web:hover:opacity-70"
-              accessibilityLabel={showPin ? 'Hide PIN' : 'Show PIN'}
-              accessibilityRole="button"
-            >
-              {showPin ? <EyeOff size={20} color="#BFBFBF" /> : <Eye size={20} color="#BFBFBF" />}
-            </Pressable>
-          </View>
-        </View>
-      )}
-
-      {/* New PIN input */}
       <View className="mb-4">
         <Text className="mb-2 text-sm font-medium text-white/70">
           {hasExistingPin ? 'New PIN' : 'PIN'}
@@ -168,16 +152,26 @@ export default function ManagePinForm() {
                 value={value}
                 onChangeText={text => onChange(text.replace(/[^0-9]/g, ''))}
                 onBlur={onBlur}
-                placeholder={hasExistingPin ? '****' : 'Enter PIN'}
+                placeholder={hasExistingPin ? '****' : ''}
                 placeholderTextColor="#666"
-                secureTextEntry
+                secureTextEntry={!showPin}
                 keyboardType="number-pad"
                 maxLength={12}
-                className="flex-1 text-lg text-white"
+                className="flex-1 text-lg text-white web:focus:outline-none"
                 accessibilityLabel="PIN input"
               />
             )}
           />
+          {hasExistingPin && (
+            <Pressable
+              onPress={handleRevealPin}
+              className="p-2 web:hover:opacity-70"
+              accessibilityLabel={showPin ? 'Hide PIN' : 'Show PIN'}
+              accessibilityRole="button"
+            >
+              {showPin ? <EyeOff size={20} color="#BFBFBF" /> : <Eye size={20} color="#BFBFBF" />}
+            </Pressable>
+          )}
         </View>
         {errors.pin && <Text className="mt-2 text-sm text-red-400">{errors.pin.message}</Text>}
         <Text className="mt-2 text-xs text-white/40">
@@ -189,7 +183,7 @@ export default function ManagePinForm() {
       <Button
         onPress={handleSubmit(onSubmit)}
         disabled={updatePinMutation.isPending || !isValid}
-        className="mt-4 h-14 rounded-xl bg-[#94F27F]"
+        className="mt-4 h-12 rounded-xl bg-[#94F27F]"
       >
         {updatePinMutation.isPending ? (
           <ActivityIndicator size="small" color="black" />

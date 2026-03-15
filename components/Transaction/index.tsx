@@ -53,7 +53,6 @@ const Transaction = ({
   onPress,
   type,
   clientTxId,
-  metadata,
   timestamp,
   showTimestamp = true,
   isFirst = false,
