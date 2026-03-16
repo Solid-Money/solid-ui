@@ -179,7 +179,6 @@ export default function ManagePinForm() {
         </Text>
       </View>
 
-      {/* Update button */}
       <Button
         onPress={handleSubmit(onSubmit)}
         disabled={updatePinMutation.isPending || !isValid}

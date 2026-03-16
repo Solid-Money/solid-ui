@@ -310,7 +310,8 @@ const useDepositOption = ({
       !isEmailGate &&
       !isNetworks &&
       !isBankTransfer &&
-      !isDepositDirectly
+      !isDepositDirectly &&
+      !isDepositDirectlyAddress
     ) {
       return 'min-h-[40rem]';
     }

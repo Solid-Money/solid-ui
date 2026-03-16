@@ -78,7 +78,7 @@ const ResponsiveModalMobile = ({
           )}
           <View className="flex-row items-center gap-2">
             {showBackButton && actionButton}
-            {showBackButton && !actionButton && <View className="w-10" />}
+            {showBackButton && !actionButton ? <View className="w-10" /> : null}
           </View>
         </View>
       )}

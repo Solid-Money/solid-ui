@@ -2,7 +2,6 @@ import { View } from 'react-native';
 import { Image } from 'expo-image';
 
 import AccountCenterDropdown from '@/components/AccountCenter/AccountCenterDropdown.native';
-import InfoCenterDropdown from '@/components/InfoCenter/InfoCenterDropdown.native';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 
@@ -24,7 +23,6 @@ const NavbarMobile = () => {
         {user ? (
           <View className="flex-row items-center gap-2">
             <WhatsNewButton />
-            <InfoCenterDropdown />
             <AccountCenterDropdown />
           </View>
         ) : (

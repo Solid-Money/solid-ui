@@ -250,8 +250,7 @@ export default function Home() {
               spinAvailable={spinStatus?.spinAvailableToday ?? true}
               lastSpinDate={spinStatus?.lastSpinDate ?? null}
               prizePool={giveaway?.prizePool}
-              countdown={countdown}
-              giveawayDate={giveaway?.giveawayDate}
+              giveawayCountdown={countdown}
               onPress={() => openSpinWinModal(SPIN_WIN_MODAL.OPEN_HOME)}
             />
           )}
