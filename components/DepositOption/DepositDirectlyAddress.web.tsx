@@ -364,7 +364,8 @@ const DepositDirectlyAddress = () => {
           open={isQrDialogOpen}
           onOpenChange={setIsQrDialogOpen}
           title="Scan to deposit"
-          contentClassName="px-3 md:px-4 2xl:px-6 py-4 md:py-6 2xl:py-8"
+          mobilePlacement="center"
+          contentClassName="max-w-sm px-3 py-4 md:px-4 md:py-6 2xl:px-6 2xl:py-8"
         >
           <View className="flex flex-col items-center gap-3 md:gap-4 2xl:gap-5">
             <View className="rounded-3xl bg-white p-3 shadow-[0_18px_45px_rgba(0,0,0,0.25)] md:p-4 2xl:p-5">
