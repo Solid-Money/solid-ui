@@ -358,22 +358,30 @@ const DepositDirectlyAddress = () => {
         <NeedHelp />
       </View>
 
-      <ResponsiveDialog
-        open={isQrDialogOpen}
-        onOpenChange={setIsQrDialogOpen}
-        title="Scan to deposit"
-        contentClassName="px-3 md:px-4 2xl:px-6 py-4 md:py-6 2xl:py-8"
-      >
-        <View className="flex flex-col items-center gap-3 md:gap-4 2xl:gap-5">
-          <View className="rounded-3xl bg-white p-3 shadow-[0_18px_45px_rgba(0,0,0,0.25)] md:p-4 2xl:p-5">
-            <QRCode value={walletAddress || ''} size={220} backgroundColor="white" color="black" />
+      {/* QR Dialog - only mount when open to avoid gesture conflicts with parent ScrollView */}
+      {isQrDialogOpen && (
+        <ResponsiveDialog
+          open={isQrDialogOpen}
+          onOpenChange={setIsQrDialogOpen}
+          title="Scan to deposit"
+          contentClassName="px-3 md:px-4 2xl:px-6 py-4 md:py-6 2xl:py-8"
+        >
+          <View className="flex flex-col items-center gap-3 md:gap-4 2xl:gap-5">
+            <View className="rounded-3xl bg-white p-3 shadow-[0_18px_45px_rgba(0,0,0,0.25)] md:p-4 2xl:p-5">
+              <QRCode
+                value={walletAddress || ''}
+                size={220}
+                backgroundColor="white"
+                color="black"
+              />
+            </View>
+            <Text className="text-center text-xs text-muted-foreground md:text-sm">
+              Share this QR code with the sender or scan it from another device to populate the
+              wallet address automatically.
+            </Text>
           </View>
-          <Text className="text-center text-xs text-muted-foreground md:text-sm">
-            Share this QR code with the sender or scan it from another device to populate the wallet
-            address automatically.
-          </Text>
-        </View>
-      </ResponsiveDialog>
+        </ResponsiveDialog>
+      )}
     </View>
   );
 };

@@ -127,7 +127,7 @@ const DepositDirectlyAddress = () => {
     if (!directDepositSession.fromActivity) {
       router.push(path.ACTIVITY);
     }
-  }, [setModal, clearDirectDepositSession, directDepositSession.fromActivity]);
+  }, [clearDirectDepositSession, directDepositSession.fromActivity, setModal]);
 
   const handleCopy = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_DIRECT_ADDRESS_COPIED, {
@@ -208,12 +208,14 @@ const DepositDirectlyAddress = () => {
     rows.push({
       label: 'You will receive',
       valueContent: (
-        <View className="flex-row items-center gap-1.5">
+        <View className="min-w-0 max-w-full flex-row items-start justify-end gap-1.5">
           <Image source={SOUSD_ICON} style={{ width: 18, height: 18 }} contentFit="cover" />
-          <Text className="text-lg font-bold text-white">
-            {formatNumber(soUSDAmount, 2, 2)}{' '}
-            <Text className="text-white/70">soUSD on Ethereum</Text>
-          </Text>
+          <View className="min-w-0 flex-1">
+            <Text className="text-right text-lg font-bold text-white">
+              {formatNumber(soUSDAmount, 2, 2)} soUSD
+            </Text>
+            <Text className="text-right text-sm text-white/70">on Ethereum</Text>
+          </View>
         </View>
       ),
     });
@@ -221,7 +223,7 @@ const DepositDirectlyAddress = () => {
     rows.push({
       label: 'Price',
       valueContent: (
-        <Text className="text-lg font-bold text-white">
+        <Text className="shrink text-right text-lg font-bold text-white">
           1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
           {selectedToken}
         </Text>
@@ -233,7 +235,7 @@ const DepositDirectlyAddress = () => {
       valueContent: isAPYsLoading ? (
         <Skeleton className="h-7 w-16 bg-white/20" />
       ) : (
-        <Text className="text-lg font-bold text-[#94F27F]">{formattedAPY}</Text>
+        <Text className="text-right text-lg font-bold text-[#94F27F]">{formattedAPY}</Text>
       ),
     });
 
@@ -303,9 +305,9 @@ const DepositDirectlyAddress = () => {
       </View>
 
       {/* Warning Text */}
-      <View className="my-2 flex-row items-center justify-center gap-1.5 px-4 md:my-0">
+      <View className="my-2 flex-row flex-wrap items-center justify-center gap-1.5 px-4 md:my-0">
         <Info size={16} color="#A1A1AA" />
-        <Text className="text-center text-base text-[#A1A1AA]">
+        <Text className="shrink text-center text-base text-[#A1A1AA]">
           Please send only {selectedToken} to this address
         </Text>
         <TooltipPopover
@@ -320,14 +322,16 @@ const DepositDirectlyAddress = () => {
         <View className="w-full rounded-2xl bg-card">
           {priceRows.map((row, index) => (
             <View key={row.label}>
-              <View className="flex-row items-center justify-between gap-1.5 px-5 py-4">
-                <Text className="text-lg font-medium text-muted-foreground">{row.label}</Text>
-                <View className="flex-row items-center gap-2">
+              <View className="flex-row items-start gap-4 px-5 py-4">
+                <Text className="flex-1 text-lg font-medium text-muted-foreground">
+                  {row.label}
+                </Text>
+                <View className="min-w-0 flex-1 items-end gap-2">
                   {row.valueContent ? (
                     row.valueContent
                   ) : (
                     <Text
-                      className={`text-lg font-medium text-foreground ${row.valueClassName ? row.valueClassName : ''}`}
+                      className={`text-right text-lg font-medium text-foreground ${row.valueClassName ? row.valueClassName : ''}`}
                     >
                       {row.value}
                     </Text>
@@ -346,17 +350,17 @@ const DepositDirectlyAddress = () => {
         <View className="w-full rounded-2xl bg-card">
           {infoRows.map((row, index) => (
             <View key={row.label}>
-              <View className="flex-row items-center justify-between gap-1.5 px-5 py-4">
-                <View className="flex-row items-center gap-1.5">
+              <View className="flex-row items-start gap-4 px-5 py-4">
+                <View className="flex-1 flex-row items-center gap-1.5 pr-2">
                   {row.icon}
                   <Text className="text-lg font-medium text-muted-foreground">{row.label}</Text>
                 </View>
-                <View className="flex-row items-center gap-2">
+                <View className="min-w-0 flex-1 items-end gap-2">
                   {row.valueContent ? (
                     row.valueContent
                   ) : (
                     <Text
-                      className={`font-medium text-muted-foreground ${row.valueClassName ? row.valueClassName : ''}`}
+                      className={`text-right font-medium text-muted-foreground ${row.valueClassName ? row.valueClassName : ''}`}
                     >
                       {row.value}
                     </Text>
@@ -388,23 +392,30 @@ const DepositDirectlyAddress = () => {
         <NeedHelp />
       </View>
 
-      {/* QR Dialog */}
-      <ResponsiveDialog
-        open={isQrDialogOpen}
-        onOpenChange={setIsQrDialogOpen}
-        title="Scan to deposit"
-        contentClassName="px-3 py-4"
-      >
-        <View className="items-center gap-3">
-          <View className="rounded-3xl bg-white p-3">
-            <QRCode value={walletAddress || ''} size={220} backgroundColor="white" color="black" />
+      {/* QR Dialog - only mount when open to avoid gesture conflicts with parent ScrollView */}
+      {isQrDialogOpen && (
+        <ResponsiveDialog
+          open={isQrDialogOpen}
+          onOpenChange={setIsQrDialogOpen}
+          title="Scan to deposit"
+          contentClassName="px-3 py-4"
+        >
+          <View className="items-center gap-3">
+            <View className="rounded-3xl bg-white p-3">
+              <QRCode
+                value={walletAddress || ''}
+                size={220}
+                backgroundColor="white"
+                color="black"
+              />
+            </View>
+            <Text className="text-center text-xs text-muted-foreground">
+              Share this QR code with the sender or scan it from another device to populate the
+              wallet address automatically.
+            </Text>
           </View>
-          <Text className="text-center text-xs text-muted-foreground">
-            Share this QR code with the sender or scan it from another device to populate the wallet
-            address automatically.
-          </Text>
-        </View>
-      </ResponsiveDialog>
+        </ResponsiveDialog>
+      )}
     </View>
   );
 };
