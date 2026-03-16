@@ -324,18 +324,20 @@ const FastWithdrawForm = () => {
             </View>
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <Text className="text-base text-muted-foreground">Fee</Text>
+            <Text className="text-base text-muted-foreground">Solver fee</Text>
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+              <Text className="text-base font-semibold">0.01%</Text>
+            </View>
+          </View>
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+            <Text className="text-base text-muted-foreground">You will receive</Text>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               {isPreviewLoading ? (
                 <Skeleton className="h-7 w-20 bg-white/20" />
               ) : (
-                <Text className="text-base font-semibold">{`$${formatNumber(
-                  Number(
-                    (previewData?.amountOutBeforePremium ?? 0n) -
-                      (previewData?.minAmountOut ?? 0n) +
-                      (previewData?.feeAmount ?? 0n),
-                  ) / 1e6,
-                )}`}</Text>
+                <Text className="text-base font-semibold">
+                  {formatNumber(Number(watchedAmount || 0) * 0.9999)} USDC
+                </Text>
               )}
             </View>
           </View>
