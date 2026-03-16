@@ -17,6 +17,21 @@ function getDedupKey(tx: ActivityEvent): string | null {
  * Helper to check if two transactions are duplicates
  */
 function isDuplicate(a: ActivityEvent, b: ActivityEvent): boolean {
+  // Never consider a deposit activity as a duplicate of its own savings
+  // counterpart (e.g., "tracking_abc" vs "tracking_abc_savings"). They represent
+  // different user-visible steps ("Deposited USDC" vs "Deposit soUSD to Savings").
+  // Backend activity-sync.service handles unifying _savings activities with
+  // Blockscout on-chain data — no frontend dedup needed for that case.
+  if (a.clientTxId && b.clientTxId && a.clientTxId !== b.clientTxId) {
+    const aIsSavings = a.clientTxId.endsWith('_savings');
+    const bIsSavings = b.clientTxId.endsWith('_savings');
+    if (aIsSavings !== bIsSavings) {
+      const savingsId = aIsSavings ? a.clientTxId : b.clientTxId;
+      const otherId = aIsSavings ? b.clientTxId : a.clientTxId;
+      if (savingsId === `${otherId}_savings`) return false;
+    }
+  }
+
   // Normalize hash values for comparison (lowercase, trim)
   const normalizeHash = (hash: string | undefined) => hash?.toLowerCase().trim();
   const aHash = normalizeHash(a.hash);

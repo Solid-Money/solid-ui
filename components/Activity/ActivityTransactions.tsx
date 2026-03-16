@@ -301,8 +301,9 @@ export default function ActivityTransactions({
       const clientTxId = transaction.clientTxId;
       const isDirectDeposit = clientTxId?.startsWith('direct_deposit_');
       const isPending = transaction.status === TransactionStatus.PENDING;
+      const isDetected = transaction.status === TransactionStatus.DETECTED;
       const isProcessing = transaction.status === TransactionStatus.PROCESSING;
-      const isPendingOrProcessing = isPending || isProcessing;
+      const isPendingOrProcessing = isPending || isDetected || isProcessing;
 
       if (isDirectDeposit && isPendingOrProcessing) {
         // Extract token symbol from clientTxId format: direct_deposit_{userId}_{chainId}_{tokenSymbol}_{timestamp}
