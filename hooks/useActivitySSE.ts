@@ -595,8 +595,23 @@ class SSEConnectionManager {
     // Group events by userId (defensive - in practice all events are for the same user)
     const eventsByUser = new Map<string, ActivityEvent[]>();
     for (const { userId, activity } of batch) {
+      // [DIAG] Log raw SSE fields BEFORE normalization
+      console.log(`[SSE:DIAG:raw] clientTxId=${activity.clientTxId} type=${activity.type} status=${activity.status} symbol=${activity.symbol} amount=${activity.amount} title=${activity.title}`);
+
+      // Check for nullish fields that stripNullish would filter
+      const nullishFields = Object.entries(activity)
+        .filter(([, v]) => v === undefined || v === null)
+        .map(([k]) => k);
+      if (nullishFields.length > 0) {
+        console.warn(`[SSE:DIAG:nullish] clientTxId=${activity.clientTxId} has null/undefined fields: ${nullishFields.join(', ')}`);
+      }
+
       // Normalize SSE activities to match REST format (consistent field types)
       const normalized = this.normalizeActivity(activity);
+
+      // [DIAG] Log AFTER normalization
+      console.log(`[SSE:DIAG:normalized] clientTxId=${normalized.clientTxId} type=${normalized.type} symbol=${normalized.symbol} amount=${normalized.amount}`);
+
       const existing = eventsByUser.get(userId);
       if (existing) {
         existing.push(normalized);

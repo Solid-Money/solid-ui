@@ -78,6 +78,23 @@ function isSameEvent(a: ActivityEvent, b: ActivityEvent): boolean {
   );
 }
 
+/**
+ * Strip undefined/null values from an event before merging.
+ * Prevents SSE partial updates (where backend sends sanitized fields that may
+ * be undefined) from overwriting existing valid data via object spread.
+ * e.g., `{ ...existing, ...event }` would set `type: undefined` if event.type
+ * is undefined, corrupting the stored event and breaking color/type logic.
+ */
+function stripNullish(event: ActivityEvent): Partial<ActivityEvent> {
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(event)) {
+    if (value !== undefined && value !== null) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned as Partial<ActivityEvent>;
+}
+
 // Helper to check if event data has actually changed
 function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): boolean {
   // A status downgrade is not a real change — it's a stale update
@@ -88,7 +105,10 @@ function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): bool
     statusActuallyChanged ||
     existing.hash !== incoming.hash ||
     existing.deleted !== incoming.deleted ||
-    existing.failureReason !== incoming.failureReason
+    existing.failureReason !== incoming.failureReason ||
+    existing.amount !== incoming.amount ||
+    existing.symbol !== incoming.symbol ||
+    existing.title !== incoming.title
   );
 }
 
@@ -148,7 +168,7 @@ export const useActivityStore = create<ActivityState>()(
 
               state.events[userId][idx] = {
                 ...existing,
-                ...event,
+                ...stripNullish(event),
                 status: mergedStatus,
               };
             }
@@ -177,6 +197,7 @@ export const useActivityStore = create<ActivityState>()(
 
               if (existingIndex === -1) {
                 // New event
+                console.log(`[Store:DIAG:new] clientTxId=${event.clientTxId} type=${event.type} symbol=${event.symbol} amount=${event.amount}`);
                 state.events[userId].push(event);
                 changed = true;
               } else {
@@ -187,9 +208,22 @@ export const useActivityStore = create<ActivityState>()(
                       ? existing.status
                       : (event.status ?? existing.status);
 
+                  const stripped = stripNullish(event);
+                  // [DIAG] Log merge: what's changing and what stripNullish removed
+                  const strippedKeys = Object.keys(event).filter(k => !(k in stripped));
+                  console.log(
+                    `[Store:DIAG:merge] clientTxId=${existing.clientTxId} ` +
+                    `type: ${existing.type} → ${event.type} ` +
+                    `status: ${existing.status} → ${mergedStatus} ` +
+                    `symbol: ${existing.symbol} → ${event.symbol} ` +
+                    `amount: ${existing.amount} → ${event.amount} ` +
+                    `title: ${existing.title} → ${event.title}` +
+                    (strippedKeys.length ? ` | stripped null fields: ${strippedKeys.join(', ')}` : ''),
+                  );
+
                   state.events[userId][existingIndex] = {
                     ...existing,
-                    ...event,
+                    ...stripped,
                     status: mergedStatus,
                   };
                   changed = true;
