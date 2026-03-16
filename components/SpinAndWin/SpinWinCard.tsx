@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import StreakTracker from '@/components/SpinAndWin/StreakTracker';
 import { Text } from '@/components/ui/text';
 import { SPIN_WIN } from '@/constants/spinWinDesign';
+import { useNextSpinCountdown } from '@/hooks/useNextSpinCountdown';
 
 interface SpinWinCardProps {
   currentStreak: number;
@@ -12,7 +13,6 @@ interface SpinWinCardProps {
   lastSpinDate: string | null;
   prizePool?: number;
   countdown?: string;
-  giveawayDate?: string;
   onPress: () => void;
 }
 
@@ -27,6 +27,8 @@ export default function SpinWinCard({
   onPress,
 }: SpinWinCardProps) {
   const hasSpunBefore = lastSpinDate !== null;
+  const nextSpinCountdown = useNextSpinCountdown(spinAvailable);
+  const spinCtaLabel = spinAvailable ? 'Spin the wheel' : `Next spin in ${nextSpinCountdown}`;
 
   if (!hasSpunBefore) {
     return (
@@ -141,7 +143,7 @@ export default function SpinWinCard({
         <View
           style={{
             marginTop: 16,
-            backgroundColor: spinAvailable ? SPIN_WIN.colors.gold : SPIN_WIN.colors.ctaDisabledBg,
+            backgroundColor: SPIN_WIN.colors.gold,
             borderRadius: SPIN_WIN.borderRadius.badge,
             borderCurve: 'continuous',
             paddingVertical: 10,
@@ -152,10 +154,10 @@ export default function SpinWinCard({
             style={{
               fontSize: 16,
               fontWeight: '700',
-              color: spinAvailable ? '#000000' : SPIN_WIN.colors.ctaDisabledText,
+              color: '#000000',
             }}
           >
-            Spin the wheel
+            {spinCtaLabel}
           </Text>
         </View>
 
