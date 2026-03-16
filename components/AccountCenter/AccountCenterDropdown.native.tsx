@@ -3,6 +3,14 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
+import {
+  InfoCenterDocs,
+  InfoCenterLegal,
+  InfoCenterSupport,
+  onInfoCenterDocsPress,
+  onInfoCenterLegalPress,
+  useInfoCenterSupportPress,
+} from '@/components/InfoCenter';
 import useUser from '@/hooks/useUser';
 
 import {
@@ -18,21 +26,39 @@ const rowClassName = 'h-14 flex-row items-center gap-2 px-[30px]';
 const AccountCenterDropdown = () => {
   const insets = useSafeAreaInsets();
   const { handleLogout } = useUser();
+  const onSupportPress = useInfoCenterSupportPress();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const dismissAndRun = useCallback((action: () => void) => {
+    bottomSheetModalRef.current?.dismiss();
+    action();
+  }, []);
 
   const handlePresentModalPress = useCallback(() => {
     bottomSheetModalRef.current?.present();
   }, []);
 
-  const handleSettingsPress = useCallback(() => {
-    bottomSheetModalRef.current?.dismiss();
-    onAccountCenterSettingsPress();
-  }, []);
+  const handleSettingsPress = useCallback(
+    () => dismissAndRun(onAccountCenterSettingsPress),
+    [dismissAndRun],
+  );
 
-  const handleSignOutPress = useCallback(() => {
-    bottomSheetModalRef.current?.dismiss();
-    handleLogout();
-  }, [handleLogout]);
+  const handleSignOutPress = useCallback(
+    () => dismissAndRun(handleLogout),
+    [dismissAndRun, handleLogout],
+  );
+
+  const handleSupportPress = useCallback(
+    () => dismissAndRun(onSupportPress),
+    [dismissAndRun, onSupportPress],
+  );
+
+  const handleDocsPress = useCallback(() => dismissAndRun(onInfoCenterDocsPress), [dismissAndRun]);
+
+  const handleLegalPress = useCallback(
+    () => dismissAndRun(onInfoCenterLegalPress),
+    [dismissAndRun],
+  );
 
   const renderBackdrop = useCallback(
     (props: any) => <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} />,
@@ -62,6 +88,16 @@ const AccountCenterDropdown = () => {
           </Pressable>
           <Pressable className={rowClassName} onPress={handleSignOutPress}>
             <AccountCenterSignOut />
+          </Pressable>
+          <View className="mx-[30px] h-px bg-border/50" />
+          <Pressable className={rowClassName} onPress={handleSupportPress}>
+            <InfoCenterSupport />
+          </Pressable>
+          <Pressable className={rowClassName} onPress={handleDocsPress}>
+            <InfoCenterDocs />
+          </Pressable>
+          <Pressable className={rowClassName} onPress={handleLegalPress}>
+            <InfoCenterLegal />
           </Pressable>
         </BottomSheetView>
       </BottomSheetModal>

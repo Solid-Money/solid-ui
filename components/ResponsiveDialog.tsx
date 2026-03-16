@@ -24,6 +24,7 @@ export interface ResponsiveDialogProps {
   // Styling
   contentClassName?: string;
   titleClassName?: string;
+  mobilePlacement?: 'top' | 'center';
 }
 
 const ResponsiveDialog = ({
@@ -34,8 +35,10 @@ const ResponsiveDialog = ({
   children,
   contentClassName,
   titleClassName,
+  mobilePlacement = 'top',
 }: ResponsiveDialogProps) => {
   const { isScreenMedium } = useDimension();
+  const isTopAlignedMobile = !isScreenMedium && mobilePlacement === 'top';
 
   // Prevent page scroll when modal closes by stopping focus restoration to trigger
   const handleCloseAutoFocus = useCallback((event: Event) => {
@@ -49,7 +52,7 @@ const ResponsiveDialog = ({
         className={cn(
           'p-4 md:max-w-md md:p-8',
           contentClassName,
-          !isScreenMedium ? 'mt-8 w-screen max-w-full justify-start' : '',
+          isTopAlignedMobile ? 'mt-8 w-screen max-w-full justify-start' : '',
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
       >

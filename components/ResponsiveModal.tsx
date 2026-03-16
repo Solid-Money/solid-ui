@@ -1,5 +1,5 @@
 import React, { ReactNode, useCallback } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Platform, ScrollView, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInLeft,
@@ -84,10 +84,18 @@ const ResponsiveModal = ({
   hideHeader = false,
 }: ResponsiveModalProps) => {
   const { isScreenMedium } = useDimension();
+  const isNativeSmallScreen = Platform.OS !== 'web' && !isScreenMedium;
+  const useFixedHeightLayout = isNativeSmallScreen && !disableScroll;
   const dialogHeight = useSharedValue(0);
   const [showBottomFade, setShowBottomFade] = React.useState(false);
   const containerHeightRef = React.useRef(0);
   const contentHeightRef = React.useRef(0);
+
+  React.useEffect(() => {
+    if (useFixedHeightLayout) {
+      dialogHeight.value = 0;
+    }
+  }, [dialogHeight, useFixedHeightLayout]);
 
   const titleEntering = shouldAnimate
     ? (isForward ? FadeInRight : FadeInLeft).duration(10).springify()
@@ -102,6 +110,10 @@ const ResponsiveModal = ({
   const contentExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(250);
 
   const dialogAnimatedStyle = useAnimatedStyle(() => {
+    if (useFixedHeightLayout) {
+      return {};
+    }
+
     // on native, let the content determine its own height initially
     if (dialogHeight.value === 0) {
       return {};
@@ -117,7 +129,7 @@ const ResponsiveModal = ({
         easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       }),
     };
-  }, [shouldAnimate]);
+  }, [shouldAnimate, useFixedHeightLayout]);
 
   // Prevent page scroll when modal closes by stopping focus restoration to trigger
   const handleCloseAutoFocus = useCallback((event: Event) => {
@@ -140,11 +152,16 @@ const ResponsiveModal = ({
         onCloseAutoFocus={handleCloseAutoFocus}
         showCloseButton={false}
       >
-        <Animated.View style={dialogAnimatedStyle} className="overflow-hidden">
+        <Animated.View
+          style={dialogAnimatedStyle}
+          className={cn('overflow-hidden', useFixedHeightLayout && 'min-h-0 flex-1')}
+        >
           <View
-            className={cn('gap-8', containerClassName)}
+            className={cn('gap-8', useFixedHeightLayout && 'min-h-0 flex-1', containerClassName)}
             onLayout={event => {
-              dialogHeight.value = event.nativeEvent.layout.height;
+              if (!useFixedHeightLayout) {
+                dialogHeight.value = event.nativeEvent.layout.height;
+              }
             }}
           >
             {hideHeader ? null : hasHeader ? (
@@ -187,16 +204,20 @@ const ResponsiveModal = ({
                 entering={contentEntering}
                 exiting={contentExiting}
                 key={contentKey}
-                style={hideHeader ? { flex: 1 } : undefined}
+                style={hideHeader || useFixedHeightLayout ? { flex: 1 } : undefined}
               >
                 {children}
               </Animated.View>
             ) : (
-              <View className="relative">
+              <View className={cn('relative', useFixedHeightLayout && 'min-h-0 flex-1')}>
                 <ScrollView
                   className="web:max-h-[80vh]"
                   contentContainerClassName="pb-4 md:pb-8"
+                  contentContainerStyle={useFixedHeightLayout ? { flexGrow: 1 } : undefined}
+                  style={useFixedHeightLayout ? { flex: 1 } : undefined}
                   showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled
                   onLayout={e => {
                     containerHeightRef.current = e.nativeEvent.layout.height;
                     setShowBottomFade(contentHeightRef.current > containerHeightRef.current + 4);
