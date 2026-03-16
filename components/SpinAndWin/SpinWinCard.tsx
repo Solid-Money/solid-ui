@@ -13,7 +13,6 @@ interface SpinWinCardProps {
   lastSpinDate: string | null;
   prizePool?: number;
   countdown?: string;
-  giveawayDate?: string;
   onPress: () => void;
 }
 
@@ -28,7 +27,7 @@ export default function SpinWinCard({
   onPress,
 }: SpinWinCardProps) {
   const hasSpunBefore = lastSpinDate !== null;
-  const nextSpinCountdown = useNextSpinCountdown(spinAvailable, lastSpinDate);
+  const nextSpinCountdown = useNextSpinCountdown(spinAvailable);
   const spinCtaLabel = spinAvailable ? 'Spin the wheel' : `Next spin in ${nextSpinCountdown}`;
 
   if (!hasSpunBefore) {
