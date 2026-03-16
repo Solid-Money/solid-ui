@@ -472,7 +472,7 @@ const SwapButton: React.FC = () => {
     };
 
     return (
-      <Button className="rounded-xl" size="lg" onPress={handleWrap}>
+      <Button className="rounded-xl" variant="brand" size="lg" onPress={handleWrap}>
         {isWrapLoading ? (
           <Text className="text-base font-semibold">
             {wrapType === WrapType.WRAP ? 'Wrapping...' : 'Unwrapping...'}
@@ -483,7 +483,10 @@ const SwapButton: React.FC = () => {
             <Text className="text-base font-semibold">Wrap</Text>
           </View>
         ) : (
-          <Text className="text-base font-semibold">Unwrap</Text>
+          <View className="flex-row items-center gap-2">
+            <Image source={getAsset('images/security_key.png')} style={{ width: 21, height: 10 }} />
+            <Text className="text-base font-semibold">Unwrap</Text>
+          </View>
         )}
       </Button>
     );
