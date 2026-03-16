@@ -20,6 +20,7 @@ import {
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { FUSE_MAX_DECIMALS, trimToDecimals } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -144,7 +145,10 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
         data: { amount, safeAddress, srcChainId, token, isSponsor },
       });
 
-      const amountWei = parseUnits(amount, 18);
+      // Trim to 8 decimal places — the FUSE vault Teller contract rejects
+      // amounts with higher precision, which would cause silent tx failures.
+      const trimmedAmount = trimToDecimals(amount, FUSE_MAX_DECIMALS);
+      const amountWei = parseUnits(trimmedAmount, 18);
 
       let transactions: { to: Address; data?: `0x${string}`; value?: bigint }[];
 

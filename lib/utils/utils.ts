@@ -73,6 +73,22 @@ export function eclipseEmail(email: string, maxLength = 20): string {
   return localPart.slice(0, availableForLocal) + '...' + domainWithAt;
 }
 
+/**
+ * Truncates a numeric string to a maximum number of decimal places
+ * without rounding. Uses string manipulation to avoid floating-point
+ * precision issues.
+ *
+ * Example: trimToDecimals("1.123456789012345678", 8) → "1.12345678"
+ */
+export function trimToDecimals(value: string, maxDecimals: number): string {
+  const dotIndex = value.indexOf('.');
+  if (dotIndex === -1) return value;
+  return value.slice(0, dotIndex + 1 + maxDecimals);
+}
+
+/** Maximum decimal places accepted by the FUSE vault Teller contract */
+export const FUSE_MAX_DECIMALS = 8;
+
 export function compactNumberFormat(number: number) {
   return new Intl.NumberFormat('en-us', {
     notation: 'compact',

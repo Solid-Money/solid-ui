@@ -21,6 +21,7 @@ import {
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
+import { FUSE_MAX_DECIMALS, trimToDecimals } from '@/lib/utils';
 import { checkAndSetAllowanceToken, getTransactionReceipt } from '@/lib/utils/contract';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -185,7 +186,10 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
         },
       });
 
-      const amountWei = parseUnits(amount, 18);
+      // Trim to 8 decimal places — the FUSE vault Teller contract rejects
+      // amounts with higher precision, which would cause silent tx failures.
+      const trimmedAmount = trimToDecimals(amount, FUSE_MAX_DECIMALS);
+      const amountWei = parseUnits(trimmedAmount, 18);
 
       let txHash: `0x${string}` | undefined;
       if (token === 'WFUSE') {
@@ -334,7 +338,10 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
         trackingId = await createEvent(amount, spender, token);
 
         const depositValueWei = parseUnits(
-          (Number(amount) - Number(EXPO_PUBLIC_FUSE_GAS_RESERVE)).toString(),
+          trimToDecimals(
+            (Number(amount) - Number(EXPO_PUBLIC_FUSE_GAS_RESERVE)).toString(),
+            FUSE_MAX_DECIMALS,
+          ),
           18,
         );
 

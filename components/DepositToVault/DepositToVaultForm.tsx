@@ -36,7 +36,7 @@ import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_FUSE_GAS_RESERVE, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
 import { Status } from '@/lib/types';
-import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
+import { compactNumberFormat, eclipseAddress, formatNumber, FUSE_MAX_DECIMALS, trimToDecimals } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -353,7 +353,11 @@ function DepositToVaultForm() {
                   value={value.toString()}
                   placeholder="0.0"
                   placeholderTextColor="#666"
-                  onChangeText={onChange}
+                  onChangeText={text => {
+                    // For FUSE vault, cap input at 8 decimal places to match
+                    // contract precision and prevent failed transactions.
+                    onChange(isFuseVault ? trimToDecimals(text, FUSE_MAX_DECIMALS) : text);
+                  }}
                   onBlur={onBlur}
                   returnKeyType="done"
                   onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
@@ -383,12 +387,15 @@ function DepositToVaultForm() {
             </Text>
             <Max
               onPress={() => {
+                const maxAmount = isFuseVault
+                  ? trimToDecimals(formattedBalance, FUSE_MAX_DECIMALS)
+                  : formattedBalance;
                 track(TRACKING_EVENTS.DEPOSIT_MAX_BUTTON_CLICKED, {
                   chain_id: srcChainId,
                   token: selectedTokenInfo.name,
-                  max_amount: formattedBalance,
+                  max_amount: maxAmount,
                 });
-                setValue('amount', formattedBalance);
+                setValue('amount', maxAmount);
                 trigger('amount');
               }}
             />
