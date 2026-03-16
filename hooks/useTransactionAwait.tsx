@@ -1,12 +1,14 @@
-import getTokenIcon from '@/lib/getTokenIcon';
-import { eclipseAddress } from '@/lib/utils';
-import { getChain } from '@/lib/wagmi';
-import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import Toast from 'react-native-toast-message';
+import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { useWaitForTransactionReceipt } from 'wagmi';
 import { getBalanceQueryKey } from 'wagmi/query';
+
+import getTokenIcon from '@/lib/getTokenIcon';
+import { eclipseAddress } from '@/lib/utils';
+import { getChain } from '@/lib/wagmi';
+
 import useUser from './useUser';
 
 // export const ViewTxOnExplorer = ({ hash }: { hash: Address | undefined }) =>
@@ -130,8 +132,6 @@ export function useTransactionAwait(
             }),
           },
         });
-      } else {
-        console.log('❌ No success info provided, skipping toast');
       }
     }
   }, [isSuccess, hash, successInfo, account, queryClient]);

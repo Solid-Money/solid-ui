@@ -121,7 +121,7 @@ const DialogContent = React.forwardRef<
     const shouldAlignTop = className?.includes('justify-start');
     const { open } = DialogPrimitive.useRootContext();
     const mobileSheetHeight =
-      !isScreenMedium && shouldAlignTop ? Math.max(windowHeight * 0.95 - 16, 0) : undefined;
+      !isScreenMedium && shouldAlignTop ? Math.max(windowHeight * 1 - 16, 0) : undefined;
 
     // Web bounce animation using useAnimatedStyle
     const opacityWeb = useSharedValue(0);
@@ -201,7 +201,10 @@ const DialogContent = React.forwardRef<
 
     return (
       <DialogPortal hostName={portalHost}>
-        <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
+        <DialogOverlay
+          className={shouldAlignTop ? 'justify-start' : undefined}
+          {...(Platform.OS === 'web' ? {} : { closeOnPress: false })}
+        >
           <Animated.View
             entering={enteringAnimation}
             exiting={isScreenMedium ? FadeOut.duration(150) : FadeOutDown.duration(180)}
