@@ -152,28 +152,28 @@ const SavingVault = ({ vault }: SavingVaultProps) => {
 
           <Animated.View style={animatedGapStyle} />
 
-          <View className="mt-2 flex-row items-end justify-between">
-            <View>
+          <View className="mt-2">
+            <View className="flex-row items-baseline justify-between gap-2">
               <Text className="text-lg font-bold">{vault.name}</Text>
-              {vaultBalance !== undefined ? (
-                <Animated.View style={animatedBalanceStyle}>
-                  <Text className="text-base font-semibold opacity-70">
-                    {vault.name === 'USDC' ? (
-                      `$${compactNumberFormat(vaultBalance)}`
-                    ) : (
-                      <>
-                        {compactNumberFormat(vaultBalance)}{' '}
-                        <Text className="text-sm font-semibold">{vault.name}</Text>
-                      </>
-                    )}
-                  </Text>
-                </Animated.View>
+              {isComingSoon ? (
+                <Text className="text-sm font-semibold opacity-70">Coming soon</Text>
+              ) : maxAPY ? (
+                <Text className="text-base font-semibold opacity-70">{maxAPY.toFixed(2)}%</Text>
               ) : null}
             </View>
-            {isComingSoon ? (
-              <Text className="text-end text-sm font-semibold opacity-70">Coming soon</Text>
-            ) : maxAPY ? (
-              <Text className="text-base font-semibold opacity-70">{maxAPY.toFixed(2)}%</Text>
+            {vaultBalance !== undefined ? (
+              <Animated.View style={animatedBalanceStyle}>
+                <Text className="text-base font-semibold opacity-70">
+                  {vault.name === 'USDC' ? (
+                    `$${compactNumberFormat(vaultBalance)}`
+                  ) : (
+                    <>
+                      {compactNumberFormat(vaultBalance)}{' '}
+                      <Text className="text-sm font-semibold">{vault.name}</Text>
+                    </>
+                  )}
+                </Text>
+              </Animated.View>
             ) : null}
           </View>
         </View>

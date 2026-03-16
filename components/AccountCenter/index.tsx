@@ -40,7 +40,7 @@ const AccountCenterUsername = () => {
       <View className="h-8 w-8 items-center justify-center rounded-full bg-black">
         <Text className="font-semibold text-white">{avatarChar}</Text>
       </View>
-      <Text className="font-semibold">{displayName}</Text>
+      <Text className="text-base font-semibold">{displayName}</Text>
     </>
   );
 };
@@ -49,7 +49,7 @@ const AccountCenterSettings = () => {
   return (
     <>
       <SettingsIcon width={20} height={20} />
-      <Text className="font-semibold">Settings</Text>
+      <Text className="text-base font-semibold">Settings</Text>
     </>
   );
 };
@@ -62,7 +62,7 @@ const AccountCenterSignOut = () => {
   return (
     <>
       <SignOutIcon width={20} height={20} />
-      <Text className="font-semibold">Sign Out</Text>
+      <Text className="text-base font-semibold">Sign Out</Text>
     </>
   );
 };

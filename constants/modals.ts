@@ -63,16 +63,16 @@ export const DEPOSIT_MODAL = {
     name: 'open_deposit_directly',
     number: 14,
   },
+  OPEN_DEPOSIT_DIRECTLY_TOKENS: {
+    name: 'open_deposit_directly_tokens',
+    number: 15,
+  },
   OPEN_DEPOSIT_DIRECTLY_ADDRESS: {
     name: 'open_deposit_directly_address',
-    number: 15,
+    number: 16,
   },
   OPEN_TOKEN_SELECTOR: {
     name: 'open_token_selector',
-    number: 16,
-  },
-  OPEN_DEPOSIT_DIRECTLY_TOKENS: {
-    name: 'open_deposit_directly_tokens',
     number: 17,
   },
 };
