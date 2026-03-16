@@ -201,7 +201,10 @@ const DialogContent = React.forwardRef<
 
     return (
       <DialogPortal hostName={portalHost}>
-        <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
+        <DialogOverlay
+          className={shouldAlignTop ? 'justify-start' : undefined}
+          {...(Platform.OS === 'web' ? {} : { closeOnPress: false })}
+        >
           <Animated.View
             entering={enteringAnimation}
             exiting={isScreenMedium ? FadeOut.duration(150) : FadeOutDown.duration(180)}
