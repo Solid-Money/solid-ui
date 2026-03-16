@@ -4,10 +4,7 @@ import { useBalance } from 'wagmi';
 import * as Sentry from '@sentry/react-native';
 
 import { WNATIVE_EXTENDED } from '@/constants/routing';
-import {
-  useSimulateWrappedNativeDeposit,
-  useSimulateWrappedNativeWithdraw,
-} from '@/generated/wagmi';
+import { wrappedNativeAbi } from '@/generated/wagmi';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { TransactionType } from '@/lib/types';
 import { useActivityActions } from '@/hooks/useActivityActions';
@@ -51,12 +48,7 @@ export default function useWrapCallback(
     [inputCurrency, typedValue],
   );
 
-  const { data: wrapConfig } = useSimulateWrappedNativeDeposit({
-    address: WNATIVE[chainId].address as Address,
-    value: inputAmount ? BigInt(inputAmount.quotient.toString()) : undefined,
-    account: account,
-    chainId: fuse.id,
-  });
+  const wfuseAddress = WNATIVE[chainId].address as Address;
 
   const wrapSuccessInfo = useMemo(() => {
     const successInfo =
@@ -78,13 +70,6 @@ export default function useWrapCallback(
     wrapData?.transactionHash,
     capturedWrapSuccessInfo,
   );
-
-  const { data: unwrapConfig } = useSimulateWrappedNativeWithdraw({
-    address: WNATIVE[chainId].address as Address,
-    args: inputAmount ? [BigInt(inputAmount.quotient.toString())] : undefined,
-    account: account,
-    chainId: fuse.id,
-  });
 
   const unwrapSuccessInfo = useMemo(() => {
     const successInfo =
@@ -108,7 +93,7 @@ export default function useWrapCallback(
   );
 
   const wrap = useCallback(async () => {
-    if (!wrapConfig || !user?.suborgId || !user?.signWith || !account) {
+    if (!inputAmount || !user?.suborgId || !user?.signWith || !account) {
       return;
     }
     try {
@@ -120,13 +105,12 @@ export default function useWrapCallback(
       const smartAccountClient = await safeAA(fuse, user?.suborgId, user?.signWith);
       const transactions = [
         {
-          to: wrapConfig?.request.address,
+          to: wfuseAddress,
           data: encodeFunctionData({
-            abi: wrapConfig!.request.abi,
-            functionName: wrapConfig!.request.functionName,
-            args: wrapConfig?.request.args,
+            abi: wrappedNativeAbi,
+            functionName: 'deposit',
           }),
-          value: wrapConfig?.request.value,
+          value: BigInt(inputAmount.quotient.toString()),
         },
       ];
       const result = await trackTransaction(
@@ -138,7 +122,7 @@ export default function useWrapCallback(
           symbol: inputCurrency?.symbol || 'FUSE',
           chainId: fuse.id,
           fromAddress: user.safeAddress,
-          toAddress: wrapConfig?.request.address as string,
+          toAddress: wfuseAddress,
           metadata: {
             description: `Wrap ${inputCurrency?.symbol} to ${outputCurrency?.symbol}`,
           },
@@ -169,16 +153,15 @@ export default function useWrapCallback(
           inputAmount: inputAmount?.toSignificant(),
           inputCurrency: inputCurrency?.symbol,
           outputCurrency: outputCurrency?.symbol,
-          wrapConfig,
         },
       });
     } finally {
       setIsSendingWrap(false);
     }
-  }, [wrapConfig, user?.suborgId, user?.signWith, account, safeAA, wrapSuccessInfo]);
+  }, [inputAmount, user?.suborgId, user?.signWith, account, safeAA, wrapSuccessInfo]);
 
   const unwrap = useCallback(async () => {
-    if (!unwrapConfig || !user?.suborgId || !user?.signWith || !account) {
+    if (!inputAmount || !user?.suborgId || !user?.signWith || !account) {
       return;
     }
     try {
@@ -191,13 +174,13 @@ export default function useWrapCallback(
 
       const transactions = [
         {
-          to: unwrapConfig?.request.address,
+          to: wfuseAddress,
           data: encodeFunctionData({
-            abi: unwrapConfig!.request.abi,
-            functionName: unwrapConfig!.request.functionName,
-            args: unwrapConfig?.request.args,
+            abi: wrappedNativeAbi,
+            functionName: 'withdraw',
+            args: [BigInt(inputAmount.quotient.toString())],
           }),
-          value: unwrapConfig?.request.value,
+          value: 0n,
         },
       ];
       const result = await trackTransaction(
@@ -209,7 +192,7 @@ export default function useWrapCallback(
           symbol: inputCurrency?.symbol || 'WFUSE',
           chainId: fuse.id,
           fromAddress: user.safeAddress,
-          toAddress: unwrapConfig?.request.address as string,
+          toAddress: wfuseAddress,
           metadata: {
             description: `Unwrap ${inputCurrency?.symbol} to ${outputCurrency?.symbol}`,
           },
@@ -246,13 +229,12 @@ export default function useWrapCallback(
           inputAmount: inputAmount?.toSignificant(),
           inputCurrency: inputCurrency?.symbol,
           outputCurrency: outputCurrency?.symbol,
-          unwrapConfig,
         },
       });
     } finally {
       setIsSendingUnwrap(false);
     }
-  }, [unwrapConfig, user?.suborgId, user?.signWith, account, safeAA, unwrapSuccessInfo]);
+  }, [inputAmount, user?.suborgId, user?.signWith, account, safeAA, unwrapSuccessInfo]);
 
   const { data: balance } = useBalance({
     query: {
@@ -307,8 +289,6 @@ export default function useWrapCallback(
     balance,
     wrap,
     unwrap,
-    wrapConfig,
-    unwrapConfig,
     isWrapLoading,
     isUnwrapLoading,
     isSendingWrap,
