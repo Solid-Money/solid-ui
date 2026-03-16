@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+const ONE_MINUTE_MS = 60_000;
+
 function formatTimeUntilMidnightUTC(): string {
   const now = new Date();
   const nextUtcMidnight = new Date(
@@ -25,7 +27,7 @@ export function useNextSpinCountdown(spinAvailable: boolean): string {
 
     const interval = setInterval(() => {
       setCountdown(formatTimeUntilMidnightUTC());
-    }, 60_000);
+    }, ONE_MINUTE_MS);
 
     return () => clearInterval(interval);
   }, [spinAvailable]);

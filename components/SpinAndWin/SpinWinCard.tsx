@@ -12,7 +12,7 @@ interface SpinWinCardProps {
   spinAvailable: boolean;
   lastSpinDate: string | null;
   prizePool?: number;
-  countdown?: string;
+  giveawayCountdown?: string;
   onPress: () => void;
 }
 
@@ -23,7 +23,7 @@ export default function SpinWinCard({
   spinAvailable,
   lastSpinDate,
   prizePool,
-  countdown,
+  giveawayCountdown,
   onPress,
 }: SpinWinCardProps) {
   const hasSpunBefore = lastSpinDate !== null;
@@ -214,7 +214,7 @@ export default function SpinWinCard({
                 fontVariant: ['tabular-nums'],
               }}
             >
-              {countdown || '0D 0H 0M 0S'}
+              {giveawayCountdown || '0D 0H 0M 0S'}
             </Text>
           </View>
 

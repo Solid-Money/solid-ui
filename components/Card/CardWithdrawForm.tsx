@@ -304,12 +304,8 @@ export default function CardWithdrawForm() {
         <Controller
           control={control}
           name="to"
-          render={({ field: { onChange, value } }) => (
-            <ToDestinationSelector
-              value={value}
-              onChange={onChange}
-              tokenSymbol={depositTokenSymbol}
-            />
+          render={({ field: { onChange } }) => (
+            <ToDestinationSelector onChange={onChange} tokenSymbol={depositTokenSymbol} />
           )}
         />
       </View>

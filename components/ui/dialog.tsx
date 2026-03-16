@@ -169,36 +169,34 @@ const DialogContent = React.forwardRef<
         : FadeInDown.springify().stiffness(300).damping(12).mass(0.8);
 
     const content = (
-      <>
-        <DialogPrimitive.Content
-          ref={ref}
-          style={[
-            style,
-            mobileSheetHeight
-              ? {
-                  height: mobileSheetHeight,
-                  maxHeight: mobileSheetHeight,
-                }
-              : undefined,
-          ]}
-          className={cn(
-            'mx-auto w-screen max-w-[95%] max-w-lg gap-4 rounded-2xl bg-popup p-6 web:cursor-default web:duration-200 md:rounded-twice',
-            !isScreenMedium && shouldAlignTop && 'min-h-0 overflow-hidden rounded-b-none',
-            className,
-          )}
-          onCloseAutoFocus={onCloseAutoFocus}
-          onMoveShouldSetResponder={
-            onMoveShouldSetResponder ?? (Platform.OS === 'web' ? undefined : () => false)
-          }
-          onStartShouldSetResponder={
-            onStartShouldSetResponder ?? (Platform.OS === 'web' ? undefined : () => false)
-          }
-          {...props}
-        >
-          {children}
-          {showCloseButton && <DialogCloseButton className="absolute right-4 top-4" />}
-        </DialogPrimitive.Content>
-      </>
+      <DialogPrimitive.Content
+        ref={ref}
+        style={[
+          style,
+          mobileSheetHeight
+            ? {
+                height: mobileSheetHeight,
+                maxHeight: mobileSheetHeight,
+              }
+            : undefined,
+        ]}
+        className={cn(
+          'mx-auto w-screen max-w-[min(95vw,32rem)] gap-4 rounded-2xl bg-popup p-6 web:cursor-default web:duration-200 md:rounded-twice',
+          !isScreenMedium && shouldAlignTop && 'min-h-0 overflow-hidden rounded-b-none',
+          className,
+        )}
+        onCloseAutoFocus={onCloseAutoFocus}
+        onMoveShouldSetResponder={
+          onMoveShouldSetResponder ?? (Platform.OS === 'web' ? undefined : () => false)
+        }
+        onStartShouldSetResponder={
+          onStartShouldSetResponder ?? (Platform.OS === 'web' ? undefined : () => false)
+        }
+        {...props}
+      >
+        {children}
+        {showCloseButton && <DialogCloseButton className="absolute right-4 top-4" />}
+      </DialogPrimitive.Content>
     );
 
     return (

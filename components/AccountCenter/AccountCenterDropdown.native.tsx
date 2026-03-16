@@ -29,34 +29,36 @@ const AccountCenterDropdown = () => {
   const onSupportPress = useInfoCenterSupportPress();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
+  const dismissAndRun = useCallback((action: () => void) => {
+    bottomSheetModalRef.current?.dismiss();
+    action();
+  }, []);
+
   const handlePresentModalPress = useCallback(() => {
     bottomSheetModalRef.current?.present();
   }, []);
 
-  const handleSettingsPress = useCallback(() => {
-    bottomSheetModalRef.current?.dismiss();
-    onAccountCenterSettingsPress();
-  }, []);
+  const handleSettingsPress = useCallback(
+    () => dismissAndRun(onAccountCenterSettingsPress),
+    [dismissAndRun],
+  );
 
-  const handleSignOutPress = useCallback(() => {
-    bottomSheetModalRef.current?.dismiss();
-    handleLogout();
-  }, [handleLogout]);
+  const handleSignOutPress = useCallback(
+    () => dismissAndRun(handleLogout),
+    [dismissAndRun, handleLogout],
+  );
 
-  const handleSupportPress = useCallback(() => {
-    bottomSheetModalRef.current?.dismiss();
-    onSupportPress();
-  }, [onSupportPress]);
+  const handleSupportPress = useCallback(
+    () => dismissAndRun(onSupportPress),
+    [dismissAndRun, onSupportPress],
+  );
 
-  const handleDocsPress = useCallback(() => {
-    bottomSheetModalRef.current?.dismiss();
-    onInfoCenterDocsPress();
-  }, []);
+  const handleDocsPress = useCallback(() => dismissAndRun(onInfoCenterDocsPress), [dismissAndRun]);
 
-  const handleLegalPress = useCallback(() => {
-    bottomSheetModalRef.current?.dismiss();
-    onInfoCenterLegalPress();
-  }, []);
+  const handleLegalPress = useCallback(
+    () => dismissAndRun(onInfoCenterLegalPress),
+    [dismissAndRun],
+  );
 
   const renderBackdrop = useCallback(
     (props: any) => <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} />,

@@ -293,7 +293,7 @@ const DepositDirectlyAddress = () => {
                   ) : (
                     <Text
                       className={`text-[1rem] font-medium text-foreground ${
-                        row.valueClassName ? row.valueClassName : ''
+                        row.valueClassName ?? ''
                       }`}
                     >
                       {row.value}
@@ -324,7 +324,7 @@ const DepositDirectlyAddress = () => {
                   ) : (
                     <Text
                       className={`text-[1rem] font-medium text-foreground ${
-                        row.valueClassName ? row.valueClassName : ''
+                        row.valueClassName ?? ''
                       }`}
                     >
                       {row.value}
