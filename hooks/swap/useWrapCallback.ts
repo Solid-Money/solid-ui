@@ -54,6 +54,7 @@ export default function useWrapCallback(
   const { data: wrapConfig } = useSimulateWrappedNativeDeposit({
     address: WNATIVE[chainId].address as Address,
     value: inputAmount ? BigInt(inputAmount.quotient.toString()) : undefined,
+    account: account,
     chainId: fuse.id,
   });
 
@@ -81,6 +82,7 @@ export default function useWrapCallback(
   const { data: unwrapConfig } = useSimulateWrappedNativeWithdraw({
     address: WNATIVE[chainId].address as Address,
     args: inputAmount ? [BigInt(inputAmount.quotient.toString())] : undefined,
+    account: account,
     chainId: fuse.id,
   });
 
@@ -268,7 +270,7 @@ export default function useWrapCallback(
 
     const hasInputAmount = Boolean(inputAmount?.greaterThan('0'));
     const sufficientBalance =
-      inputAmount && balance && Number(balance.value) >= Number(inputAmount.toSignificant(18));
+      inputAmount && balance && balance.value >= BigInt(inputAmount.quotient.toString());
 
     if (inputCurrency.isNative && weth.equals(outputCurrency)) {
       return {
