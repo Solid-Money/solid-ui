@@ -515,10 +515,6 @@ class SSEConnectionManager {
       this.lastSeq = seq;
     }
 
-    console.log(
-      `[SSE] Activity event: ${event} | clientTxId=${activity.clientTxId} | type=${activity.type} | status=${activity.status} | title=${activity.title || 'N/A'}`,
-    );
-
     // Prepare the activity for batching instead of calling upsertEvent directly
     try {
       let activityToQueue: ActivityEvent;
@@ -595,22 +591,8 @@ class SSEConnectionManager {
     // Group events by userId (defensive - in practice all events are for the same user)
     const eventsByUser = new Map<string, ActivityEvent[]>();
     for (const { userId, activity } of batch) {
-      // [DIAG] Log raw SSE fields BEFORE normalization
-      console.log(`[SSE:DIAG:raw] clientTxId=${activity.clientTxId} type=${activity.type} status=${activity.status} symbol=${activity.symbol} amount=${activity.amount} title=${activity.title}`);
-
-      // Check for nullish fields that stripNullish would filter
-      const nullishFields = Object.entries(activity)
-        .filter(([, v]) => v === undefined || v === null)
-        .map(([k]) => k);
-      if (nullishFields.length > 0) {
-        console.warn(`[SSE:DIAG:nullish] clientTxId=${activity.clientTxId} has null/undefined fields: ${nullishFields.join(', ')}`);
-      }
-
       // Normalize SSE activities to match REST format (consistent field types)
       const normalized = this.normalizeActivity(activity);
-
-      // [DIAG] Log AFTER normalization
-      console.log(`[SSE:DIAG:normalized] clientTxId=${normalized.clientTxId} type=${normalized.type} symbol=${normalized.symbol} amount=${normalized.amount}`);
 
       const existing = eventsByUser.get(userId);
       if (existing) {
@@ -623,7 +605,6 @@ class SSEConnectionManager {
     try {
       const { bulkUpsertEvent } = useActivityStore.getState();
       for (const [userId, events] of eventsByUser) {
-        console.log(`[SSE] Flushing ${events.length} event(s) to store for user ${userId}`);
         bulkUpsertEvent(userId, events);
       }
     } catch (err) {
@@ -677,7 +658,6 @@ class SSEConnectionManager {
       if (events.length) {
         const { bulkUpsertEvent } = useActivityStore.getState();
         bulkUpsertEvent(this.currentUserId, events);
-        console.debug(`[SSE] Reconnect catch-up: upserted ${events.length} activities`);
       }
     } catch (err) {
       // Non-critical — worst case the user pulls to refresh
@@ -712,9 +692,6 @@ class SSEConnectionManager {
       });
       return;
     }
-
-    // Log for debugging
-    console.debug(`[SSE] Balance update received: ${data.balance.changeType}`);
 
     // Debounce balance query invalidation - rapid balance events only trigger one invalidation
     // Use shorter debounce for deposit events to show balance faster after deposit completion
@@ -783,7 +760,6 @@ class SSEConnectionManager {
 
     try {
       const url = getActivityStreamUrl();
-      console.debug(`[SSE] Connecting to ${url}`);
 
       const headers: Record<string, string> = {
         Accept: 'text/event-stream',
@@ -801,8 +777,6 @@ class SSEConnectionManager {
         signal: abortController.signal,
         credentials: 'include',
       });
-
-      console.debug(`[SSE] Response: ${response.status} ${response.statusText}`);
 
       // Check for 401 - try token refresh before failing
       if (response.status === 401) {
@@ -838,12 +812,9 @@ class SSEConnectionManager {
       this.isConnecting = false;
       this.startHeartbeatMonitor();
 
-      console.debug(`[SSE] Connected${this.hasConnectedBefore ? ' (reconnect)' : ' (initial)'}`);
-
       // On reconnection (not initial connect), fetch page 1 directly
       // to catch up on any events that were missed while disconnected.
       if (this.hasConnectedBefore && this.currentUserId) {
-        console.debug('[SSE] Reconnection detected — fetching latest activities');
         this.fetchLatestActivities();
       }
       this.hasConnectedBefore = true;
@@ -857,7 +828,6 @@ class SSEConnectionManager {
 
         if (done) {
           // Stream ended - schedule reconnect
-          console.debug('[SSE] Stream ended — scheduling reconnect');
           this.setState({ connectionState: 'reconnecting' });
           this.scheduleReconnect();
           return;

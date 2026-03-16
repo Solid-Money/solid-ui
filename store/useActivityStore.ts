@@ -196,8 +196,6 @@ export const useActivityStore = create<ActivityState>()(
               );
 
               if (existingIndex === -1) {
-                // New event
-                console.log(`[Store:DIAG:new] clientTxId=${event.clientTxId} type=${event.type} symbol=${event.symbol} amount=${event.amount}`);
                 state.events[userId].push(event);
                 changed = true;
               } else {
@@ -209,17 +207,6 @@ export const useActivityStore = create<ActivityState>()(
                       : (event.status ?? existing.status);
 
                   const stripped = stripNullish(event);
-                  // [DIAG] Log merge: what's changing and what stripNullish removed
-                  const strippedKeys = Object.keys(event).filter(k => !(k in stripped));
-                  console.log(
-                    `[Store:DIAG:merge] clientTxId=${existing.clientTxId} ` +
-                    `type: ${existing.type} → ${event.type} ` +
-                    `status: ${existing.status} → ${mergedStatus} ` +
-                    `symbol: ${existing.symbol} → ${event.symbol} ` +
-                    `amount: ${existing.amount} → ${event.amount} ` +
-                    `title: ${existing.title} → ${event.title}` +
-                    (strippedKeys.length ? ` | stripped null fields: ${strippedKeys.join(', ')}` : ''),
-                  );
 
                   state.events[userId][existingIndex] = {
                     ...existing,

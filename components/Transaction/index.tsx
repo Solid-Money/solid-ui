@@ -169,13 +169,6 @@ const Transaction = ({
   const isSavingsDeposit =
     isDeposit && (symbol?.toLowerCase() === 'sousd' || symbol?.toLowerCase() === 'sofuse');
 
-  // [DIAG] Log color-determining values for every render
-  console.log(
-    `[Tx:DIAG:color] clientTxId=${clientTxId} type=${type} symbol=${symbol} ` +
-    `isIncoming=${isIncoming} isSavingsDeposit=${isSavingsDeposit} ` +
-    `sign=${transactionDetails?.sign} status=${status} amount=${amount}`,
-  );
-
   const statusTextColor = isFailed
     ? 'text-red-400'
     : isExpired
