@@ -44,7 +44,7 @@ export function CardActivationStep({
   onToggle,
 }: CardActivationStepProps) {
   return (
-    <View className={`flex-row ${index < totalSteps - 1 ? 'pb-4' : ''}`}>
+    <View className="flex-row">
       <View className="items-center self-stretch">
         <StepIndicator
           stepId={step.id}
