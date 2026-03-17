@@ -393,6 +393,7 @@ export default function ActivityDetail() {
   const isDetected = finalActivity?.status === TransactionStatus.DETECTED;
   const isProcessing = finalActivity?.status === TransactionStatus.PROCESSING;
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
+  const isDeposit = finalActivity?.type === TransactionType.DEPOSIT;
   const isCancelWithdraw = finalActivity?.requestId && isPending;
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
@@ -400,22 +401,26 @@ export default function ActivityDetail() {
   const statusTextColor = useMemo(() => {
     if (isFailed) return 'text-red-400';
     if (isCancelled) return '';
-    if (isIncoming) return 'text-brand';
+    if (isIncoming || isDeposit) return 'text-brand';
     return '';
-  }, [isFailed, isCancelled, isIncoming]);
+  }, [isFailed, isCancelled, isIncoming, isDeposit]);
 
   const statusSign = useMemo(() => {
     if (isFailed) return TransactionDirection.FAILED;
     if (isCancelled) return TransactionDirection.CANCELLED;
+    if (isDeposit) return TransactionDirection.IN;
     return transactionDetails?.sign ?? '';
-  }, [isFailed, isCancelled, transactionDetails?.sign]);
+  }, [isFailed, isCancelled, isDeposit, transactionDetails?.sign]);
 
   const description = useMemo(() => {
     if (finalActivity?.type === TransactionType.CARD_WITHDRAWAL) {
       return `${toTitleCase(finalActivity?.metadata?.destination || 'savings')} account`;
     }
+    if (isDeposit && finalActivity?.status === TransactionStatus.SUCCESS) {
+      return 'Complete';
+    }
     return transactionDetails?.category ?? 'Unknown';
-  }, [finalActivity?.type, finalActivity?.metadata?.destination, transactionDetails?.category]);
+  }, [finalActivity?.type, finalActivity?.status, finalActivity?.metadata?.destination, isDeposit, transactionDetails?.category]);
 
   const tokenIcon = useMemo(
     () => (finalActivity ? getTokenIcon({ tokenSymbol: finalActivity.symbol, size: 75 }) : null),
