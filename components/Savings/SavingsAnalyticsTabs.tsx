@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { LayoutChangeEvent, Pressable, View } from 'react-native';
+import { LayoutChangeEvent, Platform, Pressable, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -94,18 +94,29 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
     [],
   );
 
+  const isNative = Platform.OS !== 'web';
+
   return (
     <View
-      className="relative flex-row gap-2 rounded-full bg-foreground/10 p-[5px]"
+      className={`relative flex-row gap-2 bg-foreground/10 p-[5px] ${isNative ? '' : 'rounded-full'}`}
       style={{
         width: isScreenMedium ? undefined : '100%',
         maxWidth: isScreenMedium ? TABS_MAX_WIDTH : undefined,
+        ...(isNative
+          ? {
+              borderTopLeftRadius: 50,
+              borderTopRightRadius: 50,
+              borderBottomLeftRadius: 50,
+              borderBottomRightRadius: 50,
+              overflow: 'hidden' as const,
+            }
+          : {}),
       }}
     >
       <Pressable
         onLayout={e => handleTabLayout(e, Tab.SAVINGS_RATE)}
         onPress={() => handleTabChange(Tab.SAVINGS_RATE)}
-        className="relative z-10 flex-1 shrink-0 px-2 py-2 md:flex-none md:px-6"
+        className="relative z-[1] flex-1 shrink-0 px-2 py-2 md:flex-none md:px-6"
       >
         <Text
           className="text-center text-base font-semibold text-foreground"
@@ -118,7 +129,7 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
       <Pressable
         onLayout={e => handleTabLayout(e, Tab.VAULT_BREAKDOWN)}
         onPress={() => handleTabChange(Tab.VAULT_BREAKDOWN)}
-        className="relative z-10 flex-1 shrink-0 px-2 py-2 md:flex-none md:px-6"
+        className="relative z-[1] flex-1 shrink-0 px-2 py-2 md:flex-none md:px-6"
       >
         <Text
           className="text-center text-base font-semibold text-foreground"
@@ -136,7 +147,10 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
             left: 0,
             bottom: 4,
             backgroundColor: 'rgba(17, 17, 17, 1)',
-            borderRadius: 100,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            borderBottomLeftRadius: 20,
+            borderBottomRightRadius: 20,
             zIndex: 0,
           },
         ]}

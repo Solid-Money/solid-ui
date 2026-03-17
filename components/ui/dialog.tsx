@@ -78,10 +78,12 @@ const DialogOverlayNative = React.forwardRef<
         className,
       )}
       onPress={handlePress}
+      onStartShouldSetResponderCapture={Platform.OS === 'web' ? undefined : () => false}
+      onMoveShouldSetResponderCapture={Platform.OS === 'web' ? undefined : () => false}
       {...props}
       ref={ref}
     >
-      <BlurView tint="dark" intensity={90} style={StyleSheet.absoluteFill} />
+      <BlurView tint="dark" intensity={90} style={StyleSheet.absoluteFill} pointerEvents="none" />
       {children as React.ReactNode}
     </DialogPrimitive.Overlay>
   );
