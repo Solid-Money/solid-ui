@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import { AnimatedStepContent } from '@/components/Card/AnimatedStepContent';
 import { StepIndicator } from '@/components/Card/StepIndicator';
 import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 
 interface Step {
   id: number;
@@ -54,7 +55,12 @@ export function CardActivationStep({
         {index < totalSteps - 1 && <View className="w-0.5 flex-1 bg-[#4D4D4D]" />}
       </View>
 
-      <View className="ml-4 mt-1 flex-1 flex-shrink">
+      <View
+        className={cn(
+          'ml-4 mt-1 flex-1 flex-shrink',
+          index > 0 && index < totalSteps - 1 ? 'mb-4' : '',
+        )}
+      >
         <Pressable onPress={canToggle ? () => onToggle(step.id) : undefined} disabled={!canToggle}>
           <Text
             className={`mb-1 text-lg font-semibold ${canToggle ? 'text-white' : 'text-white/50'}`}
