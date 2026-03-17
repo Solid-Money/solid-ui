@@ -393,7 +393,6 @@ export default function ActivityDetail() {
   const isDetected = finalActivity?.status === TransactionStatus.DETECTED;
   const isProcessing = finalActivity?.status === TransactionStatus.PROCESSING;
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
-  const isDeposit = finalActivity?.type === TransactionType.DEPOSIT;
   const isCancelWithdraw = finalActivity?.requestId && isPending;
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
