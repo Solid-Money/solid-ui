@@ -9,7 +9,8 @@ import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
-import { track } from '@/lib/analytics';
+import { track, trackIdentity } from '@/lib/analytics';
+import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import {
   ADDRESSES,
@@ -17,7 +18,8 @@ import {
   EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status, StatusInfo, TransactionStatus, TransactionType } from '@/lib/types';
+import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
+import { withRefreshToken } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -39,6 +41,7 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
   const [hash, setHash] = useState<Address | undefined>();
   const srcChainId = useDepositStore(state => state.srcChainId);
   const { createActivity, updateActivity } = useActivityActions();
+  const updateUser = useUserStore(state => state.updateUser);
 
   const isFuseChain = srcChainId === fuse.id;
   const isNativeFuse = token === 'FUSE';
@@ -228,6 +231,66 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
       }
 
       if (txHash) setHash(txHash);
+
+      // Call createDeposit and wait for backend confirmation before signalling success.
+      withRefreshToken(() =>
+        createDeposit({
+          eoaAddress: safeAddress,
+          amount,
+          trackingId,
+          vault: VaultType.FUSE,
+        }),
+      )
+        .then(result => {
+          if (result?.transactionHash) {
+            // NOTE: Do NOT set hash here. The backend returns the protocol
+            // deposit hash, which is the same hash set on the "Deposit soUSD
+            // to Savings" activity. Setting it would cause dedup collisions.
+            updateActivity(trackingId!, {
+              status: TransactionStatus.PROCESSING,
+            });
+          }
+          // Backend accepted the deposit -- mark as success
+          updateUser({ ...user!, isDeposited: true });
+          setDepositStatus({ status: Status.SUCCESS });
+
+          Sentry.addBreadcrumb({
+            message: 'Deposit from Solid wallet completed successfully',
+            category: 'deposit',
+            data: { amount, transactionHash: txHash, safeAddress, srcChainId, isSponsor },
+          });
+
+          track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
+            user_id: user?.userId,
+            safe_address: user?.safeAddress,
+            amount,
+            transaction_hash: txHash,
+            deposit_type: 'solid_wallet',
+            deposit_method: 'fuse_solid',
+            chain_id: srcChainId,
+            chain_name: 'fuse',
+            is_sponsor: isSponsor,
+            is_first_deposit: !user?.isDeposited,
+            ...attributionData,
+            attribution_channel: attributionChannel,
+          });
+
+          trackIdentity(user?.userId!, {
+            last_deposit_amount: parseFloat(amount),
+            last_deposit_date: new Date().toISOString(),
+            last_deposit_method: 'fuse_solid',
+            last_deposit_chain: 'fuse',
+            ...attributionData,
+            attribution_channel: attributionChannel,
+          });
+        })
+        .catch(err => {
+          console.error('Sponsored Solid Fuse deposit failed:', err);
+          updateActivity(trackingId!, {
+            status: TransactionStatus.FAILED,
+          });
+          setDepositStatus({ status: Status.ERROR });
+        });
 
       return trackingId;
     } catch (error: any) {

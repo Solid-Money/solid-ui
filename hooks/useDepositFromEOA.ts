@@ -484,9 +484,11 @@ const useDepositFromEOA = (
           )
             .then(result => {
               if (result?.transactionHash) {
+                // NOTE: Do NOT set hash here. The backend returns the protocol
+                // deposit hash, which is the same hash set on the "Deposit soUSD
+                // to Savings" activity. Setting it would cause dedup collisions.
                 updateActivity(trackingId!, {
                   status: TransactionStatus.PROCESSING,
-                  hash: result.transactionHash,
                 });
               }
             })
@@ -528,9 +530,11 @@ const useDepositFromEOA = (
           );
 
           if (transaction?.transactionHash) {
+            // Do NOT set hash here. This tx hash will appear in Blockscout as a
+            // "Deposit soUSD to Savings" activity, and deduplicateTransactions
+            // would replace "Deposited USDC" with it.
             updateActivity(trackingId, {
               status: TransactionStatus.PROCESSING,
-              hash: transaction.transactionHash,
             });
           }
         }
@@ -625,9 +629,11 @@ const useDepositFromEOA = (
           )
             .then(result => {
               if (result?.transactionHash) {
+                // NOTE: Do NOT set hash here. The backend returns the protocol
+                // deposit hash, which is the same hash set on the "Deposit soUSD
+                // to Savings" activity. Setting it would cause dedup collisions.
                 updateActivity(trackingId!, {
                   status: TransactionStatus.PROCESSING,
-                  hash: result.transactionHash,
                 });
               }
             })
@@ -749,9 +755,11 @@ const useDepositFromEOA = (
           );
 
           if (transaction?.transactionHash) {
+            // Do NOT set hash here. This tx hash will appear in Blockscout as a
+            // "Deposit soUSD to Savings" activity, and deduplicateTransactions
+            // would replace "Deposited USDC" with it.
             updateActivity(trackingId!, {
               status: TransactionStatus.PROCESSING,
-              hash: transaction.transactionHash,
             });
           }
         }

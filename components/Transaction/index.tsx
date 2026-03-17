@@ -205,6 +205,7 @@ const Transaction = ({
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
     if (isCancelled) return 'Cancelled';
+    if (isDeposit && status === TransactionStatus.SUCCESS) return 'Complete';
     return transactionDetails?.category ?? 'Unknown';
   };
 
