@@ -44,14 +44,14 @@ export function CardActivationStep({
   onToggle,
 }: CardActivationStepProps) {
   return (
-    <View className={`flex-row ${index < totalSteps - 1 ? 'mb-4' : ''}`}>
+    <View className={`flex-row ${index < totalSteps - 1 ? 'pb-4' : ''}`}>
       <View className="items-center self-stretch">
         <StepIndicator
           stepId={step.id}
           completed={step.completed}
           onPress={canToggle ? () => onToggle(step.id) : () => {}}
         />
-        {index < totalSteps - 1 && <View className="my-1 w-0.5 flex-1 bg-[#4D4D4D]" />}
+        {index < totalSteps - 1 && <View className="w-0.5 flex-1 bg-[#4D4D4D]" />}
       </View>
 
       <View className="ml-4 mt-1 flex-1 flex-shrink">
