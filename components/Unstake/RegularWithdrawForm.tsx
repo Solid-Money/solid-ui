@@ -23,6 +23,7 @@ import { isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance, useSoFuseVaultBalance } from '@/hooks/useVault';
+import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import useWithdraw from '@/hooks/useWithdraw';
 import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
@@ -76,6 +77,7 @@ const RegularWithdrawForm = () => {
   );
 
   const isSoFuse = selectedToken?.contractTickerSymbol?.toLowerCase() === 'sofuse';
+  const { data: exchangeRate } = useVaultExchangeRate(isSoFuse ? 'FUSE' : 'USDC');
   const tokenType = selectedToken?.type || TokenType.ERC20;
   const isNative = tokenType === TokenType.NATIVE;
 
@@ -383,7 +385,7 @@ const RegularWithdrawForm = () => {
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
               <Text className="text-base font-semibold">
                 {watchedAmount
-                  ? `${formatNumber(Number(watchedAmount) * 0.9999)} ${isSoFuse ? 'FUSE' : 'USDC'}`
+                  ? `${formatNumber(Number(watchedAmount) * (exchangeRate ?? 1) * 0.9999)} ${isSoFuse ? 'FUSE' : 'USDC'}`
                   : `0 ${isSoFuse ? 'FUSE' : 'USDC'}`}
               </Text>
             </View>
