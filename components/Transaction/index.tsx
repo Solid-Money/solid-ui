@@ -166,6 +166,8 @@ const Transaction = ({
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
   const isReward = transactionDetails?.category === TransactionCategory.REWARD;
   const isDeposit = type === TransactionType.DEPOSIT;
+  const isSavingsDeposit =
+    isDeposit && (symbol?.toLowerCase() === 'sousd' || symbol?.toLowerCase() === 'sofuse');
 
   const statusTextColor = isFailed
     ? 'text-red-400'
@@ -175,7 +177,7 @@ const Transaction = ({
         ? 'text-purple-400'
         : isCancelled
           ? ''
-          : isIncoming || isDeposit
+          : isIncoming || isSavingsDeposit
             ? 'text-brand'
             : '';
 
@@ -186,7 +188,7 @@ const Transaction = ({
       : isCancelled
         ? TransactionDirection.CANCELLED
         : isDeposit
-          ? TransactionDirection.IN
+          ? (isSavingsDeposit ? TransactionDirection.IN : TransactionDirection.FAILED)
           : (transactionDetails?.sign ?? '');
 
   const tokenIcon = getTokenIcon({

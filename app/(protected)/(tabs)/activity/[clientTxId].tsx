@@ -393,6 +393,8 @@ export default function ActivityDetail() {
   const isDetected = finalActivity?.status === TransactionStatus.DETECTED;
   const isProcessing = finalActivity?.status === TransactionStatus.PROCESSING;
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
+  const isSavingsDeposit =
+    isDeposit && (symbolLower === 'sousd' || symbolLower === 'sofuse');
   const isCancelWithdraw = finalActivity?.requestId && isPending;
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
@@ -400,16 +402,16 @@ export default function ActivityDetail() {
   const statusTextColor = useMemo(() => {
     if (isFailed) return 'text-red-400';
     if (isCancelled) return '';
-    if (isIncoming || isDeposit) return 'text-brand';
+    if (isIncoming || isSavingsDeposit) return 'text-brand';
     return '';
-  }, [isFailed, isCancelled, isIncoming, isDeposit]);
+  }, [isFailed, isCancelled, isIncoming, isSavingsDeposit]);
 
   const statusSign = useMemo(() => {
     if (isFailed) return TransactionDirection.FAILED;
     if (isCancelled) return TransactionDirection.CANCELLED;
-    if (isDeposit) return TransactionDirection.IN;
+    if (isDeposit) return isSavingsDeposit ? TransactionDirection.IN : TransactionDirection.FAILED;
     return transactionDetails?.sign ?? '';
-  }, [isFailed, isCancelled, isDeposit, transactionDetails?.sign]);
+  }, [isFailed, isCancelled, isDeposit, isSavingsDeposit, transactionDetails?.sign]);
 
   const description = useMemo(() => {
     if (finalActivity?.type === TransactionType.CARD_WITHDRAWAL) {
