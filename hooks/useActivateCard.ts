@@ -26,7 +26,9 @@ export function useActivateCard() {
   }>();
 
   // Card status
-  const { data: cardStatusResponse, isLoading: isCardStatusLoading } = useCardStatus();
+  const { data: cardStatusResponse, isLoading: isCardStatusLoading } = useCardStatus({
+    refetchInterval: 3000,
+  });
   const cardStatus = cardStatusResponse?.status;
   const isCardPending = cardStatus === CardStatus.PENDING;
   const isCardBlocked = Boolean(cardStatusResponse?.activationBlocked);

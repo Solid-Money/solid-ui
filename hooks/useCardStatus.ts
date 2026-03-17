@@ -14,8 +14,11 @@ export const cardStatusQueryOptions = (userId: string | undefined) => ({
   enabled: !!userId,
 });
 
-export const useCardStatus = () => {
+export const useCardStatus = ({ refetchInterval }: { refetchInterval?: number } = {}) => {
   const selectedUserId = useUserStore(state => state.users.find(user => user.selected)?.userId);
 
-  return useQuery(cardStatusQueryOptions(selectedUserId));
+  return useQuery({
+    ...cardStatusQueryOptions(selectedUserId),
+    ...(refetchInterval ? { refetchInterval } : {}),
+  });
 };
