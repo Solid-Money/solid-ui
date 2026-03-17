@@ -44,8 +44,8 @@ export function CardActivationStep({
   onToggle,
 }: CardActivationStepProps) {
   return (
-    <View className={`flex-row items-start space-x-4 ${index < totalSteps - 1 ? 'mb-4' : ''}`}>
-      <View className="items-center">
+    <View className={`flex-row ${index < totalSteps - 1 ? 'mb-4' : ''}`}>
+      <View className="items-center self-stretch">
         <StepIndicator
           stepId={step.id}
           completed={step.completed}
@@ -54,7 +54,7 @@ export function CardActivationStep({
         {index < totalSteps - 1 && <View className="my-1 w-0.5 flex-1 bg-[#4D4D4D]" />}
       </View>
 
-      <View className="ml-4 mt-1 flex-1">
+      <View className="ml-4 mt-1 flex-1 flex-shrink">
         <Pressable onPress={canToggle ? () => onToggle(step.id) : undefined} disabled={!canToggle}>
           <Text
             className={`mb-1 text-lg font-semibold ${canToggle ? 'text-white' : 'text-white/50'}`}
