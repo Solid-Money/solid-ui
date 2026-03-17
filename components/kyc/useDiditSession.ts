@@ -56,7 +56,7 @@ export function useDiditSession() {
     } catch (e: any) {
       const message = e?.message || 'Failed to create verification session';
       setSession({ phase: 'error', message });
-      Toast.show({ type: 'error', text1: 'Error', text2: message });
+      Toast.show({ type: 'error', text1: 'Error', text2: message, props: { badgeText: '' } });
     }
   }, []);
 
@@ -78,6 +78,7 @@ export function useDiditSession() {
       type: 'success',
       text1: 'Verification complete',
       text2: 'Your identity has been verified.',
+      props: { badgeText: '' },
     });
     redirectToActivate(KycStatus.UNDER_REVIEW);
   }, [redirectToActivate]);
@@ -87,6 +88,7 @@ export function useDiditSession() {
       type: 'info',
       text1: 'Verification submitted',
       text2: 'Your verification is being processed.',
+      props: { badgeText: '' },
     });
     redirectToActivate(KycStatus.UNDER_REVIEW);
   }, [redirectToActivate]);
@@ -96,6 +98,7 @@ export function useDiditSession() {
       type: 'error',
       text1: 'Verification failed',
       text2: message,
+      props: { badgeText: '' },
     });
     setSession({ phase: 'error', message });
   }, []);
