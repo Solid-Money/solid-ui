@@ -305,9 +305,13 @@ const DepositDirectlyAddress = () => {
       </View>
 
       {/* Warning Text */}
-      <View className="my-2 flex-row flex-wrap items-center justify-center gap-1.5 px-4 md:my-0">
+      <View className="my-2 flex-row items-center justify-center gap-1.5 px-4 md:my-0">
         <Info size={16} color="#A1A1AA" />
-        <Text className="shrink text-center text-base text-[#A1A1AA]">
+        <Text
+          className="min-w-0 shrink text-center text-sm text-[#A1A1AA]"
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
           Please send only {selectedToken} to this address
         </Text>
         <TooltipPopover

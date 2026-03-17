@@ -1,9 +1,10 @@
-import { publicClient } from '@/lib/wagmi';
 import * as Sentry from '@sentry/react-native';
 import { SmartAccountClient } from 'permissionless';
 import { getAccountNonce } from 'permissionless/actions';
 import { Chain } from 'viem';
 import { entryPoint07Address } from 'viem/account-abstraction';
+
+import { publicClient } from '@/lib/wagmi';
 
 export const USER_CANCELLED_TRANSACTION = Symbol('USER_CANCELLED_TRANSACTION');
 
@@ -82,8 +83,6 @@ export const executeTransactions = async (
       nonce,
     });
 
-    console.log('UserOp Hash (immediate):', userOpHash);
-
     // Call the callback immediately with userOpHash (before waiting for receipt)
     if (onUserOpHash && userOpHash) {
       onUserOpHash(userOpHash);
@@ -105,17 +104,12 @@ export const executeTransactions = async (
       hash: userOpHash as `0x${string}`,
     });
 
-    console.log('Receipt:', receipt);
-
     const transactionHash = receipt.receipt.transactionHash;
 
-    console.log('Transaction Hash:', transactionHash);
     // Get the full transaction receipt
     const transaction = await publicClient(chain.id).waitForTransactionReceipt({
       hash: transactionHash,
     });
-
-    console.log('Transaction:', transaction);
 
     if (transaction.status !== 'success') {
       const error = new Error(errorMessage);
