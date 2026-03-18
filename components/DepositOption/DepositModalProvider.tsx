@@ -16,6 +16,7 @@ const DepositModalProvider = () => {
   const {
     shouldOpen,
     showBackButton,
+    disableScroll,
     actionButton,
     shouldAnimate,
     isForward,
@@ -51,6 +52,7 @@ const DepositModalProvider = () => {
       shouldAnimate={shouldAnimate}
       isForward={isForward}
       contentKey={getContentKey()}
+      disableScroll={disableScroll}
     >
       {getContent()}
     </ResponsiveModal>
