@@ -81,7 +81,7 @@ export function buildCardSteps(
     },
     {
       id: 2,
-      title: 'Order your card',
+      title: 'Activate your card',
       description: orderCardDesc,
       completed: cardActivated,
       status: cardActivated ? 'completed' : 'pending',

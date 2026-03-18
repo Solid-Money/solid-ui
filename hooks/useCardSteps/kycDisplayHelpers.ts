@@ -87,7 +87,7 @@ export function getKYCDescription(rainApplicationStatus?: RainApplicationStatus 
 export function getKYCButtonText(
   rainApplicationStatus?: RainApplicationStatus | null,
 ): string | undefined {
-  if (!rainApplicationStatus) return 'Complete KYC';
+  if (!rainApplicationStatus) return 'Continue verification';
   switch (rainApplicationStatus) {
     case RainApplicationStatus.APPROVED:
       return undefined;
@@ -104,7 +104,7 @@ export function getKYCButtonText(
       return 'Provide information';
     case RainApplicationStatus.NOT_STARTED:
     default:
-      return 'Complete KYC';
+      return 'Continue verification';
   }
 }
 
@@ -224,7 +224,7 @@ export function getStepButtonText(
 
   // No endorsement - start KYC
   if (!cardsEndorsement) {
-    return 'Complete KYC';
+    return 'Continue verification';
   }
 
   switch (cardsEndorsement.status) {
@@ -242,10 +242,10 @@ export function getStepButtonText(
         return 'Under Review';
       }
       // Allow retry even for region restrictions (user may have another nationality)
-      return 'Complete KYC';
+      return 'Continue verification';
 
     default:
-      return 'Complete KYC';
+      return 'Continue verification';
   }
 }
 
@@ -297,5 +297,5 @@ export function getKycDescription(): string {
  * @deprecated Use getStepButtonText instead
  */
 export function getKycButtonText(): string | undefined {
-  return 'Complete KYC';
+  return 'Continue verification';
 }
