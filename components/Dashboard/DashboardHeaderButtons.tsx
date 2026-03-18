@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
@@ -12,6 +12,7 @@ import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import FuseLogoSkeleton from '@/assets/images/fuse-logo-skeleton';
 
 type DashboardHeaderButtonsProps = {
   deposit?: {
@@ -23,6 +24,7 @@ type DashboardHeaderButtonsProps = {
   hideWithdraw?: boolean;
   hideSend?: boolean;
   hideSwap?: boolean;
+  hideBuyFuse?: boolean;
   disableWithdraw?: boolean;
   disableSend?: boolean;
   disableSwap?: boolean;
@@ -35,6 +37,7 @@ const DashboardHeaderButtons = ({
   hideWithdraw,
   hideSend,
   hideSwap,
+  hideBuyFuse,
   disableWithdraw,
   disableSend,
   disableSwap,
@@ -61,6 +64,24 @@ const DashboardHeaderButtons = ({
 
   return (
     <View className="flex-row gap-2">
+      {!hideBuyFuse && (
+        <Button
+          variant="secondary"
+          className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+          onPress={() => {
+            track(TRACKING_EVENTS.NAVIGATION_BUTTON_CLICKED, {
+              button_name: 'buy_fuse',
+              source: 'dashboard_header',
+            });
+            Linking.openURL('https://www.fuse.io/get-fuse');
+          }}
+        >
+          <View className="flex-row items-center gap-2">
+            <FuseLogoSkeleton />
+            <Text className="text-base font-bold text-white">Buy Fuse</Text>
+          </View>
+        </Button>
+      )}
       {!hideWithdraw && (
         <>
           {withdraw?.isWithdraw ? (

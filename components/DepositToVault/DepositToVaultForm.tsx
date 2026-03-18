@@ -167,8 +167,7 @@ function DepositToVaultForm() {
         })
         .refine(val => Number(val) <= maxAmount, {
           error: `Available balance is ${formatNumber(maxAmount)} ${tokenLabel}`,
-        })
-        .transform(val => Number(val)),
+        }),
     });
   }, [balanceForVault, balanceDecimals, isFuseVault, isNativeFuse, selectedTokenInfo?.name]);
 
@@ -310,7 +309,7 @@ function DepositToVaultForm() {
         attribution_channel: attributionChannel,
       });
 
-      const trackingId = await depositFn(data.amount.toString());
+      const trackingId = await depositFn(data.amount);
       setTransaction({
         amount: Number(data.amount),
         trackingId,
