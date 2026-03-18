@@ -79,6 +79,7 @@ import {
   ProvisioningSessionResponse,
   RainConsumerType,
   RewardsUserData,
+  SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
   StargateQuoteParams,

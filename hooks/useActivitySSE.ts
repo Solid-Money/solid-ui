@@ -482,6 +482,10 @@ class SSEConnectionManager {
 
     const { event, activity, timestamp } = data;
 
+    console.log(
+      `[SSE] Activity event: ${event} | clientTxId=${activity.clientTxId} | type=${activity.type} | status=${activity.status} | title=${activity.title || 'N/A'}`,
+    );
+
     // Sequence number gap detection
     if (typeof (data as any).seq === 'number') {
       const seq = (data as any).seq as number;
@@ -811,6 +815,8 @@ class SSEConnectionManager {
       this.recoveryCycles = 0; // Reset recovery cycles on successful connection
       this.isConnecting = false;
       this.startHeartbeatMonitor();
+
+      console.debug(`[SSE] Connected${this.hasConnectedBefore ? ' (reconnect)' : ' (initial)'}`);
 
       // On reconnection (not initial connect), fetch page 1 directly
       // to catch up on any events that were missed while disconnected.

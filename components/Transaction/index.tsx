@@ -165,7 +165,6 @@ const Transaction = ({
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
   const isReward = transactionDetails?.category === TransactionCategory.REWARD;
   const isDeposit = type === TransactionType.DEPOSIT;
-
   const isSavingsDeposit =
     isDeposit && (symbol?.toLowerCase() === 'sousd' || symbol?.toLowerCase() === 'sofuse');
 
@@ -201,11 +200,11 @@ const Transaction = ({
       ? TransactionDirection.CANCELLED
       : isCancelled
         ? TransactionDirection.CANCELLED
-        : isSavingsDeposit
-          ? TransactionDirection.IN
-          : isDeposit
-            ? ''
-            : (transactionDetails?.sign ?? '');
+        : isDeposit
+          ? isSavingsDeposit
+            ? TransactionDirection.IN
+            : ''
+          : (transactionDetails?.sign ?? '');
 
   const tokenIcon = getTokenIcon({
     logoUrl,
