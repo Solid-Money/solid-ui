@@ -833,9 +833,10 @@ function CardActions({
         isLoading={isLoadingCardDetails}
       />
       {showManageButton && (
-        <Dialog open={isManageSheetOpen} onOpenChange={setIsManageSheetOpen}>
-          <DialogTrigger asChild>
-            <View className="flex-1 items-center">
+        <View className="flex-1">
+          <Dialog open={isManageSheetOpen} onOpenChange={setIsManageSheetOpen}>
+            <DialogTrigger asChild>
+              <View className="items-center">
               <Pressable
                 onPress={() => setIsManageSheetOpen(true)}
                 className="items-center justify-center rounded-full bg-[#303030]"
@@ -893,7 +894,8 @@ function CardActions({
               )}
             </View>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </View>
       )}
       {isRain && isWithdrawFromCardAllowed && (
         <WithdrawToCardModal
