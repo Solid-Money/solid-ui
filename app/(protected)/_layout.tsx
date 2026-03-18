@@ -77,6 +77,14 @@ export default function ProtectedLayout() {
   // Enable real-time activity updates globally for logged-in users
   useActivitySSE({ enabled: !!user, subscribe: false });
 
+  // MeaWallet MPP: initialize once on native (required before any MPP API use)
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    import('@meawallet/react-native-mpp')
+      .then(m => m.default.initialize().catch(() => {}))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!user) return;
 

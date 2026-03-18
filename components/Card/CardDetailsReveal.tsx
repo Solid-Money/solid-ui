@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, TouchableOpacity, View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
+import { useCardProvider } from '@/hooks/useCardProvider';
 
 interface CardDetailsRevealProps {
   onClose?: () => void;
@@ -18,7 +19,9 @@ interface CardDetailsRevealProps {
  * - Handles errors gracefully
  */
 export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose }) => {
-  const { cardDetails, isLoading, error, revealDetails, clearCardDetails } = useCardDetailsReveal();
+  const { provider } = useCardProvider();
+  const { cardDetails, isLoading, error, revealDetails, clearCardDetails } =
+    useCardDetailsReveal(provider);
 
   // Auto-fetch card details when component mounts
   useEffect(() => {
@@ -46,7 +49,8 @@ export const CardDetailsReveal: React.FC<CardDetailsRevealProps> = ({ onClose })
   };
 
   const formatExpiryDate = (expiryDate: string) => {
-    // Convert YYYY-MM-DD to MM/YY format
+    // Rain returns MM/YY directly; Bridge returns YYYY-MM-DD
+    if (/^\d{2}\/\d{2}$/.test(expiryDate)) return expiryDate;
     const date = new Date(expiryDate);
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear().toString().slice(-2);

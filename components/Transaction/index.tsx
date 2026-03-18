@@ -53,7 +53,6 @@ const Transaction = ({
   onPress,
   type,
   clientTxId,
-  metadata,
   timestamp,
   showTimestamp = true,
   isFirst = false,
@@ -181,6 +180,20 @@ const Transaction = ({
             ? 'text-brand'
             : '';
 
+  // Inline style fallback: guarantees correct color even if NativeWind class
+  // resolution fails after FlashList recycling or SSE-triggered re-renders.
+  const statusColorStyle = isFailed
+    ? { color: '#f87171' }
+    : isExpired
+      ? { color: '#fb923c' }
+      : isRefunded
+        ? { color: '#c084fc' }
+        : isCancelled
+          ? undefined
+          : isIncoming || isSavingsDeposit
+            ? { color: 'hsl(109, 82%, 72%)' }
+            : undefined;
+
   const statusSign = isFailed
     ? TransactionDirection.FAILED
     : isExpired || isRefunded
@@ -188,7 +201,9 @@ const Transaction = ({
       : isCancelled
         ? TransactionDirection.CANCELLED
         : isDeposit
-          ? (isSavingsDeposit ? TransactionDirection.IN : TransactionDirection.FAILED)
+          ? isSavingsDeposit
+            ? TransactionDirection.IN
+            : ''
           : (transactionDetails?.sign ?? '');
 
   const tokenIcon = getTokenIcon({
@@ -197,6 +212,8 @@ const Transaction = ({
     size: 44,
   });
 
+  const isSuccess = status === TransactionStatus.SUCCESS;
+
   const getDescription = () => {
     if (isPending) return 'Pending';
     if (isProcessing) return 'Processing';
@@ -204,7 +221,7 @@ const Transaction = ({
     if (isExpired) return 'Expired';
     if (isRefunded) return 'Refunded';
     if (isCancelled) return 'Cancelled';
-    if (isDeposit && status === TransactionStatus.SUCCESS) return 'Complete';
+    if (isSuccess && isDeposit) return 'Complete';
     return transactionDetails?.category ?? 'Unknown';
   };
 
@@ -293,7 +310,10 @@ const Transaction = ({
             {directDepositStatusMessage}
           </Text>
         ) : (
-          <Text className={cn('text-base font-medium web:text-lg', statusTextColor)}>
+          <Text
+            className={cn('text-base font-medium web:text-lg', statusTextColor)}
+            style={statusColorStyle}
+          >
             {statusSign}
             {formatNumber(Number(amount), 2)} {symbol?.toLowerCase() === 'sousd' ? 'soUSD' : symbol}
           </Text>
@@ -312,7 +332,7 @@ const Transaction = ({
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Delete direct deposit?"
-        contentClassName="px-6 py-6"
+        contentClassName="max-w-sm px-6 py-6"
         mobilePlacement="center"
       >
         <View className="flex flex-col gap-6">
@@ -365,7 +385,8 @@ function areTransactionPropsEqual(
     prevProps.logoUrl === nextProps.logoUrl &&
     prevProps.showTimestamp === nextProps.showTimestamp &&
     prevProps.isFirst === nextProps.isFirst &&
-    prevProps.isLast === nextProps.isLast
+    prevProps.isLast === nextProps.isLast &&
+    prevProps.classNames?.container === nextProps.classNames?.container
   );
 }
 

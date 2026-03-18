@@ -36,15 +36,25 @@ import { useActivityActions } from '@/hooks/useActivityActions';
 import { useBalances } from '@/hooks/useBalances';
 import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
+import { useCardContracts } from '@/hooks/useCardContracts';
+import useCardDeposit from '@/hooks/useCardDeposit';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
 import useSwapAndBridgeToCard from '@/hooks/useSwapAndBridgeToCard';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
-import { ADDRESSES } from '@/lib/config';
-import { Status, TransactionStatus, TransactionType } from '@/lib/types';
-import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
+import { ADDRESSES, EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID, isProduction } from '@/lib/config';
+import { CardProvider, Status, TransactionStatus, TransactionType } from '@/lib/types';
+import {
+  cn,
+  formatNumber,
+  getCardDepositTokenAddress,
+  getCardDepositTokenSymbol,
+  getCardFundingAddress,
+} from '@/lib/utils';
+import { getChain } from '@/lib/wagmi';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 import { BorrowSlider } from './BorrowSlider';
@@ -55,6 +65,10 @@ type SourceSelectorProps = {
   control: Control<FormData>;
   from: CardDepositSource;
   showBorrowOption: boolean;
+  /** When false, only Wallet option is shown (testnet). */
+  showSavingsAndBorrowOptions: boolean;
+  /** Symbol for Wallet source (e.g. USDC.e or rUSD). */
+  walletTokenSymbol: string;
 };
 
 function SourceSelectorNative({
@@ -62,11 +76,15 @@ function SourceSelectorNative({
   onChange,
   from,
   showBorrowOption,
+  showSavingsAndBorrowOptions,
+  walletTokenSymbol,
 }: {
   value: CardDepositSource;
   onChange: (value: CardDepositSource) => void;
   from: CardDepositSource;
   showBorrowOption: boolean;
+  showSavingsAndBorrowOptions: boolean;
+  walletTokenSymbol: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -77,10 +95,10 @@ function SourceSelectorNative({
   }, [value]);
 
   const getTokenSymbol = useCallback(() => {
-    if (from === CardDepositSource.WALLET) return 'USDC.e';
+    if (from === CardDepositSource.WALLET) return walletTokenSymbol;
     if (from === CardDepositSource.SAVINGS) return 'soUSD';
     return '';
-  }, [from]);
+  }, [from, walletTokenSymbol]);
 
   return (
     <View>
@@ -107,7 +125,7 @@ function SourceSelectorNative({
       </Pressable>
       {isOpen && (
         <View className="mt-1 overflow-hidden rounded-2xl bg-accent">
-          {showBorrowOption && (
+          {showSavingsAndBorrowOptions && showBorrowOption && (
             <Pressable
               className="flex-row items-center gap-2 px-4 py-3"
               onPress={() => {
@@ -119,16 +137,18 @@ function SourceSelectorNative({
               <Text className="text-lg">Borrow against Savings</Text>
             </Pressable>
           )}
-          <Pressable
-            className="flex-row items-center gap-2 px-4 py-3"
-            onPress={() => {
-              onChange(CardDepositSource.SAVINGS);
-              setIsOpen(false);
-            }}
-          >
-            <Leaf color="#A1A1A1" size={20} />
-            <Text className="text-lg">Savings</Text>
-          </Pressable>
+          {showSavingsAndBorrowOptions && (
+            <Pressable
+              className="flex-row items-center gap-2 px-4 py-3"
+              onPress={() => {
+                onChange(CardDepositSource.SAVINGS);
+                setIsOpen(false);
+              }}
+            >
+              <Leaf color="#A1A1A1" size={20} />
+              <Text className="text-lg">Savings</Text>
+            </Pressable>
+          )}
           <Pressable
             className="flex-row items-center gap-2 px-4 py-3"
             onPress={() => {
@@ -150,11 +170,15 @@ function SourceSelectorWeb({
   onChange,
   from,
   showBorrowOption,
+  showSavingsAndBorrowOptions,
+  walletTokenSymbol,
 }: {
   value: CardDepositSource;
   onChange: (value: CardDepositSource) => void;
   from: CardDepositSource;
   showBorrowOption: boolean;
+  showSavingsAndBorrowOptions: boolean;
+  walletTokenSymbol: string;
 }) {
   const getDisplayText = useCallback(() => {
     if (value === CardDepositSource.WALLET) return 'Wallet';
@@ -163,10 +187,10 @@ function SourceSelectorWeb({
   }, [value]);
 
   const getTokenSymbol = useCallback(() => {
-    if (from === CardDepositSource.WALLET) return 'USDC.e';
+    if (from === CardDepositSource.WALLET) return walletTokenSymbol;
     if (from === CardDepositSource.SAVINGS) return 'soUSD';
     return '';
-  }, [from]);
+  }, [from, walletTokenSymbol]);
 
   return (
     <DropdownMenu>
@@ -189,7 +213,7 @@ function SourceSelectorWeb({
         </Pressable>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="-mt-4 w-full min-w-[380px] rounded-b-2xl rounded-t-none border-0">
-        {showBorrowOption && (
+        {showSavingsAndBorrowOptions && showBorrowOption && (
           <DropdownMenuItem
             onPress={() => onChange(CardDepositSource.BORROW)}
             className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
@@ -198,13 +222,15 @@ function SourceSelectorWeb({
             <Text className="text-lg">Borrow against Savings</Text>
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem
-          onPress={() => onChange(CardDepositSource.SAVINGS)}
-          className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
-        >
-          <Leaf color="#A1A1A1" size={20} />
-          <Text className="text-lg">Savings</Text>
-        </DropdownMenuItem>
+        {showSavingsAndBorrowOptions && (
+          <DropdownMenuItem
+            onPress={() => onChange(CardDepositSource.SAVINGS)}
+            className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
+          >
+            <Leaf color="#A1A1A1" size={20} />
+            <Text className="text-lg">Savings</Text>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           onPress={() => onChange(CardDepositSource.WALLET)}
           className="flex-row items-center gap-2 px-4 py-3 web:cursor-pointer"
@@ -217,7 +243,13 @@ function SourceSelectorWeb({
   );
 }
 
-function SourceSelector({ control, from, showBorrowOption }: SourceSelectorProps) {
+function SourceSelector({
+  control,
+  from,
+  showBorrowOption,
+  showSavingsAndBorrowOptions,
+  walletTokenSymbol,
+}: SourceSelectorProps) {
   return (
     <View className="gap-2">
       <Text className="font-medium opacity-50">From</Text>
@@ -231,6 +263,8 @@ function SourceSelector({ control, from, showBorrowOption }: SourceSelectorProps
               onChange={onChange}
               from={from}
               showBorrowOption={showBorrowOption}
+              showSavingsAndBorrowOptions={showSavingsAndBorrowOptions}
+              walletTokenSymbol={walletTokenSymbol}
             />
           ) : (
             <SourceSelectorNative
@@ -238,6 +272,8 @@ function SourceSelector({ control, from, showBorrowOption }: SourceSelectorProps
               onChange={onChange}
               from={from}
               showBorrowOption={showBorrowOption}
+              showSavingsAndBorrowOptions={showSavingsAndBorrowOptions}
+              walletTokenSymbol={walletTokenSymbol}
             />
           )
         }
@@ -251,9 +287,17 @@ type AmountInputProps = {
   errors: FieldErrors<FormData>;
   from: CardDepositSource;
   onAmountEntry?: () => void;
+  /** Symbol for Wallet source (e.g. USDC.e or rUSD). */
+  walletTokenSymbol: string;
 };
 
-function AmountInput({ control, errors, from, onAmountEntry }: AmountInputProps) {
+function AmountInput({
+  control,
+  errors,
+  from,
+  onAmountEntry,
+  walletTokenSymbol,
+}: AmountInputProps) {
   const getTokenImage = () => {
     if (from === CardDepositSource.WALLET) return getAsset('images/usdc-4x.png');
     if (from === CardDepositSource.SAVINGS) return getAsset('images/sousd-4x.png');
@@ -261,10 +305,10 @@ function AmountInput({ control, errors, from, onAmountEntry }: AmountInputProps)
   };
 
   const getTokenSymbol = useCallback(() => {
-    if (from === CardDepositSource.WALLET) return 'USDC.e';
+    if (from === CardDepositSource.WALLET) return walletTokenSymbol;
     if (from === CardDepositSource.SAVINGS) return 'soUSD';
     return 'USDC';
-  }, [from]);
+  }, [from, walletTokenSymbol]);
 
   return (
     <View className="gap-2">
@@ -318,6 +362,8 @@ type BalanceDisplayProps = {
   trigger: UseFormTrigger<FormData>;
   from: CardDepositSource;
   onMaxClick?: () => void;
+  /** Symbol for Wallet source (e.g. USDC.e or rUSD). */
+  walletTokenSymbol: string;
 };
 
 function BalanceDisplay({
@@ -328,12 +374,13 @@ function BalanceDisplay({
   trigger,
   from,
   onMaxClick,
+  walletTokenSymbol,
 }: BalanceDisplayProps) {
   const tokenSymbol = useMemo(() => {
-    if (from === CardDepositSource.WALLET) return 'USDC.e';
+    if (from === CardDepositSource.WALLET) return walletTokenSymbol;
     if (from === CardDepositSource.SAVINGS) return 'soUSD';
     return 'USDC';
-  }, [from]);
+  }, [from, walletTokenSymbol]);
 
   if (from === CardDepositSource.BORROW) {
     return null;
@@ -383,15 +430,21 @@ function EstimatedReceive({ estimatedUSDC, isLoading }: EstimatedReceiveProps) {
   );
 }
 
-function DestinationDisplay() {
+function DestinationDisplay({
+  fundingChainLabel,
+  destinationTokenSymbol,
+}: {
+  fundingChainLabel: string;
+  destinationTokenSymbol: string;
+}) {
   return (
     <View className="gap-2">
       <Text className="font-medium opacity-50">To</Text>
       <View className="flex-row items-center justify-between rounded-2xl bg-accent p-4">
         <View className="flex-row items-center gap-2">
-          <Text className="text-lg font-semibold">Card (Arbitrum)</Text>
+          <Text className="text-lg font-semibold">Card ({fundingChainLabel})</Text>
         </View>
-        <Text className="text-sm text-muted-foreground">USDC</Text>
+        <Text className="text-sm text-muted-foreground">{destinationTokenSymbol}</Text>
       </View>
     </View>
   );
@@ -458,6 +511,11 @@ export default function CardDepositInternalForm() {
     })),
   );
   const { data: cardDetails } = useCardDetails();
+  const { provider } = useCardProvider();
+  const { data: contracts, isLoading: contractsLoading } = useCardContracts();
+  const fundingChainId = EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID;
+  const depositTokenAddressForBalance =
+    !isProduction && provider ? (getCardDepositTokenAddress(fundingChainId) as Address) : undefined;
 
   // Tracking refs
   const hasTrackedFormViewedRef = useRef(false);
@@ -468,14 +526,14 @@ export default function CardDepositInternalForm() {
   // Get all token balances including soUSD
   const { tokens, isLoading: isBalancesLoading } = useBalances();
 
-  // Get Fuse USDC.e balance
+  // Get Fuse USDC.e balance (production Wallet)
   const { data: fuseUsdcBalance, isLoading: isUsdcBalanceLoading } = useReadContract({
     abi: erc20Abi,
     address: USDC_STARGATE,
     functionName: 'balanceOf',
     args: [user?.safeAddress as Address],
     chainId: fuse.id,
-    query: { enabled: !!user?.safeAddress },
+    query: { enabled: !!user?.safeAddress && isProduction },
   });
 
   // Get soUSD balance and rate from tokens
@@ -491,12 +549,28 @@ export default function CardDepositInternalForm() {
     mode: 'onChange',
     defaultValues: {
       amount: '',
-      from: source || CardDepositSource.BORROW,
+      from: source ?? (isProduction ? CardDepositSource.BORROW : CardDepositSource.WALLET),
     },
   });
 
   const watchedAmount = watch('amount');
   const watchedFrom = watch('from');
+
+  // Testnet Wallet: rUSD balance on funding chain
+  const { data: testnetDepositBalance, isLoading: isTestnetBalanceLoading } = useReadContract({
+    abi: erc20Abi,
+    address: depositTokenAddressForBalance,
+    functionName: 'balanceOf',
+    args: [user?.safeAddress as Address],
+    chainId: fundingChainId,
+    query: {
+      enabled:
+        !isProduction &&
+        !!depositTokenAddressForBalance &&
+        !!user?.safeAddress &&
+        watchedFrom === CardDepositSource.WALLET,
+    },
+  });
 
   // Get borrow rate from accountant contract
   const ACCOUNTANT_ABI = [
@@ -529,14 +603,25 @@ export default function CardDepositInternalForm() {
   const soUsdBalanceAmount = soUsdToken
     ? Number(soUsdToken.balance) / Math.pow(10, soUsdToken.contractDecimals)
     : 0;
+  const testnetWalletBalanceAmount =
+    testnetDepositBalance != null ? Number(testnetDepositBalance) / 1e6 : 0;
 
   const balanceAmount =
-    watchedFrom === CardDepositSource.WALLET ? usdcBalanceAmount : soUsdBalanceAmount;
+    watchedFrom === CardDepositSource.WALLET
+      ? isProduction
+        ? usdcBalanceAmount
+        : testnetWalletBalanceAmount
+      : soUsdBalanceAmount;
   const isBalanceLoading =
-    watchedFrom === CardDepositSource.WALLET ? isUsdcBalanceLoading : isBalancesLoading;
+    watchedFrom === CardDepositSource.WALLET
+      ? isProduction
+        ? isUsdcBalanceLoading
+        : isTestnetBalanceLoading
+      : isBalancesLoading;
+  const walletTokenSymbol = isProduction ? 'USDC.e' : getCardDepositTokenSymbol(provider);
   const tokenSymbol =
     watchedFrom === CardDepositSource.WALLET
-      ? 'USDC.e'
+      ? walletTokenSymbol
       : watchedFrom === CardDepositSource.SAVINGS
         ? 'soUSD'
         : 'USDC';
@@ -612,6 +697,7 @@ export default function CardDepositInternalForm() {
   } = useSwapAndBridgeToCard();
 
   const { borrowAndDeposit, bridgeStatus: borrowAndDepositStatus } = useBorrowAndDepositToCard();
+  const { deposit, depositStatus, error: depositError } = useCardDeposit();
 
   // Track form viewed (once on mount)
   useEffect(() => {
@@ -696,7 +782,7 @@ export default function CardDepositInternalForm() {
       });
 
       try {
-        // Check for Arbitrum funding address
+        // Check for funding address
         if (!cardDetails) {
           Toast.show({
             type: 'error',
@@ -705,13 +791,17 @@ export default function CardDepositInternalForm() {
           });
           return;
         }
-        const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
+        const borrowFundingAddress = getCardFundingAddress(
+          cardDetails,
+          provider,
+          contracts ?? undefined,
+        );
 
-        if (!arbitrumFundingAddress) {
+        if (!borrowFundingAddress) {
           Toast.show({
             type: 'error',
-            text1: 'Arbitrum deposits not available',
-            text2: 'This card does not support Arbitrum deposits',
+            text1: 'Deposits not available',
+            text2: 'This card does not support deposits to the funding chain',
           });
           return;
         }
@@ -734,7 +824,7 @@ export default function CardDepositInternalForm() {
           symbol: sourceSymbol,
           chainId: fuse.id,
           fromAddress: user.safeAddress,
-          toAddress: arbitrumFundingAddress,
+          toAddress: borrowFundingAddress,
           status: TransactionStatus.PENDING,
           metadata: {
             description: `Deposit ${data.amount} ${sourceSymbol} to card`,
@@ -773,6 +863,8 @@ export default function CardDepositInternalForm() {
     [
       watchedFrom,
       cardDetails,
+      provider,
+      contracts,
       user,
       borrowAndDeposit,
       borrowAPY,
@@ -802,7 +894,13 @@ export default function CardDepositInternalForm() {
       track(TRACKING_EVENTS.CARD_DEPOSIT_INTERNAL_SUBMITTED, trackingParams);
 
       try {
-        // Check for Arbitrum funding address
+        if (watchedFrom === CardDepositSource.WALLET && !isProduction) {
+          await deposit(data.amount);
+          reset();
+          return;
+        }
+
+        // Check for funding address
         if (!cardDetails) {
           Toast.show({
             type: 'error',
@@ -811,13 +909,17 @@ export default function CardDepositInternalForm() {
           });
           return;
         }
-        const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
+        const submitFundingAddress = getCardFundingAddress(
+          cardDetails,
+          provider,
+          contracts ?? undefined,
+        );
 
-        if (!arbitrumFundingAddress) {
+        if (!submitFundingAddress) {
           Toast.show({
             type: 'error',
-            text1: 'Arbitrum deposits not available',
-            text2: 'This card does not support Arbitrum deposits',
+            text1: 'Deposits not available',
+            text2: 'This card does not support deposits to the funding chain',
           });
           return;
         }
@@ -840,7 +942,7 @@ export default function CardDepositInternalForm() {
           symbol: sourceSymbol,
           chainId: fuse.id,
           fromAddress: user.safeAddress,
-          toAddress: arbitrumFundingAddress,
+          toAddress: submitFundingAddress,
           status: TransactionStatus.PENDING,
           metadata: {
             description: `Deposit ${data.amount} ${sourceSymbol} to card`,
@@ -882,9 +984,12 @@ export default function CardDepositInternalForm() {
     },
     [
       watchedFrom,
+      deposit,
       estimatedUSDC,
       exchangeRate,
       cardDetails,
+      provider,
+      contracts,
       user,
       bridge,
       createActivity,
@@ -906,11 +1011,16 @@ export default function CardDepositInternalForm() {
     }
   }, [watchedAmount, schema]);
 
+  const isFundingAddressLoading = provider === CardProvider.RAIN && contractsLoading;
+  const isWalletDepositPending =
+    !isProduction && watchedFrom === CardDepositSource.WALLET && depositStatus === Status.PENDING;
   const disabled =
     bridgeStatus === Status.PENDING ||
     swapAndBridgeStatus === Status.PENDING ||
+    isWalletDepositPending ||
     (watchedFrom !== CardDepositSource.BORROW && isEstimatedUSDCLoading) ||
     (watchedFrom === CardDepositSource.BORROW && isRateLoading) ||
+    isFundingAddressLoading ||
     !isValid ||
     !watchedAmount;
 
@@ -983,7 +1093,8 @@ export default function CardDepositInternalForm() {
     }
   }, [watchedAmount, watchedFrom, maxBorrowAmount]);
 
-  const showBorrowOption = true;
+  const showBorrowOption = isProduction;
+  const showSavingsAndBorrowOptions = isProduction;
 
   // Reset to 'savings' if user is on 'borrow' but doesn't have permission
   useEffect(() => {
@@ -995,7 +1106,13 @@ export default function CardDepositInternalForm() {
 
   return (
     <View className="flex-1 gap-3">
-      <SourceSelector control={control} from={watchedFrom} showBorrowOption={showBorrowOption} />
+      <SourceSelector
+        control={control}
+        from={watchedFrom}
+        showBorrowOption={showBorrowOption}
+        showSavingsAndBorrowOptions={showSavingsAndBorrowOptions}
+        walletTokenSymbol={walletTokenSymbol}
+      />
 
       {watchedFrom === CardDepositSource.BORROW ? (
         <View className="gap-4 px-2">
@@ -1013,6 +1130,7 @@ export default function CardDepositInternalForm() {
             errors={formState.errors}
             from={watchedFrom}
             onAmountEntry={trackAmountEntry}
+            walletTokenSymbol={walletTokenSymbol}
           />
           <BalanceDisplay
             balanceAmount={balanceAmount}
@@ -1022,6 +1140,7 @@ export default function CardDepositInternalForm() {
             trigger={trigger}
             from={watchedFrom}
             onMaxClick={trackMaxButtonClicked}
+            walletTokenSymbol={walletTokenSymbol}
           />
         </View>
       )}
@@ -1083,9 +1202,21 @@ export default function CardDepositInternalForm() {
 
       <View className="flex-1" />
 
-      {watchedFrom !== CardDepositSource.BORROW && <DestinationDisplay />}
+      {watchedFrom !== CardDepositSource.BORROW && (
+        <DestinationDisplay
+          fundingChainLabel={getChain(fundingChainId)?.name ?? 'Card'}
+          destinationTokenSymbol={getCardDepositTokenSymbol(provider)}
+        />
+      )}
 
-      <ErrorDisplay error={validationError || bridgeError || swapAndBridgeError} />
+      <ErrorDisplay
+        error={
+          validationError ||
+          bridgeError ||
+          swapAndBridgeError ||
+          (!isProduction ? depositError : null)
+        }
+      />
 
       {watchedFrom === CardDepositSource.BORROW ? (
         <BorrowAndDepositButton
@@ -1097,7 +1228,9 @@ export default function CardDepositInternalForm() {
       ) : (
         <SubmitButton
           disabled={disabled}
-          bridgeStatus={bridgeStatus}
+          bridgeStatus={
+            !isProduction && watchedFrom === CardDepositSource.WALLET ? depositStatus : bridgeStatus
+          }
           swapAndBridgeStatus={swapAndBridgeStatus}
           onPress={handleSubmit(onSubmit)}
         />

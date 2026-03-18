@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import Toast from 'react-native-toast-message';
 import { useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
+import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useCustomer, useKycLinkFromBridge } from '@/hooks/useCustomer';
 import { track } from '@/lib/analytics';
 import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
-import { CardStatusResponse, KycStatus } from '@/lib/types';
+import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
+import { openIntercom } from '@/lib/intercom';
+import { redirectToRainVerification } from '@/lib/rainVerification';
+import { CardProvider, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -43,6 +48,11 @@ export function useCardSteps(
       clearProcessingUntil: state.clearProcessingUntil,
     })),
   );
+  // Consider Rain when API returns rainApplicationStatus (provider may be omitted)
+  const cardIssuer =
+    cardStatusResponse?.rainApplicationStatus != null
+      ? CardProvider.RAIN
+      : (cardStatusResponse?.provider ?? EXPO_PUBLIC_CARD_ISSUER ?? null);
   const countryStore = useCountryStore(
     useShallow(state => ({
       countryInfo: state.countryInfo,
@@ -108,13 +118,20 @@ export function useCardSteps(
       kycLinkId,
       hasProcessingWindow: Boolean(processingUntil),
       endorsementStatus: cardsEndorsement?.status,
+      cardIssuer,
     });
 
-    // Check country access
+    // Default to Rain KYC; only Bridge goes through Bridge flow
+    if (cardIssuer !== CardProvider.BRIDGE) {
+      router.push(path.KYC as any);
+      return;
+    }
+
+    // Check country access (Bridge flow)
     const isBlocked = await checkAndBlockForCountryAccess(countryStore, kycLinkId);
     if (isBlocked) return;
 
-    // Check latest KYC status
+    // Check latest KYC status (Bridge)
     try {
       if (kycLinkId) {
         const latest = await withRefreshToken(() => getKycLinkFromBridge(kycLinkId));
@@ -168,10 +185,63 @@ export function useCardSteps(
 
     // Try to get a fresh KYC URL with redirect_uri, or fall back to user info collection
     if (await redirectToExistingCustomerKycLink(router, kycLinkId)) return;
-    redirectToCollectUserInfo(router);
-  }, [router, kycLinkId, uiKycStatus, processingUntil, countryStore, cardsEndorsement?.status]);
+    redirectToCollectUserInfo(router, countryStore.countryInfo?.countryCode);
+  }, [
+    router,
+    kycLinkId,
+    uiKycStatus,
+    processingUntil,
+    countryStore,
+    cardsEndorsement?.status,
+    cardIssuer,
+  ]);
 
-  // Build steps based on endorsement status
+  // Rain: KYC step button handler (redirect, contact support, or proceed to KYC)
+  const handleRainKYCPress = useCallback(() => {
+    const status = cardStatusResponse?.rainApplicationStatus;
+    const link = cardStatusResponse?.applicationExternalVerificationLink;
+
+    if (
+      status === RainApplicationStatus.DENIED ||
+      status === RainApplicationStatus.LOCKED ||
+      status === RainApplicationStatus.CANCELED
+    ) {
+      openIntercom();
+      return;
+    }
+    if (
+      status === RainApplicationStatus.NEEDS_VERIFICATION ||
+      status === RainApplicationStatus.NEEDS_INFORMATION
+    ) {
+      if (link?.url && Object.keys(link.params ?? {}).length > 0) {
+        redirectToRainVerification(link);
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Verification link unavailable',
+          text2: 'Unable to open verification. Please try again later or contact support.',
+          props: { badgeText: '' },
+        });
+        track(TRACKING_EVENTS.CARD_KYC_FLOW_TRIGGERED, {
+          action: 'verification_link_missing',
+          rainApplicationStatus: status,
+          hasLink: Boolean(link),
+          hasUrl: Boolean(link?.url),
+          hasParams: Boolean(link?.params && Object.keys(link.params).length > 0),
+        });
+      }
+      return;
+    }
+    if (status === RainApplicationStatus.NOT_STARTED || !status) {
+      handleProceedToKyc();
+    }
+  }, [
+    cardStatusResponse?.rainApplicationStatus,
+    cardStatusResponse?.applicationExternalVerificationLink,
+    handleProceedToKyc,
+  ]);
+
+  // Build steps based on endorsement status (Bridge) or Rain KYC status
   const steps = useMemo(
     () =>
       buildCardSteps(
@@ -183,6 +253,11 @@ export function useCardSteps(
         handleProceedToKyc,
         handleActivateCard,
         pushCardDetails,
+        {
+          cardIssuer,
+          rainApplicationStatus: cardStatusResponse?.rainApplicationStatus,
+          handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
+        },
       ),
     [
       cardsEndorsement,
@@ -190,9 +265,12 @@ export function useCardSteps(
       cardActivated,
       cardStatusResponse?.activationBlocked,
       cardStatusResponse?.activationBlockedReason,
+      cardStatusResponse?.rainApplicationStatus,
       handleProceedToKyc,
       handleActivateCard,
       pushCardDetails,
+      cardIssuer,
+      handleRainKYCPress,
     ],
   );
 

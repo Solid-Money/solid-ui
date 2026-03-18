@@ -1,3 +1,10 @@
+import { useCallback, useState } from 'react';
+import * as Sentry from '@sentry/react-native';
+import { Address } from 'abitype';
+import { erc20Abi, pad, TransactionReceipt } from 'viem';
+import { fuse } from 'viem/chains';
+import { encodeFunctionData, parseUnits } from 'viem/utils';
+
 import { USDC_STARGATE } from '@/constants/addresses';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
@@ -5,17 +12,18 @@ import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import { CardDepositManager_ABI } from '@/lib/abis/CardDepositManager';
 import { track } from '@/lib/analytics';
 import { getStargateQuote } from '@/lib/api';
-import { ADDRESSES } from '@/lib/config';
+import {
+  ADDRESSES,
+  EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
+  EXPO_PUBLIC_CARD_FUNDING_CHAIN_KEY,
+} from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, Status, TransactionType } from '@/lib/types';
-import { getArbitrumFundingAddress } from '@/lib/utils';
-import * as Sentry from '@sentry/react-native';
-import { Address } from 'abitype';
-import { useCallback, useState } from 'react';
-import { erc20Abi, pad, TransactionReceipt } from 'viem';
-import { fuse } from 'viem/chains';
-import { encodeFunctionData, parseUnits } from 'viem/utils';
+import { getCardDepositTokenAddress, getCardFundingAddress } from '@/lib/utils';
+
+import { useCardContracts } from './useCardContracts';
 import { useCardDetails } from './useCardDetails';
+import { useCardProvider } from './useCardProvider';
 import useUser from './useUser';
 
 type BridgeResult = {
@@ -28,6 +36,8 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
   const { user, safeAA } = useUser();
   const { trackTransaction } = useActivityActions();
   const { data: cardDetails } = useCardDetails();
+  const { provider } = useCardProvider();
+  const { data: contracts } = useCardContracts();
   const [bridgeStatus, setBridgeStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,12 +65,16 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
           throw error;
         }
 
-        // Get card's Arbitrum funding address
+        // Get card's Arbitrum funding address (Rain: from contracts, Bridge: from card details)
         if (!cardDetails) {
           throw new Error('Card details not found');
         }
 
-        const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
+        const arbitrumFundingAddress = getCardFundingAddress(
+          cardDetails,
+          provider,
+          contracts ?? undefined,
+        );
 
         if (!arbitrumFundingAddress) {
           const error = new Error('Arbitrum funding address not found for card');
@@ -112,11 +126,12 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
         // Calculate minimum destination amount (95% of source amount for 5% slippage tolerance)
         const dstAmountMin = (amountWei * 95n) / 100n;
 
+        const dstToken = getCardDepositTokenAddress(EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID);
         const quoteParams: StargateQuoteParams = {
           srcToken: USDC_STARGATE,
-          srcChainKey: 'fuse', // Fuse chain key
-          dstToken: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // USDC on Arbitrum
-          dstChainKey: 'arbitrum', // Arbitrum chain key
+          srcChainKey: 'fuse',
+          dstToken,
+          dstChainKey: EXPO_PUBLIC_CARD_FUNDING_CHAIN_KEY,
           srcAddress: ADDRESSES.fuse.bridgePaymasterAddress,
           dstAddress: destinationAddress,
           srcAmount: amountWei.toString(),
@@ -319,7 +334,7 @@ const useSwapAndBridgeToCard = (): BridgeResult => {
         throw error;
       }
     },
-    [user, cardDetails, safeAA, trackTransaction, bridgeStatus],
+    [user, cardDetails, provider, contracts, safeAA, trackTransaction, bridgeStatus],
   );
 
   return { swapAndBridge, bridgeStatus, error };

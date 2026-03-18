@@ -9,7 +9,13 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
 import { createCard } from '@/lib/api';
-import { BridgeCustomerEndorsement, BridgeRejectionReason, CardStatus } from '@/lib/types';
+import {
+  BridgeCustomerEndorsement,
+  BridgeRejectionReason,
+  CardProvider,
+  CardStatus,
+  RainApplicationStatus,
+} from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 import { extractCardActivationErrorMessage } from './cardActivationHelpers';
@@ -17,7 +23,7 @@ import { getStepButtonText, getStepDescription, isStepButtonDisabled } from './k
 import { Step } from './types';
 
 /**
- * Build the card activation steps array based on endorsement status
+ * Build the card activation steps array based on endorsement status (Bridge) or Rain KYC status
  */
 export function buildCardSteps(
   cardsEndorsement: BridgeCustomerEndorsement | undefined,
@@ -28,16 +34,39 @@ export function buildCardSteps(
   handleProceedToKyc: () => void,
   handleActivateCard: () => void,
   pushCardDetails: () => void,
+  options?: {
+    cardIssuer?: CardProvider | null;
+    rainApplicationStatus?: RainApplicationStatus | null;
+    handleRainKYCPress?: () => void;
+  },
 ): Step[] {
-  const description = getStepDescription(cardsEndorsement, customerRejectionReasons);
-  const buttonText = getStepButtonText(cardsEndorsement);
-  const isButtonDisabled = isStepButtonDisabled(cardsEndorsement);
+  const stepOptions =
+    options?.cardIssuer != null
+      ? {
+          cardIssuer: options.cardIssuer,
+          rainApplicationStatus: options.rainApplicationStatus,
+        }
+      : undefined;
+  const description = getStepDescription(cardsEndorsement, customerRejectionReasons, stepOptions);
+  const buttonText = getStepButtonText(cardsEndorsement, stepOptions);
+  const isButtonDisabled = isStepButtonDisabled(cardsEndorsement, stepOptions);
 
-  const isKycComplete = cardsEndorsement?.status === EndorsementStatus.APPROVED;
+  const isRainKycApproved =
+    options?.cardIssuer === CardProvider.RAIN &&
+    options?.rainApplicationStatus === RainApplicationStatus.APPROVED;
+  const isKycComplete =
+    options?.cardIssuer === CardProvider.RAIN
+      ? isRainKycApproved
+      : cardsEndorsement?.status === EndorsementStatus.APPROVED;
 
   const orderCardDesc = activationBlocked
     ? activationBlockedReason || 'There was an issue activating your card. Please contact support.'
     : 'All is set! now click on the "Create card" button to issue your new card';
+
+  const kycStepOnPress =
+    options?.cardIssuer === CardProvider.RAIN && options?.handleRainKYCPress
+      ? options.handleRainKYCPress
+      : handleProceedToKyc;
 
   return [
     {
@@ -48,11 +77,11 @@ export function buildCardSteps(
       status: isKycComplete || cardActivated ? 'completed' : 'pending',
       endorsementStatus: cardsEndorsement?.status,
       buttonText,
-      onPress: isButtonDisabled ? undefined : handleProceedToKyc,
+      onPress: isButtonDisabled ? undefined : kycStepOnPress,
     },
     {
       id: 2,
-      title: 'Order your card',
+      title: 'Activate your card',
       description: orderCardDesc,
       completed: cardActivated,
       status: cardActivated ? 'completed' : 'pending',

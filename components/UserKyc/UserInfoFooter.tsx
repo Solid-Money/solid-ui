@@ -8,6 +8,11 @@ import { Underline } from '@/components/ui/underline';
 
 import { KycMode } from './types';
 
+const underlineProps = {
+  textClassName: 'text-base font-bold text-white' as const,
+  borderColor: 'rgba(255, 255, 255, 1)' as const,
+};
+
 interface UserInfoFooterProps {
   control: any;
   errors: any;
@@ -44,14 +49,12 @@ export function UserInfoFooter({
               </Pressable>
             )}
           />
-
           <View className="flex-1">
             <Text className="text-base leading-4 text-[#ACACAC]">
               By clicking continue you are agreeing to the{' '}
               <Underline
                 inline
-                textClassName="text-base font-bold text-white"
-                borderColor="rgba(255, 255, 255, 1)"
+                {...underlineProps}
                 onPress={() => Linking.openURL('https://bridge.xyz/legal')}
               >
                 Electronic Signature Consent
@@ -81,72 +84,27 @@ export function UserInfoFooter({
             </Pressable>
           )}
         />
-
         <View className="flex-1">
-          {kycMode === KycMode.CARD ? (
-            <Text className="text-base leading-4 text-[#ACACAC]">
-              This application uses Bridge to securely connect account and move funds. By clicking
-              continue, you agree to Bridge&apos;s{' '}
-              <Underline
-                inline
-                textClassName="text-base font-bold text-white"
-                borderColor="rgba(255, 255, 255, 1)"
-                onPress={() => Linking.openURL('https://bridge.xyz/legal')}
-              >
-                Terms of Service
-              </Underline>{' '}
-              and{' '}
-              <Underline
-                inline
-                textClassName="text-base font-bold text-white"
-                borderColor="rgba(255, 255, 255, 1)"
-                onPress={() => Linking.openURL('https://bridge.xyz/legal')}
-              >
-                Privacy Policy
-              </Underline>{' '}
-              and{' '}
-              <Underline
-                inline
-                textClassName="text-base font-bold text-white"
-                borderColor="rgba(255, 255, 255, 1)"
-                onPress={() => Linking.openURL('https://solid.xyz')}
-              >
-                Lead Bank Cardholder Agreement
-              </Underline>{' '}
-              and{' '}
-              <Underline
-                inline
-                textClassName="text-base font-bold text-white"
-                borderColor="rgba(255, 255, 255, 1)"
-                onPress={() => Linking.openURL('https://solid.xyz')}
-              >
-                Lead Bank Privacy Policy
-              </Underline>
-            </Text>
-          ) : (
-            <Text className="text-base leading-4 text-[#ACACAC]">
-              This application uses Bridge to securely connect accounts and move funds. By clicking
-              continue, you agree to Bridge&apos;s{' '}
-              <Underline
-                inline
-                textClassName="text-base text-white"
-                borderColor="rgba(255, 255, 255, 1)"
-                onPress={() => Linking.openURL('https://bridge.xyz/legal')}
-              >
-                Terms of Service
-              </Underline>{' '}
-              and{' '}
-              <Underline
-                inline
-                textClassName="text-base text-white"
-                borderColor="rgba(255, 255, 255, 1)"
-                onPress={() => Linking.openURL('https://bridge.xyz/legal')}
-              >
-                Privacy Policy
-              </Underline>
-              .
-            </Text>
-          )}
+          <Text className="text-base leading-4 text-[#ACACAC]">
+            This application uses Bridge to securely connect accounts and move funds. By clicking
+            continue, you agree to Bridge&apos;s{' '}
+            <Underline
+              inline
+              {...underlineProps}
+              onPress={() => Linking.openURL('https://bridge.xyz/legal')}
+            >
+              Terms of Service
+            </Underline>{' '}
+            and{' '}
+            <Underline
+              inline
+              {...underlineProps}
+              onPress={() => Linking.openURL('https://bridge.xyz/legal')}
+            >
+              Privacy Policy
+            </Underline>
+            .
+          </Text>
         </View>
       </View>
 

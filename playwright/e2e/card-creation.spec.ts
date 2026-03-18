@@ -109,8 +109,8 @@ test.describe('Card Creation Flow - With Mocking', () => {
 
     // Verify the activation steps are displayed
     await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Order your card')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Complete KYC' })).toBeVisible();
+    await expect(page.getByText('Activate your card')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue verification' })).toBeVisible();
   });
 
   test('should redirect to country selection when user is from unsupported country', async ({
@@ -288,7 +288,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify the Complete KYC button is visible
-    const kycButton = page.getByRole('button', { name: /Complete KYC/i });
+    const kycButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(kycButton).toBeVisible({ timeout: 15000 });
 
     // Click the Complete KYC button
@@ -449,7 +449,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify "Retry KYC" or "Complete KYC" button is shown (button text depends on implementation)
-    const retryButton = page.getByRole('button', { name: /Retry KYC|Complete KYC/i });
+    const retryButton = page.getByRole('button', { name: /Retry KYC|Continue verification/i });
     await expect(retryButton).toBeVisible({ timeout: 15000 });
 
     // Verify rejection message is displayed
@@ -518,7 +518,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // Verify step 1 is marked as complete (check mark or completed status)
     await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
-    // Verify "Order your card" button is visible and enabled
+    // Verify "Activate your card" button is visible and enabled
     const orderButton = page.getByRole('button', { name: /Order.*card/i });
     await expect(orderButton).toBeVisible();
     await expect(orderButton).toBeEnabled();
@@ -942,7 +942,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForTimeout(2000);
 
     // Verify the Complete KYC button is visible
-    const kycButton = page.getByRole('button', { name: /Complete KYC/i });
+    const kycButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(kycButton).toBeVisible({ timeout: 15000 });
 
     // Click the Complete KYC button to trigger the re-enrollment flow
@@ -1390,7 +1390,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForTimeout(2000);
 
     // Verify "Complete KYC" button is visible and enabled (not blocked by region restriction)
-    const completeButton = page.getByRole('button', { name: /Complete KYC/i });
+    const completeButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(completeButton).toBeVisible({ timeout: 15000 });
     await expect(completeButton).toBeEnabled();
 
@@ -1472,7 +1472,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await expect(page.getByText(/being verified/i)).toBeVisible({ timeout: 5000 });
 
     // Verify there's no "Complete KYC" or "Retry KYC" button (user cannot take action)
-    await expect(page.getByRole('button', { name: /Complete KYC/i })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: /Continue verification/i })).not.toBeVisible();
     await expect(page.getByRole('button', { name: /Retry KYC/i })).not.toBeVisible();
   });
 
@@ -1610,7 +1610,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await expect(page.getByText(/Missing/i)).toBeVisible({ timeout: 15000 });
 
     // Verify "Complete KYC" button is visible and enabled (not disabled due to missing fields)
-    const completeButton = page.getByRole('button', { name: /Complete KYC/i });
+    const completeButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(completeButton).toBeVisible();
     await expect(completeButton).toBeEnabled();
   });
@@ -1922,7 +1922,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     ).toBeVisible({ timeout: 5000 });
 
     // Verify "Complete KYC" button is shown (for incomplete status with issues)
-    const kycButton = page.getByRole('button', { name: /Complete KYC/i });
+    const kycButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(kycButton).toBeVisible({ timeout: 5000 });
 
     // Order card button should not be visible/enabled (endorsement not approved)

@@ -81,8 +81,8 @@ test.describe('KYC Link Flow', () => {
     await page.goto('/card/activate?countryConfirmed=true');
     await page.waitForLoadState('networkidle');
 
-    // Click Complete KYC button
-    const kycButton = page.getByRole('button', { name: /Complete KYC/i });
+    // Click Continue verification button
+    const kycButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(kycButton).toBeVisible({ timeout: 15000 });
     await kycButton.click();
 

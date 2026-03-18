@@ -1,4 +1,4 @@
-import { Cashback, CashbackInfo, CashbackStatus } from '@/lib/types';
+import { CardProvider, Cashback, CashbackInfo, CashbackStatus } from '@/lib/types';
 
 /**
  * Get initials from merchant/person name for avatar display
@@ -49,19 +49,37 @@ export const getColorForTransaction = (
 };
 
 /**
- * Format card transaction amount with proper sign and currency symbol
+ * Normalize amount for display: Rain returns cents, Bridge returns dollars.
  */
-export const formatCardAmount = (amount: string): string => {
-  const numAmount = parseFloat(amount);
+function normalizeCardAmount(amount: string, provider?: CardProvider | null): number {
+  const num = parseFloat(amount);
+  if (provider === CardProvider.RAIN) return num / 100;
+  return num;
+}
+
+/**
+ * Format card transaction amount with proper sign and currency symbol.
+ * Pass provider so Rain amounts (cents) are converted to dollars for display.
+ */
+export const formatCardAmount = (
+  amount: string,
+  provider?: CardProvider | null,
+): string => {
+  const numAmount = normalizeCardAmount(amount, provider);
   const sign = numAmount >= 0 ? '' : '-';
   return `${sign}$${Math.abs(numAmount).toFixed(2)}`;
 };
 
 /**
- * Format card transaction amount with currency code and +/- sign
+ * Format card transaction amount with currency code and +/- sign.
+ * Pass provider so Rain amounts (cents) are converted to dollars for display.
  */
-export const formatCardAmountWithCurrency = (amount: string, currency: string): string => {
-  const numAmount = parseFloat(amount);
+export const formatCardAmountWithCurrency = (
+  amount: string,
+  currency: string,
+  provider?: CardProvider | null,
+): string => {
+  const numAmount = normalizeCardAmount(amount, provider);
   return `${numAmount >= 0 ? '+' : ''}${numAmount.toFixed(2)} ${currency.toUpperCase()}`;
 };
 
