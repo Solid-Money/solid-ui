@@ -57,29 +57,10 @@ const DialogOverlayNative = React.forwardRef<
   DialogPrimitive.OverlayRef,
   DialogPrimitive.OverlayProps
 >(({ className, children, ...props }, ref) => {
-  const handlePress = (event: any) => {
-    // Check if the pressed element is a toast
-    const target = event.target;
-    if (target?.getAttribute?.('role') === 'alert') {
-      event.stopPropagation();
-      return;
-    }
-  };
-
-  // Check if className contains 'justify-start' to position at top
-  const shouldAlignTop = className?.includes('justify-start');
-
   return (
     <DialogPrimitive.Overlay
       style={StyleSheet.absoluteFill}
-      className={cn(
-        'flex items-center bg-black/80 p-2',
-        shouldAlignTop ? 'justify-start' : 'justify-center',
-        className,
-      )}
-      onPress={handlePress}
-      onStartShouldSetResponderCapture={Platform.OS === 'web' ? undefined : () => false}
-      onMoveShouldSetResponderCapture={Platform.OS === 'web' ? undefined : () => false}
+      className={cn('flex items-center bg-black/80 p-2', className)}
       {...props}
       ref={ref}
     >
@@ -201,12 +182,33 @@ const DialogContent = React.forwardRef<
       </DialogPrimitive.Content>
     );
 
+    if (Platform.OS !== 'web') {
+      return (
+        <DialogPortal hostName={portalHost}>
+          <DialogOverlay
+            className={shouldAlignTop ? 'justify-start' : undefined}
+            closeOnPress={false}
+          />
+          <View
+            style={StyleSheet.absoluteFill}
+            pointerEvents="box-none"
+            className={cn(
+              'flex items-center p-2',
+              shouldAlignTop ? 'justify-start' : 'justify-center',
+            )}
+          >
+            <Animated.View entering={enteringAnimation} exiting={FadeOutDown.duration(180)}>
+              {content}
+            </Animated.View>
+            <Toast {...toastProps} />
+          </View>
+        </DialogPortal>
+      );
+    }
+
     return (
       <DialogPortal hostName={portalHost}>
-        <DialogOverlay
-          className={shouldAlignTop ? 'justify-start' : undefined}
-          {...(Platform.OS === 'web' ? {} : { closeOnPress: false })}
-        >
+        <DialogOverlay className={shouldAlignTop ? 'justify-start' : undefined}>
           <Animated.View
             entering={enteringAnimation}
             exiting={isScreenMedium ? FadeOut.duration(150) : FadeOutDown.duration(180)}

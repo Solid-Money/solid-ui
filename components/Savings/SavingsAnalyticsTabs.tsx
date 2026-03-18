@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { LayoutChangeEvent, Platform, Pressable, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -94,23 +94,12 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
     [],
   );
 
-  const isNative = Platform.OS !== 'web';
-
   return (
     <View
-      className={`relative flex-row gap-2 bg-foreground/10 p-[5px] ${isNative ? '' : 'rounded-full'}`}
+      className="relative flex-row gap-2 rounded-full bg-foreground/10 p-[5px]"
       style={{
         width: isScreenMedium ? undefined : '100%',
         maxWidth: isScreenMedium ? TABS_MAX_WIDTH : undefined,
-        ...(isNative
-          ? {
-              borderTopLeftRadius: 50,
-              borderTopRightRadius: 50,
-              borderBottomLeftRadius: 50,
-              borderBottomRightRadius: 50,
-              overflow: 'hidden' as const,
-            }
-          : {}),
       }}
     >
       <Pressable
@@ -134,6 +123,7 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
         <Text
           className="text-center text-base font-semibold text-foreground"
           style={{ opacity: selectedTab === Tab.VAULT_BREAKDOWN ? 1 : 0.6 }}
+          numberOfLines={1}
         >
           Vault breakdown
         </Text>
@@ -147,10 +137,7 @@ const SavingsAnalyticsTabs = ({ selectedTab, onTabChange }: SavingsAnalyticsTabs
             left: 0,
             bottom: 4,
             backgroundColor: 'rgba(17, 17, 17, 1)',
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            borderBottomLeftRadius: 20,
-            borderBottomRightRadius: 20,
+            borderRadius: 100,
             zIndex: 0,
           },
         ]}

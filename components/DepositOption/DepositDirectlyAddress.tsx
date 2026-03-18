@@ -1,80 +1,34 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Share, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ScrollView, Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { Copy, Fuel, Info, Share2 } from 'lucide-react-native';
-import { formatUnits } from 'viem';
-import { mainnet } from 'viem/chains';
-import { useShallow } from 'zustand/react/shallow';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
+import {
+  ICON_STYLE_18,
+  ICON_STYLE_24,
+  InfoRowItemProps,
+  NETWORK_ICON_STYLE,
+  PriceRowItemProps,
+  SOUSD_ICON,
+  useDepositDirectlyData,
+} from '@/components/DepositOption/DepositDirectlyAddress.shared';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
-import { DEPOSIT_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
-import { useMaxAPY } from '@/hooks/useAnalytics';
-import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import { track } from '@/lib/analytics';
-import { getAsset } from '@/lib/assets';
-import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { eclipseAddress, formatNumber } from '@/lib/utils';
-import { useDepositStore } from '@/store/useDepositStore';
-
-const USDC_ICON = getAsset('images/usdc.png');
-const USDT_ICON = getAsset('images/usdt.png');
-const SOUSD_ICON = getAsset('images/sousd-4x.png');
-
-const TOKEN_ICONS: Record<string, any> = {
-  USDC: USDC_ICON,
-  USDT: USDT_ICON,
-};
-
-const STATUS_TEXT = {
-  pending: 'Waiting for transfer',
-  detected: 'Transfer detected',
-  processing: 'Processing deposit...',
-  completed: 'Completed',
-  failed: 'Failed',
-  expired: 'Session expired',
-} as const;
-
-type DepositStatus = keyof typeof STATUS_TEXT;
-
-const STATUS_TONE_CLASSES: Record<DepositStatus, string> = {
-  completed: 'text-[#5BFF6C]',
-  expired: 'text-red-400',
-  failed: 'text-red-400',
-  processing: 'text-[#F9D270]',
-  detected: 'text-[#F9D270]',
-  pending: 'text-foreground',
-};
-
-const ICON_STYLE_24 = { width: 24, height: 24 };
-const NETWORK_ICON_STYLE = { width: 24, height: 24, borderRadius: 12 };
-const ICON_STYLE_18 = { width: 18, height: 18 };
+import { eclipseAddress } from '@/lib/utils';
 
 const FUEL_ICON = <Fuel size={16} color="#A1A1AA" />;
 const COPY_ICON = <Copy size={14} color="white" />;
 const SHARE_ICON = <Share2 size={18} color="white" />;
 const INFO_ICON = <Info size={16} color="#A1A1AA" />;
-
-type InfoRowItemProps = {
-  label: string;
-  value?: string;
-  valueClassName?: string;
-  icon?: React.ReactNode;
-  valueContent?: React.ReactNode;
-  extra?: React.ReactNode;
-  showDivider: boolean;
-};
 
 const InfoRowItem = React.memo(function InfoRowItem({
   label,
@@ -109,14 +63,6 @@ const InfoRowItem = React.memo(function InfoRowItem({
     </View>
   );
 });
-
-type PriceRowItemProps = {
-  label: string;
-  value?: string;
-  valueClassName?: string;
-  valueContent?: React.ReactNode;
-  showDivider: boolean;
-};
 
 const PriceRowItem = React.memo(function PriceRowItem({
   label,
@@ -290,102 +236,38 @@ const QRDialog = React.memo(function QRDialog({
 
 const DepositDirectlyAddress = () => {
   const insets = useSafeAreaInsets();
+  const [shareError, setShareError] = useState(false);
 
   const {
     walletAddress,
-    chainId: rawChainId,
-    selectedToken: rawSelectedToken,
+    chainId,
+    selectedToken,
     sessionId,
-    fromActivity,
-    minDeposit: rawMinDeposit,
-    fee: rawFee,
-  } = useDepositStore(
-    useShallow(state => ({
-      walletAddress: state.directDepositSession.walletAddress,
-      chainId: state.directDepositSession.chainId,
-      selectedToken: state.directDepositSession.selectedToken,
-      sessionId: state.directDepositSession.sessionId,
-      fromActivity: state.directDepositSession.fromActivity,
-      minDeposit: state.directDepositSession.minDeposit,
-      fee: state.directDepositSession.fee,
-    })),
-  );
-
-  const setModal = useDepositStore(state => state.setModal);
-  const clearDirectDepositSession = useDepositStore(state => state.clearDirectDepositSession);
-
-  const chainId = rawChainId || mainnet.id;
-  const selectedToken = rawSelectedToken || 'USDC';
-
-  const tokenIcon = useMemo(
-    () =>
-      BRIDGE_TOKENS[chainId]?.tokens?.[selectedToken]?.icon ||
-      TOKEN_ICONS[selectedToken] ||
-      USDC_ICON,
-    [chainId, selectedToken],
-  );
-
-  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
-  const [shareError, setShareError] = useState(false);
-  const { maxAPY, isAPYsLoading } = useMaxAPY();
-  const hasTrackedAddressView = useRef(false);
-
-  const tokenAddress =
-    BRIDGE_TOKENS[chainId]?.tokens?.[selectedToken]?.address ||
-    BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address;
-  const { exchangeRate } = usePreviewDeposit('10', tokenAddress, chainId);
-
-  const network = BRIDGE_TOKENS[chainId];
-
-  const status: DepositStatus = 'pending';
-  const isExpired = false;
-
-  useEffect(() => {
-    if (!hasTrackedAddressView.current && walletAddress) {
-      track(TRACKING_EVENTS.DEPOSIT_DIRECT_ADDRESS_VIEWED, {
-        deposit_method: 'deposit_directly',
-        session_id: sessionId,
-        chain_id: chainId,
-        selected_token: selectedToken,
-        wallet_address: walletAddress,
-      });
-      hasTrackedAddressView.current = true;
-    }
-  }, [walletAddress, chainId, selectedToken, sessionId]);
+    tokenIcon,
+    networkName,
+    networkIcon,
+    estimatedTime,
+    formattedAPY,
+    formattedExchangeRate,
+    formattedSoUSDAmount,
+    minDepositValue,
+    feeValue,
+    statusValue,
+    statusClassName,
+    isExpired,
+    isAPYsLoading,
+    isQrDialogOpen,
+    setIsQrDialogOpen,
+    handleDone,
+    handleCopy,
+    handleQrOpen,
+  } = useDepositDirectlyData();
 
   useEffect(() => {
     if (!shareError) return;
     const timer = setTimeout(() => setShareError(false), 2500);
     return () => clearTimeout(timer);
   }, [shareError]);
-
-  const handleDone = useCallback(() => {
-    setModal(DEPOSIT_MODAL.CLOSE);
-    clearDirectDepositSession();
-    if (!fromActivity) {
-      router.push(path.ACTIVITY);
-    }
-  }, [clearDirectDepositSession, fromActivity, setModal]);
-
-  const handleCopy = useCallback(() => {
-    track(TRACKING_EVENTS.DEPOSIT_DIRECT_ADDRESS_COPIED, {
-      deposit_method: 'deposit_directly',
-      session_id: sessionId,
-      chain_id: chainId,
-      selected_token: selectedToken,
-    });
-  }, [chainId, selectedToken, sessionId]);
-
-  const handleQrOpen = useCallback(() => {
-    setIsQrDialogOpen(true);
-
-    track(TRACKING_EVENTS.DEPOSIT_DIRECT_QR_VIEWED, {
-      deposit_method: 'deposit_directly',
-      session_id: sessionId,
-      chain_id: chainId,
-      selected_token: selectedToken,
-    });
-  }, [chainId, selectedToken, sessionId]);
 
   const handleShare = useCallback(async () => {
     if (!walletAddress) return;
@@ -405,51 +287,28 @@ const DepositDirectlyAddress = () => {
     }
   }, [walletAddress, chainId, selectedToken, sessionId]);
 
-  const estimatedTime = useMemo(
-    () =>
-      chainId === 1
-        ? '5 minutes'
-        : chainId === 122 && (selectedToken === 'WFUSE' || selectedToken === 'soFUSE')
-          ? '2 minutes'
-          : '30 minutes',
-    [chainId, selectedToken],
-  );
-
-  const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
-
-  const minDeposit = EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT || rawMinDeposit || '0.0001';
-  const fee = rawFee || '0';
-
-  const networkName = network?.name || 'Ethereum';
-  const networkIcon = network?.icon;
-
-  const youWillReceiveContent = useMemo(() => {
-    const usdcAmount = 10;
-    const soUSDAmount = exchangeRate
-      ? usdcAmount / Number(formatUnits(exchangeRate, 6))
-      : usdcAmount;
-
-    return (
+  const youWillReceiveContent = useMemo(
+    () => (
       <View className="min-w-0 max-w-full flex-row items-start justify-end gap-1.5">
         <Image source={SOUSD_ICON} style={ICON_STYLE_18} contentFit="cover" />
         <View className="min-w-0 flex-1">
           <Text className="text-right text-lg font-bold text-white">
-            {formatNumber(soUSDAmount, 2, 2)} soUSD
+            {formattedSoUSDAmount} soUSD
           </Text>
           <Text className="text-right text-sm text-white/70">on Ethereum</Text>
         </View>
       </View>
-    );
-  }, [exchangeRate]);
+    ),
+    [formattedSoUSDAmount],
+  );
 
   const priceContent = useMemo(
     () => (
       <Text className="shrink text-right text-lg font-bold text-white">
-        1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
-        {selectedToken}
+        1 soUSD = {formattedExchangeRate} {selectedToken}
       </Text>
     ),
-    [exchangeRate, selectedToken],
+    [formattedExchangeRate, selectedToken],
   );
 
   const apyContent = useMemo(
@@ -462,76 +321,81 @@ const DepositDirectlyAddress = () => {
     [isAPYsLoading, formattedAPY],
   );
 
-  const statusValue = STATUS_TEXT[status];
-  const statusClassName = `${STATUS_TONE_CLASSES[status]} font-medium`;
-  const minDepositValue = `${minDeposit} ${selectedToken}`;
-  const feeValue = `${fee} ${selectedToken}`;
-
   return (
-    <View className="flex-col gap-3" style={{ paddingBottom: insets.bottom }}>
-      <DepositHeader
-        tokenIcon={tokenIcon}
-        selectedToken={selectedToken}
-        networkIcon={networkIcon}
-        networkName={networkName}
-      />
-
-      <AddressCard
-        walletAddress={walletAddress}
-        handleCopy={handleCopy}
-        handleQrOpen={handleQrOpen}
-        handleShare={handleShare}
-        shareError={shareError}
-      />
-
-      <WarningBanner selectedToken={selectedToken} />
-
-      {!isExpired && (
-        <View className="w-full rounded-2xl bg-card">
-          <PriceRowItem label="You will receive" valueContent={youWillReceiveContent} showDivider />
-          <PriceRowItem label="Price" valueContent={priceContent} showDivider />
-          <PriceRowItem label="APY" valueContent={apyContent} showDivider={false} />
-        </View>
-      )}
-
-      {!isExpired && (
-        <View className="w-full rounded-2xl bg-card">
-          <InfoRowItem label="Min deposit" value={minDepositValue} showDivider />
-          <InfoRowItem label="Estimated time" value={estimatedTime} showDivider />
-          <InfoRowItem
-            label="Status"
-            value={statusValue}
-            valueClassName={statusClassName}
-            showDivider
-          />
-          <InfoRowItem label="Fee" value={feeValue} icon={FUEL_ICON} showDivider={false} />
-        </View>
-      )}
-
-      {isExpired && (
-        <View className="w-full items-center rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-3">
-          <Text className="text-center font-medium text-red-400">
-            Session expired. Please create a new deposit session.
-          </Text>
-        </View>
-      )}
-
-      <Button onPress={handleDone} className="mt-2 h-14 w-full rounded-2xl bg-[#94F27F]">
-        <Text className="text-base font-bold text-black">Done</Text>
-      </Button>
-
-      <View className="items-center pb-4">
-        <NeedHelp />
-      </View>
-
-      {isQrDialogOpen && (
-        <QRDialog
-          isOpen={isQrDialogOpen}
-          onOpenChange={setIsQrDialogOpen}
-          walletAddress={walletAddress}
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View className="flex-col gap-3">
+        <DepositHeader
+          tokenIcon={tokenIcon}
+          selectedToken={selectedToken}
+          networkIcon={networkIcon}
+          networkName={networkName}
         />
-      )}
-    </View>
+
+        <AddressCard
+          walletAddress={walletAddress}
+          handleCopy={handleCopy}
+          handleQrOpen={handleQrOpen}
+          handleShare={handleShare}
+          shareError={shareError}
+        />
+
+        <WarningBanner selectedToken={selectedToken} />
+
+        {!isExpired && (
+          <View className="w-full rounded-2xl bg-card">
+            <PriceRowItem
+              label="You will receive"
+              valueContent={youWillReceiveContent}
+              showDivider
+            />
+            <PriceRowItem label="Price" valueContent={priceContent} showDivider />
+            <PriceRowItem label="APY" valueContent={apyContent} showDivider={false} />
+          </View>
+        )}
+
+        {!isExpired && (
+          <View className="w-full rounded-2xl bg-card">
+            <InfoRowItem label="Min deposit" value={minDepositValue} showDivider />
+            <InfoRowItem label="Estimated time" value={estimatedTime} showDivider />
+            <InfoRowItem
+              label="Status"
+              value={statusValue}
+              valueClassName={statusClassName}
+              showDivider
+            />
+            <InfoRowItem label="Fee" value={feeValue} icon={FUEL_ICON} showDivider={false} />
+          </View>
+        )}
+
+        {isExpired && (
+          <View className="w-full items-center rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-3">
+            <Text className="text-center font-medium text-red-400">
+              Session expired. Please create a new deposit session.
+            </Text>
+          </View>
+        )}
+
+        <Button onPress={handleDone} className="mt-2 h-14 w-full rounded-2xl bg-[#94F27F]">
+          <Text className="text-base font-bold text-black">Done</Text>
+        </Button>
+
+        <View className="items-center pb-4">
+          <NeedHelp />
+        </View>
+
+        {isQrDialogOpen && (
+          <QRDialog
+            isOpen={isQrDialogOpen}
+            onOpenChange={setIsQrDialogOpen}
+            walletAddress={walletAddress}
+          />
+        )}
+      </View>
+    </ScrollView>
   );
 };
 

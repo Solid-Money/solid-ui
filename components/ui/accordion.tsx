@@ -76,11 +76,8 @@ function AccordionTrigger({
   const progress = useDerivedValue(() =>
     isExpanded ? withTiming(1, { duration: 250 }) : withTiming(0, { duration: 200 }),
   );
-  const plusStyle = useAnimatedStyle(() => ({
+  const iconStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${progress.value * 90}deg` }],
-  }));
-  const minusStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${(1 - progress.value) * 90}deg` }],
   }));
 
   return (
@@ -93,15 +90,13 @@ function AccordionTrigger({
               className,
             )}
           >
-            {isExpanded ? (
-              <Animated.View style={minusStyle}>
+            <Animated.View style={iconStyle}>
+              {isExpanded ? (
                 <Minus size={18} className={'shrink-0 text-foreground'} />
-              </Animated.View>
-            ) : (
-              <Animated.View style={plusStyle}>
+              ) : (
                 <Plus size={18} className={'shrink-0 text-foreground'} />
-              </Animated.View>
-            )}
+              )}
+            </Animated.View>
             {children}
           </Trigger>
         </AccordionPrimitive.Trigger>
