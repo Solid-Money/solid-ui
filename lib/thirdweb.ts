@@ -57,7 +57,43 @@ export const getChain = (chainId: number) => {
 };
 
 export const cleanupThirdwebStyles = () => {
-  if (typeof document !== 'undefined') {
+  if (typeof document === 'undefined') return;
+
+  // Reset pointer-events immediately
+  document.body.style.pointerEvents = '';
+
+  // When closing the Thirdweb modal via the X button, Thirdweb may re-apply
+  // pointer-events: none on the body AFTER our cleanup runs. Use a MutationObserver
+  // to catch and undo this for a short window after cleanup.
+  const observer = new MutationObserver(() => {
+    if (document.body.style.pointerEvents === 'none') {
+      document.body.style.pointerEvents = '';
+    }
+  });
+
+  observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+
+  // Also remove any lingering Thirdweb modal overlay elements from the DOM.
+  // Thirdweb renders its connect modal inside iframes with specific attributes.
+  const removeOverlayElements = () => {
+    document.querySelectorAll('div[aria-hidden="true"]').forEach(el => {
+      const style = window.getComputedStyle(el);
+      if (
+        style.position === 'fixed' &&
+        style.inset === '0px' &&
+        el.children.length === 0
+      ) {
+        el.remove();
+      }
+    });
+  };
+
+  removeOverlayElements();
+
+  // Disconnect observer after a reasonable timeout and do a final cleanup pass
+  setTimeout(() => {
+    observer.disconnect();
     document.body.style.pointerEvents = '';
-  }
+    removeOverlayElements();
+  }, 500);
 };
