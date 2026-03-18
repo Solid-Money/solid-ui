@@ -108,7 +108,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify the activation steps are displayed
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('Activate your card')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Continue verification' })).toBeVisible();
   });
@@ -287,11 +287,11 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.goto('/card/activate?countryConfirmed=true');
     await page.waitForLoadState('networkidle');
 
-    // Verify the Continue verification button is visible
+    // Verify the Complete KYC button is visible
     const kycButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(kycButton).toBeVisible({ timeout: 15000 });
 
-    // Click the Continue verification button
+    // Click the Complete KYC button
     // This should NOT show "Country not supported" toast
     await kycButton.click();
 
@@ -448,7 +448,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.goto('/card/activate?kycStatus=rejected&countryConfirmed=true');
     await page.waitForLoadState('networkidle');
 
-    // Verify "Retry KYC" or "Continue verification" button is shown (button text depends on implementation)
+    // Verify "Retry KYC" or "Complete KYC" button is shown (button text depends on implementation)
     const retryButton = page.getByRole('button', { name: /Retry KYC|Continue verification/i });
     await expect(retryButton).toBeVisible({ timeout: 15000 });
 
@@ -516,7 +516,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify step 1 is marked as complete (check mark or completed status)
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     // Verify "Activate your card" button is visible and enabled
     const orderButton = page.getByRole('button', { name: /Order.*card/i });
@@ -602,13 +602,13 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // Wait for UI to update
     await page.waitForTimeout(2000);
 
-    // With approved KYC but incomplete endorsement, step 1 should show Continue verification
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    // With approved KYC but incomplete endorsement, step 1 should show Complete KYC
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     // The "Order card" button should exist but be disabled (endorsement not approved)
     // Note: Button may be hidden/collapsed but exists in DOM as disabled
     const orderButton = page.getByRole('button', { name: /Order.*card/i });
-    // Just verify Continue verification is shown - Order button may be collapsed when endorsement is incomplete
+    // Just verify Complete KYC is shown - Order button may be collapsed when endorsement is incomplete
 
     // Wait for visual inspection
     await page.waitForTimeout(5000);
@@ -759,11 +759,11 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // Wait for UI to update
     await page.waitForTimeout(2000);
 
-    // With approved KYC but revoked endorsement, step 1 should show Continue verification
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    // With approved KYC but revoked endorsement, step 1 should show Complete KYC
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     // "Order card" button exists but may be hidden (endorsement revoked)
-    // Just verify the Continue verification button is shown for this state
+    // Just verify the Complete KYC button is shown for this state
   });
 
   test('should redirect to KYC when no cards endorsement exists', async ({ page }) => {
@@ -831,17 +831,17 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // Wait for UI to update
     await page.waitForTimeout(2000);
 
-    // With approved KYC but no endorsement, step 1 should show Continue verification
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    // With approved KYC but no endorsement, step 1 should show Complete KYC
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     // The "Order card" button may be hidden when user needs KYC re-enrollment
-    // Just verify the Continue verification button is shown for re-enrollment
+    // Just verify the Complete KYC button is shown for re-enrollment
 
     // Wait for visual inspection
     await page.waitForTimeout(5000);
   });
 
-  test('should create KYC link for existing user when clicking Continue verification button', async ({
+  test('should create KYC link for existing user when clicking Complete KYC button', async ({
     page,
   }) => {
     // This test verifies the re-enrollment flow where an existing user
@@ -941,11 +941,11 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // Wait for UI to update
     await page.waitForTimeout(2000);
 
-    // Verify the Continue verification button is visible
+    // Verify the Complete KYC button is visible
     const kycButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(kycButton).toBeVisible({ timeout: 15000 });
 
-    // Click the Continue verification button to trigger the re-enrollment flow
+    // Click the Complete KYC button to trigger the re-enrollment flow
     await kycButton.click();
 
     // Verify either the KYC link endpoint was called OR user is redirected to user-kyc-info
@@ -1038,8 +1038,8 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // Wait for UI to update
     await page.waitForTimeout(2000);
 
-    // Verify that "Continue verification" step is visible
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    // Verify that "Complete KYC" step is visible
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     // Order card button should NOT be enabled (endorsement not approved)
     const orderButton = page.getByRole('button', { name: /Order.*card/i });
@@ -1109,8 +1109,8 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Verify Continue verification is shown (user needs to retry)
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    // Verify Complete KYC is shown (user needs to retry)
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     await page.waitForTimeout(3000);
   });
@@ -1293,7 +1293,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     expect(kycLinkRequested || redirectedToKycInfo).toBe(true);
   });
 
-  test('should allow Continue verification button click for incomplete endorsement with region restriction', async ({
+  test('should allow Complete KYC button click for incomplete endorsement with region restriction', async ({
     page,
   }) => {
     await page.route('**/accounts/v1/cards/status', async route => {
@@ -1389,7 +1389,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Verify "Continue verification" button is visible and enabled (not blocked by region restriction)
+    // Verify "Complete KYC" button is visible and enabled (not blocked by region restriction)
     const completeButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(completeButton).toBeVisible({ timeout: 15000 });
     await expect(completeButton).toBeEnabled();
@@ -1471,7 +1471,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await expect(page.getByText('Your card is on its way!')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/being verified/i)).toBeVisible({ timeout: 5000 });
 
-    // Verify there's no "Continue verification" or "Retry KYC" button (user cannot take action)
+    // Verify there's no "Complete KYC" or "Retry KYC" button (user cannot take action)
     await expect(page.getByRole('button', { name: /Continue verification/i })).not.toBeVisible();
     await expect(page.getByRole('button', { name: /Retry KYC/i })).not.toBeVisible();
   });
@@ -1543,7 +1543,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await expect(retryButton).toBeEnabled();
   });
 
-  test('should enable Continue verification button despite missing requirements', async ({ page }) => {
+  test('should enable Complete KYC button despite missing requirements', async ({ page }) => {
     await page.route('**/accounts/v1/cards/status', async route => {
       await route.fulfill({
         status: 404,
@@ -1609,7 +1609,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     // Verify missing requirements are displayed
     await expect(page.getByText(/Missing/i)).toBeVisible({ timeout: 15000 });
 
-    // Verify "Continue verification" button is visible and enabled (not disabled due to missing fields)
+    // Verify "Complete KYC" button is visible and enabled (not disabled due to missing fields)
     const completeButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(completeButton).toBeVisible();
     await expect(completeButton).toBeEnabled();
@@ -1683,8 +1683,8 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Verify Continue verification is shown for re-enrollment
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    // Verify Complete KYC is shown for re-enrollment
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     await page.waitForTimeout(3000);
   });
@@ -1820,7 +1820,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForTimeout(2000);
 
     // Verify step 1 is complete
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     // Order card button should be visible and enabled
     const orderButton = page.getByRole('button', { name: /Order.*card/i });
@@ -1912,8 +1912,8 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Verify Continue verification step title is shown
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    // Verify Complete KYC step title is shown
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     // Verify CUSTOMER rejection reasons are displayed in the step description
     // (Customer rejection_reasons take priority over endorsement issues)
@@ -1921,7 +1921,7 @@ test.describe('Card Creation Flow - With Mocking', () => {
       page.getByText(/We could not detect a face in your selfie. Please retake the photo/i),
     ).toBeVisible({ timeout: 5000 });
 
-    // Verify "Continue verification" button is shown (for incomplete status with issues)
+    // Verify "Complete KYC" button is shown (for incomplete status with issues)
     const kycButton = page.getByRole('button', { name: /Continue verification/i });
     await expect(kycButton).toBeVisible({ timeout: 5000 });
 
@@ -1997,8 +1997,8 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Verify Continue verification is shown
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    // Verify Complete KYC is shown
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     // Verify missing fields are displayed in user-friendly format
     // formatCodeToReadable converts "address" -> "Address", "ssn_last_4" -> "Ssn Last 4"
@@ -2068,8 +2068,8 @@ test.describe('Card Creation Flow - With Mocking', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Verify Continue verification is shown
-    await expect(page.getByText('Continue verification').first()).toBeVisible({ timeout: 15000 });
+    // Verify Complete KYC is shown
+    await expect(page.getByText('Complete KYC').first()).toBeVisible({ timeout: 15000 });
 
     // Verify endorsement issues are displayed in user-friendly format
     // formatEndorsementIssue converts { id_front_photo: "id_expired" } -> "Id Front Photo: Id Expired"

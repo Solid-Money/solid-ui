@@ -71,7 +71,7 @@ export function buildCardSteps(
   return [
     {
       id: 1,
-      title: 'Continue verification',
+      title: 'Complete KYC',
       description,
       completed: isKycComplete || cardActivated,
       status: isKycComplete || cardActivated ? 'completed' : 'pending',
