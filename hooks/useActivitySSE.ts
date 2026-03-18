@@ -3,7 +3,8 @@ import { AppState, AppStateStatus, Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 
 import { queryClient } from '@/app/_layout';
-import { getActivityStreamUrl, refreshToken } from '@/lib/api';
+import { getActivityStreamUrl, refreshToken, syncActivities } from '@/lib/api';
+import { withRefreshToken } from '@/lib/utils';
 import {
   ActivityEvent,
   SSEActivityData,
