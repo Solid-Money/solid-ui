@@ -13,14 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import {
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  KeyRound,
-  Plus,
-  Settings,
-} from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Copy, KeyRound, Plus, Settings } from 'lucide-react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
@@ -43,6 +36,8 @@ import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardProvider } from '@/hooks/useCardProvider';
+import { useCardWithdrawAllowed } from '@/hooks/useCardWithdrawAllowed';
+import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
 import { freezeCard, unfreezeCard } from '@/lib/api';
@@ -57,6 +52,9 @@ export default function CardDetails() {
   const { provider } = useCardProvider();
   const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
+  const isWithdrawAllowed = useCardWithdrawAllowed();
+
+  useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
 
   const [isFreezing, setIsFreezing] = useState(false);
   const [isCardFlipped, setIsCardFlipped] = useState(false);
@@ -137,6 +135,7 @@ export default function CardDetails() {
         isLoadingCardDetails={isLoadingCardDetails}
         onCardDetails={handleCardFlip}
         onFreezeToggle={handleFreezeToggle}
+        isWithdrawAllowed={isWithdrawAllowed}
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
         isRain={provider === CardProvider.RAIN}
       />
@@ -225,6 +224,7 @@ export default function CardDetails() {
             isLoadingCardDetails={isLoadingCardDetails}
             onCardDetails={handleCardFlip}
             onFreezeToggle={handleFreezeToggle}
+            isWithdrawAllowed={isWithdrawAllowed}
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
             isRain={provider === CardProvider.RAIN}
           />
@@ -258,6 +258,7 @@ interface DesktopHeaderProps {
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
+  isWithdrawAllowed: boolean;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
 }
@@ -270,13 +271,14 @@ function DesktopHeader({
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
+  isWithdrawAllowed,
   isWithdrawFromCardAllowed,
   isRain,
 }: DesktopHeaderProps) {
   const [isManageOpen, setIsManageOpen] = useState(false);
   const manageRef = useRef<View>(null);
 
-  const showManageDropdown = isRain || (!isCardFrozen || canUnfreeze);
+  const showManageDropdown = isRain || !isCardFrozen || canUnfreeze;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -375,7 +377,7 @@ function DesktopHeader({
             )}
           </View>
         )}
-        {isRain && isWithdrawFromCardAllowed && (
+        {isWithdrawAllowed && (
           <WithdrawToCardModal
             trigger={
               <Button variant="secondary" className="h-12 rounded-xl border-0 bg-[#303030] px-6">
@@ -710,9 +712,7 @@ function CardDetailsOverlay({
         <View className="flex-row">
           <View className="mr-6 flex-1">
             <View className="mt-4 flex-row items-end">
-              <Text className="mb-1 text-[9px] font-extrabold text-[#22591A]">
-                {'GOOD\nTHRU'}
-              </Text>
+              <Text className="mb-1 text-[9px] font-extrabold text-[#22591A]">{'GOOD\nTHRU'}</Text>
               <Text className="ml-2 text-lg font-semibold text-[#22591A]">
                 {formatExpiryDate(cardDetails.expiry_date)}
               </Text>
@@ -725,9 +725,7 @@ function CardDetailsOverlay({
             </Text>
           </View>
           <View className="mt-4 flex-1">
-            <Text className="text-xs font-semibold text-[#22591A]">
-              CVV
-            </Text>
+            <Text className="text-xs font-semibold text-[#22591A]">CVV</Text>
             <Text className="text-lg font-semibold text-[#22591A]">
               {cardDetails.card_security_code}
             </Text>
@@ -758,24 +756,17 @@ function CardDetailsOverlay({
       <View className="flex-row">
         <View className="mr-6 flex-1">
           <View className="flex-row items-end md:mt-4">
-            <Text className="mb-1 text-[9px] font-extrabold text-[#22591A]">
-              {'GOOD\nTHRU'}
-            </Text>
+            <Text className="mb-1 text-[9px] font-extrabold text-[#22591A]">{'GOOD\nTHRU'}</Text>
             <Text className="ml-2 text-lg font-semibold text-[#22591A]">
               {formatExpiryDate(cardDetails.expiry_date)}
             </Text>
           </View>
-          <Text
-            className="mt-6 text-sm font-semibold text-[#22591A] md:text-lg"
-            numberOfLines={1}
-          >
+          <Text className="mt-6 text-sm font-semibold text-[#22591A] md:text-lg" numberOfLines={1}>
             {displayName}
           </Text>
         </View>
         <View className="flex-1 md:mt-4">
-          <Text className="text-xs font-semibold text-[#22591A]">
-            CVV
-          </Text>
+          <Text className="text-xs font-semibold text-[#22591A]">CVV</Text>
           <Text className="font-semibold text-[#22591A] md:text-lg">
             {cardDetails.card_security_code}
           </Text>
@@ -793,6 +784,7 @@ interface CardActionsProps {
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
+  isWithdrawAllowed: boolean;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
 }
@@ -805,11 +797,12 @@ function CardActions({
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
+  isWithdrawAllowed,
   isWithdrawFromCardAllowed,
   isRain,
 }: CardActionsProps) {
   const [isManageSheetOpen, setIsManageSheetOpen] = useState(false);
-  const showManageButton = isRain || (!isCardFrozen || canUnfreeze);
+  const showManageButton = isRain || !isCardFrozen || canUnfreeze;
 
   return (
     <View className="mb-8 flex-row items-center justify-evenly">
@@ -835,67 +828,70 @@ function CardActions({
           <Dialog open={isManageSheetOpen} onOpenChange={setIsManageSheetOpen}>
             <DialogTrigger asChild>
               <View className="items-center">
-              <Pressable
-                onPress={() => setIsManageSheetOpen(true)}
-                className="items-center justify-center rounded-full bg-[#303030]"
-                style={{ width: 50, height: 50 }}
-              >
-                <Settings size={24} color="#BFBFBF" />
-              </Pressable>
-              <Text className="mt-2 text-[#BFBFBF]">Manage</Text>
-            </View>
-          </DialogTrigger>
-          <DialogContent className="mt-[5vh] w-screen max-w-full justify-start px-4 pb-6 pt-4">
-            <DialogHeader className="flex-row items-center justify-center">
-              <DialogTitle className="native:text-2xl text-xl font-semibold">Manage</DialogTitle>
-            </DialogHeader>
-            <View className="gap-2 pb-4">
-              {isRain && (
-                <ManagePinModal
-                  trigger={
-                    <Pressable
-                      className="flex-row items-center gap-4 rounded-2xl bg-[#1E1E1E] px-5 py-4"
-                      onPress={() => setIsManageSheetOpen(false)}
-                    >
-                      <View className="items-center justify-center rounded-full bg-[#303030] p-3">
-                        <KeyRound size={20} color="white" />
-                      </View>
-                      <Text className="text-base font-bold text-white">PIN</Text>
-                    </Pressable>
-                  }
-                />
-              )}
-              {(!isCardFrozen || canUnfreeze) && (
                 <Pressable
-                  className="flex-row items-center gap-4 rounded-2xl bg-[#1E1E1E] px-5 py-4"
-                  onPress={() => {
-                    setIsManageSheetOpen(false);
-                    onFreezeToggle();
-                  }}
-                  disabled={isFreezing}
+                  onPress={() => setIsManageSheetOpen(true)}
+                  className="items-center justify-center rounded-full bg-[#303030]"
+                  style={{ width: 50, height: 50 }}
                 >
-                  {isFreezing ? (
-                    <View className="items-center justify-center" style={{ width: 44, height: 44 }}>
-                      <ActivityIndicator size="small" color="white" />
-                    </View>
-                  ) : (
-                    <Image
-                      source={getAsset('images/card_actions_freeze.png')}
-                      style={{ width: 44, height: 44 }}
-                      contentFit="contain"
-                    />
-                  )}
-                  <Text className="text-base font-bold text-white">
-                    {isCardFrozen ? 'Unfreeze' : 'Freeze'}
-                  </Text>
+                  <Settings size={24} color="#BFBFBF" />
                 </Pressable>
-              )}
-            </View>
-          </DialogContent>
+                <Text className="mt-2 text-[#BFBFBF]">Manage</Text>
+              </View>
+            </DialogTrigger>
+            <DialogContent className="mt-[5vh] w-screen max-w-full justify-start px-4 pb-6 pt-4">
+              <DialogHeader className="flex-row items-center justify-center">
+                <DialogTitle className="native:text-2xl text-xl font-semibold">Manage</DialogTitle>
+              </DialogHeader>
+              <View className="gap-2 pb-4">
+                {isRain && (
+                  <ManagePinModal
+                    trigger={
+                      <Pressable
+                        className="flex-row items-center gap-4 rounded-2xl bg-[#1E1E1E] px-5 py-4"
+                        onPress={() => setIsManageSheetOpen(false)}
+                      >
+                        <View className="items-center justify-center rounded-full bg-[#303030] p-3">
+                          <KeyRound size={20} color="white" />
+                        </View>
+                        <Text className="text-base font-bold text-white">PIN</Text>
+                      </Pressable>
+                    }
+                  />
+                )}
+                {(!isCardFrozen || canUnfreeze) && (
+                  <Pressable
+                    className="flex-row items-center gap-4 rounded-2xl bg-[#1E1E1E] px-5 py-4"
+                    onPress={() => {
+                      setIsManageSheetOpen(false);
+                      onFreezeToggle();
+                    }}
+                    disabled={isFreezing}
+                  >
+                    {isFreezing ? (
+                      <View
+                        className="items-center justify-center"
+                        style={{ width: 44, height: 44 }}
+                      >
+                        <ActivityIndicator size="small" color="white" />
+                      </View>
+                    ) : (
+                      <Image
+                        source={getAsset('images/card_actions_freeze.png')}
+                        style={{ width: 44, height: 44 }}
+                        contentFit="contain"
+                      />
+                    )}
+                    <Text className="text-base font-bold text-white">
+                      {isCardFrozen ? 'Unfreeze' : 'Freeze'}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            </DialogContent>
           </Dialog>
         </View>
       )}
-      {isRain && isWithdrawFromCardAllowed && (
+      {isWithdrawAllowed && (
         <WithdrawToCardModal
           trigger={
             <CircularActionButton

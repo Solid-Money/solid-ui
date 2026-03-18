@@ -86,6 +86,7 @@ const ResponsiveModal = ({
   const { isScreenMedium } = useDimension();
   const isNativeSmallScreen = Platform.OS !== 'web' && !isScreenMedium;
   const useFixedHeightLayout = isNativeSmallScreen && !disableScroll;
+  const useNativeFlexLayout = isNativeSmallScreen;
   const dialogHeight = useSharedValue(0);
   const [showBottomFade, setShowBottomFade] = React.useState(false);
   const containerHeightRef = React.useRef(0);
@@ -110,7 +111,7 @@ const ResponsiveModal = ({
   const contentExiting = (isForward ? FadeOutLeft : FadeOutRight).duration(250);
 
   const dialogAnimatedStyle = useAnimatedStyle(() => {
-    if (useFixedHeightLayout) {
+    if (useNativeFlexLayout) {
       return {};
     }
 
@@ -129,7 +130,7 @@ const ResponsiveModal = ({
         easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       }),
     };
-  }, [shouldAnimate, useFixedHeightLayout]);
+  }, [shouldAnimate, useNativeFlexLayout]);
 
   // Prevent page scroll when modal closes by stopping focus restoration to trigger
   const handleCloseAutoFocus = useCallback((event: Event) => {
@@ -153,13 +154,14 @@ const ResponsiveModal = ({
         showCloseButton={false}
       >
         <Animated.View
-          style={dialogAnimatedStyle}
-          className={cn('overflow-hidden', useFixedHeightLayout && 'min-h-0 flex-1')}
+          style={[useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined, dialogAnimatedStyle]}
+          className={cn('overflow-hidden')}
         >
           <View
-            className={cn('gap-8', useFixedHeightLayout && 'min-h-0 flex-1', containerClassName)}
+            className={cn('gap-8', containerClassName)}
+            style={useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
             onLayout={event => {
-              if (!useFixedHeightLayout) {
+              if (!useNativeFlexLayout) {
                 dialogHeight.value = event.nativeEvent.layout.height;
               }
             }}
@@ -204,12 +206,15 @@ const ResponsiveModal = ({
                 entering={contentEntering}
                 exiting={contentExiting}
                 key={contentKey}
-                style={hideHeader || useFixedHeightLayout ? { flex: 1 } : undefined}
+                style={hideHeader || useNativeFlexLayout ? { flex: 1 } : undefined}
               >
                 {children}
               </Animated.View>
             ) : (
-              <View className={cn('relative', useFixedHeightLayout && 'min-h-0 flex-1')}>
+              <View
+                className="relative"
+                style={useNativeFlexLayout ? { flex: 1, minHeight: 0 } : undefined}
+              >
                 <ScrollView
                   className="web:max-h-[80vh]"
                   contentContainerClassName="pb-4 md:pb-8"

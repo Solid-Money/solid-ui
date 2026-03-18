@@ -67,7 +67,6 @@ export default function ActivityTransactions({
   );
   const {
     activities,
-    getKey,
     refetchAll,
     isSyncing,
     isSyncStale,
@@ -468,19 +467,19 @@ export default function ActivityTransactions({
 
   // Memoized key extractor for FlashList - uses stable identifiers (no index)
   // to prevent key instability when new items are inserted via SSE.
-  const keyExtractor = useCallback(
-    (item: TimeGroup, index: number) => {
-      if (item.type === ActivityGroup.HEADER) {
-        const headerKey = (item.data as TimeGroupHeaderData).key;
-        return headerKey.startsWith('header-') ? headerKey : `header-${headerKey}`;
-      }
-      const transaction = item.data as ActivityEvent;
-      // Use clientTxId as primary key (always unique per activity).
-      // Fall back to hash/userOpHash, then index as last resort.
-      return `tx-${transaction.clientTxId || getKey(transaction) || index}`;
-    },
-    [getKey],
-  );
+  const keyExtractor = useCallback((item: TimeGroup, index: number) => {
+    if (item.type === ActivityGroup.HEADER) {
+      const headerKey = (item.data as TimeGroupHeaderData).key;
+      return headerKey.startsWith('header-') ? headerKey : `header-${headerKey}`;
+    }
+    const transaction = item.data as ActivityEvent;
+    // Use clientTxId as the stable, unique key — never hash/userOpHash (which
+    // arrive later via SSE and would cause a key flip, triggering FlashList to
+    // unmount/remount the item). Do NOT append index: adding any new activity
+    // shifts all subsequent items' indices, changing their keys and causing
+    // FlashList to unmount/remount the entire list (white flash).
+    return `tx-${transaction.clientTxId || transaction.timestamp || `unknown-${index}`}`;
+  }, []);
 
   // Show full loading state only for first load with stale data
   if (isLoading && !filteredTransactions.length && isSyncStale) {
