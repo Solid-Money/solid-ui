@@ -643,7 +643,7 @@ function CardDetailsOverlay({
               accessibilityLabel="Copy card number to clipboard"
               accessibilityRole="button"
             >
-              <Copy size={20} color="#22591A" />
+              <Copy size={20} color="#2E6A25" />
             </Pressable>
           </View>
         </View>
@@ -692,7 +692,7 @@ function CardDetailsOverlay({
             accessibilityLabel="Copy card number to clipboard"
             accessibilityRole="button"
           >
-            <Copy size={20} color="#22591A" />
+            <Copy size={20} color="#2E6A25" />
           </Pressable>
         </View>
       </View>
