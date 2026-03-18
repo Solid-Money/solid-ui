@@ -168,6 +168,7 @@ const Transaction = ({
   const isDeposit = type === TransactionType.DEPOSIT;
   const isSavingsDeposit =
     isDeposit && (symbol?.toLowerCase() === 'sousd' || symbol?.toLowerCase() === 'sofuse');
+  const hideSavingsAmount = isSavingsDeposit && (isPending || isProcessing);
 
   const statusTextColor = isFailed
     ? 'text-red-400'
@@ -277,7 +278,7 @@ const Transaction = ({
       )}
 
       <View className="min-w-0 flex-[1] items-end">
-        {directDepositStatusMessage || amount === '0' ? (
+        {directDepositStatusMessage || amount === '0' || hideSavingsAmount ? (
           <Text
             className={cn(
               'text-sm font-medium',

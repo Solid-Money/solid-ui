@@ -395,6 +395,7 @@ export default function ActivityDetail() {
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
   const isSavingsDeposit =
     isDeposit && (symbolLower === 'sousd' || symbolLower === 'sofuse');
+  const hideSavingsAmount = isSavingsDeposit && (isPending || isProcessing);
   const isCancelWithdraw = finalActivity?.requestId && isPending;
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
@@ -569,10 +570,12 @@ export default function ActivityDetail() {
           {tokenIcon && <RenderTokenIcon tokenIcon={tokenIcon} size={75} />}
 
           <View className="items-center">
-            <Text className={cn('text-2xl font-bold', statusTextColor)}>
-              {statusSign}
-              {formatNumber(Number(finalActivity.amount))} {formatSymbol(finalActivity.symbol)}
-            </Text>
+            {!hideSavingsAmount && (
+              <Text className={cn('text-2xl font-bold', statusTextColor)}>
+                {statusSign}
+                {formatNumber(Number(finalActivity.amount))} {formatSymbol(finalActivity.symbol)}
+              </Text>
+            )}
             <Text className="mt-2 font-semibold text-muted-foreground">{description}</Text>
             <Text className="font-semibold text-muted-foreground">
               {format(Number(finalActivity.timestamp) * 1000, DATE_FORMAT)}
