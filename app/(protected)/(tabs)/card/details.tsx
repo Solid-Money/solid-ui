@@ -634,7 +634,7 @@ function CardDetailsOverlay({
       >
         <View className="mb-5">
           <View className="flex-row items-center gap-2">
-            <Text className="text-3xl font-medium" style={styles.cardDetailsText}>
+            <Text className="text-3xl font-medium text-[#22591A]">
               {formatCardNumber(safeCardDetails.card_number)}
             </Text>
             <Pressable
@@ -651,26 +651,25 @@ function CardDetailsOverlay({
         <View className="flex-row">
           <View className="mr-6 flex-1">
             <View className="mt-4 flex-row items-end">
-              <Text className="mb-1 text-[9px] font-extrabold" style={styles.cardDetailsText}>
+              <Text className="mb-1 text-[9px] font-extrabold text-[#22591A]">
                 {'GOOD\nTHRU'}
               </Text>
-              <Text className="ml-2 text-lg font-semibold" style={styles.cardDetailsText}>
+              <Text className="ml-2 text-lg font-semibold text-[#22591A]">
                 {formatExpiryDate(cardDetails.expiry_date)}
               </Text>
             </View>
             <Text
-              className="mt-6 text-sm font-semibold md:text-lg"
-              style={styles.cardDetailsText}
+              className="mt-6 text-sm font-semibold text-[#22591A] md:text-lg"
               numberOfLines={1}
             >
               {displayName}
             </Text>
           </View>
           <View className="mt-4 flex-1">
-            <Text className="text-xs font-semibold" style={styles.cardDetailsText}>
+            <Text className="text-xs font-semibold text-[#22591A]">
               CVV
             </Text>
-            <Text className="text-lg font-semibold" style={styles.cardDetailsText}>
+            <Text className="text-lg font-semibold text-[#22591A]">
               {cardDetails.card_security_code}
             </Text>
           </View>
@@ -683,7 +682,7 @@ function CardDetailsOverlay({
     <View className="absolute inset-0 mt-12 justify-center rounded-2xl p-6 md:mt-24">
       <View className="mb-5">
         <View className="flex-row items-center gap-2">
-          <Text className="text-lg font-medium md:text-3xl" style={styles.cardDetailsText}>
+          <Text className="text-lg font-medium text-[#22591A] md:text-3xl">
             {formatCardNumber(cardDetails.card_number)}
           </Text>
           <Pressable
@@ -700,26 +699,25 @@ function CardDetailsOverlay({
       <View className="flex-row">
         <View className="mr-6 flex-1">
           <View className="flex-row items-end md:mt-4">
-            <Text className="mb-1 text-[9px] font-extrabold" style={styles.cardDetailsText}>
+            <Text className="mb-1 text-[9px] font-extrabold text-[#22591A]">
               {'GOOD\nTHRU'}
             </Text>
-            <Text className="ml-2 text-lg font-semibold" style={styles.cardDetailsText}>
+            <Text className="ml-2 text-lg font-semibold text-[#22591A]">
               {formatExpiryDate(cardDetails.expiry_date)}
             </Text>
           </View>
           <Text
-            className="mt-6 text-sm font-semibold md:text-lg"
-            style={styles.cardDetailsText}
+            className="mt-6 text-sm font-semibold text-[#22591A] md:text-lg"
             numberOfLines={1}
           >
             {displayName}
           </Text>
         </View>
         <View className="flex-1 md:mt-4">
-          <Text className="text-xs font-semibold" style={styles.cardDetailsText}>
+          <Text className="text-xs font-semibold text-[#22591A]">
             CVV
           </Text>
-          <Text className="font-semibold md:text-lg" style={styles.cardDetailsText}>
+          <Text className="font-semibold text-[#22591A] md:text-lg">
             {cardDetails.card_security_code}
           </Text>
         </View>
@@ -1087,8 +1085,6 @@ const styles = StyleSheet.create({
 
   // Card details overlay
   cardDetailsHidden: { opacity: 0, pointerEvents: 'none' },
-  cardDetailsText: { color: '#22591A' },
-
   // Cashback display
   cashbackDivider: {
     height: 1,
