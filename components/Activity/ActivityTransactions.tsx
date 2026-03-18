@@ -468,18 +468,14 @@ export default function ActivityTransactions({
           : `header-${headerKey}-${index}`;
       }
       const transaction = item.data as ActivityEvent;
-      // Get base key, ensuring it's never empty
-      const hashKey = getKey(transaction);
-      const baseKey =
-        (hashKey && hashKey.trim()) ||
-        transaction.clientTxId ||
-        transaction.timestamp ||
-        `unknown-${index}`;
-      // Ensure key is always unique and non-empty
-      // Prefix with 'tx-' to avoid collisions with headers, add index for uniqueness
-      return `tx-${baseKey}-${index}`;
+      // Use clientTxId as the stable, unique key — never hash/userOpHash (which
+      // arrive later via SSE and would cause a key flip, triggering FlashList to
+      // unmount/remount the item). Do NOT append index: adding any new activity
+      // shifts all subsequent items' indices, changing their keys and causing
+      // FlashList to unmount/remount the entire list (white flash).
+      return `tx-${transaction.clientTxId || transaction.timestamp || `unknown-${index}`}`;
     },
-    [getKey],
+    [],
   );
 
   // Show full loading state only for first load with stale data
