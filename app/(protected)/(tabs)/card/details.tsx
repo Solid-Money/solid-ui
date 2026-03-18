@@ -14,7 +14,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Copy, Plus } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, Copy, KeyRound, Plus } from 'lucide-react-native';
 
 import AddToAppleWalletWeb from '@/components/Card/AddToAppleWalletWeb';
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
@@ -290,6 +290,27 @@ function DesktopHeader({
   isWithdrawAllowed,
   isWithdrawFromCardAllowed,
 }: DesktopHeaderProps) {
+  const [isManageOpen, setIsManageOpen] = useState(false);
+  const manageRef = useRef<View>(null);
+
+  const showManageDropdown = isRain || (!isCardFrozen || canUnfreeze);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!isManageOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (manageRef.current) {
+        // Check if click is outside the dropdown container
+        const node = manageRef.current as unknown as HTMLElement;
+        if (!node.contains(e.target as Node)) {
+          setIsManageOpen(false);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isManageOpen]);
+
   return (
     <View className="flex-row justify-between">
       <Text className="text-5xl font-semibold">Card</Text>
@@ -315,37 +336,61 @@ function DesktopHeader({
             </Text>
           </View>
         </Button>
-        {isRain && (
-          <ManagePinModal
-            trigger={
-              <Button variant="secondary" className="h-12 rounded-xl border-0 bg-[#303030] px-6">
-                <Text className="text-base font-bold text-white">Manage PIN</Text>
-              </Button>
-            }
-          />
-        )}
-        {(!isCardFrozen || canUnfreeze) && (
-          <Button
-            variant="secondary"
-            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
-            onPress={onFreezeToggle}
-            disabled={isFreezing}
-          >
-            <View className="flex-row items-center gap-2">
-              {isFreezing ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Image
-                  source={getAsset('images/freeze_button_icon.png')}
-                  style={styles.mediumIcon}
-                  contentFit="contain"
-                />
-              )}
-              <Text className="text-base font-bold text-white">
-                {isCardFrozen ? 'Unfreeze' : 'Freeze'}
-              </Text>
-            </View>
-          </Button>
+        {showManageDropdown && (
+          <View ref={manageRef} className="relative">
+            <Button
+              variant="secondary"
+              className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+              onPress={() => setIsManageOpen(prev => !prev)}
+            >
+              <View className="flex-row items-center gap-2">
+                <Text className="text-base font-bold text-white">Manage</Text>
+                <View style={{ transform: [{ rotate: isManageOpen ? '180deg' : '0deg' }] }}>
+                  <ChevronDown size={18} color="white" />
+                </View>
+              </View>
+            </Button>
+            {isManageOpen && (
+              <View className="absolute right-0 top-14 z-50 min-w-[180px] rounded-xl bg-[#303030] py-2">
+                {isRain && (
+                  <ManagePinModal
+                    trigger={
+                      <Pressable
+                        className="flex-row items-center gap-3 px-5 py-3 web:hover:bg-[#404040]"
+                        onPress={() => setIsManageOpen(false)}
+                      >
+                        <KeyRound size={18} color="white" />
+                        <Text className="text-base font-bold text-white">PIN</Text>
+                      </Pressable>
+                    }
+                  />
+                )}
+                {(!isCardFrozen || canUnfreeze) && (
+                  <Pressable
+                    className="flex-row items-center gap-3 px-5 py-3 web:hover:bg-[#404040]"
+                    onPress={() => {
+                      setIsManageOpen(false);
+                      onFreezeToggle();
+                    }}
+                    disabled={isFreezing}
+                  >
+                    {isFreezing ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Image
+                        source={getAsset('images/freeze_button_icon.png')}
+                        style={styles.mediumIcon}
+                        contentFit="contain"
+                      />
+                    )}
+                    <Text className="text-base font-bold text-white">
+                      {isCardFrozen ? 'Unfreeze' : 'Freeze'}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+          </View>
         )}
         {isWithdrawAllowed && (
           <WithdrawToCardModal
