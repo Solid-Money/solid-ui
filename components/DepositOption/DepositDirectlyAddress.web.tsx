@@ -2,56 +2,20 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { Copy, Fuel, Info, Share2 } from 'lucide-react-native';
-import { formatUnits } from 'viem';
-import { useShallow } from 'zustand/react/shallow';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
+import {
+  SOUSD_ICON,
+  useDepositDirectlyData,
+} from '@/components/DepositOption/DepositDirectlyAddress.shared';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
-import { DEPOSIT_MODAL } from '@/constants/modals';
-import { path } from '@/constants/path';
-import { useMaxAPY } from '@/hooks/useAnalytics';
-import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
-import { getAsset } from '@/lib/assets';
-import { EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { eclipseAddress, formatNumber } from '@/lib/utils';
-import { useDepositStore } from '@/store/useDepositStore';
-
-const USDC_ICON = getAsset('images/usdc.png');
-const USDT_ICON = getAsset('images/usdt.png');
-const SOUSD_ICON = getAsset('images/sousd-4x.png');
-
-const TOKEN_ICONS: Record<string, any> = {
-  USDC: USDC_ICON,
-  USDT: USDT_ICON,
-};
-
-const STATUS_TEXT = {
-  pending: 'Waiting for transfer',
-  detected: 'Transfer detected',
-  processing: 'Processing deposit...',
-  completed: 'Completed',
-  failed: 'Failed',
-  expired: 'Session expired',
-} as const;
-
-type DepositStatus = keyof typeof STATUS_TEXT;
-
-const STATUS_TONE_CLASSES: Record<DepositStatus, string> = {
-  completed: 'text-[#5BFF6C]',
-  expired: 'text-red-400',
-  failed: 'text-red-400',
-  processing: 'text-[#F9D270]',
-  detected: 'text-[#F9D270]',
-  pending: 'text-foreground',
-};
+import { eclipseAddress } from '@/lib/utils';
 
 type InfoRow = {
   label: string;
@@ -63,48 +27,34 @@ type InfoRow = {
 };
 
 const DepositDirectlyAddress = () => {
-  // Use useShallow for object selection to prevent unnecessary re-renders
-  const { directDepositSession, setModal, clearDirectDepositSession } = useDepositStore(
-    useShallow(state => ({
-      directDepositSession: state.directDepositSession,
-      setModal: state.setModal,
-      clearDirectDepositSession: state.clearDirectDepositSession,
-    })),
-  );
-  const chainId = directDepositSession.chainId || 1;
-  const selectedToken = directDepositSession.selectedToken || 'USDC';
-  const tokenIcon = TOKEN_ICONS[selectedToken] || USDC_ICON;
-  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const {
+    walletAddress,
+    selectedToken,
+    tokenIcon,
+    network,
+    networkName,
+    estimatedTime,
+    formattedAPY,
+    formattedExchangeRate,
+    formattedSoUSDAmount,
+    minDepositValue,
+    feeValue,
+    statusValue,
+    statusClassName,
+    isExpired,
+    isQrDialogOpen,
+    setIsQrDialogOpen,
+    handleDone,
+    isAPYsLoading: isMaxAPYsLoading,
+  } = useDepositDirectlyData();
+
   const [shareFeedback, setShareFeedback] = useState<'copied' | 'error' | null>(null);
-  const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
-
-  // Get token address for exchange rate calculation
-  const tokenAddress =
-    BRIDGE_TOKENS[chainId]?.tokens?.[selectedToken]?.address ||
-    BRIDGE_TOKENS[chainId]?.tokens?.USDC?.address;
-
-  const { exchangeRate } = usePreviewDeposit('10', tokenAddress, chainId);
-
-  const network = BRIDGE_TOKENS[chainId];
-  const walletAddress = directDepositSession.walletAddress;
-
-  // Hardcoded status - always show "Waiting for transfer"
-  const status: DepositStatus = 'pending';
-  const isExpired = false;
 
   useEffect(() => {
     if (!shareFeedback) return;
     const timer = setTimeout(() => setShareFeedback(null), 2500);
     return () => clearTimeout(timer);
   }, [shareFeedback]);
-
-  const handleDone = useCallback(() => {
-    setModal(DEPOSIT_MODAL.CLOSE);
-    clearDirectDepositSession();
-    if (!directDepositSession.fromActivity) {
-      router.push(path.ACTIVITY);
-    }
-  }, [setModal, clearDirectDepositSession, directDepositSession.fromActivity]);
 
   const handleShare = useCallback(async () => {
     if (!walletAddress) return;
@@ -128,42 +78,22 @@ const DepositDirectlyAddress = () => {
     }
   }, [walletAddress]);
 
-  const estimatedTime =
-    chainId === 1
-      ? '5 minutes'
-      : chainId === 122 && (selectedToken === 'WFUSE' || selectedToken === 'soFUSE')
-        ? '2 minutes'
-        : '30 minutes';
-  const formattedAPY = maxAPY !== undefined ? `${maxAPY.toFixed(2)}%` : '—';
-
-  const minDeposit =
-    EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT || directDepositSession.minDeposit || '0.0001';
-
-  const fee = directDepositSession.fee || '0';
-
   const infoRows: InfoRow[] = useMemo(
     () => [
-      { label: 'Min deposit', value: `${minDeposit} ${selectedToken}` },
+      { label: 'Min deposit', value: minDepositValue },
       { label: 'Estimated time', value: estimatedTime },
       {
         label: 'Status',
-        value: STATUS_TEXT[status],
-        valueClassName: `${STATUS_TONE_CLASSES[status]} font-medium`,
+        value: statusValue,
+        valueClassName: statusClassName,
       },
-      { label: 'Fee', value: `${fee} ${selectedToken}`, icon: <Fuel size={16} color="#A1A1AA" /> },
+      { label: 'Fee', value: feeValue, icon: <Fuel size={16} color="#A1A1AA" /> },
     ],
-    [minDeposit, estimatedTime, status, fee, selectedToken],
+    [minDepositValue, estimatedTime, statusValue, statusClassName, feeValue],
   );
 
   const priceRows: InfoRow[] = useMemo(() => {
     const rows: InfoRow[] = [];
-
-    // Calculate soUSD amount for 10 USDC
-    const usdcAmount = 10;
-
-    const soUSDAmount = exchangeRate
-      ? usdcAmount / Number(formatUnits(exchangeRate, 6))
-      : usdcAmount;
 
     rows.push({
       label: 'You will receive',
@@ -171,8 +101,7 @@ const DepositDirectlyAddress = () => {
         <View className="flex flex-row items-center gap-1.5">
           <Image source={SOUSD_ICON} style={{ width: 18, height: 18 }} contentFit="cover" />
           <Text className="text-base font-medium text-white">
-            {formatNumber(soUSDAmount, 2, 2)}{' '}
-            <Text className="text-white/70">soUSD on Ethereum</Text>
+            {formattedSoUSDAmount} <Text className="text-white/70">soUSD on Ethereum</Text>
           </Text>
         </View>
       ),
@@ -182,8 +111,7 @@ const DepositDirectlyAddress = () => {
       label: 'Price',
       valueContent: (
         <Text className="text-base font-medium text-white">
-          1 soUSD = {formatNumber(exchangeRate ? Number(formatUnits(exchangeRate, 6)) : 1, 4, 4)}{' '}
-          {selectedToken}
+          1 soUSD = {formattedExchangeRate} {selectedToken}
         </Text>
       ),
     });
@@ -198,7 +126,7 @@ const DepositDirectlyAddress = () => {
     });
 
     return rows;
-  }, [exchangeRate, isMaxAPYsLoading, formattedAPY, selectedToken]);
+  }, [formattedSoUSDAmount, formattedExchangeRate, isMaxAPYsLoading, formattedAPY, selectedToken]);
 
   return (
     <View className="flex flex-col gap-3 md:gap-4 2xl:gap-6">
@@ -219,7 +147,7 @@ const DepositDirectlyAddress = () => {
             />
           )}
           <Text className="text-xl font-semibold text-[#ACACAC] md:text-2xl">
-            <Text className="text-white">{network?.name || 'Ethereum'}</Text>{' '}
+            <Text className="text-white">{networkName}</Text>{' '}
             <Text className="text-[#ACACAC]">address</Text>
           </Text>
         </View>

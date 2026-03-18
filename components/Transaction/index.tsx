@@ -333,8 +333,8 @@ const Transaction = ({
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Delete direct deposit?"
-        mobilePlacement="center"
         contentClassName="max-w-sm px-6 py-6"
+        mobilePlacement="center"
       >
         <View className="flex flex-col gap-6">
           <Text className="text-base text-muted-foreground">
