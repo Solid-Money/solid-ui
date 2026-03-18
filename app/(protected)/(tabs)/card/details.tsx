@@ -643,7 +643,7 @@ function CardDetailsOverlay({
               accessibilityLabel="Copy card number to clipboard"
               accessibilityRole="button"
             >
-              <Copy size={20} color="#2E6A25" />
+              <Copy size={20} color="#22591A" />
             </Pressable>
           </View>
         </View>
@@ -692,7 +692,7 @@ function CardDetailsOverlay({
             accessibilityLabel="Copy card number to clipboard"
             accessibilityRole="button"
           >
-            <Copy size={20} color="#2E6A25" />
+            <Copy size={20} color="#22591A" />
           </Pressable>
         </View>
       </View>
@@ -1087,7 +1087,7 @@ const styles = StyleSheet.create({
 
   // Card details overlay
   cardDetailsHidden: { opacity: 0, pointerEvents: 'none' },
-  cardDetailsText: { color: '#2E6A25' },
+  cardDetailsText: { color: '#22591A' },
 
   // Cashback display
   cashbackDivider: {
