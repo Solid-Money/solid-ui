@@ -107,7 +107,7 @@ export function copyToClipboard(text: string) {
 
 let globalLogoutHandler: (() => void) | null = null;
 
-let refreshTokenPromise: Promise<Response> | null = null;
+let refreshTokenPromise: Promise<AuthTokens | null> | null = null;
 
 export const setGlobalLogoutHandler = (handler: () => void) => {
   globalLogoutHandler = handler;
@@ -138,22 +138,29 @@ export const withRefreshToken = async <T>(
 
     try {
       // Use existing refresh token promise if one is in progress
-      if (!refreshTokenPromise) {
-        refreshTokenPromise = refreshToken().finally(() => {
-          refreshTokenPromise = null;
-        });
+      const isNewRefresh = !refreshTokenPromise;
+      if (isNewRefresh) {
+        refreshTokenPromise = refreshToken()
+          .then(async response => {
+            const data: { tokens: AuthTokens } = await response.json();
+            return data.tokens;
+          })
+          .finally(() => {
+            refreshTokenPromise = null;
+          });
+      } else {
+        console.warn('[TokenRefresh] Reusing in-flight token refresh');
       }
 
-      const refreshResponse = await refreshTokenPromise;
+      const tokens = await refreshTokenPromise;
 
       // Only save new tokens on mobile platforms
       // On web, we don't need to save new tokens
       // because the browser will handle it
-      if (Platform.OS === 'ios' || Platform.OS === 'android') {
-        await saveNewTokens(refreshResponse);
+      if ((Platform.OS === 'ios' || Platform.OS === 'android') && tokens) {
+        saveNewTokens(tokens);
       }
     } catch (refreshTokenError) {
-      console.error(refreshTokenError);
       if (onError) {
         onError();
       } else if (isAnyHTTPError(refreshTokenError, [401, 403, 404, 500])) {
@@ -167,27 +174,20 @@ export const withRefreshToken = async <T>(
   }
 };
 
-async function saveNewTokens(refreshResponse: Response) {
-  const refreshTokenResponse: { tokens: AuthTokens } = await refreshResponse.json();
+function saveNewTokens(tokens: AuthTokens) {
+  const { users, updateUser } = useUserStore.getState();
+  const currentUser = users.find((user: User) => user.selected);
 
-  const newTokens = refreshTokenResponse.tokens;
+  if (!currentUser) throw new Error('No current user found');
 
-  // Update stored tokens
-  if (Platform.OS === 'ios' || Platform.OS === 'android') {
-    const { users, updateUser } = useUserStore.getState();
-    const currentUser = users.find((user: User) => user.selected);
-
-    if (!currentUser) throw new Error('No current user found');
-
-    if (newTokens.accessToken) {
-      updateUser({
-        ...currentUser,
-        tokens: {
-          accessToken: newTokens.accessToken,
-          refreshToken: newTokens.refreshToken,
-        },
-      });
-    }
+  if (tokens.accessToken) {
+    updateUser({
+      ...currentUser,
+      tokens: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      },
+    });
   }
 }
 

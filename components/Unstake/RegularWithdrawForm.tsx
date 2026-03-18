@@ -23,6 +23,7 @@ import { isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
 import useUser from '@/hooks/useUser';
 import { useFuseVaultBalance, useSoFuseVaultBalance } from '@/hooks/useVault';
+import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import useWithdraw from '@/hooks/useWithdraw';
 import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
@@ -76,6 +77,7 @@ const RegularWithdrawForm = () => {
   );
 
   const isSoFuse = selectedToken?.contractTickerSymbol?.toLowerCase() === 'sofuse';
+  const { data: exchangeRate } = useVaultExchangeRate(isSoFuse ? 'FUSE' : 'USDC');
   const tokenType = selectedToken?.type || TokenType.ERC20;
   const isNative = tokenType === TokenType.NATIVE;
 
@@ -373,9 +375,19 @@ const RegularWithdrawForm = () => {
             </View>
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <Text className="text-base text-muted-foreground">Fee</Text>
+            <Text className="text-base text-muted-foreground">Solver fee</Text>
             <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
-              <Text className="text-base font-semibold">{isSoFuse ? '0 FUSE' : '0 USDC'}</Text>
+              <Text className="text-base font-semibold">0.01%</Text>
+            </View>
+          </View>
+          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+            <Text className="text-base text-muted-foreground">You will receive</Text>
+            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+              <Text className="text-base font-semibold">
+                {watchedAmount
+                  ? `${formatNumber(Number(watchedAmount) * (exchangeRate ?? 1) * 0.9999)} ${isSoFuse ? 'FUSE' : 'USDC'}`
+                  : `0 ${isSoFuse ? 'FUSE' : 'USDC'}`}
+              </Text>
             </View>
           </View>
         </TokenDetails>

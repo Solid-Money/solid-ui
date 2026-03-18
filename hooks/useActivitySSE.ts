@@ -1,9 +1,9 @@
-import * as Sentry from '@sentry/react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 
-import { getActivityStreamUrl, refreshToken, syncActivities } from '@/lib/api';
-import { withRefreshToken } from '@/lib/utils';
+import { queryClient } from '@/app/_layout';
+import { getActivityStreamUrl, refreshToken } from '@/lib/api';
 import {
   ActivityEvent,
   SSEActivityData,
@@ -12,7 +12,6 @@ import {
   SSEEventData,
   SSEPingData,
 } from '@/lib/types';
-import { queryClient } from '@/app/_layout';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -1171,7 +1170,6 @@ export function useActivitySSE(options: UseActivitySSEOptions = {}): UseActivity
         subscriptionRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, subscribe]);
 
   // Memoized callbacks that delegate to singleton

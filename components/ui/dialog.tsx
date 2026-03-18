@@ -57,31 +57,14 @@ const DialogOverlayNative = React.forwardRef<
   DialogPrimitive.OverlayRef,
   DialogPrimitive.OverlayProps
 >(({ className, children, ...props }, ref) => {
-  const handlePress = (event: any) => {
-    // Check if the pressed element is a toast
-    const target = event.target;
-    if (target?.getAttribute?.('role') === 'alert') {
-      event.stopPropagation();
-      return;
-    }
-  };
-
-  // Check if className contains 'justify-start' to position at top
-  const shouldAlignTop = className?.includes('justify-start');
-
   return (
     <DialogPrimitive.Overlay
       style={StyleSheet.absoluteFill}
-      className={cn(
-        'flex items-center bg-black/80 p-2',
-        shouldAlignTop ? 'justify-start' : 'justify-center',
-        className,
-      )}
-      onPress={handlePress}
+      className={cn('flex items-center bg-black/80 p-2', className)}
       {...props}
       ref={ref}
     >
-      <BlurView tint="dark" intensity={90} style={StyleSheet.absoluteFill} />
+      <BlurView tint="dark" intensity={90} style={StyleSheet.absoluteFill} pointerEvents="none" />
       {children as React.ReactNode}
     </DialogPrimitive.Overlay>
   );
@@ -121,7 +104,7 @@ const DialogContent = React.forwardRef<
     const shouldAlignTop = className?.includes('justify-start');
     const { open } = DialogPrimitive.useRootContext();
     const mobileSheetHeight =
-      !isScreenMedium && shouldAlignTop ? Math.max(windowHeight * 0.95 - 16, 0) : undefined;
+      !isScreenMedium && shouldAlignTop ? Math.max(windowHeight * 1 - 16, 0) : undefined;
 
     // Web bounce animation using useAnimatedStyle
     const opacityWeb = useSharedValue(0);
@@ -198,6 +181,30 @@ const DialogContent = React.forwardRef<
         {showCloseButton && <DialogCloseButton className="absolute right-4 top-4" />}
       </DialogPrimitive.Content>
     );
+
+    if (Platform.OS !== 'web') {
+      return (
+        <DialogPortal hostName={portalHost}>
+          <DialogOverlay
+            className={shouldAlignTop ? 'justify-start' : undefined}
+            closeOnPress={false}
+          />
+          <View
+            style={StyleSheet.absoluteFill}
+            pointerEvents="box-none"
+            className={cn(
+              'flex items-center p-2',
+              shouldAlignTop ? 'justify-start' : 'justify-center',
+            )}
+          >
+            <Animated.View entering={enteringAnimation} exiting={FadeOutDown.duration(180)}>
+              {content}
+            </Animated.View>
+            <Toast {...toastProps} />
+          </View>
+        </DialogPortal>
+      );
+    }
 
     return (
       <DialogPortal hostName={portalHost}>
