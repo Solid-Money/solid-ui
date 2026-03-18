@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { ImageBackground, Platform, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Address } from 'viem';
+
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { FAQs } from '@/components/FAQ';
@@ -134,7 +135,12 @@ export default function Savings() {
       {isScreenMedium ? (
         <View className="flex-row items-center justify-between">
           <DashboardTitle />
-          <DashboardHeaderButtons hideSend hideSwap preserveSelectedVault />
+          <DashboardHeaderButtons
+            hideSend
+            hideSwap
+            hideBuyFuse={currentVault.name !== 'FUSE'}
+            preserveSelectedVault
+          />
         </View>
       ) : (
         <Text className="text-3xl font-semibold">Savings</Text>
