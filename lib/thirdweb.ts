@@ -73,27 +73,9 @@ export const cleanupThirdwebStyles = () => {
 
   observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
 
-  // Also remove any lingering Thirdweb modal overlay elements from the DOM.
-  // Thirdweb renders its connect modal inside iframes with specific attributes.
-  const removeOverlayElements = () => {
-    document.querySelectorAll('div[aria-hidden="true"]').forEach(el => {
-      const style = window.getComputedStyle(el);
-      if (
-        style.position === 'fixed' &&
-        style.inset === '0px' &&
-        el.children.length === 0
-      ) {
-        el.remove();
-      }
-    });
-  };
-
-  removeOverlayElements();
-
   // Disconnect observer after a reasonable timeout and do a final cleanup pass
   setTimeout(() => {
     observer.disconnect();
     document.body.style.pointerEvents = '';
-    removeOverlayElements();
   }, 500);
 };
