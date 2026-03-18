@@ -615,9 +615,12 @@ const useDepositOption = ({
     isDepositDirectlyTokens ||
     isTokenSelector;
 
+  const disableScroll = isDepositDirectlyAddress;
+
   return {
     shouldOpen,
     showBackButton,
+    disableScroll,
     actionButton,
     shouldAnimate,
     isForward,
