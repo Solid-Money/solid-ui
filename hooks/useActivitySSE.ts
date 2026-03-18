@@ -3,7 +3,8 @@ import { AppState, AppStateStatus, Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 
 import { queryClient } from '@/app/_layout';
-import { getActivityStreamUrl, refreshToken } from '@/lib/api';
+import { getActivityStreamUrl, refreshToken, syncActivities } from '@/lib/api';
+import { withRefreshToken } from '@/lib/utils';
 import {
   ActivityEvent,
   SSEActivityData,
@@ -605,6 +606,18 @@ class SSEConnectionManager {
         // Invalidate vault balance queries to trigger refetch
         // Using partial match to invalidate all vault balance variants
         queryClient.invalidateQueries({ queryKey: ['vault'] });
+
+        // Trigger Blockscout activity sync on deposit completion so that the
+        // savings activity gets updated with the actual minted soUSD amount
+        // (and correct Fuse tx hash) before the user sees it. Without this,
+        // the SSE from the Temporal workflow carries the USDC input amount
+        // (e.g. 10.00) instead of the actual minted amount (e.g. 9.48), and
+        // the correct value only appears after a manual page refresh.
+        if (data.balance.changeType === 'deposit') {
+          withRefreshToken(() => syncActivities()).catch(() => {
+            // Non-critical: user can still refresh manually
+          });
+        }
       } catch (err) {
         Sentry.captureException(err, {
           tags: { type: 'sse_balance_update_error' },
