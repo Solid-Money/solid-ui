@@ -875,17 +875,17 @@ function CardActions({
                   }}
                   disabled={isFreezing}
                 >
-                  <View className="items-center justify-center rounded-full bg-[#303030] p-3">
-                    {isFreezing ? (
+                  {isFreezing ? (
+                    <View className="items-center justify-center" style={{ width: 44, height: 44 }}>
                       <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <Image
-                        source={getAsset('images/card_actions_freeze.png')}
-                        style={{ width: 20, height: 20 }}
-                        contentFit="contain"
-                      />
-                    )}
-                  </View>
+                    </View>
+                  ) : (
+                    <Image
+                      source={getAsset('images/card_actions_freeze.png')}
+                      style={{ width: 44, height: 44 }}
+                      contentFit="contain"
+                    />
+                  )}
                   <Text className="text-base font-bold text-white">
                     {isCardFrozen ? 'Unfreeze' : 'Freeze'}
                   </Text>
