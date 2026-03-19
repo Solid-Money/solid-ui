@@ -7,6 +7,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -86,9 +87,18 @@ export default function Onboarding() {
 
     try {
       await handleLogin();
-    } catch {
-      // If no existing users, redirect to signup
-      router.replace(path.SIGNUP_EMAIL);
+    } catch (error: any) {
+      if (error?.status === 404) {
+        // User not found — redirect to signup
+        router.replace(path.SIGNUP_EMAIL);
+      } else {
+        // Other errors — show toast and stay on onboarding
+        Toast.show({
+          type: 'error',
+          text1: 'Login failed',
+          text2: error?.message || 'Something went wrong. Please try again.',
+        });
+      }
     }
   }, [handleLogin, router, setHasSeenOnboarding]);
 

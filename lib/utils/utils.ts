@@ -109,6 +109,13 @@ let globalLogoutHandler: (() => void) | null = null;
 
 let refreshTokenPromise: Promise<AuthTokens | null> | null = null;
 
+// Flag to suppress session-expired handler during intentional logout
+let isLoggingOut = false;
+
+export const setIsLoggingOut = (value: boolean) => {
+  isLoggingOut = value;
+};
+
 export const setGlobalLogoutHandler = (handler: () => void) => {
   globalLogoutHandler = handler;
 };
@@ -163,7 +170,7 @@ export const withRefreshToken = async <T>(
     } catch (refreshTokenError) {
       if (onError) {
         onError();
-      } else if (isAnyHTTPError(refreshTokenError, [401, 403, 404, 500])) {
+      } else if (!isLoggingOut && isAnyHTTPError(refreshTokenError, [401, 403, 500])) {
         globalLogoutHandler?.();
       }
       return undefined;

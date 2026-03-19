@@ -29,7 +29,7 @@ export default function SpinWheelCarousel({
   const lottieRef = useRef<LottieView>(null);
   const spinStarted = useRef(false);
   const handoffReached = useRef(false);
-  const pendingResultPoints = useRef<number | undefined>();
+  const pendingResultPoints = useRef<number | undefined>(undefined);
   const handoffTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const targetedSpinStartRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

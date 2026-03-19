@@ -282,6 +282,21 @@ export const updateUserCredentialId = async (credentialId: string) => {
   return response.json();
 };
 
+export const logout = async () => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/logout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const updateExternalWalletAddress = async (externalWalletAddress: string) => {
   const jwt = getJWTToken();
   const response = await fetch(

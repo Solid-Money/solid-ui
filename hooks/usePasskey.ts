@@ -144,7 +144,7 @@ export function usePasskey() {
     let cancelled = false;
     (async () => {
       const supported = await detectPasskeySupported();
-      if (!cancelled) setIsPasskeySupported(Boolean(supported));
+      if (!cancelled) setIsPasskeySupported(supported === '');
     })();
 
     return () => {
