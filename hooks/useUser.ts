@@ -15,13 +15,13 @@ import { useShallow } from 'zustand/react/shallow';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { getAmplitudeDeviceId, track, trackIdentity } from '@/lib/analytics';
-import { deleteAccount, login, updateSafeAddress } from '@/lib/api';
+import { deleteAccount, login, logout as apiLogout, updateSafeAddress } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
-import { getNonce, setGlobalLogoutHandler, withRefreshToken } from '@/lib/utils';
+import { getNonce, setGlobalLogoutHandler, setIsLoggingOut, withRefreshToken } from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -198,6 +198,9 @@ const useUser = (): UseUserReturn => {
   );
 
   const handleLogin = useCallback(async () => {
+    // Reset logout flag so future session expiries show the toast
+    setIsLoggingOut(false);
+
     // Get attribution context for login tracking
     const attributionStore = useAttributionStore.getState();
     const attributionData = attributionStore.getAttributionForEvent();
@@ -376,6 +379,7 @@ const useUser = (): UseUserReturn => {
   ]);
 
   const handleDummyLogin = useCallback(async () => {
+    if (!__DEV__) return;
     try {
       await storeUser({
         username: 'dummy',
@@ -398,11 +402,22 @@ const useUser = (): UseUserReturn => {
   }, [router, storeUser]);
 
   const handleLogout = useCallback(() => {
+    // Suppress session-expired toast during intentional logout
+    setIsLoggingOut(true);
+
     track(TRACKING_EVENTS.LOGGED_OUT, {
       user_id: user?.userId,
       username: user?.username,
     });
+
+    // Invalidate refresh tokens server-side (fire-and-forget)
+    apiLogout().catch(() => {});
+
     clearBalance();
+    // Clear tokens for the selected user before unselecting
+    if (user) {
+      updateUser({ ...user, tokens: undefined, selected: false });
+    }
     unselectUser();
     clearKycLinkId(); // Clear KYC data on logout
     intercom?.shutdown();
@@ -414,7 +429,7 @@ const useUser = (): UseUserReturn => {
     } else {
       router.replace(path.ONBOARDING);
     }
-  }, [clearBalance, unselectUser, clearKycLinkId, router, user, intercom]);
+  }, [clearBalance, unselectUser, updateUser, clearKycLinkId, router, user, intercom]);
 
   // New: select user by userId (preferred for email-first users)
   const handleSelectUserById = useCallback(
@@ -484,6 +499,10 @@ const useUser = (): UseUserReturn => {
 
   const handleSessionExpired = useCallback(() => {
     clearBalance();
+    // Clear tokens for the selected user before unselecting
+    if (user) {
+      updateUser({ ...user, tokens: undefined, selected: false });
+    }
     unselectUser();
     clearKycLinkId();
     intercom?.shutdown();
@@ -494,7 +513,16 @@ const useUser = (): UseUserReturn => {
     } else {
       router.replace(path.ONBOARDING);
     }
-  }, [clearBalance, unselectUser, clearKycLinkId, intercom, users.length, router]);
+  }, [
+    clearBalance,
+    unselectUser,
+    updateUser,
+    clearKycLinkId,
+    intercom,
+    user,
+    users.length,
+    router,
+  ]);
 
   const handleDeleteAccount = useCallback(async () => {
     try {
