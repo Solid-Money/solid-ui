@@ -6,6 +6,7 @@ import messaging from '@react-native-firebase/messaging';
 
 import { path } from '@/constants/path';
 import { registerPushToken } from '@/lib/api';
+import { registerForPushNotificationsAsync } from '@/lib/registerForPushNotifications';
 import { useUserStore } from '@/store/useUserStore';
 
 /**
@@ -22,6 +23,12 @@ export function usePushNotifications() {
   useEffect(() => {
     if (!isAuthenticated) return;
     if (Platform.OS === 'web') return;
+
+    // Ensure push notifications are registered for existing users who
+    // may have missed the onboarding screen. This is a no-op if already granted.
+    registerForPushNotificationsAsync().catch(err => {
+      console.warn('Push notification registration failed:', err);
+    });
 
     // Re-register token whenever FCM refreshes it (e.g., app reinstall, token expiry)
     const unsubscribeTokenRefresh = messaging().onTokenRefresh(async (newToken: string) => {
