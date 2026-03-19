@@ -65,8 +65,17 @@ export default function ActivityTransactions({
       setDirectDepositSession: state.setDirectDepositSession,
     })),
   );
-  const { activityEvents, activities, getKey, refetchAll, isSyncing, isSyncStale } = useActivity();
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = activityEvents;
+  const {
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    activities,
+    getKey: _getKey,
+    refetchAll,
+    isSyncing,
+    isSyncStale,
+  } = useActivity();
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
   // Ref-based guard to prevent rapid fetchNextPage calls from Load More button
   // React state (isFetchingNextPage) updates async, so multiple clicks could fire
@@ -458,25 +467,22 @@ export default function ActivityTransactions({
   }, [hasNextPage, isFetchingNextPage, handleLoadMore]);
 
   // Memoized key extractor for FlashList - stable reference improves performance
-  const keyExtractor = useCallback(
-    (item: TimeGroup, index: number) => {
-      if (item.type === ActivityGroup.HEADER) {
-        const headerKey = (item.data as TimeGroupHeaderData).key;
-        // Ensure header keys are always prefixed and unique
-        return headerKey.startsWith('header-')
-          ? `${headerKey}-${index}`
-          : `header-${headerKey}-${index}`;
-      }
-      const transaction = item.data as ActivityEvent;
-      // Use clientTxId as the stable, unique key — never hash/userOpHash (which
-      // arrive later via SSE and would cause a key flip, triggering FlashList to
-      // unmount/remount the item). Do NOT append index: adding any new activity
-      // shifts all subsequent items' indices, changing their keys and causing
-      // FlashList to unmount/remount the entire list (white flash).
-      return `tx-${transaction.clientTxId || transaction.timestamp || `unknown-${index}`}`;
-    },
-    [],
-  );
+  const keyExtractor = useCallback((item: TimeGroup, index: number) => {
+    if (item.type === ActivityGroup.HEADER) {
+      const headerKey = (item.data as TimeGroupHeaderData).key;
+      // Ensure header keys are always prefixed and unique
+      return headerKey.startsWith('header-')
+        ? `${headerKey}-${index}`
+        : `header-${headerKey}-${index}`;
+    }
+    const transaction = item.data as ActivityEvent;
+    // Use clientTxId as the stable, unique key — never hash/userOpHash (which
+    // arrive later via SSE and would cause a key flip, triggering FlashList to
+    // unmount/remount the item). Do NOT append index: adding any new activity
+    // shifts all subsequent items' indices, changing their keys and causing
+    // FlashList to unmount/remount the entire list (white flash).
+    return `tx-${transaction.clientTxId || transaction.timestamp || `unknown-${index}`}`;
+  }, []);
 
   // Show full loading state only for first load with stale data
   if (isLoading && !filteredTransactions.length && isSyncStale) {

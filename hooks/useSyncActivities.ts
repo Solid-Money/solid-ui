@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
@@ -142,9 +141,10 @@ export interface UseSyncActivitiesReturn {
 export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSyncActivitiesReturn {
   const { syncOnAppActive = true, syncOnMount = true } = options;
   const { user } = useUser();
-  const queryClient = useQueryClient();
   const appState = useRef(AppState.currentState);
   const hasInitialSynced = useRef(false);
+  const [isMutating, setIsMutating] = useState(false);
+  const [lastResult, setLastResult] = useState<SyncActivitiesResponse | null>(null);
 
   const {
     setLastSync,
@@ -170,46 +170,25 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
 
   const userId = user?.userId;
 
-  // Mutation for syncing
-  const syncMutation = useMutation({
-    mutationKey: ['sync-activities', userId],
-    mutationFn: async (syncOptions?: SyncActivitiesOptions) => {
+  // Plain async sync function (replaces useMutation)
+  const doSync = useCallback(
+    async (syncOptions?: SyncActivitiesOptions): Promise<SyncActivitiesResponse> => {
       if (!userId) throw new Error('User not authenticated');
-      return withRefreshToken(() => syncActivities(syncOptions));
-    },
-    // CRITICAL: Cancel and reset BEFORE sync starts!
-    // If bulk refetch is already in progress when sync triggers,
-    // we must CANCEL those requests first, then reset to page 1 only.
-    // This prevents React Query from refetching all 5 cached pages.
-    onMutate: async () => {
-      // Cancel any in-flight activity-events requests to prevent bulk refetch from continuing
-      await queryClient.cancelQueries({ queryKey: ['activity-events'] });
-      // Reset to first page only - this prevents bulk refetch of all cached pages
-      // See: https://tanstack.com/query/v4/docs/react/guides/infinite-queries#what-if-i-want-to-refetch-only-the-first-page
-      if (userId) {
-        queryClient.setQueryData(['activity-events', userId], (oldData: any) => {
-          if (!oldData?.pages?.length) return oldData;
-          return {
-            pages: oldData.pages.slice(0, 1),
-            pageParams: oldData.pageParams.slice(0, 1),
-          };
-        });
-      }
-    },
-    onSuccess: () => {
-      if (userId) {
+      setIsMutating(true);
+      try {
+        const result = await withRefreshToken(() => syncActivities(syncOptions));
         setLastSync(userId, Date.now());
+        setLastResult(result);
+        return result;
+      } catch (error) {
+        console.error('Failed to sync activities:', error);
+        throw error;
+      } finally {
+        setIsMutating(false);
       }
     },
-    onError: error => {
-      console.error('Failed to sync activities:', error);
-    },
-  });
-
-  // Extract stable function reference from mutation object
-  // CRITICAL: useMutation returns a new object on every render, but mutateAsync is stable
-  // Using the whole object as a dependency would cause infinite re-renders (React error #185)
-  const mutateAsync = syncMutation.mutateAsync;
+    [userId, setLastSync],
+  );
 
   // Smart sync function that respects cooldowns
   // Uses synchronous lock to prevent race conditions across 20+ components
@@ -229,14 +208,14 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
       }
 
       try {
-        return await mutateAsync(syncOptions);
+        return await doSync(syncOptions);
       } finally {
         // Always release the lock, regardless of success or failure
         // This ensures no memory leaks even if mutation is cancelled/aborted
         releaseSyncLock();
       }
     },
-    [userId, canSync, acquireSyncLock, releaseSyncLock, mutateAsync],
+    [userId, canSync, acquireSyncLock, releaseSyncLock, doSync],
   );
 
   // Manual sync for pull-to-refresh (respects min interval throttle by default)
@@ -301,8 +280,8 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
   return {
     sync,
     // Include both mutation pending and synchronous lock for accurate state
-    isSyncing: syncMutation.isPending || isSyncingLock,
-    lastResult: syncMutation.data ?? null,
+    isSyncing: isMutating || isSyncingLock,
+    lastResult,
     isStale: userId ? isStale(userId) : true,
     isWithinCooldown: userId ? isWithinCooldown(userId) : false,
     timeSinceLastSync,
