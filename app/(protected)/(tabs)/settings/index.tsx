@@ -1,13 +1,15 @@
 import { Linking, Platform, Pressable, Text, View } from 'react-native';
 import * as Application from 'expo-application';
 import { Image } from 'expo-image';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { router } from 'expo-router';
-import { ArrowLeft, ChevronLeft } from 'lucide-react-native';
+import { ArrowLeft, Bell, ChevronLeft } from 'lucide-react-native';
 
 import Navbar from '@/components/Navbar';
 import PageLayout from '@/components/PageLayout';
 import { SettingsCard } from '@/components/Settings';
 import { useDimension } from '@/hooks/useDimension';
+import useNotificationPermissionStatus from '@/hooks/useNotificationPermissionStatus';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { cn } from '@/lib/utils';
@@ -20,6 +22,14 @@ const LogoutIcon = getAsset('images/settings_logout.png');
 export default function Settings() {
   const { handleLogout } = useUser();
   const { isDesktop } = useDimension();
+  const { status: notificationStatus } = useNotificationPermissionStatus();
+
+  const notificationStatusColor =
+    notificationStatus === 'authorized'
+      ? 'text-[#94F27F]'
+      : notificationStatus === 'denied'
+        ? 'text-[#FFB347]'
+        : 'text-[#ACACAC]';
 
   const handleLegalPress = () => {
     const url =
@@ -88,6 +98,30 @@ export default function Settings() {
             hideIconBackground
           />
         </View>
+
+        {/* Push Notifications Card */}
+        {Platform.OS !== 'web' && (
+          <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">
+            <SettingsCard
+              title="Push Notifications"
+              description={notificationStatus}
+              descriptionStyle={notificationStatusColor}
+              icon={<Bell size={22} color="#ffffff" />}
+              onPress={() => {
+                if (Platform.OS === 'android') {
+                  IntentLauncher.startActivityAsync(
+                    IntentLauncher.ActivityAction.APP_NOTIFICATION_SETTINGS,
+                    { extra: { 'android.provider.extra.APP_PACKAGE': Application.applicationId } },
+                  );
+                } else {
+                  Linking.openSettings();
+                }
+              }}
+              isDesktop={isDesktop}
+              hideIconBackground
+            />
+          </View>
+        )}
 
         {/* Help & Support Card */}
         <View className="overflow-hidden rounded-xl bg-[#1c1c1c]">

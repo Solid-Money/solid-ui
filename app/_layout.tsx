@@ -38,6 +38,7 @@ import { toastProps } from '@/components/Toast';
 import { TurnkeyProvider } from '@/components/TurnkeyProvider';
 import { getInfoClient } from '@/graphql/clients';
 import { useAttributionInitialization } from '@/hooks/useAttributionInitialization';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useTrackingTransparency } from '@/hooks/useTrackingTransparency';
 import { useWhatsNew } from '@/hooks/useWhatsNew';
 import { initAnalytics, track, trackScreen } from '@/lib/analytics';
@@ -171,6 +172,9 @@ export default Sentry.wrap(function RootLayout() {
 
   // Initialize attribution tracking automatically (handles web and mobile)
   useAttributionInitialization();
+
+  // Push notification lifecycle: token refresh + notification tap handling
+  usePushNotifications();
 
   // App Tracking Transparency (iOS only)
   const {
