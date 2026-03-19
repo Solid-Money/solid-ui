@@ -399,7 +399,7 @@ function Success() {
 
         <Button
           className="mb-4 h-11 w-full rounded-xl bg-[#94F27F]"
-          onPress={() => router.push(path.HOME)}
+          onPress={() => router.replace(path.HOME)}
         >
           <Text className="text-base font-bold text-black">Home</Text>
         </Button>

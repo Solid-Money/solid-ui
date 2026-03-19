@@ -94,4 +94,8 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.SAVINGS_ACCOUNT,
   },
+  [TransactionType.WITHDRAW_COLLATERAL]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.SAVINGS_ACCOUNT,
+  },
 };

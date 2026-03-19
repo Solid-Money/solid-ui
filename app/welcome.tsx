@@ -130,6 +130,15 @@ export default function Welcome() {
           <Text className="text-base font-bold text-muted-foreground">Forget all users</Text>
         </Button>
       )}
+
+      {/* Recover account */}
+      {/* <Button
+        variant="ghost"
+        className="h-14 rounded-xl"
+        onPress={() => router.push(path.RECOVERY)}
+      >
+        <Text className="text-base font-bold text-muted-foreground">Recover account</Text>
+      </Button> */}
     </View>
   );
 
