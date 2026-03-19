@@ -1,7 +1,9 @@
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import messaging from '@react-native-firebase/messaging';
+
+import { registerPushToken } from '@/lib/api';
 
 export async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) {
@@ -31,17 +33,14 @@ export async function registerForPushNotificationsAsync() {
     return null;
   }
 
-  const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-
-  if (!projectId) throw new Error('Project ID not found');
-
   try {
-    const pushTokenString = (
-      await Notifications.getExpoPushTokenAsync({
-        projectId,
-      })
-    ).data;
-    return pushTokenString;
+    const fcmToken = await messaging().getToken();
+
+    // Persist token to backend (best-effort — don't block on failure)
+    const platform = Platform.OS as 'ios' | 'android';
+    await registerPushToken(fcmToken, platform);
+
+    return fcmToken;
   } catch (e: unknown) {
     throw new Error(`${e}`);
   }

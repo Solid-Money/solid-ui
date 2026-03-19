@@ -2565,6 +2565,40 @@ export const ensureWebhookSubscription = async (): Promise<EnsureWebhookResponse
   return response.json();
 };
 
+// Push Notification Token Management
+
+export const registerPushToken = async (token: string, platform: string) => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/users/push-token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ token, platform }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+export const removePushToken = async (token: string) => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/users/push-token`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ token }),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const fetchSavingsSummary = async (
   vault: string = 'USDC',
 ): Promise<SavingsSummaryResponse> => {

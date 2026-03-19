@@ -15,7 +15,13 @@ import { useShallow } from 'zustand/react/shallow';
 import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { getAmplitudeDeviceId, track, trackIdentity } from '@/lib/analytics';
-import { deleteAccount, login, logout as apiLogout, updateSafeAddress } from '@/lib/api';
+import {
+  deleteAccount,
+  login,
+  logout as apiLogout,
+  removePushToken,
+  updateSafeAddress,
+} from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
@@ -412,6 +418,22 @@ const useUser = (): UseUserReturn => {
 
     // Invalidate refresh tokens server-side (fire-and-forget)
     apiLogout().catch(() => {});
+
+    // Clean up FCM push token
+    if (Platform.OS !== 'web') {
+      (async () => {
+        const { default: messaging } = await import('@react-native-firebase/messaging');
+        try {
+          const fcmToken = await messaging().getToken();
+          await removePushToken(fcmToken).catch(() => {});
+        } finally {
+          // Always delete local FCM token regardless of backend response
+          await messaging()
+            .deleteToken()
+            .catch(() => {});
+        }
+      })();
+    }
 
     clearBalance();
     // Clear tokens for the selected user before unselecting
