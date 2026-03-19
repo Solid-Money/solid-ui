@@ -379,8 +379,16 @@ export interface CashbackData {
   percentage: number;
 }
 
+/** Card issuance provider; backend may add to details/status */
+export enum CardProvider {
+  BRIDGE = 'bridge',
+  RAIN = 'rain',
+}
+
 export interface CardDetailsResponseDto extends CardResponse {
   cashback: CashbackData;
+  /** Set by backend when available */
+  provider?: CardProvider;
 }
 
 export interface CardStatusResponse {
@@ -388,6 +396,8 @@ export interface CardStatusResponse {
   activationBlocked?: boolean;
   activationBlockedReason?: string;
   activationFailedAt?: string;
+  /** Set by backend when available; used to branch Bridge vs Rain flows */
+  provider?: CardProvider;
 }
 
 export enum LayerZeroTransactionStatus {

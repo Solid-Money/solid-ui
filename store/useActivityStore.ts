@@ -6,6 +6,12 @@ import { USER } from '@/lib/config';
 import mmkvStorage from '@/lib/mmvkStorage';
 import { ActivityEvent, TransactionStatus } from '@/lib/types';
 
+// Maximum events stored per user in the Zustand store (and MMKV).
+// Oldest events beyond this cap are evicted to prevent unbounded memory/disk growth.
+// Eviction uses a buffer so we don't sort on every single upsert.
+const MAX_EVENTS_PER_USER = 500;
+const EVICTION_BUFFER = 50;
+
 /**
  * Validates that an activity has all required fields with correct types.
  * Used to filter out corrupted data from storage hydration.
@@ -67,8 +73,26 @@ function isSameEvent(a: ActivityEvent, b: ActivityEvent): boolean {
   return (
     a.clientTxId === b.clientTxId ||
     (!!a.userOpHash && a.userOpHash === b.userOpHash) ||
-    a.clientTxId === b.userOpHash
+    (!!b.userOpHash && a.clientTxId === b.userOpHash) ||
+    (!!a.userOpHash && b.clientTxId === a.userOpHash)
   );
+}
+
+/**
+ * Strip undefined/null values from an event before merging.
+ * Prevents SSE partial updates (where backend sends sanitized fields that may
+ * be undefined) from overwriting existing valid data via object spread.
+ * e.g., `{ ...existing, ...event }` would set `type: undefined` if event.type
+ * is undefined, corrupting the stored event and breaking color/type logic.
+ */
+function stripNullish(event: ActivityEvent): Partial<ActivityEvent> {
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(event)) {
+    if (value !== undefined && value !== null) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned as Partial<ActivityEvent>;
 }
 
 // Helper to check if event data has actually changed
@@ -81,8 +105,29 @@ function hasEventChanged(existing: ActivityEvent, incoming: ActivityEvent): bool
     statusActuallyChanged ||
     existing.hash !== incoming.hash ||
     existing.deleted !== incoming.deleted ||
-    existing.failureReason !== incoming.failureReason
+    existing.failureReason !== incoming.failureReason ||
+    existing.amount !== incoming.amount ||
+    existing.symbol !== incoming.symbol ||
+    existing.title !== incoming.title
   );
+}
+
+/**
+ * Trim an events array to MAX_EVENTS_PER_USER if it exceeds the threshold.
+ * Keeps the most recent events by sorting on timestamp descending.
+ * Only triggers when length > MAX + BUFFER to amortize the sort cost.
+ *
+ * Note: ActivityEvent.timestamp is a string containing Unix seconds.
+ */
+function trimIfNeeded(events: ActivityEvent[]): ActivityEvent[] {
+  if (events.length <= MAX_EVENTS_PER_USER + EVICTION_BUFFER) return events;
+  return [...events]
+    .sort((a, b) => {
+      const ta = parseInt(a.timestamp) || 0;
+      const tb = parseInt(b.timestamp) || 0;
+      return tb - ta;
+    })
+    .slice(0, MAX_EVENTS_PER_USER);
 }
 
 export const useActivityStore = create<ActivityState>()(
@@ -102,21 +147,7 @@ export const useActivityStore = create<ActivityState>()(
         // Guard against invalid input
         if (!userId || !event) return;
 
-        // Check if update is needed BEFORE calling set() to prevent unnecessary re-renders
-        const currentState = useActivityStore.getState();
-        const userEvents = currentState.events[userId] || [];
-        const existingIndex = userEvents.findIndex((e: ActivityEvent) => isSameEvent(e, event));
-
-        if (existingIndex !== -1) {
-          // Event exists - check if it actually changed
-          const existing = userEvents[existingIndex];
-          if (!hasEventChanged(existing, event)) {
-            // No meaningful change - skip update entirely
-            return;
-          }
-        }
-
-        // Now we know there's a real change, proceed with update
+        // All checks happen inside produce() to avoid TOCTOU races
         set(
           produce(state => {
             state.events[userId] = state.events[userId] || [];
@@ -124,8 +155,12 @@ export const useActivityStore = create<ActivityState>()(
 
             if (idx === -1) {
               state.events[userId].push(event);
+              state.events[userId] = trimIfNeeded(state.events[userId]);
             } else {
               const existing = state.events[userId][idx];
+              // Skip if nothing meaningfully changed
+              if (!hasEventChanged(existing, event)) return;
+
               const mergedStatus =
                 event.status && isStatusDowngrade(existing.status, event.status)
                   ? existing.status
@@ -133,7 +168,7 @@ export const useActivityStore = create<ActivityState>()(
 
               state.events[userId][idx] = {
                 ...existing,
-                ...event,
+                ...stripNullish(event),
                 status: mergedStatus,
               };
             }
@@ -145,43 +180,46 @@ export const useActivityStore = create<ActivityState>()(
         // Guard against invalid input
         if (!userId || !events?.length) return;
 
-        // Filter to only events that are new or have changed
-        const currentState = useActivityStore.getState();
-        const userEvents = currentState.events[userId] || [];
-
-        const eventsToUpdate = events.filter(event => {
-          if (!event) return false;
-          const existingIndex = userEvents.findIndex((e: ActivityEvent) => isSameEvent(e, event));
-          if (existingIndex === -1) return true; // New event
-          return hasEventChanged(userEvents[existingIndex], event); // Changed event
-        });
-
-        // If nothing to update, skip entirely
-        if (!eventsToUpdate.length) return;
-
+        // All filtering happens inside produce() to avoid TOCTOU races:
+        // getState() outside could return a stale snapshot that's outdated
+        // by the time produce() executes.
         set(
           produce(state => {
             state.events[userId] = state.events[userId] || [];
-            for (const event of eventsToUpdate) {
+
+            let changed = false;
+            for (const event of events) {
+              if (!event) continue;
+
               const existingIndex = state.events[userId].findIndex((e: ActivityEvent) =>
                 isSameEvent(e, event),
               );
 
               if (existingIndex === -1) {
                 state.events[userId].push(event);
+                changed = true;
               } else {
                 const existing = state.events[userId][existingIndex];
-                const mergedStatus =
-                  event.status && isStatusDowngrade(existing.status, event.status)
-                    ? existing.status
-                    : (event.status ?? existing.status);
+                if (hasEventChanged(existing, event)) {
+                  const mergedStatus =
+                    event.status && isStatusDowngrade(existing.status, event.status)
+                      ? existing.status
+                      : (event.status ?? existing.status);
 
-                state.events[userId][existingIndex] = {
-                  ...existing,
-                  ...event,
-                  status: mergedStatus,
-                };
+                  const stripped = stripNullish(event);
+
+                  state.events[userId][existingIndex] = {
+                    ...existing,
+                    ...stripped,
+                    status: mergedStatus,
+                  };
+                  changed = true;
+                }
               }
+            }
+
+            if (changed) {
+              state.events[userId] = trimIfNeeded(state.events[userId]);
             }
           }),
         );
@@ -256,13 +294,12 @@ export const useActivityStore = create<ActivityState>()(
             totalCorrupted += corruptedCount;
           }
 
-          cleanedEvents[userId] = validEvents;
+          cleanedEvents[userId] = trimIfNeeded(validEvents);
         }
 
-        // Only update if we found and removed corrupted data
-        if (totalCorrupted > 0) {
-          state.events = cleanedEvents;
-        }
+        // Always apply cleaned (and trimmed) events — the trimIfNeeded call
+        // is a no-op when under the cap, so this is safe and simple.
+        state.events = cleanedEvents;
       },
     },
   ),
