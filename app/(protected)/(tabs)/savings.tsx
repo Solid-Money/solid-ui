@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { ImageBackground, Platform, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Address } from 'viem';
+
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
 import { FAQs } from '@/components/FAQ';
