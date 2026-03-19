@@ -5,6 +5,7 @@ import { formatDistanceToNow, isBefore, subDays } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
 import { Address, keccak256, toHex } from 'viem';
 
+import { getUsdcAddress } from '@/constants/bridge';
 import { refreshToken } from '@/lib/api';
 import {
   ADDRESSES,
@@ -12,7 +13,6 @@ import {
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS,
   EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL,
 } from '@/lib/config';
-import { getUsdcAddress } from '@/constants/bridge';
 import {
   AuthTokens,
   CardProvider,
@@ -123,6 +123,13 @@ let globalLogoutHandler: (() => void) | null = null;
 
 let refreshTokenPromise: Promise<AuthTokens | null> | null = null;
 
+// Flag to suppress session-expired handler during intentional logout
+let isLoggingOut = false;
+
+export const setIsLoggingOut = (value: boolean) => {
+  isLoggingOut = value;
+};
+
 export const setGlobalLogoutHandler = (handler: () => void) => {
   globalLogoutHandler = handler;
 };
@@ -177,7 +184,7 @@ export const withRefreshToken = async <T>(
     } catch (refreshTokenError) {
       if (onError) {
         onError();
-      } else if (isAnyHTTPError(refreshTokenError, [401, 403, 404, 500])) {
+      } else if (!isLoggingOut && isAnyHTTPError(refreshTokenError, [401, 403, 500])) {
         globalLogoutHandler?.();
       }
       return undefined;
@@ -336,19 +343,18 @@ export const getArbitrumFundingAddress = (cardDetails: CardResponse) => {
 };
 
 /** Card deposit token address on the funding chain: use override (e.g. rUSD) when set for funding chain, else USDC. */
-export function getCardDepositTokenAddress(
-  chainId: number,
-): string {
-  if (chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID && EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS) {
+export function getCardDepositTokenAddress(chainId: number): string {
+  if (
+    chainId === EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID &&
+    EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS
+  ) {
     return EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS;
   }
   return getUsdcAddress(chainId);
 }
 
 /** Display symbol for card deposit token (e.g. 'rUSD' in Rain sandbox, 'USDC' otherwise). */
-export function getCardDepositTokenSymbol(
-  provider: CardProvider | null | undefined,
-): string {
+export function getCardDepositTokenSymbol(provider: CardProvider | null | undefined): string {
   if (provider === CardProvider.RAIN && EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS) {
     return EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL;
   }

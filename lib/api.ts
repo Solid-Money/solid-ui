@@ -32,20 +32,17 @@ import {
   BridgeTransaction,
   BridgeTransactionRequest,
   CardAccessResponse,
-  CardDepositBonusConfig,
   CardBalanceResponseDto,
+  CardDepositBonusConfig,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
+  CardPinResponseDto,
   CardProvider,
   CardResponse,
   CardSecretsResponseDto,
-  CardPinResponseDto,
   CardStatusResponse,
   CardTransaction,
   CardTransactionsResponse,
-  RainContractResponseDto,
-  RainKycSubmitResponse,
-  SubmitPersonaKycResponse,
   CardWaitlistResponse,
   CardWithdrawal,
   CardWithdrawalResponse,
@@ -59,6 +56,7 @@ import {
   EnsureWebhookResponse,
   EphemeralKeyResponse,
   ExchangeRateResponse,
+  ExtensionCardsResponse,
   FromCurrency,
   FullRewardsConfig,
   GetLifiQuoteParams,
@@ -73,17 +71,21 @@ import {
   LifiOrder,
   LifiQuoteResponse,
   LifiStatusResponse,
+  MppCredentialsResponse,
   Points,
   PromotionsBannerResponse,
   ProvisioningSessionRequest,
   ProvisioningSessionResponse,
   RainConsumerType,
+  RainContractResponseDto,
+  RainKycSubmitResponse,
   RewardsUserData,
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
   StargateQuoteParams,
   StargateQuoteResponse,
+  SubmitPersonaKycResponse,
   SwapTokenRequest,
   SwapTokenResponse,
   SyncActivitiesOptions,
@@ -96,15 +98,12 @@ import {
   User,
   VaultBreakdown,
   VaultType,
-  MppCredentialsResponse,
-  ExtensionCardsResponse,
   WalletEligibilityResponse,
-  WebProvisioningTokenResponse,
   WebhookStatus,
+  WebProvisioningTokenResponse,
   WhatsNew,
   WithdrawCollateralRequest,
   WithdrawCollateralSignatureResponse,
-  SavingsSummaryResponse,
   WithdrawFromCardToSavingsResponse,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
@@ -300,6 +299,21 @@ export const updateUserCredentialId = async (credentialId: string) => {
   return response.json();
 };
 
+export const logout = async () => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/logout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const updateExternalWalletAddress = async (externalWalletAddress: string) => {
   const jwt = getJWTToken();
   const response = await fetch(
@@ -442,19 +456,16 @@ export const submitPersonaKyc = async (
 ): Promise<SubmitPersonaKycResponse> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/persona`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify({ personaInquiryId }),
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/persona`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-  );
+    credentials: 'include',
+    body: JSON.stringify({ personaInquiryId }),
+  });
 
   if (!response.ok) throw response;
 
@@ -491,23 +502,18 @@ export const personaSimulateAction = async (
 };
 
 /** Rain KYC (in-house): single multipart POST with application fields + document files. Backend creates Rain application then uploads docs. */
-export const submitRainKyc = async (
-  formData: FormData,
-): Promise<RainKycSubmitResponse> => {
+export const submitRainKyc = async (formData: FormData): Promise<RainKycSubmitResponse> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/rain`,
-    {
-      method: 'POST',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-      body: formData,
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/rain`, {
+    method: 'POST',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-  );
+    credentials: 'include',
+    body: formData,
+  });
 
   if (!response.ok) throw response;
 
@@ -521,40 +527,35 @@ export const createDiditSession = async (
   callback?: string,
 ): Promise<import('./types').DiditSessionResponse> => {
   const jwt = getJWTToken();
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      body: JSON.stringify(callback ? { callback } : {}),
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-  );
+    body: JSON.stringify(callback ? { callback } : {}),
+  });
   if (!response.ok) throw response;
   return response.json();
 };
 
 /** Get the current user's Didit verification status. */
-export const getDiditVerificationStatus =
-  async (): Promise<import('./types').DiditVerificationStatusResponse> => {
-    const jwt = getJWTToken();
-    const response = await fetch(
-      `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/status`,
-      {
-        credentials: 'include',
-        headers: {
-          ...getPlatformHeaders(),
-          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-        },
-      },
-    );
-    if (!response.ok) throw response;
-    return response.json();
-  };
+export const getDiditVerificationStatus = async (): Promise<
+  import('./types').DiditVerificationStatusResponse
+> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/status`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
 
 // The backend retrieves the customer by querying the database
 export const getCustomer = async (): Promise<BridgeCustomerResponse | null> => {
@@ -701,16 +702,13 @@ export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
 export const getCardBalance = async (): Promise<CardBalanceResponseDto> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/balance`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/balance`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-  );
+  });
 
   if (!response.ok) throw response;
 
@@ -721,16 +719,13 @@ export const getCardBalance = async (): Promise<CardBalanceResponseDto> => {
 export const getCardContracts = async (): Promise<RainContractResponseDto[]> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/contracts`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/contracts`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-  );
+  });
 
   if (!response.ok) throw response;
 
@@ -2008,18 +2003,15 @@ export const requestCardSecrets = async (
 ): Promise<CardSecretsResponseDto> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/secrets`,
-    {
-      method: 'POST',
-      headers: {
-        ...getPlatformHeaders(),
-        SessionId: sessionIdBase64,
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/secrets`, {
+    method: 'POST',
+    headers: {
+      ...getPlatformHeaders(),
+      SessionId: sessionIdBase64,
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-  );
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 
@@ -2033,20 +2025,17 @@ export const updateCardPin = async (
 ): Promise<{ message?: string }> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/pin`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getPlatformHeaders(),
-        SessionId: sessionIdBase64,
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify({ encryptedPin }),
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/pin`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      SessionId: sessionIdBase64,
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-  );
+    credentials: 'include',
+    body: JSON.stringify({ encryptedPin }),
+  });
 
   if (!response.ok) throw response;
 
@@ -2055,22 +2044,17 @@ export const updateCardPin = async (
 };
 
 /** Rain only: GET card PIN with SessionId header (base64). Returns encrypted PIN. */
-export const getCardPin = async (
-  sessionIdBase64: string,
-): Promise<CardPinResponseDto> => {
+export const getCardPin = async (sessionIdBase64: string): Promise<CardPinResponseDto> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/pin`,
-    {
-      headers: {
-        ...getPlatformHeaders(),
-        SessionId: sessionIdBase64,
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      credentials: 'include',
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/pin`, {
+    headers: {
+      ...getPlatformHeaders(),
+      SessionId: sessionIdBase64,
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-  );
+    credentials: 'include',
+  });
 
   if (!response.ok) throw response;
 
@@ -2137,20 +2121,10 @@ export const revealCardDetailsCompleteRain = async (): Promise<CardDetailsReveal
     throw new Error('Rain card public key not configured');
   }
   const details = await getCardDetails();
-  const { secretKey, sessionId } = await generateSessionId(
-    EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
-  );
+  const { secretKey, sessionId } = await generateSessionId(EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM);
   const secrets = await requestCardSecrets(sessionId);
-  const pan = await decryptSecret(
-    secrets.encryptedPan.data,
-    secrets.encryptedPan.iv,
-    secretKey,
-  );
-  const cvc = await decryptSecret(
-    secrets.encryptedCvc.data,
-    secrets.encryptedCvc.iv,
-    secretKey,
-  );
+  const pan = await decryptSecret(secrets.encryptedPan.data, secrets.encryptedPan.iv, secretKey);
+  const cvc = await decryptSecret(secrets.encryptedCvc.data, secrets.encryptedCvc.iv, secretKey);
   const expiry = details?.card_details?.expiry ?? '';
   return {
     card_number: pan,

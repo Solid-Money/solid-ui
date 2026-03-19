@@ -510,7 +510,6 @@ export default function ActivityTransactions({
         data={filteredTransactions}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        estimatedItemSize={64}
         // NOTE: onEndReached was intentionally removed to prevent bulk page fetches
         // FlashList fires onEndReached on every re-render when content doesn't fill viewport
         // This caused all pages to fetch immediately (Sentry: "10+ renders/second")
