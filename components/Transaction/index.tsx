@@ -47,6 +47,7 @@ const Transaction = ({
   title,
   amount,
   status,
+  hash,
   classNames,
   symbol,
   logoUrl,
