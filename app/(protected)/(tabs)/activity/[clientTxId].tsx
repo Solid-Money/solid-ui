@@ -587,7 +587,13 @@ export default function ActivityDetail() {
           {tokenIcon && <RenderTokenIcon tokenIcon={tokenIcon} size={75} />}
 
           <View className="items-center">
-            {!hideSavingsAmount && (
+            {hideSavingsAmount ? (
+              isSuccess && (
+                <Text className="text-lg font-semibold text-muted-foreground">
+                  Confirming amount...
+                </Text>
+              )
+            ) : (
               <Text className={cn('text-2xl font-bold', statusTextColor)}>
                 {statusSign}
                 {formatNumber(Number(finalActivity.amount))} {formatSymbol(finalActivity.symbol)}
