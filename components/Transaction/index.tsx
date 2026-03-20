@@ -167,7 +167,8 @@ const Transaction = ({
   const isDeposit = type === TransactionType.DEPOSIT;
   const isSavingsDeposit =
     isDeposit && (symbol?.toLowerCase() === 'sousd' || symbol?.toLowerCase() === 'sofuse');
-  const hideSavingsAmount = isSavingsDeposit && (isPending || isProcessing);
+  const isSuccess = status === TransactionStatus.SUCCESS;
+  const hideSavingsAmount = isSavingsDeposit && (isPending || isProcessing || (isSuccess && !hash));
 
   const statusTextColor = isFailed
     ? 'text-red-400'
@@ -210,8 +211,6 @@ const Transaction = ({
     tokenSymbol: symbol?.toLowerCase() === 'usdc.e' ? 'USDC' : symbol,
     size: 44,
   });
-
-  const isSuccess = status === TransactionStatus.SUCCESS;
 
   const getDescription = () => {
     if (isPending) return 'Pending';
