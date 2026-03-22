@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Platform, Pressable, TextInput, View } from 'react-native';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -110,31 +110,37 @@ const SendForm: React.FC<SendFormProps> = ({ onNext }) => {
     if (amount) setValue('amount', amount);
   }, [amount, setValue]);
 
-  const handleAmountChange = (value: string) => {
-    setAmount(value);
-    setValue('amount', value);
-  };
+  const handleAmountChange = useCallback(
+    (value: string) => {
+      setAmount(value);
+      setValue('amount', value);
+    },
+    [setAmount, setValue],
+  );
 
-  const handleTokenSelectorPress = () => {
+  const handleTokenSelectorPress = useCallback(() => {
     track(TRACKING_EVENTS.SEND_PAGE_TOKEN_SELECTOR_OPENED, {
       source: 'send_modal',
       current_token: selectedToken?.contractTickerSymbol || null,
     });
     setModal(SEND_MODAL.OPEN_TOKEN_SELECTOR);
-  };
+  }, [setModal, selectedToken]);
 
-  const handleMaxPress = () => {
+  const handleMaxPress = useCallback(() => {
     if (selectedToken && balanceAmount > 0) {
       const maxAmount = balanceAmount.toString();
       setAmount(maxAmount);
       setValue('amount', maxAmount);
     }
-  };
+  }, [setAmount, setValue, selectedToken, balanceAmount]);
 
-  const onSubmit = (data: any) => {
-    setAmount(data.amount.toString());
-    onNext();
-  };
+  const onSubmit = useCallback(
+    (data: any) => {
+      setAmount(data.amount.toString());
+      onNext();
+    },
+    [setAmount, onNext],
+  );
 
   return (
     <View className="flex-1 justify-between gap-8">

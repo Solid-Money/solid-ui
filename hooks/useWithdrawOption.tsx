@@ -1,6 +1,7 @@
-import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import { Pressable, PressableProps, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Minus } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import TransactionStatus from '@/components/TransactionStatus';
@@ -14,7 +15,7 @@ import { useDimension } from '@/hooks/useDimension';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { UnstakeModal } from '@/lib/types';
 import { useUnstakeStore } from '@/store/useUnstakeStore';
-import { Minus } from 'lucide-react-native';
+
 import useResponsiveModal from './useResponsiveModal';
 
 export interface WithdrawOptionProps {

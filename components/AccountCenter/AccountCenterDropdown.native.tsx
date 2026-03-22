@@ -86,18 +86,12 @@ const AccountCenterDropdown = () => {
           <Pressable className={rowClassName} onPress={handleSettingsPress}>
             <AccountCenterSettings />
           </Pressable>
-          <Pressable className={rowClassName} onPress={handleSignOutPress}>
-            <AccountCenterSignOut />
-          </Pressable>
-          <View className="mx-[30px] h-px bg-border/50" />
           <Pressable className={rowClassName} onPress={handleSupportPress}>
             <InfoCenterSupport />
           </Pressable>
-          <Pressable className={rowClassName} onPress={handleDocsPress}>
-            <InfoCenterDocs />
-          </Pressable>
-          <Pressable className={rowClassName} onPress={handleLegalPress}>
-            <InfoCenterLegal />
+          <View className="mx-[30px] h-px bg-border/50" />
+          <Pressable className={rowClassName} onPress={handleSignOutPress}>
+            <AccountCenterSignOut />
           </Pressable>
         </BottomSheetView>
       </BottomSheetModal>
