@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { GestureResponderEvent, useWindowDimensions, View } from 'react-native';
-import { Defs, LinearGradient, Stop } from 'react-native-svg';
-import { VictoryArea, VictoryAxis, VictoryChart } from 'victory-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useWindowDimensions, View } from 'react-native';
+import { useAnimatedReaction } from 'react-native-reanimated';
+import { LineChart } from 'react-native-wagmi-charts';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useShallow } from 'zustand/react/shallow';
 
 import { calculatePercentageChange } from '@/components/ChartTooltip';
@@ -23,260 +24,229 @@ interface AreaChartProps {
 }
 
 const CHART_HEIGHT = 300;
-const CHART_PADDING = { top: 10, bottom: 60, left: 0, right: 70 };
-const TOUCH_THROTTLE_MS = 32;
+const Y_AXIS_WIDTH = 70;
+const X_AXIS_HEIGHT = 30;
+const CHART_AREA_HEIGHT = CHART_HEIGHT - X_AXIS_HEIGHT;
+const Y_TICK_COUNT = 4;
+const X_TICK_COUNT = 4;
 
-const tickLabelStyle = (isLabel: boolean) => ({
-  fill: 'rgba(255, 255, 255, 0.5)' as const,
-  fontSize: 14,
-  ...(isLabel ? {} : { opacity: 0 }),
-});
-
-const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: AreaChartProps) => {
+const ChartContent = ({
+  data,
+  formatToolTip,
+  formatYAxis,
+  isLabel = true,
+}: {
+  data: ChartPayload[];
+  formatToolTip?: (value: number | null) => string;
+  formatYAxis?: (value: number) => string;
+  isLabel: boolean;
+}) => {
   const { setSelectedPrice, setSelectedPriceChange } = useCoinStore(
     useShallow(state => ({
       setSelectedPrice: state.setSelectedPrice,
       setSelectedPriceChange: state.setSelectedPriceChange,
     })),
   );
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [touchX, setTouchX] = useState<number>(0);
-  const lastTouchTime = useRef(0);
 
-  const { width: screenWidth } = useWindowDimensions();
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [tooltipData, setTooltipData] = useState<{
+    price: string;
+    date: string;
+    priceChange: number | null;
+  } | null>(null);
 
-  const chartData = useMemo(() => {
-    if (!data || data.length < 2) return null;
+  const { currentIndex, isActive } = LineChart.useChart();
 
-    return data.map((d, index) => ({
-      x: index,
-      y: d.value,
-      time: d.time,
-    }));
-  }, [data]);
+  const syncStore = useCallback(
+    (index: number, active: boolean) => {
+      if (active && index >= 0 && index < data.length) {
+        const currentData = data[index];
+        if (currentData) {
+          setSelectedPrice(currentData.value);
 
-  // Get x-axis tick values and labels
-  const xAxisTicks = useMemo(() => {
-    if (!data || data.length < 2) return { ticks: [], labels: [] };
-    const tickCount = Math.min(5, data.length);
-    // Exclude last 10% of data points to avoid overlap with y-axis
-    const maxIndex = Math.floor(data.length * 0.9);
-    const step = Math.max(1, Math.floor(maxIndex / (tickCount - 1)));
-    const ticks: number[] = [];
-    const labels: string[] = [];
-    for (let i = 0; i < maxIndex; i += step) {
-      ticks.push(i);
-      labels.push(formatChartAxisLabel(data[i].time));
-    }
-    return { ticks, labels };
-  }, [data]);
+          if (index > 0) {
+            const previousPrice = data[index - 1]?.value;
+            if (previousPrice) {
+              const priceChange = calculatePercentageChange(previousPrice, currentData.value);
+              if (priceChange) {
+                setSelectedPriceChange(priceChange);
+              }
+            }
+          }
 
-  // Get y-axis tick values
-  const yAxisTicks = useMemo(() => {
+          const format = (value: number | null) => {
+            if (!value) return '$0.00';
+            return `$${formatNumber(value)}`;
+          };
+
+          const prevData = index > 0 ? data[index - 1] : null;
+          const change =
+            prevData && currentData
+              ? calculatePercentageChange(prevData.value, currentData.value)
+              : null;
+
+          setTooltipData({
+            price: formatToolTip ? formatToolTip(currentData.value) : format(currentData.value),
+            date: formatChartTooltipDate(currentData.time),
+            priceChange: change,
+          });
+          setTooltipVisible(true);
+        }
+      } else {
+        setSelectedPrice(null);
+        setSelectedPriceChange(null);
+        setTooltipVisible(false);
+        setTooltipData(null);
+      }
+    },
+    [data, formatToolTip, setSelectedPrice, setSelectedPriceChange],
+  );
+
+  useAnimatedReaction(
+    () => ({
+      index: currentIndex.value,
+      active: isActive.value,
+    }),
+    (current, previous) => {
+      if (current.index !== previous?.index || current.active !== previous?.active) {
+        scheduleOnRN(syncStore, current.index, current.active);
+      }
+    },
+    [syncStore],
+  );
+
+  useEffect(() => {
+    return () => {
+      setSelectedPrice(null);
+      setSelectedPriceChange(null);
+    };
+  }, [setSelectedPrice, setSelectedPriceChange]);
+
+  // Compute Y-axis tick labels
+  const yTicks = useMemo(() => {
     if (!data || data.length < 2) return [];
     const values = data.map(d => d.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const range = max - min || 1;
     const padding = range * 0.1;
-    const minValue = min - padding;
-    const maxValue = max + padding;
-    const tickCount = 5;
-    const step = (maxValue - minValue) / (tickCount - 1);
-    const ticks: number[] = [];
-    for (let i = 0; i < tickCount; i++) {
-      ticks.push(minValue + step * i);
+    const minVal = min - padding;
+    const maxVal = max + padding;
+    const step = (maxVal - minVal) / (Y_TICK_COUNT - 1);
+
+    const defaultFormat = (value: number) => {
+      if (value === 0) return '$0';
+      const abs = Math.abs(value);
+      if (abs >= 1) return `$${formatNumber(value, 1, 0)}`;
+      const maxDigits = Math.min(8, Math.max(2, Math.ceil(-Math.log10(abs)) + 2));
+      return `$${formatNumber(value, maxDigits, 0)}`;
+    };
+
+    const formatter = formatYAxis || defaultFormat;
+    const ticks = [];
+    for (let i = 0; i < Y_TICK_COUNT; i++) {
+      const val = minVal + step * i;
+      // Position: 0 = bottom of chart, 1 = top
+      const pct = i / (Y_TICK_COUNT - 1);
+      ticks.push({ label: formatter(val), pct });
+    }
+    return ticks;
+  }, [data, formatYAxis]);
+
+  // Compute X-axis tick labels
+  const xTicks = useMemo(() => {
+    if (!data || data.length < 2) return [];
+    const maxIndex = Math.floor(data.length * 0.9);
+    const step = Math.max(1, Math.floor(maxIndex / (X_TICK_COUNT - 1)));
+    const ticks = [];
+    for (let i = 0; i < maxIndex; i += step) {
+      ticks.push({
+        label: formatChartAxisLabel(data[i].time),
+        pct: i / (data.length - 1),
+      });
     }
     return ticks;
   }, [data]);
 
-  // Calculate min/max for Y position calculation
-  const { minValue, maxValue } = useMemo(() => {
-    if (!data || data.length < 2) return { minValue: 0, maxValue: 1 };
-    const values = data.map(d => d.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    // Add padding like domainPadding does
-    const range = max - min || 1;
-    const padding = range * 0.1;
-    return {
-      minValue: min - padding,
-      maxValue: max + padding,
-    };
-  }, [data]);
-
-  // Convert data value to Y pixel position
-  const getYPosition = useCallback(
-    (value: number) => {
-      const chartAreaHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
-      const range = maxValue - minValue || 1;
-      const normalizedValue = (value - minValue) / range;
-      // Invert because screen Y increases downward
-      return CHART_PADDING.top + chartAreaHeight * (1 - normalizedValue);
-    },
-    [minValue, maxValue],
-  );
-
-  const getIndexFromX = useCallback(
-    (locationX: number) => {
-      if (!data || data.length < 2) return null;
-      const index = Math.round((locationX / screenWidth) * (data.length - 1));
-      return Math.max(0, Math.min(data.length - 1, index));
-    },
-    [data, screenWidth],
-  );
-
-  const handleTouch = useCallback(
-    (evt: GestureResponderEvent) => {
-      // Throttle touch events to reduce JS thread load on Android
-      const now = Date.now();
-      if (now - lastTouchTime.current < TOUCH_THROTTLE_MS) return;
-      lastTouchTime.current = now;
-
-      const { locationX } = evt.nativeEvent;
-      const index = getIndexFromX(locationX);
-      if (index === null) return;
-
-      setActiveIndex(index);
-      setTouchX(locationX);
-
-      const currentData = data[index];
-      if (currentData) {
-        setSelectedPrice(currentData.value);
-
-        if (index > 0) {
-          const previousPrice = data[index - 1]?.value;
-          if (previousPrice) {
-            const priceChange = calculatePercentageChange(previousPrice, currentData.value);
-            if (priceChange) {
-              setSelectedPriceChange(priceChange);
-            }
-          }
-        }
-      }
-    },
-    [data, getIndexFromX, setSelectedPrice, setSelectedPriceChange],
-  );
-
-  const handleTouchEnd = useCallback(() => {
-    setActiveIndex(null);
-  }, []);
-
-  if (!chartData) {
-    return <View style={{ height: CHART_HEIGHT }} />;
-  }
-
-  const activeData = activeIndex !== null ? data[activeIndex] : null;
-  const previousData = activeIndex !== null && activeIndex > 0 ? data[activeIndex - 1] : null;
-  const priceChange =
-    activeData && previousData
-      ? calculatePercentageChange(previousData.value, activeData.value)
-      : null;
-
-  const format = (value: number | null) => {
-    if (!value) return `$0.00`;
-    return `$${formatNumber(value)}`;
-  };
-
-  const TOOLTIP_WIDTH = 140;
-
-  // Position tooltip to the right of touch, or left if near edge
-  const tooltipLeft =
-    touchX + 20 + TOOLTIP_WIDTH > screenWidth ? touchX - TOOLTIP_WIDTH - 10 : touchX + 20;
-
   return (
-    <View style={[{ height: CHART_HEIGHT }, style]}>
-      <View
-        onStartShouldSetResponder={() => true}
-        onMoveShouldSetResponder={() => true}
-        onResponderGrant={handleTouch}
-        onResponderMove={handleTouch}
-        onResponderRelease={handleTouchEnd}
-        onResponderTerminate={handleTouchEnd}
-      >
-        <VictoryChart
-          width={screenWidth}
-          height={CHART_HEIGHT}
-          padding={CHART_PADDING}
-          domainPadding={{ y: 10 }}
-        >
-          <Defs>
-            <LinearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <Stop offset="0%" stopColor="#94F27F" stopOpacity={0.15} />
-              <Stop offset="100%" stopColor="#94F27F" stopOpacity={0} />
-            </LinearGradient>
-          </Defs>
-          <VictoryAxis
-            tickValues={xAxisTicks.ticks}
-            tickFormat={t => {
-              const index = Math.round(t);
-              return index >= 0 && index < xAxisTicks.labels.length ? xAxisTicks.labels[index] : '';
-            }}
+    <>
+      {/* Chart + Y-axis side by side */}
+      <View style={{ flexDirection: 'row', height: CHART_AREA_HEIGHT }}>
+        <View style={{ flex: 1 }}>
+          <LineChart height={CHART_AREA_HEIGHT} yGutter={16}>
+            <LineChart.Path color="#94F27F" width={1}>
+              <LineChart.Gradient color="#94F27F" />
+            </LineChart.Path>
+            <LineChart.CursorCrosshair color="#94F27F" size={8} outerSize={20} snapToPoint />
+          </LineChart>
+        </View>
+        {/* Y-axis labels */}
+        {isLabel && (
+          <View
             style={{
-              axis: { stroke: 'transparent' },
-              ticks: { stroke: 'transparent' },
-              tickLabels: tickLabelStyle(isLabel),
-              grid: { stroke: 'transparent' },
+              width: Y_AXIS_WIDTH,
+              height: CHART_AREA_HEIGHT,
+              justifyContent: 'space-between',
+              paddingVertical: 4,
             }}
-          />
-          <VictoryAxis
-            dependentAxis
-            orientation="right"
-            tickValues={yAxisTicks}
-            tickFormat={t => {
-              if (typeof t !== 'number' || !isFinite(t)) return formatYAxis ? formatYAxis(0) : '0';
-              return formatYAxis ? formatYAxis(t) : `${formatNumber(t, 1, 0)}`;
-            }}
-            style={{
-              axis: { stroke: 'transparent' },
-              ticks: { stroke: 'transparent' },
-              tickLabels: tickLabelStyle(isLabel),
-              grid: { stroke: 'transparent' },
-            }}
-          />
-          <VictoryArea
-            data={chartData}
-            interpolation="linear"
-            style={{
-              data: {
-                fill: 'url(#areaGradient)',
-                stroke: '#94F27F',
-                strokeWidth: 1,
-              },
-            }}
-          />
-        </VictoryChart>
+            pointerEvents="none"
+          >
+            {[...yTicks].reverse().map((tick, i) => (
+              <Text
+                key={i}
+                style={{
+                  fontSize: 11,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  textAlign: 'right',
+                  paddingRight: 4,
+                }}
+              >
+                {tick.label}
+              </Text>
+            ))}
+          </View>
+        )}
       </View>
-      {/* Dot indicator - simple clean dot matching web */}
-      {activeIndex !== null && activeData && (
+
+      {/* X-axis labels */}
+      {isLabel && (
         <View
           style={{
-            position: 'absolute',
-            width: 10,
-            height: 10,
-            borderRadius: 5,
-            backgroundColor: '#94F27F',
-            borderWidth: 2,
-            borderColor: '#FFFFFF',
-            left: touchX - 5,
-            top: getYPosition(activeData.value) - 5,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.2,
-            shadowRadius: 3,
-            elevation: 3,
+            height: X_AXIS_HEIGHT,
+            marginRight: Y_AXIS_WIDTH,
           }}
-          pointerEvents="none"
-        />
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-evenly',
+              paddingTop: 8,
+            }}
+          >
+            {xTicks.map((tick, i) => (
+              <Text
+                key={i}
+                style={{
+                  fontSize: 12,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  textAlign: 'center',
+                }}
+              >
+                {tick.label}
+              </Text>
+            ))}
+          </View>
+        </View>
       )}
-      {/* Tooltip - white background matching web exactly */}
-      {activeIndex !== null && activeData && (
+
+      {/* Tooltip */}
+      {tooltipVisible && tooltipData && (
         <View
           style={{
             position: 'absolute',
-            left: tooltipLeft,
-            top: Math.max(8, getYPosition(activeData.value) - 30),
-            minWidth: TOOLTIP_WIDTH,
+            top: 8,
+            right: 8,
+            minWidth: 140,
             paddingVertical: 12,
             paddingHorizontal: 14,
             backgroundColor: '#FFFFFF',
@@ -290,26 +260,54 @@ const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: Area
           pointerEvents="none"
         >
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#18181B' }}>
-            {formatToolTip ? formatToolTip(activeData.value) : format(activeData.value)}
+            {tooltipData.price}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            {priceChange !== null && (
+            {tooltipData.priceChange !== null && (
               <Text
                 style={{
                   fontSize: 14,
                   fontWeight: '600',
-                  color: priceChange < 0 ? '#EF4444' : '#22C55E',
+                  color: tooltipData.priceChange < 0 ? '#EF4444' : '#22C55E',
                 }}
               >
-                {formatNumber(priceChange, 2)}%
+                {formatNumber(tooltipData.priceChange, 2)}%
               </Text>
             )}
-            <Text style={{ fontSize: 14, color: '#9CA3AF' }}>
-              {formatChartTooltipDate(activeData.time)}
-            </Text>
+            <Text style={{ fontSize: 14, color: '#9CA3AF' }}>{tooltipData.date}</Text>
           </View>
         </View>
       )}
+    </>
+  );
+};
+
+const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: AreaChartProps) => {
+  const { width: screenWidth } = useWindowDimensions();
+
+  const wagmiData = useMemo(() => {
+    if (!data || data.length < 2) return null;
+
+    return data.map(d => ({
+      timestamp: typeof d.time === 'string' ? new Date(d.time).getTime() : d.time,
+      value: d.value,
+    }));
+  }, [data]);
+
+  if (!wagmiData) {
+    return <View style={{ height: CHART_HEIGHT }} />;
+  }
+
+  return (
+    <View style={[{ height: CHART_HEIGHT, width: screenWidth }, style]}>
+      <LineChart.Provider data={wagmiData}>
+        <ChartContent
+          data={data}
+          formatToolTip={formatToolTip}
+          formatYAxis={formatYAxis}
+          isLabel={isLabel}
+        />
+      </LineChart.Provider>
     </View>
   );
 };

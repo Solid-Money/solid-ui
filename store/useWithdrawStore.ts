@@ -1,9 +1,6 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { WITHDRAW_MODAL } from '@/constants/modals';
-import { USER } from '@/lib/config';
-import mmkvStorage from '@/lib/mmvkStorage';
 import { TransactionStatusModal, WithdrawModal } from '@/lib/types';
 
 interface WithdrawState {
@@ -14,23 +11,15 @@ interface WithdrawState {
   setTransaction: (transaction: TransactionStatusModal) => void;
 }
 
-export const useWithdrawStore = create<WithdrawState>()(
-  persist(
-    (set, get) => ({
-      currentModal: WITHDRAW_MODAL.CLOSE,
-      previousModal: WITHDRAW_MODAL.CLOSE,
-      transaction: {},
+export const useWithdrawStore = create<WithdrawState>()((set, get) => ({
+  currentModal: WITHDRAW_MODAL.CLOSE,
+  previousModal: WITHDRAW_MODAL.CLOSE,
+  transaction: {},
 
-      setModal: modal =>
-        set({
-          previousModal: get().currentModal,
-          currentModal: modal,
-        }),
-      setTransaction: transaction => set({ transaction }),
+  setModal: modal =>
+    set({
+      previousModal: get().currentModal,
+      currentModal: modal,
     }),
-    {
-      name: USER.withdrawStorageKey,
-      storage: createJSONStorage(() => mmkvStorage(USER.withdrawStorageKey)),
-    },
-  ),
-);
+  setTransaction: transaction => set({ transaction }),
+}));
