@@ -210,7 +210,13 @@ export default function Coin() {
                   <View style={{ marginLeft: -16, marginRight: -16 }}>
                     <LazyAreaChart
                       data={formattedChartData}
-                      formatYAxis={value => `$${formatNumber(value, 1, 0)}`}
+                      formatYAxis={value => {
+                        if (value === 0) return '$0';
+                        const abs = Math.abs(value);
+                        if (abs >= 1) return `$${formatNumber(value, 1, 0)}`;
+                        const maxDigits = Math.min(8, Math.max(2, Math.ceil(-Math.log10(abs)) + 2));
+                        return `$${formatNumber(value, maxDigits, 0)}`;
+                      }}
                     />
                   </View>
                 ) : null}

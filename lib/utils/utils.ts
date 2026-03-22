@@ -134,7 +134,7 @@ export const isAnyHTTPError = (error: any, statuses: number[]) => {
 export const withRefreshToken = async <T>(
   apiCall: () => Promise<T>,
   { onError }: { onError?: () => void } = {},
-): Promise<T | undefined> => {
+): Promise<T> => {
   try {
     return await apiCall();
   } catch (error: any) {
@@ -173,7 +173,7 @@ export const withRefreshToken = async <T>(
       } else if (!isLoggingOut && isAnyHTTPError(refreshTokenError, [401, 403, 500])) {
         globalLogoutHandler?.();
       }
-      return undefined;
+      throw refreshTokenError;
     }
 
     // Retry original request with new access token

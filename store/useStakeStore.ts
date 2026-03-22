@@ -1,9 +1,6 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { STAKE_MODAL } from '@/constants/modals';
-import { USER } from '@/lib/config';
-import mmkvStorage from '@/lib/mmvkStorage';
 import { StakeModal, TransactionStatusModal } from '@/lib/types';
 
 interface StakeState {
@@ -14,23 +11,15 @@ interface StakeState {
   setTransaction: (transaction: TransactionStatusModal) => void;
 }
 
-export const useStakeStore = create<StakeState>()(
-  persist(
-    (set, get) => ({
-      currentModal: STAKE_MODAL.CLOSE,
-      previousModal: STAKE_MODAL.CLOSE,
-      transaction: {},
+export const useStakeStore = create<StakeState>()((set, get) => ({
+  currentModal: STAKE_MODAL.CLOSE,
+  previousModal: STAKE_MODAL.CLOSE,
+  transaction: {},
 
-      setModal: modal =>
-        set({
-          previousModal: get().currentModal,
-          currentModal: modal,
-        }),
-      setTransaction: transaction => set({ transaction }),
+  setModal: modal =>
+    set({
+      previousModal: get().currentModal,
+      currentModal: modal,
     }),
-    {
-      name: USER.stakeStorageKey,
-      storage: createJSONStorage(() => mmkvStorage(USER.stakeStorageKey)),
-    },
-  ),
-);
+  setTransaction: transaction => set({ transaction }),
+}));

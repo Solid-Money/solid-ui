@@ -1,9 +1,6 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { DEPOSIT_FROM_SAFE_ACCOUNT_MODAL } from '@/constants/modals';
-import { USER } from '@/lib/config';
-import mmkvStorage from '@/lib/mmvkStorage';
 import { DepositFromSafeAccountModal, TransactionStatusModal } from '@/lib/types';
 
 interface DepositFromSafeAccountState {
@@ -14,23 +11,15 @@ interface DepositFromSafeAccountState {
   setTransaction: (transaction: TransactionStatusModal) => void;
 }
 
-export const useDepositFromSafeAccountStore = create<DepositFromSafeAccountState>()(
-  persist(
-    (set, get) => ({
-      currentModal: DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.CLOSE,
-      previousModal: DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.CLOSE,
-      transaction: {},
+export const useDepositFromSafeAccountStore = create<DepositFromSafeAccountState>()((set, get) => ({
+  currentModal: DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.CLOSE,
+  previousModal: DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.CLOSE,
+  transaction: {},
 
-      setModal: modal =>
-        set({
-          previousModal: get().currentModal,
-          currentModal: modal,
-        }),
-      setTransaction: transaction => set({ transaction }),
+  setModal: modal =>
+    set({
+      previousModal: get().currentModal,
+      currentModal: modal,
     }),
-    {
-      name: USER.depositFromSafeAccountStorageKey,
-      storage: createJSONStorage(() => mmkvStorage(USER.depositFromSafeAccountStorageKey)),
-    },
-  ),
-);
+  setTransaction: transaction => set({ transaction }),
+}));
