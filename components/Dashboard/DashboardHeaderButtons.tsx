@@ -13,7 +13,6 @@ import UnstakeModal from '@/components/Unstake/UnstakeModal';
 import WithdrawModal from '@/components/Withdraw/WithdrawModal';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
-import FuseLogoSkeleton from '@/assets/images/fuse-logo-skeleton';
 
 type DashboardHeaderButtonsProps = {
   deposit?: {
