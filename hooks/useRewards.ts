@@ -1,7 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { secondsToMilliseconds, minutesToMilliseconds } from 'date-fns';
+import { minutesToMilliseconds, secondsToMilliseconds } from 'date-fns';
 
-import { fetchRewardsUserData, fetchTierBenefits, fetchRewardsConfig } from '@/lib/api';
+import {
+  fetchRewardsConfig,
+  fetchRewardsUserData,
+  fetchTierBenefits,
+  getJWTToken,
+} from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
 
 const REWARDS = 'rewards';
@@ -12,6 +17,7 @@ export const useRewardsUserData = () => {
     queryFn: async () => {
       return await withRefreshToken(() => fetchRewardsUserData());
     },
+    enabled: !!getJWTToken(),
     staleTime: secondsToMilliseconds(30),
     gcTime: secondsToMilliseconds(300),
   });
@@ -19,6 +25,7 @@ export const useRewardsUserData = () => {
 
 export const useTierBenefits = () => {
   return useQuery({
+    enabled: !!getJWTToken(),
     queryKey: [REWARDS, 'tierBenefits'],
     queryFn: fetchTierBenefits,
     staleTime: secondsToMilliseconds(60),
@@ -27,6 +34,7 @@ export const useTierBenefits = () => {
 
 export const useRewardsConfig = () => {
   return useQuery({
+    enabled: !!getJWTToken(),
     queryKey: [REWARDS, 'config'],
     queryFn: fetchRewardsConfig,
     staleTime: minutesToMilliseconds(5),

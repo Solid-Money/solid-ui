@@ -1,0 +1,26 @@
+diff --git a/node_modules/@turnkey/core/dist/__stampers__/passkey/base.js b/node_modules/@turnkey/core/dist/__stampers__/passkey/base.js
+index ed0d469..ae29c54 100644
+--- a/node_modules/@turnkey/core/dist/__stampers__/passkey/base.js
++++ b/node_modules/@turnkey/core/dist/__stampers__/passkey/base.js
+@@ -115,7 +115,7 @@ class CrossPlatformPasskeyStamper {
+                     ...this.config,
+                     rpId: this.config.rpId,
+                     allowCredentials: this.config.allowCredentials?.map((cred) => ({
+-                        id: encoding.uint8ArrayToHexString(cred.id),
++                        id: encoding.base64StringToBase64UrlEncodedString(btoa(new Uint8Array(cred.id).reduce((s, b) => s + String.fromCharCode(b), ''))),
+                         type: cred.type,
+                         transports: cred.transports,
+                     })),
+diff --git a/node_modules/@turnkey/core/dist/__stampers__/passkey/base.mjs b/node_modules/@turnkey/core/dist/__stampers__/passkey/base.mjs
+index 9a9160b..0fef4b9 100644
+--- a/node_modules/@turnkey/core/dist/__stampers__/passkey/base.mjs
++++ b/node_modules/@turnkey/core/dist/__stampers__/passkey/base.mjs
+@@ -111,7 +111,7 @@ class CrossPlatformPasskeyStamper {
+                     ...this.config,
+                     rpId: this.config.rpId,
+                     allowCredentials: this.config.allowCredentials?.map((cred) => ({
+-                        id: uint8ArrayToHexString(cred.id),
++                        id: base64StringToBase64UrlEncodedString(btoa(new Uint8Array(cred.id).reduce((s, b) => s + String.fromCharCode(b), ''))),
+                         type: cred.type,
+                         transports: cred.transports,
+                     })),

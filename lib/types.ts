@@ -496,12 +496,7 @@ export interface RainKycStatusResponse {
 }
 
 /** Document type for Rain KYC upload */
-export type RainDocumentType =
-  | 'idCard'
-  | 'passport'
-  | 'drivers'
-  | 'residencePermit'
-  | 'selfie';
+export type RainDocumentType = 'idCard' | 'passport' | 'drivers' | 'residencePermit' | 'selfie';
 
 // --- Didit identity verification ---
 

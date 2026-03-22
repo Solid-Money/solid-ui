@@ -583,7 +583,7 @@ const RegularWithdrawForm = () => {
             </View>
           ) : null}
         </TokenDetails>
-        <View className="mt-2 flex-row items-center justify-center gap-2">
+        <View className="mt-2 flex-row items-center justify-center gap-2 pb-16">
           <NeedHelp />
         </View>
       </View>
