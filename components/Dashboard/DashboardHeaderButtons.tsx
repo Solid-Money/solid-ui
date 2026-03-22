@@ -1,6 +1,5 @@
 import { View } from 'react-native';
 
-import FuseLogoSkeleton from '@/assets/images/fuse-logo-skeleton';
 import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
 import HomeWithdraw from '@/assets/images/withdraw';
