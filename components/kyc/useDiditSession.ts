@@ -16,6 +16,7 @@ export type SessionState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; verificationUrl: string; sessionToken: string }
   | { phase: 'started' }
+  | { phase: 'auto_approved' }
   | { phase: 'completed' };
 
 const POLL_INTERVAL_MS = 5000;
@@ -40,6 +41,12 @@ export function useDiditSession() {
         });
         return;
       }
+      // In non-production, the backend auto-approves the session — skip the SDK
+      if (res.auto_approved) {
+        setSession({ phase: 'auto_approved' });
+        return;
+      }
+
       const verificationUrl = res.verification_url ?? res.url;
       if (!verificationUrl) {
         setSession({
@@ -120,9 +127,9 @@ export function useDiditSession() {
     setSession({ phase: 'error', message });
   }, []);
 
-  // Poll for verification status while SDK is active
+  // Poll for verification status while SDK is active or session is auto-approved
   useEffect(() => {
-    if (session.phase !== 'started') return;
+    if (session.phase !== 'started' && session.phase !== 'auto_approved') return;
 
     const interval = setInterval(async () => {
       try {

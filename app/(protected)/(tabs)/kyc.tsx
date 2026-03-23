@@ -90,7 +90,7 @@ export default function KycWeb() {
           <View style={{ width: 40 }} />
         </View>
 
-        {session.phase === 'loading' && <KycLoading />}
+        {(session.phase === 'loading' || session.phase === 'auto_approved') && <KycLoading />}
 
         {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
 

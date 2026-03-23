@@ -76,7 +76,7 @@ export default function KycNative() {
 
   return (
     <View style={styles.container}>
-      {session.phase === 'loading' && <KycLoading />}
+      {(session.phase === 'loading' || session.phase === 'auto_approved') && <KycLoading />}
       {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
       {(session.phase === 'ready' || session.phase === 'started') && <KycNativeWaiting />}
       {session.phase === 'completed' && <KycCompleted />}

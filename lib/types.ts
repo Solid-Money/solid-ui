@@ -510,6 +510,8 @@ export interface DiditSessionResponse {
   /** Didit API returns this; use when verification_url is absent. */
   url?: string;
   status: string;
+  /** True when the backend auto-approved the session (non-production only). */
+  auto_approved?: boolean;
 }
 
 /** Response from GET /accounts/v1/didit/status. */
