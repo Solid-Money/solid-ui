@@ -81,10 +81,7 @@ export function useDiditSession() {
           // Fall through to ready page on approved KYC
         }
         router.replace(path.CARD_READY as any);
-      } else if (
-        kycStatus === KycStatus.UNDER_REVIEW ||
-        kycStatus === KycStatus.INCOMPLETE
-      ) {
+      } else if (kycStatus === KycStatus.UNDER_REVIEW) {
         router.replace(path.CARD_PENDING as any);
       } else {
         router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
