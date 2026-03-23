@@ -450,7 +450,7 @@ export const getKycLinkFromBridge = async (
   return response.json();
 };
 
-/** Rain KYC: submit Persona inquiry ID after user completes Persona flow. Returns consumerId and kycStatus; only allow card creation when kycStatus === 'approved'. */
+/** Rain KYC: submit Didit inquiry ID after user completes Didit flow. Returns consumerId and kycStatus; only allow card creation when kycStatus === 'approved'. */
 export const submitPersonaKyc = async (
   personaInquiryId: string,
 ): Promise<SubmitPersonaKycResponse> => {
@@ -473,8 +473,8 @@ export const submitPersonaKyc = async (
 };
 
 /**
- * Persona sandbox: perform simulate action (e.g. approve_inquiry).
- * Backend should proxy to Persona. Only for non-production.
+ * Didit sandbox: perform simulate action (e.g. approve_inquiry).
+ * Backend should proxy to Didit. Only for non-production.
  */
 export const personaSimulateAction = async (
   inquiryId: string,

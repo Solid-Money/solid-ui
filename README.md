@@ -18,7 +18,7 @@ Solid is a React Native/Expo mobile application that provides users with:
 - **Account Abstraction**: Safe smart accounts with ERC-4337 implementation
 - **Hardware Security**: Device secure enclave for key protection
 - **Turnkey Integration**: Secure custody and key management infrastructure
-- **Persona KYC**: Identity verification and compliance
+- **Didit KYC**: Identity verification and compliance
 
 ### 💎 Crypto Savings & DeFi
 - **High-Yield Savings**: Earn competitive APY on various tokens

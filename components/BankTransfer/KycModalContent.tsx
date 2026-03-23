@@ -135,7 +135,7 @@ const BankTransferKycInfoModal = () => {
   );
 };
 
-// Parse KYC link URL into Persona Client options
+// Parse KYC link URL into Client options
 function parseKycUrlToOptions(rawUrl: string): {
   options: ClientOptions;
   redirectUri?: string;
@@ -181,7 +181,7 @@ function parseKycUrlToOptions(rawUrl: string): {
   return { options, redirectUri };
 }
 
-// Modal version of KYC Frame using Persona SDK
+// Modal version of KYC Frame using Bridge SDK
 const BankTransferKycFrameModal = () => {
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { kyc, setModal, clearKycData } = useDepositStore(
@@ -256,7 +256,7 @@ const BankTransferKycFrameModal = () => {
 
         const containerId = 'persona-modal-' + Math.random().toString(36).slice(2);
 
-        // Wire events with Persona SDK
+        // Wire events with Bridge SDK
         unsubscribeRef.current = setupEvents(containerId, {
           templateId: options.templateId ?? null,
           templateVersionId: (options as any).templateVersionId ?? null,

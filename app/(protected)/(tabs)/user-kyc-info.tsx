@@ -106,7 +106,7 @@ export default function UserKycInfo() {
 
       if (kycLink.kycLinkId) setKycLinkId(kycLink.kycLinkId);
 
-      // Bridge: open Persona at /bridge-kyc (web) or browser (native)
+      // Bridge: open KYC verification at /bridge-kyc (web) or browser (native)
       startKycFlow({ router, kycLink: kycLink.link });
     } catch (error) {
       console.error('KYC link creation failed:', error);

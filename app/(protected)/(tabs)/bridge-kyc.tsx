@@ -117,10 +117,10 @@ export default function BridgeKyc({ onSuccess }: BridgeKycParams = {}) {
 
         if (typeof window === 'undefined') {
           track(TRACKING_EVENTS.KYC_LINK_ERROR, {
-            error: 'Persona can only run in the browser',
+            error: 'KYC verification can only run in the browser',
             stage: 'browser_check',
           });
-          setError('Persona can only run in the browser');
+          setError('KYC verification can only run in the browser');
           setLoading(false);
           return;
         }
@@ -201,12 +201,12 @@ export default function BridgeKyc({ onSuccess }: BridgeKycParams = {}) {
           },
           onError: e => {
             track(TRACKING_EVENTS.KYC_LINK_ERROR, {
-              error: e?.message || 'Persona initialization error',
+              error: e?.message || 'KYC initialization error',
               stage: 'sdk_error',
               templateId: options.templateId,
               inquiryId: options.inquiryId,
             });
-            setError(e?.message || 'Persona initialization error');
+            setError(e?.message || 'KYC initialization error');
             setLoading(false);
           },
         });
@@ -269,7 +269,7 @@ export default function BridgeKyc({ onSuccess }: BridgeKycParams = {}) {
               {error}
             </Text>
           )}
-          <iframe ref={iframeRef} style={styles.inlineIframe as any} title="Persona KYC" />
+          <iframe ref={iframeRef} style={styles.inlineIframe as any} title="KYC Verification" />
         </View>
       </View>
     </PageLayout>

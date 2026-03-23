@@ -25,7 +25,7 @@ export function startKycFlow(params: StartKycFlowParams) {
       enableBarCollapsing: true,
     });
   } else {
-    // On web, render Bridge Persona widget at /bridge-kyc
+    // On web, render Bridge KYC widget at /bridge-kyc
     router.push({
       pathname: '/bridge-kyc',
       params: { url: kycLink },
