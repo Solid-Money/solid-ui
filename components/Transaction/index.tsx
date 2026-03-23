@@ -306,7 +306,8 @@ const Transaction = ({
                     : 'text-muted-foreground',
             )}
           >
-            {directDepositStatusMessage ?? (hideSavingsAmount && isSuccess ? 'Confirming amount...' : null)}
+            {directDepositStatusMessage ??
+              (hideSavingsAmount && isSuccess ? 'Confirming amount...' : null)}
           </Text>
         ) : (
           <Text
