@@ -4,8 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
 import {
-  InfoCenterDocs,
-  InfoCenterLegal,
   InfoCenterSupport,
   onInfoCenterDocsPress,
   onInfoCenterLegalPress,
@@ -51,13 +49,6 @@ const AccountCenterDropdown = () => {
   const handleSupportPress = useCallback(
     () => dismissAndRun(onSupportPress),
     [dismissAndRun, onSupportPress],
-  );
-
-  const handleDocsPress = useCallback(() => dismissAndRun(onInfoCenterDocsPress), [dismissAndRun]);
-
-  const handleLegalPress = useCallback(
-    () => dismissAndRun(onInfoCenterLegalPress),
-    [dismissAndRun],
   );
 
   const renderBackdrop = useCallback(
