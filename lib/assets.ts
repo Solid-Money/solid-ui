@@ -81,6 +81,7 @@ export const ASSETS = {
     hash: '75a2ebe8',
   },
   'images/buy_crypto.png': { module: require('@/assets/images/buy_crypto.png'), hash: 'a072a946' },
+  'images/card-fade.png': { module: require('@/assets/images/card-fade.png'), hash: '00000000' },
   'images/card-earn.png': { module: require('@/assets/images/card-earn.png'), hash: '3e55e4d1' },
   'images/card-effortless.png': {
     module: require('@/assets/images/card-effortless.png'),

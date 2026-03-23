@@ -22,6 +22,8 @@ type Path = {
   CARD_DETAILS: Route;
   CARD_DEPOSIT: Route;
   CARD_TRANSACTIONS: Route;
+  CARD_READY: Href;
+  CARD_PENDING: Href;
   CARD_ACTIVATE: Href;
   CARD_ACTIVATE_COUNTRY_SELECTION: Href;
   CARD_KYC_MOBILE: Href;
@@ -67,6 +69,8 @@ export const path: Path = {
   CARD_DETAILS: '/card/details',
   CARD_DEPOSIT: '/card/deposit',
   CARD_TRANSACTIONS: '/card/details/transactions',
+  CARD_READY: '/card/ready' as Href,
+  CARD_PENDING: '/card/pending' as Href,
   CARD_ACTIVATE: '/card/activate',
   CARD_ACTIVATE_COUNTRY_SELECTION: '/card/activate/country_selection',
   CARD_KYC_MOBILE: '/card/kyc_mobile',
