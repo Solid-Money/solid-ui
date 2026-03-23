@@ -400,7 +400,8 @@ export default function ActivityDetail() {
   const isIncoming = transactionDetails?.sign === TransactionDirection.IN;
   const isSavingsDeposit = isDeposit && (symbolLower === 'sousd' || symbolLower === 'sofuse');
   const isSuccess = finalActivity?.status === TransactionStatus.SUCCESS;
-  const hideSavingsAmount = isSavingsDeposit && (isPending || isProcessing || (isSuccess && !finalActivity?.hash));
+  const hideSavingsAmount =
+    isSavingsDeposit && (isPending || isProcessing || (isSuccess && !finalActivity?.hash));
   const isCancelWithdraw = finalActivity?.requestId && isPending;
 
   const isBridgeDeposit = finalActivity?.type === TransactionType.BRIDGE_DEPOSIT;
