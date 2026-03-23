@@ -36,7 +36,6 @@ import { useCardDepositBonusConfig } from '@/hooks/useCardDepositBonusConfig';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardDetailsReveal } from '@/hooks/useCardDetailsReveal';
 import { useCardProvider } from '@/hooks/useCardProvider';
-import { useCardWithdrawAllowed } from '@/hooks/useCardWithdrawAllowed';
 import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
@@ -52,7 +51,6 @@ export default function CardDetails() {
   const { provider } = useCardProvider();
   const { data: customer } = useCustomer();
   const { isScreenMedium } = useDimension();
-  const isWithdrawAllowed = useCardWithdrawAllowed();
 
   useCardWithdrawals({ limit: 10 }, { refetchInterval: 300000 });
 
@@ -135,7 +133,6 @@ export default function CardDetails() {
         isLoadingCardDetails={isLoadingCardDetails}
         onCardDetails={handleCardFlip}
         onFreezeToggle={handleFreezeToggle}
-        isWithdrawAllowed={isWithdrawAllowed}
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
         isRain={provider === CardProvider.RAIN}
       />
@@ -258,7 +255,6 @@ interface DesktopHeaderProps {
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
-  isWithdrawAllowed: boolean;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
 }
@@ -271,7 +267,6 @@ function DesktopHeader({
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
-  isWithdrawAllowed,
   isWithdrawFromCardAllowed,
   isRain,
 }: DesktopHeaderProps) {
@@ -377,7 +372,7 @@ function DesktopHeader({
             )}
           </View>
         )}
-        {isWithdrawAllowed && (
+        {isWithdrawFromCardAllowed && (
           <WithdrawToCardModal
             trigger={
               <Button variant="secondary" className="h-12 rounded-xl border-0 bg-[#303030] px-6">
@@ -784,7 +779,6 @@ interface CardActionsProps {
   isLoadingCardDetails: boolean;
   onCardDetails: () => void;
   onFreezeToggle: () => Promise<void>;
-  isWithdrawAllowed: boolean;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
 }
@@ -797,7 +791,6 @@ function CardActions({
   isLoadingCardDetails,
   onCardDetails,
   onFreezeToggle,
-  isWithdrawAllowed,
   isWithdrawFromCardAllowed,
   isRain,
 }: CardActionsProps) {
@@ -891,7 +884,7 @@ function CardActions({
           </Dialog>
         </View>
       )}
-      {isWithdrawAllowed && (
+      {isWithdrawFromCardAllowed && (
         <WithdrawToCardModal
           trigger={
             <CircularActionButton
