@@ -32,6 +32,7 @@ export default function KycWeb() {
     DiditSdk.shared.onComplete = result => {
       switch (result.type) {
         case 'completed':
+          hasStartedRef.current = false;
           if (result.session?.status === 'Approved') {
             onVerificationComplete();
           } else if (result.session?.status === 'Declined') {
@@ -53,6 +54,8 @@ export default function KycWeb() {
       }
     };
 
+    // Reset any previous SDK state so the embed container can be reused on retry
+    DiditSdk.reset();
     DiditSdk.shared.startVerification({
       url: verificationUrl,
       configuration: {
