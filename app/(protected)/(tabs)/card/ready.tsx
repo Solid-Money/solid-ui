@@ -29,7 +29,7 @@ export default function CardReady() {
         router.replace(path.CARD_DETAILS);
       } else {
         Toast.show({
-          type: 'info',
+          type: 'success',
           text1: 'Card activation in progress',
           text2: 'Your card is being set up. Please wait.',
           props: { badgeText: '' },
