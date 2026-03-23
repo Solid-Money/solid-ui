@@ -86,6 +86,7 @@ export const ASSETS = {
     module: require('@/assets/images/card-effortless.png'),
     hash: '532402c1',
   },
+  'images/card-fade.png': { module: require('@/assets/images/card-fade.png'), hash: '95c9dba2' },
   'images/card-global.png': {
     module: require('@/assets/images/card-global.png'),
     hash: '80bbf480',

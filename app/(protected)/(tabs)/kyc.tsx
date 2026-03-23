@@ -1,17 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View } from 'react-native';
 import { DiditSdk } from '@didit-protocol/sdk-web';
-import { ArrowLeft } from 'lucide-react-native';
 
 import { KycCompleted, KycError, KycLoading, useDiditSession } from '@/components/kyc';
 import PageLayout from '@/components/PageLayout';
+import { BackButton } from '@/components/ui/back-button';
 import { Text } from '@/components/ui/text';
 
 const DIDIT_EMBED_CONTAINER_ID = 'didit-verification-container';
 
 export default function KycWeb() {
-  const router = useRouter();
   const {
     session,
     initSession,
@@ -85,12 +83,7 @@ export default function KycWeb() {
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 gap-8 px-4 pt-8">
         <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-            className="flex h-10 w-10 items-center justify-center rounded-full border-0 bg-popover web:transition-colors web:hover:bg-muted"
-          >
-            <ArrowLeft size={24} color="#FFFFFF" />
-          </Pressable>
+          <BackButton />
           <Text className="text-center text-xl font-semibold text-white md:text-2xl">
             Verify identity
           </Text>

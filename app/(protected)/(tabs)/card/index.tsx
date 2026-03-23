@@ -3,6 +3,7 @@ import { Redirect } from 'expo-router';
 
 import PageLayout from '@/components/PageLayout';
 import { useCardStatus } from '@/hooks/useCardStatus';
+import { RainApplicationStatus } from '@/lib/types';
 import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
 
 export default function Card() {
@@ -19,6 +20,19 @@ export default function Card() {
   }
 
   if (hasCardStatus) {
+    const rainStatus = cardStatus?.rainApplicationStatus;
+
+    if (rainStatus === RainApplicationStatus.APPROVED) {
+      return <Redirect href="/card/ready" />;
+    }
+
+    if (
+      rainStatus === RainApplicationStatus.PENDING ||
+      rainStatus === RainApplicationStatus.MANUAL_REVIEW
+    ) {
+      return <Redirect href="/card/pending" />;
+    }
+
     return <Redirect href="/card/activate" />;
   }
 
