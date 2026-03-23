@@ -21,6 +21,11 @@ export const ASSETS = {
     module: require('@/assets/animations/spin-wheel.json'),
     hash: '180926fd',
   },
+  'animations/spin.json': { module: require('@/assets/animations/spin.json'), hash: '9f636075' },
+  'animations/spin_with_animation.json': {
+    module: require('@/assets/animations/spin_with_animation.json'),
+    hash: '318699b9',
+  },
   'animations/vault.json': { module: require('@/assets/animations/vault.json'), hash: '85dffdd4' },
   'fonts/SpaceMono-Regular.ttf': {
     module: require('@/assets/fonts/SpaceMono-Regular.ttf'),
