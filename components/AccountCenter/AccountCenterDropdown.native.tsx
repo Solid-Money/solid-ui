@@ -3,12 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
-import {
-  InfoCenterSupport,
-  onInfoCenterDocsPress,
-  onInfoCenterLegalPress,
-  useInfoCenterSupportPress,
-} from '@/components/InfoCenter';
+import { InfoCenterSupport, useInfoCenterSupportPress } from '@/components/InfoCenter';
 import useUser from '@/hooks/useUser';
 
 import {
