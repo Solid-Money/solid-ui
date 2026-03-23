@@ -1732,14 +1732,13 @@ export const verifySignupOtp = async (
 };
 
 /**
- * Step 3: Create account with email and passkey (public - no auth required)
- * Creates sub-org with passkey authenticator and wallet in a single step
+ * Step 3: Create account with email auth proof and optional passkey data (public)
  */
 export const emailSignUp = async (
   email: string,
   verificationToken: string,
-  challenge: string,
-  attestation: any,
+  challenge?: string,
+  attestation?: any,
   credentialId?: string,
   referralCode?: string,
   marketingConsent?: boolean,

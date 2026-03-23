@@ -274,6 +274,7 @@ const useUser = (): UseUserReturn => {
         referralCode: user.referralCode,
         turnkeyUserId: user.turnkeyUserId,
         credentialId: user.credentialId,
+        hasPasskey: user.hasPasskey ?? true,
       };
       storeUser(selectedUser);
       await checkBalance(selectedUser);
@@ -393,6 +394,7 @@ const useUser = (): UseUserReturn => {
         suborgId: 'dummy',
         userId: 'dummy',
         safeAddress: '0x0000000000000000000000000000000000000000',
+        hasPasskey: true,
         selected: true,
         email: 'dummy@dummy.com',
       });
@@ -445,13 +447,15 @@ const useUser = (): UseUserReturn => {
     intercom?.shutdown();
     intercom?.boot();
 
+    const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
+
     // Go to onboarding on native, welcome on web
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && hasPasskeyUsers) {
       router.replace(path.WELCOME);
     } else {
       router.replace(path.ONBOARDING);
     }
-  }, [clearBalance, unselectUser, updateUser, clearKycLinkId, router, user, intercom]);
+  }, [clearBalance, users, unselectUser, updateUser, clearKycLinkId, router, user, intercom]);
 
   // New: select user by userId (preferred for email-first users)
   const handleSelectUserById = useCallback(
@@ -476,6 +480,11 @@ const useUser = (): UseUserReturn => {
         username: selectedUser?.username,
         email: selectedUser?.email,
       });
+
+      if (selectedUser?.hasPasskey === false) {
+        router.replace(path.ONBOARDING);
+        return;
+      }
 
       // Always require passkey authentication on all platforms
       try {
@@ -530,21 +539,14 @@ const useUser = (): UseUserReturn => {
     intercom?.shutdown();
     intercom?.boot();
 
-    if (users.length > 0) {
+    const hasPasskeyUsers = users.some(existingUser => existingUser.hasPasskey !== false);
+
+    if (hasPasskeyUsers) {
       router.replace({ pathname: '/welcome', params: { session: 'expired' } });
     } else {
       router.replace(path.ONBOARDING);
     }
-  }, [
-    clearBalance,
-    unselectUser,
-    updateUser,
-    clearKycLinkId,
-    intercom,
-    user,
-    users.length,
-    router,
-  ]);
+  }, [clearBalance, unselectUser, updateUser, clearKycLinkId, intercom, user, users, router]);
 
   const handleDeleteAccount = useCallback(async () => {
     try {

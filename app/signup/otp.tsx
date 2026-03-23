@@ -21,6 +21,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { initSignupOtp, verifySignupOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 // OTP resend cooldown (60 seconds)
@@ -140,8 +141,9 @@ export default function SignupOtp() {
 
         track(TRACKING_EVENTS.EMAIL_OTP_VERIFIED, { email, context: 'signup' });
 
-        setStep('passkey');
-        router.push(path.SIGNUP_PASSKEY);
+        const nextStep = isSharedReviewAccessEmail(email) ? 'creating' : 'passkey';
+        setStep(nextStep);
+        router.push(isSharedReviewAccessEmail(email) ? path.SIGNUP_CREATING : path.SIGNUP_PASSKEY);
       } catch (err: any) {
         const errorMessage = err?.message || 'Invalid verification code. Please try again.';
         setError(errorMessage);
