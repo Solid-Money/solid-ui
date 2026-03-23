@@ -21,6 +21,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { emailExists, initSignupOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
+import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
@@ -133,7 +134,7 @@ export default function SignupEmail() {
     try {
       // Check if email already exists
       const exists = await emailExists(data.email);
-      if (exists) {
+      if (exists && !isSharedReviewAccessEmail(data.email)) {
         setError('This email is already registered. Please log in instead.');
         setIsLoading(false);
         return;

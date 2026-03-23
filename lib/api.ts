@@ -84,8 +84,6 @@ import {
   User,
   VaultBreakdown,
   VaultType,
-  VerifyCountryRequest,
-  VerifyCountryResponse,
   WebhookStatus,
   WhatsNew,
   WithdrawFromCardToSavingsResponse,
@@ -569,16 +567,13 @@ export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
 export const getCardBalance = async (): Promise<void> => {
   const jwt = getJWTToken();
 
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/balance`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/balance`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
-  );
+  });
 
   if (!response.ok) throw response;
 };
@@ -651,89 +646,6 @@ export const checkCardAccess = async (countryCode: string): Promise<CardAccessRe
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-/**
- * Verify that the user's detected location matches their claimed country.
- * Uses Fingerprint.com device intelligence for fraud prevention during card onboarding.
- *
- * @param request - Contains visitorId, requestId from Fingerprint SDK, and claimedCountry
- * @returns Verification result indicating if the user can proceed or needs additional verification
- */
-export const verifyCountryWithFingerprint = async (
-  request: VerifyCountryRequest,
-): Promise<VerifyCountryResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/fingerprint/verify-country`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        'Content-Type': 'application/json',
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      body: JSON.stringify(request),
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-/**
- * Context values for fingerprint observation.
- * Matches FingerprintContext enum in backend.
- */
-export type FingerprintContext = 'create_card' | 'kyc_start';
-
-export interface ObserveFingerprintRequest {
-  requestId: string;
-  context: FingerprintContext;
-}
-
-export interface ObserveFingerprintResponse {
-  visitorId: string;
-  /** Whether this device has been used by multiple users (potential fraud indicator) */
-  isDuplicate?: boolean;
-  /** Number of distinct users associated with this device */
-  userCount?: number;
-  /** Whether this device is allowlisted (manually approved for shared device use) */
-  isAllowlisted?: boolean;
-}
-
-/**
- * Observe and link a device fingerprint to the authenticated user.
- * This must be called BEFORE card creation to enable duplicate device detection.
- *
- * @param request - Contains requestId from Fingerprint SDK and context
- * @returns The resolved visitorId that was linked to the user
- */
-export const observeFingerprint = async (
-  request: ObserveFingerprintRequest,
-): Promise<ObserveFingerprintResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/fingerprint/observe`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        'Content-Type': 'application/json',
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-      body: JSON.stringify(request),
     },
   );
 
@@ -1536,18 +1448,16 @@ export const verifySignupOtp = async (
 };
 
 /**
- * Step 3: Create account with email and passkey (public - no auth required)
- * Creates sub-org with passkey authenticator and wallet in a single step
+ * Step 3: Create account with email auth proof and optional passkey data (public)
  */
 export const emailSignUp = async (
   email: string,
   verificationToken: string,
-  challenge: string,
-  attestation: any,
+  challenge?: string,
+  attestation?: any,
   credentialId?: string,
   referralCode?: string,
   marketingConsent?: boolean,
-  fingerprintRequestId?: string,
 ) => {
   const body: Record<string, any> = {
     email,
@@ -1558,7 +1468,6 @@ export const emailSignUp = async (
   };
   if (credentialId) body.credentialId = credentialId;
   if (referralCode) body.referralCode = referralCode;
-  if (fingerprintRequestId) body.fingerprintRequestId = fingerprintRequestId;
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/email-signup`, {
     method: 'POST',

@@ -29,13 +29,14 @@ export default function Welcome() {
   const { isDesktop } = useDimension();
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
   const { session } = useLocalSearchParams<{ session: string }>();
+  const passkeyUsers = users.filter(user => user.hasPasskey !== false);
 
   // Redirect to onboarding if no users exist (e.g., after session expired with empty user list)
   useEffect(() => {
-    if (_hasHydrated && users.length === 0) {
+    if (_hasHydrated && passkeyUsers.length === 0) {
       router.replace(path.ONBOARDING);
     }
-  }, [_hasHydrated, users.length, router]);
+  }, [_hasHydrated, passkeyUsers.length, router]);
 
   useEffect(() => {
     if (session === 'expired') {
@@ -92,9 +93,9 @@ export default function Welcome() {
       </Text>
 
       {/* User List */}
-      {!users.length ? null : (
+      {!passkeyUsers.length ? null : (
         <View className="mb-4 w-full gap-3">
-          {users.map(user => (
+          {passkeyUsers.map(user => (
             <Button
               key={user.userId}
               variant="brand"

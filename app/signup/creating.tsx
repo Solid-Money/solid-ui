@@ -22,6 +22,7 @@ import useUser from '@/hooks/useUser';
 import { track, trackIdentity } from '@/lib/analytics';
 import { emailSignUp } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
+import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { User } from '@/lib/types';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
@@ -106,12 +107,12 @@ export default function SignupCreating() {
   const router = useRouter();
   const { safeAA } = useUser();
   const {
-    hasUsers,
+    hasSelectedUser,
     storeUser,
     _hasHydrated: userStoreHydrated,
   } = useUserStore(
     useShallow(state => ({
-      hasUsers: state.users.length > 0,
+      hasSelectedUser: state.users.some(user => user.selected),
       storeUser: state.storeUser,
       _hasHydrated: state._hasHydrated,
     })),
@@ -143,6 +144,7 @@ export default function SignupCreating() {
     })),
   );
   const _attributionHydrated = useAttributionStore(state => state._hasHydrated);
+  const isSharedReviewAccess = isSharedReviewAccessEmail(email);
   // Guard against duplicate execution (React Strict Mode double-invokes effects in dev)
   const isCreatingRef = useRef(false);
 
@@ -151,9 +153,9 @@ export default function SignupCreating() {
     // This ensures attribution data is loaded from MMKV before signup
     if (!_hasHydrated || !userStoreHydrated || !_attributionHydrated) return;
 
-    // If user already exists (signup previously succeeded), redirect to home
-    // This prevents duplicate createAccount() calls if user navigates back
-    if (hasUsers) {
+    // If a selected user already exists, signup previously succeeded.
+    // Redirect to avoid duplicate createAccount() calls on revisit.
+    if (hasSelectedUser) {
       if (Platform.OS === 'web') {
         router.replace(path.HOME);
       } else {
@@ -163,7 +165,12 @@ export default function SignupCreating() {
     }
 
     // Redirect if missing required data
-    if (!verificationToken || !email || !challenge || !attestation) {
+    if (!verificationToken || !email) {
+      router.replace(path.SIGNUP_EMAIL);
+      return;
+    }
+
+    if (!isSharedReviewAccess && (!challenge || !attestation)) {
       router.replace(path.SIGNUP_PASSKEY);
       return;
     }
@@ -174,7 +181,7 @@ export default function SignupCreating() {
 
     createAccount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [_hasHydrated, userStoreHydrated, _attributionHydrated]);
+  }, [_hasHydrated, userStoreHydrated, _attributionHydrated, hasSelectedUser, router]);
 
   const createAccount = async () => {
     // Capture attribution context for signup tracking
@@ -199,13 +206,20 @@ export default function SignupCreating() {
         marketingConsent,
       );
 
-      const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
+      let safeAddress = user.safeAddress;
+      if (!safeAddress) {
+        const smartAccountClient = await safeAA(
+          mainnet,
+          user.subOrganizationId,
+          user.walletAddress,
+        );
 
-      if (!smartAccountClient?.account?.address) {
-        throw new Error('Failed to create smart account');
+        if (!smartAccountClient?.account?.address) {
+          throw new Error('Failed to create smart account');
+        }
+
+        safeAddress = smartAccountClient.account.address;
       }
-
-      const safeAddress = smartAccountClient.account.address;
 
       // Store user in local state
       const selectedUser: User = {
@@ -219,7 +233,8 @@ export default function SignupCreating() {
         email: user.email,
         referralCode: user.referralCode,
         turnkeyUserId: user.turnkeyUserId,
-        credentialId: credentialId,
+        credentialId: user.credentialId ?? credentialId,
+        hasPasskey: user.hasPasskey ?? !isSharedReviewAccess,
       };
       storeUser(selectedUser);
 
@@ -229,7 +244,7 @@ export default function SignupCreating() {
         email: user.email,
         safe_address: safeAddress,
         has_referral_code: !!user.referralCode,
-        signup_method: 'email_passkey',
+        signup_method: isSharedReviewAccess ? 'shared_email_otp' : 'email_passkey',
         platform: Platform.OS,
         ...attributionData,
         attribution_channel: attributionChannel,
@@ -241,7 +256,7 @@ export default function SignupCreating() {
         email: user.email,
         referral_code: referralCode,
         safe_address: safeAddress,
-        has_passkey: true,
+        has_passkey: selectedUser.hasPasskey,
         ...attributionData,
         attribution_channel: attributionChannel,
       });
@@ -281,9 +296,9 @@ export default function SignupCreating() {
         extra: { email },
       });
 
-      // Go back to passkey step on error
-      setStep('passkey');
-      router.replace(path.SIGNUP_PASSKEY);
+      const retryStep = isSharedReviewAccess ? 'otp' : 'passkey';
+      setStep(retryStep);
+      router.replace(isSharedReviewAccess ? path.SIGNUP_OTP : path.SIGNUP_PASSKEY);
     }
   };
 
