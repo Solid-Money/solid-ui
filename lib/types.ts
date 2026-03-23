@@ -154,6 +154,7 @@ export interface User {
   username: string;
   safeAddress: Address;
   walletAddress?: string;
+  hasPasskey?: boolean;
   selected: boolean;
   signWith: string;
   suborgId: string;
