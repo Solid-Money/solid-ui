@@ -7,8 +7,8 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { CARD_STATUS_QUERY_KEY } from '@/hooks/useCardStatus';
 import { track } from '@/lib/analytics';
-import { createDiditSession, getDiditVerificationStatus } from '@/lib/api';
-import { KycStatus } from '@/lib/types';
+import { createDiditSession, getCardStatus, getDiditVerificationStatus } from '@/lib/api';
+import { KycStatus, RainApplicationStatus } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 
 export type SessionState =
@@ -64,11 +64,31 @@ export function useDiditSession() {
     setSession({ phase: 'started' });
   }, []);
 
-  const redirectToActivate = useCallback(
-    (kycStatus: KycStatus) => {
+  const redirectBasedOnKycStatus = useCallback(
+    async (kycStatus: KycStatus) => {
       setSession({ phase: 'completed' });
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
-      router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
+
+      if (kycStatus === KycStatus.APPROVED) {
+        // KYC approved: check Rain application status for correct redirect
+        try {
+          const cardStatusResponse = await withRefreshToken(() => getCardStatus());
+          if (cardStatusResponse?.rainApplicationStatus === RainApplicationStatus.APPROVED) {
+            router.replace(path.CARD_READY as any);
+            return;
+          }
+        } catch {
+          // Fall through to ready page on approved KYC
+        }
+        router.replace(path.CARD_READY as any);
+      } else if (
+        kycStatus === KycStatus.UNDER_REVIEW ||
+        kycStatus === KycStatus.INCOMPLETE
+      ) {
+        router.replace(path.CARD_PENDING as any);
+      } else {
+        router.replace(`${String(path.CARD_ACTIVATE)}?kycStatus=${kycStatus}` as any);
+      }
     },
     [queryClient, router],
   );
@@ -79,8 +99,8 @@ export function useDiditSession() {
       text1: 'Verification complete',
       text2: 'Your identity has been verified.',
     });
-    redirectToActivate(KycStatus.UNDER_REVIEW);
-  }, [redirectToActivate]);
+    redirectBasedOnKycStatus(KycStatus.APPROVED);
+  }, [redirectBasedOnKycStatus]);
 
   const onVerificationPending = useCallback(() => {
     Toast.show({
@@ -88,8 +108,8 @@ export function useDiditSession() {
       text1: 'Verification submitted',
       text2: 'Your verification is being processed.',
     });
-    redirectToActivate(KycStatus.UNDER_REVIEW);
-  }, [redirectToActivate]);
+    redirectBasedOnKycStatus(KycStatus.UNDER_REVIEW);
+  }, [redirectBasedOnKycStatus]);
 
   const onVerificationError = useCallback((message: string) => {
     Toast.show({
