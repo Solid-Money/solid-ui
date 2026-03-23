@@ -31,13 +31,15 @@ export function CardStatusPage({ title, description, children }: CardStatusPageP
               <Image
                 source={getAsset('images/card-fade.png')}
                 alt="Solid Card"
-                style={{ width: 200, height: 200 }}
+                style={{ width: 402, height: 268 }}
                 contentFit="contain"
               />
             </View>
 
-            <Text className="mt-2 text-2xl font-bold text-white">{title}</Text>
-            <Text className="my-3 text-center text-[#ACACAC]">{description}</Text>
+            <Text className="mt-2 text-center text-2xl font-bold text-white">{title}</Text>
+            <Text className="my-3 text-center text-base leading-tight text-[#ACACAC]">
+              {description}
+            </Text>
 
             {children}
           </View>

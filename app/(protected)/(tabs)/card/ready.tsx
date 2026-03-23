@@ -57,9 +57,9 @@ export default function CardReady() {
         variant="brand"
         onPress={handleActivateCard}
         disabled={activating}
-        className="mt-4 h-14 w-full rounded-xl"
+        className="mt-4 h-12 w-full rounded-xl"
       >
-        <Text className="text-base font-semibold text-primary-foreground">
+        <Text className="text-base font-bold text-primary-foreground">
           {activating ? 'Activating...' : 'Activate card'}
         </Text>
       </Button>
