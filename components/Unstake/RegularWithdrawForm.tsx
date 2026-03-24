@@ -456,7 +456,7 @@ const RegularWithdrawForm = () => {
                       : 'web:disabled:hover:bg-brand',
                   )}
                   onPress={handleSubmit(onBridgeSubmit)}
-                  disabled={isBridgeLoading}
+                  disabled={activeStep !== 1 || isWithdrawFormDisabled() || isBridgeLoading}
                 >
                   {isBridgeLoading ? (
                     <ActivityIndicator color="gray" />
@@ -514,8 +514,8 @@ const RegularWithdrawForm = () => {
                       ? 'web:disabled:hover:bg-white/10'
                       : 'web:disabled:hover:bg-brand',
                   )}
-                  onPress={handleSubmit(onSwapSubmit)}
-                  disabled={activeStep !== 2 || isWithdrawFormDisabled() || isWithdrawLoading}
+                  onPress={() => onSwapSubmit({ amount: watchedAmount })}
+                  disabled={activeStep !== 2 || !watchedAmount || isWithdrawLoading}
                 >
                   {isWithdrawLoading ? (
                     <ActivityIndicator color="gray" />

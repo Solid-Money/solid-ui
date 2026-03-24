@@ -26,11 +26,19 @@ export const getLayerZeroTransaction = async (
 export const waitForLayerzeroTransaction = async (
   txHash: string,
   maxRetries = 3,
+  maxPolls = 30,
 ): Promise<LayerzeroTransactionResponse> => {
   return new Promise((resolve, reject) => {
     const pollInterval = 20000; // 20 seconds in milliseconds
+    let totalPolls = 0;
 
     const poll = async (retryCount = 0): Promise<void> => {
+      totalPolls++;
+      if (totalPolls > maxPolls) {
+        reject(new Error('Bridge timeout: transaction took too long to confirm'));
+        return;
+      }
+
       try {
         const data = await getLayerZeroTransaction(txHash);
 
@@ -44,9 +52,12 @@ export const waitForLayerzeroTransaction = async (
             transaction.status?.name === 'INFLIGHT' || transaction.status?.name === 'CONFIRMING',
         );
 
-        if (inFlight) {
+        // Treat empty data (not yet indexed) as in-flight
+        const notYetIndexed = !data.data || data.data.length === 0;
+
+        if (inFlight || notYetIndexed) {
           setTimeout(() => {
-            void poll();
+            void poll(retryCount);
           }, pollInterval);
         } else if (isDelivered) {
           resolve(data);
