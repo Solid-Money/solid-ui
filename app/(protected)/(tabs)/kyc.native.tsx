@@ -1,14 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { startVerification, VerificationStatus } from '@didit-protocol/sdk-react-native';
+import { WebView } from 'react-native-webview';
 
-import {
-  KycCompleted,
-  KycError,
-  KycLoading,
-  KycNativeWaiting,
-  useDiditSession,
-} from '@/components/kyc';
+import { KycCompleted, KycError, KycLoading, useDiditSession } from '@/components/kyc';
 
 export default function KycNative() {
   const {
@@ -20,66 +14,48 @@ export default function KycNative() {
     onVerificationError,
   } = useDiditSession();
 
-  const sessionToken = session.phase === 'ready' ? session.sessionToken : null;
+  const hasMarkedStarted = useRef(false);
+  const urlRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!sessionToken) return;
+  // Capture the URL before phase transitions clear it
+  if (session.phase === 'ready') {
+    urlRef.current = session.verificationUrl;
+    hasMarkedStarted.current = false;
+  }
 
-    let cancelled = false;
-
-    async function verify() {
-      if (!sessionToken) return;
-
+  const onLoadEnd = useCallback(() => {
+    if (!hasMarkedStarted.current) {
+      hasMarkedStarted.current = true;
       markStarted();
-      const result = await startVerification(sessionToken);
-
-      if (cancelled) return;
-
-      switch (result.type) {
-        case 'completed':
-          if (result.session.status === VerificationStatus.Approved) {
-            onVerificationComplete();
-          } else if (result.session.status === VerificationStatus.Declined) {
-            onVerificationError('Your identity verification was declined.');
-          } else {
-            // 'Pending', 'In Review', etc. — redirect back to activate page
-            // so user sees "Under Review" state instead of blank page
-            onVerificationPending();
-          }
-          break;
-        case 'cancelled':
-          initSession();
-          break;
-        case 'failed':
-          onVerificationError(result.error?.message ?? 'Verification failed');
-          break;
-      }
     }
+  }, [markStarted]);
 
-    verify().catch(() => {
-      if (!cancelled) {
-        onVerificationError('Failed to start verification');
-      }
-    });
+  const onError = useCallback(() => {
+    onVerificationError('Failed to load verification page');
+  }, [onVerificationError]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    sessionToken,
-    markStarted,
-    initSession,
-    onVerificationComplete,
-    onVerificationPending,
-    onVerificationError,
-  ]);
+  const showWebView =
+    (session.phase === 'ready' || session.phase === 'started') && urlRef.current;
 
   return (
     <View style={styles.container}>
       {session.phase === 'loading' && <KycLoading />}
       {session.phase === 'error' && <KycError message={session.message} onRetry={initSession} />}
-      {(session.phase === 'ready' || session.phase === 'started') && <KycNativeWaiting />}
       {session.phase === 'completed' && <KycCompleted />}
+
+      {showWebView ? (
+        <WebView
+          source={{ uri: urlRef.current! }}
+          style={styles.webview}
+          javaScriptEnabled
+          domStorageEnabled
+          mediaPlaybackRequiresUserAction={false}
+          allowsInlineMediaPlayback
+          mediaCapturePermissionGrantType="grant"
+          onLoadEnd={onLoadEnd}
+          onError={onError}
+        />
+      ) : null}
     </View>
   );
 }
@@ -88,5 +64,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  webview: {
+    flex: 1,
   },
 });
