@@ -531,10 +531,10 @@ function CountryUnavailableView({
         countryName={countryName}
       />
       <Text className="mb-4 text-center text-2xl font-bold text-white">
-        {`We're not ready for ${countryName} just yet!`}
+        {`Your Solid Card is on the way`}
       </Text>
       <Text className="font-weight-400 mb-6 text-center leading-6 text-[#ACACAC]">
-        {`Unfortunately, Solid card isn't available here yet. We can let you know as soon as it is.`}
+        {`We're rolling out access in your region. Join the waitlist to be notified first.`}
       </Text>
       <Pressable onPress={onChangeCountry} className="mb-6 web:hover:opacity-70">
         <Text className="text-base font-bold text-white">Change country</Text>
