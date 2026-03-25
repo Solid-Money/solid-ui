@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { View } from 'react-native';
 
+import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useDepositBuyCryptoOptions from '@/hooks/useDepositBuyCryptoOptions';
 import useDepositExternalWalletOptionsNative from '@/hooks/useDepositExternalWalletOptionsNative';
@@ -28,12 +29,25 @@ const DepositOptions = () => {
     () => [...externalWalletOptions, ...buyCryptoOptions],
     [externalWalletOptions, buyCryptoOptions],
   );
+  const availableOptions = useMemo(
+    () =>
+      depositOptions.filter(
+        option => !option.method || depositConfig.methods.includes(option.method),
+      ),
+    [depositOptions, depositConfig.methods],
+  );
 
   return (
     <View className="gap-y-2.5">
-      {depositOptions
-        .filter(option => !option.method || depositConfig.methods.includes(option.method))
-        .map(option => (
+      {availableOptions.length === 0 ? (
+        <View className="rounded-2xl bg-card px-5 py-6">
+          <Text className="text-base font-semibold text-primary">No deposit methods available</Text>
+          <Text className="mt-1 text-sm text-muted-foreground">
+            Try switching vaults or check your account setup.
+          </Text>
+        </View>
+      ) : (
+        availableOptions.map(option => (
           <DepositOption
             key={option.text}
             text={option.text}
@@ -42,7 +56,8 @@ const DepositOptions = () => {
             onPress={option.onPress}
             bannerText={(option as any).bannerText}
           />
-        ))}
+        ))
+      )}
     </View>
   );
 };
