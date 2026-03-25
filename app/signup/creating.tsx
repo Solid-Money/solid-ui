@@ -10,7 +10,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { mainnet } from 'viem/chains';
 import { useShallow } from 'zustand/react/shallow';
@@ -24,6 +24,7 @@ import { emailSignUp } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
 import { User } from '@/lib/types';
+import { getSafeRedirectPath, REDIRECTED_FROM_PARAM } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -105,7 +106,11 @@ function WalletLoadingIcon() {
 
 export default function SignupCreating() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { safeAA } = useUser();
+  const redirectedFrom = getSafeRedirectPath(
+    params[REDIRECTED_FROM_PARAM] as string | string[] | undefined,
+  );
   const {
     hasSelectedUser,
     storeUser,
@@ -157,7 +162,11 @@ export default function SignupCreating() {
     // Redirect to avoid duplicate createAccount() calls on revisit.
     if (hasSelectedUser) {
       if (Platform.OS === 'web') {
-        router.replace(path.HOME);
+        if (redirectedFrom) {
+          router.replace(redirectedFrom);
+        } else {
+          router.replace(path.HOME);
+        }
       } else {
         router.replace(path.NOTIFICATIONS);
       }
@@ -166,12 +175,30 @@ export default function SignupCreating() {
 
     // Redirect if missing required data
     if (!verificationToken || !email) {
-      router.replace(path.SIGNUP_EMAIL);
+      if (redirectedFrom) {
+        router.replace({
+          pathname: path.SIGNUP_EMAIL,
+          params: {
+            [REDIRECTED_FROM_PARAM]: redirectedFrom,
+          },
+        });
+      } else {
+        router.replace(path.SIGNUP_EMAIL);
+      }
       return;
     }
 
     if (!isSharedReviewAccess && (!challenge || !attestation)) {
-      router.replace(path.SIGNUP_PASSKEY);
+      if (redirectedFrom) {
+        router.replace({
+          pathname: path.SIGNUP_PASSKEY,
+          params: {
+            [REDIRECTED_FROM_PARAM]: redirectedFrom,
+          },
+        });
+      } else {
+        router.replace(path.SIGNUP_PASSKEY);
+      }
       return;
     }
 
@@ -181,7 +208,14 @@ export default function SignupCreating() {
 
     createAccount();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [_hasHydrated, userStoreHydrated, _attributionHydrated, hasSelectedUser, router]);
+  }, [
+    _hasHydrated,
+    userStoreHydrated,
+    _attributionHydrated,
+    hasSelectedUser,
+    redirectedFrom,
+    router,
+  ]);
 
   const createAccount = async () => {
     // Capture attribution context for signup tracking
@@ -265,7 +299,11 @@ export default function SignupCreating() {
       setStep('complete');
 
       if (Platform.OS === 'web') {
-        router.replace(path.HOME);
+        if (redirectedFrom) {
+          router.replace(redirectedFrom);
+        } else {
+          router.replace(path.HOME);
+        }
       } else {
         router.replace(path.NOTIFICATIONS);
       }
@@ -298,7 +336,17 @@ export default function SignupCreating() {
 
       const retryStep = isSharedReviewAccess ? 'otp' : 'passkey';
       setStep(retryStep);
-      router.replace(isSharedReviewAccess ? path.SIGNUP_OTP : path.SIGNUP_PASSKEY);
+      const retryPath = isSharedReviewAccess ? path.SIGNUP_OTP : path.SIGNUP_PASSKEY;
+      if (redirectedFrom) {
+        router.replace({
+          pathname: retryPath,
+          params: {
+            [REDIRECTED_FROM_PARAM]: redirectedFrom,
+          },
+        });
+      } else {
+        router.replace(retryPath);
+      }
     }
   };
 

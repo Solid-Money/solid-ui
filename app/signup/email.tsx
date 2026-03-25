@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Link, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react-native';
 import { z } from 'zod';
@@ -22,6 +22,7 @@ import { track } from '@/lib/analytics';
 import { emailExists, initSignupOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
+import { getSafeRedirectPath, REDIRECTED_FROM_PARAM } from '@/lib/utils';
 import { getReferralCodeForSignup } from '@/lib/utils/referral';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
@@ -35,7 +36,11 @@ type EmailFormData = z.infer<typeof emailSchema>;
 
 export default function SignupEmail() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { isDesktop } = useDimension();
+  const redirectedFrom = getSafeRedirectPath(
+    params[REDIRECTED_FROM_PARAM] as string | string[] | undefined,
+  );
   const {
     email,
     marketingConsent,
@@ -164,6 +169,15 @@ export default function SignupEmail() {
       });
 
       setStep('otp');
+      if (redirectedFrom) {
+        router.push({
+          pathname: path.SIGNUP_OTP,
+          params: {
+            [REDIRECTED_FROM_PARAM]: redirectedFrom,
+          },
+        });
+        return;
+      }
       router.push(path.SIGNUP_OTP);
     } catch (err: any) {
       console.error('Failed to send OTP:', err);
@@ -194,6 +208,15 @@ export default function SignupEmail() {
   };
 
   const handleBack = () => {
+    if (redirectedFrom) {
+      router.replace({
+        pathname: path.ONBOARDING,
+        params: {
+          [REDIRECTED_FROM_PARAM]: redirectedFrom,
+        },
+      });
+      return;
+    }
     router.replace(path.ONBOARDING);
   };
 

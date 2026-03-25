@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useShallow } from 'zustand/react/shallow';
 
 import LoginKeyIcon from '@/assets/images/login_key_icon';
@@ -28,11 +28,13 @@ import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
 import { Status } from '@/lib/types';
 import { ONBOARDING_DATA } from '@/lib/types/onboarding';
+import { getSafeRedirectPath, REDIRECTED_FROM_PARAM } from '@/lib/utils';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
 import { useUserStore } from '@/store/useUserStore';
 
 export default function Onboarding() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { handleLogin, handleDummyLogin } = useUser();
   const setHasSeenOnboarding = useOnboardingStore(state => state.setHasSeenOnboarding);
   const { loginInfo } = useUserStore(
@@ -43,6 +45,9 @@ export default function Onboarding() {
   const { isDesktop } = useDimension();
 
   const isLoginPending = loginInfo.status === Status.PENDING;
+  const redirectedFrom = getSafeRedirectPath(
+    params[REDIRECTED_FROM_PARAM] as string | string[] | undefined,
+  );
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useSharedValue(0);
@@ -86,11 +91,20 @@ export default function Onboarding() {
     setHasSeenOnboarding(true);
 
     try {
-      await handleLogin();
+      await handleLogin(redirectedFrom);
     } catch (error: any) {
       if (error?.status === 404) {
         // User not found — redirect to signup
-        router.replace(path.SIGNUP_EMAIL);
+        if (redirectedFrom) {
+          router.replace({
+            pathname: path.SIGNUP_EMAIL,
+            params: {
+              [REDIRECTED_FROM_PARAM]: redirectedFrom,
+            },
+          });
+        } else {
+          router.replace(path.SIGNUP_EMAIL);
+        }
       } else {
         // Other errors — show toast and stay on onboarding
         Toast.show({
@@ -100,12 +114,21 @@ export default function Onboarding() {
         });
       }
     }
-  }, [handleLogin, router, setHasSeenOnboarding]);
+  }, [handleLogin, redirectedFrom, router, setHasSeenOnboarding]);
 
   const handleCreateAccount = useCallback(() => {
     setHasSeenOnboarding(true);
-    router.replace(path.SIGNUP_EMAIL);
-  }, [router, setHasSeenOnboarding]);
+    if (redirectedFrom) {
+      router.replace({
+        pathname: path.SIGNUP_EMAIL,
+        params: {
+          [REDIRECTED_FROM_PARAM]: redirectedFrom,
+        },
+      });
+    } else {
+      router.replace(path.SIGNUP_EMAIL);
+    }
+  }, [redirectedFrom, router, setHasSeenOnboarding]);
 
   const handleHelpCenter = useCallback(() => {
     // TODO: Add help center link
