@@ -52,7 +52,7 @@ const SaveContact: React.FC<SaveContactProps> = ({ control, errors, showSkip2fa,
 
       <Animated.View style={contentStyle} className="overflow-hidden">
         <View
-          className="gap-4 pt-4"
+          className="absolute left-0 right-0 top-0 gap-4 pt-4"
           onLayout={e => {
             contentHeight.value = e.nativeEvent.layout.height;
           }}
