@@ -212,7 +212,7 @@ const UnstakeTrigger = (props: any) => {
 };
 
 const UnstakeTitle = () => {
-  return <Text className="text-2xl font-semibold">Withdraw from savings</Text>;
+  return <Text className="text-2xl font-semibold">Withdraw</Text>;
 };
 
 export { Unstake, UnstakeTitle, UnstakeTrigger };
