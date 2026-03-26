@@ -1,20 +1,24 @@
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { Address } from 'viem';
 
 import SavingsIcon from '@/assets/images/savings';
 import CountUp from '@/components/CountUp';
 import Ping from '@/components/Ping';
+import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { path } from '@/constants/path';
+import { VAULTS } from '@/constants/vaults';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
 import { useTotalSavingsUSD } from '@/hooks/useTotalSavingsUSD';
-import { getAsset } from '@/lib/assets';
+import useUser from '@/hooks/useUser';
+import { useVaultBalance } from '@/hooks/useVault';
+import getTokenIcon from '@/lib/getTokenIcon';
 import { cn, fontSize, formatNumber } from '@/lib/utils';
 
 // Native doesn't resolve bg-purple/50 from CSS vars → dark opaque bar. Use bright transparent overlay to match web.
@@ -26,12 +30,37 @@ type SavingCardProps = {
   decimalPlaces?: number;
 };
 
+const ACTIVE_VAULTS = VAULTS.filter(v => !('isComingSoon' in v && v.isComingSoon));
+const usdcVault = ACTIVE_VAULTS[0];
+const fuseVault = ACTIVE_VAULTS[1];
+
+const ICON_SIZE = 28;
+
 const SavingCard = memo(({ className, decimalPlaces = 2 }: SavingCardProps) => {
   const router = useRouter();
   const { isScreenMedium } = useDimension();
   const { maxAPY, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY();
   const { data: totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
   const [isHovered, setIsHovered] = useState(false);
+  const { user } = useUser();
+  const address = user?.safeAddress as Address;
+  const { data: balanceUsdc } = useVaultBalance(address, usdcVault);
+  const { data: balanceFuse } = useVaultBalance(address, fuseVault);
+
+  const vaultIcons = useMemo(() => {
+    const icons: { symbol: string; key: string }[] = [];
+    if (balanceUsdc && balanceUsdc > 0) {
+      icons.push({ symbol: 'SOUSD', key: 'sousd' });
+    }
+    if (balanceFuse && balanceFuse > 0) {
+      icons.push({ symbol: 'SOFUSE', key: 'sofuse' });
+    }
+    // Show soUSD by default if user has no balances yet
+    if (icons.length === 0) {
+      icons.push({ symbol: 'SOUSD', key: 'sousd' });
+    }
+    return icons;
+  }, [balanceUsdc, balanceFuse]);
 
   return (
     <Pressable
@@ -135,11 +164,24 @@ const SavingCard = memo(({ className, decimalPlaces = 2 }: SavingCardProps) => {
             </View>
             <TooltipPopover text="USDC vault (USD) + FUSE vault (USD)" />
           </View>
-          <Image
-            source={getAsset('images/sousd-4x.png')}
-            style={{ width: 28, height: 28 }}
-            alt="soUSD token"
-          />
+          <View className="flex-row">
+            {vaultIcons.map((icon, index) => (
+              <View
+                key={icon.key}
+                style={{
+                  marginLeft: index > 0 ? -8 : 0,
+                  zIndex: vaultIcons.length - index,
+                }}
+              >
+                <RenderTokenIcon
+                  tokenIcon={getTokenIcon({ tokenSymbol: icon.symbol, size: ICON_SIZE })}
+                  size={ICON_SIZE}
+                  tokenName={icon.symbol}
+                  priority="high"
+                />
+              </View>
+            ))}
+          </View>
         </View>
       </View>
     </Pressable>
