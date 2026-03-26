@@ -35,11 +35,13 @@ const ChartContent = ({
   formatToolTip,
   formatYAxis,
   isLabel = true,
+  chartWidth,
 }: {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
   isLabel: boolean;
+  chartWidth?: number;
 }) => {
   const { setSelectedPrice, setSelectedPriceChange } = useCoinStore(
     useShallow(state => ({
@@ -172,8 +174,8 @@ const ChartContent = ({
     <>
       {/* Chart + Y-axis side by side */}
       <View style={{ flexDirection: 'row', height: CHART_AREA_HEIGHT }}>
-        <View style={{ flex: 1 }}>
-          <LineChart height={CHART_AREA_HEIGHT} yGutter={16}>
+        <View style={{ flex: 1, overflow: 'hidden' }}>
+          <LineChart height={CHART_AREA_HEIGHT} width={chartWidth} yGutter={16}>
             <LineChart.Path color="#94F27F" width={1}>
               <LineChart.Gradient color="#94F27F" />
             </LineChart.Path>
@@ -283,6 +285,8 @@ const ChartContent = ({
 };
 
 const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: AreaChartProps) => {
+  const [chartWidth, setChartWidth] = useState<number | undefined>(undefined);
+
   const wagmiData = useMemo(() => {
     if (!data || data.length < 2) return null;
 
@@ -297,15 +301,21 @@ const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: Area
   }
 
   return (
-    <View style={[{ height: CHART_HEIGHT, width: '100%' }, style]}>
-      <LineChart.Provider data={wagmiData}>
-        <ChartContent
-          data={data}
-          formatToolTip={formatToolTip}
-          formatYAxis={formatYAxis}
-          isLabel={isLabel}
-        />
-      </LineChart.Provider>
+    <View
+      style={[{ height: CHART_HEIGHT, overflow: 'hidden' }, style]}
+      onLayout={e => setChartWidth(e.nativeEvent.layout.width)}
+    >
+      {chartWidth !== undefined && (
+        <LineChart.Provider data={wagmiData}>
+          <ChartContent
+            data={data}
+            formatToolTip={formatToolTip}
+            formatYAxis={formatYAxis}
+            isLabel={isLabel}
+            chartWidth={chartWidth}
+          />
+        </LineChart.Provider>
+      )}
     </View>
   );
 };
