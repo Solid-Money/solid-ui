@@ -46,6 +46,8 @@ type ActivityTransactionsProps = {
   tab?: ActivityTab;
   symbol?: string;
   showTimestamp?: boolean;
+  /** When true, renders items inline (no FlashList) for use inside a parent ScrollView */
+  embedded?: boolean;
 };
 
 type RenderItemProps = {
@@ -57,6 +59,7 @@ export default function ActivityTransactions({
   tab = ActivityTab.WALLET,
   symbol,
   showTimestamp = true,
+  embedded = false,
 }: ActivityTransactionsProps) {
   const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore(
     useShallow(state => ({
@@ -499,6 +502,23 @@ export default function ActivityTransactions({
   }
 
   const isWeb = Platform.OS === 'web';
+
+  // Embedded mode: render items inline without FlashList to avoid nested scroll issues on native
+  if (embedded) {
+    return (
+      <View>
+        {!isWeb && renderSyncingIndicator()}
+        {filteredTransactions.length === 0
+          ? renderEmpty()
+          : filteredTransactions.map((item, index) => (
+              <View key={keyExtractor(item, index)}>
+                {renderItem({ item, index })}
+              </View>
+            ))}
+        {renderFooter()}
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1">
