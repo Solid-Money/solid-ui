@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useShallow } from 'zustand/react/shallow';
@@ -26,12 +26,6 @@ import { deduplicateTransactions } from '@/lib/utils/deduplicateTransactions';
 import { groupTransactionsByTime, TimeGroup, TimeGroupHeaderData } from '@/lib/utils/timeGrouping';
 import { useDepositStore } from '@/store/useDepositStore';
 
-// Non-scrolling ScrollView for embedding FlashList inside a parent ScrollView.
-// Extracted outside component to keep a stable reference and prevent FlashList re-mounts.
-function NonScrollingScrollView(props: React.ComponentProps<typeof ScrollView>) {
-  return <ScrollView {...props} scrollEnabled={false} />;
-}
-
 // Static loading skeleton - extracted outside component to prevent recreation
 function LoadingSkeleton() {
   return (
@@ -52,8 +46,9 @@ type ActivityTransactionsProps = {
   tab?: ActivityTab;
   symbol?: string;
   showTimestamp?: boolean;
-  /** When true, disables FlashList's internal scrolling for use inside a parent ScrollView */
-  embedded?: boolean;
+  /** Content rendered above the list via FlashList's ListHeaderComponent.
+   * Use this instead of nesting FlashList inside a ScrollView. */
+  listHeaderComponent?: React.ReactElement;
 };
 
 type RenderItemProps = {
@@ -65,7 +60,7 @@ export default function ActivityTransactions({
   tab = ActivityTab.WALLET,
   symbol,
   showTimestamp = true,
-  embedded = false,
+  listHeaderComponent,
 }: ActivityTransactionsProps) {
   const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore(
     useShallow(state => ({
@@ -509,29 +504,6 @@ export default function ActivityTransactions({
 
   const isWeb = Platform.OS === 'web';
 
-  // Embedded mode: use FlashList with scrolling disabled to avoid nested scroll issues on native.
-  // renderScrollComponent replaces FlashList's internal ScrollView with a non-scrolling one,
-  // so the parent ScrollView handles all scrolling while FlashList keeps its recycling/layout.
-  if (embedded) {
-    return (
-      <View>
-        {!isWeb && renderSyncingIndicator()}
-        <FlashList
-          key={`flashlist-embedded-${showStuckTransactions}`}
-          data={filteredTransactions}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          ListEmptyComponent={renderEmpty}
-          ListFooterComponent={renderFooter}
-          ItemSeparatorComponent={ItemSeparator}
-          renderScrollComponent={NonScrollingScrollView}
-          estimatedItemSize={64}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
-    );
-  }
-
   return (
     <View className="flex-1">
       {/* Subtle syncing indicator for background syncs (native only) */}
@@ -546,6 +518,7 @@ export default function ActivityTransactions({
         // FlashList fires onEndReached on every re-render when content doesn't fill viewport
         // This caused all pages to fetch immediately (Sentry: "10+ renders/second")
         // Users now use the "Load More" button instead (renderFooter)
+        ListHeaderComponent={listHeaderComponent}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={ItemSeparator}
