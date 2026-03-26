@@ -46,6 +46,9 @@ type ActivityTransactionsProps = {
   tab?: ActivityTab;
   symbol?: string;
   showTimestamp?: boolean;
+  /** Content rendered above the list via FlashList's ListHeaderComponent.
+   * Use this instead of nesting FlashList inside a ScrollView. */
+  listHeaderComponent?: React.ReactElement;
 };
 
 type RenderItemProps = {
@@ -57,6 +60,7 @@ export default function ActivityTransactions({
   tab = ActivityTab.WALLET,
   symbol,
   showTimestamp = true,
+  listHeaderComponent,
 }: ActivityTransactionsProps) {
   const { setModal, setBankTransferData, setDirectDepositSession } = useDepositStore(
     useShallow(state => ({
@@ -517,6 +521,7 @@ export default function ActivityTransactions({
         // FlashList fires onEndReached on every re-render when content doesn't fill viewport
         // This caused all pages to fetch immediately (Sentry: "10+ renders/second")
         // Users now use the "Load More" button instead (renderFooter)
+        ListHeaderComponent={listHeaderComponent}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={ItemSeparator}
