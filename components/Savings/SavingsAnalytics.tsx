@@ -124,7 +124,6 @@ const SavingsAnalytics = () => {
               formatToolTip={formatToolTip}
               formatYAxis={formatYAxis}
               isLabel={false}
-              margin={{ right: -20 }}
             />
           ) : (
             <View className="h-[200px] items-center justify-center">
