@@ -26,13 +26,19 @@ export const useTotalSavingsUSD = (): UseQueryResult<number | undefined, Error> 
   );
   const { data: exchangeRateUsdc } = useVaultExchangeRate(usdcVault.name);
   const { data: exchangeRateFuse } = useVaultExchangeRate(fuseVault?.name ?? usdcVault.name);
-  const { data: fusePriceUsd } = useQuery({
+  const { data: fusePriceUsd, isLoading: isLoadingFusePrice } = useQuery({
     queryKey: ['fusePriceUsd'],
     queryFn: () => fetchTokenPriceUsd(NATIVE_TOKENS[fuse.id]),
     staleTime: 60_000,
   });
 
   const hasAnyBalance = (balanceUsdc ?? 0) > 0 || (balanceFuse ?? 0) > 0;
+
+  // Wait for all dependency queries to finish before computing total.
+  // Without this, the query can settle on a partial result (USDC only)
+  // on mobile native where React render batching differs from web.
+  const isDataReady =
+    !isLoadingBalanceUsdc && !isLoadingBalanceFuse && !isLoadingFusePrice;
 
   return useQuery({
     queryKey: [
@@ -43,8 +49,6 @@ export const useTotalSavingsUSD = (): UseQueryResult<number | undefined, Error> 
       exchangeRateUsdc,
       exchangeRateFuse,
       fusePriceUsd,
-      isLoadingBalanceUsdc,
-      isLoadingBalanceFuse,
     ],
     queryFn: async () => {
       const rateUsdc = exchangeRateUsdc ?? 1;
@@ -55,7 +59,7 @@ export const useTotalSavingsUSD = (): UseQueryResult<number | undefined, Error> 
       const total = redeemableUsdc + redeemableFuse;
       return Promise.resolve(total);
     },
-    enabled: !!address,
+    enabled: !!address && isDataReady,
     staleTime: 30_000,
     refetchInterval: hasAnyBalance ? 60_000 : false,
     refetchIntervalInBackground: false,
