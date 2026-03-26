@@ -24,11 +24,12 @@ type SaveContactProps = {
 const SaveContact: React.FC<SaveContactProps> = ({ control, errors, showSkip2fa, name }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const isExpandedShared = useSharedValue(0);
   const contentHeight = useSharedValue(0);
   const contentOpacity = useSharedValue(0);
 
   const derivedHeight = useDerivedValue(() => {
-    return isExpanded ? contentHeight.value : 0;
+    return isExpandedShared.value ? contentHeight.value : 0;
   });
 
   const contentStyle = useAnimatedStyle(() => ({
@@ -38,6 +39,7 @@ const SaveContact: React.FC<SaveContactProps> = ({ control, errors, showSkip2fa,
 
   const toggleExpanded = (checked: boolean) => {
     setIsExpanded(checked);
+    isExpandedShared.value = checked ? 1 : 0;
     contentOpacity.value = withTiming(checked ? 1 : 0, { duration: 150 });
   };
 
