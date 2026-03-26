@@ -134,114 +134,135 @@ export default function Coin() {
     setSelectedPriceChange,
   ]);
 
+  const coinHeaderContent = useMemo(
+    () => (
+      <View className="gap-12 py-8 md:py-12">
+        {isScreenMedium && (
+          <View className="flex-row items-center justify-between gap-2">
+            <View className="flex-row items-center gap-5">
+              <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
+              <CoinName
+                contractName={token?.contractName || ''}
+                contractTickerSymbol={token?.contractTickerSymbol || ''}
+              />
+            </View>
+            <DashboardHeaderButtons
+              deposit={{ title: 'Deposit' }}
+              withdraw={{ isWithdraw: isSoUSDEthereum(contractAddress) }}
+            />
+          </View>
+        )}
+
+        <View className="justify-between gap-6 md:flex-row md:gap-10">
+          {!isScreenMedium && (
+            <View className="items-start">
+              <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
+            </View>
+          )}
+          <View style={{ flex: isScreenMedium ? 0.7 : 1 }}>
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 gap-2">
+                {!isScreenMedium && (
+                  <CoinName
+                    contractName={token?.contractName || ''}
+                    contractTickerSymbol={token?.contractTickerSymbol || ''}
+                  />
+                )}
+
+                <Text className="text-4xl font-semibold md:text-5xl">
+                  {selectedPrice
+                    ? `$${formatNumber(selectedPrice)}`
+                    : formattedChartData.length > 0
+                      ? `$${formatNumber(formattedChartData[formattedChartData.length - 1].value)}`
+                      : '$0.00'}
+                </Text>
+
+                <View className="flex-row items-center gap-1">
+                  <Text
+                    className="text-sm font-medium"
+                    style={{ color: isPriceIncrease ? '#94F27F' : '#EF4444' }}
+                  >
+                    {selectedPriceChange != null
+                      ? `${isPriceIncrease ? '+' : '-'}${formatNumber(Math.abs(selectedPriceChange), 2)}%`
+                      : '0.00%'}
+                  </Text>
+                  {isPriceIncrease ? (
+                    <ArrowUp color="#94F27F" size={14} strokeWidth={3} />
+                  ) : (
+                    <ArrowDown color="#EF4444" size={14} strokeWidth={3} />
+                  )}
+                </View>
+              </View>
+              {isScreenMedium && <CoinChartTime />}
+            </View>
+
+            <View className="-mt-2 px-4 md:mt-0">
+              {isLoadingCoinHistoricalChart ? (
+                <View className="h-[200px] items-center justify-center">
+                  <ActivityIndicator size="large" color="white" />
+                </View>
+              ) : formattedChartData.length > 0 ? (
+                <View style={{ marginLeft: -16, marginRight: -16 }}>
+                  <LazyAreaChart
+                    data={formattedChartData}
+                    formatYAxis={value => {
+                      if (value === 0) return '$0';
+                      const abs = Math.abs(value);
+                      if (abs >= 1) return `$${formatNumber(value, 1, 0)}`;
+                      const maxDigits = Math.min(8, Math.max(2, Math.ceil(-Math.log10(abs)) + 2));
+                      return `$${formatNumber(value, maxDigits, 0)}`;
+                    }}
+                  />
+                </View>
+              ) : null}
+            </View>
+          </View>
+          {isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
+        </View>
+
+        {!isScreenMedium && <CoinChartTime />}
+
+        {!isScreenMedium && (
+          <CoinButtons
+            contractAddress={contractAddress as Address}
+            isWithdraw={isSoUSDEthereum(contractAddress)}
+          />
+        )}
+
+        {!isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
+
+        {token?.contractTickerSymbol && (
+          <View className="pt-12">
+            <Text className="text-lg font-semibold text-muted-foreground">Recent activity</Text>
+          </View>
+        )}
+      </View>
+    ),
+    [
+      isScreenMedium,
+      token,
+      contractAddress,
+      selectedPrice,
+      selectedPriceChange,
+      isPriceIncrease,
+      formattedChartData,
+      isLoadingCoinHistoricalChart,
+    ],
+  );
+
   return (
-    <PageLayout desktopOnly isLoading={isLoading}>
+    <PageLayout desktopOnly isLoading={isLoading} scrollable={false}>
       {!token && !isLoading ? (
         <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 md:gap-16 md:py-12">
           <CoinBackButton title={`Coin ${eclipseAddress(contractAddress)} not found`} />
         </View>
       ) : (
-        <View className="mx-auto w-full max-w-7xl flex-1 gap-12 px-4 py-8 md:py-12">
-          {isScreenMedium && (
-            <View className="flex-row items-center justify-between gap-2">
-              <View className="flex-row items-center gap-5">
-                <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
-                <CoinName
-                  contractName={token?.contractName || ''}
-                  contractTickerSymbol={token?.contractTickerSymbol || ''}
-                />
-              </View>
-              <DashboardHeaderButtons
-                deposit={{ title: 'Deposit' }}
-                withdraw={{ isWithdraw: isSoUSDEthereum(contractAddress) }}
-              />
-            </View>
-          )}
-
-          <View className="justify-between gap-6 md:flex-row md:gap-10">
-            {!isScreenMedium && (
-              <View className="items-start">
-                <CoinBackButton tokenSymbol={token?.contractTickerSymbol} />
-              </View>
-            )}
-            <View style={{ flex: isScreenMedium ? 0.7 : 1 }}>
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1 gap-2">
-                  {!isScreenMedium && (
-                    <CoinName
-                      contractName={token?.contractName || ''}
-                      contractTickerSymbol={token?.contractTickerSymbol || ''}
-                    />
-                  )}
-
-                  <Text className="text-4xl font-semibold md:text-5xl">
-                    {selectedPrice
-                      ? `$${formatNumber(selectedPrice)}`
-                      : formattedChartData.length > 0
-                        ? `$${formatNumber(formattedChartData[formattedChartData.length - 1].value)}`
-                        : '$0.00'}
-                  </Text>
-
-                  <View className="flex-row items-center gap-1">
-                    <Text
-                      className="text-sm font-medium"
-                      style={{ color: isPriceIncrease ? '#94F27F' : '#EF4444' }}
-                    >
-                      {selectedPriceChange != null
-                        ? `${isPriceIncrease ? '+' : '-'}${formatNumber(Math.abs(selectedPriceChange), 2)}%`
-                        : '0.00%'}
-                    </Text>
-                    {isPriceIncrease ? (
-                      <ArrowUp color="#94F27F" size={14} strokeWidth={3} />
-                    ) : (
-                      <ArrowDown color="#EF4444" size={14} strokeWidth={3} />
-                    )}
-                  </View>
-                </View>
-                {isScreenMedium && <CoinChartTime />}
-              </View>
-
-              <View className="-mt-2 px-4 md:mt-0">
-                {isLoadingCoinHistoricalChart ? (
-                  <View className="h-[200px] items-center justify-center">
-                    <ActivityIndicator size="large" color="white" />
-                  </View>
-                ) : formattedChartData.length > 0 ? (
-                  <View style={{ marginLeft: -16, marginRight: -16 }}>
-                    <LazyAreaChart
-                      data={formattedChartData}
-                      formatYAxis={value => {
-                        if (value === 0) return '$0';
-                        const abs = Math.abs(value);
-                        if (abs >= 1) return `$${formatNumber(value, 1, 0)}`;
-                        const maxDigits = Math.min(8, Math.max(2, Math.ceil(-Math.log10(abs)) + 2));
-                        return `$${formatNumber(value, maxDigits, 0)}`;
-                      }}
-                    />
-                  </View>
-                ) : null}
-              </View>
-            </View>
-            {isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
-          </View>
-
-          {!isScreenMedium && <CoinChartTime />}
-
-          {!isScreenMedium && (
-            <CoinButtons
-              contractAddress={contractAddress as Address}
-              isWithdraw={isSoUSDEthereum(contractAddress)}
-            />
-          )}
-
-          {!isScreenMedium && <ResponsiveBalanceBreakdown token={token} />}
-
-          {token?.contractTickerSymbol && (
-            <View className="gap-4">
-              <Text className="text-lg font-semibold text-muted-foreground">Recent activity</Text>
-              <ActivityTransactions symbol={token.contractTickerSymbol} showTimestamp={false} />
-            </View>
-          )}
+        <View className="mx-auto w-full max-w-7xl flex-1 px-4">
+          <ActivityTransactions
+            symbol={token?.contractTickerSymbol}
+            showTimestamp={false}
+            listHeaderComponent={coinHeaderContent}
+          />
         </View>
       )}
     </PageLayout>
