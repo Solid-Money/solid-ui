@@ -230,7 +230,7 @@ const WithdrawTrigger = (props: any) => {
 };
 
 const WithdrawTitle = () => {
-  return <Text className="text-2xl font-semibold">Withdraw from savings</Text>;
+  return <Text className="text-2xl font-semibold">Withdraw</Text>;
 };
 
 export { Withdraw, WithdrawTitle, WithdrawTrigger };

@@ -140,7 +140,7 @@ const useWithdrawOption = ({
   const getTitle = () => {
     if (isTransactionStatus) return undefined;
     if (isTokenSelector) return 'Select token';
-    return 'Withdraw from savings';
+    return 'Withdraw';
   };
 
   const getContentClassName = () => {
