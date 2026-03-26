@@ -136,7 +136,7 @@ export default function Coin() {
 
   const coinHeaderContent = useMemo(
     () => (
-      <View className="mx-auto w-full max-w-7xl gap-12 px-4 py-8 md:py-12">
+      <View className="gap-12 py-8 md:py-12">
         {isScreenMedium && (
           <View className="flex-row items-center justify-between gap-2">
             <View className="flex-row items-center gap-5">
@@ -257,11 +257,13 @@ export default function Coin() {
           <CoinBackButton title={`Coin ${eclipseAddress(contractAddress)} not found`} />
         </View>
       ) : (
-        <ActivityTransactions
-          symbol={token?.contractTickerSymbol}
-          showTimestamp={false}
-          listHeaderComponent={coinHeaderContent}
-        />
+        <View className="mx-auto w-full max-w-7xl flex-1 px-4">
+          <ActivityTransactions
+            symbol={token?.contractTickerSymbol}
+            showTimestamp={false}
+            listHeaderComponent={coinHeaderContent}
+          />
+        </View>
       )}
     </PageLayout>
   );
