@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { View } from 'react-native';
 import { useAnimatedReaction } from 'react-native-reanimated';
 import { LineChart } from 'react-native-wagmi-charts';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -283,8 +283,6 @@ const ChartContent = ({
 };
 
 const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: AreaChartProps) => {
-  const { width: screenWidth } = useWindowDimensions();
-
   const wagmiData = useMemo(() => {
     if (!data || data.length < 2) return null;
 
@@ -299,7 +297,7 @@ const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: Area
   }
 
   return (
-    <View style={[{ height: CHART_HEIGHT, width: screenWidth }, style]}>
+    <View style={[{ height: CHART_HEIGHT, width: '100%' }, style]}>
       <LineChart.Provider data={wagmiData}>
         <ChartContent
           data={data}
