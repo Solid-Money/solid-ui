@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Image } from 'expo-image';
 
+import AuthButton from '@/components/CardWaitlist/AuthButton';
 import CardWaitlistContainer from '@/components/CardWaitlist/CardWaitlistContainer';
 import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';
 import CardWaitlistHeaderButtons from '@/components/CardWaitlist/CardWaitlistHeaderButtons';
@@ -168,7 +169,9 @@ const CardWaitlist = () => {
           )}
 
           <View className="md:items-start">
-            <GetCardButton />
+            <AuthButton>
+              <GetCardButton />
+            </AuthButton>
           </View>
         </View>
       </CardWaitlistContainer>

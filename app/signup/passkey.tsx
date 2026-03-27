@@ -3,7 +3,7 @@ import { ActivityIndicator, Linking, Platform, Pressable, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useTurnkey } from '@turnkey/react-native-wallet-kit';
 import { ArrowLeft } from 'lucide-react-native';
@@ -20,12 +20,17 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDimension } from '@/hooks/useDimension';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { getSafeRedirectPath, REDIRECTED_FROM_PARAM } from '@/lib/utils';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 const LEARN_MORE_URL = 'https://help.solid.xyz/passkeys';
 
 export default function SignupPasskey() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const redirectedFrom = getSafeRedirectPath(
+    params[REDIRECTED_FROM_PARAM] as string | string[] | undefined,
+  );
   const { isDesktop } = useDimension();
   const { email, verificationToken, _hasHydrated, setStep, setPasskeyData, setError } =
     useSignupFlowStore(
@@ -46,9 +51,19 @@ export default function SignupPasskey() {
     if (!_hasHydrated) return;
     // Redirect if no verification token (user hasn't completed OTP)
     if (!verificationToken || !email) {
+      if (redirectedFrom) {
+        router.replace({
+          pathname: path.SIGNUP_EMAIL,
+          params: {
+            [REDIRECTED_FROM_PARAM]: redirectedFrom,
+          },
+        });
+        return;
+      }
+
       router.replace(path.SIGNUP_EMAIL);
     }
-  }, [_hasHydrated, verificationToken, email, router]);
+  }, [_hasHydrated, verificationToken, email, redirectedFrom, router]);
 
   // Wait for store hydration before rendering
   if (!_hasHydrated) {
@@ -84,6 +99,15 @@ export default function SignupPasskey() {
 
       // Navigate to account creation
       setStep('creating');
+      if (redirectedFrom) {
+        router.push({
+          pathname: path.SIGNUP_CREATING,
+          params: {
+            [REDIRECTED_FROM_PARAM]: redirectedFrom,
+          },
+        });
+        return;
+      }
       router.push(path.SIGNUP_CREATING);
     } catch (err: any) {
       console.error('Failed to create passkey:', err);

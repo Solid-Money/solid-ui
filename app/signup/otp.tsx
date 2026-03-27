@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react-native';
 import { z } from 'zod';
@@ -22,6 +22,7 @@ import { track } from '@/lib/analytics';
 import { initSignupOtp, verifySignupOtp } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { isSharedReviewAccessEmail } from '@/lib/reviewerAccess';
+import { getSafeRedirectPath, REDIRECTED_FROM_PARAM } from '@/lib/utils';
 import { useSignupFlowStore } from '@/store/useSignupFlowStore';
 
 // OTP resend cooldown (60 seconds)
@@ -40,6 +41,10 @@ type OtpFormData = z.infer<typeof otpSchema>;
 
 export default function SignupOtp() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const redirectedFrom = getSafeRedirectPath(
+    params[REDIRECTED_FROM_PARAM] as string | string[] | undefined,
+  );
   const { isDesktop } = useDimension();
   const {
     email,
@@ -143,7 +148,19 @@ export default function SignupOtp() {
 
         const nextStep = isSharedReviewAccessEmail(email) ? 'creating' : 'passkey';
         setStep(nextStep);
-        router.push(isSharedReviewAccessEmail(email) ? path.SIGNUP_CREATING : path.SIGNUP_PASSKEY);
+        const nextPath = isSharedReviewAccessEmail(email)
+          ? path.SIGNUP_CREATING
+          : path.SIGNUP_PASSKEY;
+        if (redirectedFrom) {
+          router.push({
+            pathname: nextPath,
+            params: {
+              [REDIRECTED_FROM_PARAM]: redirectedFrom,
+            },
+          });
+          return;
+        }
+        router.push(nextPath);
       } catch (err: any) {
         const errorMessage = err?.message || 'Invalid verification code. Please try again.';
         setError(errorMessage);
@@ -163,6 +180,7 @@ export default function SignupOtp() {
       email,
       referralCode,
       marketingConsent,
+      redirectedFrom,
       setIsLoading,
       setError,
       setVerificationToken,
@@ -229,6 +247,15 @@ export default function SignupOtp() {
 
   const handleBack = () => {
     setStep('email');
+    if (redirectedFrom) {
+      router.replace({
+        pathname: path.SIGNUP_EMAIL,
+        params: {
+          [REDIRECTED_FROM_PARAM]: redirectedFrom,
+        },
+      });
+      return;
+    }
     router.replace(path.SIGNUP_EMAIL);
   };
 

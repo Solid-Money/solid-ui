@@ -27,7 +27,13 @@ import { EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID, USER } from '@/lib/config';
 import { useIntercom } from '@/lib/intercom';
 import { pimlicoClient } from '@/lib/pimlico';
 import { Status, User } from '@/lib/types';
-import { getNonce, setGlobalLogoutHandler, setIsLoggingOut, withRefreshToken } from '@/lib/utils';
+import {
+  getNonce,
+  getSafeRedirectPath,
+  setGlobalLogoutHandler,
+  setIsLoggingOut,
+  withRefreshToken,
+} from '@/lib/utils';
 import { publicClient } from '@/lib/wagmi';
 import { useActivityStore } from '@/store/useActivityStore';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -40,9 +46,9 @@ import { fetchIsDeposited } from './useAnalytics';
 
 interface UseUserReturn {
   user: User | undefined;
-  handleLogin: () => Promise<void>;
+  handleLogin: (redirectPath?: string) => Promise<void>;
   handleDummyLogin: () => Promise<void>;
-  handleSelectUserById: (userId: string) => Promise<void>;
+  handleSelectUserById: (userId: string, redirectPath?: string) => Promise<void>;
   handleLogout: () => void;
   handleRemoveUsers: () => void;
   handleDeleteAccount: () => Promise<void>;
@@ -203,187 +209,195 @@ const useUser = (): UseUserReturn => {
     [queryClient, updateUser],
   );
 
-  const handleLogin = useCallback(async () => {
-    // Reset logout flag so future session expiries show the toast
-    setIsLoggingOut(false);
+  const handleLogin = useCallback(
+    async (redirectPath?: string) => {
+      // Reset logout flag so future session expiries show the toast
+      setIsLoggingOut(false);
 
-    // Get attribution context for login tracking
-    const attributionStore = useAttributionStore.getState();
-    const attributionData = attributionStore.getAttributionForEvent();
-    const deviceId = getAmplitudeDeviceId();
+      // Get attribution context for login tracking
+      const attributionStore = useAttributionStore.getState();
+      const attributionData = attributionStore.getAttributionForEvent();
+      const deviceId = getAmplitudeDeviceId();
 
-    try {
-      setLoginInfo({ status: Status.PENDING });
+      try {
+        setLoginInfo({ status: Status.PENDING });
 
-      // Ensure httpClient is initialized
-      if (!httpClient) {
-        console.error('[handleLogin] Turnkey client not initialized');
-        throw new Error('Turnkey client is not initialized. Please wait and try again.');
-      }
+        // Ensure httpClient is initialized
+        if (!httpClient) {
+          console.error('[handleLogin] Turnkey client not initialized');
+          throw new Error('Turnkey client is not initialized. Please wait and try again.');
+        }
 
-      // Get a signed whoami request to identify the user's sub-organization
-      // Uses passkey stamping - prompts user for passkey confirmation
-      const stamp = await httpClient.stampGetWhoami(
-        { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
-        StamperType.Passkey,
-      );
-
-      // Step 3: Authenticate with our backend using the signed request
-      const user = await login(stamp);
-
-      const smartAccountClient = await safeAA(mainnet, user.subOrganizationId, user.walletAddress);
-
-      if (!user.safeAddress || user.safeAddress === '') {
-        console.warn('[useUser] updating safe address on login (missing on user)', {
-          userId: user._id,
-          safeAddress: smartAccountClient.account.address,
-        });
-
-        const resp = await withRefreshToken(() =>
-          updateSafeAddress(smartAccountClient.account.address),
+        // Get a signed whoami request to identify the user's sub-organization
+        // Uses passkey stamping - prompts user for passkey confirmation
+        const stamp = await httpClient.stampGetWhoami(
+          { organizationId: EXPO_PUBLIC_TURNKEY_ORGANIZATION_ID },
+          StamperType.Passkey,
         );
 
-        if (!resp) {
-          const error = new Error('Error updating safe address on login');
+        // Step 3: Authenticate with our backend using the signed request
+        const user = await login(stamp);
 
-          Sentry.captureException(error, {
-            tags: {
-              type: 'safe_address_update_error',
+        const smartAccountClient = await safeAA(
+          mainnet,
+          user.subOrganizationId,
+          user.walletAddress,
+        );
+
+        if (!user.safeAddress || user.safeAddress === '') {
+          console.warn('[useUser] updating safe address on login (missing on user)', {
+            userId: user._id,
+            safeAddress: smartAccountClient.account.address,
+          });
+
+          const resp = await withRefreshToken(() =>
+            updateSafeAddress(smartAccountClient.account.address),
+          );
+
+          if (!resp) {
+            const error = new Error('Error updating safe address on login');
+
+            Sentry.captureException(error, {
+              tags: {
+                type: 'safe_address_update_error',
+              },
+              user: {
+                id: user._id,
+                address: smartAccountClient.account.address,
+              },
+            });
+          }
+
+          // Mark as synced to avoid repeated attempts elsewhere
+          markSafeAddressSynced(user._id);
+        }
+
+        const selectedUser: User = {
+          safeAddress: smartAccountClient.account.address,
+          walletAddress: user.walletAddress,
+          username: user.username,
+          userId: user._id,
+          signWith: user.walletAddress,
+          suborgId: user.subOrganizationId,
+          selected: true,
+          tokens: user.tokens || null,
+          email: user.email,
+          referralCode: user.referralCode,
+          turnkeyUserId: user.turnkeyUserId,
+          credentialId: user.credentialId,
+          hasPasskey: user.hasPasskey ?? true,
+        };
+        storeUser(selectedUser);
+        await checkBalance(selectedUser);
+
+        // Identify user in analytics with full attribution context
+        trackIdentity(user.userId, {
+          username: user.username,
+          safe_address: smartAccountClient.account.address,
+          email: user.email,
+          has_referral_code: !!user.referralCode,
+          login_method: 'passkey',
+          platform: Platform.OS,
+          device_id: deviceId,
+          ...attributionData,
+          attribution_channel: getAttributionChannel(attributionData),
+        });
+
+        // Fetch points after successful login
+        try {
+          const { fetchPoints } = usePointsStore.getState();
+          await fetchPoints();
+        } catch (error) {
+          console.warn('Failed to fetch points:', error);
+          Sentry.captureException(new Error('Error fetching points'), {
+            extra: {
+              error,
             },
-            user: {
-              id: user._id,
-              address: smartAccountClient.account.address,
+          });
+          // Don't fail login if points fetch fails
+        }
+
+        setLoginInfo({ status: Status.SUCCESS });
+        track(TRACKING_EVENTS.LOGGED_IN, {
+          user_id: user.userId,
+          username: user.username,
+          safe_address: smartAccountClient.account.address,
+          has_email: !!user.email,
+          is_deposited: !!user.isDeposited,
+          device_id: deviceId,
+          ...attributionData,
+          attribution_channel: getAttributionChannel(attributionData),
+        });
+
+        // Update user properties on login with attribution
+        trackIdentity(user.userId, {
+          username: user.username,
+          safe_address: smartAccountClient.account.address,
+          has_email: !!user.email,
+          is_deposited: !!user.isDeposited,
+          last_login_date: new Date().toISOString(),
+          platform: Platform.OS,
+          device_id: deviceId,
+          ...attributionData,
+          attribution_channel: getAttributionChannel(attributionData),
+        });
+
+        const redirectTo = getSafeRedirectPath(redirectPath);
+        router.replace(redirectTo ?? path.HOME);
+      } catch (error: any) {
+        let errorMessage =
+          error?.status === 404
+            ? 'User not found, please sign up'
+            : error?.message || 'Network request timed out';
+
+        if (error?.name === 'NotAllowedError') {
+          errorMessage = 'User cancelled login';
+          Sentry.captureMessage(errorMessage, {
+            level: 'warning',
+            extra: {
+              error,
+            },
+          });
+        } else {
+          Sentry.captureException(new Error('Error logging in'), {
+            extra: {
+              error,
+              errorMessage,
             },
           });
         }
 
-        // Mark as synced to avoid repeated attempts elsewhere
-        markSafeAddressSynced(user._id);
-      }
-
-      const selectedUser: User = {
-        safeAddress: smartAccountClient.account.address,
-        walletAddress: user.walletAddress,
-        username: user.username,
-        userId: user._id,
-        signWith: user.walletAddress,
-        suborgId: user.subOrganizationId,
-        selected: true,
-        tokens: user.tokens || null,
-        email: user.email,
-        referralCode: user.referralCode,
-        turnkeyUserId: user.turnkeyUserId,
-        credentialId: user.credentialId,
-        hasPasskey: user.hasPasskey ?? true,
-      };
-      storeUser(selectedUser);
-      await checkBalance(selectedUser);
-
-      // Identify user in analytics with full attribution context
-      trackIdentity(user.userId, {
-        username: user.username,
-        safe_address: smartAccountClient.account.address,
-        email: user.email,
-        has_referral_code: !!user.referralCode,
-        login_method: 'passkey',
-        platform: Platform.OS,
-        device_id: deviceId,
-        ...attributionData,
-        attribution_channel: getAttributionChannel(attributionData),
-      });
-
-      // Fetch points after successful login
-      try {
-        const { fetchPoints } = usePointsStore.getState();
-        await fetchPoints();
-      } catch (error) {
-        console.warn('Failed to fetch points:', error);
-        Sentry.captureException(new Error('Error fetching points'), {
-          extra: {
-            error,
-          },
+        track(TRACKING_EVENTS.LOGIN_FAILED, {
+          username: user?.username,
+          error: error.message,
+          device_id: deviceId,
+          ...attributionData,
+          attribution_channel: getAttributionChannel(attributionData),
         });
-        // Don't fail login if points fetch fails
+
+        console.error(error);
+        setLoginInfo({ status: Status.ERROR, message: errorMessage });
+
+        // Reset to IDLE after showing error for 3 seconds
+        setTimeout(() => {
+          setLoginInfo({ status: Status.IDLE, message: '' });
+        }, 3000);
+
+        // Re-throw so callers can handle (e.g., redirect to signup)
+        throw error;
       }
-
-      setLoginInfo({ status: Status.SUCCESS });
-      track(TRACKING_EVENTS.LOGGED_IN, {
-        user_id: user.userId,
-        username: user.username,
-        safe_address: smartAccountClient.account.address,
-        has_email: !!user.email,
-        is_deposited: !!user.isDeposited,
-        device_id: deviceId,
-        ...attributionData,
-        attribution_channel: getAttributionChannel(attributionData),
-      });
-
-      // Update user properties on login with attribution
-      trackIdentity(user.userId, {
-        username: user.username,
-        safe_address: smartAccountClient.account.address,
-        has_email: !!user.email,
-        is_deposited: !!user.isDeposited,
-        last_login_date: new Date().toISOString(),
-        platform: Platform.OS,
-        device_id: deviceId,
-        ...attributionData,
-        attribution_channel: getAttributionChannel(attributionData),
-      });
-
-      router.replace(path.HOME);
-    } catch (error: any) {
-      let errorMessage =
-        error?.status === 404
-          ? 'User not found, please sign up'
-          : error?.message || 'Network request timed out';
-
-      if (error?.name === 'NotAllowedError') {
-        errorMessage = 'User cancelled login';
-        Sentry.captureMessage(errorMessage, {
-          level: 'warning',
-          extra: {
-            error,
-          },
-        });
-      } else {
-        Sentry.captureException(new Error('Error logging in'), {
-          extra: {
-            error,
-            errorMessage,
-          },
-        });
-      }
-
-      track(TRACKING_EVENTS.LOGIN_FAILED, {
-        username: user?.username,
-        error: error.message,
-        device_id: deviceId,
-        ...attributionData,
-        attribution_channel: getAttributionChannel(attributionData),
-      });
-
-      console.error(error);
-      setLoginInfo({ status: Status.ERROR, message: errorMessage });
-
-      // Reset to IDLE after showing error for 3 seconds
-      setTimeout(() => {
-        setLoginInfo({ status: Status.IDLE, message: '' });
-      }, 3000);
-
-      // Re-throw so callers can handle (e.g., redirect to signup)
-      throw error;
-    }
-  }, [
-    checkBalance,
-    setLoginInfo,
-    storeUser,
-    router,
-    safeAA,
-    markSafeAddressSynced,
-    httpClient,
-    user?.username,
-  ]);
+    },
+    [
+      checkBalance,
+      setLoginInfo,
+      storeUser,
+      router,
+      safeAA,
+      markSafeAddressSynced,
+      httpClient,
+      user?.username,
+    ],
+  );
 
   const handleDummyLogin = useCallback(async () => {
     if (!__DEV__) return;
@@ -459,7 +473,7 @@ const useUser = (): UseUserReturn => {
 
   // New: select user by userId (preferred for email-first users)
   const handleSelectUserById = useCallback(
-    async (userId: string) => {
+    async (userId: string, redirectPath?: string) => {
       const previousUserId = user?.userId;
       clearKycLinkId();
 
@@ -504,7 +518,8 @@ const useUser = (): UseUserReturn => {
           selectUserById(authedUser._id);
         }
 
-        router.replace(path.HOME);
+        const targetPath = getSafeRedirectPath(redirectPath) ?? path.HOME;
+        router.replace(targetPath);
       } catch (_) {
         // Revert to previous user or clear selection on auth failure
         if (previousUserId) {

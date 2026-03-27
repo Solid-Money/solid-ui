@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
-import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
+import { Redirect, Stack, useLocalSearchParams, usePathname } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
@@ -23,6 +23,7 @@ import { useWebhookStatus } from '@/hooks/useWebhookStatus';
 import FuseVault from '@/lib/abis/FuseVault';
 import { trackIdentity } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
+import { getSafeRedirectPath, REDIRECTED_FROM_PARAM } from '@/lib/utils';
 import { config } from '@/lib/wagmi';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -32,6 +33,7 @@ const Loading = lazy(() => import('@/components/Loading'));
 
 export default function ProtectedLayout() {
   const { user } = useUser();
+  const pathname = usePathname();
   const { usersCount, _hasHydrated } = useUserStore(
     useShallow(state => ({ usersCount: state.users.length, _hasHydrated: state._hasHydrated })),
   );
@@ -156,12 +158,41 @@ export default function ProtectedLayout() {
     );
   }
 
-  if (!usersCount) {
+  const redirectedFrom = getSafeRedirectPath(
+    searchParams[REDIRECTED_FROM_PARAM] as string | string[] | undefined,
+  );
+  const isPublicCardWaitlistRoute = pathname === path.CARD_WAITLIST;
+
+  if (!usersCount && !isPublicCardWaitlistRoute) {
     // Show onboarding first (if not seen), then signup flow
+    if (redirectedFrom) {
+      return (
+        <Redirect
+          href={{
+            pathname: path.ONBOARDING,
+            params: {
+              [REDIRECTED_FROM_PARAM]: redirectedFrom,
+            },
+          }}
+        />
+      );
+    }
     return <Redirect href={path.ONBOARDING} />;
   }
 
-  if (usersCount && !user) {
+  if (usersCount && !user && !isPublicCardWaitlistRoute) {
+    if (redirectedFrom) {
+      return (
+        <Redirect
+          href={{
+            pathname: path.WELCOME,
+            params: {
+              [REDIRECTED_FROM_PARAM]: redirectedFrom,
+            },
+          }}
+        />
+      );
+    }
     return <Redirect href={path.WELCOME} />;
   }
 

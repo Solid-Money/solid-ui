@@ -14,6 +14,7 @@ import { path } from '@/constants/path';
 import { useDimension } from '@/hooks/useDimension';
 import useUser from '@/hooks/useUser';
 import { getAsset } from '@/lib/assets';
+import { getSafeRedirectPath, REDIRECTED_FROM_PARAM } from '@/lib/utils';
 import { eclipseUsername } from '@/lib/utils/utils';
 import { useUserStore } from '@/store/useUserStore';
 
@@ -28,7 +29,11 @@ export default function Welcome() {
   const router = useRouter();
   const { isDesktop } = useDimension();
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
-  const { session } = useLocalSearchParams<{ session: string }>();
+  const params = useLocalSearchParams();
+  const session = params.session as string | undefined;
+  const redirectedFrom = getSafeRedirectPath(
+    params[REDIRECTED_FROM_PARAM] as string | string[] | undefined,
+  );
   const passkeyUsers = users.filter(user => user.hasPasskey !== false);
 
   // Redirect to onboarding if no users exist (e.g., after session expired with empty user list)
@@ -55,7 +60,7 @@ export default function Welcome() {
     async (userId: string) => {
       setLoadingUserId(userId);
       try {
-        await handleSelectUserById(userId);
+        await handleSelectUserById(userId, redirectedFrom);
       } catch (error: any) {
         // Show error toast if passkey authentication fails
         Toast.show({
@@ -70,12 +75,22 @@ export default function Welcome() {
         setLoadingUserId(null);
       }
     },
-    [handleSelectUserById],
+    [handleSelectUserById, redirectedFrom],
   );
 
   const handleUseAnotherAccount = useCallback(() => {
+    if (redirectedFrom) {
+      router.push({
+        pathname: path.ONBOARDING,
+        params: {
+          [REDIRECTED_FROM_PARAM]: redirectedFrom,
+        },
+      });
+      return;
+    }
+
     router.push(path.ONBOARDING);
-  }, [router]);
+  }, [redirectedFrom, router]);
 
   // Form content (shared between mobile and desktop)
   const formContent = (

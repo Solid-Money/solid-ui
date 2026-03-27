@@ -1,11 +1,14 @@
 import { View } from 'react-native';
 
+import AuthButton from './AuthButton';
 import GetCardButton from './GetCardButton';
 
 const CardWaitlistHeaderButtons = () => {
   return (
     <View className="flex-row items-center gap-2">
-      <GetCardButton />
+      <AuthButton>
+        <GetCardButton />
+      </AuthButton>
     </View>
   );
 };
