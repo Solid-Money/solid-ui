@@ -1,6 +1,8 @@
 import { useCallback, useEffect } from 'react';
 import { Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useGlobalSearchParams, useRouter } from 'expo-router';
+
+import type { Href } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { StamperType, useTurnkey } from '@turnkey/react-native-wallet-kit';
@@ -57,6 +59,8 @@ interface UseUserReturn {
 
 const useUser = (): UseUserReturn => {
   const router = useRouter();
+  const globalParams = useGlobalSearchParams<{ 'redirected-from'?: string }>();
+  const redirectedFrom = globalParams['redirected-from'];
   const queryClient = useQueryClient();
   const intercom = useIntercom();
   const { httpClient, createHttpClient } = useTurnkey();
@@ -331,7 +335,11 @@ const useUser = (): UseUserReturn => {
         attribution_channel: getAttributionChannel(attributionData),
       });
 
-      router.replace(path.HOME);
+      if (redirectedFrom && typeof redirectedFrom === 'string') {
+        router.replace(redirectedFrom as Href);
+      } else {
+        router.replace(path.HOME);
+      }
     } catch (error: any) {
       let errorMessage =
         error?.status === 404
@@ -383,6 +391,7 @@ const useUser = (): UseUserReturn => {
     markSafeAddressSynced,
     httpClient,
     user?.username,
+    redirectedFrom,
   ]);
 
   const handleDummyLogin = useCallback(async () => {
@@ -504,7 +513,11 @@ const useUser = (): UseUserReturn => {
           selectUserById(authedUser._id);
         }
 
-        router.replace(path.HOME);
+        if (redirectedFrom && typeof redirectedFrom === 'string') {
+          router.replace(redirectedFrom as Href);
+        } else {
+          router.replace(path.HOME);
+        }
       } catch (_) {
         // Revert to previous user or clear selection on auth failure
         if (previousUserId) {
@@ -515,7 +528,7 @@ const useUser = (): UseUserReturn => {
         // Don't navigate on error - stay on welcome screen
       }
     },
-    [selectUserById, clearKycLinkId, router, user, unselectUser, users, httpClient],
+    [selectUserById, clearKycLinkId, router, user, unselectUser, users, httpClient, redirectedFrom],
   );
 
   const handleRemoveUsers = useCallback(() => {
