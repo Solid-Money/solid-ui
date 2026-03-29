@@ -283,7 +283,7 @@ const RegularWithdrawForm = () => {
             )}
           </View>
           <View className="flex-row items-center justify-between gap-2 rounded-2xl bg-card p-4">
-            <View className="flex-1">
+            <View className="min-w-0 flex-1">
               <Controller
                 control={control}
                 name="amount"
