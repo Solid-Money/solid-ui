@@ -329,13 +329,6 @@ export default Sentry.wrap(function RootLayout() {
                           }}
                         />
                         <Stack.Screen
-                          name="card-onboard"
-                          options={{
-                            headerShown: false,
-                            animation: 'none',
-                          }}
-                        />
-                        <Stack.Screen
                           name="welcome"
                           options={{
                             headerShown: false,

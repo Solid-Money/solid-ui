@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
-import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
+import { Redirect, Stack, useLocalSearchParams, usePathname } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
@@ -30,13 +30,19 @@ import { useUserStore } from '@/store/useUserStore';
 // Lazy load Loading component - only used during hydration
 const Loading = lazy(() => import('@/components/Loading'));
 
+// Routes within (protected) that should be accessible without authentication
+const PUBLIC_ROUTES = ['/card-onboard'];
+
 export default function ProtectedLayout() {
   const { user } = useUser();
   const { usersCount, _hasHydrated } = useUserStore(
     useShallow(state => ({ usersCount: state.users.length, _hasHydrated: state._hasHydrated })),
   );
   const searchParams = useLocalSearchParams();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
+
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
   useEffect(() => {
     if (!user?.safeAddress) return;
@@ -156,12 +162,12 @@ export default function ProtectedLayout() {
     );
   }
 
-  if (!usersCount) {
+  if (!isPublicRoute && !usersCount) {
     // Show onboarding first (if not seen), then signup flow
     return <Redirect href={path.ONBOARDING} />;
   }
 
-  if (usersCount && !user) {
+  if (!isPublicRoute && usersCount && !user) {
     return <Redirect href={path.WELCOME} />;
   }
 
