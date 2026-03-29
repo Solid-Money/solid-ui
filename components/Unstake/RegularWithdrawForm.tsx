@@ -369,20 +369,20 @@ const RegularWithdrawForm = () => {
             <View className="flex-row items-center gap-2">
               <Text className="text-base text-muted-foreground">Destination</Text>
             </View>
-            <View className="ml-auto flex-shrink-0 flex-row items-center gap-2">
+            <View className="ml-auto shrink-0 flex-row items-center gap-2">
               <Wallet size={24} color="white" />
               <Text className="text-base font-semibold">Wallet</Text>
             </View>
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Solver fee</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               <Text className="text-base font-semibold">0.01%</Text>
             </View>
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">You will receive</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               <Text className="text-base font-semibold">
                 {watchedAmount
                   ? `${formatNumber(Number(watchedAmount) * (exchangeRate ?? 1) * 0.9999)} ${isSoFuse ? 'FUSE' : 'USDC'}`
