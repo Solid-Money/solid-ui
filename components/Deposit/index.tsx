@@ -139,7 +139,7 @@ const Deposit = () => {
               />
             )}
           />
-          <View className="flex-shrink-0 flex-row items-center gap-2">
+          <View className="shrink-0 flex-row items-center gap-2">
             <Image
               source={getAsset('images/usdc-4x.png')}
               alt="USDC"

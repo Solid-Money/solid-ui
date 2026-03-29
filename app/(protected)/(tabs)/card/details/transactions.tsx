@@ -110,7 +110,7 @@ export default function CardTransactions() {
             </Text>
           </View>
         </View>
-        <View className="flex-shrink-0 flex-row items-center gap-2 md:gap-10">
+        <View className="shrink-0 flex-row items-center gap-2 md:gap-10">
           <Text className={`text-right font-bold text-white`}>
             {formatCardAmountWithCurrency(item.amount, item.currency, provider)}
           </Text>
