@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, PressableProps, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, PressableProps, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useActiveAccount, useActiveWalletConnectionStatus } from 'thirdweb/react';
@@ -615,7 +615,7 @@ const useDepositOption = ({
     isDepositDirectlyTokens ||
     isTokenSelector;
 
-  const disableScroll = isDepositDirectlyAddress;
+  const disableScroll = Platform.OS !== 'web' && isDepositDirectlyAddress;
 
   return {
     shouldOpen,
