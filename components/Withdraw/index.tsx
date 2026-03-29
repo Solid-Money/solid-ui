@@ -147,7 +147,7 @@ const Withdraw = () => {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="w-full text-2xl font-semibold text-white web:focus:outline-none"
+                className="flex-1 text-2xl font-semibold text-white web:focus:outline-none"
                 value={value.toString()}
                 placeholder="0.0"
                 placeholderTextColor="#666"
@@ -156,7 +156,7 @@ const Withdraw = () => {
               />
             )}
           />
-          <View className="flex-row items-center gap-2">
+          <View className="flex-shrink-0 flex-row items-center gap-2">
             <Image
               source={getAsset('images/sousd-4x.png')}
               alt="SoUSD"
