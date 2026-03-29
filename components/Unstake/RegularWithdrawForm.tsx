@@ -411,7 +411,7 @@ const RegularWithdrawForm = () => {
                 disabled={isWithdrawFormDisabled() || isWithdrawSoFuseLoading}
               >
                 {isWithdrawSoFuseLoading ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color="black" />
                 ) : (
                   <View className="flex-row items-center gap-2">
                     <Image
@@ -459,7 +459,7 @@ const RegularWithdrawForm = () => {
                   disabled={activeStep !== 1 || isWithdrawFormDisabled() || isBridgeLoading}
                 >
                   {isBridgeLoading ? (
-                    <ActivityIndicator color="white" />
+                    <ActivityIndicator color="black" />
                   ) : (
                     <View className="flex-row items-center gap-2">
                       <Image
@@ -518,7 +518,7 @@ const RegularWithdrawForm = () => {
                   disabled={activeStep !== 2 || !watchedAmount || isWithdrawLoading}
                 >
                   {isWithdrawLoading ? (
-                    <ActivityIndicator color="white" />
+                    <ActivityIndicator color="black" />
                   ) : (
                     <View className="flex-row items-center gap-2">
                       <Image
@@ -568,7 +568,7 @@ const RegularWithdrawForm = () => {
                 disabled={isWithdrawFormDisabled() || isWithdrawLoading}
               >
                 {isWithdrawLoading ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color="black" />
                 ) : (
                   <View className="flex-row items-center gap-2">
                     <Image
