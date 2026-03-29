@@ -77,7 +77,7 @@ const TransactionStatus = ({
           disabled={isLoading}
         >
           <Text className="text-base font-bold">{buttonText}</Text>
-          {isLoading && <ActivityIndicator color="white" />}
+          {isLoading && <ActivityIndicator color="black" />}
         </Button>
       </View>
 
