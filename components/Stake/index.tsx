@@ -130,7 +130,7 @@ const Stake = () => {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="flex-1 text-2xl font-semibold text-white web:focus:outline-none"
+                className="min-w-0 flex-1 text-2xl font-semibold text-white web:focus:outline-none"
                 value={value.toString()}
                 placeholder="0.0"
                 placeholderTextColor="#666"
