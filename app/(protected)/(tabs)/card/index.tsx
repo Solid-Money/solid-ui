@@ -1,6 +1,7 @@
 import React from 'react';
 import { Redirect } from 'expo-router';
 
+import CardWaitlistPage from '@/components/CardWaitlist/CardWaitlistPage';
 import PageLayout from '@/components/PageLayout';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { RainApplicationStatus } from '@/lib/types';
@@ -36,5 +37,5 @@ export default function Card() {
     return <Redirect href="/card/activate" />;
   }
 
-  return <Redirect href="/card-onboard" />;
+  return <CardWaitlistPage />;
 }
