@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
-import { Redirect, Stack, useGlobalSearchParams, useLocalSearchParams } from 'expo-router';
+import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Address } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
@@ -36,13 +36,7 @@ export default function ProtectedLayout() {
     useShallow(state => ({ usersCount: state.users.length, _hasHydrated: state._hasHydrated })),
   );
   const searchParams = useLocalSearchParams();
-  const globalSearchParams = useGlobalSearchParams<{ 'redirected-from'?: string }>();
   const queryClient = useQueryClient();
-
-  const redirectedFrom =
-    Platform.OS === 'web'
-      ? new URLSearchParams(window.location.search).get('redirected-from')
-      : (globalSearchParams['redirected-from'] as string | undefined);
 
   useEffect(() => {
     if (!user?.safeAddress) return;
@@ -164,27 +158,11 @@ export default function ProtectedLayout() {
 
   if (!usersCount) {
     // Show onboarding first (if not seen), then signup flow
-    return (
-      <Redirect
-        href={
-          redirectedFrom
-            ? { pathname: path.ONBOARDING as string, params: { 'redirected-from': redirectedFrom } }
-            : path.ONBOARDING
-        }
-      />
-    );
+    return <Redirect href={path.ONBOARDING} />;
   }
 
   if (usersCount && !user) {
-    return (
-      <Redirect
-        href={
-          redirectedFrom
-            ? { pathname: path.WELCOME as string, params: { 'redirected-from': redirectedFrom } }
-            : path.WELCOME
-        }
-      />
-    );
+    return <Redirect href={path.WELCOME} />;
   }
 
   return (
