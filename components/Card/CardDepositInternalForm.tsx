@@ -1037,7 +1037,7 @@ export default function CardDepositInternalForm() {
         <TokenDetails className="mt-3">
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="native:text-lg text-base text-muted-foreground">Borrow rate</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               {isBorrowAPYLoading ? (
                 <Skeleton className="h-5 w-16 rounded-md" />
               ) : (
@@ -1053,7 +1053,7 @@ export default function CardDepositInternalForm() {
                 Collateral Required
               </Text>
             </View>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               {isRateLoading || !watchedAmount ? (
                 <Skeleton className="h-5 w-20 rounded-md" />
               ) : (

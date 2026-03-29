@@ -261,7 +261,7 @@ const FastWithdrawForm = () => {
                 />
               )}
             />
-            <View className="flex-shrink-0 flex-row items-center gap-2">
+            <View className="shrink-0 flex-row items-center gap-2">
               <Pressable
                 onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
                 className="flex-row items-center gap-2"
@@ -296,14 +296,14 @@ const FastWithdrawForm = () => {
             <View className="flex-row items-center gap-2">
               <Text className="text-base text-muted-foreground">Network</Text>
             </View>
-            <View className="ml-auto flex-shrink-0 flex-row items-center gap-2">
+            <View className="ml-auto shrink-0 flex-row items-center gap-2">
               <Image source={selectedNetwork?.icon} style={{ width: 24, height: 24 }} />
               <Text className="text-base font-semibold">{selectedNetwork?.name}</Text>
             </View>
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Estimated Receive</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               {isPreviewLoading ? (
                 <Skeleton className="h-7 w-20 bg-white/20" />
               ) : (
@@ -315,7 +315,7 @@ const FastWithdrawForm = () => {
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Estimated Time</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               {selectedNetwork?.name === 'Fuse' ? (
                 <Text className="text-base font-semibold">Instant</Text>
               ) : (
@@ -325,13 +325,13 @@ const FastWithdrawForm = () => {
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Solver fee</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               <Text className="text-base font-semibold">0.01%</Text>
             </View>
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">You will receive</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               {isPreviewLoading ? (
                 <Skeleton className="h-7 w-20 bg-white/20" />
               ) : (

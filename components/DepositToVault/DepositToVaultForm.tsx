@@ -359,7 +359,7 @@ function DepositToVaultForm() {
                 />
               )}
             />
-            <View className="flex-shrink-0 flex-row items-center gap-2">
+            <View className="shrink-0 flex-row items-center gap-2">
               <Pressable
                 onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
                 className="flex-row items-center gap-2"
@@ -398,7 +398,7 @@ function DepositToVaultForm() {
             <View className="flex-row items-center gap-2">
               <Text className="text-lg text-muted-foreground">You will receive</Text>
             </View>
-            <View className="ml-auto flex-shrink-0 flex-row items-center gap-2">
+            <View className="ml-auto shrink-0 flex-row items-center gap-2">
               <Image
                 source={vaultTokenIcon}
                 style={{ width: 24, height: 24 }}
@@ -420,7 +420,7 @@ function DepositToVaultForm() {
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Price</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               <Text className="text-lg font-semibold">
                 {`1 ${vaultToken} = `}
                 {vault.name === 'USDC'
@@ -431,7 +431,7 @@ function DepositToVaultForm() {
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">Routing Fee</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               {vault.name === 'USDC' && isPreviewDepositLoading ? (
                 <Skeleton className="h-7 w-20 bg-white/20" />
               ) : (
@@ -443,7 +443,7 @@ function DepositToVaultForm() {
           </View>
           <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
             <Text className="text-base text-muted-foreground">APY</Text>
-            <View className="ml-auto flex-shrink-0 flex-row items-baseline gap-2">
+            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               <Text className="text-lg font-semibold text-[#94F27F]">
                 {maxAPY ? `${maxAPY.toFixed(2)}%` : <Skeleton className="h-7 w-20 bg-white/20" />}
               </Text>
