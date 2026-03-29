@@ -15,7 +15,7 @@ const ContractAddressWarning = ({ chainName }: ContractAddressWarningProps) => {
       colors={['rgba(255, 209, 81, 0.1)', 'rgba(255, 209, 81, 0.05)']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      className="rounded-2xl border border-warning/15"
+      className="overflow-hidden rounded-2xl border border-warning/15"
     >
       <View className="flex-row gap-2 gap-3 px-5 py-4">
         <Image
