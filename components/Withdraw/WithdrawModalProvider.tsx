@@ -65,6 +65,8 @@ const WithdrawModalProvider = () => {
           onPress={handleTransactionStatusPress}
           token={'SoUSD'}
           icon={getTokenIcon({ tokenSymbol: 'SoUSD' })}
+          title="Withdraw started"
+          description="This may take up to 24H. We'll keep processing this in the background. You can safely leave this page."
         />
       );
     }
