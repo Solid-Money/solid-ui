@@ -156,7 +156,11 @@ export default function SignupCreating() {
     // If a selected user already exists, signup previously succeeded.
     // Redirect to avoid duplicate createAccount() calls on revisit.
     if (hasSelectedUser) {
-      if (Platform.OS === 'web') {
+      const { redirectFrom, setRedirectFrom } = useUserStore.getState();
+      if (redirectFrom) {
+        setRedirectFrom(null);
+        router.replace(redirectFrom as any);
+      } else if (Platform.OS === 'web') {
         router.replace(path.HOME);
       } else {
         router.replace(path.NOTIFICATIONS);
@@ -261,10 +265,14 @@ export default function SignupCreating() {
         attribution_channel: attributionChannel,
       });
 
-      // Navigate to home/notifications
+      // Navigate to home/notifications or redirectFrom page
       setStep('complete');
 
-      if (Platform.OS === 'web') {
+      const { redirectFrom, setRedirectFrom } = useUserStore.getState();
+      if (redirectFrom) {
+        setRedirectFrom(null);
+        router.replace(redirectFrom as any);
+      } else if (Platform.OS === 'web') {
         router.replace(path.HOME);
       } else {
         router.replace(path.NOTIFICATIONS);

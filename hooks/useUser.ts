@@ -331,7 +331,13 @@ const useUser = (): UseUserReturn => {
         attribution_channel: getAttributionChannel(attributionData),
       });
 
-      router.replace(path.HOME);
+      const { redirectFrom, setRedirectFrom } = useUserStore.getState();
+      if (redirectFrom) {
+        setRedirectFrom(null);
+        router.replace(redirectFrom as any);
+      } else {
+        router.replace(path.HOME);
+      }
     } catch (error: any) {
       let errorMessage =
         error?.status === 404
@@ -504,7 +510,13 @@ const useUser = (): UseUserReturn => {
           selectUserById(authedUser._id);
         }
 
-        router.replace(path.HOME);
+        const { redirectFrom, setRedirectFrom } = useUserStore.getState();
+        if (redirectFrom) {
+          setRedirectFrom(null);
+          router.replace(redirectFrom as any);
+        } else {
+          router.replace(path.HOME);
+        }
       } catch (_) {
         // Revert to previous user or clear selection on auth failure
         if (previousUserId) {
