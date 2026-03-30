@@ -138,7 +138,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
       return sorted.map((item, i) => (
         <PromoImageBanner
           key={`promo-${item.slug}-${i}`}
-          imageURL={item.imageURL}
+          imageURL={!isScreenMedium && item.mobileImageURL ? item.mobileImageURL : item.imageURL}
           onPress={getPromoBannerOnPress(item, setModal)}
           height={BANNER_HEIGHT}
         />
