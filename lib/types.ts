@@ -1524,6 +1524,7 @@ export interface WhatsNew {
 
 export interface PromotionsBannerItem {
   imageURL: string;
+  mobileImageURL?: string;
   slug: string;
   sort: number;
   link?: string;
