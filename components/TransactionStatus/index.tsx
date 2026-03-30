@@ -72,7 +72,7 @@ const TransactionStatus = ({
         </View>
         <Button
           variant="brand"
-          className="h-12 rounded-2xl"
+          className="h-12 w-full rounded-2xl"
           onPress={handlePress}
           disabled={isLoading}
         >
