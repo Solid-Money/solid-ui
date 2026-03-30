@@ -190,8 +190,11 @@ const useSendOption = ({
       if (value) {
         setModal(modal);
       } else {
-        // Check for unsaved data before closing
-        if (hasUnsavedSendData()) {
+        const currentModalName = useSendStore.getState().currentModal.name;
+        // Skip discard prompt if transaction has already been initiated
+        if (currentModalName === SEND_MODAL.OPEN_TRANSACTION_STATUS.name) {
+          resetAll();
+        } else if (hasUnsavedSendData()) {
           setShowDiscardDialog(true);
         } else {
           resetAll();
