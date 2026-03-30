@@ -162,18 +162,18 @@ const Withdraw = () => {
               alt="SoUSD"
               style={{ width: 34, height: 34 }}
             />
-            <Text className="text-lg font-semibold text-white">SoUSD</Text>
+            <Text className="text-lg font-semibold text-white">soUSD</Text>
           </View>
         </View>
 
-        <Text className="flex items-center gap-1.5 text-left text-muted-foreground">
-          <Wallet size={16} />{' '}
+        <View className="flex-row items-center gap-1.5">
+          <Wallet size={16} color="#a1a1aa" />
           {isEthereumBalanceLoading ? (
             <Skeleton className="h-4 w-16 rounded-md" />
-          ) : ethereumBalance ? (
-            `${formatNumber(ethereumBalance)} SoUSD`
           ) : (
-            '0 SoUSD'
+            <Text className="text-muted-foreground">
+              {ethereumBalance ? `${formatNumber(ethereumBalance)} soUSD` : '0 soUSD'}
+            </Text>
           )}
           <Max
             onPress={() => {
@@ -181,7 +181,7 @@ const Withdraw = () => {
               trigger('amount');
             }}
           />
-        </Text>
+        </View>
       </View>
 
       <View className="flex-row gap-2">
