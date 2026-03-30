@@ -17,6 +17,13 @@ export async function registerForPushNotificationsAsync() {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FF231F7C',
     });
+
+    await Notifications.setNotificationChannelAsync('actions', {
+      name: 'Actions',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
