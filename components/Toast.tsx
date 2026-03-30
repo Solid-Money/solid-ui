@@ -62,7 +62,7 @@ const BaseToast = ({ text1, text2, classNames, props }: IBaseToast) => {
       <Button
         onPress={() => Toast.hide()}
         variant="ghost"
-        className="!h-auto self-stretch rounded-l-none rounded-r-2xl border-l border-primary/10 px-4 text-accent-foreground web:hover:border-accent"
+        className="!h-full rounded-l-none rounded-r-2xl border-l border-primary/10 px-4 text-accent-foreground web:hover:border-accent"
       >
         <X color="white" />
       </Button>
