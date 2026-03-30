@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
-type PermissionStatusLabel = 'authorized' | 'denied' | 'undetermined' | 'not supported';
+type PermissionStatusLabel = 'Authorized' | 'Denied' | 'Undetermined' | 'Not Supported';
 
 const STATUS_MAP: Record<Notifications.PermissionStatus, PermissionStatusLabel> = {
-  [Notifications.PermissionStatus.GRANTED]: 'authorized',
-  [Notifications.PermissionStatus.DENIED]: 'denied',
-  [Notifications.PermissionStatus.UNDETERMINED]: 'undetermined',
+  [Notifications.PermissionStatus.GRANTED]: 'Authorized',
+  [Notifications.PermissionStatus.DENIED]: 'Denied',
+  [Notifications.PermissionStatus.UNDETERMINED]: 'Undetermined',
 };
 
 /**
@@ -23,7 +23,7 @@ export default function useNotificationPermissionStatus(): {
   refetch: () => void;
 } {
   const [status, setStatus] = useState<PermissionStatusLabel>(
-    Platform.OS === 'web' ? 'not supported' : 'undetermined',
+    Platform.OS === 'web' ? 'Not Supported' : 'Undetermined',
   );
   const [loading, setLoading] = useState(Platform.OS !== 'web');
   const appStateRef = useRef(AppState.currentState);
@@ -34,7 +34,7 @@ export default function useNotificationPermissionStatus(): {
     try {
       setLoading(true);
       const { status: permissionStatus } = await Notifications.getPermissionsAsync();
-      setStatus(STATUS_MAP[permissionStatus] ?? 'undetermined');
+      setStatus(STATUS_MAP[permissionStatus] ?? 'Undetermined');
     } catch {
       console.warn('Failed to read notification permission status');
     } finally {
@@ -60,7 +60,7 @@ export default function useNotificationPermissionStatus(): {
   }, [fetchStatus]);
 
   if (Platform.OS === 'web') {
-    return { status: 'not supported', loading: false, refetch: () => {} };
+    return { status: 'Not Supported', loading: false, refetch: () => {} };
   }
 
   return { status, loading, refetch: fetchStatus };
