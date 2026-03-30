@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Image } from 'expo-image';
 
+import AuthButton from '@/components/AuthButton';
 import CardWaitlistContainer from '@/components/CardWaitlist/CardWaitlistContainer';
 import CardWaitlistHeader from '@/components/CardWaitlist/CardWaitlistHeader';
 import CardWaitlistHeaderButtons from '@/components/CardWaitlist/CardWaitlistHeaderButtons';
@@ -95,7 +96,7 @@ const getFeatures = (cashbackPercentage: number) => [
   },
 ];
 
-const CardWaitlist = () => {
+const CardWaitlistPage = () => {
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [cashbackPercentage, setCashbackPercentage] = useState<number>(0.03); // Default to 3%
@@ -168,7 +169,9 @@ const CardWaitlist = () => {
           )}
 
           <View className="md:items-start">
-            <GetCardButton />
+            <AuthButton>
+              <GetCardButton />
+            </AuthButton>
           </View>
         </View>
       </CardWaitlistContainer>
@@ -176,4 +179,4 @@ const CardWaitlist = () => {
   );
 };
 
-export default CardWaitlist;
+export default CardWaitlistPage;
