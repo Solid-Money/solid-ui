@@ -267,7 +267,7 @@ const SendReview: React.FC = () => {
       >
         <Key />
         <Text className="text-base font-bold">{getButtonText()}</Text>
-        {isSendLoading && <ActivityIndicator color="gray" />}
+        {isSendLoading && <ActivityIndicator color="black" />}
       </Button>
 
       <NeedHelp />
