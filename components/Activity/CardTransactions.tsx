@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 
@@ -46,7 +46,7 @@ function NullSeparator() {
 }
 
 export default function CardTransactions() {
-  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage, refetch, isRefetching } =
     useCardTransactions();
   const { provider } = useCardProvider();
   const { data: cashbacks } = useCashbacks();
@@ -287,6 +287,14 @@ export default function CardTransactions() {
         ListFooterComponent={renderFooter}
         ItemSeparatorComponent={NullSeparator}
         contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor="#666"
+            colors={['#666']}
+          />
+        }
         showsVerticalScrollIndicator={false}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}

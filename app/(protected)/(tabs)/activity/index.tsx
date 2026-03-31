@@ -38,7 +38,11 @@ export default function Activity() {
   );
 
   return (
-    <PageLayout isLoading={isCardStatusLoading} stickyHeader={stickyHeader}>
+    <PageLayout
+      isLoading={isCardStatusLoading}
+      stickyHeader={stickyHeader}
+      scrollable={isWeb}
+    >
       <View
         className={cn('mx-auto w-full max-w-7xl px-4 pb-8 md:pb-12', {
           'flex-1': !isWeb,
