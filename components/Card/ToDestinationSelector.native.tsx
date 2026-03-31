@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { ChevronDown, Leaf, Wallet as WalletIcon } from 'lucide-react-native';
+import { ChevronDown, Wallet as WalletIcon } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 
 export type ToDestinationProps = {
-  value: CardDepositSource;
   onChange: (value: CardDepositSource) => void;
+  tokenSymbol?: string;
 };
 
-export default function ToDestinationSelector({ value, onChange }: ToDestinationProps) {
+export default function ToDestinationSelector({
+  onChange,
+  tokenSymbol = 'USDC',
+}: ToDestinationProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const displayText = value === CardDepositSource.WALLET ? 'Wallet' : 'Savings';
-  const tokenLabel = value === CardDepositSource.WALLET ? 'USDC' : 'soUSD';
 
   return (
     <View>
@@ -22,15 +23,11 @@ export default function ToDestinationSelector({ value, onChange }: ToDestination
         onPress={() => setIsOpen(!isOpen)}
       >
         <View className="flex-row items-center gap-2">
-          {value === CardDepositSource.WALLET ? (
-            <WalletIcon color="#A1A1A1" size={24} />
-          ) : (
-            <Leaf color="#A1A1A1" size={24} />
-          )}
-          <Text className="text-lg font-semibold">{displayText}</Text>
+          <WalletIcon color="#A1A1A1" size={24} />
+          <Text className="text-lg font-semibold">Wallet</Text>
         </View>
         <View className="flex-row items-center gap-2">
-          <Text className="text-sm text-muted-foreground">{tokenLabel}</Text>
+          <Text className="text-sm text-muted-foreground">{tokenSymbol}</Text>
           <ChevronDown color="#A1A1A1" size={20} />
         </View>
       </Pressable>
@@ -39,24 +36,13 @@ export default function ToDestinationSelector({ value, onChange }: ToDestination
           <Pressable
             className="flex-row items-center gap-2 px-4 py-3"
             onPress={() => {
-              onChange(CardDepositSource.SAVINGS);
-              setIsOpen(false);
-            }}
-          >
-            <Leaf color="#A1A1A1" size={20} />
-            <Text className="text-lg">Savings</Text>
-            <Text className="text-sm text-muted-foreground">soUSD</Text>
-          </Pressable>
-          <Pressable
-            className="flex-row items-center gap-2 px-4 py-3"
-            onPress={() => {
-              onChange(CardDepositSource.WALLET);
+              onChange(CardDepositSource.COLLATERAL);
               setIsOpen(false);
             }}
           >
             <WalletIcon color="#A1A1A1" size={20} />
             <Text className="text-lg">Wallet</Text>
-            <Text className="text-sm text-muted-foreground">USDC</Text>
+            <Text className="text-sm text-muted-foreground">{tokenSymbol}</Text>
           </Pressable>
         </View>
       )}

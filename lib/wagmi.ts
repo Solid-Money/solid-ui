@@ -2,13 +2,20 @@ import { Platform } from 'react-native';
 import { Chain, createPublicClient } from 'viem';
 import { createConfig, http } from 'wagmi';
 import { getWalletClient } from 'wagmi/actions';
-import { arbitrum, base, fuse, mainnet, polygon } from 'wagmi/chains';
+import {
+  arbitrum,
+  base,
+  baseSepolia,
+  fuse,
+  mainnet,
+  polygon,
+} from 'wagmi/chains';
 
 import { EXPO_PUBLIC_ALCHEMY_API_KEY } from './config';
 
 polyfill();
 
-const chains: [Chain, ...Chain[]] = [fuse, mainnet, polygon, base, arbitrum];
+const chains: [Chain, ...Chain[]] = [fuse, mainnet, polygon, base, baseSepolia, arbitrum];
 
 export const getChain = (chainId: number): Chain | undefined => {
   return chains.find((chain: Chain) => chain.id === chainId);
@@ -19,6 +26,7 @@ export const rpcUrls: Record<number, string> = {
   [mainnet.id]: `https://eth-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [polygon.id]: `https://polygon-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [base.id]: `https://base-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
+  [baseSepolia.id]: `https://base-sepolia.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
   [arbitrum.id]: `https://arb-mainnet.g.alchemy.com/v2/${EXPO_PUBLIC_ALCHEMY_API_KEY}`,
 };
 
@@ -27,6 +35,7 @@ const transports: Record<number, ReturnType<typeof http>> = {
   [mainnet.id]: http(rpcUrls[mainnet.id]),
   [polygon.id]: http(rpcUrls[polygon.id]),
   [base.id]: http(rpcUrls[base.id]),
+  [baseSepolia.id]: http(rpcUrls[baseSepolia.id]),
   [arbitrum.id]: http(rpcUrls[arbitrum.id]),
 };
 

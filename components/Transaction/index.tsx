@@ -213,6 +213,8 @@ const Transaction = ({
     size: 44,
   });
 
+  const isSuccess = status === TransactionStatus.SUCCESS;
+
   const getDescription = () => {
     if (isPending) return 'Pending';
     if (isProcessing) return 'Processing';
@@ -276,7 +278,7 @@ const Transaction = ({
           </View>
         </View>
         {(isFailed || isExpired || isRefunded) && statusBadge && (
-          <View className={cn(statusBadge.bgColor, 'flex-shrink-0 rounded-full px-2 py-1')}>
+          <View className={cn(statusBadge.bgColor, 'shrink-0 rounded-full px-2 py-1')}>
             <Text className={cn(statusBadge.textColor, 'text-xs font-bold')}>
               {statusBadge.text}
             </Text>

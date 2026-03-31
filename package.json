@@ -37,12 +37,15 @@
     "@braintree/browser-detection": "^2.1.1",
     "@coinbase/wallet-mobile-sdk": "^1.1.2",
     "@cryptoalgebra/fuse-sdk": "npm:@cryptoalgebra/fuse-sdk@latest",
+    "@didit-protocol/sdk-react-native": "^3.2.5",
+    "@didit-protocol/sdk-web": "^0.1.8",
     "@expo-google-fonts/mona-sans": "^0.4.1",
     "@expo/vector-icons": "^15.1.1",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@intercom/intercom-react-native": "^9.6.3",
     "@lottiefiles/dotlottie-react": "^0.13.5",
+    "@meawallet/react-native-mpp": "file:./stubs/meawallet-mpp",
     "@merkl/api": "file:./packages/merkl-api-1.4.15-patched.tgz",
     "@number-flow/react": "^0.5.14",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -126,6 +129,7 @@
     "react-native": "0.83.2",
     "react-native-animated-rolling-numbers": "^2.0.0",
     "react-native-css-interop": "0.2.1",
+    "react-native-default-preference": "^1.4.4",
     "react-native-device-info": "^11.1.0",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-get-random-values": "~1.11.0",
@@ -214,7 +218,8 @@
           "@coinbase/wallet-mobile-sdk",
           "@walletconnect/react-native-compat",
           "react-native-inappbrowser-reborn",
-          "react-native-aes-gcm-crypto"
+          "react-native-aes-gcm-crypto",
+          "react-native-default-preference"
         ],
         "listUnknownPackages": false
       }

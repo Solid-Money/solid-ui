@@ -26,8 +26,8 @@ const TransactionStatus = ({
   amount,
   address,
   onPress,
-  title = 'Withdraw started',
-  description = "This may take up to 24H. We'll keep processing this in the background. You can safely leave this page.",
+  title = 'Transaction initiated',
+  description = "This may take some time. We'll keep processing this in the background. You can safely leave this page.",
   status = 'Initiated',
   icon,
   token = 'USDC',
@@ -72,12 +72,15 @@ const TransactionStatus = ({
         </View>
         <Button
           variant="brand"
-          className="h-12 rounded-2xl"
+          className="h-12 w-full rounded-2xl"
           onPress={handlePress}
           disabled={isLoading}
         >
-          <Text className="text-base font-bold">{buttonText}</Text>
-          {isLoading && <ActivityIndicator color="white" />}
+          {isLoading ? (
+            <ActivityIndicator color="black" />
+          ) : (
+            <Text className="text-base font-bold">{buttonText}</Text>
+          )}
         </Button>
       </View>
 
