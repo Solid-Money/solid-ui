@@ -79,7 +79,7 @@ const TransactionStatus = ({
           {isLoading ? (
             <ActivityIndicator color="black" />
           ) : (
-            <Text className="text-base font-bold">{buttonText}</Text>
+            <Text className="w-full text-center text-base font-bold">{buttonText}</Text>
           )}
         </Button>
       </View>
