@@ -17,6 +17,7 @@ import {
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL,
   EXPO_PUBLIC_LIFI_API_URL,
+  EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
 } from './config';
 import {
   ActivityEvent,
@@ -31,10 +32,14 @@ import {
   BridgeTransaction,
   BridgeTransactionRequest,
   CardAccessResponse,
+  CardBalanceResponseDto,
   CardDepositBonusConfig,
   CardDetailsResponseDto,
   CardDetailsRevealResponse,
+  CardPinResponseDto,
+  CardProvider,
   CardResponse,
+  CardSecretsResponseDto,
   CardStatusResponse,
   CardTransaction,
   CardTransactionsResponse,
@@ -51,12 +56,14 @@ import {
   EnsureWebhookResponse,
   EphemeralKeyResponse,
   ExchangeRateResponse,
+  ExtensionCardsResponse,
   FromCurrency,
   FullRewardsConfig,
   GetLifiQuoteParams,
   HistoricalAPYPoint,
   HoldingFundsPointsMultiplierConfig,
   KycLink,
+  KycLinkAgreements,
   KycLinkForExistingCustomer,
   KycLinkFromBridgeResponse,
   LayerZeroTransaction,
@@ -64,14 +71,21 @@ import {
   LifiOrder,
   LifiQuoteResponse,
   LifiStatusResponse,
+  MppCredentialsResponse,
   Points,
   PromotionsBannerResponse,
+  ProvisioningSessionRequest,
+  ProvisioningSessionResponse,
+  RainConsumerType,
+  RainContractResponseDto,
+  RainKycSubmitResponse,
   RewardsUserData,
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
   StargateQuoteParams,
   StargateQuoteResponse,
+  SubmitPersonaKycResponse,
   SwapTokenRequest,
   SwapTokenResponse,
   SyncActivitiesOptions,
@@ -84,11 +98,16 @@ import {
   User,
   VaultBreakdown,
   VaultType,
+  WalletEligibilityResponse,
   WebhookStatus,
+  WebProvisioningTokenResponse,
   WhatsNew,
+  WithdrawCollateralRequest,
+  WithdrawCollateralSignatureResponse,
   WithdrawFromCardToSavingsResponse,
 } from './types';
 import { generateClientNonceData } from './utils/cardDetailsReveal';
+import { decryptSecret, generateSessionId } from './utils/rainCardSecrets';
 
 // Helper function to get platform-specific headers
 export const getPlatformHeaders = () => {
@@ -359,8 +378,21 @@ export const createKycLink = async (
   email: string,
   redirectUri: string,
   endorsements: string[],
+  agreements?: KycLinkAgreements,
+  consumerType?: RainConsumerType,
 ): Promise<KycLink> => {
   const jwt = getJWTToken();
+
+  const body: Record<string, unknown> = {
+    fullName,
+    email,
+    redirectUri,
+    endorsements,
+  };
+  if (agreements != null) {
+    body.agreements = agreements;
+    if (consumerType != null) body.consumerType = consumerType;
+  }
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/link`, {
     method: 'POST',
@@ -370,12 +402,7 @@ export const createKycLink = async (
       ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
     },
     credentials: 'include',
-    body: JSON.stringify({
-      fullName,
-      email,
-      redirectUri,
-      endorsements,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) throw response;
@@ -420,6 +447,113 @@ export const getKycLinkFromBridge = async (
 
   if (!response.ok) throw response;
 
+  return response.json();
+};
+
+/** Rain KYC: submit Persona inquiry ID after user completes Persona flow. Returns consumerId and kycStatus; only allow card creation when kycStatus === 'approved'. */
+export const submitPersonaKyc = async (
+  personaInquiryId: string,
+): Promise<SubmitPersonaKycResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/persona`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ personaInquiryId }),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/**
+ * Persona sandbox: perform simulate action (e.g. approve_inquiry).
+ * Backend should proxy to Persona. Only for non-production.
+ */
+export const personaSimulateAction = async (
+  inquiryId: string,
+  action: string,
+): Promise<{ ok: boolean }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/persona/simulate`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ inquiryId, action }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain KYC (in-house): single multipart POST with application fields + document files. Backend creates Rain application then uploads docs. */
+export const submitRainKyc = async (formData: FormData): Promise<RainKycSubmitResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/kyc/rain`, {
+    method: 'POST',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: formData,
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+// --- Didit identity verification ---
+
+/** Create a Didit verification session. Backend creates the session and returns session_id, session_token, verification_url. */
+export const createDiditSession = async (
+  callback?: string,
+): Promise<import('./types').DiditSessionResponse> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/session`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify(callback ? { callback } : {}),
+  });
+  if (!response.ok) throw response;
+  return response.json();
+};
+
+/** Get the current user's Didit verification status. */
+export const getDiditVerificationStatus = async (): Promise<
+  import('./types').DiditVerificationStatusResponse
+> => {
+  const jwt = getJWTToken();
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/didit/status`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+  if (!response.ok) throw response;
   return response.json();
 };
 
@@ -564,7 +698,8 @@ export const getCardDetails = async (): Promise<CardDetailsResponseDto> => {
   return response.json();
 };
 
-export const getCardBalance = async (): Promise<void> => {
+/** Rain only: GET card balance (all amounts in cents). Returns 400 "Balance is only available for Rain cards." for Bridge. */
+export const getCardBalance = async (): Promise<CardBalanceResponseDto> => {
   const jwt = getJWTToken();
 
   const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/balance`, {
@@ -579,10 +714,33 @@ export const getCardBalance = async (): Promise<void> => {
 };
 
 export const getCashbackPercentage = async (): Promise<{ percentage: number }> => {
+
+  return response.json();
+};
+
+/** Rain only: GET funding contracts (depositAddress, onramp). Returns 400 for Bridge. */
+export const getCardContracts = async (): Promise<RainContractResponseDto[]> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/contracts`, {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain MPP: GET wallet eligibility for push provisioning. Throw Response on non-OK. */
+export const getWalletEligibility = async (): Promise<WalletEligibilityResponse> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/cashback-percentage`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/eligibility`,
     {
       credentials: 'include',
       headers: {
@@ -597,55 +755,84 @@ export const getCashbackPercentage = async (): Promise<{ percentage: number }> =
   return response.json();
 };
 
-export const fetchInternalTransactions = async (
-  address: string,
-): Promise<BlockscoutTransactions> => {
-  const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`,
-  );
-  return response.data;
-};
-
-export const fetchTransactionTokenTransfers = async (
-  transactionHash: string,
-  type = 'ERC-20',
-): Promise<BlockscoutTransactions> => {
-  const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`,
-  );
-  return response.data;
-};
-
-export const fetchLayerZeroBridgeTransactions = async (
-  transactionHash: string,
-): Promise<LayerZeroTransaction> => {
-  const response = await axios.get(
-    `https://scan.layerzero-api.com/v1/messages/tx/${transactionHash}`,
-  );
-  return response.data;
-};
-
-export const getClientIp = async (): Promise<string | null> => {
-  try {
-    const response = await axios.get('https://api.ipify.org?format=json');
-    return response.data.ip;
-  } catch (error) {
-    console.error('Error fetching IP from ipify:', error);
-    return null;
-  }
-};
-
-export const checkCardAccess = async (countryCode: string): Promise<CardAccessResponse> => {
+/** Rain MPP: GET card credentials for MppCardDataParameters. Throw Response on non-OK. */
+export const getMppCredentials = async (): Promise<MppCredentialsResponse> => {
   const jwt = getJWTToken();
 
   const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/check-access?countryCode=${countryCode}`,
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/mpp-credentials`,
     {
       credentials: 'include',
       headers: {
         ...getPlatformHeaders(),
         ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
       },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain Web Provisioning: POST get token for Apple Pay web provisioning (jwtResolverCallback). */
+export const getWebProvisioningToken = async (): Promise<WebProvisioningTokenResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/web-provisioning-token`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({}),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Wallet Extension: GET cards for Issuer Non-UI Extension (auth via Bearer token from App Group). */
+export const getExtensionCards = async (bearerToken: string): Promise<ExtensionCardsResponse> => {
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/extension-cards`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        Authorization: `Bearer ${bearerToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain MPP: POST create provisioning session (if backend/MeaWallet require it). Throw Response on non-OK. */
+export const createProvisioningSession = async (
+  body: ProvisioningSessionRequest = {},
+): Promise<ProvisioningSessionResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/wallet/provisioning-session`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
     },
   );
 
@@ -1323,6 +1510,30 @@ export const withdrawFromCardToSavings = async (body: {
   return response.json();
 };
 
+export const withdrawCardCollateral = async (
+  body: WithdrawCollateralRequest,
+): Promise<WithdrawCollateralSignatureResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/collateral/withdraw`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const getCardTransactions = async (
   paginationToken?: string,
 ): Promise<CardTransactionsResponse> => {
@@ -1712,6 +1923,70 @@ export const fetchVaultBreakdown = async () => {
 
 // Card Details Reveal Functions
 
+/** Rain only: POST card secrets with SessionId header (base64). Returns 400 for Bridge. */
+export const requestCardSecrets = async (
+  sessionIdBase64: string,
+): Promise<CardSecretsResponseDto> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/secrets`, {
+    method: 'POST',
+    headers: {
+      ...getPlatformHeaders(),
+      SessionId: sessionIdBase64,
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+/** Rain only: PUT card PIN with SessionId header (base64) and encrypted PIN. */
+export const updateCardPin = async (
+  sessionIdBase64: string,
+  encryptedPin: { iv: string; data: string },
+): Promise<{ message?: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/pin`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      SessionId: sessionIdBase64,
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ encryptedPin }),
+  });
+
+  if (!response.ok) throw response;
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : {};
+};
+
+/** Rain only: GET card PIN with SessionId header (base64). Returns encrypted PIN. */
+export const getCardPin = async (sessionIdBase64: string): Promise<CardPinResponseDto> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/pin`, {
+    headers: {
+      ...getPlatformHeaders(),
+      SessionId: sessionIdBase64,
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 /**
  * Request ephemeral key from backend
  * Your backend will relay this nonce to Bridge and return the ephemeral key
@@ -1765,25 +2040,66 @@ export const revealCardDetails = async (
 };
 
 /**
- * Complete card details reveal flow
- * This combines all operations into a single function for convenience
+ * Rain card reveal: SessionId + decrypt PAN/CVC. Use when provider is Rain.
  */
-export const revealCardDetailsComplete = async (): Promise<CardDetailsRevealResponse> => {
-  // Generate client nonce data
-  const nonceData = await generateClientNonceData();
-
-  // Request ephemeral key from your backend
-  const ephemeralKeyResponse = await requestEphemeralKey(nonceData.nonce);
-
-  // Directly call Bridge to reveal card details
-  const cardDetails = await revealCardDetails(
-    ephemeralKeyResponse.ephemeral_key,
-    nonceData.clientSecret,
-    nonceData.clientTimestamp,
-  );
-
-  return cardDetails;
+export const revealCardDetailsCompleteRain = async (): Promise<CardDetailsRevealResponse> => {
+  if (!EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) {
+    throw new Error('Rain card public key not configured');
+  }
+  const details = await getCardDetails();
+  const { secretKey, sessionId } = await generateSessionId(EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM);
+  const secrets = await requestCardSecrets(sessionId);
+  const pan = await decryptSecret(secrets.encryptedPan.data, secrets.encryptedPan.iv, secretKey);
+  const cvc = await decryptSecret(secrets.encryptedCvc.data, secrets.encryptedCvc.iv, secretKey);
+  const expiry = details?.card_details?.expiry ?? '';
+  return {
+    card_number: pan,
+    card_security_code: cvc,
+    expiry_date: expiry,
+  };
 };
+
+/**
+ * Complete card details reveal flow.
+ * When a provider is supplied the correct path is used directly.
+ * Otherwise falls back to the previous heuristic (try Rain first when PEM is
+ * configured, then Bridge on 400).
+ */
+export const revealCardDetailsComplete = async (
+  provider?: CardProvider,
+): Promise<CardDetailsRevealResponse> => {
+  if (provider === CardProvider.RAIN) {
+    return revealCardDetailsCompleteRain();
+  }
+  if (provider === CardProvider.BRIDGE) {
+    return revealCardDetailsCompleteBridge();
+  }
+
+  // Fallback when provider is unknown: try Rain if PEM configured, else Bridge
+  if (EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM) {
+    try {
+      return await revealCardDetailsCompleteRain();
+    } catch (e: unknown) {
+      if (e instanceof Response && e.status === 400) {
+        return revealCardDetailsCompleteBridge();
+      }
+      throw e;
+    }
+  }
+  return revealCardDetailsCompleteBridge();
+};
+
+function revealCardDetailsCompleteBridge(): Promise<CardDetailsRevealResponse> {
+  return (async () => {
+    const nonceData = await generateClientNonceData();
+    const ephemeralKeyResponse = await requestEphemeralKey(nonceData.nonce);
+    return revealCardDetails(
+      ephemeralKeyResponse.ephemeral_key,
+      nonceData.clientSecret,
+      nonceData.clientTimestamp,
+    );
+  })();
+}
 
 // Stargate API for bridging
 export const getStargateQuote = async (

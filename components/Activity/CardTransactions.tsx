@@ -7,6 +7,7 @@ import Diamond from '@/assets/images/diamond';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import { Text } from '@/components/ui/text';
 import { useActivity } from '@/hooks/useActivity';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useCashbacks } from '@/hooks/useCashbacks';
 import getTokenIcon from '@/lib/getTokenIcon';
@@ -47,6 +48,7 @@ function NullSeparator() {
 export default function CardTransactions() {
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useCardTransactions();
+  const { provider } = useCardProvider();
   const { data: cashbacks } = useCashbacks();
   const { activities } = useActivity();
 
@@ -205,7 +207,7 @@ export default function CardTransactions() {
           </View>
           <View className="items-end">
             <Text className="text-xl font-semibold text-white">
-              {formatCardAmount(transaction.amount)}
+              {formatCardAmount(transaction.amount, provider)}
             </Text>
             {cashbackInfo && cashbackInfo.amount !== 'Pending' && (
               <Text className="mt-0.5 text-sm font-medium text-[#34C759]">
@@ -216,7 +218,7 @@ export default function CardTransactions() {
         </Pressable>
       );
     },
-    [groupedTransactions, cashbacks],
+    [groupedTransactions, cashbacks, provider],
   );
 
   const renderEmpty = useCallback(() => {

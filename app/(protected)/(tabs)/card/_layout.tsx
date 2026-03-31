@@ -4,6 +4,8 @@ export default function CardLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#121212' } }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="ready" />
+      <Stack.Screen name="pending" />
       <Stack.Screen name="activate" />
     </Stack>
   );

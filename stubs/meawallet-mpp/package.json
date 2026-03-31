@@ -1,0 +1,7 @@
+{
+  "name": "@meawallet/react-native-mpp",
+  "version": "0.0.0-stub",
+  "description": "Stub for @meawallet/react-native-mpp when the real package is not available. Replace with real package when registry access is available.",
+  "main": "index.js",
+  "private": true
+}

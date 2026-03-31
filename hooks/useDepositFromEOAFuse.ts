@@ -246,9 +246,11 @@ const useDepositFromEOAFuse = (
 
             if (result?.transactionHash) {
               txHash = result.transactionHash as `0x${string}`;
+              // NOTE: Do NOT set hash here. The backend returns the protocol
+              // deposit hash, which is the same hash set on the "Deposit soUSD
+              // to Savings" activity. Setting it would cause dedup collisions.
               updateActivity(trackingId!, {
                 status: TransactionStatus.PROCESSING,
-                hash: result.transactionHash,
               });
             }
 

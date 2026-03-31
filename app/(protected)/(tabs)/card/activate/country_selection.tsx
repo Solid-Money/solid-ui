@@ -186,26 +186,55 @@ export default function ActivateCountrySelection() {
     if (selectedCountry) {
       setProcessing(true);
       try {
-        // Always show country as unavailable - no matter which country is selected
-        // This ensures users see the "country not available" message
+        // Check card access via backend API
+        const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
+
+        if (!accessCheck) throw new Error('Failed to check card access');
+
+        const updatedCountryInfo = {
+          countryCode: selectedCountry.code,
+          countryName: selectedCountry.name,
+          isAvailable: accessCheck.hasAccess,
+        };
+
+        setCountryInfo(updatedCountryInfo);
+        setCountryDetectionFailed(false);
+
+        track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
+          countryCode: selectedCountry.code,
+          countryName: selectedCountry.name,
+          isAvailable: accessCheck.hasAccess,
+          selectionMethod: selectionMethod === 'ip_detected' ? 'ip_detected' : 'manual',
+        });
+
+        if (accessCheck.hasAccess) {
+          const ipCountry = await getCountryFromIp();
+          if (ipCountry && ipCountry.countryCode === selectedCountry.code) {
+            router.replace(path.CARD_ACTIVATE);
+          } else {
+            router.replace(path.CARD_COUNTRY_SELECTION);
+          }
+          return;
+        }
+
+        setShowCountrySelector(false);
+      } catch (error) {
+        console.error('Error checking card access:', error);
         const unavailableCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
           isAvailable: false,
         };
 
-        // Update store with unavailable status
-        setCountryInfo(unavailableCountryInfo);
-        setCountryDetectionFailed(false);
-
         track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
           isAvailable: false,
           selectionMethod: selectionMethod === 'ip_detected' ? 'ip_detected' : 'manual',
+          error: (error as Error)?.message,
         });
 
-        // Show the unavailable message
+        setCountryInfo(unavailableCountryInfo);
         setShowCountrySelector(false);
       } finally {
         setProcessing(false);
@@ -409,10 +438,10 @@ function CountryUnavailableView({
         countryName={countryName}
       />
       <Text className="mb-4 text-center text-2xl font-bold text-white">
-        {`We're not ready for ${countryName} just yet!`}
+        {`Your Solid Card is on the way`}
       </Text>
       <Text className="font-weight-400 mb-6 text-center leading-6 text-[#ACACAC]">
-        {`Unfortunately, Solid card isn't available in ${countryName} yet. Please select a different country or check back later.`}
+        {`We're rolling out access in your region. Join the waitlist to be notified first.`}
       </Text>
       <Button className="mt-6 h-11 w-full rounded-xl bg-[#94F27F]" onPress={onChangeCountry}>
         <Text className="text-base font-bold text-black">Change country</Text>

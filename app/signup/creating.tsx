@@ -261,10 +261,14 @@ export default function SignupCreating() {
         attribution_channel: attributionChannel,
       });
 
-      // Navigate to home/notifications
+      // Navigate to home/notifications or redirectFrom page
       setStep('complete');
 
-      if (Platform.OS === 'web') {
+      const { redirectFrom, setRedirectFrom } = useUserStore.getState();
+      if (redirectFrom) {
+        setRedirectFrom(null);
+        router.replace(redirectFrom as any);
+      } else if (Platform.OS === 'web') {
         router.replace(path.HOME);
       } else {
         router.replace(path.NOTIFICATIONS);

@@ -11,7 +11,7 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ stepId, completed, onPress }: StepIndicatorProps) {
   return (
-    <Pressable className="mt-1" onPress={onPress}>
+    <Pressable onPress={onPress}>
       {completed ? (
         <View className="h-8 w-8 items-center justify-center rounded-full bg-[#94F27F]">
           <Check size={16} color="black" strokeWidth={3} />

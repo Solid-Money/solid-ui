@@ -230,6 +230,18 @@ export const SPIN_WIN_MODAL = {
   },
 };
 
+// Card manage PIN modal
+export const CARD_PIN_MODAL = {
+  CLOSE: {
+    name: 'close',
+    number: 0,
+  },
+  OPEN_FORM: {
+    name: 'open_form',
+    number: 1,
+  },
+};
+
 // Card deposit modal (two-step flow)
 export const CARD_DEPOSIT_MODAL = {
   CLOSE: {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { ImageBackground, Platform, ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams } from 'expo-router';
 import { Address } from 'viem';
 
 import { DashboardTitle } from '@/components/Dashboard';
@@ -40,10 +41,23 @@ import { useSavingStore } from '@/store/useSavingStore';
 export default function Savings() {
   useRenderMonitor({ componentName: MONITORED_COMPONENTS.SAVINGS_SCREEN });
 
+  const { vault: vaultParam } = useLocalSearchParams<{ vault?: string }>();
   const { user } = useUser();
-  const { selectedVault } = useSavingStore();
+  const { selectedVault, setSelectedVault } = useSavingStore();
   const currentVault = VAULTS[selectedVault];
   const { isScreenMedium } = useDimension();
+
+  // Switch vault based on URL param (e.g. /savings?vault=fuse), default to USDC
+  useEffect(() => {
+    if (vaultParam) {
+      const vaultIndex = VAULTS.findIndex(
+        v => v.type === vaultParam.toLowerCase() || v.name.toLowerCase() === vaultParam.toLowerCase(),
+      );
+      if (vaultIndex !== -1) {
+        setSelectedVault(vaultIndex);
+      }
+    }
+  }, [vaultParam, setSelectedVault]);
 
   const {
     data: balance,

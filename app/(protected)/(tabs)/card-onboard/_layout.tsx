@@ -24,7 +24,6 @@ export default function CardWaitlistLayout() {
           ) : null,
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen
         name="country_selection"
         options={{

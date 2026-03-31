@@ -178,8 +178,8 @@ export function useSyncActivities(options: UseSyncActivitiesOptions = {}): UseSy
       try {
         const result = await withRefreshToken(() => syncActivities(syncOptions));
         setLastSync(userId, Date.now());
-        setLastResult(result);
-        return result;
+        setLastResult(result ?? null);
+        return result as SyncActivitiesResponse;
       } catch (error) {
         console.error('Failed to sync activities:', error);
         throw error;

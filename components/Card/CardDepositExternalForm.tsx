@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Wallet as WalletIcon } from 'lucide-react-native';
 import { useActiveAccount, useSwitchActiveWalletChain } from 'thirdweb/react';
 import { Address, encodeFunctionData, erc20Abi, formatUnits, parseUnits } from 'viem';
-import { arbitrum } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -17,17 +16,26 @@ import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
+import { useCardContracts } from '@/hooks/useCardContracts';
 import { useCardDetails } from '@/hooks/useCardDetails';
+import { useCardProvider } from '@/hooks/useCardProvider';
 import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
+import { EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID } from '@/lib/config';
 import { getChain } from '@/lib/thirdweb';
-import { Status, TransactionStatus, TransactionType } from '@/lib/types';
-import { cn, formatNumber, getArbitrumFundingAddress } from '@/lib/utils';
+import { CardProvider, Status, TransactionStatus, TransactionType } from '@/lib/types';
+import {
+  cn,
+  formatNumber,
+  getCardDepositTokenAddress,
+  getCardDepositTokenSymbol,
+  getCardFundingAddress,
+} from '@/lib/utils';
+import { getChain as getChainWagmi } from '@/lib/wagmi';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
 type FormData = { amount: string };
@@ -44,7 +52,13 @@ export default function CardDepositExternalForm() {
     })),
   );
   const { data: cardDetails } = useCardDetails();
+  const { provider } = useCardProvider();
+  const { data: contracts, isLoading: contractsLoading } = useCardContracts();
   const [sendStatus, setSendStatus] = useState<Status>(Status.IDLE);
+
+  const fundingChainId = EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID;
+  const depositTokenAddress = getCardDepositTokenAddress(fundingChainId) as Address;
+  const depositTokenSymbol = getCardDepositTokenSymbol(provider);
 
   // Tracking refs
   const hasTrackedFormViewedRef = useRef(false);
@@ -84,28 +98,27 @@ export default function CardDepositExternalForm() {
   }, [account?.address]);
 
   const eoaAddress = account?.address as Address | undefined;
-  const arbitrumUsdcAddress = BRIDGE_TOKENS[arbitrum.id]?.tokens?.USDC?.address as Address;
-  const { data: eoaUsdcBalance, isLoading: isEOABalanceLoading } = useReadContract({
+  const { data: eoaTokenBalance, isLoading: isEOABalanceLoading } = useReadContract({
     abi: erc20Abi,
-    address: arbitrumUsdcAddress,
+    address: depositTokenAddress,
     functionName: 'balanceOf',
     args: [eoaAddress as Address],
-    chainId: arbitrum.id,
-    query: { enabled: !!eoaAddress && !!arbitrumUsdcAddress },
+    chainId: fundingChainId,
+    query: { enabled: !!eoaAddress && !!depositTokenAddress },
   });
 
   const schema = useMemo(() => {
-    const balanceAmount = eoaUsdcBalance ? Number(formatUnits(eoaUsdcBalance, 6)) : 0;
+    const balanceAmount = eoaTokenBalance ? Number(formatUnits(eoaTokenBalance, 6)) : 0;
     return z.object({
       amount: z
         .string()
         .refine(val => val !== '' && !isNaN(Number(val)), { error: 'Enter a valid amount' })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
         .refine(val => Number(val) <= balanceAmount, {
-          error: `Available balance is ${formatNumber(balanceAmount)} USDC`,
+          error: `Available balance is ${formatNumber(balanceAmount)} ${depositTokenSymbol}`,
         }),
     });
-  }, [eoaUsdcBalance]);
+  }, [eoaTokenBalance, depositTokenSymbol]);
 
   const { control, handleSubmit, formState, watch, reset, setValue, trigger } = useForm<FormData>({
     resolver: zodResolver(schema) as any,
@@ -114,7 +127,7 @@ export default function CardDepositExternalForm() {
   });
 
   const watchedAmount = watch('amount');
-  const formattedEOABalance = eoaUsdcBalance ? formatUnits(eoaUsdcBalance, 6) : '0';
+  const formattedEOABalance = eoaTokenBalance ? formatUnits(eoaTokenBalance, 6) : '0';
 
   const resetSendStatus = useCallback(() => {
     setSendStatus(Status.IDLE);
@@ -138,13 +151,13 @@ export default function CardDepositExternalForm() {
           return;
         }
 
-        const arbitrumFundingAddress = getArbitrumFundingAddress(cardDetails);
+        const fundingAddress = getCardFundingAddress(cardDetails, provider, contracts ?? undefined);
 
-        if (!arbitrumFundingAddress) {
+        if (!fundingAddress) {
           Toast.show({
             type: 'error',
-            text1: 'Arbitrum deposits not available',
-            text2: 'This card does not support Arbitrum deposits',
+            text1: 'External deposits not available',
+            text2: 'This card does not support deposits from external wallet',
           });
           return;
         }
@@ -158,11 +171,11 @@ export default function CardDepositExternalForm() {
           return;
         }
 
-        if (!arbitrumUsdcAddress) {
+        if (!depositTokenAddress) {
           Toast.show({
             type: 'error',
             text1: 'Configuration error',
-            text2: 'Arbitrum USDC address not found',
+            text2: `${depositTokenSymbol} address not found for funding chain`,
           });
           return;
         }
@@ -177,20 +190,19 @@ export default function CardDepositExternalForm() {
         }
 
         setSendStatus(Status.PENDING);
-        const fundingAddress = arbitrumFundingAddress;
         const amountWei = parseUnits(data.amount, 6);
 
+        const fundingChain = getChain(fundingChainId);
         try {
-          const arbitrumChain = getChain(arbitrum.id);
-          if (arbitrumChain) {
-            await switchChain(arbitrumChain);
+          if (fundingChain) {
+            await switchChain(fundingChain);
           }
         } catch (chainError) {
-          console.error('Failed to switch to Arbitrum:', chainError);
+          console.error('Failed to switch to funding chain:', chainError);
           Toast.show({
             type: 'error',
             text1: 'Network switch failed',
-            text2: 'Please manually switch your wallet to Arbitrum',
+            text2: `Please manually switch your wallet to the funding chain (${fundingChainId})`,
           });
           setSendStatus(Status.ERROR);
           return;
@@ -202,22 +214,22 @@ export default function CardDepositExternalForm() {
           title: `Card Deposit`,
           shortTitle: `Card Deposit`,
           amount: data.amount,
-          symbol: 'USDC',
-          chainId: arbitrum.id,
+          symbol: depositTokenSymbol,
+          chainId: fundingChainId,
           fromAddress: account.address,
           toAddress: fundingAddress,
           status: TransactionStatus.PENDING,
           metadata: {
-            description: `Deposit ${data.amount} USDC to card from external wallet`,
+            description: `Deposit ${data.amount} ${depositTokenSymbol} to card from external wallet`,
             processingStatus: 'sending',
-            tokenAddress: arbitrumUsdcAddress,
+            tokenAddress: depositTokenAddress,
           },
         });
 
-        // Send USDC transfer transaction from external wallet directly to card funding address
+        // Send token transfer from external wallet to card funding address
         const tx = await account.sendTransaction({
-          chainId: arbitrum.id, // Arbitrum
-          to: arbitrumUsdcAddress,
+          chainId: fundingChainId,
+          to: depositTokenAddress,
           data: encodeFunctionData({
             abi: erc20Abi,
             functionName: 'transfer',
@@ -226,11 +238,16 @@ export default function CardDepositExternalForm() {
           value: 0n,
         });
 
-        // Update activity with transaction hash, keeping it PENDING
+        const explorerTxUrl =
+          fundingChainId === 42161
+            ? `https://arbiscan.io/tx/${tx.transactionHash}`
+            : fundingChainId === 84532
+              ? `https://sepolia.basescan.org/tx/${tx.transactionHash}`
+              : `https://etherscan.io/tx/${tx.transactionHash}`;
         await updateActivity(clientTxId, {
           status: TransactionStatus.PENDING,
           hash: tx.transactionHash,
-          url: `https://arbiscan.io/tx/${tx.transactionHash}`,
+          url: explorerTxUrl,
           metadata: {
             txHash: tx.transactionHash,
             processingStatus: 'awaiting_bridge',
@@ -259,6 +276,8 @@ export default function CardDepositExternalForm() {
       cardDetails,
       account,
       user,
+      provider,
+      contracts,
       createActivity,
       updateActivity,
       setSendStatus,
@@ -266,18 +285,22 @@ export default function CardDepositExternalForm() {
       setModal,
       reset,
       resetSendStatus,
-      arbitrumUsdcAddress,
+      depositTokenAddress,
+      depositTokenSymbol,
+      fundingChainId,
       switchChain,
     ],
   );
 
-  const disabled = sendStatus === Status.PENDING || !formState.isValid || !watchedAmount;
+  const isLoadingFunding = provider === CardProvider.RAIN && contractsLoading;
+  const disabled =
+    sendStatus === Status.PENDING || !formState.isValid || !watchedAmount || isLoadingFunding;
 
   return (
     <View className="flex-1 gap-6">
       <View className="gap-2">
         <Text className="font-medium opacity-50">From wallet</Text>
-        <ConnectedWalletDropdown chainId={arbitrum.id} />
+        <ConnectedWalletDropdown chainId={fundingChainId} />
       </View>
 
       <View className="gap-2">
@@ -294,7 +317,7 @@ export default function CardDepositExternalForm() {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 keyboardType="decimal-pad"
-                className="w-full text-2xl font-semibold text-white web:focus:outline-none"
+                className="min-w-0 flex-1 text-2xl font-semibold text-white web:focus:outline-none"
                 value={value as any}
                 placeholder="0.0"
                 placeholderTextColor="#666"
@@ -303,13 +326,13 @@ export default function CardDepositExternalForm() {
               />
             )}
           />
-          <View className="flex-row items-center gap-2">
+          <View className="shrink-0 flex-row items-center gap-2">
             <Image
               source={getAsset('images/usdc-4x.png')}
-              alt="USDC"
+              alt={depositTokenSymbol}
               style={{ width: 34, height: 34 }}
             />
-            <Text className="text-lg font-semibold text-white">USDC</Text>
+            <Text className="text-lg font-semibold text-white">{depositTokenSymbol}</Text>
           </View>
         </View>
         {formState.errors.amount && (
@@ -321,7 +344,7 @@ export default function CardDepositExternalForm() {
             <Skeleton className="h-5 w-20 rounded-md" />
           ) : (
             <Text className="text-muted-foreground">
-              {formatNumber(Number(formattedEOABalance))} USDC
+              {formatNumber(Number(formattedEOABalance))} {depositTokenSymbol}
             </Text>
           )}
           <Max
@@ -344,7 +367,7 @@ export default function CardDepositExternalForm() {
             Toast.show({
               type: 'error',
               text1: 'Wallet not connected',
-              text2: 'Please connect your wallet to Arbitrum',
+              text2: `Please connect your wallet to ${getChainWagmi(fundingChainId)?.name ?? 'the funding chain'}`,
             });
             return;
           }
