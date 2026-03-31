@@ -51,7 +51,8 @@ export default function Savings() {
   useEffect(() => {
     if (vaultParam) {
       const vaultIndex = VAULTS.findIndex(
-        v => v.type === vaultParam.toLowerCase() || v.name.toLowerCase() === vaultParam.toLowerCase(),
+        v =>
+          v.type === vaultParam.toLowerCase() || v.name.toLowerCase() === vaultParam.toLowerCase(),
       );
       if (vaultIndex !== -1) {
         setSelectedVault(vaultIndex);
@@ -152,7 +153,7 @@ export default function Savings() {
           <DashboardHeaderButtons
             hideSend
             hideSwap
-            hideBuyFuse={currentVault.name !== 'FUSE'}
+            showBuyFuse={currentVault.name === 'FUSE'}
             preserveSelectedVault
           />
         </View>
