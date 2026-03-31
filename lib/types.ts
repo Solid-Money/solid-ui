@@ -13,7 +13,7 @@ import {
   WITHDRAW_MODAL,
 } from '@/constants/modals';
 
-import { AssetPath } from './assets';
+import type { AssetPath } from './assets';
 
 export interface CountryFromIp {
   countryCode: string;
