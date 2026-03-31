@@ -24,7 +24,12 @@ export const VAULTS: Vault[] = [
       },
     ],
     depositConfig: {
-      methods: ['wallet', 'deposit_directly', 'credit_card', 'bank_transfer'],
+      methods: [
+        'wallet',
+        'deposit_directly',
+        'credit_card',
+        //'bank_transfer'
+      ],
       supportedChains: BRIDGE_CHAIN_IDS,
       supportedTokens: ['USDC', 'USDT'],
     },
