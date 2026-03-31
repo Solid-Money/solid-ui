@@ -25,6 +25,7 @@ type DashboardHeaderButtonsProps = {
   hideSend?: boolean;
   hideSwap?: boolean;
   hideBuyFuse?: boolean;
+  hideDeposit?: boolean;
   disableWithdraw?: boolean;
   disableSend?: boolean;
   disableSwap?: boolean;
@@ -38,6 +39,7 @@ const DashboardHeaderButtons = ({
   hideSend,
   hideSwap,
   hideBuyFuse,
+  hideDeposit,
   disableWithdraw,
   disableSend,
   disableSwap,
@@ -138,10 +140,12 @@ const DashboardHeaderButtons = ({
         />
       )}
 
-      <DepositOptionModal
-        buttonText={deposit?.title || 'Add funds'}
-        preserveSelectedVault={preserveSelectedVault}
-      />
+      {!hideDeposit && (
+        <DepositOptionModal
+          buttonText={deposit?.title || 'Add funds'}
+          preserveSelectedVault={preserveSelectedVault}
+        />
+      )}
     </View>
   );
 };

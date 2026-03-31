@@ -28,6 +28,7 @@ import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
+import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
@@ -129,10 +130,23 @@ function DepositToVaultForm() {
     vault.minimumAmount,
   );
 
+  const {
+    balance: balanceSolidUsdc,
+    deposit: depositSolidUsdc,
+    depositStatus: depositStatusSolidUsdc,
+    hash: hashSolidUsdc,
+    error: errorSolidUsdc,
+  } = useDepositFromSolidUsdc(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
   const isFuseVault = vault.name === 'FUSE';
   const isEthVault = vault.name === 'ETH';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
+  const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
 
   // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
   useEffect(() => {
@@ -147,7 +161,9 @@ function DepositToVaultForm() {
       ? useSolidForFuse
         ? balanceSolidFuse
         : balanceFuse
-      : balance;
+      : useSolidForUsdc
+        ? balanceSolidUsdc
+        : balance;
   const balanceDecimals = isFuseVault || isEthVault ? 18 : 6;
   const depositFn = isEthVault
     ? depositEth
@@ -155,28 +171,36 @@ function DepositToVaultForm() {
       ? useSolidForFuse
         ? depositSolidFuse
         : depositFuse
-      : deposit;
+      : useSolidForUsdc
+        ? depositSolidUsdc
+        : deposit;
   const depositStatusForVault = isEthVault
     ? depositStatusEth
     : isFuseVault
       ? useSolidForFuse
         ? depositStatusSolidFuse
         : depositStatusFuse
-      : depositStatus;
+      : useSolidForUsdc
+        ? depositStatusSolidUsdc
+        : depositStatus;
   const hashForVault = isEthVault
     ? hashEth
     : isFuseVault
       ? useSolidForFuse
         ? hashSolidFuse
         : hashFuse
-      : hash;
+      : useSolidForUsdc
+        ? hashSolidUsdc
+        : hash;
   const errorForVault = isEthVault
     ? errorEth
     : isFuseVault
       ? useSolidForFuse
         ? errorSolidFuse
         : errorFuse
-      : error;
+      : useSolidForUsdc
+        ? errorSolidUsdc
+        : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY } = useMaxAPY(vault.type);
@@ -394,8 +418,8 @@ function DepositToVaultForm() {
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground">{useSolidForFuse ? '' : 'From wallet'}</Text>
-          {!useSolidForFuse && <ConnectedWalletDropdown />}
+          <Text className="text-muted-foreground">{useSolidForFuse || useSolidForUsdc ? '' : 'From wallet'}</Text>
+          {!useSolidForFuse && !useSolidForUsdc && <ConnectedWalletDropdown />}
         </View>
         <View className="gap-2">
           <Text className="text-muted-foreground">Deposit amount</Text>
