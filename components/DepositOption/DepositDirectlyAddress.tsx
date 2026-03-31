@@ -73,7 +73,7 @@ const PriceRowItem = React.memo(function PriceRowItem({
 }: PriceRowItemProps) {
   return (
     <View>
-      <View className="flex-row items-center gap-4 px-5 py-4">
+      <View className="flex-row items-start gap-4 px-5 py-4">
         <Text className="flex-1 text-lg font-medium text-muted-foreground">{label}</Text>
         <View className="min-w-0 flex-1 items-end gap-2">
           {valueContent ? (
@@ -289,7 +289,7 @@ const DepositDirectlyAddress = () => {
 
   const youWillReceiveContent = useMemo(
     () => (
-      <View className="min-w-0 max-w-full flex-row items-center justify-end gap-1.5">
+      <View className="min-w-0 max-w-full flex-row items-start justify-end gap-1.5">
         <Image source={SOUSD_ICON} style={ICON_STYLE_18} contentFit="cover" />
         <View className="min-w-0 flex-1">
           <Text className="text-right text-lg font-bold text-white">
