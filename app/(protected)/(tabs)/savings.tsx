@@ -201,7 +201,7 @@ export default function Savings() {
                         prefix={displayPrefix}
                         suffix={displaySuffix ?? ''}
                         balance={balance ?? 0}
-                        decimalPlaces={2}
+                        decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
                         decimals={currentVault.decimals}
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
@@ -396,7 +396,7 @@ export default function Savings() {
                         prefix={displayPrefix}
                         suffix={displaySuffix ?? ''}
                         balance={balance ?? 0}
-                        decimalPlaces={2}
+                        decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
                         decimals={currentVault.decimals}
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
