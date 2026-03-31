@@ -24,7 +24,11 @@ export const EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS =
 export const EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT =
-  process.env.EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ?? '100';
+  process.env.EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ?? '10';
+export const EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT =
+  process.env.EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT ?? '5000';
+export const EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT =
+  process.env.EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT ?? '0.01';
 export const EXPO_PUBLIC_FUSE_GAS_RESERVE = process.env.EXPO_PUBLIC_FUSE_GAS_RESERVE ?? '0.01';
 export const EXPO_PUBLIC_LIFI_API_URL = process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
 export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_ID ?? '';
@@ -66,6 +70,9 @@ type Addresses = {
     bridgePaymasterAddress: Address;
     boringQueue: Address;
     accountant: Address;
+    soEthVault: Address;
+    soEthTeller: Address;
+    soEthAccountant: Address;
   };
   fuse: {
     vault: Address;
@@ -81,6 +88,9 @@ type Addresses = {
     stargateOftUSDC: Address;
     aaveV3Pool: Address;
     soFuseBoringQueue: Address;
+    soEthVault: Address;
+    soEthTeller: Address;
+    soEthAccountant: Address;
   };
   base: {
     vault: Address;
@@ -109,6 +119,15 @@ export const ADDRESSES: Addresses = {
     accountant: isProduction
       ? '0x10f3996904F1fA09Db48e5d46AAdD6D9fd516eFe'
       : '0xC594ea2B28F5766eB66D101E0F59A958Feb9C0c5',
+    soEthVault: isProduction
+      ? '0x1e0d158ce986abb26b35da11f876268c60d7c9df'
+      : '0x1e0d158ce986abb26b35da11f876268c60d7c9df',
+    soEthTeller: isProduction
+      ? '0x70884eC5e887A5E4fBc868C3BB4A845072b40118'
+      : '0x70884eC5e887A5E4fBc868C3BB4A845072b40118',
+    soEthAccountant: isProduction
+      ? '0xA36b0Dd2C01459A602ff85F914B7727B34bC25e6'
+      : '0xA36b0Dd2C01459A602ff85F914B7727B34bC25e6',
   },
   fuse: {
     vault: isProduction
@@ -136,6 +155,15 @@ export const ADDRESSES: Addresses = {
     soFuseBoringQueue: isProduction
       ? '0x8a6612ff8bA43C4c8A1e7DD5c0eE2d7CBEDF0E66'
       : '0x5FD429278E39342920CD6629574f9E0c4766c675',
+    soEthVault: isProduction
+      ? '0xF88Ce04C3ef43F3501fA99eE06a5473f5ef33BED'
+      : '0xF88Ce04C3ef43F3501fA99eE06a5473f5ef33BED',
+    soEthTeller: isProduction
+      ? '0x39D0F3EdCD14A9995393Bfee990F6719469874B6'
+      : '0x39D0F3EdCD14A9995393Bfee990F6719469874B6',
+    soEthAccountant: isProduction
+      ? '0x7EFD6391537518dC2A8260ff535439704AD6a111'
+      : '0x7EFD6391537518dC2A8260ff535439704AD6a111',
   },
   base: {
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',

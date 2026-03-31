@@ -25,6 +25,7 @@ import { isStablecoinSymbol } from '@/constants/stablecoins';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
+import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
 import { useDimension } from '@/hooks/useDimension';
@@ -34,7 +35,7 @@ import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
-import { EXPO_PUBLIC_FUSE_GAS_RESERVE, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
+import { EXPO_PUBLIC_FUSE_GAS_RESERVE } from '@/lib/config';
 import { Status } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
@@ -89,6 +90,7 @@ function DepositToVaultForm() {
     (selectedTokenInfo?.address as Address) || '',
     selectedTokenInfo?.name || '',
     selectedTokenInfo?.version,
+    vault.minimumAmount,
   );
 
   const {
@@ -100,6 +102,7 @@ function DepositToVaultForm() {
   } = useDepositFromEOAFuse(
     (selectedTokenInfo?.address as Address) || '',
     selectedTokenInfo?.name || '',
+    vault.minimumAmount,
   );
 
   const {
@@ -111,9 +114,23 @@ function DepositToVaultForm() {
   } = useDepositFromSolidFuse(
     (selectedTokenInfo?.address as Address) || '',
     selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
+  const {
+    balance: balanceEth,
+    deposit: depositEth,
+    depositStatus: depositStatusEth,
+    hash: hashEth,
+    error: errorEth,
+  } = useDepositFromEOAEth(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
   );
 
   const isFuseVault = vault.name === 'FUSE';
+  const isEthVault = vault.name === 'ETH';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
 
@@ -124,20 +141,42 @@ function DepositToVaultForm() {
     }
   }, [isNativeFuse, useSolidForFuse, setOutputToken]);
 
-  const balanceForVault = isFuseVault
-    ? useSolidForFuse
-      ? balanceSolidFuse
-      : balanceFuse
-    : balance;
-  const balanceDecimals = isFuseVault ? 18 : 6;
-  const depositFn = isFuseVault ? (useSolidForFuse ? depositSolidFuse : depositFuse) : deposit;
-  const depositStatusForVault = isFuseVault
-    ? useSolidForFuse
-      ? depositStatusSolidFuse
-      : depositStatusFuse
-    : depositStatus;
-  const hashForVault = isFuseVault ? (useSolidForFuse ? hashSolidFuse : hashFuse) : hash;
-  const errorForVault = isFuseVault ? (useSolidForFuse ? errorSolidFuse : errorFuse) : error;
+  const balanceForVault = isEthVault
+    ? balanceEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? balanceSolidFuse
+        : balanceFuse
+      : balance;
+  const balanceDecimals = isFuseVault || isEthVault ? 18 : 6;
+  const depositFn = isEthVault
+    ? depositEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? depositSolidFuse
+        : depositFuse
+      : deposit;
+  const depositStatusForVault = isEthVault
+    ? depositStatusEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? depositStatusSolidFuse
+        : depositStatusFuse
+      : depositStatus;
+  const hashForVault = isEthVault
+    ? hashEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? hashSolidFuse
+        : hashFuse
+      : hash;
+  const errorForVault = isEthVault
+    ? errorEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? errorSolidFuse
+        : errorFuse
+      : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY } = useMaxAPY(vault.type);
@@ -149,7 +188,11 @@ function DepositToVaultForm() {
     const balanceAmount = balanceForVault
       ? Number(formatUnits(balanceForVault, balanceDecimals))
       : 0;
-    const tokenLabel = isFuseVault ? (selectedTokenInfo?.name ?? 'WFUSE') : 'USDC';
+    const tokenLabel = isFuseVault
+      ? (selectedTokenInfo?.name ?? 'WFUSE')
+      : isEthVault
+        ? (selectedTokenInfo?.name ?? 'WETH')
+        : 'USDC';
     const maxAmount = balanceAmount;
 
     return z.object({
@@ -159,8 +202,8 @@ function DepositToVaultForm() {
           error: 'Please enter a valid amount',
         })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
-        .refine(val => Number(val) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT), {
-          error: `Minimum ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} ${tokenLabel}`,
+        .refine(val => Number(val) >= Number(vault.minimumAmount), {
+          error: `Minimum ${vault.minimumAmount} ${tokenLabel}`,
         })
         .refine(val => !isNativeFuse || Number(val) >= Number(EXPO_PUBLIC_FUSE_GAS_RESERVE), {
           error: 'Amount too low',
@@ -169,7 +212,15 @@ function DepositToVaultForm() {
           error: `Available balance is ${formatNumber(maxAmount)} ${tokenLabel}`,
         }),
     });
-  }, [balanceForVault, balanceDecimals, isFuseVault, isNativeFuse, selectedTokenInfo?.name]);
+  }, [
+    balanceForVault,
+    balanceDecimals,
+    isFuseVault,
+    isEthVault,
+    isNativeFuse,
+    selectedTokenInfo?.name,
+    vault.minimumAmount,
+  ]);
 
   type DepositFormData = { amount: string };
 
@@ -190,7 +241,7 @@ function DepositToVaultForm() {
   });
 
   const watchedAmount = watch('amount');
-  const isSponsor = Number(watchedAmount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
+  const isSponsor = Number(watchedAmount) >= Number(vault.minimumAmount);
 
   // Track form viewed (once per mount)
   const hasTrackedFormView = useRef(false);
@@ -271,14 +322,21 @@ function DepositToVaultForm() {
       ? explorerUrls[fuse.id]?.blockscout
       : explorerUrls[layerzero.id]?.layerzeroscan;
 
+    const toastToken = isFuseVault ? 'FUSE' : isEthVault ? 'ETH' : 'USDC';
+    const toastIcon = isFuseVault
+      ? 'images/fuse-4x.png'
+      : isEthVault
+        ? 'images/eth.png'
+        : 'images/usdc.png';
+
     Toast.show({
       type: 'success',
-      text1: isFuseVault ? 'Depositing FUSE' : 'Depositing USDC',
-      text2: isFuseVault ? 'Staking FUSE to the protocol' : 'Staking USDC to the protocol',
+      text1: `Depositing ${toastToken}`,
+      text2: `Staking ${toastToken} to the protocol`,
       props: {
         link: `${explorerUrl}/tx/${hashForVault}`,
         linkText: eclipseAddress(hashForVault),
-        image: getAsset(isFuseVault ? 'images/fuse-4x.png' : 'images/usdc.png'),
+        image: getAsset(toastIcon),
       },
     });
   };
@@ -463,11 +521,7 @@ function DepositToVaultForm() {
           <View className="align-items: start flex-row items-center gap-2">
             <Fuel color="#A1A1A1" size={16} className="mt-1" />
             <Text className="max-w-xs text-base text-muted-foreground">
-              {getGaslessText(
-                EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
-                selectedTokenInfo?.name,
-                isSponsor,
-              )}
+              {getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
             </Text>
           </View>
         </View>

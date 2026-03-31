@@ -23,7 +23,7 @@ import {
   getBankTransfers,
   searchCoin,
 } from '@/lib/api';
-import { ADDRESSES, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
+import { ADDRESSES } from '@/lib/config';
 import {
   APYs,
   BankTransferActivityItem,
@@ -325,13 +325,14 @@ export const formatTransactions = async (
   depositTransactions: DepositTransaction[] | undefined,
   bridgeDepositTransactions: BridgeTransaction[] | undefined,
   bankTransfers: BankTransferActivityItem[] | undefined,
+  minimumAmount: string = '100',
 ): Promise<Transaction[]> => {
   const unsponsorDepositTransactionPromises = transactions?.deposits?.map(
     async internalTransaction => {
       const hash = internalTransaction.transactionHash;
       const amount = safeFormatUnits(internalTransaction.depositAmount, 6);
 
-      const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
+      const isSponsor = Number(amount) >= Number(minimumAmount);
       if (isSponsor) {
         return;
       }

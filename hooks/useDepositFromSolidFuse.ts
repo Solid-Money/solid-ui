@@ -12,11 +12,7 @@ import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
 import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
-import {
-  ADDRESSES,
-  EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
-  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
-} from '@/lib/config';
+import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -34,7 +30,11 @@ type DepositResult = {
   hash: Address | undefined;
 };
 
-const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositResult => {
+const useDepositFromSolidFuse = (
+  tokenAddress: Address,
+  token: string,
+  minimumAmount: string = '100',
+): DepositResult => {
   const { user, safeAA } = useUser();
   const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +105,7 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
         deposit_method: 'fuse_solid',
         chain_id: srcChainId,
         chain_name: 'fuse',
-        is_sponsor: Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT),
+        is_sponsor: Number(amount) >= Number(minimumAmount),
         ...attributionData,
         attribution_channel: attributionChannel,
       });
@@ -123,7 +123,7 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
         throw err;
       }
 
-      const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
+      const isSponsor = Number(amount) >= Number(minimumAmount);
       const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
 
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
@@ -187,9 +187,7 @@ const useDepositFromSolidFuse = (tokenAddress: Address, token: string): DepositR
       let txHash: `0x${string}` | undefined;
 
       if (!isSponsor) {
-        throw new Error(
-          `Minimum deposit amount is ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} for Fuse deposits`,
-        );
+        throw new Error(`Minimum deposit amount is ${minimumAmount} for Fuse deposits`);
       }
 
       // Create a SINGLE activity up front so there is only one entry in the UI.

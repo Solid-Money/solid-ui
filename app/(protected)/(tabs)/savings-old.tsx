@@ -106,8 +106,8 @@ export default function SavingsOld() {
   }, [selectedVault]);
 
   const displaySuffix = useMemo(() => {
-    if (VAULTS[selectedVault].name === 'FUSE') {
-      return 'FUSE';
+    if (VAULTS[selectedVault].name === 'FUSE' || VAULTS[selectedVault].name === 'ETH') {
+      return VAULTS[selectedVault].name === 'FUSE' ? 'FUSE' : 'ETH';
     }
     return null;
   }, [selectedVault]);

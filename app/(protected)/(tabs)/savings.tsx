@@ -112,8 +112,8 @@ export default function Savings() {
   }, [selectedVault]);
 
   const displaySuffix = useMemo(() => {
-    if (VAULTS[selectedVault].name === 'FUSE') {
-      return 'FUSE';
+    if (VAULTS[selectedVault].name !== 'USDC') {
+      return VAULTS[selectedVault].name;
     }
     return null;
   }, [selectedVault]);

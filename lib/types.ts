@@ -1390,6 +1390,7 @@ export interface Vault {
     address: Address;
     chainId: number;
   }[];
+  minimumAmount: string;
   depositConfig?: VaultDepositConfig;
   isComingSoon?: boolean;
 }

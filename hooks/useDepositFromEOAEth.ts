@@ -2,21 +2,16 @@ import { useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 import { useActiveAccount, useActiveWallet } from 'thirdweb/react';
 import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
-import { fuse } from 'viem/chains';
+import { mainnet } from 'viem/chains';
 import { useBalance, useBlockNumber, useChainId, useReadContract } from 'wagmi';
 
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
-import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
 import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
-import {
-  ADDRESSES,
-  EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
-  EXPO_PUBLIC_FUSE_GAS_RESERVE,
-} from '@/lib/config';
+import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -35,10 +30,20 @@ type DepositResult = {
   hash: Address | undefined;
 };
 
-const useDepositFromEOAFuse = (
+const WETH_ABI = [
+  {
+    inputs: [],
+    name: 'deposit',
+    outputs: [],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+] as const;
+
+const useDepositFromEOAEth = (
   tokenAddress: Address,
   token: string,
-  minimumAmount: string = '100',
+  minimumAmount: string = '0.05',
 ): DepositResult => {
   const { user } = useUser();
   const wallet = useActiveWallet();
@@ -52,14 +57,14 @@ const useDepositFromEOAFuse = (
   const srcChainId = useDepositStore(state => state.srcChainId);
   const { createActivity, updateActivity } = useActivityActions();
 
-  const isFuseChain = srcChainId === fuse.id;
-  const isNativeFuse = token === 'FUSE';
+  const isEthereumChain = srcChainId === mainnet.id;
+  const isNativeEth = token === 'ETH';
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
-    chainId: fuse.id,
+    chainId: mainnet.id,
     query: {
-      enabled: isFuseChain,
+      enabled: isEthereumChain,
     },
   });
 
@@ -68,21 +73,21 @@ const useDepositFromEOAFuse = (
     address: tokenAddress,
     functionName: 'balanceOf',
     args: [eoaAddress as Address],
-    chainId: fuse.id,
+    chainId: mainnet.id,
     query: {
-      enabled: !!eoaAddress && isFuseChain && !isNativeFuse,
+      enabled: !!eoaAddress && isEthereumChain && !isNativeEth,
     },
   });
 
   const { data: nativeBalanceData, refetch: refetchNativeBalance } = useBalance({
     address: eoaAddress as `0x${string}` | undefined,
-    chainId: fuse.id,
+    chainId: mainnet.id,
     query: {
-      enabled: !!eoaAddress && isFuseChain && isNativeFuse,
+      enabled: !!eoaAddress && isEthereumChain && isNativeEth,
     },
   });
 
-  const balance = isNativeFuse ? nativeBalanceData?.value : erc20Balance;
+  const balance = isNativeEth ? nativeBalanceData?.value : erc20Balance;
 
   const switchChain = async (chainId: number) => {
     try {
@@ -111,23 +116,22 @@ const useDepositFromEOAFuse = (
   };
 
   const deposit = async (amount: string) => {
-    if (!isFuseChain) return undefined;
-    // Capture attribution context for conversion tracking
+    if (!isEthereumChain) return undefined;
+
     const attributionData = useAttributionStore.getState().getAttributionForEvent();
     const attributionChannel = getAttributionChannel(attributionData);
 
     let trackingId: string | undefined;
     try {
-      // Track deposit initiation with attribution for conversion funnel analysis
       track(TRACKING_EVENTS.DEPOSIT_INITIATED, {
         user_id: user?.userId,
         safe_address: user?.safeAddress,
         eoa_address: eoaAddress,
         amount,
         deposit_type: 'connected_wallet',
-        deposit_method: 'fuse_direct',
+        deposit_method: 'eth_direct',
         chain_id: srcChainId,
-        chain_name: 'fuse',
+        chain_name: 'ethereum',
         is_sponsor: Number(amount) >= Number(minimumAmount),
         ...attributionData,
         attribution_channel: attributionChannel,
@@ -137,7 +141,7 @@ const useDepositFromEOAFuse = (
         const error = new Error('EOA not connected');
         Sentry.captureException(error, {
           tags: {
-            operation: 'deposit_from_eoa',
+            operation: 'deposit_from_eoa_eth',
             step: 'validation',
             reason: 'no_eoa_address',
           },
@@ -150,7 +154,7 @@ const useDepositFromEOAFuse = (
         const error = new Error('User safe address not found');
         Sentry.captureException(error, {
           tags: {
-            operation: 'deposit_from_eoa',
+            operation: 'deposit_from_eoa_eth',
             step: 'validation',
             reason: 'no_safe_address',
           },
@@ -162,7 +166,6 @@ const useDepositFromEOAFuse = (
       const isSponsor = Number(amount) >= Number(minimumAmount);
       const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
 
-      // Track deposit validation passed
       track(TRACKING_EVENTS.DEPOSIT_VALIDATED, {
         user_id: user?.userId,
         safe_address: user?.safeAddress,
@@ -177,7 +180,7 @@ const useDepositFromEOAFuse = (
       setError(null);
 
       Sentry.addBreadcrumb({
-        message: 'Starting deposit from EOA',
+        message: 'Starting ETH deposit from EOA',
         category: 'deposit',
         data: {
           amount,
@@ -191,8 +194,7 @@ const useDepositFromEOAFuse = (
       const amountWei = parseUnits(amount, 18);
 
       let txHash: `0x${string}` | undefined;
-      if (token === 'WFUSE') {
-        // Track ethereum deposit start
+      if (token === 'WETH') {
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
           user_id: user?.userId,
           safe_address: user?.safeAddress,
@@ -201,20 +203,20 @@ const useDepositFromEOAFuse = (
           is_sponsor: isSponsor,
           chain_id: srcChainId,
           deposit_type: 'connected_wallet',
-          deposit_method: 'ethereum_direct',
+          deposit_method: 'eth_direct',
         });
 
         await switchChain(srcChainId);
 
-        const hash = await checkAndSetAllowanceToken(
+        const approvalHash = await checkAndSetAllowanceToken(
           tokenAddress,
           eoaAddress,
           spender,
           amountWei,
           srcChainId,
         );
-        if (hash) {
-          const receipt = await getTransactionReceipt(srcChainId, hash as `0x${string}`);
+        if (approvalHash) {
+          const receipt = await getTransactionReceipt(srcChainId, approvalHash as `0x${string}`);
           if (!receipt) {
             throw new Error('Failed to get transaction receipt');
           }
@@ -225,7 +227,7 @@ const useDepositFromEOAFuse = (
 
         if (isSponsor) {
           Sentry.addBreadcrumb({
-            message: 'Creating sponsored deposit on Ethereum',
+            message: 'Creating sponsored ETH deposit on Ethereum',
             category: 'deposit',
             data: { amount, eoaAddress, isEthereum: true, isSponsor: true },
           });
@@ -240,7 +242,7 @@ const useDepositFromEOAFuse = (
                 eoaAddress,
                 amount,
                 trackingId,
-                vault: VaultType.FUSE,
+                vault: VaultType.ETH,
               }),
             );
 
@@ -259,7 +261,7 @@ const useDepositFromEOAFuse = (
             });
 
             Sentry.addBreadcrumb({
-              message: 'Deposit from EOA completed successfully',
+              message: 'WETH deposit from EOA completed successfully',
               category: 'deposit',
               data: {
                 amount,
@@ -272,7 +274,6 @@ const useDepositFromEOAFuse = (
               },
             });
 
-            // Track deposit success with attribution for ROI measurement
             track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
               user_id: user?.userId,
               safe_address: user?.safeAddress,
@@ -280,9 +281,9 @@ const useDepositFromEOAFuse = (
               amount,
               transaction_hash: txHash,
               deposit_type: 'connected_wallet',
-              deposit_method: 'fuse_direct',
+              deposit_method: 'eth_direct',
               chain_id: srcChainId,
-              chain_name: 'fuse',
+              chain_name: 'ethereum',
               is_sponsor: isSponsor,
               is_first_deposit: !user?.isDeposited,
               ...attributionData,
@@ -292,15 +293,15 @@ const useDepositFromEOAFuse = (
             trackIdentity(user?.userId, {
               last_deposit_amount: parseFloat(amount),
               last_deposit_date: new Date().toISOString(),
-              last_deposit_method: 'fuse_direct',
-              last_deposit_chain: 'fuse',
+              last_deposit_method: 'eth_direct',
+              last_deposit_chain: 'ethereum',
               ...attributionData,
               attribution_channel: attributionChannel,
             });
 
             setDepositStatus({ status: Status.SUCCESS });
           } catch (err) {
-            console.error('Sponsored Fuse deposit failed:', err);
+            console.error('Sponsored WETH deposit failed:', err);
             updateActivity(trackingId!, {
               status: TransactionStatus.FAILED,
             });
@@ -309,15 +310,13 @@ const useDepositFromEOAFuse = (
             throw err;
           }
         } else {
-          throw new Error(
-            `Minimum deposit amount is ${minimumAmount} for Fuse deposits`,
-          );
+          throw new Error(`Minimum deposit amount is ${minimumAmount} for ETH deposits`);
         }
 
         return trackingId;
       }
 
-      if (token === 'FUSE') {
+      if (token === 'ETH') {
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
           user_id: user?.userId,
           safe_address: user?.safeAddress,
@@ -326,106 +325,142 @@ const useDepositFromEOAFuse = (
           is_sponsor: isSponsor,
           chain_id: srcChainId,
           deposit_type: 'connected_wallet',
-          deposit_method: 'fuse_direct',
+          deposit_method: 'eth_direct',
         });
 
         await switchChain(srcChainId);
 
-        // Create a PENDING activity before submitting the transaction
-        trackingId = await createEvent(amount, spender, token);
+        // Step 1: Wrap ETH → WETH
+        setDepositStatus({ status: Status.PENDING, message: 'Wrapping ETH...' });
+        const wrapTx = await account?.sendTransaction({
+          chainId: mainnet.id,
+          to: ADDRESSES.ethereum.weth,
+          data: encodeFunctionData({ abi: WETH_ABI, functionName: 'deposit' }),
+          value: amountWei,
+        });
 
-        const depositValueWei = parseUnits(
-          (Number(amount) - Number(EXPO_PUBLIC_FUSE_GAS_RESERVE)).toString(),
-          18,
+        const wrapReceipt = await getTransactionReceipt(
+          mainnet.id,
+          wrapTx?.transactionHash as `0x${string}`,
         );
+        if (!wrapReceipt || wrapReceipt.status !== 'success') {
+          throw new Error('Failed to wrap ETH to WETH');
+        }
 
-        const callData = encodeFunctionData({
-          abi: ETHEREUM_TELLER_ABI,
-          functionName: 'deposit',
-          args: [ADDRESSES.fuse.nativeFeeToken, depositValueWei, BigInt(0)],
-        });
-
-        const transaction = await account?.sendTransaction({
-          chainId: fuse.id,
-          to: ADDRESSES.fuse.fuseTeller,
-          data: callData,
-          value: depositValueWei,
-        });
-
-        const receipt = await getTransactionReceipt(
-          fuse.id,
-          transaction?.transactionHash as `0x${string}`,
+        // Step 2: Approve WETH for spender
+        setDepositStatus({ status: Status.PENDING, message: 'Approving WETH...' });
+        const approvalHash = await checkAndSetAllowanceToken(
+          ADDRESSES.ethereum.weth,
+          eoaAddress,
+          spender,
+          amountWei,
+          mainnet.id,
         );
-
-        if (!receipt) {
-          throw new Error('Failed to get transaction receipt');
+        if (approvalHash) {
+          const approvalReceipt = await getTransactionReceipt(
+            mainnet.id,
+            approvalHash as `0x${string}`,
+          );
+          if (!approvalReceipt || approvalReceipt.status !== 'success') {
+            throw new Error('WETH approval failed');
+          }
         }
-        if (receipt.status !== 'success') {
-          throw new Error('Transaction failed');
+
+        // Step 3: Sponsored deposit via API (same as WETH flow)
+        if (isSponsor) {
+          Sentry.addBreadcrumb({
+            message: 'Creating sponsored ETH deposit on Ethereum',
+            category: 'deposit',
+            data: { amount, eoaAddress, isEthereum: true, isSponsor: true },
+          });
+
+          trackingId = await createEvent(amount, spender, token);
+
+          setDepositStatus({ status: Status.PENDING, message: 'Processing deposit...' });
+
+          try {
+            const result = await withRefreshToken(() =>
+              createDeposit({
+                eoaAddress,
+                amount,
+                trackingId,
+                vault: VaultType.ETH,
+              }),
+            );
+
+            if (result?.transactionHash) {
+              txHash = result.transactionHash as `0x${string}`;
+              updateActivity(trackingId!, {
+                status: TransactionStatus.PROCESSING,
+                hash: result.transactionHash,
+              });
+            }
+
+            setHash(txHash);
+            updateUser({
+              ...user,
+              isDeposited: true,
+            });
+
+            Sentry.addBreadcrumb({
+              message: 'ETH deposit from EOA completed successfully',
+              category: 'deposit',
+              data: {
+                amount,
+                transactionHash: txHash,
+                eoaAddress,
+                userId: user.userId,
+                safeAddress: user.safeAddress,
+                srcChainId,
+                isSponsor,
+              },
+            });
+
+            track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
+              user_id: user?.userId,
+              safe_address: user?.safeAddress,
+              eoa_address: eoaAddress,
+              amount,
+              transaction_hash: txHash,
+              deposit_type: 'connected_wallet',
+              deposit_method: 'eth_direct',
+              chain_id: srcChainId,
+              chain_name: 'ethereum',
+              is_sponsor: isSponsor,
+              is_first_deposit: !user?.isDeposited,
+              ...attributionData,
+              attribution_channel: attributionChannel,
+            });
+
+            trackIdentity(user?.userId, {
+              last_deposit_amount: parseFloat(amount),
+              last_deposit_date: new Date().toISOString(),
+              last_deposit_method: 'eth_direct',
+              last_deposit_chain: 'ethereum',
+              ...attributionData,
+              attribution_channel: attributionChannel,
+            });
+
+            setDepositStatus({ status: Status.SUCCESS });
+          } catch (err) {
+            console.error('Sponsored ETH deposit failed:', err);
+            updateActivity(trackingId!, {
+              status: TransactionStatus.FAILED,
+            });
+            setDepositStatus({ status: Status.ERROR });
+            setError('Sponsored deposit failed');
+            throw err;
+          }
+        } else {
+          throw new Error(`Minimum deposit amount is ${minimumAmount} for ETH deposits`);
         }
-        txHash = receipt.transactionHash;
 
-        // Update the activity to SUCCESS with transaction hash and explorer URL
-        const explorerBaseUrl = fuse.blockExplorers?.default?.url || 'https://explorer.fuse.io';
-        updateActivity(trackingId!, {
-          status: TransactionStatus.SUCCESS,
-          hash: txHash,
-          url: `${explorerBaseUrl}/tx/${txHash}`,
-        });
-
-        setHash(txHash);
-        updateUser({
-          ...user,
-          isDeposited: true,
-        });
-
-        Sentry.addBreadcrumb({
-          message: 'Deposit from EOA (native FUSE) completed successfully',
-          category: 'deposit',
-          data: {
-            amount,
-            transactionHash: txHash,
-            eoaAddress,
-            userId: user.userId,
-            safeAddress: user.safeAddress,
-            srcChainId,
-            isSponsor,
-          },
-        });
-
-        track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-          user_id: user?.userId,
-          safe_address: user?.safeAddress,
-          eoa_address: eoaAddress,
-          amount,
-          transaction_hash: txHash,
-          deposit_type: 'connected_wallet',
-          deposit_method: 'fuse_direct',
-          chain_id: srcChainId,
-          chain_name: 'fuse',
-          is_sponsor: isSponsor,
-          is_first_deposit: !user?.isDeposited,
-          ...attributionData,
-          attribution_channel: attributionChannel,
-        });
-
-        trackIdentity(user?.userId, {
-          last_deposit_amount: parseFloat(amount),
-          last_deposit_date: new Date().toISOString(),
-          last_deposit_method: 'fuse_direct',
-          last_deposit_chain: 'fuse',
-          ...attributionData,
-          attribution_channel: attributionChannel,
-        });
-
-        setDepositStatus({ status: Status.SUCCESS });
         return trackingId;
       }
     } catch (error: any) {
       console.error(error);
       const errorMessage = error?.message || 'Unknown error';
 
-      // Update the activity to FAILED if one was created
       if (trackingId) {
         updateActivity(trackingId, {
           status: TransactionStatus.FAILED,
@@ -438,7 +473,7 @@ const useDepositFromEOAFuse = (
 
       Sentry.captureException(error, {
         tags: {
-          operation: 'deposit_from_eoa',
+          operation: 'deposit_from_eoa_eth',
           step: 'execution',
         },
         extra: {
@@ -463,7 +498,7 @@ const useDepositFromEOAFuse = (
         src_chain_id: srcChainId,
         chain_id: chainId,
         deposit_status: depositStatus,
-        source: 'deposit_from_eoa',
+        source: 'deposit_from_eoa_eth',
         error: errorMessage,
         ...attributionData,
         attribution_channel: attributionChannel,
@@ -491,12 +526,12 @@ const useDepositFromEOAFuse = (
   };
 
   useEffect(() => {
-    if (isNativeFuse) {
+    if (isNativeEth) {
       refetchNativeBalance();
     } else {
       refetchErc20Balance();
     }
-  }, [blockNumber, isNativeFuse, refetchNativeBalance, refetchErc20Balance]);
+  }, [blockNumber, isNativeEth, refetchNativeBalance, refetchErc20Balance]);
 
   return {
     balance,
@@ -507,4 +542,4 @@ const useDepositFromEOAFuse = (
   };
 };
 
-export default useDepositFromEOAFuse;
+export default useDepositFromEOAEth;
