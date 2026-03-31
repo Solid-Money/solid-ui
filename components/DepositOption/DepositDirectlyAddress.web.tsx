@@ -101,7 +101,8 @@ const DepositDirectlyAddress = () => {
         <View className="flex flex-row items-center gap-1.5">
           <Image source={SOUSD_ICON} style={{ width: 18, height: 18 }} contentFit="cover" />
           <Text className="text-base font-medium text-white">
-            {formattedSoUSDAmount} <Text className="text-white/70">soUSD on Ethereum</Text>
+            <Text className="text-base font-medium text-white">{formattedSoUSDAmount}</Text>{' '}
+            <Text className="text-white/70">soUSD on Ethereum</Text>
           </Text>
         </View>
       ),
