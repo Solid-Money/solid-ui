@@ -7,6 +7,7 @@ import {
   FUSD_V2,
   FUSD_V3,
   SFUSE,
+  SOFUSE,
   USDC,
   USDC_SOLANA,
   USDC_STARGATE,
@@ -100,6 +101,7 @@ export const soUSDC_TOKEN = new Token(
   'soUSDC',
   'Solid USD',
 );
+export const soFUSE_TOKEN = new Token(ChainsId.Fuse, SOFUSE, 18, 'soFUSE', 'Solid FUSE');
 
 export const USDC_TOKEN_BALANCE: TokenBalance = {
   contractTickerSymbol: 'USDC',
