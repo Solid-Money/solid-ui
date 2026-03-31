@@ -1,7 +1,7 @@
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 
-import { CardProvider } from '@/lib/types';
+import type { CardProvider } from '@/lib/types';
 
 export const EXPO_PUBLIC_BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? '';
 export const EXPO_PUBLIC_CARD_ISSUER = process.env.EXPO_PUBLIC_CARD_ISSUER as
