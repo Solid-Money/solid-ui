@@ -126,8 +126,8 @@ export default function Savings() {
   }, [selectedVault]);
 
   const displaySuffix = useMemo(() => {
-    if (VAULTS[selectedVault].name === 'FUSE') {
-      return 'FUSE';
+    if (VAULTS[selectedVault].name !== 'USDC') {
+      return VAULTS[selectedVault].name;
     }
     return null;
   }, [selectedVault]);
@@ -149,7 +149,12 @@ export default function Savings() {
       {isScreenMedium ? (
         <View className="flex-row items-center justify-between">
           <DashboardTitle />
-          <DashboardHeaderButtons hideSend hideSwap preserveSelectedVault />
+          <DashboardHeaderButtons
+            hideSend
+            hideSwap
+            hideBuyFuse={currentVault.name !== 'FUSE'}
+            preserveSelectedVault
+          />
         </View>
       ) : (
         <Text className="text-3xl font-semibold">Savings</Text>

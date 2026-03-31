@@ -156,11 +156,7 @@ export default function SignupCreating() {
     // If a selected user already exists, signup previously succeeded.
     // Redirect to avoid duplicate createAccount() calls on revisit.
     if (hasSelectedUser) {
-      const { redirectFrom, setRedirectFrom } = useUserStore.getState();
-      if (redirectFrom) {
-        setRedirectFrom(null);
-        router.replace(redirectFrom as any);
-      } else if (Platform.OS === 'web') {
+      if (Platform.OS === 'web') {
         router.replace(path.HOME);
       } else {
         router.replace(path.NOTIFICATIONS);

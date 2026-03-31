@@ -47,6 +47,7 @@ const Transaction = ({
   title,
   amount,
   status,
+  hash,
   classNames,
   symbol,
   logoUrl,
@@ -167,6 +168,8 @@ const Transaction = ({
   const isDeposit = type === TransactionType.DEPOSIT;
   const isSavingsDeposit =
     isDeposit && (symbol?.toLowerCase() === 'sousd' || symbol?.toLowerCase() === 'sofuse');
+  const isSuccess = status === TransactionStatus.SUCCESS;
+  const hideSavingsAmount = isSavingsDeposit && (isPending || isProcessing || (isSuccess && !hash));
 
   const statusTextColor = isFailed
     ? 'text-red-400'
@@ -180,8 +183,6 @@ const Transaction = ({
             ? 'text-brand'
             : '';
 
-  // Inline style fallback: guarantees correct color even if NativeWind class
-  // resolution fails after FlashList recycling or SSE-triggered re-renders.
   const statusColorStyle = isFailed
     ? { color: '#f87171' }
     : isExpired
@@ -294,7 +295,7 @@ const Transaction = ({
       )}
 
       <View className="min-w-0 flex-[1] items-end">
-        {directDepositStatusMessage || amount === '0' ? (
+        {directDepositStatusMessage || amount === '0' || hideSavingsAmount ? (
           <Text
             className={cn(
               'text-sm font-medium',
@@ -307,7 +308,8 @@ const Transaction = ({
                     : 'text-muted-foreground',
             )}
           >
-            {directDepositStatusMessage}
+            {directDepositStatusMessage ??
+              (hideSavingsAmount && isSuccess ? 'Confirming amount...' : null)}
           </Text>
         ) : (
           <Text

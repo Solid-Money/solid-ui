@@ -5,7 +5,7 @@ import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { CardProvider } from '@/lib/types';
 import { hasCard, withRefreshToken } from '@/lib/utils';
 
-import { cardDetailsQueryOptions } from './cardDetailsQueryOptions';
+import { cardDetailsQueryOptions } from './useCardDetails';
 import { useCardStatus } from './useCardStatus';
 
 const CARD_PROVIDER_PROBE_KEY = 'cardProviderProbe';

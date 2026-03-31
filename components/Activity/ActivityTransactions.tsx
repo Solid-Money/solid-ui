@@ -70,14 +70,19 @@ export default function ActivityTransactions({
     })),
   );
   const {
-    activities,
-    refetchAll,
-    isSyncing,
-    isSyncStale,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    activities,
+    getKey: _getKey,
+    refetchAll,
+    isSyncing,
+    isSyncStale,
+    activities,
+    refetchAll,
+    isSyncing,
+    isSyncStale,
   } = useActivity();
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
   // Ref-based guard to prevent rapid fetchNextPage calls from Load More button
@@ -469,12 +474,14 @@ export default function ActivityTransactions({
     return null;
   }, [hasNextPage, isFetchingNextPage, handleLoadMore]);
 
-  // Memoized key extractor for FlashList - uses stable identifiers (no index)
-  // to prevent key instability when new items are inserted via SSE.
+  // Memoized key extractor for FlashList - stable reference improves performance
   const keyExtractor = useCallback((item: TimeGroup, index: number) => {
     if (item.type === ActivityGroup.HEADER) {
       const headerKey = (item.data as TimeGroupHeaderData).key;
-      return headerKey.startsWith('header-') ? headerKey : `header-${headerKey}`;
+      // Ensure header keys are always prefixed and unique
+      return headerKey.startsWith('header-')
+        ? `${headerKey}-${index}`
+        : `header-${headerKey}-${index}`;
     }
     const transaction = item.data as ActivityEvent;
     // Use clientTxId as the stable, unique key — never hash/userOpHash (which

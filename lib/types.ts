@@ -1610,6 +1610,7 @@ export interface Vault {
     address: Address;
     chainId: number;
   }[];
+  minimumAmount: string;
   depositConfig?: VaultDepositConfig;
   isComingSoon?: boolean;
 }
@@ -1623,7 +1624,7 @@ export enum VaultType {
 export interface SavingsDataQuality {
   balanceSource: 'on-chain' | 'cached' | 'fallback';
   rateSource: 'on-chain' | 'cached' | 'fallback';
-  depositedAccuracy: 'historical-rates' | 'current-rate-fallback';
+  depositedAccuracy: 'historical-rates' | 'current-rate-fallback' | 'explorer' | 'subgraph';
 }
 
 export interface SavingsSummaryResponse {

@@ -711,6 +711,9 @@ export const getCardBalance = async (): Promise<CardBalanceResponseDto> => {
   });
 
   if (!response.ok) throw response;
+};
+
+export const getCashbackPercentage = async (): Promise<{ percentage: number }> => {
 
   return response.json();
 };
@@ -830,82 +833,6 @@ export const createProvisioningSession = async (
       },
       credentials: 'include',
       body: JSON.stringify(body),
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-export const getCashbackPercentage = async (): Promise<{ percentage: number }> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/cashback-percentage`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
-    },
-  );
-
-  if (!response.ok) throw response;
-
-  return response.json();
-};
-
-export const fetchInternalTransactions = async (
-  address: string,
-): Promise<BlockscoutTransactions> => {
-  const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/addresses/${address}/internal-transactions?filter=from`,
-  );
-  return response.data;
-};
-
-export const fetchTransactionTokenTransfers = async (
-  transactionHash: string,
-  type = 'ERC-20',
-): Promise<BlockscoutTransactions> => {
-  const response = await axios.get(
-    `https://eth.blockscout.com/api/v2/transactions/${transactionHash}/token-transfers?type=${type}`,
-  );
-  return response.data;
-};
-
-export const fetchLayerZeroBridgeTransactions = async (
-  transactionHash: string,
-): Promise<LayerZeroTransaction> => {
-  const response = await axios.get(
-    `https://scan.layerzero-api.com/v1/messages/tx/${transactionHash}`,
-  );
-  return response.data;
-};
-
-export const getClientIp = async (): Promise<string | null> => {
-  try {
-    const response = await axios.get('https://api.ipify.org?format=json');
-    return response.data.ip;
-  } catch (error) {
-    console.error('Error fetching IP from ipify:', error);
-    return null;
-  }
-};
-
-export const checkCardAccess = async (countryCode: string): Promise<CardAccessResponse> => {
-  const jwt = getJWTToken();
-
-  const response = await fetch(
-    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/check-access?countryCode=${countryCode}`,
-    {
-      credentials: 'include',
-      headers: {
-        ...getPlatformHeaders(),
-        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
-      },
     },
   );
 
