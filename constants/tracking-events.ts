@@ -58,6 +58,12 @@ export const TRACKING_EVENTS = {
   APPROVE_COMPLETED: 'approve_completed',
   APPROVE_ERROR: 'approve_error',
 
+  // Transaction Flow Events - Vault Switch
+  VAULT_SWITCH_INITIATED: 'vault_switch_initiated',
+  VAULT_SWITCH_COMPLETED: 'vault_switch_completed',
+  VAULT_SWITCH_CANCELLED: 'vault_switch_cancelled',
+  VAULT_SWITCH_FAILED: 'vault_switch_failed',
+
   // Transaction Flow Events - Cancel Withdraw
   CANCEL_WITHDRAW_INITIATED: 'cancel_withdraw_initiated',
   CANCEL_WITHDRAW_COMPLETED: 'cancel_withdraw_completed',

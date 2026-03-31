@@ -662,6 +662,7 @@ export enum TransactionType {
   WRAP = 'wrap',
   UNWRAP = 'unwrap',
   MERKL_CLAIM = 'merkl_claim',
+  VAULT_SWITCH = 'vault_switch',
   CARD_WELCOME_BONUS = 'card_welcome_bonus',
   DEPOSIT_BONUS = 'deposit_bonus',
   FAST_WITHDRAW = 'fast_withdraw',
