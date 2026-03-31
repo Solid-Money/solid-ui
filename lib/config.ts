@@ -57,9 +57,6 @@ export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL =
 export const EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM = (
   process.env.EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM ?? ''
 ).replace(/\\n/g, '\n');
-export const EXPO_PUBLIC_CARD_ISSUER = process.env.EXPO_PUBLIC_CARD_ISSUER as
-  | CardProvider
-  | undefined;
 export const EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID = Number(
   process.env.EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID ?? '84532',
 );

@@ -213,8 +213,6 @@ const Transaction = ({
     size: 44,
   });
 
-  const isSuccess = status === TransactionStatus.SUCCESS;
-
   const getDescription = () => {
     if (isPending) return 'Pending';
     if (isProcessing) return 'Processing';
