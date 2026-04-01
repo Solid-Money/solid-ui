@@ -14,6 +14,7 @@ import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
 import Max from '@/components/Max';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
+import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
@@ -37,7 +38,7 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_FUSE_GAS_RESERVE } from '@/lib/config';
-import { Status } from '@/lib/types';
+import { Status, TokenBalance, TokenType } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -147,6 +148,21 @@ function DepositToVaultForm() {
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
   const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
+
+  // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
+  const selectedWalletToken: TokenBalance | null = useMemo(() => {
+    if (!depositFromSolid || !srcChainId || !selectedTokenInfo.address) return null;
+    return {
+      contractTickerSymbol: selectedTokenInfo.name,
+      contractName: selectedTokenInfo.fullName || selectedTokenInfo.name,
+      contractAddress: selectedTokenInfo.address,
+      balance: '0',
+      contractDecimals: isFuseVault || isEthVault ? 18 : 6,
+      type: TokenType.ERC20,
+      chainId: srcChainId,
+      logoUrl: undefined,
+    };
+  }, [depositFromSolid, srcChainId, selectedTokenInfo, isFuseVault, isEthVault]);
 
   // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
   useEffect(() => {
@@ -441,21 +457,28 @@ function DepositToVaultForm() {
                 />
               )}
             />
-            <View className="shrink-0 flex-row items-center gap-2">
-              <Pressable
+            {depositFromSolid ? (
+              <WalletTokenButton
+                selectedToken={selectedWalletToken}
                 onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
-                className="flex-row items-center gap-2"
-              >
-                <Image
-                  source={selectedTokenInfo.image}
-                  alt={selectedTokenInfo.name}
-                  style={{ width: 32, height: 32 }}
-                />
-                <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
-                {selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />}
-                <ChevronDown size={16} color="#A1A1A1" />
-              </Pressable>
-            </View>
+              />
+            ) : (
+              <View className="shrink-0 flex-row items-center gap-2">
+                <Pressable
+                  onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+                  className="flex-row items-center gap-2"
+                >
+                  <Image
+                    source={selectedTokenInfo.image}
+                    alt={selectedTokenInfo.name}
+                    style={{ width: 32, height: 32 }}
+                  />
+                  <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
+                  {selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />}
+                  <ChevronDown size={16} color="#A1A1A1" />
+                </Pressable>
+              </View>
+            )}
           </View>
           <View className="flex-row items-center gap-2">
             <Wallet color="#A1A1A1" size={16} />

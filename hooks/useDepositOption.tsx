@@ -20,6 +20,7 @@ import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletFor
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
+import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -249,6 +250,9 @@ const useDepositOption = ({
     }
 
     if (isTokenSelector) {
+      if (depositFromSolid) {
+        return <SavingsDepositTokenSelector />;
+      }
       return <DepositTokenSelector />;
     }
 
@@ -288,6 +292,7 @@ const useDepositOption = ({
     if (isPublicAddress) return 'Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
+    if (isTokenSelector && depositFromSolid) return 'Deposit to Savings';
     if (isTokenSelector) return 'Select a token';
     if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit to Savings';
     if (isFormAndAddress && !depositFromSolid) return 'Add Funds';
@@ -449,6 +454,9 @@ const useDepositOption = ({
       // When srcChainId is 0 (unset), keep OPEN_OPTIONS so user picks method then chain
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
+      } else if (depositFromSolid && user?.safeAddress) {
+        // Savings deposit: open form directly — token selector is inline
+        setModal(DEPOSIT_MODAL.OPEN_FORM);
       } else if ((address || (depositFromSolid && user?.safeAddress)) && srcChainId) {
         setModal(DEPOSIT_MODAL.OPEN_FORM);
       } else {
@@ -480,7 +488,12 @@ const useDepositOption = ({
   };
 
   const handleBackPress = () => {
-    if (isFormAndAddress) {
+    if (isFormAndAddress && depositFromSolid) {
+      // Savings deposit form is the entry point — close the modal
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
+      clearSessionStartTime();
+    } else if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else if (isBankTransferKycFrame) {
       const { kyc } = useDepositStore.getState();
@@ -523,6 +536,9 @@ const useDepositOption = ({
       }
     } else if (isDepositDirectlyTokens) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+    } else if (isTokenSelector && depositFromSolid) {
+      // Token selector was opened from the deposit form — go back to form
+      setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isTokenSelector) {
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isBuyCrypto) {

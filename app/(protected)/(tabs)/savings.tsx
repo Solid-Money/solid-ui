@@ -162,7 +162,7 @@ export default function Savings() {
             />
             <DepositTrigger
               buttonText="Deposit"
-              modal={DEPOSIT_MODAL.OPEN_NETWORKS}
+              modal={DEPOSIT_MODAL.OPEN_FORM}
               preserveSelectedVault
               source="savings_header"
               onBeforeOpen={() => {
