@@ -319,6 +319,11 @@ const useDepositOption = ({
   };
 
   const getContainerClassName = () => {
+    // Add Funds form (Step 1) needs min-height since it's shorter than the deposit options screen
+    if (isFormAndAddress && !depositFromSolid) {
+      return 'min-h-[40rem]';
+    }
+
     if (
       !isFormAndAddress &&
       !isBuyCrypto &&
