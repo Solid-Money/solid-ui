@@ -48,7 +48,7 @@ function AddFundsToWalletForm() {
     };
   }, [srcChainId, outputToken]);
 
-  const { balance, transfer, transferStatus, error, hash } = useTransferToWallet(
+  const { balance, transfer, transferStatus, error, hash: _hash } = useTransferToWallet(
     (selectedTokenInfo?.address as Address) || '',
     selectedTokenInfo?.name || '',
   );
