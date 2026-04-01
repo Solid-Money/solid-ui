@@ -292,11 +292,11 @@ const useDepositOption = ({
     if (isPublicAddress) return 'Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
-    if (isTokenSelector && depositFromSolid) return 'Deposit to Savings';
+    if (isTokenSelector && depositFromSolid) return 'Deposit';
     if (isTokenSelector) return 'Select a token';
-    if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit to Savings';
-    if (isFormAndAddress && !depositFromSolid) return 'Add Funds';
-    return 'Deposit';
+    if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit';
+    if (isFormAndAddress && !depositFromSolid) return 'Add funds';
+    return 'Add funds';
   };
 
   const getContentClassName = () => {
@@ -319,6 +319,11 @@ const useDepositOption = ({
   };
 
   const getContainerClassName = () => {
+    // Add Funds form (Step 1) needs min-height since it's shorter than the deposit options screen
+    if (isFormAndAddress && !depositFromSolid) {
+      return 'min-h-[40rem]';
+    }
+
     if (
       !isFormAndAddress &&
       !isBuyCrypto &&
