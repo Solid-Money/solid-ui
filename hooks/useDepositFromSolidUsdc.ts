@@ -160,6 +160,8 @@ const useDepositFromSolidUsdc = (
         throw new Error('User cancelled transaction');
       }
 
+      setDepositStatus({ status: Status.PENDING, message: 'Depositing' });
+
       if (result && typeof result === 'object' && 'transactionHash' in result) {
         const txHash = (result as { transactionHash: `0x${string}` }).transactionHash;
         setHash(txHash);

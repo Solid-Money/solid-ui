@@ -3,7 +3,6 @@ import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { getBalance, readContract } from 'viem/actions';
 import { base, fuse, mainnet } from 'viem/chains';
 
-import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { NATIVE_COINGECKO_TOKENS, NATIVE_TOKENS } from '@/constants/tokens';
 import { fetchCoinSimplePrice, fetchTokenList, fetchTokenPriceUsd } from '@/lib/api';
 import { ADDRESSES } from '@/lib/config';
@@ -231,17 +230,6 @@ const fetchTokenBalances = async (safeAddress: string) => {
 
   const filterTokenList = (list: SwapTokenResponse[], chainId: number, address: string) => {
     if (list.length === 0) return true;
-
-    // Always allow known deposit-supported tokens (from BRIDGE_TOKENS) even if
-    // they're not in the swap-token list — ensures USDC/USDT on all chains are visible
-    const bridgeChain = BRIDGE_TOKENS[chainId];
-    if (bridgeChain?.tokens) {
-      const isKnownBridgeToken = Object.values(bridgeChain.tokens).some(
-        t => t.address?.toLowerCase() === address?.toLowerCase(),
-      );
-      if (isKnownBridgeToken) return true;
-    }
-
     return list.some(
       token => token.chainId === chainId && token.address?.toLowerCase() === address?.toLowerCase(),
     );
