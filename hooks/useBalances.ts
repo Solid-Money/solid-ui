@@ -58,6 +58,7 @@ interface BalanceData {
   soUSDBase: number;
   ethereumTokens: TokenBalance[];
   fuseTokens: TokenBalance[];
+  polygonTokens: TokenBalance[];
   baseTokens: TokenBalance[];
   arbitrumTokens: TokenBalance[];
   tokens: TokenBalance[];
@@ -72,6 +73,7 @@ interface BalanceData {
 // Chain IDs
 const ETHEREUM_CHAIN_ID = 1;
 const FUSE_CHAIN_ID = 122;
+const POLYGON_CHAIN_ID = 137;
 const BASE_CHAIN_ID = 8453;
 const ARBITRUM_CHAIN_ID = 42161;
 
@@ -103,6 +105,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     baseResponse,
     ethereumResponse,
     fuseResponse,
+    polygonResponse,
     arbitrumResponse,
     soUSDRate,
     soFUSERate,
@@ -121,6 +124,9 @@ const fetchTokenBalances = async (safeAddress: string) => {
       headers: { accept: 'application/json' },
     }),
     fetch(`https://explorer.fuse.io/api/v2/addresses/${safeAddress}/token-balances`, {
+      headers: { accept: 'application/json' },
+    }),
+    fetch(`https://polygon.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
       headers: { accept: 'application/json' },
     }),
     fetch(`https://arbitrum.blockscout.com/api/v2/addresses/${safeAddress}/token-balances`, {
@@ -155,6 +161,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
 
   let ethereumTokens: TokenBalance[] = [];
   let fuseTokens: TokenBalance[] = [];
+  let polygonTokens: TokenBalance[] = [];
   let baseTokens: TokenBalance[] = [];
   let arbitrumTokens: TokenBalance[] = [];
   let soUSDRateNum = 0;
@@ -273,6 +280,20 @@ const fetchTokenBalances = async (safeAddress: string) => {
     console.warn('Failed to fetch Fuse balances:', fuseResponse.reason);
   }
 
+  // Process Polygon response (Blockscout)
+  if (polygonResponse.status === PromiseStatus.FULFILLED && polygonResponse.value.ok) {
+    const polygonData: BlockscoutResponse = await polygonResponse.value.json();
+    polygonTokens = polygonData
+      .filter(
+        item =>
+          item.token.type === TokenType.ERC20 &&
+          filterTokenList(tokenListData, POLYGON_CHAIN_ID, getAddress(item)),
+      )
+      .map(item => convertBlockscoutToTokenBalance(item, POLYGON_CHAIN_ID));
+  } else if (polygonResponse.status === PromiseStatus.REJECTED) {
+    console.warn('Failed to fetch Polygon balances:', polygonResponse.reason);
+  }
+
   // Process Arbitrum response (Blockscout)
   if (arbitrumResponse.status === PromiseStatus.FULFILLED && arbitrumResponse.value.ok) {
     const arbitrumData: BlockscoutResponse = await arbitrumResponse.value.json();
@@ -353,7 +374,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     });
   }
 
-  let allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
+  let allTokens = [...ethereumTokens, ...fuseTokens, ...polygonTokens, ...baseTokens, ...arbitrumTokens];
 
   const isZeroRate = (r: number | null | undefined) =>
     r == null || r === 0 || (typeof r === 'number' && Number.isNaN(r));
@@ -507,6 +528,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
   // Return chain arrays from updated allTokens so quoteRates from fallbacks are included
   const ethereumTokensFinal = allTokens.filter(t => t.chainId === ETHEREUM_CHAIN_ID);
   const fuseTokensFinal = allTokens.filter(t => t.chainId === FUSE_CHAIN_ID);
+  const polygonTokensFinal = allTokens.filter(t => t.chainId === POLYGON_CHAIN_ID);
   const baseTokensFinal = allTokens.filter(t => t.chainId === BASE_CHAIN_ID);
   const arbitrumTokensFinal = allTokens.filter(t => t.chainId === ARBITRUM_CHAIN_ID);
 
@@ -514,6 +536,7 @@ const fetchTokenBalances = async (safeAddress: string) => {
     ...totals,
     ethereumTokens: ethereumTokensFinal,
     fuseTokens: fuseTokensFinal,
+    polygonTokens: polygonTokensFinal,
     baseTokens: baseTokensFinal,
     arbitrumTokens: arbitrumTokensFinal,
     tokens: allTokens,
@@ -554,6 +577,7 @@ export const useBalances = (): BalanceData => {
     soUSDBase: 0,
     ethereumTokens: [],
     fuseTokens: [],
+    polygonTokens: [],
     baseTokens: [],
     arbitrumTokens: [],
     tokens: [],

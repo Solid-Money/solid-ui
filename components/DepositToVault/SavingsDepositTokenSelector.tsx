@@ -28,11 +28,11 @@ const SavingsDepositTokenSelector: React.FC = () => {
     })),
   );
   const { selectVaultForDeposit } = useSavingStore();
-  const { ethereumTokens, fuseTokens, baseTokens, arbitrumTokens } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } = useWalletTokens();
 
   // Build a list of depositable tokens that match vault supported tokens
   const depositableTokens = useMemo(() => {
-    const allTokens = [...ethereumTokens, ...fuseTokens, ...baseTokens, ...arbitrumTokens];
+    const allTokens = [...ethereumTokens, ...fuseTokens, ...polygonTokens, ...baseTokens, ...arbitrumTokens];
 
     // Collect all supported token symbols per chain from vault configs
     const supportedSet = new Set<string>();
@@ -53,7 +53,7 @@ const SavingsDepositTokenSelector: React.FC = () => {
       const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
       return balance > 0;
     });
-  }, [ethereumTokens, fuseTokens, baseTokens, arbitrumTokens]);
+  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens]);
 
   const handleTokenSelect = useCallback(
     (token: TokenBalance) => {
