@@ -6,6 +6,7 @@ import { Address } from 'viem';
 
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
@@ -17,6 +18,7 @@ import SavingVault from '@/components/Savings/SavingVault';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import faqs from '@/constants/faqs';
 import { VAULTS } from '@/constants/vaults';
 import {
@@ -36,6 +38,7 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
 export default function Savings() {
@@ -149,12 +152,24 @@ export default function Savings() {
       {isScreenMedium ? (
         <View className="flex-row items-center justify-between">
           <DashboardTitle />
-          <DashboardHeaderButtons
-            hideSend
-            hideSwap
-            hideBuyFuse={currentVault.name !== 'FUSE'}
-            preserveSelectedVault
-          />
+          <View className="flex-row gap-2">
+            <DashboardHeaderButtons
+              hideSend
+              hideSwap
+              hideBuyFuse={currentVault.name !== 'FUSE'}
+              hideDeposit
+              preserveSelectedVault
+            />
+            <DepositTrigger
+              buttonText="Deposit"
+              modal={DEPOSIT_MODAL.OPEN_NETWORKS}
+              preserveSelectedVault
+              source="savings_header"
+              onBeforeOpen={() => {
+                useDepositStore.getState().setDepositFromSolid(true);
+              }}
+            />
+          </View>
         </View>
       ) : (
         <Text className="text-3xl font-semibold">Savings</Text>

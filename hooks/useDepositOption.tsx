@@ -16,6 +16,7 @@ import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAd
 import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
 import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTokens';
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
+import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
@@ -179,10 +180,15 @@ const useDepositOption = ({
 
   const getContent = () => {
     if (isTransactionStatus) {
+      const isDepositToSavings = depositFromSolid;
       return (
         <TransactionStatus
-          title="Deposit initiated"
-          description="Your deposit is being processed. This may take a few minutes."
+          title={isDepositToSavings ? 'Deposit initiated' : 'Transfer initiated'}
+          description={
+            isDepositToSavings
+              ? 'Your deposit is being processed. This may take a few minutes.'
+              : 'Your transfer is being processed. Funds will appear in your wallet shortly.'
+          }
           amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
           icon={getTokenIcon({ tokenSymbol: outputToken })}
@@ -196,7 +202,10 @@ const useDepositOption = ({
     }
 
     if (isFormAndAddress) {
-      return <DepositToVaultForm />;
+      if (depositFromSolid) {
+        return <DepositToVaultForm />;
+      }
+      return <AddFundsToWalletForm />;
     }
 
     if (isBuyCrypto) {
@@ -280,6 +289,8 @@ const useDepositOption = ({
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
     if (isTokenSelector) return 'Select a token';
+    if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit to Savings';
+    if (isFormAndAddress && !depositFromSolid) return 'Add Funds';
     return 'Deposit';
   };
 
