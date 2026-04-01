@@ -505,10 +505,19 @@ const useUser = (): UseUserReturn => {
 
         const authedUser = await login(result);
 
-        // If returned user is different, select by userId
-        if (authedUser?._id && authedUser._id === userId) {
-          selectUserById(authedUser._id);
+        // Update the stored user with fresh tokens and select them
+        if (selectedUser && authedUser) {
+          storeUser({
+            ...selectedUser,
+            selected: true,
+            tokens: authedUser.tokens || undefined,
+          });
+        } else {
+          selectUserById(authedUser?._id ?? userId);
         }
+
+        // Reset logout flag so future session expiries show the toast
+        setIsLoggingOut(false);
 
         const { redirectFrom, setRedirectFrom } = useUserStore.getState();
         if (redirectFrom) {
@@ -527,7 +536,7 @@ const useUser = (): UseUserReturn => {
         // Don't navigate on error - stay on welcome screen
       }
     },
-    [selectUserById, clearKycLinkId, router, user, unselectUser, users, httpClient],
+    [selectUserById, storeUser, clearKycLinkId, router, user, unselectUser, users, httpClient],
   );
 
   const handleRemoveUsers = useCallback(() => {
