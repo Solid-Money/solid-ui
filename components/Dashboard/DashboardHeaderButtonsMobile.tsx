@@ -15,7 +15,7 @@ const DashboardHeaderButtonsMobile = () => {
         trigger={
           <CircleButton
             icon={HomeFund}
-            label="Funds"
+            label="Fund"
             backgroundColor="bg-[#94F27F]"
             iconColor="#000000"
             viewBox="0 0 20 20"
