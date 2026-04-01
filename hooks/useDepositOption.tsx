@@ -454,6 +454,9 @@ const useDepositOption = ({
       // When srcChainId is 0 (unset), keep OPEN_OPTIONS so user picks method then chain
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
+      } else if (depositFromSolid && user?.safeAddress) {
+        // Savings deposit: open form directly — token selector is inline
+        setModal(DEPOSIT_MODAL.OPEN_FORM);
       } else if ((address || (depositFromSolid && user?.safeAddress)) && srcChainId) {
         setModal(DEPOSIT_MODAL.OPEN_FORM);
       } else {
@@ -486,7 +489,10 @@ const useDepositOption = ({
 
   const handleBackPress = () => {
     if (isFormAndAddress && depositFromSolid) {
-      setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR);
+      // Savings deposit form is the entry point — close the modal
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
+      clearSessionStartTime();
     } else if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else if (isBankTransferKycFrame) {
@@ -531,10 +537,8 @@ const useDepositOption = ({
     } else if (isDepositDirectlyTokens) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
     } else if (isTokenSelector && depositFromSolid) {
-      // Token selector is the first screen in the savings deposit flow — close
-      setModal(DEPOSIT_MODAL.CLOSE);
-      resetDepositFlow();
-      clearSessionStartTime();
+      // Token selector was opened from the deposit form — go back to form
+      setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isTokenSelector) {
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isBuyCrypto) {

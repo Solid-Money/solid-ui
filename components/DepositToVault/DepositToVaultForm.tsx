@@ -18,7 +18,7 @@ import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { BRIDGE_TOKENS } from '@/constants/bridge';
+import { BRIDGE_TOKENS, getBridgeChain } from '@/constants/bridge';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { isStablecoinSymbol } from '@/constants/stablecoins';
@@ -146,6 +146,7 @@ function DepositToVaultForm() {
   const isEthVault = vault.name === 'ETH';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
+  const needsTokenSelection = depositFromSolid && !srcChainId;
   const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
 
   // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
@@ -446,14 +447,31 @@ function DepositToVaultForm() {
                 onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
                 className="flex-row items-center gap-2"
               >
-                <Image
-                  source={selectedTokenInfo.image}
-                  alt={selectedTokenInfo.name}
-                  style={{ width: 32, height: 32 }}
-                />
-                <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
-                {selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />}
-                <ChevronDown size={16} color="#A1A1A1" />
+                {needsTokenSelection ? (
+                  <>
+                    <Text className="text-lg font-semibold text-white">Select token</Text>
+                    <ChevronDown size={16} color="#A1A1A1" />
+                  </>
+                ) : (
+                  <>
+                    <Image
+                      source={selectedTokenInfo.image}
+                      alt={selectedTokenInfo.name}
+                      style={{ width: 32, height: 32 }}
+                    />
+                    <View>
+                      <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
+                      {depositFromSolid && srcChainId ? (
+                        <Text className="text-xs font-medium text-muted-foreground">
+                          on {getBridgeChain(srcChainId)?.name}
+                        </Text>
+                      ) : (
+                        selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />
+                      )}
+                    </View>
+                    <ChevronDown size={16} color="#A1A1A1" />
+                  </>
+                )}
               </Pressable>
             </View>
           </View>
