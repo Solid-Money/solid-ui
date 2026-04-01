@@ -184,11 +184,11 @@ const useDepositOption = ({
       const isDepositToSavings = depositFromSolid;
       return (
         <TransactionStatus
-          title={isDepositToSavings ? 'Deposit initiated' : 'Transfer initiated'}
+          title={isDepositToSavings ? 'Deposit initiated' : 'Transfer sent'}
           description={
             isDepositToSavings
               ? 'Your deposit is being processed. This may take a few minutes.'
-              : 'Your transfer is being processed. Funds will appear in your wallet shortly.'
+              : 'Your transfer has been sent. Funds will appear in your wallet shortly.'
           }
           amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}

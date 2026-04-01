@@ -150,40 +150,48 @@ const useTransferToWallet = (
         hash: transaction.transactionHash,
       });
 
-      setTransferStatus({ status: Status.PENDING, message: 'Waiting for confirmation' });
-
-      try {
-        await waitForTransactionReceipt(publicClient(srcChainId), {
-          hash: transaction.transactionHash as `0x${string}`,
-        });
-      } catch (receiptError) {
-        throw new Error(`${ERRORS.WAIT_TRANSACTION_RECEIPT}: ${receiptError}`);
-      }
-
-      updateActivity(trackingId, { status: TransactionStatus.COMPLETED });
+      // Return immediately so the UI can show the transaction status screen.
+      // Wait for the receipt in the background and update the activity when confirmed.
       setTransferStatus({ status: Status.SUCCESS });
 
-      track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-        user_id: user?.userId,
-        safe_address: user?.safeAddress,
-        eoa_address: eoaAddress,
-        amount,
-        transaction_hash: transaction.transactionHash,
-        deposit_type: 'wallet_transfer',
-        deposit_method: 'eoa_to_safe',
-        chain_id: srcChainId,
-        ...attributionData,
-        attribution_channel: attributionChannel,
-      });
+      const txHash = transaction.transactionHash;
+      const capturedTrackingId = trackingId;
 
-      trackIdentity(user?.userId!, {
-        last_deposit_amount: parseFloat(amount),
-        last_deposit_date: new Date().toISOString(),
-        last_deposit_method: 'eoa_to_safe',
-        last_deposit_chain: BRIDGE_TOKENS[srcChainId]?.name || String(srcChainId),
-        ...attributionData,
-        attribution_channel: attributionChannel,
-      });
+      waitForTransactionReceipt(publicClient(srcChainId), {
+        hash: txHash as `0x${string}`,
+      })
+        .then(() => {
+          updateActivity(capturedTrackingId!, { status: TransactionStatus.COMPLETED });
+
+          track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
+            user_id: user?.userId,
+            safe_address: user?.safeAddress,
+            eoa_address: eoaAddress,
+            amount,
+            transaction_hash: txHash,
+            deposit_type: 'wallet_transfer',
+            deposit_method: 'eoa_to_safe',
+            chain_id: srcChainId,
+            ...attributionData,
+            attribution_channel: attributionChannel,
+          });
+
+          trackIdentity(user?.userId!, {
+            last_deposit_amount: parseFloat(amount),
+            last_deposit_date: new Date().toISOString(),
+            last_deposit_method: 'eoa_to_safe',
+            last_deposit_chain: BRIDGE_TOKENS[srcChainId]?.name || String(srcChainId),
+            ...attributionData,
+            attribution_channel: attributionChannel,
+          });
+        })
+        .catch(err => {
+          console.error('Receipt confirmation failed:', err);
+          updateActivity(capturedTrackingId!, {
+            status: TransactionStatus.FAILED,
+            metadata: { error: err?.message, failedAt: new Date().toISOString() },
+          });
+        });
 
       return trackingId;
     } catch (error: any) {
