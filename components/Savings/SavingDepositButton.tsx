@@ -21,7 +21,7 @@ const SavingDepositButton = () => {
 
   return (
     <DepositTrigger
-      modal={DEPOSIT_MODAL.OPEN_NETWORKS}
+      modal={DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR}
       preserveSelectedVault
       source="savings_empty_state"
       onBeforeOpen={() => {

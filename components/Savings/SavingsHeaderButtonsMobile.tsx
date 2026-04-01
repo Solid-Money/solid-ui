@@ -50,7 +50,7 @@ const SavingsHeaderButtonsMobile = ({
   return (
     <View className="flex-row items-center justify-center gap-8">
       <DepositTrigger
-        modal={DEPOSIT_MODAL.OPEN_NETWORKS}
+        modal={DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR}
         preserveSelectedVault
         source="savings_mobile"
         onBeforeOpen={() => {

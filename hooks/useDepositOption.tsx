@@ -20,6 +20,7 @@ import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletFor
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
+import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -249,6 +250,9 @@ const useDepositOption = ({
     }
 
     if (isTokenSelector) {
+      if (depositFromSolid) {
+        return <SavingsDepositTokenSelector />;
+      }
       return <DepositTokenSelector />;
     }
 
@@ -288,6 +292,7 @@ const useDepositOption = ({
     if (isPublicAddress) return 'Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
+    if (isTokenSelector && depositFromSolid) return 'Deposit to Savings';
     if (isTokenSelector) return 'Select a token';
     if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit to Savings';
     if (isFormAndAddress && !depositFromSolid) return 'Add Funds';
@@ -480,7 +485,9 @@ const useDepositOption = ({
   };
 
   const handleBackPress = () => {
-    if (isFormAndAddress) {
+    if (isFormAndAddress && depositFromSolid) {
+      setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR);
+    } else if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else if (isBankTransferKycFrame) {
       const { kyc } = useDepositStore.getState();
@@ -523,6 +530,11 @@ const useDepositOption = ({
       }
     } else if (isDepositDirectlyTokens) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+    } else if (isTokenSelector && depositFromSolid) {
+      // Token selector is the first screen in the savings deposit flow — close
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
+      clearSessionStartTime();
     } else if (isTokenSelector) {
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isBuyCrypto) {
