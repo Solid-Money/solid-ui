@@ -147,7 +147,6 @@ function DepositToVaultForm() {
   const isEthVault = vault.name === 'ETH';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
-  const needsTokenSelection = depositFromSolid && !srcChainId;
   const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid

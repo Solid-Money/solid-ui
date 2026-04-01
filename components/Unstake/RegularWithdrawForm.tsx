@@ -5,7 +5,7 @@ import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Address } from 'abitype';
-import { ChevronDown, Wallet } from 'lucide-react-native';
+import { Wallet } from 'lucide-react-native';
 import { formatUnits, zeroAddress } from 'viem';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
@@ -18,7 +18,7 @@ import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { getBridgeChain } from '@/constants/bridge';
+
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';

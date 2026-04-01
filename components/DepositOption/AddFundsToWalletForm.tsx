@@ -10,7 +10,6 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
-import CopyToClipboard from '@/components/CopyToClipboard';
 import Max from '@/components/Max';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -18,11 +17,10 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useTransferToWallet from '@/hooks/useTransferToWallet';
-import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { Status } from '@/lib/types';
-import { eclipseAddress, formatNumber } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 function AddFundsToWalletForm() {
@@ -34,8 +32,6 @@ function AddFundsToWalletForm() {
       outputToken: state.outputToken,
     })),
   );
-  const { user } = useUser();
-
   const selectedTokenInfo = useMemo(() => {
     const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
     const tokenData = tokens ? tokens[outputToken as keyof typeof tokens] : undefined;
@@ -200,17 +196,6 @@ function AddFundsToWalletForm() {
               }}
             />
           </View>
-        </View>
-
-        <View className="gap-2 rounded-2xl bg-accent px-5 py-4">
-          <Text className="text-muted-foreground">Send to</Text>
-          <View className="flex-row items-center gap-2">
-            <Text className="text-lg font-semibold text-white">
-              {user?.safeAddress ? eclipseAddress(user.safeAddress, 8, 6) : ''}
-            </Text>
-            <CopyToClipboard text={user?.safeAddress || ''} className="text-primary" />
-          </View>
-          <Text className="text-sm text-muted-foreground">Your Solid wallet</Text>
         </View>
 
         <CheckConnectionWrapper props={{ size: 'xl' }}>
