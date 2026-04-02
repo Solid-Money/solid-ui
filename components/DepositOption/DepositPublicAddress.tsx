@@ -18,17 +18,22 @@ const SUPPORTED_NETWORKS_URL =
 const DepositPublicAddress = () => {
   const { user } = useUser();
 
-  const networks = useMemo(
-    () =>
-      Object.entries(BRIDGE_TOKENS)
-        .sort(([, a], [, b]) => a.sort - b.sort)
-        .map(([chainId, chain]) => ({
-          chainId: Number(chainId),
-          icon: chain.icon,
-          name: chain.name,
-        })),
-    [],
-  );
+  const networks = useMemo(() => {
+    const displayOrder: Record<string, number> = {
+      Ethereum: 1,
+      Fuse: 2,
+      Polygon: 3,
+      Base: 4,
+      Arbitrum: 5,
+    };
+    return Object.entries(BRIDGE_TOKENS)
+      .map(([chainId, chain]) => ({
+        chainId: Number(chainId),
+        icon: chain.icon,
+        name: chain.name,
+      }))
+      .sort((a, b) => (displayOrder[a.name] ?? 99) - (displayOrder[b.name] ?? 99));
+  }, []);
 
   const networkNames = useMemo(() => {
     const names = networks.map(n => n.name);
@@ -82,7 +87,7 @@ const DepositPublicAddress = () => {
             ))}
           </View>
 
-          <Text className="text-center text-sm text-muted-foreground">
+          <Text className="max-w-72 text-center text-sm text-muted-foreground">
             We support tokens on {networkNames} chain
           </Text>
 
