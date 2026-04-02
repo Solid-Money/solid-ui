@@ -1,26 +1,77 @@
-import { View } from 'react-native';
+import { useMemo } from 'react';
+import { Linking, Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import SolidQRCode from '@/components/SolidQRCode';
 import { Text } from '@/components/ui/text';
+import { BRIDGE_TOKENS } from '@/constants/bridge';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress } from '@/lib/utils';
+
+const SUPPORTED_NETWORKS_URL =
+  'https://support.solid.xyz/en/articles/14431132-supported-networks-and-tokens-on-solid';
 
 const QRCodeAndAddress = () => {
   const { user } = useUser();
 
+  const networks = useMemo(
+    () =>
+      Object.entries(BRIDGE_TOKENS)
+        .sort(([, a], [, b]) => a.sort - b.sort)
+        .map(([chainId, chain]) => ({
+          chainId: Number(chainId),
+          icon: chain.icon,
+          name: chain.name,
+        })),
+    [],
+  );
+
+  const networkNames = useMemo(() => {
+    const names = networks.map(n => n.name);
+    if (names.length <= 1) return names.join('');
+    return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  }, [networks]);
+
   return (
-    <View className="rounded-xl bg-qr-background">
-      <View className="items-center justify-center border-b border-border/50 px-2 py-6">
+    <View className="rounded-xl bg-card">
+      <View className="flex-row items-center justify-center gap-1 pt-4">
+        <Text className="text-base text-muted-foreground">
+          {user?.safeAddress ? eclipseAddress(user?.safeAddress) : ''}
+        </Text>
+        <CopyToClipboard text={user?.safeAddress || ''} className="text-primary" />
+      </View>
+
+      <View className="items-center justify-center px-2 py-4">
         <View className="overflow-hidden rounded-xl">
           <SolidQRCode value={user?.safeAddress || ''} size={200} />
         </View>
       </View>
-      <View className="flex-row items-center justify-center gap-2 p-2">
-        <Text className="text-base">
-          {user?.safeAddress ? eclipseAddress(user?.safeAddress) : ''}
+
+      <View className="items-center gap-2 px-4 pb-4">
+        <View className="flex-row items-center justify-center">
+          {networks.map((network, index) => (
+            <View
+              key={network.chainId}
+              className={index > 0 ? '-ml-2' : ''}
+              style={{ zIndex: networks.length - index }}
+            >
+              <Image
+                source={network.icon}
+                style={{ width: 24, height: 24, borderRadius: 12 }}
+                contentFit="cover"
+              />
+            </View>
+          ))}
+        </View>
+
+        <Text className="text-center text-sm text-muted-foreground">
+          We support tokens on {networkNames} chain
         </Text>
-        <CopyToClipboard text={user?.safeAddress || ''} className="text-primary" />
+
+        <Pressable onPress={() => Linking.openURL(SUPPORTED_NETWORKS_URL)}>
+          <Text className="text-sm font-medium text-white">See supported networks {'>'}</Text>
+        </Pressable>
       </View>
     </View>
   );

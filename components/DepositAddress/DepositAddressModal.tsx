@@ -4,10 +4,8 @@ import { Plus } from 'lucide-react-native';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
 import { buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { TOKEN_MAP } from '@/constants/tokens';
 
-import TokenSelectorFooter from './Footer';
-import TokenSelectorDeposit from './QRCodeAndAddress';
+import QRCodeAndAddress from './QRCodeAndAddress';
 
 const DepositAddressModal = ({
   open,
@@ -20,8 +18,8 @@ const DepositAddressModal = ({
     <ResponsiveDialog
       open={open}
       onOpenChange={setOpen}
-      title="Deposit address"
-      contentClassName="md:gap-8 md:max-w-sm"
+      title="Your Solid address"
+      contentClassName="md:max-w-sm"
       trigger={
         <View className={buttonVariants({ variant: 'brand', className: 'h-12 rounded-xl' })}>
           <View className="flex-row items-center gap-2">
@@ -31,10 +29,7 @@ const DepositAddressModal = ({
         </View>
       }
     >
-      <View className="gap-2 md:gap-4">
-        <TokenSelectorDeposit />
-      </View>
-      <TokenSelectorFooter selectedToken={TOKEN_MAP[1][0]} />
+      <QRCodeAndAddress />
     </ResponsiveDialog>
   );
 };
