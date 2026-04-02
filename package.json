@@ -123,6 +123,7 @@
     "ox": "^0.8.9",
     "permissionless": "0.3.3",
     "persona": "^5.7.0",
+    "qrcode-generator": "^1.4.4",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-hook-form": "^7.71.2",

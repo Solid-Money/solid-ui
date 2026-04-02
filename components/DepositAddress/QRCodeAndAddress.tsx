@@ -1,7 +1,7 @@
 import { View } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
+import SolidQRCode from '@/components/SolidQRCode';
 import { Text } from '@/components/ui/text';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress } from '@/lib/utils';
@@ -12,8 +12,8 @@ const QRCodeAndAddress = () => {
   return (
     <View className="rounded-xl bg-qr-background">
       <View className="items-center justify-center border-b border-border/50 px-2 py-6">
-        <View className="rounded-xl bg-white p-4">
-          <QRCode value={user?.safeAddress} size={200} />
+        <View className="overflow-hidden rounded-xl">
+          <SolidQRCode value={user?.safeAddress || ''} size={200} />
         </View>
       </View>
       <View className="flex-row items-center justify-center gap-2 p-2">
