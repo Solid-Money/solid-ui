@@ -230,7 +230,7 @@ const QRDialog = React.memo(function QRDialog({
             size={220}
             logo={solidLogo}
             logoSize={55}
-            logoBackgroundColor="white"
+            logoBackgroundColor="#1C1C1C"
             logoBorderRadius={28}
           />
         </View>
