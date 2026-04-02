@@ -27,21 +27,21 @@ const CardDepositModalProvider = () => {
   const router = useRouter();
   const { currentModal, previousModal, setModal, transaction, setSource } = useCardDepositStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? CARD_DEPOSIT_MODAL.CLOSE,
+      previousModal: state.previousModal ?? CARD_DEPOSIT_MODAL.CLOSE,
       setModal: state.setModal,
       transaction: state.transaction,
       setSource: state.setSource,
     })),
   );
 
-  const isClose = !currentModal || currentModal.name === CARD_DEPOSIT_MODAL.CLOSE.name;
-  const isOptions = currentModal?.name === CARD_DEPOSIT_MODAL.OPEN_OPTIONS.name;
-  const isInternal = currentModal?.name === CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM.name;
-  const isExternal = currentModal?.name === CARD_DEPOSIT_MODAL.OPEN_EXTERNAL_FORM.name;
-  const isTransactionStatus = currentModal?.name === CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
-  const shouldAnimate = previousModal?.name !== CARD_DEPOSIT_MODAL.CLOSE.name;
-  const isForward = (currentModal?.number ?? 0) > (previousModal?.number ?? 0);
+  const isClose = currentModal.name === CARD_DEPOSIT_MODAL.CLOSE.name;
+  const isOptions = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_OPTIONS.name;
+  const isInternal = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM.name;
+  const isExternal = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_EXTERNAL_FORM.name;
+  const isTransactionStatus = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const shouldAnimate = previousModal.name !== CARD_DEPOSIT_MODAL.CLOSE.name;
+  const isForward = currentModal.number > previousModal.number;
 
   // Track modal open/close state
   const hasTrackedOpenRef = useRef(false);

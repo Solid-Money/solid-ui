@@ -71,8 +71,8 @@ const useDepositOption = ({
     setDepositFromSolid,
   } = useDepositStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? DEPOSIT_MODAL.CLOSE,
+      previousModal: state.previousModal ?? DEPOSIT_MODAL.CLOSE,
       transaction: state.transaction,
       setModal: state.setModal,
       srcChainId: state.srcChainId,
@@ -97,39 +97,37 @@ const useDepositOption = ({
   const { deleteDirectDepositSession } = useDirectDepositSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const { triggerElement } = useResponsiveModal();
-  const isForm = currentModal?.name === DEPOSIT_MODAL.OPEN_FORM.name;
+  const isForm = currentModal.name === DEPOSIT_MODAL.OPEN_FORM.name;
   const isFormAndAddress = Boolean(
     isForm && (address || (depositFromSolid && !!user?.safeAddress)),
   );
-  const isBuyCrypto = currentModal?.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
-  const isTransactionStatus = currentModal?.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
-  const isNetworks = currentModal?.name === DEPOSIT_MODAL.OPEN_NETWORKS.name;
-  const isEmailGate = currentModal?.name === DEPOSIT_MODAL.OPEN_EMAIL_GATE.name;
-  const isBankTransferAmount = currentModal?.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT.name;
-  const isBankTransferPayment =
-    currentModal?.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT.name;
-  const isBankTransferPreview =
-    currentModal?.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW.name;
+  const isBuyCrypto = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO.name;
+  const isTransactionStatus = currentModal.name === DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isNetworks = currentModal.name === DEPOSIT_MODAL.OPEN_NETWORKS.name;
+  const isEmailGate = currentModal.name === DEPOSIT_MODAL.OPEN_EMAIL_GATE.name;
+  const isBankTransferAmount = currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT.name;
+  const isBankTransferPayment = currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PAYMENT.name;
+  const isBankTransferPreview = currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_PREVIEW.name;
   const isBankTransferKycInfo =
-    currentModal?.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_INFO.name;
+    currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_INFO.name;
   const isBankTransferKycFrame =
-    currentModal?.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_FRAME.name;
+    currentModal.name === DEPOSIT_MODAL.OPEN_BANK_TRANSFER_KYC_FRAME.name;
   const isBankTransferKyc = isBankTransferKycInfo || isBankTransferKycFrame;
   const isBankTransfer =
     isBankTransferAmount || isBankTransferPayment || isBankTransferPreview || isBankTransferKyc;
   const isExternalWalletOptions =
-    currentModal?.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name;
-  const isBuyCryptoOptions = currentModal?.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS.name;
-  const isPublicAddress = currentModal?.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
-  const isDepositDirectly = currentModal?.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
+    currentModal.name === DEPOSIT_MODAL.OPEN_EXTERNAL_WALLET_OPTIONS.name;
+  const isBuyCryptoOptions = currentModal.name === DEPOSIT_MODAL.OPEN_BUY_CRYPTO_OPTIONS.name;
+  const isPublicAddress = currentModal.name === DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS.name;
+  const isDepositDirectly = currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY.name;
   const isDepositDirectlyAddress =
-    currentModal?.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
+    currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_ADDRESS.name;
   const isDepositDirectlyTokens =
-    currentModal?.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS.name;
-  const isTokenSelector = currentModal?.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
-  const isClose = !currentModal || currentModal.name === DEPOSIT_MODAL.CLOSE.name;
-  const shouldAnimate = previousModal?.name !== DEPOSIT_MODAL.CLOSE.name;
-  const isForward = (currentModal?.number ?? 0) > (previousModal?.number ?? 0);
+    currentModal.name === DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY_TOKENS.name;
+  const isTokenSelector = currentModal.name === DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR.name;
+  const isClose = currentModal.name === DEPOSIT_MODAL.CLOSE.name;
+  const shouldAnimate = previousModal.name !== DEPOSIT_MODAL.CLOSE.name;
+  const isForward = currentModal.number > previousModal.number;
 
   const handleTransactionStatusPress = useCallback(() => {
     const trackingId = useDepositStore.getState().transaction.trackingId;
@@ -479,8 +477,8 @@ const useDepositOption = ({
 
       // Track method-specific abandonment with enhanced properties
       track(abandonmentEvent, {
-        last_step: currentModal?.name,
-        previous_step: previousModal?.name,
+        last_step: currentModal.name,
+        previous_step: previousModal.name,
         deposit_method: depositMethod,
         time_on_step: timeSpent,
         has_wallet_connected: !!address,
@@ -620,7 +618,7 @@ const useDepositOption = ({
     isDepositDirectlyTokens,
     isExternalWalletOptions,
     isBuyCryptoOptions,
-    currentModal?.name,
+    currentModal.name,
   ]);
 
   useEffect(() => {
