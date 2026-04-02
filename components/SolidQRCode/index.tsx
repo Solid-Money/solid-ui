@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
-import Svg, { ClipPath, Defs, G, Rect } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Image } from 'expo-image';
 import qrcode from 'qrcode-generator';
 
@@ -12,7 +12,6 @@ type SolidQRCodeProps = {
   backgroundColor?: string;
   foregroundColor?: string;
   quietZone?: number;
-  dotRadius?: number;
   showLogo?: boolean;
   logoSizeRatio?: number;
 };
@@ -23,21 +22,20 @@ type FinderPatternProps = {
   cellSize: number;
   color: string;
   bgColor: string;
-  radius: number;
 };
 
 const FINDER_SIZE = 7;
 
-const FinderPattern = ({ x, y, cellSize, color, bgColor, radius }: FinderPatternProps) => {
+const FinderPattern = ({ x, y, cellSize, color, bgColor }: FinderPatternProps) => {
   const outerSize = FINDER_SIZE * cellSize;
   const middleOffset = cellSize;
   const middleSize = 5 * cellSize;
   const innerOffset = 2 * cellSize;
   const innerSize = 3 * cellSize;
 
-  const outerR = radius * 2.5;
-  const middleR = radius * 1.8;
-  const innerR = radius * 1.2;
+  const outerR = cellSize * 1.4;
+  const middleR = cellSize * 1.0;
+  const innerR = cellSize * 0.8;
 
   return (
     <G>
@@ -67,12 +65,11 @@ const FinderPattern = ({ x, y, cellSize, color, bgColor, radius }: FinderPattern
 const SolidQRCode = ({
   value,
   size = 200,
-  backgroundColor = '#1A1A2E',
+  backgroundColor = '#181A1A',
   foregroundColor = '#FFFFFF',
   quietZone = 2,
-  dotRadius = 0.4,
   showLogo = true,
-  logoSizeRatio = 0.22,
+  logoSizeRatio = 0.26,
 }: SolidQRCodeProps) => {
   const { modules, moduleCount } = useMemo(() => {
     const qr = qrcode(0, 'H');
@@ -92,10 +89,10 @@ const SolidQRCode = ({
 
   const totalModules = moduleCount + quietZone * 2;
   const cellSize = size / totalModules;
-  const radius = cellSize * dotRadius;
+  const dotRadius = cellSize * 0.48;
 
   const logoPixelSize = size * logoSizeRatio;
-  const logoClearModules = Math.ceil(logoPixelSize / cellSize / 2) + 1;
+  const logoClearModules = Math.ceil(logoPixelSize / cellSize / 2) + 2;
   const center = moduleCount / 2;
 
   const isFinderPattern = useCallback(
@@ -111,10 +108,9 @@ const SolidQRCode = ({
   const isLogoArea = useCallback(
     (row: number, col: number) => {
       if (!showLogo) return false;
-      return (
-        Math.abs(row - center + 0.5) < logoClearModules &&
-        Math.abs(col - center + 0.5) < logoClearModules
-      );
+      const dx = row - center + 0.5;
+      const dy = col - center + 0.5;
+      return Math.sqrt(dx * dx + dy * dy) < logoClearModules;
     },
     [showLogo, center, logoClearModules],
   );
@@ -127,19 +123,10 @@ const SolidQRCode = ({
         if (isFinderPattern(row, col)) continue;
         if (isLogoArea(row, col)) continue;
 
-        const x = (col + quietZone) * cellSize;
-        const y = (row + quietZone) * cellSize;
+        const cx = (col + quietZone + 0.5) * cellSize;
+        const cy = (row + quietZone + 0.5) * cellSize;
         dots.push(
-          <Rect
-            key={`${row}-${col}`}
-            x={x}
-            y={y}
-            width={cellSize}
-            height={cellSize}
-            rx={radius}
-            ry={radius}
-            fill={foregroundColor}
-          />,
+          <Circle key={`${row}-${col}`} cx={cx} cy={cy} r={dotRadius} fill={foregroundColor} />,
         );
       }
     }
@@ -149,7 +136,7 @@ const SolidQRCode = ({
     moduleCount,
     cellSize,
     quietZone,
-    radius,
+    dotRadius,
     foregroundColor,
     isFinderPattern,
     isLogoArea,
@@ -170,12 +157,12 @@ const SolidQRCode = ({
         cellSize={cellSize}
         color={foregroundColor}
         bgColor={backgroundColor}
-        radius={radius}
       />
     ));
-  }, [moduleCount, cellSize, quietZone, foregroundColor, backgroundColor, radius]);
+  }, [moduleCount, cellSize, quietZone, foregroundColor, backgroundColor]);
 
-  const logoContainerSize = logoPixelSize + 8;
+  const logoContainerSize = logoPixelSize * 1.15;
+  const gradientRadius = logoPixelSize * 0.95;
 
   return (
     <View style={{ width: size, height: size, position: 'relative' }}>
@@ -184,11 +171,21 @@ const SolidQRCode = ({
           <ClipPath id="qr-clip">
             <Rect x={0} y={0} width={size} height={size} rx={16} ry={16} />
           </ClipPath>
+          {showLogo && (
+            <RadialGradient id="logo-fade" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor={backgroundColor} stopOpacity="1" />
+              <Stop offset="0.7" stopColor={backgroundColor} stopOpacity="1" />
+              <Stop offset="1" stopColor={backgroundColor} stopOpacity="0" />
+            </RadialGradient>
+          )}
         </Defs>
         <G clipPath="url(#qr-clip)">
           <Rect x={0} y={0} width={size} height={size} fill={backgroundColor} />
           {finderPatterns}
           {dataDots}
+          {showLogo && (
+            <Circle cx={size / 2} cy={size / 2} r={gradientRadius} fill="url(#logo-fade)" />
+          )}
         </G>
       </Svg>
       {showLogo && (
@@ -199,15 +196,13 @@ const SolidQRCode = ({
             left: (size - logoContainerSize) / 2,
             width: logoContainerSize,
             height: logoContainerSize,
-            borderRadius: logoContainerSize / 2,
-            backgroundColor,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
           <Image
             source={solidLogoSource}
-            style={{ width: logoPixelSize * 0.65, height: logoPixelSize * 0.65 }}
+            style={{ width: logoPixelSize * 0.6, height: logoPixelSize * 0.6 }}
             contentFit="contain"
           />
         </View>
