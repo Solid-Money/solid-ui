@@ -1,5 +1,6 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
 import { Copy, Fuel, Info, Share2 } from 'lucide-react-native';
 
@@ -10,12 +11,13 @@ import {
 } from '@/components/DepositOption/DepositDirectlyAddress.shared';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
-import SolidQRCode from '@/components/SolidQRCode';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { eclipseAddress } from '@/lib/utils';
+
+const solidLogo = require('@/assets/images/solid-logo-4x.png');
 
 type InfoRow = {
   label: string;
@@ -297,8 +299,17 @@ const DepositDirectlyAddress = () => {
           contentClassName="max-w-sm px-3 py-4 md:px-4 md:py-6 2xl:px-6 2xl:py-8"
         >
           <View className="flex flex-col items-center gap-3 md:gap-4 2xl:gap-5">
-            <View className="overflow-hidden rounded-3xl shadow-[0_18px_45px_rgba(0,0,0,0.25)]">
-              <SolidQRCode value={walletAddress || ''} size={220} />
+            <View className="rounded-3xl bg-white p-3 shadow-[0_18px_45px_rgba(0,0,0,0.25)] md:p-4 2xl:p-5">
+              <QRCode
+                value={walletAddress || ''}
+                size={220}
+                backgroundColor="white"
+                color="black"
+                logo={solidLogo}
+                logoSize={55}
+                logoBackgroundColor="white"
+                logoBorderRadius={28}
+              />
             </View>
             <Text className="text-center text-xs text-muted-foreground md:text-sm">
               Share this QR code with the sender or scan it from another device to populate the

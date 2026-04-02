@@ -1,14 +1,16 @@
 import { useMemo } from 'react';
 import { Linking, Pressable, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
-import SolidQRCode from '@/components/SolidQRCode';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress } from '@/lib/utils';
+
+const solidLogo = require('@/assets/images/solid-logo-4x.png');
 
 const SUPPORTED_NETWORKS_URL =
   'https://support.solid.xyz/en/articles/14431132-supported-networks-and-tokens-on-solid';
@@ -16,17 +18,22 @@ const SUPPORTED_NETWORKS_URL =
 const DepositPublicAddress = () => {
   const { user } = useUser();
 
-  const networks = useMemo(
-    () =>
-      Object.entries(BRIDGE_TOKENS)
-        .sort(([, a], [, b]) => a.sort - b.sort)
-        .map(([chainId, chain]) => ({
-          chainId: Number(chainId),
-          icon: chain.icon,
-          name: chain.name,
-        })),
-    [],
-  );
+  const networks = useMemo(() => {
+    const displayOrder: Record<string, number> = {
+      Ethereum: 1,
+      Fuse: 2,
+      Polygon: 3,
+      Base: 4,
+      Arbitrum: 5,
+    };
+    return Object.entries(BRIDGE_TOKENS)
+      .map(([chainId, chain]) => ({
+        chainId: Number(chainId),
+        icon: chain.icon,
+        name: chain.name,
+      }))
+      .sort((a, b) => (displayOrder[a.name] ?? 99) - (displayOrder[b.name] ?? 99));
+  }, []);
 
   const networkNames = useMemo(() => {
     const names = networks.map(n => n.name);
@@ -45,8 +52,15 @@ const DepositPublicAddress = () => {
         </View>
 
         <View className="items-center justify-center px-4 py-4">
-          <View className="overflow-hidden rounded-xl">
-            <SolidQRCode value={user?.safeAddress || ''} size={200} />
+          <View className="rounded-xl bg-white p-4">
+            <QRCode
+              value={user?.safeAddress || ''}
+              size={200}
+              logo={solidLogo}
+              logoSize={50}
+              logoBackgroundColor="white"
+              logoBorderRadius={25}
+            />
           </View>
         </View>
 
@@ -73,7 +87,7 @@ const DepositPublicAddress = () => {
             ))}
           </View>
 
-          <Text className="text-center text-sm text-muted-foreground">
+          <Text className="max-w-72 text-center text-sm text-muted-foreground">
             We support tokens on {networkNames} chain
           </Text>
 
