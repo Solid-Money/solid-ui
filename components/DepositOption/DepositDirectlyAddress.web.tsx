@@ -17,7 +17,7 @@ import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { eclipseAddress } from '@/lib/utils';
 
-const solidLogo = require('@/assets/images/solid-logo-4x.png');
+const solidLogo = require('@/assets/images/solid-white.png');
 
 type InfoRow = {
   label: string;
@@ -304,11 +304,10 @@ const DepositDirectlyAddress = () => {
                 value={walletAddress || ''}
                 size={220}
                 color="white"
-                backgroundColor="#1C1C1C"
+                backgroundColor="#181A1A"
                 logo={solidLogo}
                 logoSize={55}
-                logoBackgroundColor="#1C1C1C"
-                logoMargin={20}
+                logoBackgroundColor="#181A1A"
               />
             </View>
             <Text className="text-center text-xs text-muted-foreground md:text-sm">

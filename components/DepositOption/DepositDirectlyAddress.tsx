@@ -25,7 +25,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { eclipseAddress } from '@/lib/utils';
 
-const solidLogo = require('@/assets/images/solid-logo-4x.png');
+const solidLogo = require('@/assets/images/solid-white.png');
 
 const FUEL_ICON = <Fuel size={16} color="#A1A1AA" />;
 const COPY_ICON = <Copy size={14} color="white" />;
@@ -229,11 +229,10 @@ const QRDialog = React.memo(function QRDialog({
             value={walletAddress || ''}
             size={220}
             color="white"
-            backgroundColor="#1C1C1C"
+            backgroundColor="#181A1A"
             logo={solidLogo}
             logoSize={55}
-            logoBackgroundColor="#1C1C1C"
-            logoMargin={20}
+            logoBackgroundColor="#181A1A"
           />
         </View>
         <Text className="text-center text-xs text-muted-foreground">
