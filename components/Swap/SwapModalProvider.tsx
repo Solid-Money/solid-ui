@@ -41,27 +41,27 @@ const SwapModalProvider = () => {
 
   const { currentModal, previousModal, transaction, setModal } = useSwapState(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? SWAP_MODAL.CLOSE,
+      previousModal: state.previousModal ?? SWAP_MODAL.CLOSE,
       transaction: state.transaction,
       setModal: state.actions.setModal,
     })),
   );
 
-  const isTransactionStatus = currentModal?.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
-  const isClose = !currentModal || currentModal?.name === SWAP_MODAL.CLOSE.name;
+  const isTransactionStatus = currentModal.name === SWAP_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const isClose = currentModal.name === SWAP_MODAL.CLOSE.name;
 
   const handleOpenChange = useCallback(
     (value: boolean) => {
       if (value) {
         track(TRACKING_EVENTS.SWAP_MODAL_VIEWED, {
-          previous_modal: previousModal?.name,
+          previous_modal: previousModal.name,
         });
         setModal(SWAP_MODAL.OPEN_FORM);
       } else {
         track(TRACKING_EVENTS.SWAP_MODAL_ABANDONED, {
           last_modal: currentModal?.name,
-          previous_modal: previousModal?.name,
+          previous_modal: previousModal.name,
         });
         setModal(SWAP_MODAL.CLOSE);
       }
