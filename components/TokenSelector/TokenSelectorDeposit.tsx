@@ -14,14 +14,16 @@ const TokenSelectorDeposit = () => {
   return (
     <View className="rounded-xl bg-primary/10">
       <View className="items-center justify-center border-b border-border/50 px-2 py-6">
-        <View className="rounded-xl bg-white p-4">
+        <View className="overflow-hidden rounded-xl">
           <QRCode
             value={user?.safeAddress || ''}
             size={200}
+            color="white"
+            backgroundColor="#1C1C1C"
             logo={solidLogo}
             logoSize={50}
             logoBackgroundColor="#1C1C1C"
-            logoBorderRadius={25}
+            logoMargin={20}
           />
         </View>
       </View>

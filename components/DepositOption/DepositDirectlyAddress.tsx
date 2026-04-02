@@ -224,14 +224,16 @@ const QRDialog = React.memo(function QRDialog({
       contentClassName="max-w-sm px-3 py-4"
     >
       <View className="items-center gap-3">
-        <View className="rounded-3xl bg-white p-3">
+        <View className="overflow-hidden rounded-3xl">
           <QRCode
             value={walletAddress || ''}
             size={220}
+            color="white"
+            backgroundColor="#1C1C1C"
             logo={solidLogo}
             logoSize={55}
             logoBackgroundColor="#1C1C1C"
-            logoBorderRadius={28}
+            logoMargin={20}
           />
         </View>
         <Text className="text-center text-xs text-muted-foreground">
