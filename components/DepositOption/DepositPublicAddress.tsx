@@ -1,14 +1,16 @@
 import { useMemo } from 'react';
 import { Linking, Pressable, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
-import SolidQRCode from '@/components/SolidQRCode';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress } from '@/lib/utils';
+
+const solidLogo = require('@/assets/images/solid-logo-4x.png');
 
 const SUPPORTED_NETWORKS_URL =
   'https://support.solid.xyz/en/articles/14431132-supported-networks-and-tokens-on-solid';
@@ -45,8 +47,15 @@ const DepositPublicAddress = () => {
         </View>
 
         <View className="items-center justify-center px-4 py-4">
-          <View className="overflow-hidden rounded-xl">
-            <SolidQRCode value={user?.safeAddress || ''} size={200} />
+          <View className="rounded-xl bg-white p-4">
+            <QRCode
+              value={user?.safeAddress || ''}
+              size={200}
+              logo={solidLogo}
+              logoSize={50}
+              logoBackgroundColor="white"
+              logoBorderRadius={25}
+            />
           </View>
         </View>
 

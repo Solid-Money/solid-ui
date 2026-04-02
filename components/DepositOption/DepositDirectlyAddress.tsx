@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, Share, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Copy, Fuel, Info, Share2 } from 'lucide-react-native';
@@ -16,7 +17,6 @@ import {
 } from '@/components/DepositOption/DepositDirectlyAddress.shared';
 import NeedHelp from '@/components/NeedHelp';
 import ResponsiveDialog from '@/components/ResponsiveDialog';
-import SolidQRCode from '@/components/SolidQRCode';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
@@ -24,6 +24,8 @@ import { Text } from '@/components/ui/text';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { eclipseAddress } from '@/lib/utils';
+
+const solidLogo = require('@/assets/images/solid-logo-4x.png');
 
 const FUEL_ICON = <Fuel size={16} color="#A1A1AA" />;
 const COPY_ICON = <Copy size={14} color="white" />;
@@ -222,8 +224,15 @@ const QRDialog = React.memo(function QRDialog({
       contentClassName="max-w-sm px-3 py-4"
     >
       <View className="items-center gap-3">
-        <View className="overflow-hidden rounded-3xl">
-          <SolidQRCode value={walletAddress || ''} size={220} />
+        <View className="rounded-3xl bg-white p-3">
+          <QRCode
+            value={walletAddress || ''}
+            size={220}
+            logo={solidLogo}
+            logoSize={55}
+            logoBackgroundColor="white"
+            logoBorderRadius={28}
+          />
         </View>
         <Text className="text-center text-xs text-muted-foreground">
           Share this QR code with the sender or scan it from another device to populate the wallet
