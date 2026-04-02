@@ -58,7 +58,7 @@ const DepositPublicAddress = () => {
               size={200}
               logo={solidLogo}
               logoSize={50}
-              logoBackgroundColor="white"
+              logoBackgroundColor="#1C1C1C"
               logoBorderRadius={25}
             />
           </View>
