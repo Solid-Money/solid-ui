@@ -245,7 +245,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 70 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
@@ -294,7 +294,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 40 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
@@ -440,7 +440,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 70 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
@@ -489,7 +489,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 40 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
