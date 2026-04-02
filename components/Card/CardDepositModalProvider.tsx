@@ -27,8 +27,8 @@ const CardDepositModalProvider = () => {
   const router = useRouter();
   const { currentModal, previousModal, setModal, transaction, setSource } = useCardDepositStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? CARD_DEPOSIT_MODAL.CLOSE,
+      previousModal: state.previousModal ?? CARD_DEPOSIT_MODAL.CLOSE,
       setModal: state.setModal,
       transaction: state.transaction,
       setSource: state.setSource,

@@ -24,8 +24,8 @@ const DepositFromSafeAccountModalProvider = () => {
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { currentModal, previousModal, setModal, transaction } = useDepositFromSafeAccountStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.CLOSE,
+      previousModal: state.previousModal ?? DEPOSIT_FROM_SAFE_ACCOUNT_MODAL.CLOSE,
       setModal: state.setModal,
       transaction: state.transaction,
     })),
