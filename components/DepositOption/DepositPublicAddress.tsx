@@ -10,7 +10,7 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import useUser from '@/hooks/useUser';
 import { eclipseAddress } from '@/lib/utils';
 
-const solidLogo = require('@/assets/images/solid-logo-4x.png');
+const solidLogo = require('@/assets/images/solid-white.png');
 
 const SUPPORTED_NETWORKS_URL =
   'https://support.solid.xyz/en/articles/14431132-supported-networks-and-tokens-on-solid';
@@ -57,11 +57,10 @@ const DepositPublicAddress = () => {
               value={user?.safeAddress || ''}
               size={200}
               color="white"
-              backgroundColor="#1C1C1C"
+              backgroundColor="#181A1A"
               logo={solidLogo}
               logoSize={50}
-              logoBackgroundColor="#1C1C1C"
-              logoMargin={20}
+              logoBackgroundColor="transparent"
             />
           </View>
         </View>
