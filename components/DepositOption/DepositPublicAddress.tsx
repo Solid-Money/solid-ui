@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
+import { ChevronRight } from 'lucide-react-native';
 
 import CopyToClipboard from '@/components/CopyToClipboard';
 import SolidQRCode from '@/components/SolidQRCode';
@@ -37,7 +38,7 @@ const DepositPublicAddress = () => {
     <View className="flex items-center justify-center">
       <View className="w-full max-w-md rounded-xl bg-card">
         <View className="flex-row items-center justify-center gap-1 pt-4">
-          <Text className="text-base text-muted-foreground">
+          <Text className="text-lg font-medium text-white">
             {user?.safeAddress ? eclipseAddress(user?.safeAddress, 6, 6) : ''}
           </Text>
           <CopyToClipboard text={user?.safeAddress || ''} className="text-primary" />
@@ -59,7 +60,13 @@ const DepositPublicAddress = () => {
               >
                 <Image
                   source={network.icon}
-                  style={{ width: 24, height: 24, borderRadius: 12 }}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: '#1C1C1C',
+                  }}
                   contentFit="cover"
                 />
               </View>
@@ -70,8 +77,14 @@ const DepositPublicAddress = () => {
             We support tokens on {networkNames} chain
           </Text>
 
-          <Pressable onPress={() => Linking.openURL(SUPPORTED_NETWORKS_URL)}>
-            <Text className="text-sm font-medium text-white">See supported networks {'>'}</Text>
+          <Pressable
+            onPress={() => Linking.openURL(SUPPORTED_NETWORKS_URL)}
+            className="web:hover:opacity-50"
+          >
+            <View className="flex-row flex-wrap items-center">
+              <Text className="text-sm font-medium text-white">See supported networks</Text>
+              <ChevronRight size={16} color="white" />
+            </View>
           </Pressable>
         </View>
       </View>
