@@ -299,12 +299,12 @@ const DepositDirectlyAddress = () => {
           contentClassName="max-w-sm px-3 py-4 md:px-4 md:py-6 2xl:px-6 2xl:py-8"
         >
           <View className="flex flex-col items-center gap-3 md:gap-4 2xl:gap-5">
-            <View className="rounded-3xl bg-white p-3 shadow-[0_18px_45px_rgba(0,0,0,0.25)] md:p-4 2xl:p-5">
+            <View className="overflow-hidden rounded-3xl shadow-[0_18px_45px_rgba(0,0,0,0.25)]">
               <QRCode
                 value={walletAddress || ''}
                 size={220}
-                backgroundColor="white"
-                color="black"
+                color="white"
+                backgroundColor="#1C1C1C"
                 logo={solidLogo}
                 logoSize={55}
                 logoBackgroundColor="#1C1C1C"

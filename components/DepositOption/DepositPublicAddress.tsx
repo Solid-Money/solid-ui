@@ -52,10 +52,12 @@ const DepositPublicAddress = () => {
         </View>
 
         <View className="items-center justify-center px-4 py-4">
-          <View className="rounded-xl bg-white p-4">
+          <View className="overflow-hidden rounded-xl">
             <QRCode
               value={user?.safeAddress || ''}
               size={200}
+              color="white"
+              backgroundColor="#1C1C1C"
               logo={solidLogo}
               logoSize={50}
               logoBackgroundColor="#1C1C1C"
