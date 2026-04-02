@@ -26,8 +26,8 @@ const StakeModalProvider = () => {
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { currentModal, previousModal, setModal, transaction } = useStakeStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? STAKE_MODAL.CLOSE,
+      previousModal: state.previousModal ?? STAKE_MODAL.CLOSE,
       setModal: state.setModal,
       transaction: state.transaction,
     })),

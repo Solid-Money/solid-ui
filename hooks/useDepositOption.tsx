@@ -69,8 +69,8 @@ const useDepositOption = ({
     setDepositFromSolid,
   } = useDepositStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? DEPOSIT_MODAL.CLOSE,
+      previousModal: state.previousModal ?? DEPOSIT_MODAL.CLOSE,
       transaction: state.transaction,
       setModal: state.setModal,
       srcChainId: state.srcChainId,
