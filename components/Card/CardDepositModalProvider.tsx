@@ -35,13 +35,13 @@ const CardDepositModalProvider = () => {
     })),
   );
 
-  const isClose = currentModal.name === CARD_DEPOSIT_MODAL.CLOSE.name;
-  const isOptions = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_OPTIONS.name;
-  const isInternal = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM.name;
-  const isExternal = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_EXTERNAL_FORM.name;
-  const isTransactionStatus = currentModal.name === CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
-  const shouldAnimate = previousModal.name !== CARD_DEPOSIT_MODAL.CLOSE.name;
-  const isForward = currentModal.number > previousModal.number;
+  const isClose = !currentModal || currentModal.name === CARD_DEPOSIT_MODAL.CLOSE.name;
+  const isOptions = currentModal?.name === CARD_DEPOSIT_MODAL.OPEN_OPTIONS.name;
+  const isInternal = currentModal?.name === CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM.name;
+  const isExternal = currentModal?.name === CARD_DEPOSIT_MODAL.OPEN_EXTERNAL_FORM.name;
+  const isTransactionStatus = currentModal?.name === CARD_DEPOSIT_MODAL.OPEN_TRANSACTION_STATUS.name;
+  const shouldAnimate = previousModal?.name !== CARD_DEPOSIT_MODAL.CLOSE.name;
+  const isForward = (currentModal?.number ?? 0) > (previousModal?.number ?? 0);
 
   // Track modal open/close state
   const hasTrackedOpenRef = useRef(false);
