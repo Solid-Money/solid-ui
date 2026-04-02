@@ -307,7 +307,7 @@ const DepositDirectlyAddress = () => {
                 backgroundColor="#181A1A"
                 logo={solidLogo}
                 logoSize={55}
-                logoBackgroundColor="#181A1A"
+                logoBackgroundColor="transparent"
               />
             </View>
             <Text className="text-center text-xs text-muted-foreground md:text-sm">

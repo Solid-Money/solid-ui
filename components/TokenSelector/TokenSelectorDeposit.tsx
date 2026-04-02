@@ -22,7 +22,7 @@ const TokenSelectorDeposit = () => {
             backgroundColor="#181A1A"
             logo={solidLogo}
             logoSize={50}
-            logoBackgroundColor="#181A1A"
+            logoBackgroundColor="transparent"
           />
         </View>
       </View>
