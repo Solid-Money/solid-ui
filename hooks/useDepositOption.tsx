@@ -289,7 +289,7 @@ const useDepositOption = ({
     if (isBankTransferPreview) return 'Transfer Details';
     if (isExternalWalletOptions) return 'Deposit from external wallet';
     if (isBuyCryptoOptions) return 'Buy crypto';
-    if (isPublicAddress) return 'Solid address';
+    if (isPublicAddress) return 'Your Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
     if (isTokenSelector && depositFromSolid) return 'Deposit';
