@@ -24,7 +24,8 @@ type DashboardHeaderButtonsProps = {
   hideWithdraw?: boolean;
   hideSend?: boolean;
   hideSwap?: boolean;
-  showBuyFuse?: boolean;
+  hideBuyFuse?: boolean;
+  hideDeposit?: boolean;
   disableWithdraw?: boolean;
   disableSend?: boolean;
   disableSwap?: boolean;
@@ -37,7 +38,8 @@ const DashboardHeaderButtons = ({
   hideWithdraw,
   hideSend,
   hideSwap,
-  showBuyFuse = false,
+  hideBuyFuse,
+  hideDeposit,
   disableWithdraw,
   disableSend,
   disableSwap,
@@ -64,7 +66,7 @@ const DashboardHeaderButtons = ({
 
   return (
     <View className="flex-row gap-2">
-      {showBuyFuse && (
+      {!hideBuyFuse && (
         <Button
           variant="secondary"
           className="h-12 rounded-xl border-0 bg-[#303030] px-6"
@@ -138,10 +140,12 @@ const DashboardHeaderButtons = ({
         />
       )}
 
-      <DepositOptionModal
-        buttonText={deposit?.title || 'Add funds'}
-        preserveSelectedVault={preserveSelectedVault}
-      />
+      {!hideDeposit && (
+        <DepositOptionModal
+          buttonText={deposit?.title || 'Add funds'}
+          preserveSelectedVault={preserveSelectedVault}
+        />
+      )}
     </View>
   );
 };

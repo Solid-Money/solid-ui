@@ -6,6 +6,7 @@ import { Address } from 'viem';
 
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
@@ -17,6 +18,7 @@ import SavingVault from '@/components/Savings/SavingVault';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import faqs from '@/constants/faqs';
 import { VAULTS } from '@/constants/vaults';
 import {
@@ -36,6 +38,7 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
 export default function Savings() {
@@ -51,8 +54,7 @@ export default function Savings() {
   useEffect(() => {
     if (vaultParam) {
       const vaultIndex = VAULTS.findIndex(
-        v =>
-          v.type === vaultParam.toLowerCase() || v.name.toLowerCase() === vaultParam.toLowerCase(),
+        v => v.type === vaultParam.toLowerCase() || v.name.toLowerCase() === vaultParam.toLowerCase(),
       );
       if (vaultIndex !== -1) {
         setSelectedVault(vaultIndex);
@@ -127,8 +129,8 @@ export default function Savings() {
   }, [selectedVault]);
 
   const displaySuffix = useMemo(() => {
-    if (VAULTS[selectedVault].name === 'FUSE') {
-      return 'FUSE';
+    if (VAULTS[selectedVault].name !== 'USDC') {
+      return VAULTS[selectedVault].name;
     }
     return null;
   }, [selectedVault]);
@@ -150,12 +152,24 @@ export default function Savings() {
       {isScreenMedium ? (
         <View className="flex-row items-center justify-between">
           <DashboardTitle />
-          <DashboardHeaderButtons
-            hideSend
-            hideSwap
-            showBuyFuse={currentVault.name === 'FUSE'}
-            preserveSelectedVault
-          />
+          <View className="flex-row gap-2">
+            <DashboardHeaderButtons
+              hideSend
+              hideSwap
+              hideBuyFuse={currentVault.name !== 'FUSE'}
+              hideDeposit
+              preserveSelectedVault
+            />
+            <DepositTrigger
+              buttonText="Deposit"
+              modal={DEPOSIT_MODAL.OPEN_FORM}
+              preserveSelectedVault
+              source="savings_header"
+              onBeforeOpen={() => {
+                useDepositStore.getState().setDepositFromSolid(true);
+              }}
+            />
+          </View>
         </View>
       ) : (
         <Text className="text-3xl font-semibold">Savings</Text>
@@ -216,7 +230,7 @@ export default function Savings() {
                         prefix={displayPrefix}
                         suffix={displaySuffix ?? ''}
                         balance={balance ?? 0}
-                        decimalPlaces={2}
+                        decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
                         decimals={currentVault.decimals}
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
@@ -231,7 +245,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 70 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
@@ -280,7 +294,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 40 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
@@ -411,7 +425,7 @@ export default function Savings() {
                         prefix={displayPrefix}
                         suffix={displaySuffix ?? ''}
                         balance={balance ?? 0}
-                        decimalPlaces={2}
+                        decimalPlaces={currentVault.name === 'ETH' ? 8 : 2}
                         decimals={currentVault.decimals}
                         apy={vaultAPY}
                         lastTimestamp={firstDepositTimestamp ?? 0}
@@ -426,7 +440,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 70 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
@@ -475,7 +489,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 40 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
