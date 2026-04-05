@@ -156,7 +156,7 @@ export default function Savings() {
             <DashboardHeaderButtons
               hideSend
               hideSwap
-              hideBuyFuse={currentVault.name !== 'FUSE'}
+              showBuyFuse={currentVault.name === 'FUSE'}
               hideDeposit
               preserveSelectedVault
             />
