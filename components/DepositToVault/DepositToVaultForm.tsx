@@ -207,6 +207,7 @@ function DepositToVaultForm() {
     const tokenLabel = isFuseVault
       ? (selectedTokenInfo?.name ?? 'WFUSE')
       : 'USDC';
+    const minAmount = vault.minimumAmount ?? '10';
     const maxAmount = balanceAmount;
 
     return z.object({
@@ -216,8 +217,8 @@ function DepositToVaultForm() {
           error: 'Please enter a valid amount',
         })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
-        .refine(val => Number(val) >= Number(vault.minimumAmount), {
-          error: `Minimum ${vault.minimumAmount} ${tokenLabel}`,
+        .refine(val => Number(val) >= Number(minAmount), {
+          error: `Minimum ${minAmount} ${tokenLabel}`,
         })
         .refine(val => !isNativeFuse || Number(val) >= Number(EXPO_PUBLIC_FUSE_GAS_RESERVE), {
           error: 'Amount too low',
@@ -253,8 +254,9 @@ function DepositToVaultForm() {
     },
   });
 
+  const minimumAmount = vault.minimumAmount ?? '10';
   const watchedAmount = watch('amount');
-  const isSponsor = Number(watchedAmount) >= Number(vault.minimumAmount);
+  const isSponsor = Number(watchedAmount) >= Number(minimumAmount);
 
   // Track form viewed (once per mount)
   const hasTrackedFormView = useRef(false);
@@ -537,7 +539,7 @@ function DepositToVaultForm() {
           <View className="align-items: start flex-row items-center gap-2">
             <Fuel color="#A1A1A1" size={16} className="mt-1" />
             <Text className="max-w-xs text-base text-muted-foreground">
-              {getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
+              {getGaslessText(minimumAmount, selectedTokenInfo?.name, isSponsor)}
             </Text>
           </View>
         </View>
