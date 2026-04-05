@@ -152,7 +152,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
       fallback.unshift(<CardBanner key="card" />);
     }
     return fallback;
-  }, [cardStatus, isLoading, promotionsBanner, setModal, BANNER_HEIGHT]);
+  }, [cardStatus, isLoading, promotionsBanner, setModal, BANNER_HEIGHT, isScreenMedium]);
 
   const data = propData ?? defaultData;
   const IS_PAGINATION = data.length > VIEW_COUNT;
