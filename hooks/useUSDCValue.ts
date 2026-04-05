@@ -1,6 +1,6 @@
+import { useMemo } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { Currency, CurrencyAmount, Price, tryParseAmount } from '@cryptoalgebra/fuse-sdk';
-import { useMemo } from 'react';
 
 import { STABLECOINS_TOKENS } from '@/constants/tokens';
 import { getAlgebraInfoClient } from '@/graphql/clients';
@@ -76,5 +76,5 @@ export function useUSDCValue(currencyAmount: CurrencyAmount<Currency> | undefine
         formatted: null,
       };
     }
-  }, [currencyAmount, price]);
+  }, [currencyAmount, price, formatted]);
 }
