@@ -10,12 +10,10 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useActivityActions } from '@/hooks/useActivityActions';
 import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track, trackIdentity } from '@/lib/analytics';
-import { createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
-import { withRefreshToken } from '@/lib/utils';
+import { Status, StatusInfo, TransactionStatus, TransactionType } from '@/lib/types';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -191,8 +189,6 @@ const useDepositFromSolidFuse = (
       }
 
       // Create a SINGLE activity up front so there is only one entry in the UI.
-      // This trackingId is later sent to createDeposit so the backend SSE updates
-      // the same activity rather than creating a second one.
       trackingId = await createEvent(amount, spender, token);
 
       if (transactions.length > 0) {
@@ -230,65 +226,41 @@ const useDepositFromSolidFuse = (
 
       if (txHash) setHash(txHash);
 
-      // Call createDeposit and wait for backend confirmation before signalling success.
-      withRefreshToken(() =>
-        createDeposit({
-          eoaAddress: safeAddress,
-          amount,
-          trackingId,
-          vault: VaultType.FUSE,
-        }),
-      )
-        .then(result => {
-          if (result?.transactionHash) {
-            // NOTE: Do NOT set hash here. The backend returns the protocol
-            // deposit hash, which is the same hash set on the "Deposit soUSD
-            // to Savings" activity. Setting it would cause dedup collisions.
-            updateActivity(trackingId!, {
-              status: TransactionStatus.PROCESSING,
-            });
-          }
-          // Backend accepted the deposit -- mark as success
-          updateUser({ ...user!, isDeposited: true });
-          setDepositStatus({ status: Status.SUCCESS });
+      // On-chain deposit is complete — mark as success directly.
+      // No backend createDeposit() call needed since the Safe already
+      // deposited to the vault on-chain.
+      updateUser({ ...user!, isDeposited: true });
+      setDepositStatus({ status: Status.SUCCESS });
 
-          Sentry.addBreadcrumb({
-            message: 'Deposit from Solid wallet completed successfully',
-            category: 'deposit',
-            data: { amount, transactionHash: txHash, safeAddress, srcChainId, isSponsor },
-          });
+      Sentry.addBreadcrumb({
+        message: 'Deposit from Solid wallet completed successfully',
+        category: 'deposit',
+        data: { amount, transactionHash: txHash, safeAddress, srcChainId, isSponsor },
+      });
 
-          track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
-            user_id: user?.userId,
-            safe_address: user?.safeAddress,
-            amount,
-            transaction_hash: txHash,
-            deposit_type: 'solid_wallet',
-            deposit_method: 'fuse_solid',
-            chain_id: srcChainId,
-            chain_name: 'fuse',
-            is_sponsor: isSponsor,
-            is_first_deposit: !user?.isDeposited,
-            ...attributionData,
-            attribution_channel: attributionChannel,
-          });
+      track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
+        user_id: user?.userId,
+        safe_address: user?.safeAddress,
+        amount,
+        transaction_hash: txHash,
+        deposit_type: 'solid_wallet',
+        deposit_method: 'fuse_solid',
+        chain_id: srcChainId,
+        chain_name: 'fuse',
+        is_sponsor: isSponsor,
+        is_first_deposit: !user?.isDeposited,
+        ...attributionData,
+        attribution_channel: attributionChannel,
+      });
 
-          trackIdentity(user?.userId!, {
-            last_deposit_amount: parseFloat(amount),
-            last_deposit_date: new Date().toISOString(),
-            last_deposit_method: 'fuse_solid',
-            last_deposit_chain: 'fuse',
-            ...attributionData,
-            attribution_channel: attributionChannel,
-          });
-        })
-        .catch(err => {
-          console.error('Sponsored Solid Fuse deposit failed:', err);
-          updateActivity(trackingId!, {
-            status: TransactionStatus.FAILED,
-          });
-          setDepositStatus({ status: Status.ERROR });
-        });
+      trackIdentity(user?.userId!, {
+        last_deposit_amount: parseFloat(amount),
+        last_deposit_date: new Date().toISOString(),
+        last_deposit_method: 'fuse_solid',
+        last_deposit_chain: 'fuse',
+        ...attributionData,
+        attribution_channel: attributionChannel,
+      });
 
       return trackingId;
     } catch (error: any) {
