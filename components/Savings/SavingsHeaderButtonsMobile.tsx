@@ -5,12 +5,14 @@ import HomeSend from '@/assets/images/home-send';
 import HomeSwap from '@/assets/images/home-swap';
 import HomeWithdraw from '@/assets/images/withdraw';
 import CircleButton from '@/components/CircleButton';
-import DepositOptionModal from '@/components/DepositOption/DepositOptionModal';
+import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import SendModal from '@/components/Send/SendModal';
 import SwapModal from '@/components/Swap/SwapModal';
 import UnstakeModal from '@/components/Unstake/UnstakeModal';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
+import { useDepositStore } from '@/store/useDepositStore';
 
 type SavingsHeaderButtonsMobileProps = {
   hideWithdraw?: boolean;
@@ -47,12 +49,17 @@ const SavingsHeaderButtonsMobile = ({
 
   return (
     <View className="flex-row items-center justify-center gap-8">
-      <DepositOptionModal
+      <DepositTrigger
+        modal={DEPOSIT_MODAL.OPEN_FORM}
         preserveSelectedVault
+        source="savings_mobile"
+        onBeforeOpen={() => {
+          useDepositStore.getState().setDepositFromSolid(true);
+        }}
         trigger={
           <CircleButton
             icon={Plus}
-            label="Fund"
+            label="Deposit"
             backgroundColor="bg-[#94F27F]"
             iconColor="#000000"
           />

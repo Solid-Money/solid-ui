@@ -30,7 +30,8 @@ const useDepositExternalWalletOptions = () => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
       deposit_method: 'deposit_directly',
     });
-    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+    // Show user's Safe address directly — no backend session needed
+    setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   }, [setModal]);
 
   const openWallet = useCallback(async () => {
@@ -100,7 +101,7 @@ const useDepositExternalWalletOptions = () => {
       },
       {
         text: 'Share your deposit address',
-        subtitle: 'Send USDC to your solid deposit\naddress from any supported network',
+        subtitle: 'Send supported tokens to your Solid\naddress from a supported network',
         icon: <HomeQR />,
         onPress: handleDepositDirectly,
         method: 'deposit_directly' as DepositMethod,

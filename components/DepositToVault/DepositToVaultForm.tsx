@@ -14,6 +14,7 @@ import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
 import Max from '@/components/Max';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
+import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
@@ -27,6 +28,7 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
+import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
@@ -35,7 +37,7 @@ import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_FUSE_GAS_RESERVE, EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT } from '@/lib/config';
-import { Status } from '@/lib/types';
+import { Status, TokenBalance, TokenType } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -113,9 +115,37 @@ function DepositToVaultForm() {
     selectedTokenInfo?.name || '',
   );
 
+  const {
+    balance: balanceSolidUsdc,
+    deposit: depositSolidUsdc,
+    depositStatus: depositStatusSolidUsdc,
+    hash: hashSolidUsdc,
+    error: errorSolidUsdc,
+  } = useDepositFromSolidUsdc(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
   const isFuseVault = vault.name === 'FUSE';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
+  const useSolidForUsdc = !isFuseVault && depositFromSolid;
+
+  // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
+  const selectedWalletToken: TokenBalance | null = useMemo(() => {
+    if (!depositFromSolid || !srcChainId || !selectedTokenInfo.address) return null;
+    return {
+      contractTickerSymbol: selectedTokenInfo.name,
+      contractName: selectedTokenInfo.fullName || selectedTokenInfo.name,
+      contractAddress: selectedTokenInfo.address,
+      balance: '0',
+      contractDecimals: isFuseVault ? 18 : 6,
+      type: TokenType.ERC20,
+      chainId: srcChainId,
+      logoUrl: undefined,
+    };
+  }, [depositFromSolid, srcChainId, selectedTokenInfo, isFuseVault]);
 
   // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
   useEffect(() => {
@@ -128,16 +158,38 @@ function DepositToVaultForm() {
     ? useSolidForFuse
       ? balanceSolidFuse
       : balanceFuse
-    : balance;
+    : useSolidForUsdc
+      ? balanceSolidUsdc
+      : balance;
   const balanceDecimals = isFuseVault ? 18 : 6;
-  const depositFn = isFuseVault ? (useSolidForFuse ? depositSolidFuse : depositFuse) : deposit;
+  const depositFn = isFuseVault
+    ? useSolidForFuse
+      ? depositSolidFuse
+      : depositFuse
+    : useSolidForUsdc
+      ? depositSolidUsdc
+      : deposit;
   const depositStatusForVault = isFuseVault
     ? useSolidForFuse
       ? depositStatusSolidFuse
       : depositStatusFuse
-    : depositStatus;
-  const hashForVault = isFuseVault ? (useSolidForFuse ? hashSolidFuse : hashFuse) : hash;
-  const errorForVault = isFuseVault ? (useSolidForFuse ? errorSolidFuse : errorFuse) : error;
+    : useSolidForUsdc
+      ? depositStatusSolidUsdc
+      : depositStatus;
+  const hashForVault = isFuseVault
+    ? useSolidForFuse
+      ? hashSolidFuse
+      : hashFuse
+    : useSolidForUsdc
+      ? hashSolidUsdc
+      : hash;
+  const errorForVault = isFuseVault
+    ? useSolidForFuse
+      ? errorSolidFuse
+      : errorFuse
+    : useSolidForUsdc
+      ? errorSolidUsdc
+      : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY } = useMaxAPY(vault.type);
@@ -336,8 +388,8 @@ function DepositToVaultForm() {
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground">{useSolidForFuse ? '' : 'From wallet'}</Text>
-          {!useSolidForFuse && <ConnectedWalletDropdown />}
+          <Text className="text-muted-foreground">{useSolidForFuse || useSolidForUsdc ? '' : 'From wallet'}</Text>
+          {!useSolidForFuse && !useSolidForUsdc && <ConnectedWalletDropdown />}
         </View>
         <View className="gap-2">
           <Text className="text-muted-foreground">Deposit amount</Text>
@@ -359,21 +411,28 @@ function DepositToVaultForm() {
                 />
               )}
             />
-            <View className="shrink-0 flex-row items-center gap-2">
-              <Pressable
+            {depositFromSolid ? (
+              <WalletTokenButton
+                selectedToken={selectedWalletToken}
                 onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
-                className="flex-row items-center gap-2"
-              >
-                <Image
-                  source={selectedTokenInfo.image}
-                  alt={selectedTokenInfo.name}
-                  style={{ width: 32, height: 32 }}
-                />
-                <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
-                {selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />}
-                <ChevronDown size={16} color="#A1A1A1" />
-              </Pressable>
-            </View>
+              />
+            ) : (
+              <View className="shrink-0 flex-row items-center gap-2">
+                <Pressable
+                  onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+                  className="flex-row items-center gap-2"
+                >
+                  <Image
+                    source={selectedTokenInfo.image}
+                    alt={selectedTokenInfo.name}
+                    style={{ width: 32, height: 32 }}
+                  />
+                  <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
+                  {selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />}
+                  <ChevronDown size={16} color="#A1A1A1" />
+                </Pressable>
+              </View>
+            )}
           </View>
           <View className="flex-row items-center gap-2">
             <Wallet color="#A1A1A1" size={16} />

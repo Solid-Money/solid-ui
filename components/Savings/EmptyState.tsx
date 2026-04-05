@@ -3,12 +3,15 @@ import { ScrollView, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import FAQs from '@/components/FAQ/FAQs';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import faqs from '@/constants/faqs';
 import { VAULTS } from '@/constants/vaults';
 import { useDimension } from '@/hooks/useDimension';
+import { useDepositStore } from '@/store/useDepositStore';
 
 import SavingDepositBenefits from './SavingDepositBenefits';
 import SavingDepositButton from './SavingDepositButton';
@@ -28,7 +31,18 @@ export default function SavingsEmptyState() {
           {isScreenMedium ? (
             <View className="flex-row items-center justify-between">
               <Text className="text-5xl font-semibold">Savings</Text>
-              <DashboardHeaderButtons hideSend />
+              <View className="flex-row gap-2">
+                <DashboardHeaderButtons hideSend hideDeposit />
+                <DepositTrigger
+                  buttonText="Deposit"
+                  modal={DEPOSIT_MODAL.OPEN_FORM}
+                  preserveSelectedVault
+                  source="savings_empty_state_header"
+                  onBeforeOpen={() => {
+                    useDepositStore.getState().setDepositFromSolid(true);
+                  }}
+                />
+              </View>
             </View>
           ) : (
             <Text className="text-3xl font-semibold">Savings</Text>
