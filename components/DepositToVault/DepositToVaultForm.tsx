@@ -26,7 +26,6 @@ import { isStablecoinSymbol } from '@/constants/stablecoins';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
-import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
@@ -120,18 +119,6 @@ function DepositToVaultForm() {
   );
 
   const {
-    balance: balanceEth,
-    deposit: depositEth,
-    depositStatus: depositStatusEth,
-    hash: hashEth,
-    error: errorEth,
-  } = useDepositFromEOAEth(
-    (selectedTokenInfo?.address as Address) || '',
-    selectedTokenInfo?.name || '',
-    vault.minimumAmount,
-  );
-
-  const {
     balance: balanceSolidUsdc,
     deposit: depositSolidUsdc,
     depositStatus: depositStatusSolidUsdc,
@@ -144,10 +131,9 @@ function DepositToVaultForm() {
   );
 
   const isFuseVault = vault.name === 'FUSE';
-  const isEthVault = vault.name === 'ETH';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
-  const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
+  const useSolidForUsdc = !isFuseVault && depositFromSolid;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
   const selectedWalletToken: TokenBalance | null = useMemo(() => {
@@ -157,12 +143,12 @@ function DepositToVaultForm() {
       contractName: selectedTokenInfo.fullName || selectedTokenInfo.name,
       contractAddress: selectedTokenInfo.address,
       balance: '0',
-      contractDecimals: isFuseVault || isEthVault ? 18 : 6,
+      contractDecimals: isFuseVault ? 18 : 6,
       type: TokenType.ERC20,
       chainId: srcChainId,
       logoUrl: undefined,
     };
-  }, [depositFromSolid, srcChainId, selectedTokenInfo, isFuseVault, isEthVault]);
+  }, [depositFromSolid, srcChainId, selectedTokenInfo, isFuseVault]);
 
   // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
   useEffect(() => {
@@ -171,52 +157,42 @@ function DepositToVaultForm() {
     }
   }, [isNativeFuse, useSolidForFuse, setOutputToken]);
 
-  const balanceForVault = isEthVault
-    ? balanceEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? balanceSolidFuse
-        : balanceFuse
-      : useSolidForUsdc
-        ? balanceSolidUsdc
-        : balance;
-  const balanceDecimals = isFuseVault || isEthVault ? 18 : 6;
-  const depositFn = isEthVault
-    ? depositEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? depositSolidFuse
-        : depositFuse
-      : useSolidForUsdc
-        ? depositSolidUsdc
-        : deposit;
-  const depositStatusForVault = isEthVault
-    ? depositStatusEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? depositStatusSolidFuse
-        : depositStatusFuse
-      : useSolidForUsdc
-        ? depositStatusSolidUsdc
-        : depositStatus;
-  const hashForVault = isEthVault
-    ? hashEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? hashSolidFuse
-        : hashFuse
-      : useSolidForUsdc
-        ? hashSolidUsdc
-        : hash;
-  const errorForVault = isEthVault
-    ? errorEth
-    : isFuseVault
-      ? useSolidForFuse
-        ? errorSolidFuse
-        : errorFuse
-      : useSolidForUsdc
-        ? errorSolidUsdc
-        : error;
+  const balanceForVault = isFuseVault
+    ? useSolidForFuse
+      ? balanceSolidFuse
+      : balanceFuse
+    : useSolidForUsdc
+      ? balanceSolidUsdc
+      : balance;
+  const balanceDecimals = isFuseVault ? 18 : 6;
+  const depositFn = isFuseVault
+    ? useSolidForFuse
+      ? depositSolidFuse
+      : depositFuse
+    : useSolidForUsdc
+      ? depositSolidUsdc
+      : deposit;
+  const depositStatusForVault = isFuseVault
+    ? useSolidForFuse
+      ? depositStatusSolidFuse
+      : depositStatusFuse
+    : useSolidForUsdc
+      ? depositStatusSolidUsdc
+      : depositStatus;
+  const hashForVault = isFuseVault
+    ? useSolidForFuse
+      ? hashSolidFuse
+      : hashFuse
+    : useSolidForUsdc
+      ? hashSolidUsdc
+      : hash;
+  const errorForVault = isFuseVault
+    ? useSolidForFuse
+      ? errorSolidFuse
+      : errorFuse
+    : useSolidForUsdc
+      ? errorSolidUsdc
+      : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY } = useMaxAPY(vault.type);
@@ -230,9 +206,7 @@ function DepositToVaultForm() {
       : 0;
     const tokenLabel = isFuseVault
       ? (selectedTokenInfo?.name ?? 'WFUSE')
-      : isEthVault
-        ? (selectedTokenInfo?.name ?? 'WETH')
-        : 'USDC';
+      : 'USDC';
     const maxAmount = balanceAmount;
 
     return z.object({
@@ -256,7 +230,6 @@ function DepositToVaultForm() {
     balanceForVault,
     balanceDecimals,
     isFuseVault,
-    isEthVault,
     isNativeFuse,
     selectedTokenInfo?.name,
     vault.minimumAmount,
@@ -362,12 +335,8 @@ function DepositToVaultForm() {
       ? explorerUrls[fuse.id]?.blockscout
       : explorerUrls[layerzero.id]?.layerzeroscan;
 
-    const toastToken = isFuseVault ? 'FUSE' : isEthVault ? 'ETH' : 'USDC';
-    const toastIcon = isFuseVault
-      ? 'images/fuse-4x.png'
-      : isEthVault
-        ? 'images/eth.png'
-        : 'images/usdc.png';
+    const toastToken = isFuseVault ? 'FUSE' : 'USDC';
+    const toastIcon = isFuseVault ? 'images/fuse-4x.png' : 'images/usdc.png';
 
     Toast.show({
       type: 'success',
