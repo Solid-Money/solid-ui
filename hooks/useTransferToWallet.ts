@@ -32,10 +32,7 @@ type TransferResult = {
  * to the user's Safe wallet address. Used in the "Add Funds" flow (Step 1).
  * No vault deposit — just a simple token transfer.
  */
-const useTransferToWallet = (
-  tokenAddress: Address,
-  token: string,
-): TransferResult => {
+const useTransferToWallet = (tokenAddress: Address, token: string): TransferResult => {
   const { user } = useUser();
   const wallet = useActiveWallet();
   const account = useActiveAccount();
@@ -161,7 +158,7 @@ const useTransferToWallet = (
         hash: txHash as `0x${string}`,
       })
         .then(() => {
-          updateActivity(capturedTrackingId!, { status: TransactionStatus.COMPLETED });
+          updateActivity(capturedTrackingId!, { status: TransactionStatus.SUCCESS });
 
           track(TRACKING_EVENTS.DEPOSIT_COMPLETED, {
             user_id: user?.userId,
