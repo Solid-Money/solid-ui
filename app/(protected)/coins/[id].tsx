@@ -147,7 +147,7 @@ export default function Coin() {
               />
             </View>
             <DashboardHeaderButtons
-              deposit={{ title: 'Deposit' }}
+              deposit={{ title: 'Add funds' }}
               withdraw={{ isWithdraw: isSoUSDEthereum(contractAddress) }}
             />
           </View>
