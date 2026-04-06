@@ -559,12 +559,7 @@ export const useBalances = (): BalanceData => {
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
     // SSE handles real-time updates; polling is fallback for missed events or SSE failure
-    refetchInterval: query => {
-      const hasBalance = query.state.data?.tokens?.some(t => Number(t.balance) > 0);
-      // 5-minute interval when balance exists; 10-minute fallback when no balance
-      // (ensures new deposits are detected even if SSE is down)
-      return hasBalance ? 5 * 60 * 1000 : 10 * 60 * 1000;
-    },
+    refetchInterval: 30 * 1000, // 30 seconds - keeps wallet balances and assets near-realtime
     refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });
 
