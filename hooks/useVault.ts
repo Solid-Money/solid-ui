@@ -24,15 +24,16 @@ export const fetchVaultBalance = async (
   vaultAddress: Address,
   decimals = 6,
 ) => {
-  const balance = await queryClient.fetchQuery(
-    readContractQueryOptions(config, {
+  const balance = await queryClient.fetchQuery({
+    ...readContractQueryOptions(config, {
       abi: FuseVault,
       address: vaultAddress,
       functionName: 'balanceOf',
       args: [safeAddress],
       chainId: chainId,
     }),
-  );
+    staleTime: VAULT_STALE_TIME,
+  });
 
   return Number(formatUnits(balance, decimals)) || 0;
 };
