@@ -62,17 +62,14 @@ export default function Savings() {
     }
   }, [vaultParam, setSelectedVault]);
 
-  const {
-    data: balance,
-    isLoading: isBalanceLoading,
-    refetch: refetchBalance,
-  } = useVaultBalance(user?.safeAddress as Address, currentVault);
+  const { data: balance, isLoading: isBalanceLoading } = useVaultBalance(
+    user?.safeAddress as Address,
+    currentVault,
+  );
 
-  const {
-    data: totalBalanceAllVaults,
-    isLoading: isTotalBalanceLoading,
-    refetch: refetchTotalBalance,
-  } = useTotalVaultBalance(user?.safeAddress as Address);
+  const { data: totalBalanceAllVaults, isLoading: isTotalBalanceLoading } = useTotalVaultBalance(
+    user?.safeAddress as Address,
+  );
 
   const { maxAPY, maxAPYDays, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY(currentVault.type);
   const { data: apys, isLoading: isAPYsLoading } = useAPYs(currentVault.type);
@@ -89,11 +86,9 @@ export default function Savings() {
     currentVault.name === 'USDC' ? ADDRESSES.fuse.vault : ADDRESSES.fuse.fuseVault,
   );
 
-  const {
-    data: userDepositTransactions,
-    isLoading: isTransactionsLoading,
-    refetch: refetchTransactions,
-  } = useUserTransactions(user?.safeAddress);
+  const { data: userDepositTransactions, isLoading: isTransactionsLoading } = useUserTransactions(
+    user?.safeAddress,
+  );
 
   const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
@@ -107,16 +102,6 @@ export default function Savings() {
     currentVault.name,
     currentVault.name === 'FUSE',
   );
-
-  // Controlled polling for balance/transaction updates - every 60 seconds instead of every block (~12s)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refetchBalance();
-      refetchTotalBalance();
-      refetchTransactions();
-    }, 60000); // 60 seconds
-    return () => clearInterval(interval);
-  }, [refetchBalance, refetchTotalBalance, refetchTransactions]);
 
   const isLoading = isBalanceLoading || isTransactionsLoading;
   const isEmptyStateLoading = isTotalBalanceLoading || isTransactionsLoading;
