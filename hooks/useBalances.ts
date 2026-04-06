@@ -552,14 +552,14 @@ export const useBalances = (): BalanceData => {
     queryFn: () => fetchTokenBalances(user?.safeAddress!),
     enabled: !!user?.safeAddress,
     // TanStack Query handles all the manual logic:
-    staleTime: 30 * 1000, // 30 seconds - data is considered fresh for 30 seconds
+    staleTime: 5_000,
     gcTime: 5 * 60 * 1000, // 5 minutes - data stays in cache for 5 minutes when unused
     retry: 3, // retry up to 3 times on failure
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     refetchOnWindowFocus: true, // refetch when user returns to tab
     refetchOnReconnect: true, // refetch when network reconnects
     // SSE handles real-time updates; polling is fallback for missed events or SSE failure
-    refetchInterval: 30 * 1000, // 30 seconds - keeps wallet balances and assets near-realtime
+    refetchInterval: 5_000,
     refetchIntervalInBackground: false, // Don't refetch when app is backgrounded (saves battery)
   });
 
