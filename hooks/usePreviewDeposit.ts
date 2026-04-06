@@ -85,7 +85,7 @@ export const fetchExchangeRate = async (queryClient: QueryClient) => {
       functionName: 'getRate',
       chainId: 1,
     }),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000,
     gcTime: 10 * 60 * 1000,
   });
   return exchangeRate;
@@ -99,7 +99,7 @@ export const fetchExchangeRatesoFuse = async (queryClient: QueryClient) => {
       functionName: 'getRate',
       chainId: fuse.id,
     }),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000,
     gcTime: 10 * 60 * 1000,
   });
   return exchangeRate;
