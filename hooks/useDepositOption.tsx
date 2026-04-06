@@ -631,7 +631,7 @@ const useDepositOption = ({
   const shouldOpen = !isClose;
 
   const showBackButton =
-    isFormAndAddress ||
+    (isFormAndAddress && !depositFromSolid) ||
     isBuyCrypto ||
     isNetworks ||
     isBankTransferAmount ||
