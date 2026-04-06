@@ -21,7 +21,7 @@ export const useVaultExchangeRate = (tokenName: string) => {
 
       return 1;
     },
-    staleTime: 3_000,
-    refetchInterval: 3_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 };
