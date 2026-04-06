@@ -13,6 +13,7 @@ import { config } from '@/lib/wagmi';
 // Cache configuration for vault queries
 const VAULT_STALE_TIME = secondsToMilliseconds(30); // Consider data fresh for 30 seconds
 const VAULT_GC_TIME = secondsToMilliseconds(300); // Keep in cache for 5 minutes
+const VAULT_REFETCH_INTERVAL = secondsToMilliseconds(30); // Poll every 30 seconds
 
 const VAULT = 'vault';
 
@@ -92,6 +93,7 @@ export const useVaultBalance = (safeAddress: Address, vault?: Vault) => {
     enabled: !!safeAddress,
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,
+    refetchInterval: VAULT_REFETCH_INTERVAL,
   });
 };
 
@@ -126,5 +128,6 @@ export const useTotalVaultBalance = (safeAddress: Address) => {
     enabled: !!safeAddress,
     staleTime: VAULT_STALE_TIME,
     gcTime: VAULT_GC_TIME,
+    refetchInterval: VAULT_REFETCH_INTERVAL,
   });
 };
