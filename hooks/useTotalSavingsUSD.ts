@@ -53,6 +53,7 @@ export const useTotalSavingsUSD = (): { data: number | undefined; isLoading: boo
     queryKey: ['fusePriceUsd'],
     queryFn: fetchFusePrice,
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
   const isLoading =
