@@ -5,7 +5,7 @@ import ETHEREUM_TELLER_ABI from '@/lib/abis/EthereumTeller';
 import { track } from '@/lib/analytics';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status, TransactionType } from '@/lib/types';
+import { Status, TransactionStatus, TransactionType } from '@/lib/types';
 import { waitForLayerzeroTransaction } from '@/lib/utils/layerzero';
 import * as Sentry from '@sentry/react-native';
 import { Address } from 'abitype';
@@ -29,7 +29,7 @@ type BridgeResult = {
 
 const useBridgeToMainnet = (): BridgeResult => {
   const { user, safeAA } = useUser();
-  const { trackTransaction } = useActivityActions();
+  const { trackTransaction, updateActivity } = useActivityActions();
   const [bridgeStatus, setBridgeStatus] = useState<Status>(Status.IDLE);
   const [error, setError] = useState<string | null>(null);
 
@@ -129,6 +129,7 @@ const useBridgeToMainnet = (): BridgeResult => {
 
         const smartAccountClient = await safeAA(fuse, user.suborgId, user.signWith);
 
+        let bridgeClientTxId: string | null = null;
         const result = await trackTransaction(
           {
             type: TransactionType.BRIDGE_DEPOSIT,
@@ -145,14 +146,16 @@ const useBridgeToMainnet = (): BridgeResult => {
               tokenAddress: ADDRESSES.fuse.vault,
             },
           },
-          onUserOpHash =>
-            executeTransactions(
+          onUserOpHash => {
+            bridgeClientTxId = onUserOpHash;
+            return executeTransactions(
               smartAccountClient,
               transactions,
               'Withdraw failed',
               fuse,
               onUserOpHash,
-            ),
+            );
+          },
         );
 
         const transaction =
@@ -211,6 +214,19 @@ const useBridgeToMainnet = (): BridgeResult => {
         const layerzeroTransaction = await waitForLayerzeroTransaction(transaction.transactionHash);
         if (layerzeroTransaction.data[0].status.name === 'DELIVERED') {
           setBridgeStatus(Status.SUCCESS);
+
+          // Update the backend activity status to SUCCESS after LayerZero delivery.
+          // Without this, the transaction monitor keeps bridge_deposit at PROCESSING
+          // (sourceChainConfirmed) indefinitely since no external mechanism finalizes it.
+          if (bridgeClientTxId) {
+            updateActivity(bridgeClientTxId, {
+              status: TransactionStatus.SUCCESS,
+              metadata: {
+                layerzeroDeliveredAt: new Date().toISOString(),
+              },
+            });
+          }
+
           return transaction;
         } else {
           throw new Error('Layerzero transaction failed');
@@ -253,7 +269,7 @@ const useBridgeToMainnet = (): BridgeResult => {
         throw error;
       }
     },
-    [user, fee, safeAA],
+    [user, fee, safeAA, trackTransaction, updateActivity],
   );
 
   return { bridge, bridgeStatus, error };
