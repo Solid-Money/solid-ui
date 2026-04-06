@@ -231,6 +231,15 @@ export function useActivity() {
         typeof activity.status === 'string',
     );
 
+    // Cross-reference WITHDRAW activities against the BoringQueue subgraph to
+    // show the solver fulfillment status.  The on-chain withdraw request goes
+    // through a solver queue — "SUCCESS" on-chain only means the request was
+    // submitted, not that the user received USDC.  We show PENDING until the
+    // solver marks it as SOLVED, and PROCESSING while the subgraph has the
+    // request but hasn't been solved yet.
+    //
+    // When subgraph data is unavailable we now show PROCESSING (not PENDING)
+    // to reflect that the on-chain tx succeeded and the request is in the queue.
     if (transactionsRef.current?.withdraws) {
       userEvents = userEvents.map(activity => {
         if (
@@ -238,31 +247,49 @@ export function useActivity() {
           activity.status === TransactionStatus.SUCCESS
         ) {
           const matchingWithdraw = transactionsRef.current?.withdraws.find(w => {
+            const activityHash = activity.hash?.toLowerCase();
+            const activityUserOpHash = activity.userOpHash?.toLowerCase();
+            const reqHash = w.requestTxHash?.toLowerCase();
+            const solveHash = w.solveTxHash?.toLowerCase();
+
+            if (activityHash && (reqHash === activityHash || solveHash === activityHash)) {
+              return true;
+            }
+            // Also match by userOpHash for AA wallet transactions where the
+            // bundled tx hash may differ from what the subgraph indexes.
             if (
-              activity.hash &&
-              (w.requestTxHash?.toLowerCase() === activity.hash.toLowerCase() ||
-                w.solveTxHash?.toLowerCase() === activity.hash.toLowerCase())
+              activityUserOpHash &&
+              (reqHash === activityUserOpHash || solveHash === activityUserOpHash)
             ) {
               return true;
             }
             return false;
           });
 
-          if (!matchingWithdraw || matchingWithdraw.requestStatus !== 'SOLVED') {
-            return { ...activity, status: TransactionStatus.PENDING };
+          if (matchingWithdraw?.requestStatus === 'SOLVED') {
+            return activity; // Keep SUCCESS
           }
+          // Request exists on subgraph but not solved yet → PROCESSING
+          if (matchingWithdraw) {
+            return { ...activity, status: TransactionStatus.PROCESSING };
+          }
+          // No matching subgraph entry — the request may not have been indexed
+          // yet.  Show PROCESSING rather than PENDING since the on-chain tx
+          // already succeeded.
+          return { ...activity, status: TransactionStatus.PROCESSING };
         }
         return activity;
       });
     } else {
-      // If subgraph data is not yet available, treat potentially successful withdraws as pending
-      // to avoid premature success state (duplication issue)
+      // Subgraph data not yet available — show PROCESSING (on-chain tx succeeded,
+      // waiting for solver fulfillment) instead of PENDING which implies the
+      // user action hasn't been submitted.
       userEvents = userEvents.map(activity => {
         if (
           activity.type === TransactionType.WITHDRAW &&
           activity.status === TransactionStatus.SUCCESS
         ) {
-          return { ...activity, status: TransactionStatus.PENDING };
+          return { ...activity, status: TransactionStatus.PROCESSING };
         }
         return activity;
       });
