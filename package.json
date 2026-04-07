@@ -204,6 +204,7 @@
     "valtio": {
       "react": "^19"
     },
+    "file-type": "21.0.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@coinbase/wallet-mobile-sdk": {
       "react-native-mmkv": "4.1.1"
