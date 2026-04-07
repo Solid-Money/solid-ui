@@ -3,8 +3,8 @@ import { View } from 'react-native';
 import { formatUnits } from 'viem';
 import { useShallow } from 'zustand/react/shallow';
 
-import { WalletTokenList } from '@/components/WalletTokenSelector';
 import { Text } from '@/components/ui/text';
+import { WalletTokenList } from '@/components/WalletTokenSelector';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { VAULTS } from '@/constants/vaults';
@@ -28,11 +28,18 @@ const SavingsDepositTokenSelector: React.FC = () => {
     })),
   );
   const { selectVaultForDeposit } = useSavingStore();
-  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } = useWalletTokens();
+  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } =
+    useWalletTokens();
 
   // Build a list of depositable tokens that match vault supported tokens
   const depositableTokens = useMemo(() => {
-    const allTokens = [...ethereumTokens, ...fuseTokens, ...polygonTokens, ...baseTokens, ...arbitrumTokens];
+    const allTokens = [
+      ...ethereumTokens,
+      ...fuseTokens,
+      ...polygonTokens,
+      ...baseTokens,
+      ...arbitrumTokens,
+    ];
 
     // Collect all supported token symbols per chain from vault configs
     const supportedSet = new Set<string>();
@@ -61,9 +68,10 @@ const SavingsDepositTokenSelector: React.FC = () => {
       const chainId = token.chainId;
 
       // Find the matching vault for this token
-      const vaultIndex = VAULTS.findIndex(v =>
-        v.depositConfig?.supportedTokens.some(s => s.toUpperCase() === symbol) &&
-        v.depositConfig?.supportedChains.includes(chainId),
+      const vaultIndex = VAULTS.findIndex(
+        v =>
+          v.depositConfig?.supportedTokens.some(s => s.toUpperCase() === symbol) &&
+          v.depositConfig?.supportedChains.includes(chainId),
       );
       if (vaultIndex !== -1) {
         selectVaultForDeposit(vaultIndex);

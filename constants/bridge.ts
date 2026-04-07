@@ -52,7 +52,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         name: 'WETH',
         fullName: 'Wrapped Ether',
         address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-        icon: require('@/assets/images/eth.png'),
+        icon: require('@/assets/images/weth.png'),
         version: '1',
         isPermit: false,
       },

@@ -29,7 +29,7 @@ const ConnectedWalletDropdown = ({ chainId }: ConnectedWalletDropdownProps = {})
   const srcChainId = useDepositStore(state => state.srcChainId);
   const address = activeAccount?.address;
   const effectiveChainId = chainId || srcChainId;
-  const networkName = BRIDGE_TOKENS[effectiveChainId].name;
+  const networkName = BRIDGE_TOKENS[effectiveChainId]?.name;
 
   const rotation = useSharedValue(0);
   const contentHeight = useSharedValue(0);
