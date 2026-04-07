@@ -11,6 +11,7 @@ type BridgeToken = {
   icon?: ImageSourcePropType;
   version?: string;
   isPermit?: boolean;
+  isNative?: boolean;
 };
 
 type BridgeTokens = {
@@ -47,6 +48,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         icon: require('@/assets/images/eth.png'),
         version: '1',
         isPermit: false,
+        isNative: true,
       },
       WETH: {
         name: 'WETH',
@@ -127,6 +129,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         fullName: 'FUSE',
         address: NATIVE_TOKEN_ADDRESS,
         icon: require('@/assets/images/fuse-4x.png'),
+        isNative: true,
       },
       USDC: {
         name: 'USDC',

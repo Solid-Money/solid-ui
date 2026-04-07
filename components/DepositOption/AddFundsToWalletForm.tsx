@@ -41,12 +41,14 @@ function AddFundsToWalletForm() {
       name: tokenData?.name || outputToken,
       image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
+      isNative: tokenData?.isNative ?? false,
     };
   }, [srcChainId, outputToken]);
 
   const { balance, transfer, transferStatus, error } = useTransferToWallet(
     (selectedTokenInfo?.address as Address) || '',
     selectedTokenInfo?.name || '',
+    selectedTokenInfo.isNative,
   );
 
   const isStablecoin = outputToken === 'USDC' || outputToken === 'USDT';
