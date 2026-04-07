@@ -7,9 +7,8 @@ import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import useUser from '@/hooks/useUser';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
-import { getAllowedTokensForChain } from '@/lib/vaults';
+import { getAllowedTokensForChain, getVaultDepositConfig } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import DepositNetwork from './DepositNetwork';
@@ -23,7 +22,7 @@ const DepositNetworks = () => {
     })),
   );
   const { user } = useUser();
-  const { vault, depositConfig } = useVaultDepositConfig();
+  const depositConfig = getVaultDepositConfig();
   const hasTrackedNetworkView = useRef(false);
   const supportedChains = depositConfig.supportedChains;
 
@@ -34,15 +33,14 @@ const DepositNetworks = () => {
       track(TRACKING_EVENTS.DEPOSIT_WALLET_NETWORK_VIEWED, {
         deposit_method: 'wallet',
         available_networks: networksCount,
-        vault: vault.name,
       });
       hasTrackedNetworkView.current = true;
     }
-  }, [supportedChains.length, vault.name]);
+  }, [supportedChains.length]);
 
   const handlePress = (id: number) => {
     const network = BRIDGE_TOKENS[id];
-    const allowedTokens = getAllowedTokensForChain(id, vault);
+    const allowedTokens = getAllowedTokensForChain(id);
     const selectedToken = allowedTokens[0] || 'USDC';
 
     // Track network selection
@@ -53,11 +51,9 @@ const DepositNetworks = () => {
       network_name: network?.name,
       deposit_type: 'connected_wallet',
       deposit_method: 'cross_chain_bridge',
-      vault: vault.name,
     });
 
-    const estimatedTime =
-      id === 1 ? '5 min' : id === 122 && vault.vaultToken === 'soFUSE' ? '2 min' : '20 min';
+    const estimatedTime = id === 1 ? '5 min' : '20 min';
 
     // Track wallet network selection specifically
     track(TRACKING_EVENTS.DEPOSIT_WALLET_NETWORK_SELECTED, {
@@ -65,7 +61,6 @@ const DepositNetworks = () => {
       chain_id: id,
       network_name: network?.name,
       estimated_time: estimatedTime,
-      vault: vault.name,
     });
 
     setSrcChainId(id);
@@ -81,16 +76,14 @@ const DepositNetworks = () => {
         {Object.entries(BRIDGE_TOKENS)
           .sort((a, b) => a[1].sort - b[1].sort)
           .filter(([id]) => supportedChains.includes(Number(id)))
-          .filter(([id]) => getAllowedTokensForChain(Number(id), vault).length > 0)
+          .filter(([id]) => getAllowedTokensForChain(Number(id)).length > 0)
           .map(([id, network]) => {
             const chainId = Number(id);
             const isComingSoon = network.isComingSoon;
             const estimatedDesc =
               chainId === 1
                 ? 'Estimated speed: 5 min'
-                : chainId === 122 && vault.vaultToken === 'soFUSE'
-                  ? 'Estimated speed: 2 min'
-                  : 'Estimated speed: 20 min';
+                : 'Estimated speed: 20 min';
 
             return (
               <DepositNetwork

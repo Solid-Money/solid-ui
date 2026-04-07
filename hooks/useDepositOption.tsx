@@ -29,11 +29,10 @@ import { path } from '@/constants/path';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
-import { getAllowedTokensForChain, getDefaultDepositSelection } from '@/lib/vaults';
+import { getAllowedTokensForChain, getDefaultDepositSelection, getVaultDepositConfig } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import useResponsiveModal from './useResponsiveModal';
@@ -50,7 +49,7 @@ const useDepositOption = ({
   modal = DEPOSIT_MODAL.OPEN_OPTIONS,
 }: DepositOptionProps = {}) => {
   const { user } = useUser();
-  const { vault, depositConfig } = useVaultDepositConfig();
+  const depositConfig = getVaultDepositConfig();
   const {
     currentModal,
     previousModal,
@@ -418,12 +417,12 @@ const useDepositOption = ({
 
     if (value) {
       const { chainId: defaultChainId, outputToken: defaultToken } =
-        getDefaultDepositSelection(vault);
+        getDefaultDepositSelection();
       const supportedChains = depositConfig.supportedChains;
       // When srcChainId is 0 (unset), don't auto-sync so user sees options/networks to pick
       const nextChainId =
         srcChainId && supportedChains.includes(srcChainId) ? srcChainId : defaultChainId;
-      const allowedTokens = getAllowedTokensForChain(nextChainId, vault);
+      const allowedTokens = getAllowedTokensForChain(nextChainId);
       const nextToken = allowedTokens.includes(outputToken) ? outputToken : defaultToken;
 
       if (srcChainId && nextChainId !== srcChainId) {
@@ -437,7 +436,7 @@ const useDepositOption = ({
         directDepositSession.chainId && supportedChains.includes(directDepositSession.chainId)
           ? directDepositSession.chainId
           : defaultChainId;
-      const directAllowedTokens = getAllowedTokensForChain(directChainId, vault);
+      const directAllowedTokens = getAllowedTokensForChain(directChainId);
       const directToken =
         directDepositSession.selectedToken &&
         directAllowedTokens.includes(directDepositSession.selectedToken)
@@ -531,7 +530,7 @@ const useDepositOption = ({
       // Go back to token selection if multiple tokens available, otherwise to network selection
       const { directDepositSession } = useDepositStore.getState();
       const chainId = directDepositSession.chainId;
-      const allowedTokens = chainId ? getAllowedTokensForChain(chainId, vault) : [];
+      const allowedTokens = chainId ? getAllowedTokensForChain(chainId) : [];
       const hasMultipleTokens = allowedTokens.length > 1;
 
       if (hasMultipleTokens) {
