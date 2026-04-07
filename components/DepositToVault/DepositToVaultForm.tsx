@@ -28,6 +28,7 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
+import useDepositFromSolidEth from '@/hooks/useDepositFromSolidEth';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useDimension } from '@/hooks/useDimension';
@@ -132,6 +133,18 @@ function DepositToVaultForm() {
   );
 
   const {
+    balance: balanceSolidEth,
+    deposit: depositSolidEth,
+    depositStatus: depositStatusSolidEth,
+    hash: hashSolidEth,
+    error: errorSolidEth,
+  } = useDepositFromSolidEth(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
+  const {
     balance: balanceSolidUsdc,
     deposit: depositSolidUsdc,
     depositStatus: depositStatusSolidUsdc,
@@ -147,6 +160,7 @@ function DepositToVaultForm() {
   const isEthVault = vault.name === 'ETH';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
+  const useSolidForEth = isEthVault && depositFromSolid;
   const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
@@ -172,7 +186,9 @@ function DepositToVaultForm() {
   }, [isNativeFuse, useSolidForFuse, setOutputToken]);
 
   const balanceForVault = isEthVault
-    ? balanceEth
+    ? useSolidForEth
+      ? balanceSolidEth
+      : balanceEth
     : isFuseVault
       ? useSolidForFuse
         ? balanceSolidFuse
@@ -182,7 +198,9 @@ function DepositToVaultForm() {
         : balance;
   const balanceDecimals = isFuseVault || isEthVault ? 18 : 6;
   const depositFn = isEthVault
-    ? depositEth
+    ? useSolidForEth
+      ? depositSolidEth
+      : depositEth
     : isFuseVault
       ? useSolidForFuse
         ? depositSolidFuse
@@ -191,7 +209,9 @@ function DepositToVaultForm() {
         ? depositSolidUsdc
         : deposit;
   const depositStatusForVault = isEthVault
-    ? depositStatusEth
+    ? useSolidForEth
+      ? depositStatusSolidEth
+      : depositStatusEth
     : isFuseVault
       ? useSolidForFuse
         ? depositStatusSolidFuse
@@ -200,7 +220,9 @@ function DepositToVaultForm() {
         ? depositStatusSolidUsdc
         : depositStatus;
   const hashForVault = isEthVault
-    ? hashEth
+    ? useSolidForEth
+      ? hashSolidEth
+      : hashEth
     : isFuseVault
       ? useSolidForFuse
         ? hashSolidFuse
@@ -209,7 +231,9 @@ function DepositToVaultForm() {
         ? hashSolidUsdc
         : hash;
   const errorForVault = isEthVault
-    ? errorEth
+    ? useSolidForEth
+      ? errorSolidEth
+      : errorEth
     : isFuseVault
       ? useSolidForFuse
         ? errorSolidFuse
@@ -435,9 +459,9 @@ function DepositToVaultForm() {
       <View className="gap-4">
         <View className="gap-2">
           <Text className="text-muted-foreground">
-            {useSolidForFuse || useSolidForUsdc ? '' : 'From wallet'}
+            {useSolidForFuse || useSolidForEth || useSolidForUsdc ? '' : 'From wallet'}
           </Text>
-          {!useSolidForFuse && !useSolidForUsdc && <ConnectedWalletDropdown />}
+          {!useSolidForFuse && !useSolidForEth && !useSolidForUsdc && <ConnectedWalletDropdown />}
         </View>
         <View className="gap-2">
           <Text className="text-muted-foreground">Deposit amount</Text>
