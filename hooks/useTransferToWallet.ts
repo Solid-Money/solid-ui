@@ -132,7 +132,7 @@ const useTransferToWallet = (tokenAddress: Address, token: string, isNative: boo
         chainId: srcChainId,
         fromAddress: eoaAddress,
         toAddress: safeAddress,
-        type: TransactionType.DEPOSIT,
+        type: TransactionType.FUND,
       });
 
       setTransferStatus({ status: Status.PENDING, message: 'Confirming transfer' });
