@@ -110,7 +110,8 @@ export const useLatestTokenTransfer = (address: string, token: string) => {
       return Math.floor(new Date(latest.timestamp).getTime() / 1000);
     },
     enabled: !!address,
-    staleTime: secondsToMilliseconds(60),
+    staleTime: secondsToMilliseconds(30),
+    refetchInterval: secondsToMilliseconds(30),
   });
 };
 
@@ -146,8 +147,9 @@ export const userTransactionsQueryOptions = (safeAddress: string | undefined) =>
     return data;
   },
   enabled: !!safeAddress,
-  staleTime: secondsToMilliseconds(60), // Data is fresh for 60 seconds
+  staleTime: secondsToMilliseconds(30), // Data is fresh for 30 seconds
   gcTime: secondsToMilliseconds(300), // Keep in cache for 5 minutes
+  refetchInterval: secondsToMilliseconds(30), // Poll every 30 seconds
   placeholderData: keepPreviousData, // Show stale data while fetching new data
 });
 
@@ -554,6 +556,8 @@ export const useVaultBreakdown = () => {
 export const apysQueryOptions = () => ({
   queryKey: [ANALYTICS, 'apys'],
   queryFn: fetchAPYs,
+  staleTime: secondsToMilliseconds(30),
+  refetchInterval: secondsToMilliseconds(30),
 });
 
 export const useAPYsByAsset = () => {

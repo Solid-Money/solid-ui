@@ -39,11 +39,9 @@ export default function Home() {
 
   const { user } = useUser();
   const { isScreenMedium } = useDimension();
-  const {
-    data: balance,
-    isLoading: isBalanceLoading,
-    refetch: refetchBalance,
-  } = useVaultBalance(user?.safeAddress as Address);
+  const { data: balance, isLoading: isBalanceLoading } = useVaultBalance(
+    user?.safeAddress as Address,
+  );
   const updateUser = useUserStore(state => state.updateUser);
   const openSpinWinModal = useSpinWinModalStore(state => state.setModal);
   const intercom = useIntercom();
@@ -90,9 +88,7 @@ export default function Home() {
     hasTriggeredInitialRefresh.current = false;
   }, [user?.safeAddress]);
 
-  const { data: userDepositTransactions, refetch: refetchTransactions } = useUserTransactions(
-    user?.safeAddress,
-  );
+  const { data: userDepositTransactions } = useUserTransactions(user?.safeAddress);
 
   const { data: totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
 
@@ -100,19 +96,6 @@ export default function Home() {
   const isDeposited = !!userDepositTransactions?.deposits?.length;
 
   const cardBalance = Number(cardDetails?.balances.available?.amount || '0');
-
-  // SSE handles real-time updates; polling is fallback for SSE failure
-  useEffect(() => {
-    // 5-minute interval when balance exists; 10-minute fallback when no balance
-    // (ensures new deposits are detected even if SSE is down)
-    const intervalMs = balance && balance > 0 ? 5 * 60 * 1000 : 10 * 60 * 1000;
-
-    const interval = setInterval(() => {
-      refetchBalance();
-      refetchTransactions();
-    }, intervalMs);
-    return () => clearInterval(interval);
-  }, [balance, refetchBalance, refetchTransactions]);
 
   useEffect(() => {
     if (!user) return;

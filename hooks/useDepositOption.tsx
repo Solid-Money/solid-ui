@@ -16,9 +16,11 @@ import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAd
 import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
 import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTokens';
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
+import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
+import SavingsDepositTokenSelector from '@/components/DepositToVault/SavingsDepositTokenSelector';
 import TransactionStatus from '@/components/TransactionStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -69,8 +71,8 @@ const useDepositOption = ({
     setDepositFromSolid,
   } = useDepositStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? DEPOSIT_MODAL.CLOSE,
+      previousModal: state.previousModal ?? DEPOSIT_MODAL.CLOSE,
       transaction: state.transaction,
       setModal: state.setModal,
       srcChainId: state.srcChainId,
@@ -179,10 +181,15 @@ const useDepositOption = ({
 
   const getContent = () => {
     if (isTransactionStatus) {
+      const isDepositToSavings = depositFromSolid;
       return (
         <TransactionStatus
-          title="Deposit initiated"
-          description="Your deposit is being processed. This may take a few minutes."
+          title={isDepositToSavings ? 'Deposit initiated' : 'Transfer sent'}
+          description={
+            isDepositToSavings
+              ? 'Your deposit is being processed. This may take a few minutes.'
+              : 'Your transfer has been sent. Funds will appear in your wallet shortly.'
+          }
           amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
           icon={getTokenIcon({ tokenSymbol: outputToken })}
@@ -196,7 +203,10 @@ const useDepositOption = ({
     }
 
     if (isFormAndAddress) {
-      return <DepositToVaultForm />;
+      if (depositFromSolid) {
+        return <DepositToVaultForm />;
+      }
+      return <AddFundsToWalletForm />;
     }
 
     if (isBuyCrypto) {
@@ -240,6 +250,9 @@ const useDepositOption = ({
     }
 
     if (isTokenSelector) {
+      if (depositFromSolid) {
+        return <SavingsDepositTokenSelector />;
+      }
       return <DepositTokenSelector />;
     }
 
@@ -276,11 +289,14 @@ const useDepositOption = ({
     if (isBankTransferPreview) return 'Transfer Details';
     if (isExternalWalletOptions) return 'Deposit from external wallet';
     if (isBuyCryptoOptions) return 'Buy crypto';
-    if (isPublicAddress) return 'Solid address';
+    if (isPublicAddress) return 'Your Solid address';
     if (isDepositDirectly) return 'Choose network';
     if (isDepositDirectlyTokens) return 'Choose token';
+    if (isTokenSelector && depositFromSolid) return 'Deposit';
     if (isTokenSelector) return 'Select a token';
-    return 'Deposit';
+    if ((isNetworks || isFormAndAddress) && depositFromSolid) return 'Deposit';
+    if (isFormAndAddress && !depositFromSolid) return 'Add funds';
+    return 'Add funds';
   };
 
   const getContentClassName = () => {
@@ -303,6 +319,11 @@ const useDepositOption = ({
   };
 
   const getContainerClassName = () => {
+    // Add Funds form (Step 1) needs min-height since it's shorter than the deposit options screen
+    if (isFormAndAddress && !depositFromSolid) {
+      return 'min-h-[40rem]';
+    }
+
     if (
       !isFormAndAddress &&
       !isBuyCrypto &&
@@ -438,6 +459,9 @@ const useDepositOption = ({
       // When srcChainId is 0 (unset), keep OPEN_OPTIONS so user picks method then chain
       if (user && !user.email) {
         setModal(DEPOSIT_MODAL.OPEN_EMAIL_GATE);
+      } else if (depositFromSolid && user?.safeAddress) {
+        // Savings deposit: open form directly — token selector is inline
+        setModal(DEPOSIT_MODAL.OPEN_FORM);
       } else if ((address || (depositFromSolid && user?.safeAddress)) && srcChainId) {
         setModal(DEPOSIT_MODAL.OPEN_FORM);
       } else {
@@ -469,7 +493,12 @@ const useDepositOption = ({
   };
 
   const handleBackPress = () => {
-    if (isFormAndAddress) {
+    if (isFormAndAddress && depositFromSolid) {
+      // Savings deposit form is the entry point — close the modal
+      setModal(DEPOSIT_MODAL.CLOSE);
+      resetDepositFlow();
+      clearSessionStartTime();
+    } else if (isFormAndAddress) {
       setModal(DEPOSIT_MODAL.OPEN_NETWORKS);
     } else if (isBankTransferKycFrame) {
       const { kyc } = useDepositStore.getState();
@@ -512,6 +541,9 @@ const useDepositOption = ({
       }
     } else if (isDepositDirectlyTokens) {
       setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+    } else if (isTokenSelector && depositFromSolid) {
+      // Token selector was opened from the deposit form — go back to form
+      setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isTokenSelector) {
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     } else if (isBuyCrypto) {
@@ -599,7 +631,7 @@ const useDepositOption = ({
   const shouldOpen = !isClose;
 
   const showBackButton =
-    isFormAndAddress ||
+    (isFormAndAddress && !depositFromSolid) ||
     isBuyCrypto ||
     isNetworks ||
     isBankTransferAmount ||

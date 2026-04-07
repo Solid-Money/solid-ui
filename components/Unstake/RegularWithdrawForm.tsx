@@ -5,7 +5,7 @@ import Toast from 'react-native-toast-message';
 import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Address } from 'abitype';
-import { ChevronDown, Wallet } from 'lucide-react-native';
+import { Wallet } from 'lucide-react-native';
 import { formatUnits, zeroAddress } from 'viem';
 import { useBalance } from 'wagmi';
 import { z } from 'zod';
@@ -15,9 +15,10 @@ import Max from '@/components/Max';
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
+import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { getBridgeChain } from '@/constants/bridge';
+
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
@@ -309,38 +310,10 @@ const RegularWithdrawForm = () => {
               <Text className="text-sm opacity-50">${formatNumber(balanceUSD, 2)}</Text>
             </View>
 
-            <Pressable
-              className="h-12 flex-row items-center gap-1.5 rounded-full bg-foreground/10 px-3 web:hover:bg-foreground/20"
+            <WalletTokenButton
+              selectedToken={selectedToken}
               onPress={handleTokenSelectorPress}
-            >
-              {selectedToken ? (
-                <>
-                  <RenderTokenIcon
-                    tokenIcon={getTokenIcon({
-                      logoUrl: selectedToken.logoUrl,
-                      tokenSymbol: selectedToken.contractTickerSymbol,
-                      size: 28,
-                    })}
-                    size={28}
-                  />
-                  <View className="flex-col">
-                    <Text className="text-lg/5 font-semibold">
-                      {selectedToken.contractTickerSymbol}
-                    </Text>
-                    <Text className="text-sm/4 font-medium opacity-50">
-                      {getBridgeChain(selectedToken.chainId).name}
-                    </Text>
-                  </View>
-                  <ChevronDown size={20} color="white" />
-                </>
-              ) : (
-                <>
-                  <View className="h-6 w-6 rounded-full bg-primary/20" />
-                  <Text className="text-lg font-semibold text-muted-foreground">Select token</Text>
-                  <ChevronDown size={20} color="white" />
-                </>
-              )}
-            </Pressable>
+            />
           </View>
           {errors.amount && (
             <Text className="text-sm text-red-400">{errors.amount.message as string}</Text>

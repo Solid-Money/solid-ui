@@ -13,6 +13,7 @@ import { useActivity } from '@/hooks/useActivity';
 import { useCardDepositPoller } from '@/hooks/useCardDepositPoller';
 import { useCardTransactions } from '@/hooks/useCardTransactions';
 import { useLayerZeroStatuses } from '@/hooks/useLayerZeroStatuses';
+import { useProcessingActivitiesPolling } from '@/hooks/useTransactionReceiptPolling';
 import {
   ActivityEvent,
   ActivityGroup,
@@ -74,10 +75,11 @@ export default function ActivityTransactions({
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-    activities,
+    getKey: _getKey,
     refetchAll,
     isSyncing,
     isSyncStale,
+    activities,
   } = useActivity();
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
   // Ref-based guard to prevent rapid fetchNextPage calls from Load More button
@@ -113,6 +115,9 @@ export default function ActivityTransactions({
   }, [activities]);
 
   const lzStatuses = useLayerZeroStatuses(bridgeDepositHashes);
+
+  // Poll blockchain receipts for activities stuck at PROCESSING (e.g. wallet transfers)
+  useProcessingActivitiesPolling(activities);
 
   const lzStatusMap = useMemo(() => {
     const map = new Map();

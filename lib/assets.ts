@@ -513,6 +513,10 @@ export const ASSETS = {
     module: require('@/assets/images/solid-tokens.png'),
     hash: 'ea2832f8',
   },
+  'images/solid-white.png': {
+    module: require('@/assets/images/solid-white.png'),
+    hash: '0d9729bf',
+  },
   'images/solid-wordmark.png': {
     module: require('@/assets/images/solid-wordmark.png'),
     hash: '805abddf',

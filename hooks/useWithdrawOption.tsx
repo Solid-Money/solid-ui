@@ -32,8 +32,8 @@ const useWithdrawOption = ({
   // Use useShallow for object selection to prevent unnecessary re-renders
   const { currentModal, previousModal, transaction, setModal } = useUnstakeStore(
     useShallow(state => ({
-      currentModal: state.currentModal,
-      previousModal: state.previousModal,
+      currentModal: state.currentModal ?? UNSTAKE_MODAL.CLOSE,
+      previousModal: state.previousModal ?? UNSTAKE_MODAL.CLOSE,
       transaction: state.transaction,
       setModal: state.setModal,
     })),

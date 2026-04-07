@@ -22,6 +22,7 @@ import { useActivity } from '@/hooks/useActivity';
 import useCancelOnchainWithdraw from '@/hooks/useCancelOnchainWithdraw';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCashbacks } from '@/hooks/useCashbacks';
+import { useTransactionReceiptPolling } from '@/hooks/useTransactionReceiptPolling';
 import { fetchActivityEvent, getCardTransaction } from '@/lib/api';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useIntercom } from '@/lib/intercom';
@@ -330,6 +331,9 @@ export default function ActivityDetail() {
 
   const finalActivity = activity || backendActivity;
 
+  // Poll blockchain for receipt when activity is stuck at PROCESSING
+  useTransactionReceiptPolling(finalActivity);
+
   // Check if backend query should be loading but hasn't started yet
   const isBackendQueryPending =
     !activity && !isActivitiesLoading && !!clientTxId && !isCardTransaction && !backendActivity;
@@ -355,11 +359,14 @@ export default function ActivityDetail() {
     [finalActivity?.timestamp],
   );
 
+  const isWalletTransfer = finalActivity?.title?.startsWith('Add ') && finalActivity?.title?.endsWith(' to wallet');
+
   const estimatedDurationSeconds = useMemo(() => {
+    if (isWalletTransfer) return minutesToSeconds(2);
     if (isEthereum) return minutesToSeconds(5);
     if (isSoFuseOnFuse) return minutesToSeconds(2);
     return minutesToSeconds(20);
-  }, [isEthereum, isSoFuseOnFuse]);
+  }, [isWalletTransfer, isEthereum, isSoFuseOnFuse]);
 
   useEffect(() => {
     if (!finalActivity || !isDeposit || !createdAt) return;

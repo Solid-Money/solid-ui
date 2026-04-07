@@ -6,6 +6,7 @@ import { Address } from 'viem';
 
 import { DashboardTitle } from '@/components/Dashboard';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import { FAQs } from '@/components/FAQ';
 import PageLayout from '@/components/PageLayout';
 import Ping from '@/components/Ping';
@@ -17,6 +18,7 @@ import SavingVault from '@/components/Savings/SavingVault';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import faqs from '@/constants/faqs';
 import { VAULTS } from '@/constants/vaults';
 import {
@@ -36,6 +38,7 @@ import { getAsset } from '@/lib/assets';
 import { ADDRESSES } from '@/lib/config';
 import { SavingMode } from '@/lib/types';
 import { fontSize, formatNumber } from '@/lib/utils';
+import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
 export default function Savings() {
@@ -59,17 +62,14 @@ export default function Savings() {
     }
   }, [vaultParam, setSelectedVault]);
 
-  const {
-    data: balance,
-    isLoading: isBalanceLoading,
-    refetch: refetchBalance,
-  } = useVaultBalance(user?.safeAddress as Address, currentVault);
+  const { data: balance, isLoading: isBalanceLoading } = useVaultBalance(
+    user?.safeAddress as Address,
+    currentVault,
+  );
 
-  const {
-    data: totalBalanceAllVaults,
-    isLoading: isTotalBalanceLoading,
-    refetch: refetchTotalBalance,
-  } = useTotalVaultBalance(user?.safeAddress as Address);
+  const { data: totalBalanceAllVaults, isLoading: isTotalBalanceLoading } = useTotalVaultBalance(
+    user?.safeAddress as Address,
+  );
 
   const { maxAPY, maxAPYDays, isAPYsLoading: isMaxAPYsLoading } = useMaxAPY(currentVault.type);
   const { data: apys, isLoading: isAPYsLoading } = useAPYs(currentVault.type);
@@ -86,11 +86,9 @@ export default function Savings() {
     currentVault.name === 'USDC' ? ADDRESSES.fuse.vault : ADDRESSES.fuse.fuseVault,
   );
 
-  const {
-    data: userDepositTransactions,
-    isLoading: isTransactionsLoading,
-    refetch: refetchTransactions,
-  } = useUserTransactions(user?.safeAddress);
+  const { data: userDepositTransactions, isLoading: isTransactionsLoading } = useUserTransactions(
+    user?.safeAddress,
+  );
 
   const { firstDepositTimestamp } = useDepositCalculations(
     userDepositTransactions,
@@ -104,16 +102,6 @@ export default function Savings() {
     currentVault.name,
     currentVault.name === 'FUSE',
   );
-
-  // Controlled polling for balance/transaction updates - every 60 seconds instead of every block (~12s)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refetchBalance();
-      refetchTotalBalance();
-      refetchTransactions();
-    }, 60000); // 60 seconds
-    return () => clearInterval(interval);
-  }, [refetchBalance, refetchTotalBalance, refetchTransactions]);
 
   const isLoading = isBalanceLoading || isTransactionsLoading;
   const isEmptyStateLoading = isTotalBalanceLoading || isTransactionsLoading;
@@ -149,12 +137,24 @@ export default function Savings() {
       {isScreenMedium ? (
         <View className="flex-row items-center justify-between">
           <DashboardTitle />
-          <DashboardHeaderButtons
-            hideSend
-            hideSwap
-            hideBuyFuse={currentVault.name !== 'FUSE'}
-            preserveSelectedVault
-          />
+          <View className="flex-row gap-2">
+            <DashboardHeaderButtons
+              hideSend
+              hideSwap
+              hideBuyFuse={currentVault.name !== 'FUSE'}
+              hideDeposit
+              preserveSelectedVault
+            />
+            <DepositTrigger
+              buttonText="Deposit"
+              modal={DEPOSIT_MODAL.OPEN_FORM}
+              preserveSelectedVault
+              source="savings_header"
+              onBeforeOpen={() => {
+                useDepositStore.getState().setDepositFromSolid(true);
+              }}
+            />
+          </View>
         </View>
       ) : (
         <Text className="text-3xl font-semibold">Savings</Text>
@@ -230,7 +230,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 70 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
@@ -279,7 +279,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 40 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
@@ -425,7 +425,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 70 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
@@ -474,7 +474,7 @@ export default function Savings() {
                         }}
                         styles={{
                           wholeText: {
-                            fontSize: isScreenMedium ? fontSize(6) : fontSize(3),
+                            fontSize: isScreenMedium ? 40 : fontSize(3),
                             fontWeight: 'medium',
                             fontFamily: 'MonaSans_500Medium',
                             color: '#ffffff',
