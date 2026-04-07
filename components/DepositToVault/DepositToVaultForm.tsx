@@ -14,11 +14,11 @@ import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
 import Max from '@/components/Max';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
-import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -217,42 +217,6 @@ function DepositToVaultForm() {
       : useSolidForUsdc
         ? errorSolidUsdc
         : error;
-  const balanceForVault = isFuseVault
-    ? useSolidForFuse
-      ? balanceSolidFuse
-      : balanceFuse
-    : useSolidForUsdc
-      ? balanceSolidUsdc
-      : balance;
-  const balanceDecimals = isFuseVault ? 18 : 6;
-  const depositFn = isFuseVault
-    ? useSolidForFuse
-      ? depositSolidFuse
-      : depositFuse
-    : useSolidForUsdc
-      ? depositSolidUsdc
-      : deposit;
-  const depositStatusForVault = isFuseVault
-    ? useSolidForFuse
-      ? depositStatusSolidFuse
-      : depositStatusFuse
-    : useSolidForUsdc
-      ? depositStatusSolidUsdc
-      : depositStatus;
-  const hashForVault = isFuseVault
-    ? useSolidForFuse
-      ? hashSolidFuse
-      : hashFuse
-    : useSolidForUsdc
-      ? hashSolidUsdc
-      : hash;
-  const errorForVault = isFuseVault
-    ? useSolidForFuse
-      ? errorSolidFuse
-      : errorFuse
-    : useSolidForUsdc
-      ? errorSolidUsdc
-      : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY } = useMaxAPY(vault.type);
@@ -316,7 +280,6 @@ function DepositToVaultForm() {
     },
   });
 
-  const minimumAmount = vault.minimumAmount ?? '10';
   const watchedAmount = watch('amount');
   const isSponsor = Number(watchedAmount) >= Number(vault.minimumAmount);
 
@@ -471,7 +434,9 @@ function DepositToVaultForm() {
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground">{useSolidForFuse || useSolidForUsdc ? '' : 'From wallet'}</Text>
+          <Text className="text-muted-foreground">
+            {useSolidForFuse || useSolidForUsdc ? '' : 'From wallet'}
+          </Text>
           {!useSolidForFuse && !useSolidForUsdc && <ConnectedWalletDropdown />}
         </View>
         <View className="gap-2">
@@ -511,7 +476,9 @@ function DepositToVaultForm() {
                     style={{ width: 32, height: 32 }}
                   />
                   <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
-                  {selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />}
+                  {selectedTokenInfo.fullName && (
+                    <TooltipPopover text={selectedTokenInfo.fullName} />
+                  )}
                   <ChevronDown size={16} color="#A1A1A1" />
                 </Pressable>
               </View>
