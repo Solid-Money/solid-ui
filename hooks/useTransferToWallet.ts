@@ -5,8 +5,6 @@ import { type Address, encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import { waitForTransactionReceipt } from 'viem/actions';
 import { useBalance, useBlockNumber, useReadContract } from 'wagmi';
 
-import { NATIVE_TOKEN_ADDRESS } from 'thirdweb';
-
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { ERRORS } from '@/constants/errors';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
@@ -21,12 +19,6 @@ import { useDepositStore } from '@/store/useDepositStore';
 
 import useUser from './useUser';
 
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-
-const isNativeToken = (address: string) =>
-  address.toLowerCase() === NATIVE_TOKEN_ADDRESS.toLowerCase() ||
-  address.toLowerCase() === ZERO_ADDRESS;
-
 type TransferResult = {
   balance: bigint | undefined;
   transfer: (amount: string) => Promise<string | undefined>;
@@ -36,11 +28,11 @@ type TransferResult = {
 };
 
 /**
- * Hook for transferring ERC20 tokens from a connected external wallet (EOA)
+ * Hook for transferring tokens from a connected external wallet (EOA)
  * to the user's Safe wallet address. Used in the "Add Funds" flow (Step 1).
- * No vault deposit — just a simple token transfer.
+ * Supports both ERC-20 and native token (ETH, FUSE) transfers.
  */
-const useTransferToWallet = (tokenAddress: Address, token: string): TransferResult => {
+const useTransferToWallet = (tokenAddress: Address, token: string, isNative: boolean): TransferResult => {
   const { user } = useUser();
   const wallet = useActiveWallet();
   const account = useActiveAccount();
@@ -52,7 +44,6 @@ const useTransferToWallet = (tokenAddress: Address, token: string): TransferResu
   const { createActivity, updateActivity } = useActivityActions();
 
   const safeAddress = user?.safeAddress as Address | undefined;
-  const isNative = isNativeToken(tokenAddress);
 
   const { data: blockNumber } = useBlockNumber({
     watch: true,
