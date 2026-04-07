@@ -1,6 +1,43 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { type ConfigContext, type ExpoConfig } from 'expo/config';
 
 const IS_PROD = ['production', 'qa'].includes(process.env.EXPO_PUBLIC_ENVIRONMENT!);
+const IOS_PROJECT_PATH = path.join(process.cwd(), 'ios', 'Solid.xcodeproj', 'project.pbxproj');
+
+const IOS_WALLET_APP_EXTENSIONS = [
+  {
+    targetName: 'IssuerNonUIExtension',
+    bundleIdentifier: 'app.solid.xyz.IssuerNonUIExtension',
+  },
+  {
+    targetName: 'IssuerUIExtension',
+    bundleIdentifier: 'app.solid.xyz.IssuerUIExtension',
+  },
+];
+
+const hasIosWalletExtensionTargets = () => {
+  try {
+    const project = fs.readFileSync(IOS_PROJECT_PATH, 'utf8');
+
+    return IOS_WALLET_APP_EXTENSIONS.every(({ targetName }) => project.includes(`"${targetName}"`));
+  } catch {
+    return false;
+  }
+};
+
+const SHOULD_ENABLE_IOS_WALLET_EXTENSIONS = process.env.ENABLE_IOS_WALLET_EXTENSIONS === 'true';
+const HAS_IOS_WALLET_EXTENSION_TARGETS = hasIosWalletExtensionTargets();
+
+if (SHOULD_ENABLE_IOS_WALLET_EXTENSIONS && !HAS_IOS_WALLET_EXTENSION_TARGETS) {
+  console.warn(
+    'ENABLE_IOS_WALLET_EXTENSIONS=true, but ios/Solid.xcodeproj does not contain Issuer wallet extension targets. Skipping EAS appExtensions config.',
+  );
+}
+
+const ENABLE_IOS_WALLET_EXTENSIONS =
+  SHOULD_ENABLE_IOS_WALLET_EXTENSIONS && HAS_IOS_WALLET_EXTENSION_TARGETS;
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -135,6 +172,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         ios: {
           deploymentTarget: '15.1',
           useFrameworks: 'static',
+          // Static frameworks with precompiled RN core have been flaky in EAS iOS builds.
+          // Build RN from source to avoid missing React-use-frameworks.modulemap artifacts.
+          buildReactNativeFromSource: true,
           forceStaticLinking: ['RNFBApp', 'RNFBMessaging', 'RNFBAnalytics'],
         },
         android: {
@@ -209,23 +249,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     router: {},
     eas: {
       projectId: 'a788e592-4267-44da-8afc-a667075c20d4',
-      build: {
-        experimental: {
-          ios: {
-            // Wallet Extensions: so EAS generates provisioning profiles for extension targets
-            appExtensions: [
-              {
-                targetName: 'IssuerNonUIExtension',
-                bundleIdentifier: 'app.solid.xyz.IssuerNonUIExtension',
+      ...(ENABLE_IOS_WALLET_EXTENSIONS
+        ? {
+            build: {
+              experimental: {
+                ios: {
+                  // Only ask EAS to sign wallet extensions when the native Xcode targets exist.
+                  appExtensions: IOS_WALLET_APP_EXTENSIONS,
+                },
               },
-              {
-                targetName: 'IssuerUIExtension',
-                bundleIdentifier: 'app.solid.xyz.IssuerUIExtension',
-              },
-            ],
-          },
-        },
-      },
+            },
+          }
+        : {}),
     },
   },
   runtimeVersion: {
