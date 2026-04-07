@@ -9,8 +9,11 @@ import { getAsset } from '@/lib/assets';
 import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
+import { useDimension } from './useDimension';
+
 const useDepositBuyCryptoOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
+  const { isScreenMedium } = useDimension();
 
   const handleBankDepositPress = useCallback(() => {
     track(TRACKING_EVENTS.DEPOSIT_METHOD_SELECTED, {
@@ -30,7 +33,9 @@ const useDepositBuyCryptoOptions = () => {
     () => [
       {
         text: 'Debit/Credit Card',
-        subtitle: 'Apple pay, Google Pay, or your\ncredit card',
+        subtitle: isScreenMedium
+          ? 'Apple pay, Google Pay, or your\ncredit card'
+          : 'Apple pay, Google Pay, or your credit card',
         icon: (
           <Image
             source={getAsset('images/buy_crypto.png')}
@@ -56,7 +61,7 @@ const useDepositBuyCryptoOptions = () => {
         method: 'bank_transfer' as DepositMethod,
       },
     ],
-    [handleCreditCardPress, handleBankDepositPress],
+    [handleCreditCardPress, handleBankDepositPress, isScreenMedium],
   );
 
   const filteredOptions =
