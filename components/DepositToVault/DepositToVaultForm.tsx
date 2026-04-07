@@ -217,6 +217,42 @@ function DepositToVaultForm() {
       : useSolidForUsdc
         ? errorSolidUsdc
         : error;
+  const balanceForVault = isFuseVault
+    ? useSolidForFuse
+      ? balanceSolidFuse
+      : balanceFuse
+    : useSolidForUsdc
+      ? balanceSolidUsdc
+      : balance;
+  const balanceDecimals = isFuseVault ? 18 : 6;
+  const depositFn = isFuseVault
+    ? useSolidForFuse
+      ? depositSolidFuse
+      : depositFuse
+    : useSolidForUsdc
+      ? depositSolidUsdc
+      : deposit;
+  const depositStatusForVault = isFuseVault
+    ? useSolidForFuse
+      ? depositStatusSolidFuse
+      : depositStatusFuse
+    : useSolidForUsdc
+      ? depositStatusSolidUsdc
+      : depositStatus;
+  const hashForVault = isFuseVault
+    ? useSolidForFuse
+      ? hashSolidFuse
+      : hashFuse
+    : useSolidForUsdc
+      ? hashSolidUsdc
+      : hash;
+  const errorForVault = isFuseVault
+    ? useSolidForFuse
+      ? errorSolidFuse
+      : errorFuse
+    : useSolidForUsdc
+      ? errorSolidUsdc
+      : error;
 
   const isLoading = depositStatusForVault.status === Status.PENDING;
   const { maxAPY } = useMaxAPY(vault.type);
@@ -280,6 +316,7 @@ function DepositToVaultForm() {
     },
   });
 
+  const minimumAmount = vault.minimumAmount ?? '10';
   const watchedAmount = watch('amount');
   const isSponsor = Number(watchedAmount) >= Number(vault.minimumAmount);
 
