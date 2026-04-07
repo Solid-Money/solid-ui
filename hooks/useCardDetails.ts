@@ -10,6 +10,14 @@ import { useCardProvider } from './useCardProvider';
 
 const CARD_BALANCE = 'cardBalance';
 
+// Query options for prefetching card details
+// export const cardDetailsQueryOptions = () => ({
+//   queryKey: [CARD_DETAILS],
+//   queryFn: () => withRefreshToken(() => getCardDetails()),
+//   staleTime: 5_000,
+//   refetchInterval: 5_000,
+// });
+
 export const useCardDetails = () => {
   const detailsQuery = useQuery(cardDetailsQueryOptions());
   const { provider } = useCardProvider();

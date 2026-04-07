@@ -1,4 +1,5 @@
 import DefaultTokenIcon from '@/components/DefaultTokenIcon';
+
 import { getAsset } from './assets';
 import { TokenIcon } from './types';
 

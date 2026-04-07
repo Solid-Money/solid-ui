@@ -25,9 +25,9 @@ export default function Settings() {
   const { status: notificationStatus } = useNotificationPermissionStatus();
 
   const notificationStatusColor =
-    notificationStatus === 'authorized'
+    notificationStatus === 'Authorized'
       ? 'text-[#94F27F]'
-      : notificationStatus === 'denied'
+      : notificationStatus === 'Denied'
         ? 'text-[#FFB347]'
         : 'text-[#ACACAC]';
 

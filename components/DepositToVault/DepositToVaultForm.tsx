@@ -14,11 +14,11 @@ import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
 import Max from '@/components/Max';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
-import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import TooltipPopover from '@/components/Tooltip';
 import { Button } from '@/components/ui/button';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { explorerUrls, layerzero } from '@/constants/explorers';
 import { DEPOSIT_MODAL } from '@/constants/modals';
@@ -28,6 +28,7 @@ import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
+import useDepositFromSolidEth from '@/hooks/useDepositFromSolidEth';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useDimension } from '@/hooks/useDimension';
@@ -132,6 +133,18 @@ function DepositToVaultForm() {
   );
 
   const {
+    balance: balanceSolidEth,
+    deposit: depositSolidEth,
+    depositStatus: depositStatusSolidEth,
+    hash: hashSolidEth,
+    error: errorSolidEth,
+  } = useDepositFromSolidEth(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
+  const {
     balance: balanceSolidUsdc,
     deposit: depositSolidUsdc,
     depositStatus: depositStatusSolidUsdc,
@@ -147,6 +160,7 @@ function DepositToVaultForm() {
   const isEthVault = vault.name === 'ETH';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
+  const useSolidForEth = isEthVault && depositFromSolid;
   const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
@@ -172,7 +186,9 @@ function DepositToVaultForm() {
   }, [isNativeFuse, useSolidForFuse, setOutputToken]);
 
   const balanceForVault = isEthVault
-    ? balanceEth
+    ? useSolidForEth
+      ? balanceSolidEth
+      : balanceEth
     : isFuseVault
       ? useSolidForFuse
         ? balanceSolidFuse
@@ -182,7 +198,9 @@ function DepositToVaultForm() {
         : balance;
   const balanceDecimals = isFuseVault || isEthVault ? 18 : 6;
   const depositFn = isEthVault
-    ? depositEth
+    ? useSolidForEth
+      ? depositSolidEth
+      : depositEth
     : isFuseVault
       ? useSolidForFuse
         ? depositSolidFuse
@@ -191,7 +209,9 @@ function DepositToVaultForm() {
         ? depositSolidUsdc
         : deposit;
   const depositStatusForVault = isEthVault
-    ? depositStatusEth
+    ? useSolidForEth
+      ? depositStatusSolidEth
+      : depositStatusEth
     : isFuseVault
       ? useSolidForFuse
         ? depositStatusSolidFuse
@@ -200,7 +220,9 @@ function DepositToVaultForm() {
         ? depositStatusSolidUsdc
         : depositStatus;
   const hashForVault = isEthVault
-    ? hashEth
+    ? useSolidForEth
+      ? hashSolidEth
+      : hashEth
     : isFuseVault
       ? useSolidForFuse
         ? hashSolidFuse
@@ -209,7 +231,9 @@ function DepositToVaultForm() {
         ? hashSolidUsdc
         : hash;
   const errorForVault = isEthVault
-    ? errorEth
+    ? useSolidForEth
+      ? errorSolidEth
+      : errorEth
     : isFuseVault
       ? useSolidForFuse
         ? errorSolidFuse
@@ -434,8 +458,10 @@ function DepositToVaultForm() {
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
       <View className="gap-4">
         <View className="gap-2">
-          <Text className="text-muted-foreground">{useSolidForFuse || useSolidForUsdc ? '' : 'From wallet'}</Text>
-          {!useSolidForFuse && !useSolidForUsdc && <ConnectedWalletDropdown />}
+          <Text className="text-muted-foreground">
+            {useSolidForFuse || useSolidForEth || useSolidForUsdc ? '' : 'From wallet'}
+          </Text>
+          {!useSolidForFuse && !useSolidForEth && !useSolidForUsdc && <ConnectedWalletDropdown />}
         </View>
         <View className="gap-2">
           <Text className="text-muted-foreground">Deposit amount</Text>
@@ -474,7 +500,9 @@ function DepositToVaultForm() {
                     style={{ width: 32, height: 32 }}
                   />
                   <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
-                  {selectedTokenInfo.fullName && <TooltipPopover text={selectedTokenInfo.fullName} />}
+                  {selectedTokenInfo.fullName && (
+                    <TooltipPopover text={selectedTokenInfo.fullName} />
+                  )}
                   <ChevronDown size={16} color="#A1A1A1" />
                 </Pressable>
               </View>
