@@ -31,7 +31,6 @@ import {
   CardProvider,
   CardTransaction,
   CardTransactionCategory,
-  TransactionCategory,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
@@ -360,21 +359,21 @@ export default function ActivityDetail() {
     [finalActivity?.timestamp],
   );
 
-  const isWalletTransfer = finalActivity?.title?.startsWith('Add ') && finalActivity?.title?.endsWith(' to wallet');
+  const isFund = finalActivity?.type === TransactionType.FUND;
 
   const estimatedDurationSeconds = useMemo(() => {
-    if (isWalletTransfer) return minutesToSeconds(2);
+    if (isFund) return minutesToSeconds(2);
     if (isEthereum) return minutesToSeconds(5);
     if (isSoFuseOnFuse) return minutesToSeconds(2);
     return minutesToSeconds(20);
-  }, [isWalletTransfer, isEthereum, isSoFuseOnFuse]);
+  }, [isFund, isEthereum, isSoFuseOnFuse]);
 
   useEffect(() => {
-    if (!finalActivity || !isDeposit || !createdAt) return;
+    if (!finalActivity || !(isDeposit || isFund) || !createdAt) return;
 
     const elapsedSeconds = Math.floor((Date.now() - createdAt.getTime()) / 1000);
     setCurrentTime(Math.max(0, estimatedDurationSeconds - elapsedSeconds));
-  }, [finalActivity, isDeposit, createdAt, estimatedDurationSeconds]);
+  }, [finalActivity, isDeposit, isFund, createdAt, estimatedDurationSeconds]);
 
   const transactionDetails = finalActivity ? TRANSACTION_DETAILS[finalActivity.type] : null;
 
@@ -432,9 +431,6 @@ export default function ActivityDetail() {
     if (finalActivity?.type === TransactionType.CARD_WITHDRAWAL) {
       return `${toTitleCase(finalActivity?.metadata?.destination || 'savings')} account`;
     }
-    if (isWalletTransfer) {
-      return TransactionCategory.WALLET_TRANSFER;
-    }
     if (isDeposit && finalActivity?.status === TransactionStatus.SUCCESS) {
       return 'Complete';
     }
@@ -443,7 +439,6 @@ export default function ActivityDetail() {
     finalActivity?.type,
     finalActivity?.status,
     finalActivity?.metadata?.destination,
-    isWalletTransfer,
     isDeposit,
     transactionDetails?.category,
   ]);
@@ -528,7 +523,7 @@ export default function ActivityDetail() {
             </Pressable>
           ),
         },
-      (isDeposit || isBridgeDeposit) &&
+      (isDeposit || isFund || isBridgeDeposit) &&
         (isPending || isDetected || isProcessing) && {
           key: 'estimated',
           label: <Label>Estimated time</Label>,
@@ -538,6 +533,7 @@ export default function ActivityDetail() {
   }, [
     finalActivity,
     isDeposit,
+    isFund,
     isBridgeDeposit,
     isPending,
     isDetected,
