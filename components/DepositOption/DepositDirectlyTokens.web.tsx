@@ -11,7 +11,6 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useDirectDepositSession } from '@/hooks/useDirectDepositSession';
 import useUser from '@/hooks/useUser';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getAllowedTokensForChain } from '@/lib/vaults';
@@ -36,7 +35,6 @@ const DepositDirectlyTokens = () => {
     })),
   );
   const { user } = useUser();
-  const { vault } = useVaultDepositConfig();
   const { createDirectDepositSession, isLoading } = useDirectDepositSession();
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
   const hasTrackedTokenView = useRef(false);
@@ -46,7 +44,7 @@ const DepositDirectlyTokens = () => {
 
   // Get available tokens for this chain
   const availableTokens = useMemo(() => {
-    const allowedSymbols = getAllowedTokensForChain(chainId, vault);
+    const allowedSymbols = getAllowedTokensForChain(chainId);
 
     return Object.entries(network?.tokens ?? {})
       .filter(([symbol]) => allowedSymbols.includes(symbol))
@@ -59,7 +57,7 @@ const DepositDirectlyTokens = () => {
           icon,
         };
       });
-  }, [chainId, network?.tokens, vault]);
+  }, [chainId, network?.tokens]);
 
   // Track when token selection screen is viewed
   useEffect(() => {
@@ -70,11 +68,10 @@ const DepositDirectlyTokens = () => {
         network_name: network?.name,
         available_tokens: availableTokens.length,
         token_symbols: availableTokens.map(t => t.symbol).join(', '),
-        vault: vault.name,
       });
       hasTrackedTokenView.current = true;
     }
-  }, [availableTokens, chainId, network?.name, vault.name]);
+  }, [availableTokens, chainId, network?.name]);
 
   const handleTokenSelect = async (token: TokenOption) => {
     try {
@@ -88,7 +85,6 @@ const DepositDirectlyTokens = () => {
         token_symbol: token.symbol,
         deposit_type: 'direct_deposit',
         deposit_method: 'external_wallet_direct',
-        vault: vault.name,
       });
 
       // Track token selection specifically
@@ -98,7 +94,6 @@ const DepositDirectlyTokens = () => {
         network_name: network?.name,
         selected_token: token.symbol,
         token_name: token.name,
-        vault: vault.name,
       });
 
       // Store selected token
@@ -115,7 +110,6 @@ const DepositDirectlyTokens = () => {
         wallet_address: session.walletAddress,
         chain_id: chainId,
         token_symbol: token.symbol,
-        vault: vault.name,
       });
 
       // Navigate to address display screen

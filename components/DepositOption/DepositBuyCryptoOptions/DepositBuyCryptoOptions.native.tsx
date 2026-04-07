@@ -4,14 +4,14 @@ import { Image } from 'expo-image';
 
 import DepositOption from '@/components/DepositOption/DepositOption';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { getAsset } from '@/lib/assets';
+import { getVaultDepositConfig } from '@/lib/vaults';
 import { DepositMethod } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositBuyCryptoOptions = () => {
   const setModal = useDepositStore(state => state.setModal);
-  const { depositConfig } = useVaultDepositConfig();
+  const depositConfig = getVaultDepositConfig();
 
   const handleBankDepositPress = useCallback(() => {
     setModal(DEPOSIT_MODAL.OPEN_BANK_TRANSFER_AMOUNT);
