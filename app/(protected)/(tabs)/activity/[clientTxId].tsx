@@ -31,6 +31,7 @@ import {
   CardProvider,
   CardTransaction,
   CardTransactionCategory,
+  TransactionCategory,
   TransactionDirection,
   TransactionStatus,
   TransactionType,
@@ -431,6 +432,9 @@ export default function ActivityDetail() {
     if (finalActivity?.type === TransactionType.CARD_WITHDRAWAL) {
       return `${toTitleCase(finalActivity?.metadata?.destination || 'savings')} account`;
     }
+    if (isWalletTransfer) {
+      return TransactionCategory.WALLET_TRANSFER;
+    }
     if (isDeposit && finalActivity?.status === TransactionStatus.SUCCESS) {
       return 'Complete';
     }
@@ -439,6 +443,7 @@ export default function ActivityDetail() {
     finalActivity?.type,
     finalActivity?.status,
     finalActivity?.metadata?.destination,
+    isWalletTransfer,
     isDeposit,
     transactionDetails?.category,
   ]);
