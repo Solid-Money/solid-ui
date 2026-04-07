@@ -53,7 +53,7 @@ const DepositNetworks = () => {
       deposit_method: 'cross_chain_bridge',
     });
 
-    const estimatedTime = id === 1 ? '5 min' : '20 min';
+    const estimatedTime = id === 1 ? '5 min' : id === 122 ? '2 min' : '20 min';
 
     // Track wallet network selection specifically
     track(TRACKING_EVENTS.DEPOSIT_WALLET_NETWORK_SELECTED, {
@@ -83,7 +83,9 @@ const DepositNetworks = () => {
             const estimatedDesc =
               chainId === 1
                 ? 'Estimated speed: 5 min'
-                : 'Estimated speed: 20 min';
+                : chainId === 122
+                  ? 'Estimated speed: 2 min'
+                  : 'Estimated speed: 20 min';
 
             return (
               <DepositNetwork
