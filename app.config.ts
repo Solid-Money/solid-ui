@@ -172,6 +172,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         ios: {
           deploymentTarget: '15.1',
           useFrameworks: 'static',
+          // Static frameworks with precompiled RN core have been flaky in EAS iOS builds.
+          // Build RN from source to avoid missing React-use-frameworks.modulemap artifacts.
+          buildReactNativeFromSource: true,
           forceStaticLinking: ['RNFBApp', 'RNFBMessaging', 'RNFBAnalytics'],
         },
         android: {
