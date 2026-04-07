@@ -78,7 +78,9 @@ const useDepositExternalWalletOptions = () => {
     const base = [
       {
         text: 'Send from your crypto wallet',
-        subtitle: 'Add supported assets from supported\nnetworks directly to your account',
+        subtitle: isScreenMedium
+          ? 'Add supported assets from supported\nnetworks directly to your account'
+          : 'Add supported assets from supported networks directly to your account',
         icon: <Wallet color="white" size={24} strokeWidth={1} />,
         onPress: openWallet,
         isLoading: isWalletOpen,
@@ -87,7 +89,9 @@ const useDepositExternalWalletOptions = () => {
       },
       {
         text: 'Share your deposit address',
-        subtitle: 'Send supported tokens to your Solid\naddress from a supported network',
+        subtitle: isScreenMedium
+          ? 'Send supported tokens to your Solid\naddress from a supported network'
+          : 'Send supported tokens to your Solid address from a supported network',
         icon: <HomeQR />,
         onPress: handleDepositDirectly,
         method: 'deposit_directly' as DepositMethod,
