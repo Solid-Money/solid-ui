@@ -15,7 +15,8 @@ const useDepositExternalWalletOptionsNative = () => {
       deposit_method: 'deposit_directly',
     });
 
-    setModal(DEPOSIT_MODAL.OPEN_DEPOSIT_DIRECTLY);
+    // Show user's Safe address directly — no backend session needed
+    setModal(DEPOSIT_MODAL.OPEN_PUBLIC_ADDRESS);
   }, [setModal]);
 
   const externalWalletOptions = useMemo(
