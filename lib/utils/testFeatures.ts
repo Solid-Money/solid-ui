@@ -5,6 +5,7 @@ export const TEST_FEATURES_ALLOW_LIST = [
   'smargon4',
   'LukaFuse',
   'Test',
+  'InternSolid22',
 ];
 
 export const isUserAllowedToUseTestFeature = (username: string) => {
