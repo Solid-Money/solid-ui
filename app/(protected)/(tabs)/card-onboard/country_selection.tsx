@@ -530,9 +530,9 @@ function CountryUnavailableView({
         {`The new Solid Card is coming to you`}
       </Text>
       <Text className="font-weight-400 mb-6 text-center leading-6 text-[#ACACAC]">
-        {`Powered by our partnership with Rain, the Solid Card is expanding globally.\nWe're rolling out access in your region. Click on the button below to get notified.\n`}
+        {`Powered by our partnership with Rain, the Solid Card is expanding globally.\nWe're rolling out access in your region. Join the waitlist to get early access.\n`}
         <Text
-          className="font-bold leading-6 text-white"
+          className="font-weight-400 leading-6 text-[#ACACAC] underline"
           onPress={() =>
             Linking.openURL(
               'https://www.solid.xyz/post/solid-partners-with-rain-to-power-the-next-era-of-global-crypto-cards'
