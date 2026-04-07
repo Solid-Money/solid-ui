@@ -76,5 +76,6 @@ export const VAULTS: Vault[] = [
       supportedChains: [mainnet.id],
       supportedTokens: ['WETH', 'ETH'],
     },
+    isComingSoon: true,
   },
 ];
