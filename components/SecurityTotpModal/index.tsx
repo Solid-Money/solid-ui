@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import InfoError from '@/assets/images/info-error';
+import CopyToClipboard from '@/components/CopyToClipboard';
 import ResponsiveModal from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -152,6 +153,7 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSetup, setIsLoadingSetup] = useState(true);
   const [qrCode, setQrCode] = useState<string>('');
+  const [secret, setSecret] = useState<string>('');
   const [apiError, setApiError] = useState<string>('');
 
   const {
@@ -182,8 +184,9 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
       setIsLoadingSetup(true);
       setApiError('');
       try {
-        const { qrCode } = await setupTotp();
-        setQrCode(qrCode);
+        const data = await setupTotp();
+        setQrCode(data.qrCode);
+        setSecret(data.secret);
       } catch (err: any) {
         console.error('Failed to setup TOTP:', err);
         setApiError('Failed to setup TOTP. Please try again.');
@@ -261,21 +264,22 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
                 }}
               />
             )}
-            {/* {!showManualEntry && (
-              <Pressable onPress={() => setShowManualEntry(true)} className="mt-4">
-                <Text className="text-[rgba(255,255,255,0.7)] text-sm font-medium text-center">
-                  Can&apos;t scan the QR code?
-                </Text>
-              </Pressable>
-            )}
-            {showManualEntry && (
+            {secret && (
               <View className="mt-4 items-center gap-2">
-                <Text className="text-[rgba(255,255,255,0.7)] text-sm font-medium text-center">
-                  Manual entry code:
+                <Text className="text-center text-sm font-medium text-[rgba(255,255,255,0.7)]">
+                  Or copy the code below to enter manually:
                 </Text>
-                <Text className="text-white text-base font-semibold font-mono">{manualCode}</Text>
+                <View className="flex-row items-center gap-1">
+                  <Text
+                    className="text-center font-mono text-base font-semibold text-white"
+                    selectable
+                  >
+                    {secret}
+                  </Text>
+                  <CopyToClipboard text={secret} size={16} iconClassName="text-[#94F27F]" />
+                </View>
               </View>
-            )} */}
+            )}
           </View>
         )}
       </View>
