@@ -75,11 +75,11 @@ export default function ActivityTransactions({
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-    activities,
     getKey: _getKey,
     refetchAll,
     isSyncing,
     isSyncStale,
+    activities,
   } = useActivity();
   const [showStuckTransactions, setShowStuckTransactions] = useState(false);
   // Ref-based guard to prevent rapid fetchNextPage calls from Load More button

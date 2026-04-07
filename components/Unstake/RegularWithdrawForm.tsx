@@ -18,6 +18,7 @@ import TokenDetails from '@/components/TokenCard/TokenDetails';
 import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';

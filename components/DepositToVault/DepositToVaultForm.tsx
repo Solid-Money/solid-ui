@@ -26,6 +26,7 @@ import { isStablecoinSymbol } from '@/constants/stablecoins';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
 import useDepositFromEOA from '@/hooks/useDepositFromEOA';
+import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
 import useDepositFromSolidFuse from '@/hooks/useDepositFromSolidFuse';
 import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
@@ -119,6 +120,18 @@ function DepositToVaultForm() {
   );
 
   const {
+    balance: balanceEth,
+    deposit: depositEth,
+    depositStatus: depositStatusEth,
+    hash: hashEth,
+    error: errorEth,
+  } = useDepositFromEOAEth(
+    (selectedTokenInfo?.address as Address) || '',
+    selectedTokenInfo?.name || '',
+    vault.minimumAmount,
+  );
+
+  const {
     balance: balanceSolidUsdc,
     deposit: depositSolidUsdc,
     depositStatus: depositStatusSolidUsdc,
@@ -131,9 +144,10 @@ function DepositToVaultForm() {
   );
 
   const isFuseVault = vault.name === 'FUSE';
+  const isEthVault = vault.name === 'ETH';
   const isNativeFuse = isFuseVault && outputToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
-  const useSolidForUsdc = !isFuseVault && depositFromSolid;
+  const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
   const selectedWalletToken: TokenBalance | null = useMemo(() => {
@@ -143,12 +157,12 @@ function DepositToVaultForm() {
       contractName: selectedTokenInfo.fullName || selectedTokenInfo.name,
       contractAddress: selectedTokenInfo.address,
       balance: '0',
-      contractDecimals: isFuseVault ? 18 : 6,
+      contractDecimals: isFuseVault || isEthVault ? 18 : 6,
       type: TokenType.ERC20,
       chainId: srcChainId,
       logoUrl: undefined,
     };
-  }, [depositFromSolid, srcChainId, selectedTokenInfo, isFuseVault]);
+  }, [depositFromSolid, srcChainId, selectedTokenInfo, isFuseVault, isEthVault]);
 
   // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
   useEffect(() => {
@@ -157,6 +171,52 @@ function DepositToVaultForm() {
     }
   }, [isNativeFuse, useSolidForFuse, setOutputToken]);
 
+  const balanceForVault = isEthVault
+    ? balanceEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? balanceSolidFuse
+        : balanceFuse
+      : useSolidForUsdc
+        ? balanceSolidUsdc
+        : balance;
+  const balanceDecimals = isFuseVault || isEthVault ? 18 : 6;
+  const depositFn = isEthVault
+    ? depositEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? depositSolidFuse
+        : depositFuse
+      : useSolidForUsdc
+        ? depositSolidUsdc
+        : deposit;
+  const depositStatusForVault = isEthVault
+    ? depositStatusEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? depositStatusSolidFuse
+        : depositStatusFuse
+      : useSolidForUsdc
+        ? depositStatusSolidUsdc
+        : depositStatus;
+  const hashForVault = isEthVault
+    ? hashEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? hashSolidFuse
+        : hashFuse
+      : useSolidForUsdc
+        ? hashSolidUsdc
+        : hash;
+  const errorForVault = isEthVault
+    ? errorEth
+    : isFuseVault
+      ? useSolidForFuse
+        ? errorSolidFuse
+        : errorFuse
+      : useSolidForUsdc
+        ? errorSolidUsdc
+        : error;
   const balanceForVault = isFuseVault
     ? useSolidForFuse
       ? balanceSolidFuse
@@ -206,8 +266,9 @@ function DepositToVaultForm() {
       : 0;
     const tokenLabel = isFuseVault
       ? (selectedTokenInfo?.name ?? 'WFUSE')
-      : 'USDC';
-    const minAmount = vault.minimumAmount ?? '10';
+      : isEthVault
+        ? (selectedTokenInfo?.name ?? 'WETH')
+        : 'USDC';
     const maxAmount = balanceAmount;
 
     return z.object({
@@ -217,8 +278,8 @@ function DepositToVaultForm() {
           error: 'Please enter a valid amount',
         })
         .refine(val => Number(val) > 0, { error: 'Amount must be greater than 0' })
-        .refine(val => Number(val) >= Number(minAmount), {
-          error: `Minimum ${minAmount} ${tokenLabel}`,
+        .refine(val => Number(val) >= Number(vault.minimumAmount), {
+          error: `Minimum ${vault.minimumAmount} ${tokenLabel}`,
         })
         .refine(val => !isNativeFuse || Number(val) >= Number(EXPO_PUBLIC_FUSE_GAS_RESERVE), {
           error: 'Amount too low',
@@ -231,6 +292,7 @@ function DepositToVaultForm() {
     balanceForVault,
     balanceDecimals,
     isFuseVault,
+    isEthVault,
     isNativeFuse,
     selectedTokenInfo?.name,
     vault.minimumAmount,
@@ -256,7 +318,7 @@ function DepositToVaultForm() {
 
   const minimumAmount = vault.minimumAmount ?? '10';
   const watchedAmount = watch('amount');
-  const isSponsor = Number(watchedAmount) >= Number(minimumAmount);
+  const isSponsor = Number(watchedAmount) >= Number(vault.minimumAmount);
 
   // Track form viewed (once per mount)
   const hasTrackedFormView = useRef(false);
@@ -337,8 +399,12 @@ function DepositToVaultForm() {
       ? explorerUrls[fuse.id]?.blockscout
       : explorerUrls[layerzero.id]?.layerzeroscan;
 
-    const toastToken = isFuseVault ? 'FUSE' : 'USDC';
-    const toastIcon = isFuseVault ? 'images/fuse-4x.png' : 'images/usdc.png';
+    const toastToken = isFuseVault ? 'FUSE' : isEthVault ? 'ETH' : 'USDC';
+    const toastIcon = isFuseVault
+      ? 'images/fuse-4x.png'
+      : isEthVault
+        ? 'images/eth.png'
+        : 'images/usdc.png';
 
     Toast.show({
       type: 'success',
@@ -539,7 +605,7 @@ function DepositToVaultForm() {
           <View className="align-items: start flex-row items-center gap-2">
             <Fuel color="#A1A1A1" size={16} className="mt-1" />
             <Text className="max-w-xs text-base text-muted-foreground">
-              {getGaslessText(minimumAmount, selectedTokenInfo?.name, isSponsor)}
+              {getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
             </Text>
           </View>
         </View>

@@ -6,6 +6,8 @@ import ResponsiveModal from '@/components/ResponsiveModal';
 import TransactionStatus from '@/components/TransactionStatus';
 import { CARD_WITHDRAW_MODAL } from '@/constants/modals';
 import getTokenIcon from '@/lib/getTokenIcon';
+import { CardProvider } from '@/lib/types';
+import { getCardDepositTokenSymbol } from '@/lib/utils';
 import { CardDepositSource } from '@/store/useCardDepositStore';
 import { useCardWithdrawStore } from '@/store/useCardWithdrawStore';
 
@@ -55,7 +57,12 @@ const CardWithdrawModalProvider = () => {
 
   const getContent = () => {
     if (isTransactionStatus) {
-      const token = transaction.to === CardDepositSource.SAVINGS ? 'soUSD' : 'USDC';
+      const token =
+        transaction.to === CardDepositSource.SAVINGS
+          ? 'soUSD'
+          : transaction.to === CardDepositSource.COLLATERAL
+            ? getCardDepositTokenSymbol(CardProvider.RAIN)
+            : 'USDC';
       return (
         <TransactionStatus
           amount={transaction.amount ?? 0}

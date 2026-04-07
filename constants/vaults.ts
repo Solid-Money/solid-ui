@@ -1,7 +1,12 @@
 import { fuse, mainnet } from 'viem/chains';
 
 import { BRIDGE_TOKENS } from '@/constants/bridge';
-import { ADDRESSES } from '@/lib/config';
+import {
+  ADDRESSES,
+  EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT,
+  EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT,
+  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
+} from '@/lib/config';
 import { Vault, VaultType } from '@/lib/types';
 
 const BRIDGE_CHAIN_IDS = Object.keys(BRIDGE_TOKENS).map(Number);
@@ -13,6 +18,7 @@ export const VAULTS: Vault[] = [
     vaultToken: 'soUSD',
     icon: 'images/usdc-4x.png',
     decimals: 6,
+    minimumAmount: EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
     vaults: [
       {
         address: ADDRESSES.ethereum.vault,
@@ -40,6 +46,7 @@ export const VAULTS: Vault[] = [
     vaultToken: 'soFUSE',
     icon: 'images/fuse-4x.png',
     decimals: 18,
+    minimumAmount: EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT,
     vaults: [
       {
         address: ADDRESSES.fuse.fuseVault,
@@ -58,16 +65,21 @@ export const VAULTS: Vault[] = [
     type: VaultType.ETH,
     vaultToken: 'soETH',
     decimals: 18,
+    minimumAmount: EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT,
     vaults: [
       {
-        address: ADDRESSES.ethereum.vault,
+        address: ADDRESSES.ethereum.soEthVault,
         chainId: mainnet.id,
+      },
+      {
+        address: ADDRESSES.fuse.soEthVault,
+        chainId: fuse.id,
       },
     ],
     depositConfig: {
-      methods: ['wallet', 'deposit_directly', 'credit_card', 'bank_transfer'],
-      supportedChains: BRIDGE_CHAIN_IDS,
-      supportedTokens: ['USDC', 'USDT'],
+      methods: ['wallet'],
+      supportedChains: [mainnet.id],
+      supportedTokens: ['WETH', 'ETH'],
     },
     isComingSoon: true,
   },

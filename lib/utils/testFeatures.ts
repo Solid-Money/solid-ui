@@ -1,4 +1,11 @@
-export const TEST_FEATURES_ALLOW_LIST = ['Mark1', 'mayank18', 'smargon4', 'LukaFuse', 'Test'];
+export const TEST_FEATURES_ALLOW_LIST = [
+  'Mark1',
+  'mayank18',
+  'mayankmittal',
+  'smargon4',
+  'LukaFuse',
+  'Test',
+];
 
 export const isUserAllowedToUseTestFeature = (username: string) => {
   return (

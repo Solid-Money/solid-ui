@@ -9,6 +9,7 @@ import { useCardSteps } from '@/hooks/useCardSteps';
 import { useCountryCheck } from '@/hooks/useCountryCheck';
 import { track } from '@/lib/analytics';
 import { CardStatus, KycStatus } from '@/lib/types';
+import { hasCard, hasCardStatusWithRainApplication } from '@/lib/utils';
 
 export function useActivateCard() {
   const router = useRouter();
@@ -25,7 +26,9 @@ export function useActivateCard() {
   }>();
 
   // Card status
-  const { data: cardStatusResponse } = useCardStatus();
+  const { data: cardStatusResponse, isLoading: isCardStatusLoading } = useCardStatus({
+    refetchInterval: 3000,
+  });
   const cardStatus = cardStatusResponse?.status;
   const isCardPending = cardStatus === CardStatus.PENDING;
   const isCardBlocked = Boolean(cardStatusResponse?.activationBlocked);
@@ -33,10 +36,13 @@ export function useActivateCard() {
     cardStatusResponse?.activationBlockedReason ||
     'There was an issue activating your card. Please contact support.';
 
-  // Country check logic - always check country (activation is disabled)
-  // Never skip the country check, even if user has a card
-  const { checkingCountry } = useCountryCheck({ skip: false });
-  const isCheckingCountry = checkingCountry;
+  // Country check logic (Rain-first: Bridge-only = no card). Skip when user already has card,
+  // has confirmed country, or has Rain application status (already in KYC flow).
+  const userHasCard = hasCard(cardStatusResponse);
+  const hasRainApplicationStatus = hasCardStatusWithRainApplication(cardStatusResponse);
+  const skipCountryCheck = countryConfirmed === 'true' || userHasCard || hasRainApplicationStatus;
+  const { checkingCountry } = useCountryCheck({ skip: skipCountryCheck });
+  const isCheckingCountry = !skipCountryCheck && checkingCountry;
 
   // Card steps
   const {
@@ -68,8 +74,9 @@ export function useActivateCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Redirect if user already has an active card
+  // Redirect if user already has a Rain card (active/frozen/inactive)
   useEffect(() => {
+    if (!userHasCard) return;
     if (
       cardStatus === CardStatus.ACTIVE ||
       cardStatus === CardStatus.FROZEN ||
@@ -77,7 +84,7 @@ export function useActivateCard() {
     ) {
       router.replace(path.CARD_DETAILS);
     }
-  }, [cardStatus, router]);
+  }, [userHasCard, cardStatus, router]);
 
   // Navigation handler for back button
   const handleGoBack = () => {
@@ -90,6 +97,7 @@ export function useActivateCard() {
 
   return {
     // Loading state
+    isCardStatusLoading,
     isCheckingCountry,
     // Card status flags
     isCardPending,

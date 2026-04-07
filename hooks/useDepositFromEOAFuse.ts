@@ -16,7 +16,6 @@ import {
   ADDRESSES,
   EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
   EXPO_PUBLIC_FUSE_GAS_RESERVE,
-  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
 } from '@/lib/config';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
@@ -36,7 +35,11 @@ type DepositResult = {
   hash: Address | undefined;
 };
 
-const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositResult => {
+const useDepositFromEOAFuse = (
+  tokenAddress: Address,
+  token: string,
+  minimumAmount: string = '100',
+): DepositResult => {
   const { user } = useUser();
   const wallet = useActiveWallet();
   const account = useActiveAccount();
@@ -125,7 +128,7 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
         deposit_method: 'fuse_direct',
         chain_id: srcChainId,
         chain_name: 'fuse',
-        is_sponsor: Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT),
+        is_sponsor: Number(amount) >= Number(minimumAmount),
         ...attributionData,
         attribution_channel: attributionChannel,
       });
@@ -156,7 +159,7 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
         throw error;
       }
 
-      const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
+      const isSponsor = Number(amount) >= Number(minimumAmount);
       const spender = EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address;
 
       // Track deposit validation passed
@@ -243,9 +246,11 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
 
             if (result?.transactionHash) {
               txHash = result.transactionHash as `0x${string}`;
+              // NOTE: Do NOT set hash here. The backend returns the protocol
+              // deposit hash, which is the same hash set on the "Deposit soUSD
+              // to Savings" activity. Setting it would cause dedup collisions.
               updateActivity(trackingId!, {
                 status: TransactionStatus.PROCESSING,
-                hash: result.transactionHash,
               });
             }
 
@@ -307,7 +312,7 @@ const useDepositFromEOAFuse = (tokenAddress: Address, token: string): DepositRes
           }
         } else {
           throw new Error(
-            `Minimum deposit amount is ${EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT} for Fuse deposits`,
+            `Minimum deposit amount is ${minimumAmount} for Fuse deposits`,
           );
         }
 

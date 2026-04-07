@@ -27,11 +27,7 @@ import FiatTokenV2_2 from '@/lib/abis/FiatTokenV2_2';
 import { track, trackIdentity } from '@/lib/analytics';
 import { bridgeDeposit, createDeposit, getLifiQuote } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
-import {
-  ADDRESSES,
-  EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS,
-  EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
-} from '@/lib/config';
+import { ADDRESSES, EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
 import { waitForBridgeTransactionReceipt } from '@/lib/lifi';
 import { getChain } from '@/lib/thirdweb';
 import { Status, StatusInfo, TransactionStatus, TransactionType, User } from '@/lib/types';
@@ -61,6 +57,7 @@ const useDepositFromEOA = (
   tokenAddress: Address,
   token: string,
   tokenVersion: string = '2',
+  minimumAmount: string = '100',
 ): DepositResult => {
   const { user } = useUser();
   const wallet = useActiveWallet();
@@ -365,7 +362,7 @@ const useDepositFromEOA = (
         deposit_method: isEthereum ? 'ethereum_direct' : 'cross_chain_bridge',
         chain_id: srcChainId,
         chain_name: isEthereum ? 'ethereum' : BRIDGE_TOKENS[srcChainId]?.name,
-        is_sponsor: Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT),
+        is_sponsor: Number(amount) >= Number(minimumAmount),
         ...attributionData,
         attribution_channel: attributionChannel,
       });
@@ -396,7 +393,7 @@ const useDepositFromEOA = (
         throw error;
       }
 
-      const isSponsor = Number(amount) >= Number(EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT);
+      const isSponsor = Number(amount) >= Number(minimumAmount);
       const spender = isSponsor
         ? (EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS as Address)
         : (ADDRESSES.ethereum.vault as Address);

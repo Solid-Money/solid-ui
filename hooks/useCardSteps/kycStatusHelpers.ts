@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
+
 import { KycLinkFromBridgeResponse, KycStatus } from '@/lib/types';
 import { isFinalKycStatus } from '@/lib/utils/kyc';
-import { useEffect } from 'react';
 
 /**
  * Compute KYC status from multiple sources (prefer live link status)

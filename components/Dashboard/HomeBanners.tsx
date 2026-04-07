@@ -14,6 +14,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { useCardStatus } from '@/hooks/useCardStatus';
 import { useDimension } from '@/hooks/useDimension';
 import { fetchPromotionsBanner } from '@/lib/api';
+import { hasCard } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useSavingStore } from '@/store/useSavingStore';
 
@@ -148,7 +149,7 @@ const HomeBannersContent = ({ data: propData }: HomeBannersContentProps) => {
       <PointsBanner key="points" />,
       <DepositBanner key="deposit" />,
     ];
-    if (!isLoading && !cardStatus?.status) {
+    if (!isLoading && !hasCard(cardStatus)) {
       fallback.unshift(<CardBanner key="card" />);
     }
     return fallback;

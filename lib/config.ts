@@ -1,7 +1,7 @@
 import { Address } from 'viem';
 import { mainnet } from 'viem/chains';
 
-import { CardProvider } from '@/lib/types';
+import type { CardProvider } from '@/lib/types';
 
 export const EXPO_PUBLIC_BASE_URL = process.env.EXPO_PUBLIC_BASE_URL ?? '';
 export const EXPO_PUBLIC_CARD_ISSUER = process.env.EXPO_PUBLIC_CARD_ISSUER as
@@ -24,7 +24,11 @@ export const EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS =
 export const EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT =
-  process.env.EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ?? '100';
+  process.env.EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT ?? '10';
+export const EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT =
+  process.env.EXPO_PUBLIC_MINIMUM_FUSE_DEPOSIT_AMOUNT ?? '5000';
+export const EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT =
+  process.env.EXPO_PUBLIC_MINIMUM_ETH_DEPOSIT_AMOUNT ?? '0.01';
 export const EXPO_PUBLIC_FUSE_GAS_RESERVE = process.env.EXPO_PUBLIC_FUSE_GAS_RESERVE ?? '0.01';
 export const EXPO_PUBLIC_LIFI_API_URL = process.env.EXPO_PUBLIC_LIFI_API_URL ?? '';
 export const EXPO_PUBLIC_INTERCOM_APP_ID = process.env.EXPO_PUBLIC_INTERCOM_APP_ID ?? '';
@@ -50,6 +54,23 @@ export const EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL =
   process.env.EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL ?? '';
 export const EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL =
   process.env.EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL ?? '';
+export const EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM = (
+  process.env.EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM ?? ''
+).replace(/\\n/g, '\n');
+export const EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID = Number(
+  process.env.EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID ?? '84532',
+);
+export const EXPO_PUBLIC_CARD_FUNDING_CHAIN_KEY =
+  process.env.EXPO_PUBLIC_CARD_FUNDING_CHAIN_KEY ?? 'arbitrum';
+export const EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS = (
+  process.env.EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_ADDRESS ?? ''
+).trim();
+export const EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL =
+  process.env.EXPO_PUBLIC_RAIN_CARD_DEPOSIT_TOKEN_SYMBOL ?? 'rUSD';
+export const EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID =
+  process.env.EXPO_PUBLIC_PERSONA_RAIN_TEMPLATE_ID ?? '';
+export const EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID =
+  process.env.EXPO_PUBLIC_PERSONA_SANDBOX_ENVIRONMENT_ID ?? '';
 export const EXPO_PUBLIC_COINGECKO_API_KEY = process.env.EXPO_PUBLIC_COINGECKO_API_KEY ?? '';
 export const isProduction = EXPO_PUBLIC_ENVIRONMENT === 'production';
 
@@ -66,6 +87,9 @@ type Addresses = {
     bridgePaymasterAddress: Address;
     boringQueue: Address;
     accountant: Address;
+    soEthVault: Address;
+    soEthTeller: Address;
+    soEthAccountant: Address;
   };
   fuse: {
     vault: Address;
@@ -81,6 +105,9 @@ type Addresses = {
     stargateOftUSDC: Address;
     aaveV3Pool: Address;
     soFuseBoringQueue: Address;
+    soEthVault: Address;
+    soEthTeller: Address;
+    soEthAccountant: Address;
   };
   base: {
     vault: Address;
@@ -109,6 +136,15 @@ export const ADDRESSES: Addresses = {
     accountant: isProduction
       ? '0x10f3996904F1fA09Db48e5d46AAdD6D9fd516eFe'
       : '0xC594ea2B28F5766eB66D101E0F59A958Feb9C0c5',
+    soEthVault: isProduction
+      ? '0xf9039d4f49686F34936b6937D13bBbe413f910c4'
+      : '0x1e0d158ce986abb26b35da11f876268c60d7c9df',
+    soEthTeller: isProduction
+      ? '0x4149c11b479B26080428Dc5e688F4D27253C4783'
+      : '0x70884eC5e887A5E4fBc868C3BB4A845072b40118',
+    soEthAccountant: isProduction
+      ? '0x803ed5a218a7704fC8697d36079F70df974Abb11'
+      : '0xA36b0Dd2C01459A602ff85F914B7727B34bC25e6',
   },
   fuse: {
     vault: isProduction
@@ -136,6 +172,15 @@ export const ADDRESSES: Addresses = {
     soFuseBoringQueue: isProduction
       ? '0x8a6612ff8bA43C4c8A1e7DD5c0eE2d7CBEDF0E66'
       : '0x5FD429278E39342920CD6629574f9E0c4766c675',
+    soEthVault: isProduction
+      ? '0xEf1c1fFbEabDF358E61D3F5F14777e9c1bC8D1c7'
+      : '0xF88Ce04C3ef43F3501fA99eE06a5473f5ef33BED',
+    soEthTeller: isProduction
+      ? '0xEaacf4534cCC05CAd929830fAF611d872b291d41'
+      : '0x39D0F3EdCD14A9995393Bfee990F6719469874B6',
+    soEthAccountant: isProduction
+      ? '0x4BD5873720072b4AC7956898dbCBc543b2fD3749'
+      : '0x7EFD6391537518dC2A8260ff535439704AD6a111',
   },
   base: {
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
