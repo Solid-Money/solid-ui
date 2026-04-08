@@ -340,7 +340,7 @@ export const SecurityTotpModal: React.FC<SecurityTotpModalProps> = ({
       title="Two-Factor Authentication"
       contentKey="security-totp-modal"
     >
-      <View className="p-6">
+      <View className="p-6 pb-10">
         <SecurityTotpModalContent onSuccess={onSuccess} />
       </View>
     </ResponsiveModal>
