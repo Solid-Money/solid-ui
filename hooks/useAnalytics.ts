@@ -51,8 +51,8 @@ const ApyToDays = {
   thirtyDay: 30,
 };
 
-const getAnalyticsVaultKey = (vault?: VaultType): VaultType.USDC | VaultType.FUSE =>
-  vault === VaultType.FUSE ? VaultType.FUSE : VaultType.USDC;
+const getAnalyticsVaultKey = (vault?: VaultType): VaultType.USDC | VaultType.FUSE | VaultType.ETH =>
+  vault === VaultType.FUSE ? VaultType.FUSE : vault === VaultType.ETH ? VaultType.ETH : VaultType.USDC;
 
 const safeFormatUnits = (
   value: string | number | bigint | null | undefined,
