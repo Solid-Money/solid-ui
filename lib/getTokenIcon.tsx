@@ -44,6 +44,11 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
         type: 'image',
         source: getAsset('images/sousd-4x.png'),
       };
+    case 'SOETH':
+      return {
+        type: 'image',
+        source: getAsset('images/eth.png'),
+      };
     default:
       return {
         type: 'component',

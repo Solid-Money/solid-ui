@@ -15,18 +15,19 @@ import Max from '@/components/Max';
 import NeedHelp from '@/components/NeedHelp';
 import RenderTokenIcon from '@/components/RenderTokenIcon';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
-import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-
+import { WalletTokenButton } from '@/components/WalletTokenSelector';
 import { UNSTAKE_MODAL } from '@/constants/modals';
 import { isSolidTokenSymbol } from '@/constants/withdraw';
 import useBridgeToMainnet from '@/hooks/useBridgeToMainnet';
+import useBridgeToMainnetSoEth from '@/hooks/useBridgeToMainnetSoEth';
 import useUser from '@/hooks/useUser';
-import { useFuseVaultBalance, useSoFuseVaultBalance } from '@/hooks/useVault';
+import { useFuseVaultBalance, useSoEthVaultBalance, useSoFuseVaultBalance } from '@/hooks/useVault';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import useWithdraw from '@/hooks/useWithdraw';
+import useWithdrawSoEth from '@/hooks/useWithdrawSoEth';
 import useWithdrawSoFuse from '@/hooks/useWithdrawSoFuse';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { Status, TokenType } from '@/lib/types';
@@ -76,9 +77,13 @@ const RegularWithdrawForm = () => {
   const { data: soFuseFormattedBalance, isLoading: isLoadingSoFuseBalance } = useSoFuseVaultBalance(
     user?.safeAddress as Address,
   );
+  const { data: soEthFormattedBalance, isLoading: isLoadingSoEthBalance } = useSoEthVaultBalance(
+    user?.safeAddress as Address,
+  );
 
   const isSoFuse = selectedToken?.contractTickerSymbol?.toLowerCase() === 'sofuse';
-  const { data: exchangeRate } = useVaultExchangeRate(isSoFuse ? 'FUSE' : 'USDC');
+  const isSoEth = selectedToken?.contractTickerSymbol?.toLowerCase() === 'soeth';
+  const { data: exchangeRate } = useVaultExchangeRate(isSoFuse ? 'FUSE' : isSoEth ? 'ETH' : 'USDC');
   const tokenType = selectedToken?.type || TokenType.ERC20;
   const isNative = tokenType === TokenType.NATIVE;
 
@@ -109,6 +114,9 @@ const RegularWithdrawForm = () => {
     if (isSoFuse) {
       return soFuseFormattedBalance ? Number(soFuseFormattedBalance) : 0;
     }
+    if (isSoEth) {
+      return soEthFormattedBalance ? Number(soEthFormattedBalance) : 0;
+    }
     if (!selectedToken) {
       return formattedBalance ? Number(formattedBalance) : 0;
     }
@@ -118,7 +126,15 @@ const RegularWithdrawForm = () => {
     return Number(
       formatUnits(BigInt(selectedToken.balance || '0'), selectedToken.contractDecimals),
     );
-  }, [isSoFuse, selectedToken, balance, formattedBalance, soFuseFormattedBalance]);
+  }, [
+    isSoFuse,
+    isSoEth,
+    selectedToken,
+    balance,
+    formattedBalance,
+    soFuseFormattedBalance,
+    soEthFormattedBalance,
+  ]);
 
   const bridgeSchema = useMemo(() => {
     return z.object({
@@ -153,16 +169,22 @@ const RegularWithdrawForm = () => {
 
   const watchedAmount = watch('amount');
   const { bridge, bridgeStatus } = useBridgeToMainnet();
+  const { bridgeSoEth, bridgeSoEthStatus } = useBridgeToMainnetSoEth();
   const { withdraw, withdrawStatus } = useWithdraw();
+  const { withdrawSoEth, withdrawSoEthStatus } = useWithdrawSoEth();
   const { withdrawSoFuse, withdrawSoFuseStatus } = useWithdrawSoFuse();
   const isBridgeLoading = bridgeStatus === Status.PENDING;
+  const isBridgeSoEthLoading = bridgeSoEthStatus === Status.PENDING;
   const isWithdrawLoading = withdrawStatus === Status.PENDING;
+  const isWithdrawSoEthLoading = withdrawSoEthStatus === Status.PENDING;
   const isWithdrawSoFuseLoading = withdrawSoFuseStatus === Status.PENDING;
   const [activeStep, setActiveStep] = useState<1 | 2>(1);
 
-  // Determine if soUSD is on Fuse (chainId 122) or Ethereum (chainId 1)
-  const isSoUSDOnFuse = !isSoFuse && selectedToken?.chainId === 122;
-  const isSoUSDOnEthereum = !isSoFuse && selectedToken?.chainId === 1;
+  // Determine token type and chain
+  const isSoUSDOnFuse = !isSoFuse && !isSoEth && selectedToken?.chainId === 122;
+  const isSoUSDOnEthereum = !isSoFuse && !isSoEth && selectedToken?.chainId === 1;
+  const isSoETHOnFuse = isSoEth && selectedToken?.chainId === 122;
+  const isSoETHOnEthereum = isSoEth && selectedToken?.chainId === 1;
 
   const balanceUSD = useMemo(() => {
     if (!selectedToken) return 0;
@@ -253,14 +275,61 @@ const RegularWithdrawForm = () => {
     }
   };
 
+  const onBridgeSoEthSubmit = async (data: WithdrawFormData) => {
+    try {
+      await bridgeSoEth(data.amount.toString());
+      setTransaction({
+        amount: Number(data.amount),
+        symbol: 'soETH',
+      });
+      setActiveStep(2);
+    } catch (_error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error while bridging soETH',
+      });
+    }
+  };
+
+  const onWithdrawSoEthSubmit = async (data: WithdrawFormData) => {
+    try {
+      const transaction = await withdrawSoEth(data.amount.toString());
+      setTransaction({
+        amount: Number(watchedAmount),
+        symbol: 'soETH',
+      });
+      reset();
+      setModal(UNSTAKE_MODAL.OPEN_TRANSACTION_STATUS);
+      Toast.show({
+        type: 'success',
+        text1: 'Withdraw submitted',
+        text2: `${data.amount} soETH → WETH on Ethereum`,
+        props: {
+          link: `https://etherscan.io/tx/${transaction.transactionHash}`,
+          linkText: eclipseAddress(transaction.transactionHash),
+          image: getTokenIcon({ tokenSymbol: 'WETH' }),
+        },
+      });
+    } catch (_error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error while withdrawing soETH',
+      });
+    }
+  };
+
   const isWithdrawFormDisabled = () => {
-    const balanceLoading = isSoFuse ? isLoadingSoFuseBalance : isLoadingFuseBalance;
+    const balanceLoading = isSoFuse
+      ? isLoadingSoFuseBalance
+      : isSoEth
+        ? isLoadingSoEthBalance
+        : isLoadingFuseBalance;
     return (
       balanceLoading ||
       !isBridgeValid ||
       !watchedAmount ||
-      isBridgeLoading ||
-      (isSoFuse ? isWithdrawSoFuseLoading : isWithdrawLoading) ||
+      (isSoEth ? isBridgeSoEthLoading : isBridgeLoading) ||
+      (isSoFuse ? isWithdrawSoFuseLoading : isSoEth ? isWithdrawSoEthLoading : isWithdrawLoading) ||
       !selectedToken
     );
   };
@@ -275,7 +344,12 @@ const RegularWithdrawForm = () => {
               <View className="flex-row items-center gap-2">
                 <Wallet size={16} color="#ffffff80" />
                 <Text className="text-base opacity-50">
-                  {isLoading || (isSoFuse ? isLoadingSoFuseBalance : isLoadingFuseBalance)
+                  {isLoading ||
+                  (isSoFuse
+                    ? isLoadingSoFuseBalance
+                    : isSoEth
+                      ? isLoadingSoEthBalance
+                      : isLoadingFuseBalance)
                     ? '...'
                     : `${formatNumber(balanceAmount, 2)} ${selectedToken.contractTickerSymbol}`}
                 </Text>
@@ -310,10 +384,7 @@ const RegularWithdrawForm = () => {
               <Text className="text-sm opacity-50">${formatNumber(balanceUSD, 2)}</Text>
             </View>
 
-            <WalletTokenButton
-              selectedToken={selectedToken}
-              onPress={handleTokenSelectorPress}
-            />
+            <WalletTokenButton selectedToken={selectedToken} onPress={handleTokenSelectorPress} />
           </View>
           {errors.amount && (
             <Text className="text-sm text-red-400">{errors.amount.message as string}</Text>
@@ -326,13 +397,15 @@ const RegularWithdrawForm = () => {
             <View className="flex-row items-center gap-1.5">
               <RenderTokenIcon
                 tokenIcon={getTokenIcon({
-                  tokenSymbol: isSoFuse ? 'FUSE' : 'USDC',
+                  tokenSymbol: isSoFuse ? 'FUSE' : isSoEth ? 'WETH' : 'USDC',
                   size: 28,
                 })}
                 size={28}
               />
               <View className="flex-col">
-                <Text className="text-base">{isSoFuse ? 'WFUSE on Fuse' : 'USDC on Ethereum'}</Text>
+                <Text className="text-base">
+                  {isSoFuse ? 'WFUSE on Fuse' : isSoEth ? 'WETH on Ethereum' : 'USDC on Ethereum'}
+                </Text>
               </View>
             </View>
           </View>
@@ -358,8 +431,8 @@ const RegularWithdrawForm = () => {
             <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               <Text className="text-base font-semibold">
                 {watchedAmount
-                  ? `${formatNumber(Number(watchedAmount) * (exchangeRate ?? 1) * 0.9999)} ${isSoFuse ? 'FUSE' : 'USDC'}`
-                  : `0 ${isSoFuse ? 'FUSE' : 'USDC'}`}
+                  ? `${formatNumber(Number(watchedAmount) * (exchangeRate ?? 1) * 0.9999)} ${isSoFuse ? 'FUSE' : isSoEth ? 'WETH' : 'USDC'}`
+                  : `0 ${isSoFuse ? 'FUSE' : isSoEth ? 'WETH' : 'USDC'}`}
               </Text>
             </View>
           </View>
@@ -517,7 +590,7 @@ const RegularWithdrawForm = () => {
               </View>
             </>
           ) : isSoUSDOnEthereum ? (
-            /* Step 1: Swap to USDC (Ethereum) */
+            /* Swap to USDC (Ethereum) */
             <View className="px-5 py-6 md:p-5">
               <View className="mb-4 flex-row items-center gap-3">
                 <View className="flex-1 flex-row items-center justify-between">
@@ -541,6 +614,163 @@ const RegularWithdrawForm = () => {
                 disabled={isWithdrawFormDisabled() || isWithdrawLoading}
               >
                 {isWithdrawLoading ? (
+                  <ActivityIndicator color="black" />
+                ) : (
+                  <View className="flex-row items-center gap-2">
+                    <Image
+                      source={require('@/assets/images/key.png')}
+                      className="h-6 w-6"
+                      contentFit="contain"
+                    />
+                    <Text className="text-base font-bold text-primary-foreground">Withdraw</Text>
+                  </View>
+                )}
+              </Button>
+            </View>
+          ) : isSoETHOnFuse ? (
+            <>
+              {/* Step 1: Bridge soETH to Ethereum */}
+              <View className="px-5 py-6 md:p-5">
+                <View className="mb-4 flex-row items-center gap-2">
+                  <View className="h-[22px] w-[22px] items-center justify-center rounded-full bg-muted-foreground/20">
+                    <Text className="text-base font-medium text-muted-foreground">1</Text>
+                  </View>
+                  <View className="flex-1 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-2">
+                      <RenderTokenIcon
+                        tokenIcon={getTokenIcon({
+                          tokenSymbol: 'soETH',
+                          size: 22,
+                        })}
+                        size={22}
+                      />
+                      <Text className="text-base font-bold text-white">Bridge to Ethereum</Text>
+                    </View>
+                    <Text className="text-base font-medium text-muted-foreground">~2 min</Text>
+                  </View>
+                </View>
+                <Button
+                  variant="brand"
+                  className={cn(
+                    'h-[48px] rounded-[12px]',
+                    activeStep !== 1 && 'bg-white/10',
+                    activeStep !== 1
+                      ? 'web:disabled:hover:bg-white/10'
+                      : 'web:disabled:hover:bg-brand',
+                  )}
+                  onPress={handleSubmit(onBridgeSoEthSubmit)}
+                  disabled={activeStep !== 1 || isWithdrawFormDisabled() || isBridgeSoEthLoading}
+                >
+                  {isBridgeSoEthLoading ? (
+                    <ActivityIndicator color="black" />
+                  ) : (
+                    <View className="flex-row items-center gap-2">
+                      <Image
+                        source={
+                          activeStep !== 1
+                            ? require('@/assets/images/key-muted.png')
+                            : require('@/assets/images/key.png')
+                        }
+                        className="h-6 w-6"
+                        contentFit="contain"
+                      />
+                      <Text
+                        className={cn(
+                          'text-base font-bold',
+                          activeStep !== 1 ? 'text-white/50' : 'text-primary-foreground',
+                        )}
+                      >
+                        Bridge
+                      </Text>
+                    </View>
+                  )}
+                </Button>
+              </View>
+              {/* Divider */}
+              <View className="border-b border-border/40" />
+              {/* Step 2: Withdraw to WETH */}
+              <View className="px-5 py-6 md:p-5">
+                <View className="mb-4 flex-row items-center gap-2">
+                  <View className="h-[22px] w-[22px] items-center justify-center rounded-full bg-muted-foreground/20">
+                    <Text className="text-base font-medium text-muted-foreground">2</Text>
+                  </View>
+                  <View className="flex-1 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-2">
+                      <RenderTokenIcon
+                        tokenIcon={getTokenIcon({
+                          tokenSymbol: 'WETH',
+                          size: 22,
+                        })}
+                        size={22}
+                      />
+                      <Text className="text-base font-bold text-white">Withdraw to WETH</Text>
+                    </View>
+                    <Text className="text-base font-medium text-muted-foreground">Up to 24H</Text>
+                  </View>
+                </View>
+                <Button
+                  variant="brand"
+                  className={cn(
+                    'h-[48px] rounded-[12px]',
+                    activeStep !== 2 && 'bg-white/10',
+                    activeStep !== 2
+                      ? 'web:disabled:hover:bg-white/10'
+                      : 'web:disabled:hover:bg-brand',
+                  )}
+                  onPress={() => onWithdrawSoEthSubmit({ amount: watchedAmount })}
+                  disabled={activeStep !== 2 || !watchedAmount || isWithdrawSoEthLoading}
+                >
+                  {isWithdrawSoEthLoading ? (
+                    <ActivityIndicator color="black" />
+                  ) : (
+                    <View className="flex-row items-center gap-2">
+                      <Image
+                        source={
+                          activeStep !== 2
+                            ? require('@/assets/images/key-muted.png')
+                            : require('@/assets/images/key.png')
+                        }
+                        className="h-6 w-6"
+                        contentFit="contain"
+                      />
+                      <Text
+                        className={cn(
+                          'text-base font-bold',
+                          activeStep !== 2 ? 'text-white/50' : 'text-primary-foreground',
+                        )}
+                      >
+                        Withdraw
+                      </Text>
+                    </View>
+                  )}
+                </Button>
+              </View>
+            </>
+          ) : isSoETHOnEthereum ? (
+            /* Withdraw soETH to WETH (Ethereum) */
+            <View className="px-5 py-6 md:p-5">
+              <View className="mb-4 flex-row items-center gap-3">
+                <View className="flex-1 flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <RenderTokenIcon
+                      tokenIcon={getTokenIcon({
+                        tokenSymbol: 'WETH',
+                        size: 22,
+                      })}
+                      size={22}
+                    />
+                    <Text className="text-base font-bold text-white">Withdraw to WETH</Text>
+                  </View>
+                  <Text className="text-base font-medium text-muted-foreground">Up to 24H</Text>
+                </View>
+              </View>
+              <Button
+                variant="brand"
+                className="h-[48px] rounded-[12px] web:disabled:hover:bg-brand"
+                onPress={handleSubmit(onWithdrawSoEthSubmit)}
+                disabled={isWithdrawFormDisabled() || isWithdrawSoEthLoading}
+              >
+                {isWithdrawSoEthLoading ? (
                   <ActivityIndicator color="black" />
                 ) : (
                   <View className="flex-row items-center gap-2">

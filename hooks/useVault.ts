@@ -63,6 +63,32 @@ export const useSoFuseVaultBalance = (safeAddress: Address) => {
   });
 };
 
+export const useSoEthVaultBalance = (safeAddress: Address) => {
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    queryKey: [VAULT, 'balanceSoEth', safeAddress],
+    queryFn: () =>
+      fetchVaultBalance(queryClient, safeAddress, fuse.id, ADDRESSES.fuse.soEthVault, 18),
+    enabled: !!safeAddress,
+    staleTime: VAULT_STALE_TIME,
+    gcTime: VAULT_GC_TIME,
+  });
+};
+
+export const useEthereumSoEthVaultBalance = (safeAddress: Address) => {
+  const queryClient = useQueryClient();
+
+  return useQuery({
+    queryKey: [VAULT, 'balanceSoEthEthereum', safeAddress],
+    queryFn: () =>
+      fetchVaultBalance(queryClient, safeAddress, mainnet.id, ADDRESSES.ethereum.soEthVault, 18),
+    enabled: !!safeAddress,
+    staleTime: VAULT_STALE_TIME,
+    gcTime: VAULT_GC_TIME,
+  });
+};
+
 export const useEthereumVaultBalance = (safeAddress: Address) => {
   const queryClient = useQueryClient();
 

@@ -90,6 +90,7 @@ type Addresses = {
     soEthVault: Address;
     soEthTeller: Address;
     soEthAccountant: Address;
+    soEthBoringQueue: Address;
   };
   fuse: {
     vault: Address;
@@ -145,6 +146,9 @@ export const ADDRESSES: Addresses = {
     soEthAccountant: isProduction
       ? '0x803ed5a218a7704fC8697d36079F70df974Abb11'
       : '0xA36b0Dd2C01459A602ff85F914B7727B34bC25e6',
+    soEthBoringQueue: isProduction
+      ? '0xcfd7a4236ed557e9c2c03ce3256f091a0b60de28' // TODO: replace with production soETH BoringQueue address
+      : '0x0000000000000000000000000000000000000000', // TODO: replace with staging soETH BoringQueue address
   },
   fuse: {
     vault: isProduction
