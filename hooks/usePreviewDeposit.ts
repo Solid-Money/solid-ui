@@ -91,6 +91,20 @@ export const fetchExchangeRate = async (queryClient: QueryClient) => {
   return exchangeRate;
 };
 
+export const fetchExchangeRateSoEth = async (queryClient: QueryClient) => {
+  const exchangeRate = await queryClient.fetchQuery({
+    ...readContractQueryOptions(config, {
+      abi: Accountant,
+      address: ADDRESSES.ethereum.soEthAccountant,
+      functionName: 'getRate',
+      chainId: 1,
+    }),
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
+  });
+  return exchangeRate;
+};
+
 export const fetchExchangeRatesoFuse = async (queryClient: QueryClient) => {
   const exchangeRate = await queryClient.fetchQuery({
     ...readContractQueryOptions(config, {
