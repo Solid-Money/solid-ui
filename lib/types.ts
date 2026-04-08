@@ -1438,11 +1438,13 @@ export interface APYs {
 export interface TotalAPYResponse {
   usdc: number;
   fuse: number;
+  eth: number;
 }
 
 export interface APYsByAsset {
   usdc: APYs;
   fuse: APYs;
+  eth: APYs;
 }
 
 export interface HistoricalAPYPoint {

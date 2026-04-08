@@ -83,7 +83,11 @@ export default function Savings() {
   const { data: lastTimestamp } = useLatestTokenTransfer(
     user?.safeAddress ?? '',
     // Use correct token address based on selected vault
-    currentVault.name === 'USDC' ? ADDRESSES.fuse.vault : ADDRESSES.fuse.fuseVault,
+    currentVault.name === 'USDC'
+      ? ADDRESSES.fuse.vault
+      : currentVault.name === 'ETH'
+        ? ADDRESSES.fuse.soEthVault
+        : ADDRESSES.fuse.fuseVault,
   );
 
   const { data: userDepositTransactions, isLoading: isTransactionsLoading } = useUserTransactions(
