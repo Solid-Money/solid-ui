@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
+import QRCode from 'react-native-qrcode-svg';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { setupTotp, verifyTotp } from '@/lib/api';
 import { cn } from '@/lib/utils';
+
+const solidLogo = require('@/assets/images/solid-white.png');
 
 const totpSchema = z.object({
   otpCode: z.string().regex(/^\d+$/, { error: 'Verification code must contain only numbers' }),
@@ -152,7 +154,7 @@ const TotpInput: React.FC<{
 const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSetup, setIsLoadingSetup] = useState(true);
-  const [qrCode, setQrCode] = useState<string>('');
+  const [uri, setUri] = useState<string>('');
   const [secret, setSecret] = useState<string>('');
   const [apiError, setApiError] = useState<string>('');
 
@@ -185,7 +187,7 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
       setApiError('');
       try {
         const data = await setupTotp();
-        setQrCode(data.qrCode);
+        setUri(data.uri);
         setSecret(data.secret);
       } catch (err: any) {
         console.error('Failed to setup TOTP:', err);
@@ -245,27 +247,26 @@ const SecurityTotpModalContent: React.FC<{ onSuccess?: () => void }> = ({ onSucc
       {/* QR Code Section */}
       <View className="items-center gap-3">
         {isLoadingSetup ? (
-          <View className="min-h-[300px] items-center justify-center rounded-[15px] bg-[#1c1c1c] p-8">
+          <View className="h-[200px] w-[200px] items-center justify-center overflow-hidden rounded-xl bg-[#181A1A]">
             <ActivityIndicator color="#94F27F" size="large" />
           </View>
         ) : (
-          <View className="min-h-[250px] min-w-[250px] items-center justify-center rounded-[15px] bg-[#1c1c1c] p-8">
-            {qrCode && (
-              <Image
-                source={{
-                  uri: qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`,
-                }}
-                alt="QR code"
-                style={{ width: 256, height: 256, minWidth: 256, minHeight: 256 }}
-                contentFit="contain"
-                onError={error => {
-                  console.error('QR code image error:', error);
-                  setApiError('Failed to load QR code image');
-                }}
-              />
-            )}
+          <View className="items-center gap-4">
+            <View className="overflow-hidden rounded-xl">
+              {uri && (
+                <QRCode
+                  value={uri}
+                  size={200}
+                  color="white"
+                  backgroundColor="#181A1A"
+                  logo={solidLogo}
+                  logoSize={50}
+                  logoBackgroundColor="transparent"
+                />
+              )}
+            </View>
             {secret && (
-              <View className="mt-4 items-center gap-2">
+              <View className="items-center gap-2">
                 <Text className="text-center text-sm font-medium text-[rgba(255,255,255,0.7)]">
                   Or copy the code below to enter manually:
                 </Text>

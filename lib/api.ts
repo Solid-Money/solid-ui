@@ -1717,6 +1717,7 @@ export const emailExists = async (email: string): Promise<boolean> => {
 export const setupTotp = async (): Promise<{
   qrCode: string;
   secret: string;
+  uri: string;
 }> => {
   const jwt = getJWTToken();
 
