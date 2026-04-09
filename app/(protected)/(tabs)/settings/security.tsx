@@ -271,7 +271,7 @@ export default function Security() {
                   ? 'Loading...'
                   : isTotpVerified
                     ? 'Authenticator app registered'
-                    : 'No authenticator app registered'
+                    : 'Not registered'
               }
               description={isTotpVerified ? 'Active' : undefined}
               descriptionStyle="text-[#94F27F]"
