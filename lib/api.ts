@@ -922,6 +922,16 @@ export const checkCardWaitlistToNotifyStatus = async (
   return response.json();
 };
 
+export const getClientIp = async (): Promise<string | null> => {
+  try {
+    const response = await axios.get('https://api.ipify.org?format=json');
+    return response.data.ip;
+  } catch (error) {
+    console.error('Error fetching IP from ipify:', error);
+    return null;
+  }
+};
+
 export const getCountryFromIp = async (): Promise<CountryFromIp | null> => {
   try {
     const response = await axios.get('https://ipapi.co/json/');
