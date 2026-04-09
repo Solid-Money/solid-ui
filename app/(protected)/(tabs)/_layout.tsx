@@ -21,6 +21,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         animation: Platform.OS !== 'web' ? 'shift' : 'none',
+        freezeOnBlur: Platform.OS !== 'web',
         sceneStyle: { backgroundColor: '#121212' },
         tabBarActiveTintColor: 'white',
         tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.5)',
