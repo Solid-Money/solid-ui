@@ -534,7 +534,7 @@ function CountryUnavailableView({
         {`The new Solid Card is coming to you`}
       </Text>
       <Text className="font-weight-400 mb-6 text-center leading-6 text-[#ACACAC]">
-        {`Powered by our partnership with Rain, the Solid Card is expanding globally.\nWe're rolling out access in your region. Join the waitlist to get early access.\n`}
+        {`Powered by our partnership with Rain, the Solid Card is expanding globally.\nWe're rolling out access in your region. Click on the button below to get notified.\n`}
         <Text
           className="font-bold leading-6 text-white"
           onPress={() =>
