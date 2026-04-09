@@ -339,6 +339,8 @@ export const SecurityTotpModal: React.FC<SecurityTotpModalProps> = ({
       trigger={null}
       title="Two-Factor Authentication"
       contentKey="security-totp-modal"
+      showBackButton
+      onBackPress={() => onOpenChange(false)}
     >
       <View className="p-6 pb-10">
         <SecurityTotpModalContent onSuccess={onSuccess} />
