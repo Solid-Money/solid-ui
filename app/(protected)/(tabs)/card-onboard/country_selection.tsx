@@ -28,11 +28,7 @@ export default function CountrySelection() {
   const { user } = useUser();
 
   const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push(path.CARD);
-    }
+    router.replace(path.CARD);
   };
 
   const [loading, setLoading] = useState(true);
