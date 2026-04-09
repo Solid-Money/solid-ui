@@ -20,11 +20,7 @@ export default function ActivateCountrySelection() {
   const router = useRouter();
 
   const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.push(path.CARD);
-    }
+    router.replace(path.CARD);
   };
 
   const [loading, setLoading] = useState(true);
