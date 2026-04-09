@@ -88,7 +88,8 @@ export default function Home() {
     hasTriggeredInitialRefresh.current = false;
   }, [user?.safeAddress]);
 
-  const { data: userDepositTransactions } = useUserTransactions(user?.safeAddress);
+  const { data: userDepositTransactions, isLoading: isDepositsLoading } =
+    useUserTransactions(user?.safeAddress);
 
   const { data: totalSavingsUSD, isLoading: isTotalSavingsLoading } = useTotalSavingsUSD();
 
@@ -115,7 +116,9 @@ export default function Home() {
     });
   }, [user, intercom]);
 
-  if (!balance && !isDeposited && !hasTokens) {
+  const isInitialLoading = isBalanceLoading || isLoadingTokens || isDepositsLoading;
+
+  if (!isInitialLoading && !balance && !isDeposited && !hasTokens) {
     return <HomeEmptyState />;
   }
 
