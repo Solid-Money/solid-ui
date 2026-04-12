@@ -91,7 +91,7 @@ export const useDepositStore = create<DepositState>()(
       previousModal: DEPOSIT_MODAL.CLOSE,
       transaction: {},
       srcChainId: mainnet.id,
-      outputToken: 'soUSD',
+      outputToken: 'USDC',
       bankTransfer: {},
       kyc: {},
       directDepositSession: {},
@@ -124,7 +124,7 @@ export const useDepositStore = create<DepositState>()(
           previousModal: DEPOSIT_MODAL.CLOSE,
           transaction: {},
           srcChainId: 0, // unset so next open shows options
-          outputToken: 'soUSD',
+          outputToken: 'USDC',
           bankTransfer: {},
           kyc: {},
           directDepositSession: {},

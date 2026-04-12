@@ -47,3 +47,33 @@ export const getDefaultDepositSelection = (vault?: Vault) => {
 
   return { chainId, outputToken };
 };
+
+/** Map persisted or legacy `outputToken` values to a real BRIDGE_TOKENS key for `chainId` and `vault`. */
+export function resolveDepositBridgeTokenKey(
+  chainId: number,
+  outputToken: string | undefined,
+  vault?: Vault,
+): string {
+  const allowed = getAllowedTokensForChain(chainId, vault);
+  const raw = outputToken?.trim() ?? '';
+  if (!allowed.length) {
+    return getDefaultDepositSelection(vault).outputToken;
+  }
+  if (!raw) {
+    return allowed[0];
+  }
+  if (allowed.includes(raw)) return raw;
+  const caseMatch = allowed.find(t => t.toUpperCase() === raw.toUpperCase());
+  if (caseMatch) return caseMatch;
+  // Legacy: vault receipt token (e.g. soUSD) was wrongly stored as the bridge "output" key
+  if (vault?.vaultToken && raw.toUpperCase() === vault.vaultToken.toUpperCase()) {
+    return allowed[0];
+  }
+  const bridgeKeys = Object.keys(BRIDGE_TOKENS[chainId]?.tokens ?? {});
+  const onBridge =
+    bridgeKeys.includes(raw) || bridgeKeys.some(k => k.toUpperCase() === raw.toUpperCase());
+  if (onBridge && !allowed.includes(raw)) {
+    return allowed[0];
+  }
+  return getDefaultDepositSelection(vault).outputToken;
+}

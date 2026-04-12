@@ -40,6 +40,7 @@ import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_FUSE_GAS_RESERVE } from '@/lib/config';
 import { Status, TokenBalance, TokenType } from '@/lib/types';
+import { resolveDepositBridgeTokenKey } from '@/lib/vaults';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -76,18 +77,29 @@ function DepositToVaultForm() {
   const vaultTokenIcon =
     vault.name === 'USDC' ? getAsset('images/sousd-4x.png') : getAsset(vault.icon);
 
+  const bridgeOutputTokenKey = useMemo(
+    () => resolveDepositBridgeTokenKey(srcChainId, outputToken, vault),
+    [srcChainId, outputToken, vault],
+  );
+
+  useEffect(() => {
+    if (bridgeOutputTokenKey !== outputToken) {
+      setOutputToken(bridgeOutputTokenKey);
+    }
+  }, [bridgeOutputTokenKey, outputToken, setOutputToken]);
+
   const selectedTokenInfo = useMemo(() => {
     const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
-    const tokenData = tokens ? tokens[outputToken as keyof typeof tokens] : undefined;
+    const tokenData = tokens ? tokens[bridgeOutputTokenKey as keyof typeof tokens] : undefined;
 
     return {
       address: tokenData?.address,
-      name: tokenData?.name || outputToken,
+      name: tokenData?.name || bridgeOutputTokenKey,
       image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
       version: tokenData?.version,
     };
-  }, [srcChainId, outputToken]);
+  }, [srcChainId, bridgeOutputTokenKey]);
 
   const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA(
     (selectedTokenInfo?.address as Address) || '',
@@ -158,7 +170,7 @@ function DepositToVaultForm() {
 
   const isFuseVault = vault.name === 'FUSE';
   const isEthVault = vault.name === 'ETH';
-  const isNativeFuse = isFuseVault && outputToken === 'FUSE';
+  const isNativeFuse = isFuseVault && bridgeOutputTokenKey === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
   const useSolidForEth = isEthVault && depositFromSolid;
   const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
@@ -362,7 +374,14 @@ function DepositToVaultForm() {
       : Number(watchedAmount || 0) / (vaultExchangeRate ?? 1);
   const isAmountOutLoading =
     vault.name === 'USDC' ? isPreviewDepositLoading : vaultExchangeRate === undefined;
-  const displayRate = vault.name === 'USDC' ? vaultExchangeRate : vaultExchangeRate;
+  const displayRate = vaultExchangeRate;
+  const principalPerVaultToken =
+    vault.name === 'USDC'
+      ? displayRate != null && displayRate > 0
+        ? 1 / displayRate
+        : 0
+      : displayRate ?? 0;
+  const principalSymbolForPrice = selectedTokenInfo.name;
 
   const getButtonText = () => {
     if (errors.amount) return errors.amount.message;
@@ -555,10 +574,7 @@ function DepositToVaultForm() {
             <Text className="text-base text-muted-foreground">Price</Text>
             <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
               <Text className="text-lg font-semibold">
-                {`1 ${vaultToken} = `}
-                {vault.name === 'USDC'
-                  ? `$${formatNumber(displayRate ?? 0)}`
-                  : `${formatNumber(displayRate ?? 0)} ${selectedTokenInfo.name}`}
+                {`1 ${vaultToken} = ${formatNumber(principalPerVaultToken)} ${principalSymbolForPrice}`}
               </Text>
             </View>
           </View>
