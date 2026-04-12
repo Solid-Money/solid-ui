@@ -62,7 +62,7 @@ interface DepositState {
   previousModal: DepositModal;
   transaction: TransactionStatusModal;
   srcChainId: number;
-  outputToken: string;
+  principalToken: string;
   bankTransfer: BankTransferData;
   kyc: KycData;
   directDepositSession: DirectDepositSession;
@@ -76,7 +76,7 @@ interface DepositState {
   setKycData: (data: Partial<KycData>) => void;
   clearKycData: () => void;
   setSrcChainId: (srcChainId: number) => void;
-  setOutputToken: (token: string) => void;
+  setPrincipalToken: (token: string) => void;
   setDirectDepositSession: (data: Partial<DirectDepositSession>) => void;
   clearDirectDepositSession: () => void;
   setSessionStartTime: (time: number) => void;
@@ -91,7 +91,7 @@ export const useDepositStore = create<DepositState>()(
       previousModal: DEPOSIT_MODAL.CLOSE,
       transaction: {},
       srcChainId: mainnet.id,
-      outputToken: 'USDC',
+      principalToken: 'USDC',
       bankTransfer: {},
       kyc: {},
       directDepositSession: {},
@@ -112,7 +112,7 @@ export const useDepositStore = create<DepositState>()(
       setKycData: data => set({ kyc: { ...get().kyc, ...data } }),
       clearKycData: () => set({ kyc: {} }),
       setSrcChainId: srcChainId => set({ srcChainId }),
-      setOutputToken: outputToken => set({ outputToken }),
+      setPrincipalToken: principalToken => set({ principalToken }),
       setDirectDepositSession: data =>
         set({ directDepositSession: { ...get().directDepositSession, ...data } }),
       clearDirectDepositSession: () => set({ directDepositSession: {} }),
@@ -124,7 +124,7 @@ export const useDepositStore = create<DepositState>()(
           previousModal: DEPOSIT_MODAL.CLOSE,
           transaction: {},
           srcChainId: 0, // unset so next open shows options
-          outputToken: 'USDC',
+          principalToken: 'USDC',
           bankTransfer: {},
           kyc: {},
           directDepositSession: {},
@@ -139,14 +139,21 @@ export const useDepositStore = create<DepositState>()(
       partialize: state => ({
         transaction: state.transaction,
         srcChainId: state.srcChainId,
-        outputToken: state.outputToken,
+        principalToken: state.principalToken,
         bankTransfer: state.bankTransfer,
         kyc: state.kyc,
         directDepositSession: state.directDepositSession,
       }),
       // Ignore any legacy stored modal fields
       merge: (persisted, current) => {
-        const next = { ...current, ...(persisted as any) };
+        const persistedState = (persisted as any) || {};
+        const legacyPrincipalToken = persistedState.principalToken ?? persistedState.outputToken;
+        const { outputToken: _legacyOutputToken, ...restPersisted } = persistedState;
+        const next = {
+          ...current,
+          ...restPersisted,
+          principalToken: legacyPrincipalToken ?? current.principalToken,
+        };
         return {
           ...next,
           currentModal: current.currentModal,

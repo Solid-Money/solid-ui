@@ -14,11 +14,11 @@ import { useDepositStore } from '@/store/useDepositStore';
 import DepositNetwork from './DepositNetwork';
 
 const DepositNetworks = () => {
-  const { setModal, setSrcChainId, setOutputToken } = useDepositStore(
+  const { setModal, setSrcChainId, setPrincipalToken } = useDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
       setSrcChainId: state.setSrcChainId,
-      setOutputToken: state.setOutputToken,
+      setPrincipalToken: state.setPrincipalToken,
     })),
   );
   const { user } = useUser();
@@ -64,7 +64,7 @@ const DepositNetworks = () => {
     });
 
     setSrcChainId(id);
-    setOutputToken(selectedToken);
+    setPrincipalToken(selectedToken);
     setModal(DEPOSIT_MODAL.OPEN_FORM);
   };
 
@@ -81,9 +81,7 @@ const DepositNetworks = () => {
             const chainId = Number(id);
             const isComingSoon = network.isComingSoon;
             const estimatedDesc =
-              chainId === 1
-                ? 'Estimated speed: 5 min'
-                : 'Estimated speed: 20 min';
+              chainId === 1 ? 'Estimated speed: 5 min' : 'Estimated speed: 20 min';
 
             return (
               <DepositNetwork

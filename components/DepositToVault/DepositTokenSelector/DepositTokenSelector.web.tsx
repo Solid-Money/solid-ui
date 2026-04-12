@@ -10,10 +10,10 @@ import { getAllowedTokensForChain } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const DepositTokenSelector = () => {
-  const { setModal, setOutputToken, srcChainId } = useDepositStore(
+  const { setModal, setPrincipalToken, srcChainId } = useDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
-      setOutputToken: state.setOutputToken,
+      setPrincipalToken: state.setPrincipalToken,
       srcChainId: state.srcChainId,
     })),
   );
@@ -22,7 +22,7 @@ const DepositTokenSelector = () => {
   const allowedTokens = getAllowedTokensForChain(srcChainId);
 
   const handlePress = (token: string) => {
-    setOutputToken(token);
+    setPrincipalToken(token);
     setModal(DEPOSIT_MODAL.OPEN_FORM);
   };
 

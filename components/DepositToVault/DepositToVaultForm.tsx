@@ -62,18 +62,18 @@ function DepositToVaultForm() {
     setModal,
     setTransaction,
     srcChainId,
-    outputToken,
+    principalToken,
     depositFromSolid,
-    setOutputToken,
+    setPrincipalToken,
     setSrcChainId,
   } = useDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
       setTransaction: state.setTransaction,
       srcChainId: state.srcChainId,
-      outputToken: state.outputToken,
+      principalToken: state.principalToken,
       depositFromSolid: state.depositFromSolid,
-      setOutputToken: state.setOutputToken,
+      setPrincipalToken: state.setPrincipalToken,
       setSrcChainId: state.setSrcChainId,
     })),
   );
@@ -92,28 +92,28 @@ function DepositToVaultForm() {
         ? srcChainId
         : defaultSelection.chainId;
     const allowedTokens = nextChainId ? getAllowedTokensForChain(nextChainId, vault) : [];
-    const nextOutputToken = allowedTokens.includes(outputToken)
-      ? outputToken
-      : defaultSelection.outputToken;
+    const nextPrincipalToken = allowedTokens.includes(principalToken)
+      ? principalToken
+      : defaultSelection.principalToken;
 
     return {
       chainId: nextChainId ?? srcChainId,
-      outputToken: nextOutputToken,
+      principalToken: nextPrincipalToken,
     };
-  }, [depositConfig.supportedChains, outputToken, srcChainId, vault]);
+  }, [depositConfig.supportedChains, principalToken, srcChainId, vault]);
 
   useEffect(() => {
     if (normalizedSelection.chainId && normalizedSelection.chainId !== srcChainId) {
       setSrcChainId(normalizedSelection.chainId);
     }
-    if (normalizedSelection.outputToken !== outputToken) {
-      setOutputToken(normalizedSelection.outputToken);
+    if (normalizedSelection.principalToken !== principalToken) {
+      setPrincipalToken(normalizedSelection.principalToken);
     }
   }, [
     normalizedSelection.chainId,
-    normalizedSelection.outputToken,
-    outputToken,
-    setOutputToken,
+    normalizedSelection.principalToken,
+    principalToken,
+    setPrincipalToken,
     setSrcChainId,
     srcChainId,
   ]);
@@ -121,17 +121,17 @@ function DepositToVaultForm() {
   const selectedTokenInfo = useMemo(() => {
     const tokens = BRIDGE_TOKENS[normalizedSelection.chainId]?.tokens;
     const tokenData = tokens
-      ? tokens[normalizedSelection.outputToken as keyof typeof tokens]
+      ? tokens[normalizedSelection.principalToken as keyof typeof tokens]
       : undefined;
 
     return {
       address: tokenData?.address,
-      name: tokenData?.name || normalizedSelection.outputToken,
+      name: tokenData?.name || normalizedSelection.principalToken,
       image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
       version: tokenData?.version,
     };
-  }, [normalizedSelection.chainId, normalizedSelection.outputToken]);
+  }, [normalizedSelection.chainId, normalizedSelection.principalToken]);
 
   const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA(
     (selectedTokenInfo?.address as Address) || '',
@@ -202,7 +202,7 @@ function DepositToVaultForm() {
 
   const isFuseVault = vault.name === 'FUSE';
   const isEthVault = vault.name === 'ETH';
-  const isNativeFuse = isFuseVault && normalizedSelection.outputToken === 'FUSE';
+  const isNativeFuse = isFuseVault && normalizedSelection.principalToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
   const useSolidForEth = isEthVault && depositFromSolid;
   const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
@@ -226,9 +226,9 @@ function DepositToVaultForm() {
   // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
   useEffect(() => {
     if (isNativeFuse && !useSolidForFuse) {
-      setOutputToken('WFUSE');
+      setPrincipalToken('WFUSE');
     }
-  }, [isNativeFuse, useSolidForFuse, setOutputToken]);
+  }, [isNativeFuse, useSolidForFuse, setPrincipalToken]);
 
   const balanceForVault = isEthVault
     ? useSolidForEth
