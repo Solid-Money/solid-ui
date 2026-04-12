@@ -14,10 +14,17 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { track } from '@/lib/analytics';
 import { checkCardAccess, getClientIp, getCountryFromIp } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
+import { isUserAllowedToUseTestFeature } from '@/lib/utils/testFeatures';
 import { useCountryStore } from '@/store/useCountryStore';
+import { useUserStore } from '@/store/useUserStore';
 
 export default function ActivateCountrySelection() {
   const router = useRouter();
+  const { user } = useUserStore(
+    useShallow(state => ({
+      user: state.users.find(user => user.selected),
+    })),
+  );
 
   const goBack = () => {
     router.replace(path.CARD);
@@ -187,10 +194,13 @@ export default function ActivateCountrySelection() {
 
         if (!accessCheck) throw new Error('Failed to check card access');
 
+        const isUserAllowed = isUserAllowedToUseTestFeature(user?.username ?? '');
+        const canProceed = accessCheck.hasAccess && isUserAllowed;
+
         const updatedCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
-          isAvailable: accessCheck.hasAccess,
+          isAvailable: canProceed,
         };
 
         setCountryInfo(updatedCountryInfo);
@@ -199,11 +209,11 @@ export default function ActivateCountrySelection() {
         track(TRACKING_EVENTS.CARD_COUNTRY_AVAILABILITY_CHECKED, {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
-          isAvailable: accessCheck.hasAccess,
+          isAvailable: canProceed,
           selectionMethod: selectionMethod === 'ip_detected' ? 'ip_detected' : 'manual',
         });
 
-        if (accessCheck.hasAccess) {
+        if (canProceed) {
           const ipCountry = await getCountryFromIp();
           if (ipCountry && ipCountry.countryCode === selectedCountry.code) {
             router.replace(path.CARD_ACTIVATE);
