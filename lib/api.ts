@@ -888,6 +888,24 @@ export const addToCardWaitlistToNotify = async (
   return response.json();
 };
 
+export const checkCardAccess = async (countryCode: string): Promise<CardAccessResponse> => {
+  const jwt = getJWTToken();
+  const url = new URL('/accounts/v1/cards/check-access', EXPO_PUBLIC_FLASH_API_BASE_URL);
+  url.searchParams.append('countryCode', countryCode.toUpperCase());
+
+  const response = await fetch(url.toString(), {
+    credentials: 'include',
+    headers: {
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const checkCardWaitlistStatus = async (email: string): Promise<CardWaitlistResponse> => {
   const response = await fetch(
     `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/card-waitlist/check?email=${encodeURIComponent(email)}`,
