@@ -24,26 +24,26 @@ import { formatNumber } from '@/lib/utils';
 import { useDepositStore } from '@/store/useDepositStore';
 
 function AddFundsToWalletForm() {
-  const { setModal, setTransaction, srcChainId, outputToken } = useDepositStore(
+  const { setModal, setTransaction, srcChainId, principalToken } = useDepositStore(
     useShallow(state => ({
       setModal: state.setModal,
       setTransaction: state.setTransaction,
       srcChainId: state.srcChainId,
-      outputToken: state.outputToken,
+      principalToken: state.principalToken,
     })),
   );
   const selectedTokenInfo = useMemo(() => {
     const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
-    const tokenData = tokens ? tokens[outputToken as keyof typeof tokens] : undefined;
+    const tokenData = tokens ? tokens[principalToken as keyof typeof tokens] : undefined;
 
     return {
       address: tokenData?.address,
-      name: tokenData?.name || outputToken,
+      name: tokenData?.name || principalToken,
       image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
       isNative: tokenData?.isNative ?? false,
     };
-  }, [srcChainId, outputToken]);
+  }, [srcChainId, principalToken]);
 
   const { balance, transfer, transferStatus, error } = useTransferToWallet(
     (selectedTokenInfo?.address as Address) || '',
@@ -51,7 +51,7 @@ function AddFundsToWalletForm() {
     selectedTokenInfo.isNative,
   );
 
-  const isStablecoin = outputToken === 'USDC' || outputToken === 'USDT';
+  const isStablecoin = principalToken === 'USDC' || principalToken === 'USDT';
   const decimals = isStablecoin ? 6 : 18;
   const isLoading = transferStatus.status === Status.PENDING;
 

@@ -11,12 +11,12 @@ import { KycModalContent } from '@/components/BankTransfer/KycModalContent';
 import BuyCrypto from '@/components/BuyCrypto';
 import DepositEmailModal from '@/components/DepositEmailModal';
 import DepositNetworks from '@/components/DepositNetwork/DepositNetworks';
+import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import DepositBuyCryptoOptions from '@/components/DepositOption/DepositBuyCryptoOptions';
 import DepositDirectlyAddress from '@/components/DepositOption/DepositDirectlyAddress';
 import DepositDirectlyNetworks from '@/components/DepositOption/DepositDirectlyNetworks';
 import DepositDirectlyTokens from '@/components/DepositOption/DepositDirectlyTokens';
 import DepositExternalWalletOptions from '@/components/DepositOption/DepositExternalWalletOptions';
-import AddFundsToWalletForm from '@/components/DepositOption/AddFundsToWalletForm';
 import DepositOptions from '@/components/DepositOption/DepositOptions';
 import DepositPublicAddress from '@/components/DepositOption/DepositPublicAddress';
 import { DepositTokenSelector, DepositToVaultForm } from '@/components/DepositToVault';
@@ -32,7 +32,11 @@ import useUser from '@/hooks/useUser';
 import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { DepositModal } from '@/lib/types';
-import { getAllowedTokensForChain, getDefaultDepositSelection, getVaultDepositConfig } from '@/lib/vaults';
+import {
+  getAllowedTokensForChain,
+  getDefaultDepositSelection,
+  getVaultDepositConfig,
+} from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
 
 import useResponsiveModal from './useResponsiveModal';
@@ -56,14 +60,14 @@ const useDepositOption = ({
     transaction,
     setModal,
     srcChainId,
-    outputToken,
+    principalToken,
     bankTransfer,
     directDepositSession,
     sessionStartTime,
     setSessionStartTime,
     clearSessionStartTime,
     setSrcChainId,
-    setOutputToken,
+    setPrincipalToken,
     setDirectDepositSession,
     resetDepositFlow,
     depositFromSolid,
@@ -75,14 +79,14 @@ const useDepositOption = ({
       transaction: state.transaction,
       setModal: state.setModal,
       srcChainId: state.srcChainId,
-      outputToken: state.outputToken,
+      principalToken: state.principalToken,
       bankTransfer: state.bankTransfer,
       directDepositSession: state.directDepositSession,
       sessionStartTime: state.sessionStartTime,
       setSessionStartTime: state.setSessionStartTime,
       clearSessionStartTime: state.clearSessionStartTime,
       setSrcChainId: state.setSrcChainId,
-      setOutputToken: state.setOutputToken,
+      setPrincipalToken: state.setPrincipalToken,
       setDirectDepositSession: state.setDirectDepositSession,
       resetDepositFlow: state.resetDepositFlow,
       depositFromSolid: state.depositFromSolid,
@@ -191,8 +195,8 @@ const useDepositOption = ({
           }
           amount={transaction.amount ?? 0}
           onPress={handleTransactionStatusPress}
-          icon={getTokenIcon({ tokenSymbol: outputToken })}
-          token={outputToken}
+          icon={getTokenIcon({ tokenSymbol: principalToken })}
+          token={principalToken}
         />
       );
     }
@@ -416,20 +420,20 @@ const useDepositOption = ({
     }
 
     if (value) {
-      const { chainId: defaultChainId, outputToken: defaultToken } =
+      const { chainId: defaultChainId, principalToken: defaultToken } =
         getDefaultDepositSelection();
       const supportedChains = depositConfig.supportedChains;
       // When srcChainId is 0 (unset), don't auto-sync so user sees options/networks to pick
       const nextChainId =
         srcChainId && supportedChains.includes(srcChainId) ? srcChainId : defaultChainId;
       const allowedTokens = getAllowedTokensForChain(nextChainId);
-      const nextToken = allowedTokens.includes(outputToken) ? outputToken : defaultToken;
+      const nextToken = allowedTokens.includes(principalToken) ? principalToken : defaultToken;
 
       if (srcChainId && nextChainId !== srcChainId) {
         setSrcChainId(nextChainId);
       }
-      if (nextToken !== outputToken) {
-        setOutputToken(nextToken);
+      if (nextToken !== principalToken) {
+        setPrincipalToken(nextToken);
       }
 
       const directChainId =

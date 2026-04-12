@@ -16,14 +16,14 @@ import { useSavingStore } from '@/store/useSavingStore';
 /**
  * Token selector for the Savings deposit flow (Step 2).
  * Shows tokens from the user's Solid wallet that can be deposited into vaults,
- * with chain names displayed. Selecting a token sets the srcChainId, outputToken,
+ * with chain names displayed. Selecting a token sets the srcChainId, principalToken,
  * and appropriate vault, then navigates to the deposit form.
  */
 const SavingsDepositTokenSelector: React.FC = () => {
-  const { setSrcChainId, setOutputToken, setModal } = useDepositStore(
+  const { setSrcChainId, setPrincipalToken, setModal } = useDepositStore(
     useShallow(state => ({
       setSrcChainId: state.setSrcChainId,
-      setOutputToken: state.setOutputToken,
+      setPrincipalToken: state.setPrincipalToken,
       setModal: state.setModal,
     })),
   );
@@ -84,10 +84,10 @@ const SavingsDepositTokenSelector: React.FC = () => {
         : undefined;
 
       setSrcChainId(chainId);
-      setOutputToken(tokenKey || symbol);
+      setPrincipalToken(tokenKey || symbol);
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     },
-    [setSrcChainId, setOutputToken, setModal, selectVaultForDeposit],
+    [setSrcChainId, setPrincipalToken, setModal, selectVaultForDeposit],
   );
 
   return (
