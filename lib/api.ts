@@ -940,6 +940,15 @@ export const checkCardWaitlistToNotifyStatus = async (
   return response.json();
 };
 
+export const fetchLayerZeroBridgeTransactions = async (
+  transactionHash: string,
+): Promise<LayerZeroTransaction> => {
+  const response = await axios.get(
+    `https://scan.layerzero-api.com/v1/messages/tx/${transactionHash}`,
+  );
+  return response.data;
+};
+
 export const getClientIp = async (): Promise<string | null> => {
   try {
     const response = await axios.get('https://api.ipify.org?format=json');
