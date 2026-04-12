@@ -41,6 +41,7 @@ import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_FUSE_GAS_RESERVE } from '@/lib/config';
 import { Status, TokenBalance, TokenType } from '@/lib/types';
 import { compactNumberFormat, eclipseAddress, formatNumber } from '@/lib/utils';
+import { getAllowedTokensForChain, getDefaultDepositSelection } from '@/lib/vaults';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
@@ -57,37 +58,80 @@ function getGaslessText(
 }
 
 function DepositToVaultForm() {
-  const { setModal, setTransaction, srcChainId, outputToken, depositFromSolid, setOutputToken } =
-    useDepositStore(
-      useShallow(state => ({
-        setModal: state.setModal,
-        setTransaction: state.setTransaction,
-        srcChainId: state.srcChainId,
-        outputToken: state.outputToken,
-        depositFromSolid: state.depositFromSolid,
-        setOutputToken: state.setOutputToken,
-      })),
-    );
+  const {
+    setModal,
+    setTransaction,
+    srcChainId,
+    principalToken,
+    depositFromSolid,
+    setPrincipalToken,
+    setSrcChainId,
+  } = useDepositStore(
+    useShallow(state => ({
+      setModal: state.setModal,
+      setTransaction: state.setTransaction,
+      srcChainId: state.srcChainId,
+      principalToken: state.principalToken,
+      depositFromSolid: state.depositFromSolid,
+      setPrincipalToken: state.setPrincipalToken,
+      setSrcChainId: state.setSrcChainId,
+    })),
+  );
   const { isScreenMedium } = useDimension();
-  const { vault } = useVaultDepositConfig();
+  const { vault, depositConfig } = useVaultDepositConfig();
   const { data: vaultExchangeRate } = useVaultExchangeRate(vault.name);
 
   const vaultToken = vault.vaultToken ?? 'soUSD';
   const vaultTokenIcon =
     vault.name === 'USDC' ? getAsset('images/sousd-4x.png') : getAsset(vault.icon);
 
+  const normalizedSelection = useMemo(() => {
+    const defaultSelection = getDefaultDepositSelection(vault);
+    const nextChainId =
+      srcChainId && depositConfig.supportedChains.includes(srcChainId)
+        ? srcChainId
+        : defaultSelection.chainId;
+    const allowedTokens = nextChainId ? getAllowedTokensForChain(nextChainId, vault) : [];
+    const nextPrincipalToken = allowedTokens.includes(principalToken)
+      ? principalToken
+      : defaultSelection.principalToken;
+
+    return {
+      chainId: nextChainId ?? srcChainId,
+      principalToken: nextPrincipalToken,
+    };
+  }, [depositConfig.supportedChains, principalToken, srcChainId, vault]);
+
+  useEffect(() => {
+    if (normalizedSelection.chainId && normalizedSelection.chainId !== srcChainId) {
+      setSrcChainId(normalizedSelection.chainId);
+    }
+    if (normalizedSelection.principalToken !== principalToken) {
+      setPrincipalToken(normalizedSelection.principalToken);
+    }
+  }, [
+    normalizedSelection.chainId,
+    normalizedSelection.principalToken,
+    principalToken,
+    setPrincipalToken,
+    setSrcChainId,
+    srcChainId,
+  ]);
+
   const selectedTokenInfo = useMemo(() => {
-    const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
-    const tokenData = tokens ? tokens[outputToken as keyof typeof tokens] : undefined;
+    const tokens = BRIDGE_TOKENS[normalizedSelection.chainId]?.tokens;
+    const tokenData = tokens
+      ? tokens[normalizedSelection.principalToken as keyof typeof tokens]
+      : undefined;
 
     return {
       address: tokenData?.address,
-      name: tokenData?.name || outputToken,
+      name: tokenData?.name || normalizedSelection.principalToken,
       image: tokenData?.icon || getAsset('images/usdc.png'),
       fullName: tokenData?.fullName,
       version: tokenData?.version,
     };
-  }, [srcChainId, outputToken]);
+  }, [normalizedSelection.chainId, normalizedSelection.principalToken]);
 
   const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA(
     (selectedTokenInfo?.address as Address) || '',
@@ -158,14 +202,15 @@ function DepositToVaultForm() {
 
   const isFuseVault = vault.name === 'FUSE';
   const isEthVault = vault.name === 'ETH';
-  const isNativeFuse = isFuseVault && outputToken === 'FUSE';
+  const isNativeFuse = isFuseVault && normalizedSelection.principalToken === 'FUSE';
   const useSolidForFuse = isFuseVault && depositFromSolid;
   const useSolidForEth = isEthVault && depositFromSolid;
   const useSolidForUsdc = !isFuseVault && !isEthVault && depositFromSolid;
 
   // Synthesize a TokenBalance for the WalletTokenButton when depositFromSolid
   const selectedWalletToken: TokenBalance | null = useMemo(() => {
-    if (!depositFromSolid || !srcChainId || !selectedTokenInfo.address) return null;
+    if (!depositFromSolid || !normalizedSelection.chainId || !selectedTokenInfo.address)
+      return null;
     return {
       contractTickerSymbol: selectedTokenInfo.name,
       contractName: selectedTokenInfo.fullName || selectedTokenInfo.name,
@@ -173,17 +218,17 @@ function DepositToVaultForm() {
       balance: '0',
       contractDecimals: isFuseVault || isEthVault ? 18 : 6,
       type: TokenType.ERC20,
-      chainId: srcChainId,
+      chainId: normalizedSelection.chainId,
       logoUrl: undefined,
     };
-  }, [depositFromSolid, srcChainId, selectedTokenInfo, isFuseVault, isEthVault]);
+  }, [depositFromSolid, normalizedSelection.chainId, selectedTokenInfo, isFuseVault, isEthVault]);
 
   // Auto-switch to WFUSE if native FUSE is selected but not depositing from Solid
   useEffect(() => {
     if (isNativeFuse && !useSolidForFuse) {
-      setOutputToken('WFUSE');
+      setPrincipalToken('WFUSE');
     }
-  }, [isNativeFuse, useSolidForFuse, setOutputToken]);
+  }, [isNativeFuse, useSolidForFuse, setPrincipalToken]);
 
   const balanceForVault = isEthVault
     ? useSolidForEth
@@ -353,7 +398,11 @@ function DepositToVaultForm() {
     amountOut: previewAmountOut,
     isLoading: isPreviewDepositLoading,
     routingFee,
-  } = usePreviewDeposit(watchedAmount || '0', selectedTokenInfo?.address, srcChainId);
+  } = usePreviewDeposit(
+    watchedAmount || '0',
+    selectedTokenInfo?.address,
+    normalizedSelection.chainId,
+  );
 
   // Use vault's accountant rate for display; amountOut from preview (USDC + LiFi) or vault rate (e.g. FUSE)
   const amountOut =
