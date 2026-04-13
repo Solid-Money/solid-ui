@@ -70,7 +70,9 @@ export function useDiditSession() {
       queryClient.invalidateQueries({ queryKey: [CARD_STATUS_QUERY_KEY] });
 
       if (kycStatus === KycStatus.APPROVED) {
-        // KYC approved: check Rain application status for correct redirect
+        // Didit KYC approved: only go to ready page when Rain is also approved.
+        // Otherwise redirect to activate page so the user sees the dynamic
+        // step-one button (e.g. "Provide more info" for Rain needsInformation).
         try {
           const cardStatusResponse = await withRefreshToken(() => getCardStatus());
           if (cardStatusResponse?.rainApplicationStatus === RainApplicationStatus.APPROVED) {
@@ -78,9 +80,9 @@ export function useDiditSession() {
             return;
           }
         } catch {
-          // Fall through to ready page on approved KYC
+          // On error fall through to activate page as a safe default
         }
-        router.replace(path.CARD_READY as any);
+        router.replace(path.CARD_ACTIVATE as any);
       } else if (kycStatus === KycStatus.UNDER_REVIEW) {
         router.replace(path.CARD_PENDING as any);
       } else {
