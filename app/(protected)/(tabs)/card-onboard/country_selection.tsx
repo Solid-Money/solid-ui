@@ -29,7 +29,6 @@ import {
   getCountryFromIp,
 } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
-import { isUserAllowedToUseTestFeature } from '@/lib/utils/testFeatures';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
@@ -77,13 +76,10 @@ export default function CountrySelection() {
       // Check card access via backend
       const accessCheck = await withRefreshToken(() => checkCardAccess(countryCode));
       if (!accessCheck) throw new Error('Failed to check card access');
-      const canAccessCard =
-        accessCheck.hasAccess && isUserAllowedToUseTestFeature(user?.username ?? '');
-
       return {
         countryCode,
         countryName,
-        isAvailable: canAccessCard,
+        isAvailable: accessCheck.hasAccess,
       };
     } catch (error) {
       console.error('Error fetching country from IP:', error);
@@ -257,20 +253,18 @@ export default function CountrySelection() {
         const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
 
         if (!accessCheck) throw new Error('Failed to check card access');
-        const canAccessCard =
-          accessCheck.hasAccess && isUserAllowedToUseTestFeature(user?.username ?? '');
 
         const updatedCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
-          isAvailable: canAccessCard,
+          isAvailable: accessCheck.hasAccess,
           source: 'manual' as const,
         };
 
         setCountryInfo(updatedCountryInfo);
         setCountryDetectionFailed(false);
 
-        if (canAccessCard) {
+        if (accessCheck.hasAccess) {
           router.push({
             pathname: '/card/activate',
             params: { countryConfirmed: 'true' },
