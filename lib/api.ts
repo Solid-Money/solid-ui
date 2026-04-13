@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import axios, { AxiosRequestHeaders } from 'axios';
+import { Address, pad } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { explorerUrls } from '@/constants/explorers';
@@ -13,13 +14,13 @@ import {
   EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL,
   EXPO_PUBLIC_COINGECKO_API_KEY,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
-  EXPO_PUBLIC_LAYERZERO_VT_API_KEY,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL,
   EXPO_PUBLIC_LIFI_API_URL,
   EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
 } from './config';
+import { publicClient } from './wagmi';
 import {
   ActivityEvent,
   ActivityEvents,
@@ -84,11 +85,8 @@ import {
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
-  StargateFee,
-  StargateQuote,
   StargateQuoteParams,
   StargateQuoteResponse,
-  StargateStep,
   SubmitPersonaKycResponse,
   SwapTokenRequest,
   SwapTokenResponse,
@@ -2144,85 +2142,123 @@ function revealCardDetailsCompleteBridge(): Promise<CardDetailsRevealResponse> {
   })();
 }
 
-// LayerZero Value Transfer API for bridging (replaces deprecated Stargate API)
+// Minimal ABI for Stargate OFT/Pool quoteSend function
+const StargateQuoteSendABI = [
+  {
+    inputs: [
+      {
+        components: [
+          { internalType: 'uint32', name: 'dstEid', type: 'uint32' },
+          { internalType: 'bytes32', name: 'to', type: 'bytes32' },
+          { internalType: 'uint256', name: 'amountLD', type: 'uint256' },
+          { internalType: 'uint256', name: 'minAmountLD', type: 'uint256' },
+          { internalType: 'bytes', name: 'extraOptions', type: 'bytes' },
+          { internalType: 'bytes', name: 'composeMsg', type: 'bytes' },
+          { internalType: 'bytes', name: 'oftCmd', type: 'bytes' },
+        ],
+        internalType: 'struct SendParam',
+        name: '_sendParam',
+        type: 'tuple',
+      },
+      { internalType: 'bool', name: '_payInLzToken', type: 'bool' },
+    ],
+    name: 'quoteSend',
+    outputs: [
+      {
+        components: [
+          { internalType: 'uint256', name: 'nativeFee', type: 'uint256' },
+          { internalType: 'uint256', name: 'lzTokenFee', type: 'uint256' },
+        ],
+        internalType: 'struct MessagingFee',
+        name: 'fee',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
+// LayerZero Endpoint IDs for supported destination chains
+const CHAIN_KEY_TO_EID: Record<string, number> = {
+  ethereum: 30101,
+  fuse: 30138,
+  base: 30184,
+  polygon: 30109,
+  arbitrum: 30110,
+};
+
+// Direct on-chain quote via Stargate OFT contract (replaces deprecated Stargate API)
 export const getStargateQuote = async (
   params: StargateQuoteParams,
 ): Promise<StargateQuoteResponse> => {
-  const response = await fetch('https://transfer.layerzero-api.com/v1/quotes', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(EXPO_PUBLIC_LAYERZERO_VT_API_KEY && {
-        'x-api-key': EXPO_PUBLIC_LAYERZERO_VT_API_KEY,
-      }),
-    },
-    body: JSON.stringify({
-      srcTokenAddress: params.srcToken,
-      srcChainKey: params.srcChainKey,
-      dstTokenAddress: params.dstToken,
-      dstChainKey: params.dstChainKey,
-      srcWalletAddress: params.srcAddress,
-      dstWalletAddress: params.dstAddress,
-      amount: params.srcAmount,
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => response.statusText);
-    throw new Error(`Stargate API error: ${text}`);
+  const dstEid = CHAIN_KEY_TO_EID[params.dstChainKey];
+  if (!dstEid) {
+    throw new Error(`Unsupported destination chain: ${params.dstChainKey}`);
   }
 
-  const data = await response.json();
+  // On Fuse, USDC_STARGATE is the OFT contract that implements quoteSend
+  const oftAddress = params.srcToken as Address;
 
-  // Transform new LayerZero VT API response to legacy format expected by hooks
-  const quotes: StargateQuote[] = (data.quotes ?? []).map((quote: any) => {
-    const routeTypes = (quote.routeSteps ?? []).map((s: any) => s.type?.toLowerCase() ?? '');
-    const route = routeTypes.join(',');
+  const sendParam = {
+    dstEid,
+    to: pad(params.dstAddress as Address, { size: 32 }),
+    amountLD: BigInt(params.srcAmount),
+    minAmountLD: BigInt(params.dstAmountMin),
+    extraOptions: '0x' as `0x${string}`,
+    composeMsg: '0x' as `0x${string}`,
+    oftCmd: '0x' as `0x${string}`,
+  };
 
-    const steps: StargateStep[] = (quote.userSteps ?? [])
-      .filter((step: any) => step.type === 'TRANSACTION')
-      .map((step: any) => ({
-        type: 'bridge',
-        sender: step.signerAddress ?? '',
-        chainKey: step.chainKey ?? '',
-        transaction: {
-          to: step.transaction?.encoded?.to ?? '',
-          value: String(step.transaction?.encoded?.value ?? '0'),
-          data: step.transaction?.encoded?.data ?? '',
-          from: step.transaction?.encoded?.from ?? '',
-        },
-      }));
-
-    const fees: StargateFee[] = (quote.fees ?? []).map((fee: any) => ({
-      token: fee.address ?? '',
-      chainKey: fee.chainKey ?? '',
-      amount: String(fee.amount ?? '0'),
-      type: fee.type ?? '',
-    }));
-
-    return {
-      route,
-      error: null,
-      srcAmount: String(quote.srcAmount ?? ''),
-      dstAmount: String(quote.dstAmount ?? ''),
-      srcAmountMax: String(quote.srcAmount ?? ''),
-      dstAmountMin: String(quote.dstAmountMin ?? ''),
-      srcToken: params.srcToken,
-      dstToken: params.dstToken,
-      srcAddress: params.srcAddress,
-      dstAddress: params.dstAddress,
-      srcChainKey: params.srcChainKey,
-      dstChainKey: params.dstChainKey,
-      dstNativeAmount: String(quote.options?.dstNativeDropAmount ?? '0'),
-      duration: {
-        estimated: quote.duration?.estimated ? Number(quote.duration.estimated) : 0,
-      },
-      fees,
-      steps,
-    };
+  const client = publicClient(fuse.id);
+  const { nativeFee } = await client.readContract({
+    address: oftAddress,
+    abi: StargateQuoteSendABI,
+    functionName: 'quoteSend',
+    args: [sendParam, false],
   });
 
-  return { quotes };
+  return {
+    quotes: [
+      {
+        route: 'stargate_v2_taxi',
+        error: null,
+        srcAmount: params.srcAmount,
+        dstAmount: params.srcAmount,
+        srcAmountMax: params.srcAmount,
+        dstAmountMin: params.dstAmountMin,
+        srcToken: params.srcToken,
+        dstToken: params.dstToken,
+        srcAddress: params.srcAddress,
+        dstAddress: params.dstAddress,
+        srcChainKey: params.srcChainKey,
+        dstChainKey: params.dstChainKey,
+        dstNativeAmount: '0',
+        duration: { estimated: 60 },
+        fees: [
+          {
+            token: '0x0000000000000000000000000000000000000000',
+            chainKey: params.srcChainKey,
+            amount: nativeFee.toString(),
+            type: 'native',
+          },
+        ],
+        steps: [
+          {
+            type: 'bridge',
+            sender: params.srcAddress,
+            chainKey: params.srcChainKey,
+            transaction: {
+              to: params.srcToken,
+              value: nativeFee.toString(),
+              data: '0x',
+              from: params.srcAddress,
+            },
+          },
+        ],
+      },
+    ],
+  };
 };
 
 export const fetchAPYs = async (): Promise<APYsByAsset> => {
