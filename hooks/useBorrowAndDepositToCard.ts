@@ -13,7 +13,6 @@ import { AaveV3Pool_ABI } from '@/lib/abis/AaveV3Pool';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import { CardDepositManager_ABI } from '@/lib/abis/CardDepositManager';
 import { track } from '@/lib/analytics';
-import { getStargateQuote } from '@/lib/api';
 import {
   ADDRESSES,
   EXPO_PUBLIC_CARD_FUNDING_CHAIN_ID,
@@ -22,7 +21,7 @@ import {
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, Status, TransactionType } from '@/lib/types';
 import { getCardDepositTokenAddress, getCardFundingAddress } from '@/lib/utils';
-import { getStargateChainId } from '@/lib/utils/stargate';
+import { getStargateChainId, getStargateQuote } from '@/lib/utils/stargate';
 import { publicClient } from '@/lib/wagmi';
 
 import { useCardContracts } from './useCardContracts';

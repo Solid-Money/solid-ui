@@ -5,7 +5,7 @@ import { AaveV3Pool_ABI } from '@/lib/abis/AaveV3Pool';
 import BridgePayamster_ABI from '@/lib/abis/BridgePayamster';
 import { CardDepositManager_ABI } from '@/lib/abis/CardDepositManager';
 import { track } from '@/lib/analytics';
-import { getStargateQuote } from '@/lib/api';
+import { getStargateQuote } from '@/lib/utils/stargate';
 import { ADDRESSES } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
 import { StargateQuoteParams, Status, TransactionType } from '@/lib/types';

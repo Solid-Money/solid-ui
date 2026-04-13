@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import axios, { AxiosRequestHeaders } from 'axios';
-import { Address, pad } from 'viem';
 import { fuse } from 'viem/chains';
 
 import { explorerUrls } from '@/constants/explorers';
@@ -20,7 +19,6 @@ import {
   EXPO_PUBLIC_LIFI_API_URL,
   EXPO_PUBLIC_RAIN_CARD_PUBLIC_KEY_PEM,
 } from './config';
-import { publicClient } from './wagmi';
 import {
   ActivityEvent,
   ActivityEvents,
@@ -85,8 +83,6 @@ import {
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
-  StargateQuoteParams,
-  StargateQuoteResponse,
   SubmitPersonaKycResponse,
   SwapTokenRequest,
   SwapTokenResponse,
@@ -2141,125 +2137,6 @@ function revealCardDetailsCompleteBridge(): Promise<CardDetailsRevealResponse> {
     );
   })();
 }
-
-// Minimal ABI for Stargate OFT/Pool quoteSend function
-const StargateQuoteSendABI = [
-  {
-    inputs: [
-      {
-        components: [
-          { internalType: 'uint32', name: 'dstEid', type: 'uint32' },
-          { internalType: 'bytes32', name: 'to', type: 'bytes32' },
-          { internalType: 'uint256', name: 'amountLD', type: 'uint256' },
-          { internalType: 'uint256', name: 'minAmountLD', type: 'uint256' },
-          { internalType: 'bytes', name: 'extraOptions', type: 'bytes' },
-          { internalType: 'bytes', name: 'composeMsg', type: 'bytes' },
-          { internalType: 'bytes', name: 'oftCmd', type: 'bytes' },
-        ],
-        internalType: 'struct SendParam',
-        name: '_sendParam',
-        type: 'tuple',
-      },
-      { internalType: 'bool', name: '_payInLzToken', type: 'bool' },
-    ],
-    name: 'quoteSend',
-    outputs: [
-      {
-        components: [
-          { internalType: 'uint256', name: 'nativeFee', type: 'uint256' },
-          { internalType: 'uint256', name: 'lzTokenFee', type: 'uint256' },
-        ],
-        internalType: 'struct MessagingFee',
-        name: 'fee',
-        type: 'tuple',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
-
-// LayerZero Endpoint IDs for supported destination chains
-const CHAIN_KEY_TO_EID: Record<string, number> = {
-  ethereum: 30101,
-  fuse: 30138,
-  base: 30184,
-  polygon: 30109,
-  arbitrum: 30110,
-};
-
-// Direct on-chain quote via Stargate OFT contract (replaces deprecated Stargate API)
-export const getStargateQuote = async (
-  params: StargateQuoteParams,
-): Promise<StargateQuoteResponse> => {
-  const dstEid = CHAIN_KEY_TO_EID[params.dstChainKey];
-  if (!dstEid) {
-    throw new Error(`Unsupported destination chain: ${params.dstChainKey}`);
-  }
-
-  // On Fuse, USDC_STARGATE is the OFT contract that implements quoteSend
-  const oftAddress = params.srcToken as Address;
-
-  const sendParam = {
-    dstEid,
-    to: pad(params.dstAddress as Address, { size: 32 }),
-    amountLD: BigInt(params.srcAmount),
-    minAmountLD: BigInt(params.dstAmountMin),
-    extraOptions: '0x' as `0x${string}`,
-    composeMsg: '0x' as `0x${string}`,
-    oftCmd: '0x' as `0x${string}`,
-  };
-
-  const client = publicClient(fuse.id);
-  const { nativeFee } = await client.readContract({
-    address: oftAddress,
-    abi: StargateQuoteSendABI,
-    functionName: 'quoteSend',
-    args: [sendParam, false],
-  });
-
-  return {
-    quotes: [
-      {
-        route: 'stargate_v2_taxi',
-        error: null,
-        srcAmount: params.srcAmount,
-        dstAmount: params.srcAmount,
-        srcAmountMax: params.srcAmount,
-        dstAmountMin: params.dstAmountMin,
-        srcToken: params.srcToken,
-        dstToken: params.dstToken,
-        srcAddress: params.srcAddress,
-        dstAddress: params.dstAddress,
-        srcChainKey: params.srcChainKey,
-        dstChainKey: params.dstChainKey,
-        dstNativeAmount: '0',
-        duration: { estimated: 60 },
-        fees: [
-          {
-            token: '0x0000000000000000000000000000000000000000',
-            chainKey: params.srcChainKey,
-            amount: nativeFee.toString(),
-            type: 'native',
-          },
-        ],
-        steps: [
-          {
-            type: 'bridge',
-            sender: params.srcAddress,
-            chainKey: params.srcChainKey,
-            transaction: {
-              to: params.srcToken,
-              value: nativeFee.toString(),
-              data: '0x',
-              from: params.srcAddress,
-            },
-          },
-        ],
-      },
-    ],
-  };
-};
 
 export const fetchAPYs = async (): Promise<APYsByAsset> => {
   const response = await axios.get<APYsByAsset>(
