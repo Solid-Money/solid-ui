@@ -83,8 +83,11 @@ import {
   SavingsSummaryResponse,
   SearchCoin,
   SourceDepositInstructions,
+  StargateFee,
+  StargateQuote,
   StargateQuoteParams,
   StargateQuoteResponse,
+  StargateStep,
   SubmitPersonaKycResponse,
   SwapTokenRequest,
   SwapTokenResponse,
@@ -2140,19 +2143,80 @@ function revealCardDetailsCompleteBridge(): Promise<CardDetailsRevealResponse> {
   })();
 }
 
-// Stargate API for bridging
+// LayerZero Value Transfer API for bridging (replaces deprecated Stargate API)
 export const getStargateQuote = async (
   params: StargateQuoteParams,
 ): Promise<StargateQuoteResponse> => {
-  const searchParams = new URLSearchParams(params as unknown as Record<string, string>);
-
-  const response = await fetch(`https://stargate.finance/api/v1/quotes?${searchParams}`);
+  const response = await fetch('https://transfer.layerzero-api.com/v1/quotes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      srcTokenAddress: params.srcToken,
+      srcChainKey: params.srcChainKey,
+      dstTokenAddress: params.dstToken,
+      dstChainKey: params.dstChainKey,
+      srcWalletAddress: params.srcAddress,
+      dstWalletAddress: params.dstAddress,
+      amount: params.srcAmount,
+    }),
+  });
 
   if (!response.ok) {
-    throw new Error(`Stargate API error: ${response.statusText}`);
+    const text = await response.text().catch(() => response.statusText);
+    throw new Error(`Stargate API error: ${text}`);
   }
 
-  return response.json();
+  const data = await response.json();
+
+  // Transform new LayerZero VT API response to legacy format expected by hooks
+  const quotes: StargateQuote[] = (data.quotes ?? []).map((quote: any) => {
+    const routeTypes = (quote.routeSteps ?? []).map((s: any) => s.type?.toLowerCase() ?? '');
+    const route = routeTypes.join(',');
+
+    const steps: StargateStep[] = (quote.userSteps ?? [])
+      .filter((step: any) => step.type === 'TRANSACTION')
+      .map((step: any) => ({
+        type: 'bridge',
+        sender: step.signerAddress ?? '',
+        chainKey: step.chainKey ?? '',
+        transaction: {
+          to: step.transaction?.encoded?.to ?? '',
+          value: String(step.transaction?.encoded?.value ?? '0'),
+          data: step.transaction?.encoded?.data ?? '',
+          from: step.transaction?.encoded?.from ?? '',
+        },
+      }));
+
+    const fees: StargateFee[] = (quote.fees ?? []).map((fee: any) => ({
+      token: fee.address ?? '',
+      chainKey: fee.chainKey ?? '',
+      amount: String(fee.amount ?? '0'),
+      type: fee.type ?? '',
+    }));
+
+    return {
+      route,
+      error: null,
+      srcAmount: String(quote.srcAmount ?? ''),
+      dstAmount: String(quote.dstAmount ?? ''),
+      srcAmountMax: String(quote.srcAmount ?? ''),
+      dstAmountMin: String(quote.dstAmountMin ?? ''),
+      srcToken: params.srcToken,
+      dstToken: params.dstToken,
+      srcAddress: params.srcAddress,
+      dstAddress: params.dstAddress,
+      srcChainKey: params.srcChainKey,
+      dstChainKey: params.dstChainKey,
+      dstNativeAmount: String(quote.options?.dstNativeDropAmount ?? '0'),
+      duration: {
+        estimated: quote.duration?.estimated ? Number(quote.duration.estimated) : 0,
+      },
+      fees,
+      steps,
+    };
+  });
+
+  return { quotes };
 };
 
 export const fetchAPYs = async (): Promise<APYsByAsset> => {
