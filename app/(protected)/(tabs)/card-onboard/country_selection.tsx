@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronDown } from 'lucide-react-native';
 import { useShallow } from 'zustand/react/shallow';
@@ -21,6 +29,7 @@ import {
   getCountryFromIp,
 } from '@/lib/api';
 import { withRefreshToken } from '@/lib/utils';
+import { isUserAllowedToUseTestFeature } from '@/lib/utils/testFeatures';
 import { useCountryStore } from '@/store/useCountryStore';
 
 export default function CountrySelection() {
@@ -68,11 +77,13 @@ export default function CountrySelection() {
       // Check card access via backend
       const accessCheck = await withRefreshToken(() => checkCardAccess(countryCode));
       if (!accessCheck) throw new Error('Failed to check card access');
+      const canAccessCard =
+        accessCheck.hasAccess && isUserAllowedToUseTestFeature(user?.username ?? '');
 
       return {
         countryCode,
         countryName,
-        isAvailable: accessCheck.hasAccess,
+        isAvailable: canAccessCard,
       };
     } catch (error) {
       console.error('Error fetching country from IP:', error);
@@ -246,18 +257,20 @@ export default function CountrySelection() {
         const accessCheck = await withRefreshToken(() => checkCardAccess(selectedCountry.code));
 
         if (!accessCheck) throw new Error('Failed to check card access');
+        const canAccessCard =
+          accessCheck.hasAccess && isUserAllowedToUseTestFeature(user?.username ?? '');
 
         const updatedCountryInfo = {
           countryCode: selectedCountry.code,
           countryName: selectedCountry.name,
-          isAvailable: accessCheck.hasAccess,
+          isAvailable: canAccessCard,
           source: 'manual' as const,
         };
 
         setCountryInfo(updatedCountryInfo);
         setCountryDetectionFailed(false);
 
-        if (accessCheck.hasAccess) {
+        if (canAccessCard) {
           router.push({
             pathname: '/card/activate',
             params: { countryConfirmed: 'true' },
@@ -535,7 +548,7 @@ function CountryUnavailableView({
           className="font-bold leading-6 text-white"
           onPress={() =>
             Linking.openURL(
-              'https://www.solid.xyz/post/solid-partners-with-rain-to-power-the-next-era-of-global-crypto-cards'
+              'https://www.solid.xyz/post/solid-partners-with-rain-to-power-the-next-era-of-global-crypto-cards',
             )
           }
           accessibilityRole="link"
