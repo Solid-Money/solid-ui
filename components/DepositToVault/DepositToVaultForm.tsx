@@ -12,6 +12,8 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { CheckConnectionWrapper } from '@/components/CheckConnectionWrapper';
 import ConnectedWalletDropdown from '@/components/ConnectedWalletDropdown';
+import EmptyDepositTokens from '@/components/DepositToVault/EmptyDepositTokens';
+import VaultSelectorDropdown from '@/components/DepositToVault/VaultSelectorDropdown';
 import Max from '@/components/Max';
 import TokenDetails from '@/components/TokenCard/TokenDetails';
 import TooltipPopover from '@/components/Tooltip';
@@ -35,6 +37,7 @@ import { useDimension } from '@/hooks/useDimension';
 import { usePreviewDeposit } from '@/hooks/usePreviewDeposit';
 import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { useVaultExchangeRate } from '@/hooks/useVaultExchangeRate';
+import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { track } from '@/lib/analytics';
 import { getAsset } from '@/lib/assets';
 import { getAttributionChannel } from '@/lib/attribution';
@@ -80,6 +83,36 @@ function DepositToVaultForm() {
   const { isScreenMedium } = useDimension();
   const { vault, depositConfig } = useVaultDepositConfig();
   const { data: vaultExchangeRate } = useVaultExchangeRate(vault.name);
+  const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } =
+    useWalletTokens();
+
+  // Sum across all (chain, token) pairs the selected vault accepts. If nothing
+  // depositable is held in the user's wallet, show the empty state.
+  const hasDepositableBalance = useMemo(() => {
+    const allTokens = [
+      ...ethereumTokens,
+      ...fuseTokens,
+      ...polygonTokens,
+      ...baseTokens,
+      ...arbitrumTokens,
+    ];
+
+    const supportedSet = new Set<string>();
+    const config = vault.depositConfig;
+    if (config) {
+      for (const chainId of config.supportedChains) {
+        for (const symbol of config.supportedTokens) {
+          supportedSet.add(`${chainId}:${symbol.toUpperCase()}`);
+        }
+      }
+    }
+
+    return allTokens.some(token => {
+      const symbol = token.contractTickerSymbol?.toUpperCase();
+      if (!supportedSet.has(`${token.chainId}:${symbol}`)) return false;
+      return BigInt(token.balance || '0') > 0n;
+    });
+  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, vault]);
 
   const vaultToken = vault.vaultToken ?? 'soUSD';
   const vaultTokenIcon =
@@ -513,123 +546,137 @@ function DepositToVaultForm() {
           {!useSolidForFuse && !useSolidForEth && !useSolidForUsdc && <ConnectedWalletDropdown />}
         </View>
         <View className="gap-2">
-          <Text className="text-muted-foreground">Deposit amount</Text>
-          <View className="w-full flex-row items-center justify-between gap-2 rounded-2xl bg-accent px-5 py-4">
-            <Controller
-              control={control}
-              name="amount"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  keyboardType="decimal-pad"
-                  className="min-w-0 flex-1 text-2xl font-semibold text-white web:focus:outline-none"
-                  value={value.toString()}
-                  placeholder="0.0"
-                  placeholderTextColor="#666"
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  returnKeyType="done"
-                  onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
-                />
-              )}
-            />
-            {depositFromSolid ? (
-              <WalletTokenButton
-                selectedToken={selectedWalletToken}
-                onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
-              />
-            ) : (
-              <View className="shrink-0 flex-row items-center gap-2">
-                <Pressable
-                  onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
-                  className="flex-row items-center gap-2"
-                >
-                  <Image
-                    source={selectedTokenInfo.image}
-                    alt={selectedTokenInfo.name}
-                    style={{ width: 32, height: 32 }}
-                  />
-                  <Text className="text-lg font-semibold text-white">{selectedTokenInfo.name}</Text>
-                  {selectedTokenInfo.fullName && (
-                    <TooltipPopover text={selectedTokenInfo.fullName} />
-                  )}
-                  <ChevronDown size={16} color="#A1A1A1" />
-                </Pressable>
-              </View>
-            )}
-          </View>
-          <View className="flex-row items-center gap-2">
-            <Wallet color="#A1A1A1" size={16} />
-            <Text className="text-muted-foreground">
-              {formatNumber(Number(formattedBalance))} {selectedTokenInfo.name}
-            </Text>
-            <Max
-              onPress={() => {
-                track(TRACKING_EVENTS.DEPOSIT_MAX_BUTTON_CLICKED, {
-                  chain_id: srcChainId,
-                  token: selectedTokenInfo.name,
-                  max_amount: formattedBalance,
-                });
-                setValue('amount', formattedBalance);
-                trigger('amount');
-              }}
-            />
-          </View>
+          <Text className="text-muted-foreground">Savings account</Text>
+          <VaultSelectorDropdown />
         </View>
-        <TokenDetails>
-          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <View className="flex-row items-center gap-2">
-              <Text className="text-lg text-muted-foreground">You will receive</Text>
-            </View>
-            <View className="ml-auto shrink-0 flex-row items-center gap-2">
-              <Image
-                source={vaultTokenIcon}
-                style={{ width: 24, height: 24 }}
-                contentFit="contain"
-              />
-              <View className="flex-row items-baseline gap-1">
-                <Text className="text-lg font-semibold">
-                  {isAmountOutLoading ? (
-                    <Skeleton className="h-7 w-20 bg-white/20" />
-                  ) : isScreenMedium ? (
-                    compactNumberFormat(amountOut || 0)
-                  ) : (
-                    parseFloat((amountOut || 0).toFixed(3)) || 0
+        <View className="gap-2">
+          {!hasDepositableBalance ? (
+            <EmptyDepositTokens vault={vault} />
+          ) : (
+            <>
+              <Text className="text-muted-foreground">Deposit amount</Text>
+              <View className="w-full flex-row items-center justify-between gap-2 rounded-2xl bg-accent px-5 py-4">
+                <Controller
+                  control={control}
+                  name="amount"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <TextInput
+                      keyboardType="decimal-pad"
+                      className="min-w-0 flex-1 text-2xl font-semibold text-white web:focus:outline-none"
+                      value={value.toString()}
+                      placeholder="0.0"
+                      placeholderTextColor="#666"
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      returnKeyType="done"
+                      onSubmitEditing={Platform.OS === 'web' ? undefined : () => Keyboard.dismiss()}
+                    />
                   )}
-                </Text>
-                <Text className="text-lg">{vaultToken}</Text>
+                />
+                {depositFromSolid ? (
+                  <WalletTokenButton
+                    selectedToken={selectedWalletToken}
+                    onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+                  />
+                ) : (
+                  <View className="shrink-0 flex-row items-center gap-2">
+                    <Pressable
+                      onPress={() => setModal(DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+                      className="flex-row items-center gap-2"
+                    >
+                      <Image
+                        source={selectedTokenInfo.image}
+                        alt={selectedTokenInfo.name}
+                        style={{ width: 32, height: 32 }}
+                      />
+                      <Text className="text-lg font-semibold text-white">
+                        {selectedTokenInfo.name}
+                      </Text>
+                      {selectedTokenInfo.fullName && (
+                        <TooltipPopover text={selectedTokenInfo.fullName} />
+                      )}
+                      <ChevronDown size={16} color="#A1A1A1" />
+                    </Pressable>
+                  </View>
+                )}
               </View>
-            </View>
-          </View>
-          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <Text className="text-base text-muted-foreground">Price</Text>
-            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
-              <Text className="text-lg font-semibold">
-                {`1 ${vaultToken} = `}
-                {vault.name === 'USDC'
-                  ? `$${formatNumber(displayRate ?? 0)}`
-                  : `${formatNumber(displayRate ?? 0)} ${selectedTokenInfo.name}`}
-              </Text>
-            </View>
-          </View>
-          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <Text className="text-base text-muted-foreground">Routing Fee</Text>
-            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
-              {vault.name === 'USDC' && isPreviewDepositLoading ? (
-                <Skeleton className="h-7 w-20 bg-white/20" />
-              ) : (
-                <Text className="text-lg font-semibold">
-                  {vault.name === 'USDC' ? `$${formatNumber(routingFee)}` : '$0'}
+              <View className="flex-row items-center gap-2">
+                <Wallet color="#A1A1A1" size={16} />
+                <Text className="text-muted-foreground">
+                  {formatNumber(Number(formattedBalance))} {selectedTokenInfo.name}
                 </Text>
-              )}
-            </View>
-          </View>
-          <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
-            <Text className="text-base text-muted-foreground">APY</Text>
-            <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
-              <Text className="text-lg font-semibold text-[#94F27F]">
-                {maxAPY ? `${maxAPY.toFixed(2)}%` : <Skeleton className="h-7 w-20 bg-white/20" />}
-              </Text>
-              {/* <Text className="text-base opacity-40">
+                <Max
+                  onPress={() => {
+                    track(TRACKING_EVENTS.DEPOSIT_MAX_BUTTON_CLICKED, {
+                      chain_id: srcChainId,
+                      token: selectedTokenInfo.name,
+                      max_amount: formattedBalance,
+                    });
+                    setValue('amount', formattedBalance);
+                    trigger('amount');
+                  }}
+                />
+              </View>
+
+              <TokenDetails>
+                <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-lg text-muted-foreground">You will receive</Text>
+                  </View>
+                  <View className="ml-auto shrink-0 flex-row items-center gap-2">
+                    <Image
+                      source={vaultTokenIcon}
+                      style={{ width: 24, height: 24 }}
+                      contentFit="contain"
+                    />
+                    <View className="flex-row items-baseline gap-1">
+                      <Text className="text-lg font-semibold">
+                        {isAmountOutLoading ? (
+                          <Skeleton className="h-7 w-20 bg-white/20" />
+                        ) : isScreenMedium ? (
+                          compactNumberFormat(amountOut || 0)
+                        ) : (
+                          parseFloat((amountOut || 0).toFixed(3)) || 0
+                        )}
+                      </Text>
+                      <Text className="text-lg">{vaultToken}</Text>
+                    </View>
+                  </View>
+                </View>
+                <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+                  <Text className="text-base text-muted-foreground">Price</Text>
+                  <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
+                    <Text className="text-lg font-semibold">
+                      {`1 ${vaultToken} = `}
+                      {vault.name === 'USDC'
+                        ? `$${formatNumber(displayRate ?? 0)}`
+                        : `${formatNumber(displayRate ?? 0)} ${selectedTokenInfo.name}`}
+                    </Text>
+                  </View>
+                </View>
+                <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+                  <Text className="text-base text-muted-foreground">Routing Fee</Text>
+                  <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
+                    {vault.name === 'USDC' && isPreviewDepositLoading ? (
+                      <Skeleton className="h-7 w-20 bg-white/20" />
+                    ) : (
+                      <Text className="text-lg font-semibold">
+                        {vault.name === 'USDC' ? `$${formatNumber(routingFee)}` : '$0'}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
+                  <Text className="text-base text-muted-foreground">APY</Text>
+                  <View className="ml-auto shrink-0 flex-row items-baseline gap-2">
+                    <Text className="text-lg font-semibold text-[#94F27F]">
+                      {maxAPY ? (
+                        `${maxAPY.toFixed(2)}%`
+                      ) : (
+                        <Skeleton className="h-7 w-20 bg-white/20" />
+                      )}
+                    </Text>
+                    {/* <Text className="text-base opacity-40">
                   {totalAPY ? (
                     `Earn ~${compactNumberFormat(
                       Number(watchedAmount) * (totalAPY / 100)
@@ -638,28 +685,31 @@ function DepositToVaultForm() {
                     <Skeleton className="w-20 h-6" />
                   )}
                 </Text> */}
-            </View>
-          </View>
-        </TokenDetails>
-        <View className="flex-row items-center justify-between">
-          <View className="align-items: start flex-row items-center gap-2">
-            <Fuel color="#A1A1A1" size={16} className="mt-1" />
-            <Text className="max-w-xs text-base text-muted-foreground">
-              {getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
-            </Text>
-          </View>
+                  </View>
+                </View>
+              </TokenDetails>
+              <View className="flex-row items-center justify-between">
+                <View className="align-items: start flex-row items-center gap-2">
+                  <Fuel color="#A1A1A1" size={16} className="mt-1" />
+                  <Text className="max-w-xs text-base text-muted-foreground">
+                    {getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
+                  </Text>
+                </View>
+              </View>
+              <CheckConnectionWrapper props={{ size: 'xl' }}>
+                <Button
+                  variant="brand"
+                  className="h-12 rounded-2xl"
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={isFormDisabled()}
+                >
+                  <Text className="text-base font-bold">{getButtonText()?.slice(0, 30)}</Text>
+                  {isLoading && <ActivityIndicator color="gray" />}
+                </Button>
+              </CheckConnectionWrapper>
+            </>
+          )}
         </View>
-        <CheckConnectionWrapper props={{ size: 'xl' }}>
-          <Button
-            variant="brand"
-            className="h-12 rounded-2xl"
-            onPress={handleSubmit(onSubmit)}
-            disabled={isFormDisabled()}
-          >
-            <Text className="text-base font-bold">{getButtonText()?.slice(0, 30)}</Text>
-            {isLoading && <ActivityIndicator color="gray" />}
-          </Button>
-        </CheckConnectionWrapper>
       </View>
     </Pressable>
   );

@@ -5,6 +5,7 @@ import DepositNetwork from '@/components/DepositNetwork/DepositNetwork';
 import { Text } from '@/components/ui/text';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { getAsset } from '@/lib/assets';
 import { getAllowedTokensForChain } from '@/lib/vaults';
 import { useDepositStore } from '@/store/useDepositStore';
@@ -18,8 +19,9 @@ const DepositTokenSelector = () => {
     })),
   );
 
+  const { vault } = useVaultDepositConfig();
   const tokens = BRIDGE_TOKENS[srcChainId]?.tokens;
-  const allowedTokens = getAllowedTokensForChain(srcChainId);
+  const allowedTokens = getAllowedTokensForChain(srcChainId, vault);
 
   const handlePress = (token: string) => {
     setPrincipalToken(token);

@@ -7,11 +7,10 @@ import { Text } from '@/components/ui/text';
 import { WalletTokenList } from '@/components/WalletTokenSelector';
 import { BRIDGE_TOKENS } from '@/constants/bridge';
 import { DEPOSIT_MODAL } from '@/constants/modals';
-import { VAULTS } from '@/constants/vaults';
+import useVaultDepositConfig from '@/hooks/useVaultDepositConfig';
 import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance } from '@/lib/types';
 import { useDepositStore } from '@/store/useDepositStore';
-import { useSavingStore } from '@/store/useSavingStore';
 
 /**
  * Token selector for the Savings deposit flow (Step 2).
@@ -27,11 +26,11 @@ const SavingsDepositTokenSelector: React.FC = () => {
       setModal: state.setModal,
     })),
   );
-  const { selectVaultForDeposit } = useSavingStore();
+  const { vault } = useVaultDepositConfig();
   const { ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens } =
     useWalletTokens();
 
-  // Build a list of depositable tokens that match vault supported tokens
+  // Build a list of depositable tokens that match the SELECTED vault's supported tokens
   const depositableTokens = useMemo(() => {
     const allTokens = [
       ...ethereumTokens,
@@ -41,11 +40,10 @@ const SavingsDepositTokenSelector: React.FC = () => {
       ...arbitrumTokens,
     ];
 
-    // Collect all supported token symbols per chain from vault configs
+    // Only include (chainId, symbol) pairs supported by the currently-selected vault
     const supportedSet = new Set<string>();
-    for (const vault of VAULTS) {
-      const config = vault.depositConfig;
-      if (!config) continue;
+    const config = vault.depositConfig;
+    if (config) {
       for (const chainId of config.supportedChains) {
         for (const symbol of config.supportedTokens) {
           supportedSet.add(`${chainId}:${symbol.toUpperCase()}`);
@@ -60,22 +58,12 @@ const SavingsDepositTokenSelector: React.FC = () => {
       const balance = Number(formatUnits(BigInt(token.balance || '0'), token.contractDecimals));
       return balance > 0;
     });
-  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens]);
+  }, [ethereumTokens, fuseTokens, polygonTokens, baseTokens, arbitrumTokens, vault]);
 
   const handleTokenSelect = useCallback(
     (token: TokenBalance) => {
       const symbol = token.contractTickerSymbol?.toUpperCase();
       const chainId = token.chainId;
-
-      // Find the matching vault for this token
-      const vaultIndex = VAULTS.findIndex(
-        v =>
-          v.depositConfig?.supportedTokens.some(s => s.toUpperCase() === symbol) &&
-          v.depositConfig?.supportedChains.includes(chainId),
-      );
-      if (vaultIndex !== -1) {
-        selectVaultForDeposit(vaultIndex);
-      }
 
       // Look up the token key in BRIDGE_TOKENS for this chain
       const bridgeTokens = BRIDGE_TOKENS[chainId]?.tokens;
@@ -87,7 +75,7 @@ const SavingsDepositTokenSelector: React.FC = () => {
       setPrincipalToken(tokenKey || symbol);
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     },
-    [setSrcChainId, setPrincipalToken, setModal, selectVaultForDeposit],
+    [setSrcChainId, setPrincipalToken, setModal],
   );
 
   return (
