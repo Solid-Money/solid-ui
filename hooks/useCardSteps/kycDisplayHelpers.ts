@@ -4,6 +4,7 @@ import {
   BridgeEndorsementIssue,
   BridgeRejectionReason,
   CardProvider,
+  KycStatus,
   RainApplicationStatus,
 } from '@/lib/types';
 
@@ -136,10 +137,16 @@ export function getStepDescription(
   options?: {
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
+    kycStatus?: KycStatus | null;
   },
 ): string {
   if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
     return getKYCDescription(options.rainApplicationStatus);
+  }
+
+  // Didit KYC rejected before reaching Rain — show rejection message
+  if (options?.kycStatus === KycStatus.REJECTED) {
+    return 'Your identity verification was declined. Please try again with a valid ID.';
   }
 
   // No endorsement yet - default message
@@ -216,10 +223,16 @@ export function getStepButtonText(
   options?: {
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
+    kycStatus?: KycStatus | null;
   },
 ): string | undefined {
   if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
     return getKYCButtonText(options.rainApplicationStatus);
+  }
+
+  // Didit KYC rejected — allow retry
+  if (options?.kycStatus === KycStatus.REJECTED) {
+    return 'Retry KYC';
   }
 
   // No endorsement - start KYC
@@ -257,6 +270,7 @@ export function isStepButtonDisabled(
   options?: {
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
+    kycStatus?: KycStatus | null;
   },
 ): boolean {
   if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
