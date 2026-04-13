@@ -11,7 +11,12 @@ import { getCustomerFromBridge, getKycLinkFromBridge } from '@/lib/api';
 import { EXPO_PUBLIC_CARD_ISSUER } from '@/lib/config';
 import { openIntercom } from '@/lib/intercom';
 import { redirectToRainVerification } from '@/lib/rainVerification';
-import { CardProvider, CardStatusResponse, KycStatus, RainApplicationStatus } from '@/lib/types';
+import {
+  CardProvider,
+  CardStatusResponse,
+  KycStatus,
+  RainApplicationStatus,
+} from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useCountryStore } from '@/store/useCountryStore';
 import { useKycStore } from '@/store/useKycStore';
@@ -256,6 +261,7 @@ export function useCardSteps(
         {
           cardIssuer,
           rainApplicationStatus: cardStatusResponse?.rainApplicationStatus,
+          kycStatus: cardStatusResponse?.kycStatus,
           handleRainKYCPress: cardIssuer === CardProvider.RAIN ? handleRainKYCPress : undefined,
         },
       ),
@@ -266,6 +272,7 @@ export function useCardSteps(
       cardStatusResponse?.activationBlocked,
       cardStatusResponse?.activationBlockedReason,
       cardStatusResponse?.rainApplicationStatus,
+      cardStatusResponse?.kycStatus,
       handleProceedToKyc,
       handleActivateCard,
       pushCardDetails,
