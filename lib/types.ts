@@ -442,6 +442,8 @@ export interface CardStatusResponse {
   activationFailedAt?: string;
   /** Set by backend when available; used to branch Bridge vs Rain flows */
   provider?: CardProvider;
+  /** Internal KYC status (covers Didit rejection before Rain is reached) */
+  kycStatus?: KycStatus;
   /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
   /** Rain: link for needsVerification redirect */

@@ -14,6 +14,7 @@ import {
   BridgeRejectionReason,
   CardProvider,
   CardStatus,
+  KycStatus,
   RainApplicationStatus,
 } from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
@@ -37,14 +38,16 @@ export function buildCardSteps(
   options?: {
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
+    kycStatus?: KycStatus | null;
     handleRainKYCPress?: () => void;
   },
 ): Step[] {
   const stepOptions =
-    options?.cardIssuer != null
+    options?.cardIssuer != null || options?.kycStatus != null
       ? {
-          cardIssuer: options.cardIssuer,
-          rainApplicationStatus: options.rainApplicationStatus,
+          cardIssuer: options?.cardIssuer,
+          rainApplicationStatus: options?.rainApplicationStatus,
+          kycStatus: options?.kycStatus,
         }
       : undefined;
   const description = getStepDescription(cardsEndorsement, customerRejectionReasons, stepOptions);
