@@ -75,7 +75,7 @@ const SavingsDepositTokenSelector: React.FC = () => {
       setPrincipalToken(tokenKey || symbol);
       setModal(DEPOSIT_MODAL.OPEN_FORM);
     },
-    [setSrcChainId, setPrincipalToken, setModal],
+    [setSrcChainId, setPrincipalToken, setModal, selectVaultForDeposit],
   );
 
   return (

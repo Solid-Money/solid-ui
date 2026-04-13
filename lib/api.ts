@@ -891,6 +891,13 @@ export const addToCardWaitlistToNotify = async (
   return response.json();
 };
 
+export const fetchLayerZeroBridgeTransactions = async (
+  transactionHash: string,
+): Promise<LayerZeroTransaction> => {
+  const response = await axios.get(`https://scan.layerzero-api.com/v1/messages/tx/${transactionHash}`);
+  return response.data;
+};
+
 export const checkCardAccess = async (countryCode: string): Promise<CardAccessResponse> => {
   const jwt = getJWTToken();
   const url = new URL('/accounts/v1/cards/check-access', EXPO_PUBLIC_FLASH_API_BASE_URL);
