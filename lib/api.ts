@@ -13,6 +13,7 @@ import {
   EXPO_PUBLIC_BRIDGE_CARD_API_BASE_URL,
   EXPO_PUBLIC_COINGECKO_API_KEY,
   EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL,
+  EXPO_PUBLIC_LAYERZERO_VT_API_KEY,
   EXPO_PUBLIC_FLASH_API_BASE_URL,
   EXPO_PUBLIC_FLASH_REWARDS_API_BASE_URL,
   EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL,
@@ -2149,7 +2150,12 @@ export const getStargateQuote = async (
 ): Promise<StargateQuoteResponse> => {
   const response = await fetch('https://transfer.layerzero-api.com/v1/quotes', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(EXPO_PUBLIC_LAYERZERO_VT_API_KEY && {
+        'x-api-key': EXPO_PUBLIC_LAYERZERO_VT_API_KEY,
+      }),
+    },
     body: JSON.stringify({
       srcTokenAddress: params.srcToken,
       srcChainKey: params.srcChainKey,
