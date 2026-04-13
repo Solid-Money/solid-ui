@@ -4,6 +4,7 @@ import {
   BridgeEndorsementIssue,
   BridgeRejectionReason,
   CardProvider,
+  KycStatus,
   RainApplicationStatus,
 } from '@/lib/types';
 
@@ -136,10 +137,26 @@ export function getStepDescription(
   options?: {
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
+    kycStatus?: KycStatus | null;
   },
 ): string {
   if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
     return getKYCDescription(options.rainApplicationStatus);
+  }
+
+  // Didit KYC rejected or expired before reaching Rain — show rejection message
+  if (options?.kycStatus === KycStatus.REJECTED) {
+    return 'Your identity verification was declined. Please try again with a valid ID.';
+  }
+
+  // Didit resubmission or incomplete — user needs to redo verification steps
+  if (options?.kycStatus === KycStatus.INCOMPLETE && !options?.rainApplicationStatus) {
+    return 'Additional verification steps are required. Please continue to complete the process.';
+  }
+
+  // Didit under review — user should wait
+  if (options?.kycStatus === KycStatus.UNDER_REVIEW && !options?.rainApplicationStatus) {
+    return 'Your information is being reviewed. This usually takes a few minutes.';
   }
 
   // No endorsement yet - default message
@@ -216,10 +233,26 @@ export function getStepButtonText(
   options?: {
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
+    kycStatus?: KycStatus | null;
   },
 ): string | undefined {
   if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
     return getKYCButtonText(options.rainApplicationStatus);
+  }
+
+  // Didit KYC rejected — allow retry
+  if (options?.kycStatus === KycStatus.REJECTED) {
+    return 'Retry KYC';
+  }
+
+  // Didit incomplete — user needs to continue
+  if (options?.kycStatus === KycStatus.INCOMPLETE && !options?.rainApplicationStatus) {
+    return 'Continue verification';
+  }
+
+  // Didit under review — disabled, user should wait
+  if (options?.kycStatus === KycStatus.UNDER_REVIEW && !options?.rainApplicationStatus) {
+    return 'Under Review';
   }
 
   // No endorsement - start KYC
@@ -257,11 +290,18 @@ export function isStepButtonDisabled(
   options?: {
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
+    kycStatus?: KycStatus | null;
   },
 ): boolean {
   if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
     return isRainKYCButtonDisabled(options.rainApplicationStatus);
   }
+
+  // Didit under review — disable button, user must wait
+  if (options?.kycStatus === KycStatus.UNDER_REVIEW && !options?.rainApplicationStatus) {
+    return true;
+  }
+
   if (!cardsEndorsement) {
     return false;
   }
