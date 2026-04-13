@@ -1616,6 +1616,7 @@ export interface Vault {
   minimumAmount: string;
   depositConfig?: VaultDepositConfig;
   isComingSoon?: boolean;
+  vaultName: string;
 }
 
 export enum VaultType {
