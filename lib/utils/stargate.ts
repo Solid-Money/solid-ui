@@ -59,6 +59,9 @@ const CHAIN_KEY_TO_EID: Record<string, number> = {
   arbitrum: 30110,
 };
 
+// Stargate USDC Pool/OFT address on Fuse (implements quoteSend/send)
+const STARGATE_USDC_POOL_FUSE: Address = '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398';
+
 // Direct on-chain quote via Stargate OFT contract (replaces deprecated Stargate API)
 export const getStargateQuote = async (
   params: StargateQuoteParams,
@@ -67,9 +70,6 @@ export const getStargateQuote = async (
   if (!dstEid) {
     throw new Error(`Unsupported destination chain: ${params.dstChainKey}`);
   }
-
-  // On Fuse, USDC_STARGATE is the OFT contract that implements quoteSend
-  const oftAddress = params.srcToken as Address;
 
   const sendParam = {
     dstEid,
@@ -83,7 +83,7 @@ export const getStargateQuote = async (
 
   const client = publicClient(fuse.id);
   const { nativeFee } = await client.readContract({
-    address: oftAddress,
+    address: STARGATE_USDC_POOL_FUSE,
     abi: StargateOFT_ABI,
     functionName: 'quoteSend',
     args: [sendParam, false],
@@ -120,7 +120,7 @@ export const getStargateQuote = async (
             sender: params.srcAddress,
             chainKey: params.srcChainKey,
             transaction: {
-              to: params.srcToken,
+              to: STARGATE_USDC_POOL_FUSE,
               value: nativeFee.toString(),
               data: '0x',
               from: params.srcAddress,
