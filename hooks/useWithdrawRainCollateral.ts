@@ -100,6 +100,18 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         // Step 3: Create Safe smart account client for transaction execution
         const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 
+        // Step 3a: Ensure Safe is deployed on this chain before signing.
+        // Safe ERC-1271 signature verification requires the contract to exist on-chain;
+        // a counterfactual (undeployed) Safe produces a domain separator mismatch.
+        const code = await client.getCode({ address: user.safeAddress as Address });
+        if (!code || code === '0x') {
+          // Deploy the Safe by sending a no-op transaction (0-value self-transfer)
+          const deployHash = await smartAccountClient.sendUserOperation({
+            calls: [{ to: user.safeAddress as Address, data: '0x', value: 0n }],
+          });
+          await smartAccountClient.waitForUserOperationReceipt({ hash: deployHash });
+        }
+
         // Step 4: Generate admin EIP-712 signature via Safe smart account
         // The Safe address is the admin on Rain's collateral contract.
         // Rain's coordinator verifies admin signatures using SignatureChecker (ERC-1271),
