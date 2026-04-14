@@ -13,6 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import {
   ChevronDown,
   ChevronRight,
@@ -28,7 +29,9 @@ import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import ManagePinModal from '@/components/Card/ManagePinModal';
-import OrderPhysicalCardModal from '@/components/Card/OrderPhysicalCardModal';
+import OrderPhysicalCardModal, {
+  PHYSICAL_CARD_STATUS_QUERY_KEY,
+} from '@/components/Card/OrderPhysicalCardModal';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -52,7 +55,7 @@ import { freezeCard, getPhysicalCardStatus, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
-import { cn } from '@/lib/utils/utils';
+import { cn, withRefreshToken } from '@/lib/utils/utils';
 import { CardDepositSource, useCardDepositStore } from '@/store/useCardDepositStore';
 
 export default function CardDetails() {
@@ -69,33 +72,15 @@ export default function CardDetails() {
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const [isOrderPhysicalCardModalOpen, setIsOrderPhysicalCardModalOpen] = useState(false);
-  const [hasPhysicalCard, setHasPhysicalCard] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
-  const checkPhysicalCardStatus = useCallback(async () => {
-    if (provider !== CardProvider.RAIN) return;
-    try {
-      const result = await getPhysicalCardStatus();
-      setHasPhysicalCard(result.hasPhysicalCard);
-    } catch {
-      // ignore
-    }
-  }, [provider]);
+  const { data: physicalCardStatusData } = useQuery({
+    queryKey: [PHYSICAL_CARD_STATUS_QUERY_KEY],
+    queryFn: () => withRefreshToken(() => getPhysicalCardStatus()),
+    enabled: provider === CardProvider.RAIN,
+  });
 
-  useEffect(() => {
-    checkPhysicalCardStatus();
-  }, [checkPhysicalCardStatus]);
-
-  const handlePhysicalCardModalChange = useCallback(
-    (open: boolean) => {
-      setIsOrderPhysicalCardModalOpen(open);
-      if (!open) {
-        // Re-check physical card status when modal closes
-        checkPhysicalCardStatus();
-      }
-    },
-    [checkPhysicalCardStatus],
-  );
+  const hasPhysicalCard = physicalCardStatusData?.hasPhysicalCard ?? false;
 
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
@@ -173,7 +158,7 @@ export default function CardDetails() {
         isRain={provider === CardProvider.RAIN}
         hasPhysicalCard={hasPhysicalCard}
         isOrderPhysicalCardModalOpen={isOrderPhysicalCardModalOpen}
-        onOrderPhysicalCardModalChange={handlePhysicalCardModalChange}
+        onOrderPhysicalCardModalChange={setIsOrderPhysicalCardModalOpen}
       />
     </View>
   ) : (
@@ -234,7 +219,7 @@ export default function CardDetails() {
         />
         <OrderPhysicalCardModal
           isOpen={isOrderPhysicalCardModalOpen}
-          onOpenChange={handlePhysicalCardModalChange}
+          onOpenChange={setIsOrderPhysicalCardModalOpen}
           trigger={null}
         />
       </PageLayout>

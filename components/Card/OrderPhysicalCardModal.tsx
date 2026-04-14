@@ -1,11 +1,14 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
+import React, { useCallback, useEffect } from 'react';
+import { ActivityIndicator, Alert, ScrollView, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, useForm } from 'react-hook-form';
 import { CreditCard } from 'lucide-react-native';
+import { z } from 'zod';
 
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
-import Input from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import {
   cancelPhysicalCard,
@@ -13,6 +16,8 @@ import {
   getPhysicalCardStatus,
   orderPhysicalCard,
 } from '@/lib/api';
+import { withRefreshToken } from '@/lib/utils/utils';
+import { cn } from '@/lib/utils/utils';
 
 interface OrderPhysicalCardModalProps {
   trigger: React.ReactNode;
@@ -23,124 +28,155 @@ interface OrderPhysicalCardModalProps {
 const MODAL_STATE: ModalState = { name: 'order-physical-card', number: 1 };
 const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
 
-interface ShippingForm {
-  firstName: string;
-  lastName: string;
-  line1: string;
-  line2: string;
-  city: string;
-  region: string;
-  postalCode: string;
-  countryCode: string;
-  phoneNumber: string;
-}
+export const PHYSICAL_CARD_STATUS_QUERY_KEY = 'physicalCardStatus';
+const SHIPPING_DATA_QUERY_KEY = 'physicalCardShippingData';
 
-const EMPTY_FORM: ShippingForm = {
-  firstName: '',
-  lastName: '',
-  line1: '',
-  line2: '',
-  city: '',
-  region: '',
-  postalCode: '',
-  countryCode: '',
-  phoneNumber: '',
-};
+const shippingSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, { message: 'First name is required' })
+    .max(50)
+    .regex(/^[a-zA-Z -]+$/, { message: 'Only Latin characters, spaces, and hyphens' }),
+  lastName: z
+    .string()
+    .min(1, { message: 'Last name is required' })
+    .max(50)
+    .regex(/^[a-zA-Z -]+$/, { message: 'Only Latin characters, spaces, and hyphens' }),
+  line1: z.string().min(1, { message: 'Address is required' }).max(100),
+  line2: z.string().max(100).optional().or(z.literal('')),
+  city: z.string().min(1, { message: 'City is required' }).max(50),
+  region: z.string().max(50).optional().or(z.literal('')),
+  postalCode: z.string().min(1, { message: 'Postal code is required' }).max(9),
+  countryCode: z
+    .string()
+    .length(2, { message: 'Must be 2-letter code' })
+    .regex(/^[A-Z]{2}$/, { message: 'Must be 2 uppercase letters' }),
+  phoneNumber: z.string().min(1, { message: 'Phone number is required' }),
+});
+
+type ShippingFormData = z.infer<typeof shippingSchema>;
 
 export default function OrderPhysicalCardModal({
   trigger,
   isOpen,
   onOpenChange,
 }: OrderPhysicalCardModalProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCanceling, setIsCanceling] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [form, setForm] = useState<ShippingForm>(EMPTY_FORM);
-  const [physicalCardId, setPhysicalCardId] = useState<string | null>(null);
-  const [hasPhysicalCard, setHasPhysicalCard] = useState(false);
+  const queryClient = useQueryClient();
 
-  const loadData = useCallback(async () => {
-    setIsLoadingData(true);
-    try {
-      const [statusResult, shippingResult] = await Promise.all([
-        getPhysicalCardStatus(),
-        getPhysicalCardShippingData(),
-      ]);
+  const { data: statusData, isLoading: isLoadingStatus } = useQuery({
+    queryKey: [PHYSICAL_CARD_STATUS_QUERY_KEY],
+    queryFn: () => withRefreshToken(() => getPhysicalCardStatus()),
+    enabled: isOpen,
+  });
 
-      if (statusResult.hasPhysicalCard && statusResult.cardId) {
-        setHasPhysicalCard(true);
-        setPhysicalCardId(statusResult.cardId);
-      } else {
-        setHasPhysicalCard(false);
-        setPhysicalCardId(null);
-      }
+  const { data: shippingData } = useQuery({
+    queryKey: [SHIPPING_DATA_QUERY_KEY],
+    queryFn: () => withRefreshToken(() => getPhysicalCardShippingData()),
+    enabled: isOpen && !statusData?.hasPhysicalCard,
+  });
 
-      setForm({
-        firstName: shippingResult.firstName ?? '',
-        lastName: shippingResult.lastName ?? '',
-        line1: shippingResult.line1 ?? '',
-        line2: shippingResult.line2 ?? '',
-        city: shippingResult.city ?? '',
-        region: shippingResult.region ?? '',
-        postalCode: shippingResult.postalCode ?? '',
-        countryCode: shippingResult.countryCode ?? '',
-        phoneNumber: shippingResult.phoneNumber ?? '',
-      });
-    } catch (_error) {
-      // Shipping data may not be available, continue with empty form
-    } finally {
-      setIsLoadingData(false);
-    }
-  }, []);
+  const hasPhysicalCard = statusData?.hasPhysicalCard ?? false;
+  const physicalCardId = statusData?.cardId;
+
+  const { control, handleSubmit, formState, reset } = useForm<ShippingFormData>({
+    resolver: zodResolver(shippingSchema) as any,
+    mode: 'onChange',
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      line1: '',
+      line2: '',
+      city: '',
+      region: '',
+      postalCode: '',
+      countryCode: '',
+      phoneNumber: '',
+    },
+  });
 
   useEffect(() => {
-    if (isOpen) {
-      loadData();
-    }
-  }, [isOpen, loadData]);
-
-  const updateField = (field: keyof ShippingForm) => (value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!form.firstName || !form.lastName || !form.line1 || !form.city || !form.postalCode || !form.countryCode || !form.phoneNumber) {
-      Alert.alert('Missing fields', 'Please fill in all required fields.');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const result = await orderPhysicalCard({
-        shipping: {
-          firstName: form.firstName,
-          lastName: form.lastName,
-          line1: form.line1,
-          ...(form.line2 ? { line2: form.line2 } : {}),
-          city: form.city,
-          ...(form.region ? { region: form.region } : {}),
-          postalCode: form.postalCode,
-          countryCode: form.countryCode,
-          phoneNumber: form.phoneNumber,
-        },
+    if (shippingData) {
+      reset({
+        firstName: shippingData.firstName ?? '',
+        lastName: shippingData.lastName ?? '',
+        line1: shippingData.line1 ?? '',
+        line2: shippingData.line2 ?? '',
+        city: shippingData.city ?? '',
+        region: shippingData.region ?? '',
+        postalCode: shippingData.postalCode ?? '',
+        countryCode: shippingData.countryCode?.toUpperCase() ?? '',
+        phoneNumber: shippingData.phoneNumber ?? '',
       });
-      setHasPhysicalCard(true);
-      setPhysicalCardId(result.id);
+    }
+  }, [shippingData, reset]);
+
+  const orderMutation = useMutation({
+    mutationFn: (data: ShippingFormData) =>
+      withRefreshToken(() =>
+        orderPhysicalCard({
+          shipping: {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            line1: data.line1,
+            ...(data.line2 ? { line2: data.line2 } : {}),
+            city: data.city,
+            ...(data.region ? { region: data.region } : {}),
+            postalCode: data.postalCode,
+            countryCode: data.countryCode,
+            phoneNumber: data.phoneNumber,
+          },
+        }),
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PHYSICAL_CARD_STATUS_QUERY_KEY] });
       Toast.show({
         type: 'success',
         text1: 'Physical card ordered',
         text2: 'Your physical card has been ordered successfully.',
+        props: { badgeText: '' },
       });
-    } catch (_error) {
-      Alert.alert('Error', 'Failed to order physical card. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+    onError: () => {
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to order physical card',
+        text2: 'Please try again.',
+        props: { badgeText: '' },
+      });
+    },
+  });
 
-  const handleCancel = async () => {
+  const cancelMutation = useMutation({
+    mutationFn: (cardId: string) => withRefreshToken(() => cancelPhysicalCard(cardId)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [PHYSICAL_CARD_STATUS_QUERY_KEY] });
+      onOpenChange(false);
+      Toast.show({
+        type: 'success',
+        text1: 'Physical card canceled',
+        text2: 'Your physical card order has been canceled.',
+        props: { badgeText: '' },
+      });
+    },
+    onError: () => {
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to cancel physical card',
+        text2: 'Please try again.',
+        props: { badgeText: '' },
+      });
+    },
+  });
+
+  const onSubmit = useCallback(
+    (data: ShippingFormData) => {
+      orderMutation.mutate(data);
+    },
+    [orderMutation],
+  );
+
+  const handleCancel = useCallback(() => {
     if (!physicalCardId) return;
-
     Alert.alert(
       'Cancel Physical Card',
       'Are you sure you want to cancel your physical card order? This action cannot be undone.',
@@ -149,28 +185,11 @@ export default function OrderPhysicalCardModal({
         {
           text: 'Yes, Cancel',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsCanceling(true);
-              await cancelPhysicalCard(physicalCardId);
-              setHasPhysicalCard(false);
-              setPhysicalCardId(null);
-              onOpenChange(false);
-              Toast.show({
-                type: 'success',
-                text1: 'Physical card canceled',
-                text2: 'Your physical card order has been canceled.',
-              });
-            } catch (_error) {
-              Alert.alert('Error', 'Failed to cancel physical card. Please try again.');
-            } finally {
-              setIsCanceling(false);
-            }
-          },
+          onPress: () => cancelMutation.mutate(physicalCardId),
         },
       ],
     );
-  };
+  }, [physicalCardId, cancelMutation]);
 
   return (
     <ResponsiveModal
@@ -185,7 +204,7 @@ export default function OrderPhysicalCardModal({
       shouldAnimate={false}
       disableScroll
     >
-      {isLoadingData ? (
+      {isLoadingStatus ? (
         <View className="items-center justify-center p-12">
           <ActivityIndicator size="large" color="white" />
         </View>
@@ -208,9 +227,9 @@ export default function OrderPhysicalCardModal({
             <Button
               className="h-14 rounded-xl bg-red-500"
               onPress={handleCancel}
-              disabled={isCanceling}
+              disabled={cancelMutation.isPending}
             >
-              {isCanceling ? (
+              {cancelMutation.isPending ? (
                 <ActivityIndicator color="white" />
               ) : (
                 <Text className="text-base font-bold text-white">Cancel Physical Card</Text>
@@ -220,7 +239,7 @@ export default function OrderPhysicalCardModal({
               variant="secondary"
               className="h-14 rounded-xl border-0 bg-[#303030]"
               onPress={() => onOpenChange(false)}
-              disabled={isCanceling}
+              disabled={cancelMutation.isPending}
             >
               <Text className="text-base font-bold text-white">Close</Text>
             </Button>
@@ -243,109 +262,143 @@ export default function OrderPhysicalCardModal({
 
             <View className="gap-3">
               <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <Text className="mb-1.5 text-sm font-medium text-white/50">First name *</Text>
-                  <Input
-                    value={form.firstName}
-                    onChangeText={updateField('firstName')}
-                    placeholder="First name"
-                    placeholderTextColor="#666"
-                  />
+                <View className="flex-1 gap-1.5">
+                  <Text className="font-medium opacity-50">First name *</Text>
+                  <View
+                    className={cn(
+                      'rounded-2xl bg-accent px-5 py-3',
+                      formState.errors.firstName && 'border border-red-500',
+                    )}
+                  >
+                    <Controller
+                      control={control}
+                      name="firstName"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <TextInput
+                          className="text-lg font-semibold text-white web:focus:outline-none"
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          placeholder="First name"
+                          placeholderTextColor="#666"
+                        />
+                      )}
+                    />
+                  </View>
+                  {formState.errors.firstName && (
+                    <Text className="text-sm text-red-500">
+                      {formState.errors.firstName.message}
+                    </Text>
+                  )}
                 </View>
-                <View className="flex-1">
-                  <Text className="mb-1.5 text-sm font-medium text-white/50">Last name *</Text>
-                  <Input
-                    value={form.lastName}
-                    onChangeText={updateField('lastName')}
-                    placeholder="Last name"
-                    placeholderTextColor="#666"
-                  />
+                <View className="flex-1 gap-1.5">
+                  <Text className="font-medium opacity-50">Last name *</Text>
+                  <View
+                    className={cn(
+                      'rounded-2xl bg-accent px-5 py-3',
+                      formState.errors.lastName && 'border border-red-500',
+                    )}
+                  >
+                    <Controller
+                      control={control}
+                      name="lastName"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <TextInput
+                          className="text-lg font-semibold text-white web:focus:outline-none"
+                          value={value}
+                          onChangeText={onChange}
+                          onBlur={onBlur}
+                          placeholder="Last name"
+                          placeholderTextColor="#666"
+                        />
+                      )}
+                    />
+                  </View>
+                  {formState.errors.lastName && (
+                    <Text className="text-sm text-red-500">
+                      {formState.errors.lastName.message}
+                    </Text>
+                  )}
                 </View>
               </View>
 
-              <View>
-                <Text className="mb-1.5 text-sm font-medium text-white/50">Address line 1 *</Text>
-                <Input
-                  value={form.line1}
-                  onChangeText={updateField('line1')}
-                  placeholder="Street address"
-                  placeholderTextColor="#666"
-                />
-              </View>
+              <FormField
+                control={control}
+                name="line1"
+                label="Address line 1 *"
+                placeholder="Street address"
+                error={formState.errors.line1?.message}
+              />
 
-              <View>
-                <Text className="mb-1.5 text-sm font-medium text-white/50">Address line 2</Text>
-                <Input
-                  value={form.line2}
-                  onChangeText={updateField('line2')}
-                  placeholder="Apt, suite, unit (optional)"
-                  placeholderTextColor="#666"
-                />
-              </View>
+              <FormField
+                control={control}
+                name="line2"
+                label="Address line 2"
+                placeholder="Apt, suite, unit (optional)"
+                error={formState.errors.line2?.message}
+              />
 
               <View className="flex-row gap-3">
                 <View className="flex-1">
-                  <Text className="mb-1.5 text-sm font-medium text-white/50">City *</Text>
-                  <Input
-                    value={form.city}
-                    onChangeText={updateField('city')}
+                  <FormField
+                    control={control}
+                    name="city"
+                    label="City *"
                     placeholder="City"
-                    placeholderTextColor="#666"
+                    error={formState.errors.city?.message}
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="mb-1.5 text-sm font-medium text-white/50">Region</Text>
-                  <Input
-                    value={form.region}
-                    onChangeText={updateField('region')}
+                  <FormField
+                    control={control}
+                    name="region"
+                    label="Region"
                     placeholder="State/Province"
-                    placeholderTextColor="#666"
+                    error={formState.errors.region?.message}
                   />
                 </View>
               </View>
 
               <View className="flex-row gap-3">
                 <View className="flex-1">
-                  <Text className="mb-1.5 text-sm font-medium text-white/50">Postal code *</Text>
-                  <Input
-                    value={form.postalCode}
-                    onChangeText={updateField('postalCode')}
+                  <FormField
+                    control={control}
+                    name="postalCode"
+                    label="Postal code *"
                     placeholder="Postal code"
-                    placeholderTextColor="#666"
+                    error={formState.errors.postalCode?.message}
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="mb-1.5 text-sm font-medium text-white/50">Country code *</Text>
-                  <Input
-                    value={form.countryCode}
-                    onChangeText={updateField('countryCode')}
+                  <FormField
+                    control={control}
+                    name="countryCode"
+                    label="Country code *"
                     placeholder="US"
-                    placeholderTextColor="#666"
+                    error={formState.errors.countryCode?.message}
                     maxLength={2}
                     autoCapitalize="characters"
                   />
                 </View>
               </View>
 
-              <View>
-                <Text className="mb-1.5 text-sm font-medium text-white/50">Phone number *</Text>
-                <Input
-                  value={form.phoneNumber}
-                  onChangeText={updateField('phoneNumber')}
-                  placeholder="+1234567890"
-                  placeholderTextColor="#666"
-                  keyboardType="phone-pad"
-                />
-              </View>
+              <FormField
+                control={control}
+                name="phoneNumber"
+                label="Phone number *"
+                placeholder="+1234567890"
+                error={formState.errors.phoneNumber?.message}
+                keyboardType="phone-pad"
+              />
             </View>
 
             <View className="mt-6 gap-4">
               <Button
                 className="h-14 rounded-xl bg-[#94F27F]"
-                onPress={handlePlaceOrder}
-                disabled={isSubmitting}
+                onPress={handleSubmit(onSubmit)}
+                disabled={orderMutation.isPending}
               >
-                {isSubmitting ? (
+                {orderMutation.isPending ? (
                   <ActivityIndicator color="black" />
                 ) : (
                   <Text className="text-base font-bold text-black">Place order</Text>
@@ -355,7 +408,7 @@ export default function OrderPhysicalCardModal({
                 variant="secondary"
                 className="h-14 rounded-xl border-0 bg-[#303030]"
                 onPress={() => onOpenChange(false)}
-                disabled={isSubmitting}
+                disabled={orderMutation.isPending}
               >
                 <Text className="text-base font-bold text-white">Cancel</Text>
               </Button>
@@ -364,5 +417,56 @@ export default function OrderPhysicalCardModal({
         </ScrollView>
       )}
     </ResponsiveModal>
+  );
+}
+
+function FormField({
+  control,
+  name,
+  label,
+  placeholder,
+  error,
+  keyboardType,
+  maxLength,
+  autoCapitalize,
+}: {
+  control: any;
+  name: string;
+  label: string;
+  placeholder: string;
+  error?: string;
+  keyboardType?: 'default' | 'phone-pad' | 'decimal-pad' | 'number-pad';
+  maxLength?: number;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+}) {
+  return (
+    <View className="gap-1.5">
+      <Text className="font-medium opacity-50">{label}</Text>
+      <View
+        className={cn(
+          'rounded-2xl bg-accent px-5 py-3',
+          error && 'border border-red-500',
+        )}
+      >
+        <Controller
+          control={control}
+          name={name}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              className="text-lg font-semibold text-white web:focus:outline-none"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              placeholder={placeholder}
+              placeholderTextColor="#666"
+              keyboardType={keyboardType}
+              maxLength={maxLength}
+              autoCapitalize={autoCapitalize}
+            />
+          )}
+        />
+      </View>
+      {error && <Text className="text-sm text-red-500">{error}</Text>}
+    </View>
   );
 }
