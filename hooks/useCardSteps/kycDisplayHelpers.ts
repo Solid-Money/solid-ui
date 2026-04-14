@@ -181,7 +181,12 @@ export function getStepDescription(
     kycWarnings?: string[] | null;
   },
 ): string {
-  if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
+  // Only use Rain description for recognized Rain application statuses
+  const isRecognizedRainStatus =
+    options?.rainApplicationStatus &&
+    Object.values(RainApplicationStatus).includes(options.rainApplicationStatus);
+
+  if (options?.cardIssuer === CardProvider.RAIN && isRecognizedRainStatus) {
     return getKYCDescription(options.rainApplicationStatus);
   }
 
@@ -195,8 +200,8 @@ export function getStepDescription(
     return 'Your identity verification was declined. Please try again with a valid ID.';
   }
 
-  // Didit resubmission or incomplete — show reasons if available
-  if (options?.kycStatus === KycStatus.INCOMPLETE && !options?.rainApplicationStatus) {
+  // Didit resubmission or incomplete (including didit_forward_failed) — show reasons if available
+  if (options?.kycStatus === KycStatus.INCOMPLETE && !isRecognizedRainStatus) {
     if (warnings.length > 0) {
       return `Additional verification required:\n- ${formatKycWarnings(warnings)}`;
     }
@@ -204,7 +209,7 @@ export function getStepDescription(
   }
 
   // Didit under review — user should wait
-  if (options?.kycStatus === KycStatus.UNDER_REVIEW && !options?.rainApplicationStatus) {
+  if (options?.kycStatus === KycStatus.UNDER_REVIEW && !isRecognizedRainStatus) {
     return 'Your information is being reviewed. This usually takes a few minutes.';
   }
 
@@ -285,7 +290,11 @@ export function getStepButtonText(
     kycStatus?: KycStatus | null;
   },
 ): string | undefined {
-  if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
+  const isRecognizedRainStatus =
+    options?.rainApplicationStatus &&
+    Object.values(RainApplicationStatus).includes(options.rainApplicationStatus);
+
+  if (options?.cardIssuer === CardProvider.RAIN && isRecognizedRainStatus) {
     return getKYCButtonText(options.rainApplicationStatus);
   }
 
@@ -295,12 +304,12 @@ export function getStepButtonText(
   }
 
   // Didit incomplete — user needs to continue
-  if (options?.kycStatus === KycStatus.INCOMPLETE && !options?.rainApplicationStatus) {
+  if (options?.kycStatus === KycStatus.INCOMPLETE && !isRecognizedRainStatus) {
     return 'Continue verification';
   }
 
   // Didit under review — disabled, user should wait
-  if (options?.kycStatus === KycStatus.UNDER_REVIEW && !options?.rainApplicationStatus) {
+  if (options?.kycStatus === KycStatus.UNDER_REVIEW && !isRecognizedRainStatus) {
     return 'Under Review';
   }
 
@@ -342,12 +351,16 @@ export function isStepButtonDisabled(
     kycStatus?: KycStatus | null;
   },
 ): boolean {
-  if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
+  const isRecognizedRainStatus =
+    options?.rainApplicationStatus &&
+    Object.values(RainApplicationStatus).includes(options.rainApplicationStatus);
+
+  if (options?.cardIssuer === CardProvider.RAIN && isRecognizedRainStatus) {
     return isRainKYCButtonDisabled(options.rainApplicationStatus);
   }
 
   // Didit under review — disable button, user must wait
-  if (options?.kycStatus === KycStatus.UNDER_REVIEW && !options?.rainApplicationStatus) {
+  if (options?.kycStatus === KycStatus.UNDER_REVIEW && !isRecognizedRainStatus) {
     return true;
   }
 
