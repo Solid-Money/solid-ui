@@ -48,7 +48,7 @@ import { useCardProvider } from '@/hooks/useCardProvider';
 import { useCardWithdrawals } from '@/hooks/useCardWithdrawals';
 import { useCustomer } from '@/hooks/useCustomer';
 import { useDimension } from '@/hooks/useDimension';
-import { freezeCard, unfreezeCard } from '@/lib/api';
+import { freezeCard, getPhysicalCardStatus, unfreezeCard } from '@/lib/api';
 import { getAsset } from '@/lib/assets';
 import { EXPO_PUBLIC_ENVIRONMENT } from '@/lib/config';
 import { CardHolderName, CardProvider, CardStatus, FreezeInitiator, KycStatus } from '@/lib/types';
@@ -69,7 +69,33 @@ export default function CardDetails() {
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const [isOrderPhysicalCardModalOpen, setIsOrderPhysicalCardModalOpen] = useState(false);
+  const [hasPhysicalCard, setHasPhysicalCard] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
+
+  const checkPhysicalCardStatus = useCallback(async () => {
+    if (provider !== CardProvider.RAIN) return;
+    try {
+      const result = await getPhysicalCardStatus();
+      setHasPhysicalCard(result.hasPhysicalCard);
+    } catch {
+      // ignore
+    }
+  }, [provider]);
+
+  useEffect(() => {
+    checkPhysicalCardStatus();
+  }, [checkPhysicalCardStatus]);
+
+  const handlePhysicalCardModalChange = useCallback(
+    (open: boolean) => {
+      setIsOrderPhysicalCardModalOpen(open);
+      if (!open) {
+        // Re-check physical card status when modal closes
+        checkPhysicalCardStatus();
+      }
+    },
+    [checkPhysicalCardStatus],
+  );
 
   const availableBalance = cardDetails?.balances.available;
   const availableAmount = Number(availableBalance?.amount || '0').toString();
@@ -145,8 +171,9 @@ export default function CardDetails() {
         onFreezeToggle={handleFreezeToggle}
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
         isRain={provider === CardProvider.RAIN}
+        hasPhysicalCard={hasPhysicalCard}
         isOrderPhysicalCardModalOpen={isOrderPhysicalCardModalOpen}
-        onOrderPhysicalCardModalChange={setIsOrderPhysicalCardModalOpen}
+        onOrderPhysicalCardModalChange={handlePhysicalCardModalChange}
       />
     </View>
   ) : (
@@ -207,7 +234,7 @@ export default function CardDetails() {
         />
         <OrderPhysicalCardModal
           isOpen={isOrderPhysicalCardModalOpen}
-          onOpenChange={setIsOrderPhysicalCardModalOpen}
+          onOpenChange={handlePhysicalCardModalChange}
           trigger={null}
         />
       </PageLayout>
@@ -241,6 +268,7 @@ export default function CardDetails() {
             isWithdrawAllowed={isWithdrawAllowed}
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
             isRain={provider === CardProvider.RAIN}
+            hasPhysicalCard={hasPhysicalCard}
             onOrderPhysicalCard={() => setIsOrderPhysicalCardModalOpen(true)}
           />
           <BorrowPositionCard className="mb-4" />
@@ -280,6 +308,7 @@ interface DesktopHeaderProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
+  hasPhysicalCard: boolean;
   isOrderPhysicalCardModalOpen: boolean;
   onOrderPhysicalCardModalChange: (open: boolean) => void;
 }
@@ -294,6 +323,7 @@ function DesktopHeader({
   onFreezeToggle,
   isWithdrawFromCardAllowed,
   isRain,
+  hasPhysicalCard,
   isOrderPhysicalCardModalOpen,
   onOrderPhysicalCardModalChange,
 }: DesktopHeaderProps) {
@@ -402,12 +432,16 @@ function DesktopHeader({
         {isRain && (
           <Button
             variant="secondary"
-            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+            className={`h-12 rounded-xl border-0 px-6 ${hasPhysicalCard ? 'bg-red-500/20' : 'bg-[#303030]'}`}
             onPress={() => onOrderPhysicalCardModalChange(true)}
           >
             <View className="flex-row items-center gap-2">
-              <CreditCard size={18} color="white" />
-              <Text className="text-base font-bold text-white">Order Physical Card</Text>
+              <CreditCard size={18} color={hasPhysicalCard ? '#ef4444' : 'white'} />
+              <Text
+                className={`text-base font-bold ${hasPhysicalCard ? 'text-red-400' : 'text-white'}`}
+              >
+                {hasPhysicalCard ? 'Cancel Physical Card' : 'Order Physical Card'}
+              </Text>
             </View>
           </Button>
         )}
@@ -820,6 +854,7 @@ interface CardActionsProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
+  hasPhysicalCard: boolean;
   onOrderPhysicalCard: () => void;
 }
 
@@ -833,6 +868,7 @@ function CardActions({
   onFreezeToggle,
   isWithdrawFromCardAllowed,
   isRain,
+  hasPhysicalCard,
   onOrderPhysicalCard,
 }: CardActionsProps) {
   const [isManageSheetOpen, setIsManageSheetOpen] = useState(false);
@@ -929,12 +965,14 @@ function CardActions({
         <View className="flex-1 items-center">
           <Pressable
             onPress={onOrderPhysicalCard}
-            className="items-center justify-center rounded-full bg-[#303030]"
+            className={`items-center justify-center rounded-full ${hasPhysicalCard ? 'bg-red-500/20' : 'bg-[#303030]'}`}
             style={{ width: 50, height: 50 }}
           >
-            <CreditCard size={24} color="#BFBFBF" />
+            <CreditCard size={24} color={hasPhysicalCard ? '#ef4444' : '#BFBFBF'} />
           </Pressable>
-          <Text className="mt-2 text-[#BFBFBF]">Physical</Text>
+          <Text className={`mt-2 ${hasPhysicalCard ? 'text-red-400' : 'text-[#BFBFBF]'}`}>
+            {hasPhysicalCard ? 'Cancel' : 'Physical'}
+          </Text>
         </View>
       )}
       {isWithdrawFromCardAllowed && (
