@@ -111,7 +111,13 @@ const Row = memo(function Row({ item, columns, isLast, onPress, isScreenMedium }
               {c.key ? (
                 <View className="flex-row items-center gap-2">
                   {c.key === 'name' &&
-                    (protocolsImages[item.type] ? (
+                    (item.image ? (
+                      <Image
+                        source={{ uri: item.image }}
+                        style={{ width: 24, height: 24, borderRadius: 999 }}
+                        contentFit="contain"
+                      />
+                    ) : protocolsImages[item.type] ? (
                       <Image
                         source={protocolsImages[item.type]}
                         style={{ width: 24, height: 24, borderRadius: 999 }}

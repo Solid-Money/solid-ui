@@ -1336,6 +1336,7 @@ export interface VaultBreakdown {
   name: string;
   title?: string;
   type: string;
+  image?: string;
   expiryDate: string;
   amountUSD: number;
   allocation: number;
