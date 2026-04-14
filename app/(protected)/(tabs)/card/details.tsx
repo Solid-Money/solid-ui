@@ -157,7 +157,6 @@ export default function CardDetails() {
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
         isRain={provider === CardProvider.RAIN}
         hasPhysicalCard={hasPhysicalCard}
-        isOrderPhysicalCardModalOpen={isOrderPhysicalCardModalOpen}
         onOrderPhysicalCardModalChange={setIsOrderPhysicalCardModalOpen}
       />
     </View>
@@ -294,7 +293,6 @@ interface DesktopHeaderProps {
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
   hasPhysicalCard: boolean;
-  isOrderPhysicalCardModalOpen: boolean;
   onOrderPhysicalCardModalChange: (open: boolean) => void;
 }
 
@@ -309,7 +307,6 @@ function DesktopHeader({
   isWithdrawFromCardAllowed,
   isRain,
   hasPhysicalCard,
-  isOrderPhysicalCardModalOpen,
   onOrderPhysicalCardModalChange,
 }: DesktopHeaderProps) {
   const [isManageOpen, setIsManageOpen] = useState(false);
