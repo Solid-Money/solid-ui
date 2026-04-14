@@ -22,22 +22,26 @@ export default function OrderPhysicalCardModal({
   isOpen,
   onOpenChange,
 }: OrderPhysicalCardModalProps) {
-  const [isOrdering, setIsOrdering] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
-  const handleOrder = async () => {
+  const handleCheck = async () => {
     try {
-      setIsOrdering(true);
+      setIsChecking(true);
       await orderPhysicalCard();
       onOpenChange(false);
       Toast.show({
         type: 'success',
-        text1: 'Physical card ordered',
-        text2: 'Your physical card has been ordered successfully.',
+        text1: 'Physical cards supported',
+        text2: 'Your Rain program supports physical card creation.',
       });
     } catch (_error) {
-      Alert.alert('Error', 'Failed to order physical card. Please try again.');
+      onOpenChange(false);
+      Alert.alert(
+        'Not supported',
+        'Physical card creation is not supported by your Rain program. Only virtual cards are available.',
+      );
     } finally {
-      setIsOrdering(false);
+      setIsChecking(false);
     }
   };
 
@@ -59,31 +63,31 @@ export default function OrderPhysicalCardModal({
             <CreditCard size={32} color="#94F27F" />
           </View>
           <Text className="mb-2 text-center text-xl font-semibold text-white">
-            Get your physical card
+            Order Physical Card
           </Text>
           <Text className="text-center text-base text-white/60">
-            Order a physical Solid card delivered to your address. The card will need to be activated
-            once received.
+            Check if your account supports physical card issuance. A test card will be created and
+            immediately canceled to verify eligibility.
           </Text>
         </View>
 
         <View className="gap-4">
           <Button
             className="h-14 rounded-xl bg-[#94F27F]"
-            onPress={handleOrder}
-            disabled={isOrdering}
+            onPress={handleCheck}
+            disabled={isChecking}
           >
-            {isOrdering ? (
+            {isChecking ? (
               <ActivityIndicator color="black" />
             ) : (
-              <Text className="text-base font-bold text-black">Order Physical Card</Text>
+              <Text className="text-base font-bold text-black">Check Eligibility</Text>
             )}
           </Button>
           <Button
             variant="secondary"
             className="h-14 rounded-xl border-0 bg-[#303030]"
             onPress={() => onOpenChange(false)}
-            disabled={isOrdering}
+            disabled={isChecking}
           >
             <Text className="text-base font-bold text-white">Cancel</Text>
           </Button>
