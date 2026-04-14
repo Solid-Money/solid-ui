@@ -662,6 +662,113 @@ export const createCard = async (): Promise<CardResponse> => {
   return response.json();
 };
 
+export const orderPhysicalCard = async (options?: {
+  productId?: string;
+  virtualCardArt?: string;
+  shipping?: {
+    firstName?: string;
+    lastName?: string;
+    line1: string;
+    line2?: string;
+    city: string;
+    region?: string;
+    postalCode: string;
+    countryCode: string;
+    phoneNumber: string;
+  };
+}): Promise<CardResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/physical`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(options ?? {}),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getPhysicalCardStatus = async (): Promise<{
+  hasPhysicalCard: boolean;
+  cardId?: string;
+  status?: string;
+}> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/physical/status`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const cancelPhysicalCard = async (cardId: string): Promise<{ message: string }> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/physical/cancel`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ cardId }),
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
+export const getPhysicalCardShippingData = async (): Promise<{
+  firstName?: string;
+  lastName?: string;
+  line1?: string;
+  line2?: string;
+  city?: string;
+  region?: string;
+  postalCode?: string;
+  countryCode?: string;
+  phoneNumber?: string;
+}> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/physical/shipping-data`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const getCardStatus = async (): Promise<CardStatusResponse | null> => {
   const jwt = getJWTToken();
 
