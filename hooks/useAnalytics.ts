@@ -542,11 +542,11 @@ export const useTVL = () => {
   });
 };
 
-export const useVaultBreakdown = () => {
+export const useVaultBreakdown = (vault?: string) => {
   return useQuery({
-    queryKey: [ANALYTICS, 'vaultBreakdown'],
+    queryKey: [ANALYTICS, 'vaultBreakdown', vault ?? 'usdc'],
     queryFn: async () => {
-      const vaultBreakdown = await fetchVaultBreakdown();
+      const vaultBreakdown = await fetchVaultBreakdown(vault);
       return formatVaultBreakdown(vaultBreakdown);
     },
   });
@@ -598,6 +598,7 @@ export const formatVaultBreakdown = (vaultBreakdown: VaultBreakdown[]): VaultBre
     name: vault.name,
     title: vault.title,
     type: vault.type,
+    image: vault.image,
     expiryDate: vault.expiryDate,
     amountUSD: vault.amountUSD,
     allocation: vault.allocation,

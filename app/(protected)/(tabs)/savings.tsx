@@ -18,8 +18,8 @@ import SavingVault from '@/components/Savings/SavingVault';
 import TooltipPopover from '@/components/Tooltip';
 import Skeleton from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { DEPOSIT_MODAL } from '@/constants/modals';
 import faqs from '@/constants/faqs';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { VAULTS } from '@/constants/vaults';
 import {
   useAPYs,
@@ -54,7 +54,8 @@ export default function Savings() {
   useEffect(() => {
     if (vaultParam) {
       const vaultIndex = VAULTS.findIndex(
-        v => v.type === vaultParam.toLowerCase() || v.name.toLowerCase() === vaultParam.toLowerCase(),
+        v =>
+          v.type === vaultParam.toLowerCase() || v.name.toLowerCase() === vaultParam.toLowerCase(),
       );
       if (vaultIndex !== -1) {
         setSelectedVault(vaultIndex);
@@ -557,7 +558,7 @@ export default function Savings() {
         )}
         {!isScreenMedium && <SavingsHeaderButtonsMobile hideSend hideSwap />}
 
-        {currentVault?.name === 'USDC' && <SavingsAnalytics />}
+        <SavingsAnalytics />
       </View>
       <View className="mx-auto w-full max-w-7xl px-4 pb-24">
         <FAQs faqs={faqs} className="md:mt-20" />

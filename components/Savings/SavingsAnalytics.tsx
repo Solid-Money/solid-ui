@@ -39,7 +39,8 @@ const SavingsAnalytics = () => {
     '-1',
     historicalVault,
   );
-  const { data: vaultBreakdown } = useVaultBreakdown();
+  const currentVaultName = VAULTS[selectedVault]?.name?.toLowerCase();
+  const { data: vaultBreakdown } = useVaultBreakdown(currentVaultName);
 
   useEffect(() => {
     isMountedRef.current = true;

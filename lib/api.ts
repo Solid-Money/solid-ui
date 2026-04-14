@@ -709,10 +709,22 @@ export const getCardBalance = async (): Promise<CardBalanceResponseDto> => {
   });
 
   if (!response.ok) throw response;
+  return response.json();
 };
 
 export const getCashbackPercentage = async (): Promise<{ percentage: number }> => {
+  const jwt = getJWTToken();
 
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/cashback-percentage`,
+    {
+      credentials: 'include',
+      headers: {
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+    },
+  );
   return response.json();
 };
 
@@ -1951,9 +1963,10 @@ export const syncActivities = async (
   return response.json();
 };
 
-export const fetchVaultBreakdown = async () => {
+export const fetchVaultBreakdown = async (vault?: string) => {
   const response = await axios.get<VaultBreakdown[]>(
     `${EXPO_PUBLIC_FLASH_VAULT_MANAGER_API_BASE_URL}/vault-manager/v1/tokens/vault-breakdown`,
+    vault ? { params: { vault } } : undefined,
   );
   return response.data;
 };
@@ -2308,7 +2321,15 @@ export const fetchHistoricalAPY = async (
   vault?: VaultType,
 ): Promise<HistoricalAPYPoint[]> => {
   const params = new URLSearchParams({ days });
-  if (vault === VaultType.FUSE) params.set('vault', VaultType.FUSE);
+  switch (vault) {
+    case VaultType.FUSE:
+      params.set('vault', VaultType.FUSE);
+      break;
+    case VaultType.ETH:
+      params.set('vault', VaultType.ETH);
+      break;
+    default:
+  }
   const response = await axios.get<HistoricalAPYPoint[]>(
     `${EXPO_PUBLIC_FLASH_ANALYTICS_API_BASE_URL}/analytics/v1/bigquery-metrics/historical-apy?${params.toString()}`,
   );
