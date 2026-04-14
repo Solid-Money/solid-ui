@@ -4,7 +4,7 @@ import { formatUnits } from 'viem';
 import { fuse, mainnet } from 'viem/chains';
 
 import { explorerUrls, layerzero } from '@/constants/explorers';
-import { getInfoClient } from '@/graphql/clients';
+import { getInfoClient, getInfoClientEth, getInfoClientFuse } from '@/graphql/clients';
 import {
   GetUserTransactionsDocument,
   GetUserTransactionsQuery,
@@ -51,8 +51,14 @@ const ApyToDays = {
   thirtyDay: 30,
 };
 
-const getAnalyticsVaultKey = (vault?: VaultType): VaultType.USDC | VaultType.FUSE | VaultType.ETH =>
-  vault === VaultType.FUSE ? VaultType.FUSE : vault === VaultType.ETH ? VaultType.ETH : VaultType.USDC;
+const getAnalyticsVaultKey = (
+  vault?: VaultType,
+): VaultType.USDC | VaultType.FUSE | VaultType.ETH =>
+  vault === VaultType.FUSE
+    ? VaultType.FUSE
+    : vault === VaultType.ETH
+      ? VaultType.ETH
+      : VaultType.USDC;
 
 const safeFormatUnits = (
   value: string | number | bigint | null | undefined,
@@ -133,11 +139,20 @@ const filterTransfers = (transfers: BlockscoutTransactions) => {
   });
 };
 
-export const userTransactionsQueryOptions = (safeAddress: string | undefined) => ({
-  queryKey: ['user-transactions', safeAddress?.toLowerCase()],
+export const userTransactionsQueryOptions = (
+  safeAddress: string | undefined,
+  vault?: VaultType,
+) => ({
+  queryKey: ['user-transactions', safeAddress?.toLowerCase(), vault],
   queryFn: async () => {
     if (!safeAddress) return undefined;
-    const { data } = await getInfoClient().query<GetUserTransactionsQuery>({
+    const client =
+      vault === VaultType.ETH
+        ? getInfoClientEth()
+        : vault === VaultType.FUSE
+          ? getInfoClientFuse()
+          : getInfoClient();
+    const { data } = await client.query<GetUserTransactionsQuery>({
       query: GetUserTransactionsDocument,
       variables: {
         address: safeAddress.toLowerCase(),
@@ -150,11 +165,11 @@ export const userTransactionsQueryOptions = (safeAddress: string | undefined) =>
   staleTime: secondsToMilliseconds(30), // Data is fresh for 30 seconds
   gcTime: secondsToMilliseconds(300), // Keep in cache for 5 minutes
   refetchInterval: secondsToMilliseconds(30), // Poll every 30 seconds
-  placeholderData: keepPreviousData, // Show stale data while fetching new data
+  // placeholderData: vault ? undefined : keepPreviousData, // Disable placeholder when vault changes to avoid cross-vault data contamination
 });
 
-export const useUserTransactions = (safeAddress: string | undefined) => {
-  return useQuery(userTransactionsQueryOptions(safeAddress));
+export const useUserTransactions = (safeAddress: string | undefined, vault?: VaultType) => {
+  return useQuery(userTransactionsQueryOptions(safeAddress, vault));
 };
 
 export const useSendTransactions = (address: string) => {
