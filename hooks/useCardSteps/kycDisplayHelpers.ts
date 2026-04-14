@@ -55,6 +55,46 @@ function hasEndorsementPendingReview(cardsEndorsement: BridgeCustomerEndorsement
 const DEFAULT_KYC_DESCRIPTION = 'Identity verification required for us to issue your card.';
 
 /**
+ * Map Didit warning tags to user-friendly descriptions.
+ * Tags not in the map are formatted by replacing underscores and capitalizing.
+ */
+const DIDIT_WARNING_DESCRIPTIONS: Record<string, string> = {
+  DOCUMENT_EXPIRED: 'Your document has expired',
+  DOCUMENT_NOT_SUPPORTED_FOR_APPLICATION: 'This document type is not accepted',
+  MINIMUM_AGE_NOT_MET: 'Minimum age requirement not met',
+  PORTRAIT_IMAGE_NOT_DETECTED: 'No portrait photo detected on the document',
+  ID_DOCUMENT_IN_BLOCKLIST: 'This document has been flagged and cannot be used',
+  COULD_NOT_RECOGNIZE_DOCUMENT: 'We could not verify your document',
+  MRZ_NOT_DETECTED: 'Could not read the machine-readable zone on your document',
+  MRZ_VALIDATION_FAILED: 'Document machine-readable zone is invalid',
+  DATA_INCONSISTENT: 'Document data is inconsistent',
+  DOCUMENT_SIDES_MISMATCH: 'The front and back of the document do not match',
+  SCREEN_CAPTURE_DETECTED: 'A photo of a screen was detected — please use the original document',
+  PRINTED_COPY_DETECTED: 'A printed copy was detected — please use the original document',
+  PORTRAIT_MANIPULATION_DETECTED: 'The portrait on the document appears to have been altered',
+  POSSIBLE_DUPLICATED_USER: 'A duplicate account was detected',
+  DOCUMENT_NUMBER_NOT_DETECTED: 'Document number could not be read',
+  NAME_NOT_DETECTED: 'Name could not be read from the document',
+  DATE_OF_BIRTH_NOT_DETECTED: 'Date of birth could not be read from the document',
+  INVALID_DATE: 'A date on the document is invalid',
+};
+
+function formatDiditWarning(tag: string): string {
+  return (
+    DIDIT_WARNING_DESCRIPTIONS[tag] ??
+    tag
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/^\w/, (c) => c.toUpperCase())
+  );
+}
+
+function formatKycWarnings(warnings: string[]): string {
+  if (warnings.length === 0) return '';
+  return warnings.map(formatDiditWarning).join('\n- ');
+}
+
+/**
  * User-friendly KYC description per Rain application state
  */
 export function getKYCDescription(rainApplicationStatus?: RainApplicationStatus | null): string {
@@ -138,19 +178,28 @@ export function getStepDescription(
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
     kycStatus?: KycStatus | null;
+    kycWarnings?: string[] | null;
   },
 ): string {
   if (options?.cardIssuer === CardProvider.RAIN && options?.rainApplicationStatus) {
     return getKYCDescription(options.rainApplicationStatus);
   }
 
-  // Didit KYC rejected or expired before reaching Rain — show rejection message
+  const warnings = options?.kycWarnings ?? [];
+
+  // Didit KYC rejected or expired before reaching Rain — show rejection reasons
   if (options?.kycStatus === KycStatus.REJECTED) {
+    if (warnings.length > 0) {
+      return `We couldn't verify your identity:\n- ${formatKycWarnings(warnings)}`;
+    }
     return 'Your identity verification was declined. Please try again with a valid ID.';
   }
 
-  // Didit resubmission or incomplete — user needs to redo verification steps
+  // Didit resubmission or incomplete — show reasons if available
   if (options?.kycStatus === KycStatus.INCOMPLETE && !options?.rainApplicationStatus) {
+    if (warnings.length > 0) {
+      return `Additional verification required:\n- ${formatKycWarnings(warnings)}`;
+    }
     return 'Additional verification steps are required. Please continue to complete the process.';
   }
 

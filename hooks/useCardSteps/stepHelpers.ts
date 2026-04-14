@@ -39,6 +39,7 @@ export function buildCardSteps(
     cardIssuer?: CardProvider | null;
     rainApplicationStatus?: RainApplicationStatus | null;
     kycStatus?: KycStatus | null;
+    kycWarnings?: string[] | null;
     handleRainKYCPress?: () => void;
   },
 ): Step[] {
@@ -48,6 +49,7 @@ export function buildCardSteps(
           cardIssuer: options?.cardIssuer,
           rainApplicationStatus: options?.rainApplicationStatus,
           kycStatus: options?.kycStatus,
+          kycWarnings: options?.kycWarnings,
         }
       : undefined;
   const description = getStepDescription(cardsEndorsement, customerRejectionReasons, stepOptions);
