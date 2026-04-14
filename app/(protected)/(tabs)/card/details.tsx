@@ -29,6 +29,7 @@ import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import ManagePinModal from '@/components/Card/ManagePinModal';
+import CancelPhysicalCardModal from '@/components/Card/CancelPhysicalCardModal';
 import OrderPhysicalCardModal, {
   PHYSICAL_CARD_STATUS_QUERY_KEY,
 } from '@/components/Card/OrderPhysicalCardModal';
@@ -72,6 +73,7 @@ export default function CardDetails() {
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
   const [isOrderPhysicalCardModalOpen, setIsOrderPhysicalCardModalOpen] = useState(false);
+  const [isCancelPhysicalCardModalOpen, setIsCancelPhysicalCardModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
   const { data: physicalCardStatusData } = useQuery({
@@ -157,7 +159,11 @@ export default function CardDetails() {
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
         isRain={provider === CardProvider.RAIN}
         hasPhysicalCard={hasPhysicalCard}
-        onOrderPhysicalCardModalChange={setIsOrderPhysicalCardModalOpen}
+        onPhysicalCardPress={() =>
+          hasPhysicalCard
+            ? setIsCancelPhysicalCardModalOpen(true)
+            : setIsOrderPhysicalCardModalOpen(true)
+        }
       />
     </View>
   ) : (
@@ -221,6 +227,11 @@ export default function CardDetails() {
           onOpenChange={setIsOrderPhysicalCardModalOpen}
           trigger={null}
         />
+        <CancelPhysicalCardModal
+          isOpen={isCancelPhysicalCardModalOpen}
+          onOpenChange={setIsCancelPhysicalCardModalOpen}
+          trigger={null}
+        />
       </PageLayout>
     );
   }
@@ -253,7 +264,11 @@ export default function CardDetails() {
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
             isRain={provider === CardProvider.RAIN}
             hasPhysicalCard={hasPhysicalCard}
-            onOrderPhysicalCard={() => setIsOrderPhysicalCardModalOpen(true)}
+            onPhysicalCardPress={() =>
+              hasPhysicalCard
+                ? setIsCancelPhysicalCardModalOpen(true)
+                : setIsOrderPhysicalCardModalOpen(true)
+            }
           />
           <BorrowPositionCard className="mb-4" />
           <DepositBonusBanner />
@@ -272,6 +287,11 @@ export default function CardDetails() {
       <OrderPhysicalCardModal
         isOpen={isOrderPhysicalCardModalOpen}
         onOpenChange={setIsOrderPhysicalCardModalOpen}
+        trigger={null}
+      />
+      <CancelPhysicalCardModal
+        isOpen={isCancelPhysicalCardModalOpen}
+        onOpenChange={setIsCancelPhysicalCardModalOpen}
         trigger={null}
       />
     </PageLayout>
@@ -293,7 +313,7 @@ interface DesktopHeaderProps {
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
   hasPhysicalCard: boolean;
-  onOrderPhysicalCardModalChange: (open: boolean) => void;
+  onPhysicalCardPress: () => void;
 }
 
 function DesktopHeader({
@@ -307,7 +327,7 @@ function DesktopHeader({
   isWithdrawFromCardAllowed,
   isRain,
   hasPhysicalCard,
-  onOrderPhysicalCardModalChange,
+  onPhysicalCardPress,
 }: DesktopHeaderProps) {
   const [isManageOpen, setIsManageOpen] = useState(false);
   const manageRef = useRef<View>(null);
@@ -415,7 +435,7 @@ function DesktopHeader({
           <Button
             variant="secondary"
             className={`h-12 rounded-xl border-0 px-6 ${hasPhysicalCard ? 'bg-red-500/20' : 'bg-[#303030]'}`}
-            onPress={() => onOrderPhysicalCardModalChange(true)}
+            onPress={onPhysicalCardPress}
           >
             <View className="flex-row items-center gap-2">
               <CreditCard size={18} color={hasPhysicalCard ? '#ef4444' : 'white'} />
@@ -837,7 +857,7 @@ interface CardActionsProps {
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
   hasPhysicalCard: boolean;
-  onOrderPhysicalCard: () => void;
+  onPhysicalCardPress: () => void;
 }
 
 function CardActions({
@@ -851,7 +871,7 @@ function CardActions({
   isWithdrawFromCardAllowed,
   isRain,
   hasPhysicalCard,
-  onOrderPhysicalCard,
+  onPhysicalCardPress,
 }: CardActionsProps) {
   const [isManageSheetOpen, setIsManageSheetOpen] = useState(false);
   const showManageButton = isRain || !isCardFrozen || canUnfreeze;
@@ -946,7 +966,7 @@ function CardActions({
       {isRain && (
         <View className="flex-1 items-center">
           <Pressable
-            onPress={onOrderPhysicalCard}
+            onPress={onPhysicalCardPress}
             className={`items-center justify-center rounded-full ${hasPhysicalCard ? 'bg-red-500/20' : 'bg-[#303030]'}`}
             style={{ width: 50, height: 50 }}
           >

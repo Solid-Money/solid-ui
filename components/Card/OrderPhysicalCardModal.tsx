@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,23 +9,12 @@ import { z } from 'zod';
 
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
-import {
-  cancelPhysicalCard,
-  getPhysicalCardShippingData,
-  getPhysicalCardStatus,
-  orderPhysicalCard,
-} from '@/lib/api';
-import { withRefreshToken } from '@/lib/utils/utils';
-import { cn } from '@/lib/utils/utils';
+import { getPhysicalCardShippingData, orderPhysicalCard } from '@/lib/api';
+import { cn, withRefreshToken } from '@/lib/utils/utils';
+
+export const PHYSICAL_CARD_STATUS_QUERY_KEY = 'physicalCardStatus';
+const SHIPPING_DATA_QUERY_KEY = 'physicalCardShippingData';
 
 interface OrderPhysicalCardModalProps {
   trigger: React.ReactNode;
@@ -35,9 +24,6 @@ interface OrderPhysicalCardModalProps {
 
 const MODAL_STATE: ModalState = { name: 'order-physical-card', number: 1 };
 const CLOSE_STATE: ModalState = { name: 'close', number: 0 };
-
-export const PHYSICAL_CARD_STATUS_QUERY_KEY = 'physicalCardStatus';
-const SHIPPING_DATA_QUERY_KEY = 'physicalCardShippingData';
 
 const shippingSchema = z.object({
   firstName: z
@@ -71,20 +57,11 @@ export default function OrderPhysicalCardModal({
 }: OrderPhysicalCardModalProps) {
   const queryClient = useQueryClient();
 
-  const { data: statusData, isLoading: isLoadingStatus } = useQuery({
-    queryKey: [PHYSICAL_CARD_STATUS_QUERY_KEY],
-    queryFn: () => withRefreshToken(() => getPhysicalCardStatus()),
-    enabled: isOpen,
-  });
-
   const { data: shippingData } = useQuery({
     queryKey: [SHIPPING_DATA_QUERY_KEY],
     queryFn: () => withRefreshToken(() => getPhysicalCardShippingData()),
-    enabled: isOpen && !statusData?.hasPhysicalCard,
+    enabled: isOpen,
   });
-
-  const hasPhysicalCard = statusData?.hasPhysicalCard ?? false;
-  const physicalCardId = statusData?.cardId;
 
   const { control, handleSubmit, formState, reset } = useForm<ShippingFormData>({
     resolver: zodResolver(shippingSchema) as any,
@@ -137,6 +114,7 @@ export default function OrderPhysicalCardModal({
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PHYSICAL_CARD_STATUS_QUERY_KEY] });
+      onOpenChange(false);
       Toast.show({
         type: 'success',
         text1: 'Physical card ordered',
@@ -154,36 +132,12 @@ export default function OrderPhysicalCardModal({
     },
   });
 
-  const cancelMutation = useMutation({
-    mutationFn: (cardId: string) => withRefreshToken(() => cancelPhysicalCard(cardId)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [PHYSICAL_CARD_STATUS_QUERY_KEY] });
-      onOpenChange(false);
-      Toast.show({
-        type: 'success',
-        text1: 'Physical card canceled',
-        text2: 'Your physical card order has been canceled.',
-        props: { badgeText: '' },
-      });
-    },
-    onError: () => {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to cancel physical card',
-        text2: 'Please try again.',
-        props: { badgeText: '' },
-      });
-    },
-  });
-
   const onSubmit = useCallback(
     (data: ShippingFormData) => {
       orderMutation.mutate(data);
     },
     [orderMutation],
   );
-
-  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
   return (
     <ResponsiveModal
@@ -192,287 +146,182 @@ export default function OrderPhysicalCardModal({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       trigger={trigger}
-      title={hasPhysicalCard ? 'Physical Card Ordered' : 'Order Physical Card'}
+      title="Order Physical Card"
       contentKey="order-physical-card"
       contentClassName="md:max-w-lg"
       shouldAnimate={false}
       disableScroll
     >
-      {isLoadingStatus ? (
-        <View className="items-center justify-center p-12">
-          <ActivityIndicator size="large" color="white" />
-        </View>
-      ) : hasPhysicalCard ? (
+      <ScrollView className="max-h-[70vh]" showsVerticalScrollIndicator={false}>
         <View className="p-6">
           <View className="mb-6 items-center">
             <View className="mb-4 items-center justify-center rounded-full bg-[#303030] p-4">
               <CreditCard size={32} color="#94F27F" />
             </View>
             <Text className="mb-2 text-center text-xl font-semibold text-white">
-              Physical card ordered
+              Shipping details
             </Text>
             <Text className="text-center text-base text-white/60">
-              Your physical card has been ordered and will be shipped to your address. You can cancel
-              the order if needed.
+              Enter the address where your physical card should be shipped.
             </Text>
           </View>
 
-          <View className="gap-4">
+          <View className="gap-3">
+            <View className="flex-row gap-3">
+              <View className="flex-1 gap-1.5">
+                <Text className="font-medium opacity-50">First name *</Text>
+                <View
+                  className={cn(
+                    'rounded-2xl bg-accent px-5 py-3',
+                    formState.errors.firstName && 'border border-red-500',
+                  )}
+                >
+                  <Controller
+                    control={control}
+                    name="firstName"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <TextInput
+                        className="text-lg font-semibold text-white web:focus:outline-none"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        placeholder="First name"
+                        placeholderTextColor="#666"
+                      />
+                    )}
+                  />
+                </View>
+                {formState.errors.firstName && (
+                  <Text className="text-sm text-red-500">
+                    {formState.errors.firstName.message}
+                  </Text>
+                )}
+              </View>
+              <View className="flex-1 gap-1.5">
+                <Text className="font-medium opacity-50">Last name *</Text>
+                <View
+                  className={cn(
+                    'rounded-2xl bg-accent px-5 py-3',
+                    formState.errors.lastName && 'border border-red-500',
+                  )}
+                >
+                  <Controller
+                    control={control}
+                    name="lastName"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <TextInput
+                        className="text-lg font-semibold text-white web:focus:outline-none"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        placeholder="Last name"
+                        placeholderTextColor="#666"
+                      />
+                    )}
+                  />
+                </View>
+                {formState.errors.lastName && (
+                  <Text className="text-sm text-red-500">
+                    {formState.errors.lastName.message}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <FormField
+              control={control}
+              name="line1"
+              label="Address line 1 *"
+              placeholder="Street address"
+              error={formState.errors.line1?.message}
+            />
+
+            <FormField
+              control={control}
+              name="line2"
+              label="Address line 2"
+              placeholder="Apt, suite, unit (optional)"
+              error={formState.errors.line2?.message}
+            />
+
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <FormField
+                  control={control}
+                  name="city"
+                  label="City *"
+                  placeholder="City"
+                  error={formState.errors.city?.message}
+                />
+              </View>
+              <View className="flex-1">
+                <FormField
+                  control={control}
+                  name="region"
+                  label="Region"
+                  placeholder="State/Province"
+                  error={formState.errors.region?.message}
+                />
+              </View>
+            </View>
+
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <FormField
+                  control={control}
+                  name="postalCode"
+                  label="Postal code *"
+                  placeholder="Postal code"
+                  error={formState.errors.postalCode?.message}
+                />
+              </View>
+              <View className="flex-1">
+                <FormField
+                  control={control}
+                  name="countryCode"
+                  label="Country code *"
+                  placeholder="US"
+                  error={formState.errors.countryCode?.message}
+                  maxLength={2}
+                  autoCapitalize="characters"
+                />
+              </View>
+            </View>
+
+            <FormField
+              control={control}
+              name="phoneNumber"
+              label="Phone number *"
+              placeholder="+1234567890"
+              error={formState.errors.phoneNumber?.message}
+              keyboardType="phone-pad"
+            />
+          </View>
+
+          <View className="mt-6 gap-4">
             <Button
-              className="h-14 rounded-xl bg-red-500"
-              onPress={() => setIsCancelConfirmOpen(true)}
-              disabled={cancelMutation.isPending}
+              className="h-14 rounded-xl bg-[#94F27F]"
+              onPress={handleSubmit(onSubmit)}
+              disabled={orderMutation.isPending}
             >
-              {cancelMutation.isPending ? (
-                <ActivityIndicator color="white" />
+              {orderMutation.isPending ? (
+                <ActivityIndicator color="black" />
               ) : (
-                <Text className="text-base font-bold text-white">Cancel Physical Card</Text>
+                <Text className="text-base font-bold text-black">Place order</Text>
               )}
             </Button>
             <Button
               variant="secondary"
               className="h-14 rounded-xl border-0 bg-[#303030]"
               onPress={() => onOpenChange(false)}
-              disabled={cancelMutation.isPending}
+              disabled={orderMutation.isPending}
             >
-              <Text className="text-base font-bold text-white">Close</Text>
+              <Text className="text-base font-bold text-white">Cancel</Text>
             </Button>
           </View>
-
-          <CancelConfirmDialog
-            visible={isCancelConfirmOpen}
-            isPending={cancelMutation.isPending}
-            onConfirm={() => {
-              if (physicalCardId) {
-                cancelMutation.mutate(physicalCardId, {
-                  onSettled: () => setIsCancelConfirmOpen(false),
-                });
-              }
-            }}
-            onCancel={() => setIsCancelConfirmOpen(false)}
-          />
         </View>
-      ) : (
-        <ScrollView className="max-h-[70vh]" showsVerticalScrollIndicator={false}>
-          <View className="p-6">
-            <View className="mb-6 items-center">
-              <View className="mb-4 items-center justify-center rounded-full bg-[#303030] p-4">
-                <CreditCard size={32} color="#94F27F" />
-              </View>
-              <Text className="mb-2 text-center text-xl font-semibold text-white">
-                Shipping details
-              </Text>
-              <Text className="text-center text-base text-white/60">
-                Enter the address where your physical card should be shipped.
-              </Text>
-            </View>
-
-            <View className="gap-3">
-              <View className="flex-row gap-3">
-                <View className="flex-1 gap-1.5">
-                  <Text className="font-medium opacity-50">First name *</Text>
-                  <View
-                    className={cn(
-                      'rounded-2xl bg-accent px-5 py-3',
-                      formState.errors.firstName && 'border border-red-500',
-                    )}
-                  >
-                    <Controller
-                      control={control}
-                      name="firstName"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <TextInput
-                          className="text-lg font-semibold text-white web:focus:outline-none"
-                          value={value}
-                          onChangeText={onChange}
-                          onBlur={onBlur}
-                          placeholder="First name"
-                          placeholderTextColor="#666"
-                        />
-                      )}
-                    />
-                  </View>
-                  {formState.errors.firstName && (
-                    <Text className="text-sm text-red-500">
-                      {formState.errors.firstName.message}
-                    </Text>
-                  )}
-                </View>
-                <View className="flex-1 gap-1.5">
-                  <Text className="font-medium opacity-50">Last name *</Text>
-                  <View
-                    className={cn(
-                      'rounded-2xl bg-accent px-5 py-3',
-                      formState.errors.lastName && 'border border-red-500',
-                    )}
-                  >
-                    <Controller
-                      control={control}
-                      name="lastName"
-                      render={({ field: { onChange, onBlur, value } }) => (
-                        <TextInput
-                          className="text-lg font-semibold text-white web:focus:outline-none"
-                          value={value}
-                          onChangeText={onChange}
-                          onBlur={onBlur}
-                          placeholder="Last name"
-                          placeholderTextColor="#666"
-                        />
-                      )}
-                    />
-                  </View>
-                  {formState.errors.lastName && (
-                    <Text className="text-sm text-red-500">
-                      {formState.errors.lastName.message}
-                    </Text>
-                  )}
-                </View>
-              </View>
-
-              <FormField
-                control={control}
-                name="line1"
-                label="Address line 1 *"
-                placeholder="Street address"
-                error={formState.errors.line1?.message}
-              />
-
-              <FormField
-                control={control}
-                name="line2"
-                label="Address line 2"
-                placeholder="Apt, suite, unit (optional)"
-                error={formState.errors.line2?.message}
-              />
-
-              <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <FormField
-                    control={control}
-                    name="city"
-                    label="City *"
-                    placeholder="City"
-                    error={formState.errors.city?.message}
-                  />
-                </View>
-                <View className="flex-1">
-                  <FormField
-                    control={control}
-                    name="region"
-                    label="Region"
-                    placeholder="State/Province"
-                    error={formState.errors.region?.message}
-                  />
-                </View>
-              </View>
-
-              <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <FormField
-                    control={control}
-                    name="postalCode"
-                    label="Postal code *"
-                    placeholder="Postal code"
-                    error={formState.errors.postalCode?.message}
-                  />
-                </View>
-                <View className="flex-1">
-                  <FormField
-                    control={control}
-                    name="countryCode"
-                    label="Country code *"
-                    placeholder="US"
-                    error={formState.errors.countryCode?.message}
-                    maxLength={2}
-                    autoCapitalize="characters"
-                  />
-                </View>
-              </View>
-
-              <FormField
-                control={control}
-                name="phoneNumber"
-                label="Phone number *"
-                placeholder="+1234567890"
-                error={formState.errors.phoneNumber?.message}
-                keyboardType="phone-pad"
-              />
-            </View>
-
-            <View className="mt-6 gap-4">
-              <Button
-                className="h-14 rounded-xl bg-[#94F27F]"
-                onPress={handleSubmit(onSubmit)}
-                disabled={orderMutation.isPending}
-              >
-                {orderMutation.isPending ? (
-                  <ActivityIndicator color="black" />
-                ) : (
-                  <Text className="text-base font-bold text-black">Place order</Text>
-                )}
-              </Button>
-              <Button
-                variant="secondary"
-                className="h-14 rounded-xl border-0 bg-[#303030]"
-                onPress={() => onOpenChange(false)}
-                disabled={orderMutation.isPending}
-              >
-                <Text className="text-base font-bold text-white">Cancel</Text>
-              </Button>
-            </View>
-          </View>
-        </ScrollView>
-      )}
+      </ScrollView>
     </ResponsiveModal>
-  );
-}
-
-function CancelConfirmDialog({
-  visible,
-  isPending,
-  onConfirm,
-  onCancel,
-}: {
-  visible: boolean;
-  isPending: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <Dialog open={visible} onOpenChange={open => !open && onCancel()}>
-      <DialogContent showCloseButton={false} className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Cancel physical card?</DialogTitle>
-        </DialogHeader>
-
-        <DialogDescription className="text-base text-muted-foreground">
-          Are you sure you want to cancel your physical card order? This action cannot be undone.
-        </DialogDescription>
-
-        <DialogFooter className="mt-4 flex-row gap-3">
-          <Button
-            variant="secondary"
-            className="flex-1 rounded-xl border-0"
-            onPress={onCancel}
-            disabled={isPending}
-          >
-            <Text className="font-semibold">Keep order</Text>
-          </Button>
-          <Button
-            variant="destructive"
-            className="flex-1 rounded-xl border-0"
-            onPress={onConfirm}
-            disabled={isPending}
-          >
-            {isPending ? (
-              <ActivityIndicator color="white" size="small" />
-            ) : (
-              <Text className="font-semibold text-white">Cancel card</Text>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
