@@ -32,7 +32,11 @@ type TransferResult = {
  * to the user's Safe wallet address. Used in the "Add Funds" flow (Step 1).
  * Supports both ERC-20 and native token (ETH, FUSE) transfers.
  */
-const useTransferToWallet = (tokenAddress: Address, token: string, isNative: boolean): TransferResult => {
+const useTransferToWallet = (
+  tokenAddress: Address,
+  token: string,
+  isNative: boolean,
+): TransferResult => {
   const { user } = useUser();
   const wallet = useActiveWallet();
   const account = useActiveAccount();
