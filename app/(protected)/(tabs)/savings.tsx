@@ -93,6 +93,7 @@ export default function Savings() {
 
   const { data: userDepositTransactions, isLoading: isTransactionsLoading } = useUserTransactions(
     user?.safeAddress,
+    currentVault.type,
   );
 
   const { firstDepositTimestamp } = useDepositCalculations(
