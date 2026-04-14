@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect } from 'react';
-import { ActivityIndicator, Alert, ScrollView, TextInput, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,6 +9,14 @@ import { z } from 'zod';
 
 import ResponsiveModal, { ModalState } from '@/components/ResponsiveModal';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Text } from '@/components/ui/text';
 import {
   cancelPhysicalCard,
@@ -175,21 +183,7 @@ export default function OrderPhysicalCardModal({
     [orderMutation],
   );
 
-  const handleCancel = useCallback(() => {
-    if (!physicalCardId) return;
-    Alert.alert(
-      'Cancel Physical Card',
-      'Are you sure you want to cancel your physical card order? This action cannot be undone.',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: () => cancelMutation.mutate(physicalCardId),
-        },
-      ],
-    );
-  }, [physicalCardId, cancelMutation]);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
   return (
     <ResponsiveModal
@@ -226,7 +220,7 @@ export default function OrderPhysicalCardModal({
           <View className="gap-4">
             <Button
               className="h-14 rounded-xl bg-red-500"
-              onPress={handleCancel}
+              onPress={() => setIsCancelConfirmOpen(true)}
               disabled={cancelMutation.isPending}
             >
               {cancelMutation.isPending ? (
@@ -244,6 +238,19 @@ export default function OrderPhysicalCardModal({
               <Text className="text-base font-bold text-white">Close</Text>
             </Button>
           </View>
+
+          <CancelConfirmDialog
+            visible={isCancelConfirmOpen}
+            isPending={cancelMutation.isPending}
+            onConfirm={() => {
+              if (physicalCardId) {
+                cancelMutation.mutate(physicalCardId, {
+                  onSettled: () => setIsCancelConfirmOpen(false),
+                });
+              }
+            }}
+            onCancel={() => setIsCancelConfirmOpen(false)}
+          />
         </View>
       ) : (
         <ScrollView className="max-h-[70vh]" showsVerticalScrollIndicator={false}>
@@ -417,6 +424,55 @@ export default function OrderPhysicalCardModal({
         </ScrollView>
       )}
     </ResponsiveModal>
+  );
+}
+
+function CancelConfirmDialog({
+  visible,
+  isPending,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  isPending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Dialog open={visible} onOpenChange={open => !open && onCancel()}>
+      <DialogContent showCloseButton={false} className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold">Cancel physical card?</DialogTitle>
+        </DialogHeader>
+
+        <DialogDescription className="text-base text-muted-foreground">
+          Are you sure you want to cancel your physical card order? This action cannot be undone.
+        </DialogDescription>
+
+        <DialogFooter className="mt-4 flex-row gap-3">
+          <Button
+            variant="secondary"
+            className="flex-1 rounded-xl border-0"
+            onPress={onCancel}
+            disabled={isPending}
+          >
+            <Text className="font-semibold">Keep order</Text>
+          </Button>
+          <Button
+            variant="destructive"
+            className="flex-1 rounded-xl border-0"
+            onPress={onConfirm}
+            disabled={isPending}
+          >
+            {isPending ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text className="font-semibold text-white">Cancel card</Text>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
