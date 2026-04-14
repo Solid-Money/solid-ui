@@ -662,6 +662,28 @@ export const createCard = async (): Promise<CardResponse> => {
   return response.json();
 };
 
+export const orderPhysicalCard = async (options?: {
+  productId?: string;
+  virtualCardArt?: string;
+}): Promise<CardResponse> => {
+  const jwt = getJWTToken();
+
+  const response = await fetch(`${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/cards/physical`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getPlatformHeaders(),
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify(options ?? {}),
+  });
+
+  if (!response.ok) throw response;
+
+  return response.json();
+};
+
 export const getCardStatus = async (): Promise<CardStatusResponse | null> => {
   const jwt = getJWTToken();
 

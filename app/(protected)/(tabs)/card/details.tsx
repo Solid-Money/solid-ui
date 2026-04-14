@@ -13,13 +13,22 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ChevronDown, ChevronRight, Copy, KeyRound, Plus, Settings } from 'lucide-react-native';
+import {
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  CreditCard,
+  KeyRound,
+  Plus,
+  Settings,
+} from 'lucide-react-native';
 
 import AddToWalletModal from '@/components/Card/AddToWalletModal';
 import { BorrowPositionCard } from '@/components/Card/BorrowPositionCard';
 import { CircularActionButton } from '@/components/Card/CircularActionButton';
 import DepositToCardModal from '@/components/Card/DepositToCardModal';
 import ManagePinModal from '@/components/Card/ManagePinModal';
+import OrderPhysicalCardModal from '@/components/Card/OrderPhysicalCardModal';
 import WithdrawToCardModal from '@/components/Card/WithdrawToCardModal';
 import PageLayout from '@/components/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -59,6 +68,7 @@ export default function CardDetails() {
   const [isLoadingCardDetails, setIsLoadingCardDetails] = useState(false);
   const [shouldRevealDetails, setShouldRevealDetails] = useState(false);
   const [isAddToWalletModalOpen, setIsAddToWalletModalOpen] = useState(false);
+  const [isOrderPhysicalCardModalOpen, setIsOrderPhysicalCardModalOpen] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
   const availableBalance = cardDetails?.balances.available;
@@ -135,6 +145,8 @@ export default function CardDetails() {
         onFreezeToggle={handleFreezeToggle}
         isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
         isRain={provider === CardProvider.RAIN}
+        isOrderPhysicalCardModalOpen={isOrderPhysicalCardModalOpen}
+        onOrderPhysicalCardModalChange={setIsOrderPhysicalCardModalOpen}
       />
     </View>
   ) : (
@@ -193,6 +205,11 @@ export default function CardDetails() {
           onOpenChange={setIsAddToWalletModalOpen}
           trigger={null}
         />
+        <OrderPhysicalCardModal
+          isOpen={isOrderPhysicalCardModalOpen}
+          onOpenChange={setIsOrderPhysicalCardModalOpen}
+          trigger={null}
+        />
       </PageLayout>
     );
   }
@@ -224,6 +241,7 @@ export default function CardDetails() {
             isWithdrawAllowed={isWithdrawAllowed}
             isWithdrawFromCardAllowed={isWithdrawFromCardAllowed}
             isRain={provider === CardProvider.RAIN}
+            onOrderPhysicalCard={() => setIsOrderPhysicalCardModalOpen(true)}
           />
           <BorrowPositionCard className="mb-4" />
           <DepositBonusBanner />
@@ -237,6 +255,11 @@ export default function CardDetails() {
       <AddToWalletModal
         isOpen={isAddToWalletModalOpen}
         onOpenChange={setIsAddToWalletModalOpen}
+        trigger={null}
+      />
+      <OrderPhysicalCardModal
+        isOpen={isOrderPhysicalCardModalOpen}
+        onOpenChange={setIsOrderPhysicalCardModalOpen}
         trigger={null}
       />
     </PageLayout>
@@ -257,6 +280,8 @@ interface DesktopHeaderProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
+  isOrderPhysicalCardModalOpen: boolean;
+  onOrderPhysicalCardModalChange: (open: boolean) => void;
 }
 
 function DesktopHeader({
@@ -269,6 +294,8 @@ function DesktopHeader({
   onFreezeToggle,
   isWithdrawFromCardAllowed,
   isRain,
+  isOrderPhysicalCardModalOpen,
+  onOrderPhysicalCardModalChange,
 }: DesktopHeaderProps) {
   const [isManageOpen, setIsManageOpen] = useState(false);
   const manageRef = useRef<View>(null);
@@ -371,6 +398,18 @@ function DesktopHeader({
               </View>
             )}
           </View>
+        )}
+        {isRain && (
+          <Button
+            variant="secondary"
+            className="h-12 rounded-xl border-0 bg-[#303030] px-6"
+            onPress={() => onOrderPhysicalCardModalChange(true)}
+          >
+            <View className="flex-row items-center gap-2">
+              <CreditCard size={18} color="white" />
+              <Text className="text-base font-bold text-white">Order Physical Card</Text>
+            </View>
+          </Button>
         )}
         {isWithdrawFromCardAllowed && (
           <WithdrawToCardModal
@@ -781,6 +820,7 @@ interface CardActionsProps {
   onFreezeToggle: () => Promise<void>;
   isWithdrawFromCardAllowed: boolean;
   isRain: boolean;
+  onOrderPhysicalCard: () => void;
 }
 
 function CardActions({
@@ -793,6 +833,7 @@ function CardActions({
   onFreezeToggle,
   isWithdrawFromCardAllowed,
   isRain,
+  onOrderPhysicalCard,
 }: CardActionsProps) {
   const [isManageSheetOpen, setIsManageSheetOpen] = useState(false);
   const showManageButton = isRain || !isCardFrozen || canUnfreeze;
@@ -882,6 +923,18 @@ function CardActions({
               </View>
             </DialogContent>
           </Dialog>
+        </View>
+      )}
+      {isRain && (
+        <View className="flex-1 items-center">
+          <Pressable
+            onPress={onOrderPhysicalCard}
+            className="items-center justify-center rounded-full bg-[#303030]"
+            style={{ width: 50, height: 50 }}
+          >
+            <CreditCard size={24} color="#BFBFBF" />
+          </Pressable>
+          <Text className="mt-2 text-[#BFBFBF]">Physical</Text>
         </View>
       )}
       {isWithdrawFromCardAllowed && (
