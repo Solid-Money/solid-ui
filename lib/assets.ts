@@ -611,7 +611,7 @@ export const ASSETS = {
     module: require('@/assets/images/wallet_connect.png'),
     hash: '7816178c',
   },
-  'images/weth.png': { module: require('@/assets/images/weth.png'), hash: 'e5dfcae5' },
+  'images/weth.png': { module: require('@/assets/images/weth.png'), hash: '5980bc5d' },
   'images/withdraw-green.png': {
     module: require('@/assets/images/withdraw-green.png'),
     hash: 'a034a503',
