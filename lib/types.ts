@@ -444,6 +444,8 @@ export interface CardStatusResponse {
   provider?: CardProvider;
   /** Internal KYC status (covers Didit rejection before Rain is reached) */
   kycStatus?: KycStatus;
+  /** Warning tags or reasons from Didit verification (e.g. DOCUMENT_EXPIRED). */
+  kycWarnings?: string[];
   /** Rain KYC: application status from Rain */
   rainApplicationStatus?: RainApplicationStatus;
   /** Rain: link for needsVerification redirect */
