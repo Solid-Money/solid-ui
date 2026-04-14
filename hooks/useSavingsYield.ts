@@ -84,18 +84,18 @@ export function useSavingsYield({
     }
 
     // soFUSE CURRENT mode: use backend summary (no subgraph available for FUSE)
-    // if (mode === SavingMode.CURRENT && vault === 'FUSE') {
-    //   if (summary) {
-    //     const backendInterest = parseFloat(summary.interestEarnedUSD);
-    //     const calculatedAtUnix = Math.floor(new Date(summary.calculatedAt).getTime() / 1000);
-    //     if (backendInterest >= 0 && calculatedAtUnix > 0) {
-    //       setLiveYield(backendInterest);
-    //       setAnchor({ value: backendInterest, time: calculatedAtUnix });
-    //     }
-    //   }
-    //   // No summary yet — keep current value until backend responds
-    //   return;
-    // }
+    if (mode === SavingMode.CURRENT && vault === 'FUSE') {
+      if (summary) {
+        const backendInterest = parseFloat(summary.interestEarnedUSD);
+        const calculatedAtUnix = Math.floor(new Date(summary.calculatedAt).getTime() / 1000);
+        if (backendInterest >= 0 && calculatedAtUnix > 0) {
+          setLiveYield(backendInterest);
+          setAnchor({ value: backendInterest, time: calculatedAtUnix });
+        }
+      }
+      // No summary yet — keep current value until backend responds
+      return;
+    }
 
     // soUSD / soETH: subgraph-based calculation
     let cancelled = false;
