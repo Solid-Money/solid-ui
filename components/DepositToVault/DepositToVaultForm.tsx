@@ -538,15 +538,15 @@ function DepositToVaultForm() {
 
   return (
     <Pressable onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
-      <View className="gap-4">
+      <View className="gap-1">
         <View className="gap-2">
           <Text className="text-muted-foreground">
             {useSolidForFuse || useSolidForEth || useSolidForUsdc ? '' : 'From wallet'}
           </Text>
           {!useSolidForFuse && !useSolidForEth && !useSolidForUsdc && <ConnectedWalletDropdown />}
         </View>
-        <View className="gap-2">
-          <Text className="text-muted-foreground">Savings account</Text>
+        <View className="gap-1" style={{ zIndex: 50 }}>
+          <Text className="text-base text-muted-foreground">Destination</Text>
           <VaultSelectorDropdown />
         </View>
         <View className="gap-2">
@@ -554,8 +554,27 @@ function DepositToVaultForm() {
             <EmptyDepositTokens vault={vault} />
           ) : (
             <>
-              <Text className="text-muted-foreground">Deposit amount</Text>
-              <View className="w-full flex-row items-center justify-between gap-2 rounded-2xl bg-accent px-5 py-4">
+              <View className="mt-6 flex-row items-center justify-between">
+                <Text className="text-base text-muted-foreground">Amount</Text>
+                <View className="flex-row items-center gap-2">
+                  <Wallet color="#A1A1A1" size={16} />
+                  <Text className="text-base text-muted-foreground">
+                    {formatNumber(Number(formattedBalance))} {selectedTokenInfo.name}
+                  </Text>
+                  <Max
+                    onPress={() => {
+                      track(TRACKING_EVENTS.DEPOSIT_MAX_BUTTON_CLICKED, {
+                        chain_id: srcChainId,
+                        token: selectedTokenInfo.name,
+                        max_amount: formattedBalance,
+                      });
+                      setValue('amount', formattedBalance);
+                      trigger('amount');
+                    }}
+                  />
+                </View>
+              </View>
+              <View className="w-full flex-row items-center justify-between gap-2 rounded-2xl bg-card px-5 py-4">
                 <Controller
                   control={control}
                   name="amount"
@@ -600,25 +619,8 @@ function DepositToVaultForm() {
                   </View>
                 )}
               </View>
-              <View className="flex-row items-center gap-2">
-                <Wallet color="#A1A1A1" size={16} />
-                <Text className="text-muted-foreground">
-                  {formatNumber(Number(formattedBalance))} {selectedTokenInfo.name}
-                </Text>
-                <Max
-                  onPress={() => {
-                    track(TRACKING_EVENTS.DEPOSIT_MAX_BUTTON_CLICKED, {
-                      chain_id: srcChainId,
-                      token: selectedTokenInfo.name,
-                      max_amount: formattedBalance,
-                    });
-                    setValue('amount', formattedBalance);
-                    trigger('amount');
-                  }}
-                />
-              </View>
 
-              <TokenDetails>
+              <TokenDetails className="mt-6">
                 <View className="flex-row items-center justify-between gap-2 px-5 py-6 md:gap-10 md:p-5">
                   <View className="flex-row items-center gap-2">
                     <Text className="text-lg text-muted-foreground">You will receive</Text>
@@ -688,10 +690,10 @@ function DepositToVaultForm() {
                   </View>
                 </View>
               </TokenDetails>
-              <View className="flex-row items-center justify-between">
-                <View className="align-items: start flex-row items-center gap-2">
-                  <Fuel color="#A1A1A1" size={16} className="mt-1" />
-                  <Text className="max-w-xs text-base text-muted-foreground">
+              <View className="mt-2 flex-row items-start justify-between">
+                <View className="flex-row items-start gap-2">
+                  <Fuel color="#A1A1A1" size={16} className="mt-0.5" />
+                  <Text className="max-w-xs text-sm text-muted-foreground">
                     {getGaslessText(vault.minimumAmount, selectedTokenInfo?.name, isSponsor)}
                   </Text>
                 </View>
@@ -699,7 +701,7 @@ function DepositToVaultForm() {
               <CheckConnectionWrapper props={{ size: 'xl' }}>
                 <Button
                   variant="brand"
-                  className="h-12 rounded-2xl"
+                  className="mt-2 h-12 rounded-2xl"
                   onPress={handleSubmit(onSubmit)}
                   disabled={isFormDisabled()}
                 >

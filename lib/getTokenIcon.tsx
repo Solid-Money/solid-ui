@@ -34,6 +34,10 @@ const getTokenIcon = ({ logoUrl, tokenSymbol, size = 24 }: GetTokenIconProps): T
       };
     case 'FUSE':
     case 'WFUSE':
+      return {
+        type: 'image',
+        source: getAsset('images/wfuse.png'),
+      };
     case 'SOFUSE':
       return {
         type: 'image',
