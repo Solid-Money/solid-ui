@@ -61,6 +61,7 @@ export default function OrderPhysicalCardModal({
     queryKey: [SHIPPING_DATA_QUERY_KEY],
     queryFn: () => withRefreshToken(() => getPhysicalCardShippingData()),
     enabled: isOpen,
+    staleTime: 0,
   });
 
   const { control, handleSubmit, formState, reset } = useForm<ShippingFormData>({
