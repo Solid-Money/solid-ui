@@ -66,6 +66,9 @@ export default function CardTransactions() {
   const renderTransaction = ({ item, index }: { item: CardTransaction; index: number }) => {
     const isPurchase = item.category === CardTransactionCategory.PURCHASE;
     const merchantName = item.merchant_name || item.description;
+    const merchantLocation = [item.merchant_city, item.merchant_country]
+      .filter(Boolean)
+      .join(' ') || undefined;
     const color = getColorForTransaction(merchantName);
 
     const transactionUrl = item.crypto_transaction_details?.tx_hash
@@ -103,6 +106,11 @@ export default function CardTransactions() {
             <Text className="text-lg font-medium" numberOfLines={1}>
               {merchantName}
             </Text>
+            {merchantLocation && (
+              <Text className="text-sm text-muted-foreground" numberOfLines={1}>
+                {merchantLocation}
+              </Text>
+            )}
             <Text className="text-sm text-muted-foreground" numberOfLines={1}>
               {formatDate(item.posted_at)}
               {', '}

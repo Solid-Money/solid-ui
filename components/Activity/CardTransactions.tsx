@@ -156,6 +156,9 @@ export default function CardTransactions() {
 
       const transaction = row as CardTransactionWithTimestamp;
       const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
+      const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
+        .filter(Boolean)
+        .join(' ') || undefined;
       const initials = getInitials(merchantName);
       const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
       const color = getColorForTransaction(merchantName);
@@ -195,6 +198,11 @@ export default function CardTransactions() {
               <Text className="text-lg font-medium text-white" numberOfLines={1}>
                 {merchantName}
               </Text>
+              {merchantLocation && (
+                <Text className="text-sm text-[#8E8E93]" numberOfLines={1}>
+                  {merchantLocation}
+                </Text>
+              )}
               {cashbackInfo && (
                 <View className="mt-0.5 flex-row items-center gap-1">
                   <Diamond />
