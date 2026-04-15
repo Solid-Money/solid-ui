@@ -19,6 +19,7 @@ interface AreaChartProps {
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
   isLabel?: boolean;
+  isYAxisLabel?: boolean;
   style?: StyleProp<ViewStyle>;
   margin?: { top?: number; right?: number; left?: number; bottom?: number };
 }
@@ -35,12 +36,14 @@ const ChartContent = ({
   formatToolTip,
   formatYAxis,
   isLabel = true,
+  isYAxisLabel = true,
   chartWidth,
 }: {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
   isLabel: boolean;
+  isYAxisLabel?: boolean;
   chartWidth?: number;
 }) => {
   const { setSelectedPrice, setSelectedPriceChange } = useCoinStore(
@@ -183,7 +186,7 @@ const ChartContent = ({
           </LineChart>
         </View>
         {/* Y-axis labels */}
-        {isLabel && (
+        {isLabel && isYAxisLabel && (
           <View
             style={{
               width: Y_AXIS_WIDTH,
@@ -284,7 +287,14 @@ const ChartContent = ({
   );
 };
 
-const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: AreaChartProps) => {
+const Chart = ({
+  data,
+  formatToolTip,
+  formatYAxis,
+  isLabel = true,
+  isYAxisLabel = true,
+  style,
+}: AreaChartProps) => {
   const [chartWidth, setChartWidth] = useState<number | undefined>(undefined);
 
   const wagmiData = useMemo(() => {
@@ -312,6 +322,7 @@ const Chart = ({ data, formatToolTip, formatYAxis, isLabel = true, style }: Area
             formatToolTip={formatToolTip}
             formatYAxis={formatYAxis}
             isLabel={isLabel}
+            isYAxisLabel={isYAxisLabel}
             chartWidth={chartWidth}
           />
         </LineChart.Provider>

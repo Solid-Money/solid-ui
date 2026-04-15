@@ -98,7 +98,7 @@ const EmptyDepositTokens = ({ vault }: EmptyDepositTokensProps) => {
         )}
       </View>
       <Button variant="brand" className="mt-8 h-12 w-full rounded-xl" onPress={handleDepositPress}>
-        <Text className="text-base font-bold">Deposit</Text>
+        <Text className="text-base font-bold">Add Funds</Text>
       </Button>
     </View>
   );

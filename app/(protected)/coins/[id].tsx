@@ -13,10 +13,12 @@ import CoinChartTime from '@/components/Coin/CoinChartTime';
 import CoinName from '@/components/Coin/CoinName';
 import EarningYield from '@/components/Coin/EarningYield';
 import DashboardHeaderButtons from '@/components/Dashboard/DashboardHeaderButtons';
+import DepositTrigger from '@/components/DepositOption/DepositTrigger';
 import LazyAreaChart from '@/components/LazyAreaChart';
 import PageLayout from '@/components/PageLayout';
 import { Text } from '@/components/ui/text';
 import { times } from '@/constants/coins';
+import { DEPOSIT_MODAL } from '@/constants/modals';
 import { NATIVE_COINGECKO_TOKENS } from '@/constants/tokens';
 import { useCoinHistoricalChart } from '@/hooks/useAnalytics';
 import { useDimension } from '@/hooks/useDimension';
@@ -24,6 +26,7 @@ import { useWalletTokens } from '@/hooks/useWalletTokens';
 import { TokenBalance, TokenType } from '@/lib/types';
 import { eclipseAddress, formatNumber, isSoUSDEthereum } from '@/lib/utils';
 import { useCoinStore } from '@/store/useCoinStore';
+import { useDepositStore } from '@/store/useDepositStore';
 
 const MAX_SAMPLE_SIZE = 20;
 
@@ -146,10 +149,17 @@ export default function Coin() {
                 contractTickerSymbol={token?.contractTickerSymbol || ''}
               />
             </View>
-            <DashboardHeaderButtons
-              deposit={{ title: 'Add funds' }}
-              withdraw={{ isWithdraw: isSoUSDEthereum(contractAddress) }}
-            />
+            <View className="flex-row gap-2">
+              <DashboardHeaderButtons deposit={{ title: 'Add funds' }} hideWithdraw hideDeposit />
+              <DepositTrigger
+                buttonText="Deposit To Savings"
+                modal={DEPOSIT_MODAL.OPEN_FORM}
+                source="coin_header"
+                onBeforeOpen={() => {
+                  useDepositStore.getState().setDepositFromSolid(true);
+                }}
+              />
+            </View>
           </View>
         )}
 
@@ -205,6 +215,7 @@ export default function Coin() {
                 <View style={{ marginLeft: -16, marginRight: -16 }}>
                   <LazyAreaChart
                     data={formattedChartData}
+                    isYAxisLabel={false}
                     formatYAxis={value => {
                       if (value === 0) return '$0';
                       const abs = Math.abs(value);

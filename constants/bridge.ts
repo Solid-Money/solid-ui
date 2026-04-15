@@ -150,7 +150,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         name: 'WFUSE',
         fullName: 'Wrapped FUSE',
         address: WRAPPED_FUSE,
-        icon: require('@/assets/images/fuse-4x.png'),
+        icon: require('@/assets/images/wfuse.png'),
       },
     },
     name: 'Fuse',

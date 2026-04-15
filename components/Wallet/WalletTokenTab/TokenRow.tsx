@@ -90,7 +90,7 @@ const TokenRow = memo(
         </View>
 
         {/* Action Column */}
-        <View className="p-6" style={{ width: DESKTOP_COLUMNS[3].width }}>
+        {/* <View className="p-6" style={{ width: DESKTOP_COLUMNS[3].width }}>
           <View className="flex-row items-center justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger>
@@ -117,7 +117,7 @@ const TokenRow = memo(
               </DropdownMenuContent>
             </DropdownMenu>
           </View>
-        </View>
+        </View> */}
       </Pressable>
     );
   },
