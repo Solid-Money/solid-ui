@@ -137,6 +137,12 @@ export function useDiditSession() {
         } else if (status.status === 'Declined' || status.kycStatus === 'rejected') {
           clearInterval(interval);
           onVerificationError('Your identity verification was declined. Please try again.');
+        } else if (
+          status.status === 'In Review' ||
+          status.kycStatus === KycStatus.UNDER_REVIEW
+        ) {
+          clearInterval(interval);
+          onVerificationPending();
         }
       } catch {
         // silently retry on network errors
@@ -144,7 +150,7 @@ export function useDiditSession() {
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [session.phase, onVerificationComplete, onVerificationError]);
+  }, [session.phase, onVerificationComplete, onVerificationError, onVerificationPending]);
 
   // Auto-init on mount
   useEffect(() => {
