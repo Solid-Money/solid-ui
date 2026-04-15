@@ -163,6 +163,9 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   cardProvider,
 }: CardTransactionDetailProps) {
   const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
+  const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
+    .filter(Boolean)
+    .join(' ') || undefined;
   const isPurchase = transaction.category === CardTransactionCategory.PURCHASE;
   const { data: cashbacks } = useCashbacks();
 
@@ -247,7 +250,12 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   return (
     <PageLayout desktopOnly>
       <View className="mx-auto w-full max-w-lg flex-1 gap-10 px-4 py-8 pb-32 md:py-12">
-        <Back title={merchantName} className="text-xl md:text-3xl" />
+        <View>
+          <Back title={merchantName} className="text-xl md:text-3xl" />
+          {merchantLocation && (
+            <Text className="ml-10 text-sm text-muted-foreground">{merchantLocation}</Text>
+          )}
+        </View>
 
         <View className="items-center gap-4">
           {/* Avatar with initials or token icon */}
