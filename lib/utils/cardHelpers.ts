@@ -49,17 +49,15 @@ export const getColorForTransaction = (
 };
 
 /**
- * Normalize amount for display: Rain returns cents, Bridge returns dollars.
+ * Normalize amount for display.
+ * Both Rain and Bridge amounts are returned as dollars from the backend.
  */
 function normalizeCardAmount(amount: string, provider?: CardProvider | null): number {
-  const num = parseFloat(amount);
-  if (provider === CardProvider.RAIN) return num / 100;
-  return num;
+  return parseFloat(amount);
 }
 
 /**
  * Format card transaction amount with proper sign and currency symbol.
- * Pass provider so Rain amounts (cents) are converted to dollars for display.
  */
 export const formatCardAmount = (
   amount: string,
@@ -72,7 +70,6 @@ export const formatCardAmount = (
 
 /**
  * Format card transaction amount with currency code and +/- sign.
- * Pass provider so Rain amounts (cents) are converted to dollars for display.
  */
 export const formatCardAmountWithCurrency = (
   amount: string,
