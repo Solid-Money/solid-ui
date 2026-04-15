@@ -84,7 +84,7 @@ export async function decryptSecret(
       'aes-128-gcm',
       Buffer.from(keyBytes),
       Buffer.from(iv),
-      { authTagLength: authTagLength * 8 },
+      { authTagLength },
     );
     decipher.setAuthTag(Buffer.from(tag));
     const dec = decipher.update(Buffer.from(ciphertext)) as Buffer;
