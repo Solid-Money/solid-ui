@@ -816,6 +816,8 @@ export const getCardBalance = async (): Promise<CardBalanceResponseDto> => {
   });
 
   if (!response.ok) throw response;
+
+  return response.json();
 };
 
 export const getCashbackPercentage = async (): Promise<{ percentage: number }> => {
