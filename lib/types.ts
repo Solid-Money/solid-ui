@@ -1241,6 +1241,8 @@ export interface CardTransaction {
   merchant_category_code?: string;
   merchant_name?: string;
   merchant_location?: string;
+  merchant_city?: string;
+  merchant_country?: string;
   local_transaction_details?: LocalTransactionDetails;
 }
 
