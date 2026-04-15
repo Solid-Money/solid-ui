@@ -98,7 +98,7 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
         });
 
         // Step 3: Create Safe smart account client for transaction execution
-        const smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
+        let smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
 
         // Step 3a: Ensure Safe is deployed on this chain before signing.
         // Safe ERC-1271 signature verification requires the contract to exist on-chain;
@@ -110,6 +110,8 @@ const useWithdrawRainCollateral = (): WithdrawRainCollateralResult => {
             calls: [{ to: user.safeAddress as Address, data: '0x', value: 0n }],
           });
           await smartAccountClient.waitForUserOperationReceipt({ hash: deployHash });
+          // Recreate client so it no longer includes factory/initCode for the deployed Safe
+          smartAccountClient = await safeAA(chain, user.suborgId, user.signWith);
         }
 
         // Step 4: Generate admin EIP-712 signature via Safe smart account
