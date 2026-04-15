@@ -61,8 +61,13 @@ export default function OrderPhysicalCardModal({
     queryKey: [SHIPPING_DATA_QUERY_KEY],
     queryFn: () => withRefreshToken(() => getPhysicalCardShippingData()),
     enabled: isOpen,
-    staleTime: 0,
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      queryClient.invalidateQueries({ queryKey: [SHIPPING_DATA_QUERY_KEY] });
+    }
+  }, [isOpen, queryClient]);
 
   const { control, handleSubmit, formState, reset } = useForm<ShippingFormData>({
     resolver: zodResolver(shippingSchema) as any,
