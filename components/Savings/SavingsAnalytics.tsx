@@ -72,7 +72,7 @@ const SavingsAnalytics = () => {
         return itemTime >= cutoffDateString;
       });
     }
-    return data.filter(item => item.value >= 0 && item.value <= 10);
+    return data.filter(item => item.value >= 0);
   }, [yieldHistory, timeFilter]);
 
   const animateHeight = useCallback(
