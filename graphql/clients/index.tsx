@@ -10,11 +10,13 @@ import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client';
 
 // Singleton instances (created on first access)
 let _infoClient: ReturnType<typeof createInfoClient> | null = null;
+let _infoClientFuse: ReturnType<typeof createInfoClient> | null = null;
+let _infoClientEth: ReturnType<typeof createInfoClient> | null = null;
 let _algebraInfoClient: ReturnType<typeof createAlgebraInfoClient> | null = null;
 
-const createInfoClient = () =>
+const createInfoClient = (uri?: string) =>
   new ApolloClient({
-    link: new HttpLink({ uri: process.env.EXPO_PUBLIC_INFO_GRAPH }),
+    link: new HttpLink({ uri: uri ?? process.env.EXPO_PUBLIC_INFO_GRAPH }),
     cache: new InMemoryCache(),
   });
 
@@ -33,6 +35,26 @@ export const getInfoClient = () => {
     _infoClient = createInfoClient();
   }
   return _infoClient;
+};
+
+/**
+ * Get the FUSE vault info graph Apollo client.
+ */
+export const getInfoClientFuse = () => {
+  if (!_infoClientFuse) {
+    _infoClientFuse = createInfoClient(process.env.EXPO_PUBLIC_INFO_GRAPH_FUSE);
+  }
+  return _infoClientFuse;
+};
+
+/**
+ * Get the ETH vault info graph Apollo client.
+ */
+export const getInfoClientEth = () => {
+  if (!_infoClientEth) {
+    _infoClientEth = createInfoClient(process.env.EXPO_PUBLIC_INFO_GRAPH_ETH);
+  }
+  return _infoClientEth;
 };
 
 /**

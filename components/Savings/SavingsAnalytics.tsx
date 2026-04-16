@@ -39,7 +39,8 @@ const SavingsAnalytics = () => {
     '-1',
     historicalVault,
   );
-  const { data: vaultBreakdown } = useVaultBreakdown();
+  const currentVaultName = VAULTS[selectedVault]?.name?.toLowerCase();
+  const { data: vaultBreakdown } = useVaultBreakdown(currentVaultName);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -71,7 +72,7 @@ const SavingsAnalytics = () => {
         return itemTime >= cutoffDateString;
       });
     }
-    return data.filter(item => item.value >= 0 && item.value <= 10);
+    return data.filter(item => item.value >= 0);
   }, [yieldHistory, timeFilter]);
 
   const animateHeight = useCallback(
@@ -123,7 +124,7 @@ const SavingsAnalytics = () => {
               data={filteredYieldHistory}
               formatToolTip={formatToolTip}
               formatYAxis={formatYAxis}
-              isLabel={false}
+              isYAxisLabel={false}
             />
           ) : (
             <View className="h-[200px] items-center justify-center">

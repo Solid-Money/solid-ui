@@ -97,7 +97,7 @@ export function useSavingsYield({
       return;
     }
 
-    // soUSD: subgraph-based calculation
+    // soUSD / soETH: subgraph-based calculation
     let cancelled = false;
     const now = Math.floor(Date.now() / 1000);
     calculateYield(

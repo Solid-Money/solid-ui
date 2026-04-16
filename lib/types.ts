@@ -1340,6 +1340,8 @@ export interface VaultBreakdown {
   name: string;
   title?: string;
   type: string;
+  image?: string;
+  link?: string;
   expiryDate: string;
   amountUSD: number;
   allocation: number;
@@ -1622,6 +1624,7 @@ export interface Vault {
   minimumAmount: string;
   depositConfig?: VaultDepositConfig;
   isComingSoon?: boolean;
+  vaultName: string;
 }
 
 export enum VaultType {

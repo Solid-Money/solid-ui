@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo } from 'react';
-import { DimensionValue, Pressable, View } from 'react-native';
+import { DimensionValue, Linking, Platform, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 
@@ -111,7 +111,13 @@ const Row = memo(function Row({ item, columns, isLast, onPress, isScreenMedium }
               {c.key ? (
                 <View className="flex-row items-center gap-2">
                   {c.key === 'name' &&
-                    (protocolsImages[item.type] ? (
+                    (item.image ? (
+                      <Image
+                        source={{ uri: item.image }}
+                        style={{ width: 24, height: 24, borderRadius: 999 }}
+                        contentFit="contain"
+                      />
+                    ) : protocolsImages[item.type] ? (
                       <Image
                         source={protocolsImages[item.type]}
                         style={{ width: 24, height: 24, borderRadius: 999 }}
@@ -197,8 +203,20 @@ const VaultBreakdownTable = memo(function VaultBreakdownTable({
   );
 
   const handleSelectBreakdown = useCallback(
-    (index: number) => setSelectedBreakdown(index),
-    [setSelectedBreakdown],
+    (index: number) => {
+      const item = data[index];
+      const link = item?.link;
+      if (!link) return;
+
+      if (Platform.OS === 'web') {
+        window.open(link, '_blank', 'noopener,noreferrer');
+      } else {
+        Linking.openURL(link);
+      }
+
+      setSelectedBreakdown(index);
+    },
+    [data, setSelectedBreakdown],
   );
 
   return (

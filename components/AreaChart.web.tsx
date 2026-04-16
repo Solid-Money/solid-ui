@@ -11,11 +11,21 @@ interface AreaChartProps {
   data: ChartPayload[];
   formatToolTip?: (value: number | null) => string;
   formatYAxis?: (value: number) => string;
+  isLabel?: boolean;
+  isYAxisLabel?: boolean;
   style?: React.CSSProperties;
   margin?: Partial<typeof DEFAULT_MARGIN>;
 }
 
-const Chart = ({ data, formatToolTip, formatYAxis, style, margin }: AreaChartProps) => {
+const Chart = ({
+  data,
+  formatToolTip,
+  formatYAxis,
+  isLabel = true,
+  isYAxisLabel = true,
+  style,
+  margin,
+}: AreaChartProps) => {
   const chartMargin = { ...DEFAULT_MARGIN, ...margin };
   // Transform data to include index for x-axis
   const chartData = data.map((item, index) => ({
@@ -53,7 +63,8 @@ const Chart = ({ data, formatToolTip, formatYAxis, style, margin }: AreaChartPro
             return data[index] ? formatChartAxisLabel(data[index].time) : '';
           }}
           ticks={xAxisTicks}
-          tick={{ fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 }}
+          tick={isLabel ? { fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 } : false}
+          height={isLabel ? undefined : 0}
           axisLine={false}
           tickLine={false}
         />
@@ -64,7 +75,10 @@ const Chart = ({ data, formatToolTip, formatYAxis, style, margin }: AreaChartPro
               return formatYAxis ? formatYAxis(0) : '0';
             return formatYAxis ? formatYAxis(value) : `${formatNumber(value, 1, 0)}`;
           }}
-          tick={{ fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 }}
+          tick={
+            isLabel && isYAxisLabel ? { fill: 'rgba(255, 255, 255, 0.5)', fontSize: 14 } : false
+          }
+          width={isLabel && isYAxisLabel ? undefined : 0}
           axisLine={false}
           tickLine={false}
         />

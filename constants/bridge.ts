@@ -31,6 +31,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
       USDC: {
         name: 'USDC',
         address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+        icon: require('@/assets/images/usdc-4x.png'),
         version: '2',
         isPermit: false,
       },
@@ -149,7 +150,7 @@ export const BRIDGE_TOKENS: BridgeTokens = {
         name: 'WFUSE',
         fullName: 'Wrapped FUSE',
         address: WRAPPED_FUSE,
-        icon: require('@/assets/images/fuse-4x.png'),
+        icon: require('@/assets/images/wfuse.png'),
       },
     },
     name: 'Fuse',
