@@ -259,6 +259,29 @@ export const updateSafeAddress = async (safeAddress: string) => {
   return response.json();
 };
 
+/**
+ * Trigger backend deployment of the user's Safe on all supported chains.
+ * This ensures external wallets (e.g. RabbyWallet) won't show "Safe not
+ * deployed" warnings when someone tries to send tokens to the address.
+ */
+export const deploySafe = async () => {
+  const jwt = getJWTToken();
+  const response = await fetch(
+    `${EXPO_PUBLIC_FLASH_API_BASE_URL}/accounts/v1/auths/deploy-safe`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getPlatformHeaders(),
+        ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+      },
+      credentials: 'include',
+    },
+  );
+  if (!response.ok) throw response;
+  return response.json();
+};
+
 export const addReferrer = async (referralCode: string) => {
   const jwt = getJWTToken();
   const response = await fetch(

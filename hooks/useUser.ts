@@ -17,6 +17,7 @@ import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { getAmplitudeDeviceId, track, trackIdentity } from '@/lib/analytics';
 import {
   deleteAccount,
+  deploySafe,
   login,
   logout as apiLogout,
   removePushToken,
@@ -260,6 +261,11 @@ const useUser = (): UseUserReturn => {
         // Mark as synced to avoid repeated attempts elsewhere
         markSafeAddressSynced(user._id);
       }
+
+      // Ensure Safe is deployed on all chains so external wallets
+      // (e.g. RabbyWallet) don't show "address not deployed" warnings.
+      // Fire-and-forget — the backend handles idempotency.
+      withRefreshToken(() => deploySafe()).catch(() => {});
 
       const selectedUser: User = {
         safeAddress: smartAccountClient.account.address,
