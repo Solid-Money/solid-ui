@@ -621,6 +621,7 @@ export const formatVaultBreakdown = (vaultBreakdown: VaultBreakdown[]): VaultBre
     positionMaxAPY: vault.positionMaxAPY < 0 ? 0 : vault.positionMaxAPY,
     risk: vault.risk,
     chain: vault.chain,
+    link: vault.link,
   }));
 };
 
