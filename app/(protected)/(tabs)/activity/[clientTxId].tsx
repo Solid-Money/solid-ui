@@ -3,7 +3,7 @@ import { Linking, Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sentry from '@sentry/react-native';
 import { useQuery } from '@tanstack/react-query';
-import { format, minutesToSeconds } from 'date-fns';
+import { format, formatDistanceStrict, minutesToSeconds } from 'date-fns';
 import { ArrowUpRight, ChevronLeft, X } from 'lucide-react-native';
 import { mainnet } from 'viem/chains';
 
@@ -90,6 +90,21 @@ const Label = memo(function Label({ children }: LabelProps) {
 
 const Value = memo(function Value({ children, className }: ValueProps) {
   return <Text className={cn('text-lg font-bold', className)}>{children}</Text>;
+});
+
+const EscrowTimeLeft = memo(function EscrowTimeLeft({ payoutAt }: { payoutAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const target = useMemo(() => new Date(payoutAt).getTime(), [payoutAt]);
+
+  if (target - now <= 0) return <Value>Releasing soon</Value>;
+
+  return <Value>{formatDistanceStrict(target, now)}</Value>;
 });
 
 const Back = memo(function Back({ title, className }: BackProps) {
@@ -217,12 +232,24 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
           <Value
             className={cashbackInfo.amount === 'Pending' ? 'text-yellow-500' : 'text-[#34C759]'}
           >
-            {cashbackInfo.isPending && cashbackInfo.amount !== 'Pending'
-              ? `${cashbackInfo.amount} (Pending)`
-              : cashbackInfo.amount}
+            {cashbackInfo.amount === 'Pending'
+              ? cashbackInfo.isEscrowed
+                ? 'Escrowed'
+                : 'Pending'
+              : cashbackInfo.isEscrowed
+                ? `${cashbackInfo.amount} (Escrowed)`
+                : cashbackInfo.isPending
+                  ? `${cashbackInfo.amount} (Pending)`
+                  : cashbackInfo.amount}
           </Value>
         ),
       },
+      cashbackInfo?.isEscrowed &&
+        cashbackInfo.payoutAt && {
+          key: 'cashback-escrow-time-left',
+          label: <Label>Releases in</Label>,
+          value: <EscrowTimeLeft payoutAt={cashbackInfo.payoutAt} />,
+        },
       txHash && {
         key: 'explorer',
         label: <Label>Explorer</Label>,
