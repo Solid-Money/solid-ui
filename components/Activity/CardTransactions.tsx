@@ -207,7 +207,11 @@ export default function CardTransactions() {
                 <View className="mt-0.5 flex-row items-center gap-1">
                   <Diamond />
                   <Text className="text-sm text-[#8E8E93]">
-                    {cashbackInfo.isPending ? 'Cashback (Pending)' : 'Cashback'}
+                    {cashbackInfo.isEscrowed
+                      ? 'Cashback (Escrowed)'
+                      : cashbackInfo.isPending
+                        ? 'Cashback (Pending)'
+                        : 'Cashback'}
                   </Text>
                 </View>
               )}
