@@ -117,12 +117,15 @@ export const getCashbackAmount = (
   }
 
   const isPending = PENDING_CASHBACK_STATUSES.includes(cashback.status);
+  const isEscrowed = cashback.status === CashbackStatus.Escrowed;
 
   // For pending cashbacks without fuseAmount yet, show pending indicator without amount
   if (!cashback.fuseAmount) {
     return {
       amount: 'Pending',
       isPending: true,
+      isEscrowed,
+      payoutAt: cashback.payoutAt,
     };
   }
 
@@ -137,5 +140,7 @@ export const getCashbackAmount = (
   return {
     amount: `+$${amount.toFixed(2)}`,
     isPending,
+    isEscrowed,
+    payoutAt: cashback.payoutAt,
   };
 };
