@@ -106,12 +106,14 @@ const Back = memo(function Back({ title, className }: BackProps) {
   }, [params.from, params.tab, router]);
 
   return (
-    <View className="flex-row items-center justify-between">
-      <Pressable onPress={handleBackPress} className="web:hover:opacity-70">
+    <View className="relative flex-row items-center justify-center">
+      <Pressable
+        onPress={handleBackPress}
+        className="absolute left-0 web:hover:opacity-70"
+      >
         <ChevronLeft color="white" />
       </Pressable>
       <Text className={cn('text-center text-lg font-semibold text-white', className)}>{title}</Text>
-      <View className="w-10" />
     </View>
   );
 });
@@ -162,7 +164,11 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
   activity,
   cardProvider,
 }: CardTransactionDetailProps) {
-  const merchantName = transaction.merchant_name || transaction.description || 'Unknown';
+  const merchantName = (
+    transaction.merchant_name?.trim() ||
+    transaction.description?.trim() ||
+    'Unknown'
+  );
   const merchantLocation = [transaction.merchant_city, transaction.merchant_country]
     .filter(Boolean)
     .join(' ') || undefined;
@@ -253,7 +259,7 @@ const CardTransactionDetail = memo(function CardTransactionDetail({
         <View>
           <Back title={merchantName} className="text-xl md:text-3xl" />
           {merchantLocation && (
-            <Text className="ml-10 text-sm text-muted-foreground">{merchantLocation}</Text>
+            <Text className="text-center text-sm text-muted-foreground">{merchantLocation}</Text>
           )}
         </View>
 
