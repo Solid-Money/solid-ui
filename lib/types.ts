@@ -923,12 +923,15 @@ export interface Cashback {
   fuseUsdPrice?: string;
   fiatAmount?: string;
   fiatCurrency?: string;
+  payoutAt?: string;
   createdAt: string;
 }
 
 export interface CashbackInfo {
   amount: string;
   isPending: boolean;
+  isEscrowed: boolean;
+  payoutAt?: string;
 }
 
 export interface SourceDepositInstructions {
