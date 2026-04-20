@@ -94,6 +94,10 @@ export const TRANSACTION_DETAILS: Record<TransactionType, TransactionDetails> = 
     sign: TransactionDirection.OUT,
     category: TransactionCategory.CARD_DEPOSIT,
   },
+  [TransactionType.CARD_DEPOSIT]: {
+    sign: TransactionDirection.OUT,
+    category: TransactionCategory.CARD_DEPOSIT,
+  },
   [TransactionType.REPAY_AND_WITHDRAW_COLLATERAL]: {
     sign: TransactionDirection.OUT,
     category: TransactionCategory.SAVINGS_ACCOUNT,
