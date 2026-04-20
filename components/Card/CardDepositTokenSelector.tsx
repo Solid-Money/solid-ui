@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { WalletTokenSelectorScreen } from '@/components/WalletTokenSelector';
 import { CARD_DEPOSIT_MODAL } from '@/constants/modals';
 import { TokenBalance } from '@/lib/types';
+import { useCardDepositStore, CardDepositSource } from '@/store/useCardDepositStore';
 import { useDepositStore } from '@/store/useDepositStore';
 
 const SUPPORTED_CHAIN_IDS = [mainnet.id, polygon.id, base.id, arbitrum.id, fuse.id];
@@ -17,11 +18,16 @@ const SUPPORTED_TOKEN_SYMBOLS = ['USDC'];
  * deposit internal form on selection.
  */
 const CardDepositTokenSelector: React.FC = () => {
-  const { setSrcChainId, setPrincipalToken, setModal } = useDepositStore(
+  const { setSrcChainId, setPrincipalToken } = useDepositStore(
     useShallow(state => ({
       setSrcChainId: state.setSrcChainId,
       setPrincipalToken: state.setPrincipalToken,
+    })),
+  );
+  const { setModal, setSource } = useCardDepositStore(
+    useShallow(state => ({
       setModal: state.setModal,
+      setSource: state.setSource,
     })),
   );
 
@@ -29,9 +35,10 @@ const CardDepositTokenSelector: React.FC = () => {
     (token: TokenBalance) => {
       setSrcChainId(token.chainId);
       setPrincipalToken(token.contractTickerSymbol?.toUpperCase() || 'USDC');
+      setSource(CardDepositSource.WALLET);
       setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
     },
-    [setSrcChainId, setPrincipalToken, setModal],
+    [setSrcChainId, setPrincipalToken, setSource, setModal],
   );
 
   const supportedChainIds = useMemo(() => SUPPORTED_CHAIN_IDS, []);

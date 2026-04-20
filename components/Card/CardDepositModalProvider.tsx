@@ -11,6 +11,8 @@ import { track } from '@/lib/analytics';
 import getTokenIcon from '@/lib/getTokenIcon';
 import { useCardDepositStore } from '@/store/useCardDepositStore';
 
+import { CardDepositSource } from '@/store/useCardDepositStore';
+
 import CardDepositExternal from './CardDepositExternal';
 import CardDepositInternalForm from './CardDepositInternalForm';
 import CardDepositOptions from './CardDepositOptions';
@@ -151,11 +153,14 @@ const CardDepositModalProvider = () => {
 
   const handleBackPress = useCallback(() => {
     if (isTokenSelector) {
+      // Preserve the Wallet source so the internal form re-mounts on the
+      // wallet option (the only path that opens the token selector).
+      setSource(CardDepositSource.WALLET);
       setModal(CARD_DEPOSIT_MODAL.OPEN_INTERNAL_FORM);
       return;
     }
     setModal(CARD_DEPOSIT_MODAL.CLOSE);
-  }, [isTokenSelector, setModal]);
+  }, [isTokenSelector, setSource, setModal]);
 
   return (
     <ResponsiveModal
