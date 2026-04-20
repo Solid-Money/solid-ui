@@ -12,15 +12,20 @@ import { bridgeDeposit, createDeposit } from '@/lib/api';
 import { getAttributionChannel } from '@/lib/attribution';
 import { EXPO_PUBLIC_BRIDGE_AUTO_DEPOSIT_ADDRESS } from '@/lib/config';
 import { executeTransactions, USER_CANCELLED_TRANSACTION } from '@/lib/execute';
-import { Status, StatusInfo, TransactionStatus, TransactionType, VaultType } from '@/lib/types';
+import {
+  DepositCategory,
+  Status,
+  StatusInfo,
+  TransactionStatus,
+  TransactionType,
+  VaultType,
+} from '@/lib/types';
 import { withRefreshToken } from '@/lib/utils';
 import { useAttributionStore } from '@/store/useAttributionStore';
 import { useDepositStore } from '@/store/useDepositStore';
 import { useUserStore } from '@/store/useUserStore';
 
 import useUser from './useUser';
-
-export type DepositCategory = 'SAVINGS' | 'CARD';
 
 type DepositResult = {
   balance: bigint | undefined;
@@ -34,7 +39,7 @@ const useDepositFromSolidUsdc = (
   tokenAddress: Address,
   token: string,
   minimumAmount: string = '10',
-  category: DepositCategory = 'SAVINGS',
+  category: DepositCategory = DepositCategory.SAVINGS,
 ): DepositResult => {
   const { user, safeAA } = useUser();
   const [depositStatus, setDepositStatus] = useState<StatusInfo>({ status: Status.IDLE });
@@ -45,7 +50,7 @@ const useDepositFromSolidUsdc = (
   const updateUser = useUserStore(state => state.updateUser);
 
   const safeAddress = user?.safeAddress as Address | undefined;
-  const isCard = category === 'CARD';
+  const isCard = category === DepositCategory.CARD;
   const targetChainId = isCard ? base.id : mainnet.id;
   const isTargetChain = srcChainId === targetChainId;
   const isEthereum = srcChainId === mainnet.id;
@@ -198,7 +203,7 @@ const useDepositFromSolidUsdc = (
               amount,
               trackingId,
               vault: isCard ? undefined : VaultType.USDC,
-              category: isCard ? 'CARD' : 'SAVINGS',
+              category: isCard ? DepositCategory.CARD : DepositCategory.SAVINGS,
             }),
           )
         : withRefreshToken(() =>
@@ -208,7 +213,7 @@ const useDepositFromSolidUsdc = (
               srcChainId,
               amount,
               trackingId,
-              category: isCard ? 'CARD' : 'SAVINGS',
+              category: isCard ? DepositCategory.CARD : DepositCategory.SAVINGS,
             }),
           );
 
