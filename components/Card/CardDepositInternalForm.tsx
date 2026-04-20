@@ -306,6 +306,8 @@ type AmountInputProps = {
   onAmountEntry?: () => void;
   /** Symbol for Wallet source (e.g. USDC.e or rUSD). */
   walletTokenSymbol: string;
+  /** Optional override for the right-hand token cell (e.g. WalletTokenButton). */
+  rightSlot?: React.ReactNode;
 };
 
 function AmountInput({
@@ -314,6 +316,7 @@ function AmountInput({
   from,
   onAmountEntry,
   walletTokenSymbol,
+  rightSlot,
 }: AmountInputProps) {
   const getTokenImage = () => {
     if (from === CardDepositSource.WALLET) return getAsset('images/usdc-4x.png');
@@ -358,14 +361,18 @@ function AmountInput({
             />
           )}
         />
-        <View className="native:shrink-0 flex-row items-center gap-2">
-          <Image
-            source={getTokenImage()}
-            alt={getTokenSymbol()}
-            style={{ width: 34, height: 34 }}
-          />
-          <Text className="text-lg font-semibold text-white">{getTokenSymbol()}</Text>
-        </View>
+        {rightSlot ? (
+          rightSlot
+        ) : (
+          <View className="native:shrink-0 flex-row items-center gap-2">
+            <Image
+              source={getTokenImage()}
+              alt={getTokenSymbol()}
+              style={{ width: 34, height: 34 }}
+            />
+            <Text className="text-lg font-semibold text-white">{getTokenSymbol()}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -1198,16 +1205,6 @@ export default function CardDepositInternalForm() {
         walletTokenSymbol={walletTokenSymbol}
       />
 
-      {isWalletSourceGaslessGated && (
-        <View className="gap-2">
-          <Text className="font-medium opacity-50">Token</Text>
-          <WalletTokenButton
-            selectedToken={selectedCardWalletToken}
-            onPress={() => setModal(CARD_DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
-          />
-        </View>
-      )}
-
       {watchedFrom === CardDepositSource.BORROW ? (
         <View className="gap-4 px-2">
           <BorrowSlider
@@ -1225,6 +1222,14 @@ export default function CardDepositInternalForm() {
             from={watchedFrom}
             onAmountEntry={trackAmountEntry}
             walletTokenSymbol={walletTokenSymbol}
+            rightSlot={
+              isWalletSourceGaslessGated ? (
+                <WalletTokenButton
+                  selectedToken={selectedCardWalletToken}
+                  onPress={() => setModal(CARD_DEPOSIT_MODAL.OPEN_TOKEN_SELECTOR)}
+                />
+              ) : undefined
+            }
           />
           <BalanceDisplay
             balanceAmount={balanceAmount}
