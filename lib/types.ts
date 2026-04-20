@@ -657,6 +657,7 @@ export enum TransactionType {
   CANCEL_WITHDRAW = 'cancel_withdraw',
   BRIDGE_DEPOSIT = 'bridge_deposit',
   BORROW_AND_DEPOSIT_TO_CARD = 'borrow_and_deposit_to_card',
+  CARD_DEPOSIT = 'card_deposit',
   BRIDGE_TRANSFER = 'bridge_transfer',
   BANK_TRANSFER = 'bank_transfer',
   CARD_TRANSACTION = 'card_transaction',
@@ -791,6 +792,7 @@ export type BridgeDeposit = {
     deadline: number;
   };
   trackingId?: string;
+  category?: 'SAVINGS' | 'CARD';
 };
 
 export type BridgeTransactionRequest = {
@@ -814,6 +816,7 @@ export type Deposit = {
   };
   trackingId?: string;
   vault?: VaultType;
+  category?: 'SAVINGS' | 'CARD';
 };
 
 export enum DepositTransactionStatus {
