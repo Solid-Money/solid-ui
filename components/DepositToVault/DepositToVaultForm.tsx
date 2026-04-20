@@ -27,7 +27,7 @@ import { DEPOSIT_MODAL } from '@/constants/modals';
 import { isStablecoinSymbol } from '@/constants/stablecoins';
 import { TRACKING_EVENTS } from '@/constants/tracking-events';
 import { useMaxAPY } from '@/hooks/useAnalytics';
-import useDepositFromWallet from '@/hooks/useDepositFromWallet';
+import useDepositFromEOA from '@/hooks/useDepositFromEOA';
 import useDepositFromEOAEth from '@/hooks/useDepositFromEOAEth';
 import useDepositFromEOAFuse from '@/hooks/useDepositFromEOAFuse';
 import useDepositFromSolidEth from '@/hooks/useDepositFromSolidEth';
@@ -166,7 +166,7 @@ function DepositToVaultForm() {
     };
   }, [normalizedSelection.chainId, normalizedSelection.principalToken]);
 
-  const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromWallet(
+  const { balance, deposit, depositStatus, hash, isEthereum, error } = useDepositFromEOA(
     (selectedTokenInfo?.address as Address) || '',
     selectedTokenInfo?.name || '',
     selectedTokenInfo?.version,
@@ -457,7 +457,7 @@ function DepositToVaultForm() {
   };
 
   const handleSuccess = () => {
-    // Note: DEPOSIT_COMPLETED tracking is handled by useDepositFromWallet / useDepositFromEOAFuse
+    // Note: DEPOSIT_COMPLETED tracking is handled by useDepositFromEOA / useDepositFromEOAFuse
     // which have complete deposit details (amount, transaction hash, user info, etc.)
 
     reset(); // Reset form after successful transaction

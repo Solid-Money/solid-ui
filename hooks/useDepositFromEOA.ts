@@ -14,7 +14,7 @@ import {
   verifyTypedData,
 } from 'viem';
 import { waitForTransactionReceipt } from 'viem/actions';
-import { base, mainnet } from 'viem/chains';
+import { mainnet } from 'viem/chains';
 import { useBlockNumber, useChainId, useReadContract } from 'wagmi';
 import { readContract } from 'wagmi/actions';
 
@@ -44,8 +44,6 @@ import { useUserStore } from '@/store/useUserStore';
 
 import useUser from './useUser';
 
-export type DepositCategory = 'SAVINGS' | 'CARD';
-
 type DepositResult = {
   balance: bigint | undefined;
   deposit: (amount: string) => Promise<string | undefined>;
@@ -55,12 +53,11 @@ type DepositResult = {
   isEthereum: boolean;
 };
 
-const useDepositFromWallet = (
+const useDepositFromEOA = (
   tokenAddress: Address,
   token: string,
   tokenVersion: string = '2',
   minimumAmount: string = '100',
-  category: DepositCategory = 'SAVINGS',
 ): DepositResult => {
   const { user } = useUser();
   const wallet = useActiveWallet();
@@ -281,13 +278,13 @@ const useDepositFromWallet = (
 
   const createEvent = async (amount: string, spender: Address, token: string) => {
     const clientTxId = await createActivity({
-      title: category === 'CARD' ? `Deposit ${token} to Card` : `Deposit ${token}`,
+      title: `Deposit ${token}`,
       amount,
       symbol: token,
       chainId: srcChainId,
       fromAddress: eoaAddress,
       toAddress: spender,
-      type: category === 'CARD' ? TransactionType.CARD_DEPOSIT : TransactionType.DEPOSIT,
+      type: TransactionType.DEPOSIT,
       metadata: { tokenAddress },
     });
 
@@ -434,94 +431,6 @@ const useDepositFromWallet = (
       let transaction: { transactionHash: `0x${string}` } | undefined = {
         transactionHash: '' as `0x${string}`,
       };
-
-      if (category === 'CARD') {
-        if (!isSponsor) {
-          throw new Error(
-            `Minimum deposit amount is ${minimumAmount} ${token} to deposit to card`,
-          );
-        }
-
-        const isBase = srcChainId === base.id;
-        await switchChain(srcChainId);
-
-        const allowanceHash = await checkAndSetAllowanceToken(
-          tokenAddress,
-          eoaAddress,
-          spender,
-          amountWei,
-          srcChainId,
-        );
-        if (allowanceHash) {
-          const receipt = await getTransactionReceipt(
-            srcChainId,
-            allowanceHash as `0x${string}`,
-          );
-          if (!receipt) {
-            throw new Error('Failed to get transaction receipt');
-          }
-          if (receipt.status !== 'success') {
-            throw new Error('Transaction failed');
-          }
-        }
-
-        trackingId = await createEvent(amount, spender, token);
-
-        if (isBase) {
-          withRefreshToken(() =>
-            createDeposit({
-              eoaAddress,
-              amount,
-              trackingId,
-              category: 'CARD',
-            }),
-          )
-            .then(result => {
-              if (result?.transactionHash) {
-                updateActivity(trackingId!, {
-                  status: TransactionStatus.PROCESSING,
-                });
-              }
-            })
-            .catch(err => {
-              console.error('Card deposit failed:', err);
-              updateActivity(trackingId!, {
-                status: TransactionStatus.PROCESSING,
-                metadata: { depositError: err?.message || 'Backend returned error' },
-              });
-            });
-        } else {
-          withRefreshToken(() =>
-            bridgeDeposit({
-              srcToken: token,
-              eoaAddress,
-              srcChainId,
-              amount,
-              trackingId,
-              category: 'CARD',
-            }),
-          )
-            .then(result => {
-              if (result?.transactionHash) {
-                updateActivity(trackingId!, {
-                  status: TransactionStatus.PROCESSING,
-                });
-              }
-            })
-            .catch(err => {
-              console.error('Card bridge deposit failed:', err);
-              updateActivity(trackingId!, {
-                status: TransactionStatus.PROCESSING,
-                metadata: { depositError: err?.message || 'Backend returned error' },
-              });
-            });
-        }
-
-        setDepositStatus({ status: Status.SUCCESS });
-        updateUser({ ...user, isDeposited: true });
-        return trackingId;
-      }
-
       if (isEthereum && token === 'USDC') {
         // Track ethereum deposit start
         track(TRACKING_EVENTS.DEPOSIT_TRANSACTION_STARTED, {
@@ -977,4 +886,4 @@ const useDepositFromWallet = (
   };
 };
 
-export default useDepositFromWallet;
+export default useDepositFromEOA;

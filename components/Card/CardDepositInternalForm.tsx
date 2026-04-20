@@ -38,7 +38,7 @@ import useBorrowAndDepositToCard from '@/hooks/useBorrowAndDepositToCard';
 import useBridgeToCard from '@/hooks/useBridgeToCard';
 import { useCardContracts } from '@/hooks/useCardContracts';
 import useCardDeposit from '@/hooks/useCardDeposit';
-import useDepositFromWallet from '@/hooks/useDepositFromWallet';
+import useDepositFromSolidUsdc from '@/hooks/useDepositFromSolidUsdc';
 import { useCardDetails } from '@/hooks/useCardDetails';
 import { useCardProvider } from '@/hooks/useCardProvider';
 import { usePreviewDepositToCard } from '@/hooks/usePreviewDepositToCard';
@@ -715,10 +715,9 @@ export default function CardDepositInternalForm() {
     deposit: walletCardDeposit,
     depositStatus: walletCardDepositStatus,
     error: walletCardDepositError,
-  } = useDepositFromWallet(
+  } = useDepositFromSolidUsdc(
     cardDepositTokenAddress,
     'USDC',
-    '2',
     EXPO_PUBLIC_MINIMUM_SPONSOR_AMOUNT,
     'CARD',
   );
